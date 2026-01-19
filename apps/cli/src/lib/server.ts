@@ -1,28 +1,23 @@
 import { serve, type ServerType } from "@hono/node-server";
 import { createServer } from "@repo/server";
+import { DEFAULT_HOST } from "./command-utils.js";
 
 export interface ServerManagerOptions {
   port: number;
   hostname?: string;
 }
 
-export interface ServerAddress {
-  port: number;
-  hostname: string;
-}
+export type ServerAddress = Required<ServerManagerOptions>;
 
 export interface ServerManager {
   start: () => Promise<ServerAddress>;
   stop: () => Promise<void>;
-  isRunning: () => boolean;
-  getAddress: () => ServerAddress | null;
 }
 
 export function createServerManager(options: ServerManagerOptions): ServerManager {
-  const { port, hostname = "localhost" } = options;
+  const { port, hostname = DEFAULT_HOST } = options;
 
   let server: ServerType | null = null;
-  let currentAddress: ServerAddress | null = null;
 
   const start = async (): Promise<ServerAddress> => {
     if (server !== null) {
@@ -39,19 +34,16 @@ export function createServerManager(options: ServerManagerOptions): ServerManage
           hostname,
         });
 
-        server.on("listening", () => {
-          currentAddress = { port, hostname };
-          resolve(currentAddress);
+        server.once("listening", () => {
+          resolve({ port, hostname });
         });
 
-        server.on("error", (error: Error) => {
+        server.once("error", (error: Error) => {
           server = null;
-          currentAddress = null;
           reject(error);
         });
       } catch (error) {
         server = null;
-        currentAddress = null;
         reject(error);
       }
     });
@@ -65,7 +57,6 @@ export function createServerManager(options: ServerManagerOptions): ServerManage
     return new Promise((resolve, reject) => {
       server!.close((error) => {
         server = null;
-        currentAddress = null;
         if (error) {
           reject(error);
         } else {
@@ -75,18 +66,8 @@ export function createServerManager(options: ServerManagerOptions): ServerManage
     });
   };
 
-  const isRunning = (): boolean => {
-    return server !== null;
-  };
-
-  const getAddress = (): ServerAddress | null => {
-    return currentAddress;
-  };
-
   return {
     start,
     stop,
-    isRunning,
-    getAddress,
   };
 }
