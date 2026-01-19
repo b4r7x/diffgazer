@@ -20,6 +20,9 @@ importers:
       '@hono/node-server':
         specifier: ^1.19.9
         version: 1.19.9(hono@4.11.4)
+      '@repo/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
       '@repo/server':
         specifier: workspace:*
         version: link:../server
@@ -32,6 +35,9 @@ importers:
       ink:
         specifier: ^6.6.0
         version: 6.6.0(@types/react@19.2.8)(react@19.2.3)
+      ink-spinner:
+        specifier: ^5.0.0
+        version: 5.0.0(ink@6.6.0(@types/react@19.2.8)(react@19.2.3))(react@19.2.3)
       react:
         specifier: ^19.0.0
         version: 19.2.3
@@ -57,6 +63,9 @@ importers:
       '@hono/node-server':
         specifier: ^1.19.9
         version: 1.19.9(hono@4.11.4)
+      '@repo/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
       hono:
         specifier: ^4.11.4
         version: 4.11.4
@@ -70,6 +79,22 @@ importers:
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
+
+  packages/schemas:
+    dependencies:
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
+    devDependencies:
+      '@repo/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.7
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
 
   packages/tsconfig: {}
 
@@ -275,6 +300,10 @@ packages:
     resolution: {integrity: sha512-VGtlMu3x/4DOtIUwEkRezxUZ2lBacNJCHash0N0WeZDBS+7Ux1dm3XWAgWYxLJFMMdOeXMHXorshEFhbMSGelg==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
+  cli-spinners@2.9.2:
+    resolution: {integrity: sha512-ywqV+5MmyL4E7ybXgKys4DugZbX0FC6LnwrhjuykIjnK9k8OQacQ7axGKnjDXWNhns0xot3bZI5h55H8yo9cJg==}
+    engines: {node: '>=6'}
+
   cli-truncate@5.1.1:
     resolution: {integrity: sha512-SroPvNHxUnk+vIW/dOSfNqdy1sPEFkrTk6TUtqLCnBlo3N7TNYYkzzN7uSD6+jVjrdO4+p8nH7JzH6cIvUem6A==}
     engines: {node: '>=20'}
@@ -332,6 +361,13 @@ packages:
   indent-string@5.0.0:
     resolution: {integrity: sha512-m6FAo/spmsW2Ab2fU35JTYwtOKa2yAwXSwgjSv1TJzh4Mh7mC3lzAOVLBprb72XsTrgkEIsl7YrFNAiDiRhIGg==}
     engines: {node: '>=12'}
+
+  ink-spinner@5.0.0:
+    resolution: {integrity: sha512-EYEasbEjkqLGyPOUc8hBJZNuC5GvXGMLu0w5gdTNskPc7Izc5vO3tdQEYnzvshucyGCBXc86ig0ujXPMWaQCdA==}
+    engines: {node: '>=14.16'}
+    peerDependencies:
+      ink: '>=4.0.0'
+      react: '>=18.0.0'
 
   ink@6.6.0:
     resolution: {integrity: sha512-QDt6FgJxgmSxAelcOvOHUvFxbIUjVpCH5bx+Slvc5m7IEcpGt3dYwbz/L+oRnqEGeRvwy1tineKK4ect3nW1vQ==}
@@ -484,6 +520,9 @@ packages:
   yoga-layout@3.2.1:
     resolution: {integrity: sha512-0LPOt3AxKqMdFBZA3HBAt/t/8vIKq7VaQYbuA8WxCgung+p9TVyKRYdpvCb80HcdTN2NkbIKbhNwKUfm3tQywQ==}
 
+  zod@3.25.76:
+    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+
 snapshots:
 
   '@alcalzone/ansi-tokenize@0.2.3':
@@ -599,6 +638,8 @@ snapshots:
     dependencies:
       restore-cursor: 4.0.0
 
+  cli-spinners@2.9.2: {}
+
   cli-truncate@5.1.1:
     dependencies:
       slice-ansi: 7.1.2
@@ -663,6 +704,12 @@ snapshots:
   hono@4.11.4: {}
 
   indent-string@5.0.0: {}
+
+  ink-spinner@5.0.0(ink@6.6.0(@types/react@19.2.8)(react@19.2.3))(react@19.2.3):
+    dependencies:
+      cli-spinners: 2.9.2
+      ink: 6.6.0(@types/react@19.2.8)(react@19.2.3)
+      react: 19.2.3
 
   ink@6.6.0(@types/react@19.2.8)(react@19.2.3):
     dependencies:
@@ -805,3 +852,5 @@ snapshots:
   ws@8.19.0: {}
 
   yoga-layout@3.2.1: {}
+
+  zod@3.25.76: {}
