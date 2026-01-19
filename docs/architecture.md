@@ -80,7 +80,7 @@ stargazer/
 ├── apps/
 │   ├── cli/                      # Ink TUI (bulletproof-react pattern)
 │   │   ├── src/
-│   │   │   ├── index.ts          # Entry (yargs setup)
+│   │   │   ├── index.ts          # Entry (Commander setup)
 │   │   │   ├── app/              # Application layer
 │   │   │   │   ├── screens/      # Screen definitions (TUI "routes")
 │   │   │   │   │   ├── chat-screen.tsx
@@ -88,7 +88,7 @@ stargazer/
 │   │   │   │   │   └── onboarding-screen.tsx
 │   │   │   │   ├── provider.tsx  # Root context providers
 │   │   │   │   └── app.tsx       # Main Ink app
-│   │   │   ├── commands/         # yargs command handlers
+│   │   │   ├── commands/         # Commander command handlers
 │   │   │   │   ├── run.ts        # Start TUI
 │   │   │   │   ├── serve.ts      # Headless server
 │   │   │   │   └── auth.ts       # Provider auth
@@ -437,7 +437,7 @@ The CLI follows the bulletproof-react structure with `screens/` replacing `route
 
 ```
 cli/src/
-├── index.ts                 # Entry: yargs setup, command registration
+├── index.ts                 # Entry: Commander setup, command registration
 ├── app/                     # Application layer
 │   ├── screens/             # TUI screens (like routes for web)
 │   │   ├── chat-screen.tsx
@@ -445,7 +445,7 @@ cli/src/
 │   │   └── onboarding-screen.tsx
 │   ├── provider.tsx         # Root context providers
 │   └── app.tsx              # Main Ink application
-├── commands/                # yargs command handlers
+├── commands/                # Commander command handlers
 │   ├── run.ts               # Default: start TUI
 │   ├── serve.ts             # Headless server only
 │   ├── auth.ts              # Provider authentication
