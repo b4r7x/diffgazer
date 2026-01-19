@@ -1,22 +1,23 @@
 import { useState } from "react";
-import type { GitStatus, GitError } from "@repo/schemas/git";
-import { GitStatusResponseSchema } from "@repo/schemas/git";
+import type { GitDiff, GitError } from "@repo/schemas/git";
+import { GitDiffResponseSchema } from "@repo/schemas/git";
 import { makeError } from "../lib/error.js";
 
-export type GitStatusState =
+export type GitDiffState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "success"; data: GitStatus }
+  | { status: "success"; data: GitDiff }
   | { status: "error"; error: GitError };
 
-export function useGitStatus(baseUrl: string) {
-  const [state, setState] = useState<GitStatusState>({ status: "idle" });
+export function useGitDiff(baseUrl: string) {
+  const [state, setState] = useState<GitDiffState>({ status: "idle" });
 
-  async function fetchStatus() {
+  async function fetchDiff(staged = false) {
     setState({ status: "loading" });
 
     try {
-      const res = await fetch(`${baseUrl}/git/status`);
+      const url = `${baseUrl}/git/diff${staged ? "?staged=true" : ""}`;
+      const res = await fetch(url);
 
       if (!res.ok) {
         setState({ status: "error", error: makeError(`HTTP ${res.status}`) });
@@ -29,7 +30,7 @@ export function useGitStatus(baseUrl: string) {
         return;
       }
 
-      const parsed = GitStatusResponseSchema.safeParse(json);
+      const parsed = GitDiffResponseSchema.safeParse(json);
       if (!parsed.success) {
         setState({ status: "error", error: makeError("Invalid response") });
         return;
@@ -49,5 +50,5 @@ export function useGitStatus(baseUrl: string) {
     setState({ status: "idle" });
   }
 
-  return { state, fetch: fetchStatus, reset };
+  return { state, fetch: fetchDiff, reset };
 }
