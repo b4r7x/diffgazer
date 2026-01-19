@@ -1,0 +1,16 @@
+{
+  "name": "@repo/schemas",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./git": { "types": "./dist/git.d.ts", "import": "./dist/git.js" },
+    "./port": { "types": "./dist/port.d.ts", "import": "./dist/port.js" }
+  },
+  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
+  "dependencies": { "zod": "^3.23.0" },
+  "devDependencies": { "@repo/tsconfig": "workspace:*", "@types/node": "^22.0.0", "typescript": "^5.7.0" }
+}
