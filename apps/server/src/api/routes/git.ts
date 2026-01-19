@@ -1,5 +1,6 @@
 import { Hono } from "hono";
-import { join } from "node:path";
+import type { Context } from "hono";
+import { join, sep } from "node:path";
 import { realpath } from "node:fs/promises";
 import { createGitService } from "../../services/git.js";
 import { errorResponse, successResponse } from "../../lib/response.js";
@@ -14,39 +15,62 @@ function isValidRelativePath(path: string): boolean {
   return !startsWithSlash && !hasDriveLetter && !hasTraversal && !hasNullByte;
 }
 
-git.get("/status", async (c) => {
-  const path = c.req.query("path");
-
+async function getGitService(c: Context, path: string | undefined) {
   if (path && !isValidRelativePath(path)) {
     return errorResponse(c, "Invalid path", "INVALID_PATH", 400);
   }
 
   const targetPath = path ? join(process.cwd(), path) : process.cwd();
-
+  const realBasePath = await realpath(process.cwd()).catch(() => null);
   const realTargetPath = await realpath(targetPath).catch(() => null);
-  const realBasePath = await realpath(process.cwd());
 
-  if (!realTargetPath || !realTargetPath.startsWith(realBasePath)) {
+  if (!realBasePath || !realTargetPath ||
+      (realTargetPath !== realBasePath && !realTargetPath.startsWith(realBasePath + sep))) {
     return errorResponse(c, "Invalid path", "INVALID_PATH", 400);
   }
 
+  const gitService = createGitService({ cwd: realTargetPath });
+
+  if (!(await gitService.isGitInstalled())) {
+    return errorResponse(c, "Git not installed", "GIT_NOT_FOUND", 500);
+  }
+
+  return gitService;
+}
+
+git.get("/status", async (c) => {
+  const result = await getGitService(c, c.req.query("path"));
+  if (result instanceof Response) return result;
+
   try {
-    const gitService = createGitService({ cwd: realTargetPath });
-
-    if (!(await gitService.isGitInstalled())) {
-      return errorResponse(c, "Git not installed", "GIT_NOT_FOUND", 500);
-    }
-
-    const status = await gitService.getStatus();
-
+    const status = await result.getStatus();
     if (!status.isGitRepo) {
       return errorResponse(c, "Not a git repository", "NOT_GIT_REPO", 400);
     }
-
     return successResponse(c, status);
   } catch (error) {
     console.error("Git status error:", error);
     return errorResponse(c, "Failed to retrieve git status", "COMMAND_FAILED", 500);
+  }
+});
+
+git.get("/diff", async (c) => {
+  const result = await getGitService(c, c.req.query("path"));
+  if (result instanceof Response) return result;
+
+  const staged = c.req.query("staged") === "true";
+
+  try {
+    const status = await result.getStatus();
+    if (!status.isGitRepo) {
+      return errorResponse(c, "Not a git repository", "NOT_GIT_REPO", 400);
+    }
+
+    const diff = await result.getDiff(staged);
+    return successResponse(c, { diff, staged });
+  } catch (error) {
+    console.error("Git diff error:", error);
+    return errorResponse(c, "Failed to retrieve git diff", "COMMAND_FAILED", 500);
   }
 });
 
