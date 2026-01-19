@@ -4,17 +4,6 @@ import { GIT_FILE_STATUS_CODES, type GitStatus, type GitStatusFiles, type GitFil
 
 const execFileAsync = promisify(execFile);
 
-export interface GitServiceOptions {
-  cwd?: string;
-  timeout?: number;
-}
-
-export interface GitService {
-  getStatus(): Promise<GitStatus>;
-  isGitInstalled(): Promise<boolean>;
-  isGitRepo(): Promise<boolean>;
-}
-
 interface BranchInfo {
   branch: string | null;
   remoteBranch: string | null;
@@ -107,7 +96,7 @@ function parseGitStatusOutput(output: string): {
   return { branch, remoteBranch, ahead, behind, files: { staged, unstaged, untracked }, conflicted };
 }
 
-export function createGitService(options: GitServiceOptions = {}): GitService {
+export function createGitService(options: { cwd?: string; timeout?: number } = {}) {
   const { cwd = process.cwd(), timeout = 10000 } = options;
 
   async function isGitInstalled(): Promise<boolean> {
@@ -115,15 +104,6 @@ export function createGitService(options: GitServiceOptions = {}): GitService {
       await execFileAsync("git", ["--version"], { timeout });
       return true;
     } catch { return false; }
-  }
-
-  async function isGitRepo(): Promise<boolean> {
-    try {
-      await execFileAsync("git", ["rev-parse", "--git-dir"], { cwd, timeout });
-      return true;
-    } catch {
-      return false;
-    }
   }
 
   async function getStatus(): Promise<GitStatus> {
@@ -141,5 +121,11 @@ export function createGitService(options: GitServiceOptions = {}): GitService {
     }
   }
 
-  return { getStatus, isGitInstalled, isGitRepo };
+  async function getDiff(staged = false): Promise<string> {
+    const args = staged ? ["diff", "--cached"] : ["diff"];
+    const { stdout } = await execFileAsync("git", args, { cwd, timeout, maxBuffer: 5 * 1024 * 1024 });
+    return stdout;
+  }
+
+  return { getStatus, getDiff, isGitInstalled };
 }
