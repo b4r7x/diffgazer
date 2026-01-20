@@ -22,35 +22,28 @@ async function getActiveBackend(forceRecheck = false): Promise<StorageBackend> {
   return detectedBackend;
 }
 
-function getEnvKeyName(provider: string): string {
-  const providerUpper = provider.toUpperCase().replace(/-/g, "_");
-  return `${providerUpper}_API_KEY`;
-}
-
 function getEnvApiKey(provider: string): string | undefined {
-  return process.env[getEnvKeyName(provider)];
+  const envKey = `${provider.toUpperCase().replace(/-/g, "_")}_API_KEY`;
+  return process.env[envKey];
 }
 
 export async function getApiKey(provider: string): Promise<Result<string, SecretsError>> {
   const key = `api_key_${provider}`;
-  const backend = await getActiveBackend();
 
+  // Priority 1: Try keyring if available
+  const backend = await getActiveBackend();
   if (backend === "keyring") {
     const result = await getSecret(key);
-    if (result.ok) {
-      return result;
-    }
+    if (result.ok) return result;
   }
 
+  // Priority 2: Try vault file
   const fileResult = await getVaultSecret(key);
-  if (fileResult.ok) {
-    return fileResult;
-  }
+  if (fileResult.ok) return fileResult;
 
+  // Priority 3: Try environment variable
   const envValue = getEnvApiKey(provider);
-  if (envValue) {
-    return ok(envValue);
-  }
+  if (envValue) return ok(envValue);
 
   return err(secretsError("SECRET_NOT_FOUND", `API key for '${provider}' not found`));
 }
@@ -59,19 +52,17 @@ export async function setApiKey(provider: string, apiKey: string): Promise<Resul
   const key = `api_key_${provider}`;
   const backend = await getActiveBackend();
 
-  if (backend === "keyring") {
-    const result = await setSecret(key, apiKey);
-    if (result.ok) {
-      return result;
-    }
-    const newBackend = await getActiveBackend(true);
-    if (newBackend === "file") {
-      return setVaultSecret(key, apiKey);
-    }
-    return result;
+  if (backend === "file") {
+    return setVaultSecret(key, apiKey);
   }
 
-  return setVaultSecret(key, apiKey);
+  // Try keyring first
+  const result = await setSecret(key, apiKey);
+  if (result.ok) return result;
+
+  // Keyring failed - re-check and fallback to vault if needed
+  const newBackend = await getActiveBackend(true);
+  return newBackend === "file" ? setVaultSecret(key, apiKey) : result;
 }
 
 export async function deleteApiKey(provider: string): Promise<Result<void, SecretsError>> {

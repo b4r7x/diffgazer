@@ -11,3 +11,18 @@ export function createError<C extends string>(
 ): AppError<C> {
   return { code, message, details };
 }
+
+/** Type guard for Node.js system errors (ENOENT, EACCES, etc.) */
+export function isNodeError(error: unknown, code: string): error is NodeJS.ErrnoException {
+  return error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === code;
+}
+
+/** Extract error message safely from unknown error */
+export function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/** Ensure value is an Error instance */
+export function toError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
+}
