@@ -48,7 +48,7 @@ export function createServer(): Hono {
         return "";
       },
       credentials: true,
-    })
+    }),
   );
 
   // Security headers: X-Frame-Options, X-Content-Type-Options

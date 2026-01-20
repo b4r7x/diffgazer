@@ -1,6 +1,6 @@
 import type { Result } from "../result.js";
 import { ok, err } from "../result.js";
-import { secretsError } from "./types.js";
+import { createSecretsError } from "./types.js";
 import type { SecretsError } from "./types.js";
 
 const SERVICE_NAME = "stargazer";
@@ -27,7 +27,7 @@ async function withKeyring<T>(
 ): Promise<Result<T, SecretsError>> {
   const keyring = await getKeyring();
   if (!keyring) {
-    return err(secretsError("KEYRING_UNAVAILABLE", "System keyring not available"));
+    return err(createSecretsError("KEYRING_UNAVAILABLE", "System keyring not available"));
   }
   return fn(keyring);
 }
@@ -62,11 +62,11 @@ export async function getSecret(key: string): Promise<Result<string, SecretsErro
       const entry = new keyring.Entry(SERVICE_NAME, key);
       const password = entry.getPassword();
       if (password === null) {
-        return err(secretsError("SECRET_NOT_FOUND", `Secret '${key}' not found`));
+        return err(createSecretsError("SECRET_NOT_FOUND", `Secret '${key}' not found`));
       }
       return ok(password);
     } catch {
-      return err(secretsError("READ_FAILED", `Failed to read secret '${key}'`));
+      return err(createSecretsError("READ_FAILED", `Failed to read secret '${key}'`));
     }
   });
 }
@@ -78,7 +78,7 @@ export async function setSecret(key: string, value: string): Promise<Result<void
       entry.setPassword(value);
       return ok(undefined);
     } catch {
-      return err(secretsError("WRITE_FAILED", "Failed to store secret"));
+      return err(createSecretsError("WRITE_FAILED", "Failed to store secret"));
     }
   });
 }

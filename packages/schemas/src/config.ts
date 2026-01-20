@@ -107,3 +107,23 @@ export const SaveConfigRequestSchema = z.object({
   model: z.string().optional(),
 });
 export type SaveConfigRequest = z.infer<typeof SaveConfigRequestSchema>;
+
+export const ConfigCheckResponseSchema = z.object({
+  configured: z.boolean(),
+  config: z.object({
+    provider: AIProviderSchema,
+    model: z.string().optional(),
+  }).optional(),
+});
+export type ConfigCheckResponse = z.infer<typeof ConfigCheckResponseSchema>;
+
+export const CurrentConfigResponseSchema = z.object({
+  provider: AIProviderSchema,
+  model: z.string().optional(),
+});
+export type CurrentConfigResponse = z.infer<typeof CurrentConfigResponseSchema>;
+
+export const DeleteConfigResponseSchema = z.object({
+  deleted: z.boolean(),
+});
+export type DeleteConfigResponse = z.infer<typeof DeleteConfigResponseSchema>;

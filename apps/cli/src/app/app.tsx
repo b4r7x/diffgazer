@@ -5,12 +5,20 @@ import { GitStatusDisplay } from "../components/git-status-display.js";
 import { GitDiffDisplay } from "../components/git-diff-display.js";
 import { ReviewDisplay } from "../components/review-display.js";
 import { OnboardingScreen } from "./screens/onboarding-screen.js";
+import { SettingsScreen } from "./screens/settings-screen.js";
 import { useGitStatus } from "../hooks/use-git-status.js";
 import { useGitDiff } from "../hooks/use-git-diff.js";
 import { useReview } from "../hooks/use-review.js";
 import { useConfig } from "../hooks/use-config.js";
 
-type View = "loading" | "onboarding" | "main" | "git-status" | "git-diff" | "review";
+type View =
+  | "loading"
+  | "onboarding"
+  | "main"
+  | "git-status"
+  | "git-diff"
+  | "review"
+  | "settings";
 
 interface AppProps {
   address: string;
@@ -19,10 +27,10 @@ interface AppProps {
 export function App({ address }: AppProps): React.ReactElement {
   const { exit } = useApp();
   const [view, setView] = useState<View>("loading");
-  const gitStatus = useGitStatus(address);
-  const gitDiff = useGitDiff(address);
-  const review = useReview(address);
-  const config = useConfig(address);
+  const gitStatus = useGitStatus();
+  const gitDiff = useGitDiff();
+  const review = useReview();
+  const config = useConfig();
   const [diffStaged, setDiffStaged] = useState(false);
   const [reviewStaged, setReviewStaged] = useState(true);
 
@@ -33,7 +41,10 @@ export function App({ address }: AppProps): React.ReactElement {
   useEffect(() => {
     if (config.checkState === "configured" || config.saveState === "success") {
       setView("main");
-    } else if (config.checkState === "unconfigured" || config.checkState === "error") {
+    } else if (
+      config.checkState === "unconfigured" ||
+      config.checkState === "error"
+    ) {
       setView("onboarding");
     }
   }, [config.checkState, config.saveState]);
@@ -62,6 +73,10 @@ export function App({ address }: AppProps): React.ReactElement {
         setView("review");
         setReviewStaged(true);
         void review.startReview(true);
+      }
+      if (input === "S") {
+        void config.loadSettings();
+        setView("settings");
       }
       return;
     }
@@ -106,13 +121,23 @@ export function App({ address }: AppProps): React.ReactElement {
         setView("main");
         review.reset();
       }
+      return;
+    }
+
+    if (view === "settings") {
+      if (config.checkState === "unconfigured") {
+        setView("onboarding");
+      }
+      return;
     }
   });
 
   if (view === "loading") {
     return (
       <Box flexDirection="column" padding={1}>
-        <Text bold color="cyan">Stargazer</Text>
+        <Text bold color="cyan">
+          Stargazer
+        </Text>
         <Box marginTop={1}>
           <Spinner type="dots" />
           <Text> Checking configuration...</Text>
@@ -126,20 +151,28 @@ export function App({ address }: AppProps): React.ReactElement {
       <OnboardingScreen
         saveState={config.saveState}
         error={config.error}
-        onSave={(provider, apiKey, model) => void config.saveConfig(provider, apiKey, model)}
+        onSave={(provider, apiKey, model) =>
+          void config.saveConfig(provider, apiKey, model)
+        }
       />
     );
   }
 
   return (
     <Box flexDirection="column" padding={1}>
-      <Text bold color="cyan">Stargazer</Text>
-      <Text>Server: <Text color="blue">{address}</Text></Text>
+      <Text bold color="cyan">
+        Stargazer
+      </Text>
+      <Text>
+        Server: <Text color="blue">{address}</Text>
+      </Text>
       <Text color="green">Running</Text>
 
       {view === "main" && (
         <Box flexDirection="column" marginTop={1}>
-          <Text>[g] Git Status  [d] Git Diff  [r] AI Review  [q] Quit</Text>
+          <Text>
+            [g] Git Status [d] Git Diff [r] AI Review [S] Settings [q] Quit
+          </Text>
         </Box>
       )}
 
@@ -147,7 +180,9 @@ export function App({ address }: AppProps): React.ReactElement {
         <Box flexDirection="column" marginTop={1}>
           <Text bold>Git Status</Text>
           <GitStatusDisplay state={gitStatus.state} />
-          <Box marginTop={1}><Text dimColor>[r] Refresh  [b] Back  [q] Quit</Text></Box>
+          <Box marginTop={1}>
+            <Text dimColor>[r] Refresh [b] Back [q] Quit</Text>
+          </Box>
         </Box>
       )}
 
@@ -155,7 +190,10 @@ export function App({ address }: AppProps): React.ReactElement {
         <Box flexDirection="column" marginTop={1}>
           <GitDiffDisplay state={gitDiff.state} staged={diffStaged} />
           <Box marginTop={1}>
-            <Text dimColor>[s] Toggle {diffStaged ? "unstaged" : "staged"}  [r] Refresh  [b] Back  [q] Quit</Text>
+            <Text dimColor>
+              [s] Toggle {diffStaged ? "unstaged" : "staged"} [r] Refresh [b]
+              Back [q] Quit
+            </Text>
           </Box>
         </Box>
       )}
@@ -164,8 +202,25 @@ export function App({ address }: AppProps): React.ReactElement {
         <Box flexDirection="column" marginTop={1}>
           <ReviewDisplay state={review.state} staged={reviewStaged} />
           <Box marginTop={1}>
-            <Text dimColor>[s] Toggle {reviewStaged ? "unstaged" : "staged"}  [r] Refresh  [b] Back  [q] Quit</Text>
+            <Text dimColor>
+              [s] Toggle {reviewStaged ? "unstaged" : "staged"} [r] Refresh [b]
+              Back [q] Quit
+            </Text>
           </Box>
+        </Box>
+      )}
+
+      {view === "settings" && (
+        <Box flexDirection="column" marginTop={1}>
+          <SettingsScreen
+            provider={config.currentConfig?.provider ?? "Unknown"}
+            model={config.currentConfig?.model}
+            settingsState={config.settingsState}
+            deleteState={config.deleteState}
+            error={config.error}
+            onDelete={() => void config.deleteConfig()}
+            onBack={() => setView("main")}
+          />
         </Box>
       )}
     </Box>
