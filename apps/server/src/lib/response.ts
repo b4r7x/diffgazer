@@ -1,11 +1,10 @@
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import type { GitError } from "@repo/schemas/git";
 
 export function errorResponse(
   c: Context,
   message: string,
-  code: GitError["code"],
+  code: string,
   status: ContentfulStatusCode
 ) {
   return c.json({ success: false, error: { message, code } }, status);

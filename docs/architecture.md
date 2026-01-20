@@ -668,6 +668,28 @@ Located in `packages/schemas/src/`
 
 **Key mitigations**: Bind 127.0.0.1, session token, custom header, no permissive CORS
 
+### Local-Only Tool: Security Scope
+
+Stargazer is a **local-only CLI tool**. The server binds exclusively to `127.0.0.1` and is never exposed to the network. This fundamentally changes the security posture compared to production web services.
+
+**What we implement:**
+- Localhost binding (127.0.0.1 only)
+- Session token for CSRF protection
+- OS keyring for secrets (file fallback with 0600 permissions)
+- Input validation via Zod schemas
+
+**What we intentionally skip (and why):**
+
+| Pattern | Why Not Applicable |
+|---------|-------------------|
+| Redis-backed rate limiting | Single-instance local process; in-memory limits suffice |
+| Encrypted file storage | OS keyring is primary; file fallback uses filesystem permissions |
+| Request queuing with retry/backoff | No distributed system; direct function calls |
+| Saga patterns for config/secrets | Simple sequential operations; no distributed transactions |
+| Distributed tracing | Basic structured logging is sufficient for local debugging |
+
+These patterns add complexity without security benefit in a single-user, single-process, localhost-only context.
+
 ---
 
 ## O) Roadmap
