@@ -7,6 +7,12 @@ import { errorResponse, successResponse } from "../../lib/response.js";
 
 const git = new Hono();
 
+type GitService = ReturnType<typeof createGitService>;
+
+type GetGitServiceResult =
+  | { ok: true; service: GitService }
+  | { ok: false; response: Response };
+
 function isValidRelativePath(path: string): boolean {
   const startsWithSlash = path.startsWith("/") || path.startsWith("\\");
   const hasDriveLetter = /^[a-zA-Z]:/.test(path);
@@ -15,9 +21,9 @@ function isValidRelativePath(path: string): boolean {
   return !startsWithSlash && !hasDriveLetter && !hasTraversal && !hasNullByte;
 }
 
-async function getGitService(c: Context, path: string | undefined) {
+async function getGitService(c: Context, path: string | undefined): Promise<GetGitServiceResult> {
   if (path && !isValidRelativePath(path)) {
-    return errorResponse(c, "Invalid path", "INVALID_PATH", 400);
+    return { ok: false, response: errorResponse(c, "Invalid path", "INVALID_PATH", 400) };
   }
 
   const targetPath = path ? join(process.cwd(), path) : process.cwd();
@@ -26,24 +32,24 @@ async function getGitService(c: Context, path: string | undefined) {
 
   if (!realBasePath || !realTargetPath ||
       (realTargetPath !== realBasePath && !realTargetPath.startsWith(realBasePath + sep))) {
-    return errorResponse(c, "Invalid path", "INVALID_PATH", 400);
+    return { ok: false, response: errorResponse(c, "Invalid path", "INVALID_PATH", 400) };
   }
 
   const gitService = createGitService({ cwd: realTargetPath });
 
   if (!(await gitService.isGitInstalled())) {
-    return errorResponse(c, "Git not installed", "GIT_NOT_FOUND", 500);
+    return { ok: false, response: errorResponse(c, "Git not installed", "GIT_NOT_FOUND", 500) };
   }
 
-  return gitService;
+  return { ok: true, service: gitService };
 }
 
 git.get("/status", async (c) => {
   const result = await getGitService(c, c.req.query("path"));
-  if (result instanceof Response) return result;
+  if (!result.ok) return result.response;
 
   try {
-    const status = await result.getStatus();
+    const status = await result.service.getStatus();
     if (!status.isGitRepo) {
       return errorResponse(c, "Not a git repository", "NOT_GIT_REPO", 400);
     }
@@ -56,17 +62,17 @@ git.get("/status", async (c) => {
 
 git.get("/diff", async (c) => {
   const result = await getGitService(c, c.req.query("path"));
-  if (result instanceof Response) return result;
+  if (!result.ok) return result.response;
 
   const staged = c.req.query("staged") === "true";
 
   try {
-    const status = await result.getStatus();
+    const status = await result.service.getStatus();
     if (!status.isGitRepo) {
       return errorResponse(c, "Not a git repository", "NOT_GIT_REPO", 400);
     }
 
-    const diff = await result.getDiff(staged);
+    const diff = await result.service.getDiff(staged);
     return successResponse(c, { diff, staged });
   } catch (error) {
     console.error("Git diff error:", error);

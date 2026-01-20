@@ -1,0 +1,84 @@
+import { mkdir, readFile, writeFile, access } from "node:fs/promises";
+import { dirname } from "node:path";
+import { paths } from "./paths.js";
+import { UserConfigSchema, type UserConfig } from "@repo/schemas/config";
+import type { Result } from "../result.js";
+import { ok, err } from "../result.js";
+import { type AppError, createError, isNodeError, getErrorMessage } from "../errors.js";
+
+type ConfigErrorCode = "NOT_FOUND" | "PARSE_ERROR" | "VALIDATION_ERROR" | "WRITE_ERROR" | "PERMISSION_ERROR";
+export type ConfigError = AppError<ConfigErrorCode>;
+
+const createConfigError = (code: ConfigErrorCode, message: string, details?: string) =>
+  createError(code, message, details);
+
+export async function configExists(): Promise<boolean> {
+  try {
+    await access(paths.configFile());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function readConfig(): Promise<Result<UserConfig, ConfigError>> {
+  const configPath = paths.configFile();
+
+  let content: string;
+  try {
+    content = await readFile(configPath, "utf-8");
+  } catch (error) {
+    if (isNodeError(error, "ENOENT")) {
+      return err(createConfigError("NOT_FOUND", `Config file not found at ${configPath}`));
+    }
+    if (isNodeError(error, "EACCES")) {
+      return err(createConfigError("PERMISSION_ERROR", `Permission denied reading config file at ${configPath}`));
+    }
+    return err(createConfigError("PARSE_ERROR", "Failed to read config file", getErrorMessage(error)));
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch (error) {
+    return err(createConfigError("PARSE_ERROR", "Config file contains invalid JSON", getErrorMessage(error)));
+  }
+
+  const result = UserConfigSchema.safeParse(parsed);
+  if (!result.success) {
+    return err(createConfigError("VALIDATION_ERROR", "Config file failed validation", result.error.message));
+  }
+
+  return ok(result.data);
+}
+
+export async function writeConfig(config: UserConfig): Promise<Result<void, ConfigError>> {
+  const configPath = paths.configFile();
+  const configDir = dirname(configPath);
+
+  const validation = UserConfigSchema.safeParse(config);
+  if (!validation.success) {
+    return err(createConfigError("VALIDATION_ERROR", "Invalid config provided", validation.error.message));
+  }
+
+  try {
+    await mkdir(configDir, { recursive: true });
+  } catch (error) {
+    if (isNodeError(error, "EACCES")) {
+      return err(createConfigError("PERMISSION_ERROR", `Permission denied creating config directory at ${configDir}`));
+    }
+    return err(createConfigError("WRITE_ERROR", "Failed to create config directory", getErrorMessage(error)));
+  }
+
+  try {
+    const content = JSON.stringify(config, null, 2) + "\n";
+    await writeFile(configPath, content, { mode: 0o600 });
+  } catch (error) {
+    if (isNodeError(error, "EACCES")) {
+      return err(createConfigError("PERMISSION_ERROR", `Permission denied writing config file at ${configPath}`));
+    }
+    return err(createConfigError("WRITE_ERROR", "Failed to write config file", getErrorMessage(error)));
+  }
+
+  return ok(undefined);
+}
