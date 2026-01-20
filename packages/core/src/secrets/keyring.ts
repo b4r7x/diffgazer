@@ -33,19 +33,13 @@ export async function isKeyringAvailable(): Promise<boolean> {
     const testValue = "test_" + Date.now();
     const entry = new keyring.Entry(SERVICE_NAME, testKey);
 
-    // Test actual write capability
     entry.setPassword(testValue);
-
-    // Verify we can read it back
     const readBack = entry.getPassword();
     const matches = readBack === testValue;
 
-    // Clean up
     try {
       entry.deletePassword();
-    } catch {
-      // Ignore delete errors
-    }
+    } catch {}
 
     return matches;
   } catch {

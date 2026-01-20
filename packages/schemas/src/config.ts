@@ -5,10 +5,8 @@ export const AIProviderSchema = z.enum(AI_PROVIDERS);
 export type AIProvider = z.infer<typeof AIProviderSchema>;
 
 export const GEMINI_MODELS = [
-  // Gemini 3 Series (Preview)
   "gemini-3-flash-preview",
   "gemini-3-pro-preview",
-  // Gemini 2.5 Series (Stable - Recommended)
   "gemini-2.5-flash",
   "gemini-2.5-flash-lite",
   "gemini-2.5-pro",
@@ -26,7 +24,6 @@ export interface ModelInfo {
 }
 
 export const GEMINI_MODEL_INFO: Record<GeminiModel, ModelInfo> = {
-  // Gemini 3 Series
   "gemini-3-flash-preview": {
     id: "gemini-3-flash-preview",
     name: "Gemini 3 Flash",
@@ -39,7 +36,6 @@ export const GEMINI_MODEL_INFO: Record<GeminiModel, ModelInfo> = {
     description: "Most intelligent, reasoning-first model",
     tier: "paid",
   },
-  // Gemini 2.5 Series
   "gemini-2.5-flash": {
     id: "gemini-2.5-flash",
     name: "Gemini 2.5 Flash",

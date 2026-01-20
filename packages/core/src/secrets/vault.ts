@@ -1,6 +1,5 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { paths } from "../storage/paths.js";
 import type { Result } from "../result.js";
 import { ok, err } from "../result.js";
