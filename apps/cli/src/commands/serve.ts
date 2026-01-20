@@ -1,11 +1,11 @@
 import chalk from "chalk";
 import {
   type CommandOptions,
-  getErrorMessage,
   initializeServer,
   registerShutdownHandlers,
   createShutdownHandler,
 } from "../lib/command-utils.js";
+import { getErrorMessage } from "@repo/core";
 
 export async function serveCommand(options: CommandOptions): Promise<void> {
   console.log(chalk.cyan.bold("Stargazer"));
@@ -31,6 +31,6 @@ export async function serveCommand(options: CommandOptions): Promise<void> {
 
   registerShutdownHandlers(shutdown);
 
-  // Keep process alive until shutdown signal
+  // Keep process running until shutdown signal (promise never resolves)
   await new Promise(() => {});
 }

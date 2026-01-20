@@ -13,10 +13,6 @@ export interface InitializedServer {
   address: string;
 }
 
-export function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unknown error";
-}
-
 export async function initializeServer(options: CommandOptions): Promise<InitializedServer> {
   const port = parsePort(options.port);
   const hostname = options.hostname ?? DEFAULT_HOST;

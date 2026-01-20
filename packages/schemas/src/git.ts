@@ -50,20 +50,8 @@ export const GitErrorSchema = z.object({
 });
 export type GitError = z.infer<typeof GitErrorSchema>;
 
-export const GitStatusResponseSchema = z.discriminatedUnion("success", [
-  z.object({ success: z.literal(true), data: GitStatusSchema }),
-  z.object({ success: z.literal(false), error: GitErrorSchema }),
-]);
-export type GitStatusResponse = z.infer<typeof GitStatusResponseSchema>;
-
 export const GitDiffSchema = z.object({
   diff: z.string(),
   staged: z.boolean(),
 });
 export type GitDiff = z.infer<typeof GitDiffSchema>;
-
-export const GitDiffResponseSchema = z.discriminatedUnion("success", [
-  z.object({ success: z.literal(true), data: GitDiffSchema }),
-  z.object({ success: z.literal(false), error: GitErrorSchema }),
-]);
-export type GitDiffResponse = z.infer<typeof GitDiffResponseSchema>;

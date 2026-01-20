@@ -5,10 +5,11 @@ import { App } from "../app/app.js";
 import {
   type CommandOptions,
   initializeServer,
-  getErrorMessage,
   registerShutdownHandlers,
   createShutdownHandler,
 } from "../lib/command-utils.js";
+import { setBaseUrl } from "../lib/api.js";
+import { getErrorMessage } from "@repo/core";
 
 export async function runCommand(options: CommandOptions): Promise<void> {
   let manager, address;
@@ -19,6 +20,7 @@ export async function runCommand(options: CommandOptions): Promise<void> {
     process.exit(1);
   }
 
+  setBaseUrl(address);
   const { waitUntilExit } = render(React.createElement(App, { address }));
 
   const shutdown = createShutdownHandler(() => manager.stop());

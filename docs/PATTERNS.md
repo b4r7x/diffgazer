@@ -228,6 +228,126 @@ These headers:
 
 ---
 
+## 6. @repo/api - Bulletproof Fetch Pattern
+
+**Location**: `packages/api/`
+
+**Pattern**: Shared API client using native fetch with interceptors.
+
+### WHY: Consistent API Layer
+
+The Bulletproof React pattern recommends a centralized API layer:
+
+```typescript
+// packages/api/src/client.ts
+import { createApiClient } from "@repo/api";
+
+const api = createApiClient({ baseUrl: "http://127.0.0.1:3000" });
+
+// Type-safe API calls
+const config = await api.get<{ configured: boolean }>("/config/check");
+await api.post("/config", { provider, apiKey });
+await api.delete("/config");
+```
+
+### WHY: CSRF Protection
+
+The client automatically sets `Content-Type: application/json` which bypasses CSRF middleware that only checks form-like content types:
+
+```typescript
+// Request interceptor (automatic)
+headers: {
+  "Content-Type": "application/json",
+  "Accept": "application/json",
+}
+```
+
+### WHY: Centralized Error Handling
+
+The response interceptor:
+1. Unwraps the server's `{ success: true, data: T }` format
+2. Extracts error messages from `{ success: false, error: { message } }`
+3. Throws typed `ApiError` with status code
+
+```typescript
+// In hooks, errors are caught and typed
+try {
+  const result = await api.get<Config>("/config");
+} catch (e) {
+  const err = e as ApiError;
+  console.log(err.message, err.status, err.code);
+}
+```
+
+### Usage in Apps
+
+**CLI** (`apps/cli/src/lib/api.ts`):
+```typescript
+import { createApiClient } from "@repo/api";
+
+export function createApi(baseUrl: string) {
+  return createApiClient({ baseUrl });
+}
+```
+
+**Hooks** (`apps/cli/src/hooks/use-config.ts`):
+```typescript
+import { createApi, type ApiError } from "../lib/api.js";
+
+const api = useMemo(() => createApi(baseUrl), [baseUrl]);
+
+const checkConfig = useCallback(async () => {
+  try {
+    const result = await api.get<{ configured: boolean }>("/config/check");
+    setCheckState(result.configured ? "configured" : "unconfigured");
+  } catch (e) {
+    const err = e as ApiError;
+    setError({ message: err.message });
+  }
+}, [api]);
+```
+
+### References
+
+- Bulletproof React API Layer: https://github.com/alan2207/bulletproof-react/blob/master/docs/api-layer.md
+- Fetch Interceptors Pattern: https://dev.to/joshuaamaju/fetch-interceptors-1bb9
+
+---
+
+## 7. React 19: No Manual Memoization
+
+**Location**: All React hooks (`apps/cli/src/hooks/`)
+
+**Pattern**: Plain async functions instead of `useCallback` wrappers.
+
+### WHY: React 19 Compiler Auto-Memoizes
+
+React 19's Compiler automatically:
+- Stabilizes function references
+- Memoizes values and functions
+- Determines when components should skip re-rendering
+
+### WHEN useCallback/useMemo IS Needed
+
+Only in these cases:
+1. Function passed to `memo()`-wrapped component
+2. Function used as dependency of another Hook
+3. Expensive calculations (rare)
+
+### WHEN useCallback/useMemo IS NOT Needed
+
+- Functions called imperatively (`config.checkConfig()`)
+- Functions not passed as props to memoized components
+- Simple state updates
+
+### References
+
+- React 19 Compiler: https://react.dev/learn/react-compiler
+- useCallback docs: https://react.dev/reference/react/useCallback
+- GitHub Issue: https://github.com/facebook/react/issues/31913
+
+---
+
 ## Summary: Do Not Remove
 
 | Pattern | Removal Impact |
@@ -238,5 +358,7 @@ These headers:
 | CORS restriction | Enable DNS rebinding attacks |
 | XML escaping | Enable prompt injection attacks |
 | Security headers | Enable clickjacking/MIME attacks |
+| @repo/api | Lose centralized error handling, CSRF protection |
+| No manual memoization | N/A - adding useCallback/useMemo adds unnecessary complexity |
 
 These patterns exist because **security and correctness trump simplicity**.

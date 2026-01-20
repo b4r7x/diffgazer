@@ -5,38 +5,21 @@ import { readConfig } from "@repo/core/storage";
 import { getApiKey } from "@repo/core/secrets";
 import { reviewDiff } from "../../services/review.js";
 import { ReviewResultSchema } from "@repo/schemas/review";
+import { errorResponse } from "../../lib/response.js";
 
 const review = new Hono();
 
 review.get("/stream", async (c) => {
   const configResult = await readConfig();
   if (!configResult.ok) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          message: "AI provider not configured. Please configure in settings.",
-          code: "API_KEY_MISSING",
-        },
-      },
-      500
-    );
+    return errorResponse(c, "AI provider not configured. Please configure in settings.", "API_KEY_MISSING", 500);
   }
 
   const config = configResult.value;
   const apiKeyResult = await getApiKey(config.provider);
 
   if (!apiKeyResult.ok || !apiKeyResult.value) {
-    return c.json(
-      {
-        success: false,
-        error: {
-          message: `API key not found for provider '${config.provider}'. Please configure in settings.`,
-          code: "API_KEY_MISSING",
-        },
-      },
-      500
-    );
+    return errorResponse(c, `API key not found for provider '${config.provider}'. Please configure in settings.`, "API_KEY_MISSING", 500);
   }
 
   const clientResult = createAIClient(config.provider, {
@@ -45,13 +28,7 @@ review.get("/stream", async (c) => {
   });
 
   if (!clientResult.ok) {
-    return c.json(
-      {
-        success: false,
-        error: { message: clientResult.error.message, code: "AI_ERROR" },
-      },
-      500
-    );
+    return errorResponse(c, clientResult.error.message, "AI_ERROR", 500);
   }
 
   const staged = c.req.query("staged") !== "false";

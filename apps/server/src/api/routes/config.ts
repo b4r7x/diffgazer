@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { readConfig, writeConfig } from "@repo/core/storage";
+import { readConfig, writeConfig, deleteConfig as deleteConfigFile } from "@repo/core/storage";
 import { getApiKey, setApiKey, deleteApiKey } from "@repo/core/secrets";
 import { AIProviderSchema } from "@repo/schemas/config";
 import { errorResponse, successResponse } from "../../lib/response.js";
@@ -116,5 +116,31 @@ config.post(
     }
   }
 );
+
+config.delete("/", async (c) => {
+  try {
+    const configResult = await readConfig();
+    if (!configResult.ok) {
+      return errorResponse(c, "No configuration found", "NOT_FOUND", 404);
+    }
+
+    const provider = configResult.value.provider;
+
+    const deleteFileResult = await deleteConfigFile();
+    if (!deleteFileResult.ok) {
+      return errorResponse(c, deleteFileResult.error.message, "INTERNAL_ERROR", 500);
+    }
+
+    const deleteKeyResult = await deleteApiKey(provider);
+    if (!deleteKeyResult.ok) {
+      return successResponse(c, { deleted: true, warning: "Config removed but API key deletion failed" });
+    }
+
+    return successResponse(c, { deleted: true });
+  } catch (error) {
+    console.error("Config delete error:", error);
+    return errorResponse(c, "Failed to delete configuration", "INTERNAL_ERROR", 500);
+  }
+});
 
 export { config };

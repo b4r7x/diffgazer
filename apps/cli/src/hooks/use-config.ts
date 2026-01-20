@@ -1,4 +1,7 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
+import type { AIProvider, CurrentConfigResponse, ConfigCheckResponse } from "@repo/schemas/config";
+import { api } from "../lib/api.js";
+import { getErrorMessage } from "@repo/core";
 
 export type ConfigCheckState =
   | "idle"
@@ -13,76 +16,84 @@ export type SaveConfigState =
   | "success"
   | "error";
 
+export type DeleteConfigState = "idle" | "deleting" | "success" | "error";
+
+export type SettingsLoadState = "idle" | "loading" | "success" | "error";
+
 interface ConfigError {
   message: string;
 }
 
-export function useConfig(baseUrl: string) {
+export function useConfig() {
   const [checkState, setCheckState] = useState<ConfigCheckState>("idle");
   const [saveState, setSaveState] = useState<SaveConfigState>("idle");
+  const [deleteState, setDeleteState] = useState<DeleteConfigState>("idle");
+  const [settingsState, setSettingsState] = useState<SettingsLoadState>("idle");
+  const [currentConfig, setCurrentConfig] = useState<CurrentConfigResponse | null>(null);
   const [error, setError] = useState<ConfigError | null>(null);
 
-  const checkConfig = useCallback(async () => {
+  async function checkConfig() {
     setCheckState("loading");
-
+    setError(null);
     try {
-      const res = await fetch(`${baseUrl}/config/check`);
-
-      if (!res.ok) {
-        setCheckState("error");
-        setError({ message: `HTTP ${res.status}` });
-        return;
-      }
-
-      const json = (await res.json().catch(() => null)) as { data?: { configured?: boolean } } | null;
-      if (!json) {
-        setCheckState("error");
-        setError({ message: "Invalid JSON response" });
-        return;
-      }
-
-      setCheckState(json.data?.configured ? "configured" : "unconfigured");
+      const result = await api().get<ConfigCheckResponse>("/config/check");
+      setCheckState(result.configured ? "configured" : "unconfigured");
     } catch (e) {
       setCheckState("error");
-      setError({ message: String(e) });
+      setError({ message: getErrorMessage(e) });
     }
-  }, [baseUrl]);
+  }
 
-  const saveConfig = useCallback(async (
-    provider: string,
-    apiKey: string,
-    model?: string
-  ) => {
+  async function saveConfig(provider: AIProvider, apiKey: string, model?: string) {
     setSaveState("saving");
     setError(null);
-
     try {
-      const res = await fetch(`${baseUrl}/config`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, apiKey, model }),
-      });
-
-      if (!res.ok) {
-        const json = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
-        setSaveState("error");
-        setError({ message: json?.error?.message ?? `HTTP ${res.status}` });
-        return;
-      }
-
+      await api().post("/config", { provider, apiKey, model });
       setSaveState("success");
       setCheckState("configured");
     } catch (e) {
       setSaveState("error");
-      setError({ message: String(e) });
+      setError({ message: getErrorMessage(e) });
     }
-  }, [baseUrl]);
+  }
+
+  async function loadSettings() {
+    setSettingsState("loading");
+    try {
+      const result = await api().get<CurrentConfigResponse>("/config");
+      setCurrentConfig(result);
+      setSettingsState("success");
+      setError(null);
+    } catch (e) {
+      setSettingsState("error");
+      setError({ message: getErrorMessage(e) });
+    }
+  }
+
+  async function deleteConfig() {
+    setDeleteState("deleting");
+    setError(null);
+    try {
+      await api().delete("/config");
+      setDeleteState("success");
+      setCheckState("unconfigured");
+      setCurrentConfig(null);
+    } catch (e) {
+      setDeleteState("error");
+      setError({ message: getErrorMessage(e) });
+    }
+  }
 
   return {
     checkState,
     saveState,
+    deleteState,
+    settingsState,
+    currentConfig,
     error,
     checkConfig,
     saveConfig,
+    loadSettings,
+    deleteConfig,
   };
 }
