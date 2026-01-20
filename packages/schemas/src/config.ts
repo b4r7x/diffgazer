@@ -1,16 +1,8 @@
 import { z } from "zod";
 
-// =============================================================================
-// AI Providers
-// =============================================================================
-
 export const AI_PROVIDERS = ["gemini"] as const;
 export const AIProviderSchema = z.enum(AI_PROVIDERS);
 export type AIProvider = z.infer<typeof AIProviderSchema>;
-
-// =============================================================================
-// Gemini Models (January 2026)
-// =============================================================================
 
 export const GEMINI_MODELS = [
   // Gemini 3 Series (Preview)
@@ -69,16 +61,11 @@ export const GEMINI_MODEL_INFO: Record<GeminiModel, ModelInfo> = {
   },
 };
 
-// =============================================================================
-// Provider Info
-// =============================================================================
-
 export interface ProviderInfo {
   id: AIProvider;
   name: string;
   defaultModel: string;
   models: readonly string[];
-  requiresApiKey: boolean;
 }
 
 export const AVAILABLE_PROVIDERS: ProviderInfo[] = [
@@ -87,13 +74,8 @@ export const AVAILABLE_PROVIDERS: ProviderInfo[] = [
     name: "Google Gemini",
     defaultModel: "gemini-2.5-flash",
     models: GEMINI_MODELS,
-    requiresApiKey: true,
   },
 ];
-
-// =============================================================================
-// User Config
-// =============================================================================
 
 export const UserConfigSchema = z.object({
   provider: AIProviderSchema,
@@ -102,10 +84,6 @@ export const UserConfigSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 export type UserConfig = z.infer<typeof UserConfigSchema>;
-
-// =============================================================================
-// Config Errors
-// =============================================================================
 
 export const CONFIG_ERROR_CODES = [
   "NOT_CONFIGURED",
@@ -126,22 +104,6 @@ export const ConfigErrorSchema = z.object({
   code: ConfigErrorCodeSchema,
 });
 export type ConfigError = z.infer<typeof ConfigErrorSchema>;
-
-// =============================================================================
-// API Response Schemas
-// =============================================================================
-
-export const ConfigCheckResponseSchema = z.discriminatedUnion("configured", [
-  z.object({ configured: z.literal(true), data: UserConfigSchema }),
-  z.object({ configured: z.literal(false), error: ConfigErrorSchema.optional() }),
-]);
-export type ConfigCheckResponse = z.infer<typeof ConfigCheckResponseSchema>;
-
-export const ConfigResponseSchema = z.discriminatedUnion("success", [
-  z.object({ success: z.literal(true), data: UserConfigSchema }),
-  z.object({ success: z.literal(false), error: ConfigErrorSchema }),
-]);
-export type ConfigResponse = z.infer<typeof ConfigResponseSchema>;
 
 export const SaveConfigRequestSchema = z.object({
   provider: AIProviderSchema,

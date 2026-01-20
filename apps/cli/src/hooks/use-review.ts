@@ -63,15 +63,13 @@ export function useReview(baseUrl: string) {
 
         for (const line of lines) {
           if (line.startsWith("data: ")) {
-            const parseResult = ReviewStreamEventSchema.safeParse(
-              (() => {
-                try {
-                  return JSON.parse(line.slice(6));
-                } catch {
-                  return undefined;
-                }
-              })()
-            );
+            let parsed: unknown;
+            try {
+              parsed = JSON.parse(line.slice(6));
+            } catch {
+              parsed = undefined;
+            }
+            const parseResult = ReviewStreamEventSchema.safeParse(parsed);
 
             if (!parseResult.success) {
               console.error("Failed to parse stream event:", parseResult.error.message);
@@ -93,7 +91,6 @@ export function useReview(baseUrl: string) {
         }
       }
 
-      // Handle unexpected stream termination without a terminal event
       if (!receivedTerminal) {
         setState({ status: "error", error: { message: "Stream ended unexpectedly", code: "INTERNAL_ERROR" } });
       }

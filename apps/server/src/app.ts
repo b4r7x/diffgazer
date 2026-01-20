@@ -10,10 +10,7 @@ export function createServer(): Hono {
 
   app.use(logger());
 
-  // WHY: Host header validation prevents DNS rebinding attacks (CVE-2024-28224).
-  // In the Ollama vulnerability, attackers registered domains pointing to 127.0.0.1
-  // and used browser JavaScript to access localhost services.
-  // See: docs/decisions/0003-security-cors.md
+  // CVE-2024-28224: Host header validation prevents DNS rebinding
   app.use("*", async (c, next): Promise<void | Response> => {
     const host = c.req.header("host")?.split(":")[0];
     if (host && !["localhost", "127.0.0.1"].includes(host)) {
@@ -22,16 +19,10 @@ export function createServer(): Hono {
     await next();
   });
 
-  // WHY: CSRF protection prevents cross-site request forgery on state-changing endpoints.
-  // Even localhost services can be targeted by malicious websites.
-  // See: docs/SECURITY.md
+  // CSRF protection for state-changing endpoints
   app.use(csrf());
 
-  // WHY: CORS restriction is a critical defense against DNS rebinding (CVE-2024-28224).
-  // Without this, malicious websites can register domains pointing to 127.0.0.1
-  // and use browser JavaScript to exfiltrate data from localhost services.
-  // Combined with Host header validation, this provides defense-in-depth.
-  // See: docs/decisions/0003-security-cors.md
+  // CVE-2024-28224: CORS localhost restriction prevents DNS rebinding
   app.use(
     "*",
     cors({
@@ -60,11 +51,7 @@ export function createServer(): Hono {
     })
   );
 
-  // WHY: Security headers provide defense-in-depth against browser-based attacks.
-  // X-Frame-Options: DENY prevents clickjacking via iframe embedding.
-  // X-Content-Type-Options: nosniff prevents MIME type confusion attacks.
-  // These add minimal overhead but prevent entire attack classes.
-  // See: docs/SECURITY.md
+  // Security headers: X-Frame-Options, X-Content-Type-Options
   app.use("*", async (c, next) => {
     await next();
     c.header("X-Frame-Options", "DENY");
