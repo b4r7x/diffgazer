@@ -4,30 +4,13 @@ import { paths } from "./paths.js";
 import { UserConfigSchema, type UserConfig } from "@repo/schemas/config";
 import type { Result } from "../result.js";
 import { ok, err } from "../result.js";
+import { type AppError, createError } from "../errors.js";
 
-export const CONFIG_ERROR_CODES = [
-  "NOT_FOUND",
-  "PARSE_ERROR",
-  "VALIDATION_ERROR",
-  "WRITE_ERROR",
-  "PERMISSION_ERROR",
-] as const;
+type ConfigErrorCode = "NOT_FOUND" | "PARSE_ERROR" | "VALIDATION_ERROR" | "WRITE_ERROR" | "PERMISSION_ERROR";
+export type ConfigError = AppError<ConfigErrorCode>;
 
-export type ConfigErrorCode = (typeof CONFIG_ERROR_CODES)[number];
-
-export interface ConfigError {
-  code: ConfigErrorCode;
-  message: string;
-  details?: string;
-}
-
-function createConfigError(
-  code: ConfigErrorCode,
-  message: string,
-  details?: string
-): ConfigError {
-  return { code, message, details };
-}
+const createConfigError = (code: ConfigErrorCode, message: string, details?: string) =>
+  createError(code, message, details);
 
 export async function configExists(): Promise<boolean> {
   try {

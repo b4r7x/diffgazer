@@ -34,19 +34,14 @@ export function useConfig(baseUrl: string) {
         return;
       }
 
-      const json = await res.json().catch(() => null) as { success?: boolean; data?: { configured?: boolean } } | null;
-      if (json === null) {
+      const json = (await res.json().catch(() => null)) as { data?: { configured?: boolean } } | null;
+      if (!json) {
         setCheckState("error");
         setError({ message: "Invalid JSON response" });
         return;
       }
 
-      // Response is wrapped: { success: true, data: { configured: boolean } }
-      if (json.data?.configured) {
-        setCheckState("configured");
-      } else {
-        setCheckState("unconfigured");
-      }
+      setCheckState(json.data?.configured ? "configured" : "unconfigured");
     } catch (e) {
       setCheckState("error");
       setError({ message: String(e) });
@@ -69,7 +64,7 @@ export function useConfig(baseUrl: string) {
       });
 
       if (!res.ok) {
-        const json = await res.json().catch(() => null) as { error?: { message: string } } | null;
+        const json = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
         setSaveState("error");
         setError({ message: json?.error?.message ?? `HTTP ${res.status}` });
         return;
@@ -83,17 +78,11 @@ export function useConfig(baseUrl: string) {
     }
   }, [baseUrl]);
 
-  const resetSaveState = useCallback(() => {
-    setSaveState("idle");
-    setError(null);
-  }, []);
-
   return {
     checkState,
     saveState,
     error,
     checkConfig,
     saveConfig,
-    resetSaveState,
   };
 }

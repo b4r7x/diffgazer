@@ -3,11 +3,10 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { readConfig, writeConfig } from "@repo/core/storage";
 import { getApiKey, setApiKey, deleteApiKey } from "@repo/core/secrets";
+import { AIProviderSchema } from "@repo/schemas/config";
 import { errorResponse, successResponse } from "../../lib/response.js";
 
 const config = new Hono();
-
-const AIProviderSchema = z.enum(["gemini"]);
 
 const SaveConfigBodySchema = z.object({
   provider: AIProviderSchema,
@@ -77,16 +76,13 @@ config.post(
       const body = c.req.valid("json");
       const now = new Date().toISOString();
 
-      // 1. Store API key first (most likely to fail due to keyring/vault issues)
       const keyResult = await setApiKey(body.provider, body.apiKey);
       if (!keyResult.ok) {
         return errorResponse(c, keyResult.error.message, "INTERNAL_ERROR", 500);
       }
 
-      // 2. Verify the API key was stored correctly by reading it back
       const verifyResult = await getApiKey(body.provider);
       if (!verifyResult.ok || !verifyResult.value) {
-        // Cleanup: delete the potentially partial key
         await deleteApiKey(body.provider);
         return errorResponse(
           c,
@@ -96,7 +92,6 @@ config.post(
         );
       }
 
-      // 3. Only now write the config file (after API key is confirmed stored)
       const existingConfig = await readConfig();
       const configToSave = {
         provider: body.provider,
@@ -107,7 +102,6 @@ config.post(
 
       const writeResult = await writeConfig(configToSave);
       if (!writeResult.ok) {
-        // Rollback: delete the API key since config write failed
         await deleteApiKey(body.provider);
         return errorResponse(c, writeResult.error.message, "INTERNAL_ERROR", 500);
       }
