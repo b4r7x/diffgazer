@@ -1,8 +1,15 @@
-export interface SecretsError {
-  code: string;
-  message: string;
-}
+import { type AppError, createError } from "../errors.js";
 
-export function secretsError(code: string, message: string): SecretsError {
-  return { code, message };
-}
+export type SecretsErrorCode =
+  | "KEYRING_UNAVAILABLE"
+  | "SECRET_NOT_FOUND"
+  | "WRITE_FAILED"
+  | "PERMISSION_ERROR"
+  | "VAULT_READ_ERROR"
+  | "VAULT_WRITE_ERROR"
+  | "PARSE_ERROR";
+
+export type SecretsError = AppError<SecretsErrorCode>;
+
+export const secretsError = (code: SecretsErrorCode, message: string) =>
+  createError(code, message);

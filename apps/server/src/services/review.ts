@@ -3,13 +3,7 @@ import type { AIClient, StreamCallbacks } from "@repo/core/ai";
 
 const MAX_DIFF_SIZE_BYTES = 102400; // 100KB limit to prevent abuse
 
-/**
- * WHY: XML escaping prevents prompt injection attacks (CVE-2025-53773).
- * Without escaping, malicious code in diffs could contain "</code-diff>" to
- * break out of the XML context and inject arbitrary instructions to the LLM.
- * This is the same defense used against XSS in HTML for 30+ years.
- * See: docs/decisions/0004-prompt-injection.md
- */
+// CVE-2025-53773: Prevent prompt injection via XML context escape
 function escapeXml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
@@ -17,13 +11,7 @@ function escapeXml(str: string): string {
     .replace(/>/g, "&gt;");
 }
 
-/**
- * WHY: Removes invisible characters used in prompt injection attacks.
- * Unicode tags (U+E0000-U+E007F) are the PRIMARY 2025 attack vector - they
- * can encode hidden ASCII instructions invisible to humans but processed by LLMs.
- * Evidence: Keysight ATI-2025-08, Trend Micro 2025, OWASP LLM Top 10
- * See: docs/SECURITY.md
- */
+// Remove invisible characters used in prompt injection (OWASP LLM Top 10)
 function sanitizeUnicode(s: string): string {
   return s
     .replace(/[\u200B-\u200D\uFEFF]/g, "")      // Zero-width characters
@@ -32,12 +20,7 @@ function sanitizeUnicode(s: string): string {
     .replace(/[\uFE00-\uFE0F]/g, "");           // Variation selectors
 }
 
-/**
- * WHY: Detect accidental credential exposure in AI responses.
- * LLMs can inadvertently leak API keys from training data or context.
- * Evidence: AssemblyAI key exposure incident, OWASP LLM07:2025
- * See: docs/SECURITY.md
- */
+// Detect credential exposure in AI responses (OWASP LLM07:2025)
 const CREDENTIAL_PATTERNS = [
   /sk-ant-[a-zA-Z0-9-]+/,           // Anthropic
   /sk-[a-zA-Z0-9]{48}/,             // OpenAI
@@ -98,14 +81,9 @@ export async function reviewDiff(
     return;
   }
 
-  // WHY: sanitizeUnicode() removes invisible attack vectors, escapeXml() prevents
-  // prompt injection. Both are applied before sending to the AI.
-  // See: docs/decisions/0004-prompt-injection.md, docs/SECURITY.md
   const sanitizedDiff = sanitizeUnicode(diff);
   const prompt = CODE_REVIEW_PROMPT.replace("{diff}", escapeXml(sanitizedDiff));
 
-  // WHY: Wrap callbacks to detect credential exposure in AI responses.
-  // This catches accidental API key leakage before it reaches the user.
   const wrappedCallbacks: StreamCallbacks = {
     onChunk: callbacks.onChunk,
     onComplete: async (content) => {

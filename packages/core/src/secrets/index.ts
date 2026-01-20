@@ -9,7 +9,6 @@ export type { SecretsError } from "./types.js";
 
 type StorageBackend = "keyring" | "file";
 
-// Check once, cache forever (no TTL needed for local CLI tool)
 let detectedBackend: StorageBackend | null = null;
 
 async function getActiveBackend(forceRecheck = false): Promise<StorageBackend> {
@@ -20,7 +19,6 @@ async function getActiveBackend(forceRecheck = false): Promise<StorageBackend> {
   const keyringAvailable = await isKeyringAvailable();
   detectedBackend = keyringAvailable ? "keyring" : "file";
 
-  console.log(`[secrets] Using ${detectedBackend} backend for credential storage`);
   return detectedBackend;
 }
 
@@ -37,7 +35,6 @@ export async function getApiKey(provider: string): Promise<Result<string, Secret
   const key = `api_key_${provider}`;
   const backend = await getActiveBackend();
 
-  // Priority 1: Try OS keyring
   if (backend === "keyring") {
     const result = await getSecret(key);
     if (result.ok) {
@@ -45,13 +42,11 @@ export async function getApiKey(provider: string): Promise<Result<string, Secret
     }
   }
 
-  // Priority 2: Try file storage
   const fileResult = await getVaultSecret(key);
   if (fileResult.ok) {
     return fileResult;
   }
 
-  // Priority 3: Environment variable fallback
   const envValue = getEnvApiKey(provider);
   if (envValue) {
     return ok(envValue);
@@ -69,7 +64,6 @@ export async function setApiKey(provider: string, apiKey: string): Promise<Resul
     if (result.ok) {
       return result;
     }
-    // Keyring write failed - force recheck and potentially switch to file
     const newBackend = await getActiveBackend(true);
     if (newBackend === "file") {
       return setVaultSecret(key, apiKey);
@@ -84,17 +78,12 @@ export async function deleteApiKey(provider: string): Promise<Result<void, Secre
   const key = `api_key_${provider}`;
   const backend = await getActiveBackend();
 
-  // Try to delete from both backends to ensure cleanup
   if (backend === "keyring") {
     await deleteSecret(key);
   }
   await deleteVaultSecret(key);
 
   return ok(undefined);
-}
-
-export function clearKeyringCache(): void {
-  detectedBackend = null;
 }
 
 export { isKeyringAvailable };

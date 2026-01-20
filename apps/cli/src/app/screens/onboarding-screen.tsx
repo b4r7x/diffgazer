@@ -3,10 +3,7 @@ import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import Spinner from "ink-spinner";
 import type { SaveConfigState } from "../../hooks/use-config.js";
-import {
-  GEMINI_MODELS,
-  GEMINI_MODEL_INFO,
-} from "@repo/schemas/config";
+import { GEMINI_MODEL_INFO } from "@repo/schemas/config";
 
 type Step = "provider" | "model" | "apiKey";
 
@@ -20,18 +17,10 @@ const PROVIDERS = [
   { id: "gemini", name: "Google Gemini" },
 ] as const;
 
-function getProvider(index: number) {
-  const provider = PROVIDERS[index];
-  if (!provider) {
-    return PROVIDERS[0];
-  }
-  return provider;
-}
+const getProvider = (index: number) => PROVIDERS[index] ?? PROVIDERS[0];
+const DEFAULT_MODEL_ID = "gemini-2.5-flash";
 
-// Get models with their info for display
-const MODELS = GEMINI_MODELS.map((modelId) => ({
-  ...GEMINI_MODEL_INFO[modelId],
-}));
+const MODELS = Object.values(GEMINI_MODEL_INFO);
 
 export function OnboardingScreen({
   saveState,
@@ -41,9 +30,7 @@ export function OnboardingScreen({
   const [step, setStep] = useState<Step>("provider");
   const [selectedProvider, setSelectedProvider] = useState(0);
   const [selectedModel, setSelectedModel] = useState(
-    MODELS.findIndex((m) => m.recommended) >= 0
-      ? MODELS.findIndex((m) => m.recommended)
-      : 0
+    Math.max(0, MODELS.findIndex((m) => m.recommended))
   );
   const [apiKey, setApiKey] = useState("");
 
@@ -80,7 +67,7 @@ export function OnboardingScreen({
     if (step === "apiKey" && saveState === "error") {
       if (input === "r") {
         const model = MODELS[selectedModel];
-        onSave(getProvider(selectedProvider).id, apiKey, model?.id ?? "gemini-2.5-flash");
+        onSave(getProvider(selectedProvider).id, apiKey, model?.id ?? DEFAULT_MODEL_ID);
       }
       if (input === "b") {
         setStep("model");
@@ -91,7 +78,7 @@ export function OnboardingScreen({
   const handleApiKeySubmit = (value: string) => {
     if (value.trim()) {
       const model = MODELS[selectedModel];
-      onSave(getProvider(selectedProvider).id, value.trim(), model?.id ?? "gemini-2.5-flash");
+      onSave(getProvider(selectedProvider).id, value.trim(), model?.id ?? DEFAULT_MODEL_ID);
     }
   };
 

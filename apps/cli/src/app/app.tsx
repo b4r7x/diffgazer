@@ -27,33 +27,16 @@ export function App({ address }: AppProps): React.ReactElement {
   const [reviewStaged, setReviewStaged] = useState(true);
 
   useEffect(() => {
-    const checkWithRetry = async () => {
-      // Wait for server to be ready
-      await new Promise(resolve => setTimeout(resolve, 100));
-      await config.checkConfig();
-    };
-    void checkWithRetry();
+    void config.checkConfig();
   }, []);
 
   useEffect(() => {
-    if (config.checkState === "configured") {
+    if (config.checkState === "configured" || config.saveState === "success") {
       setView("main");
-    } else if (config.checkState === "unconfigured") {
-      setView("onboarding");
-    } else if (config.checkState === "error") {
+    } else if (config.checkState === "unconfigured" || config.checkState === "error") {
       setView("onboarding");
     }
-  }, [config.checkState]);
-
-  useEffect(() => {
-    if (config.saveState === "success") {
-      setView("main");
-    }
-  }, [config.saveState]);
-
-  const handleSaveConfig = (provider: string, apiKey: string, model: string) => {
-    void config.saveConfig(provider, apiKey, model);
-  };
+  }, [config.checkState, config.saveState]);
 
   useInput((input, key) => {
     if (input === "q" && view !== "loading") {
@@ -143,7 +126,7 @@ export function App({ address }: AppProps): React.ReactElement {
       <OnboardingScreen
         saveState={config.saveState}
         error={config.error}
-        onSave={handleSaveConfig}
+        onSave={(provider, apiKey, model) => void config.saveConfig(provider, apiKey, model)}
       />
     );
   }

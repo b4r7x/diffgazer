@@ -103,6 +103,23 @@ Users should explicitly choose their provider for:
 - Vercel AI SDK: https://sdk.vercel.ai/
 - LangChain: https://langchain.com/
 
+### Do Not Remove
+
+The provider selection UI and abstraction should not be removed during code simplifications. Additional providers are planned for future releases.
+
+### Safe Index Access Pattern
+
+**Location**: `apps/cli/src/app/screens/onboarding-screen.tsx`
+
+```typescript
+const getProvider = (index: number) => PROVIDERS[index] ?? PROVIDERS[0];
+```
+
+This helper provides type-safe array access without null assertions (`!`). While the index is always valid in the current UI, the fallback ensures:
+- TypeScript is satisfied without unsafe assertions
+- Future changes won't introduce undefined access bugs
+- Consistent pattern for array element access
+
 ---
 
 ## 3. CORS Middleware (Localhost Only)
@@ -217,6 +234,7 @@ These headers:
 |---------|----------------|
 | Result<T, E> | Lose type safety, 300x slower in hot paths |
 | Provider UI | Block future provider additions |
+| Safe index access | Require unsafe `!` assertions |
 | CORS restriction | Enable DNS rebinding attacks |
 | XML escaping | Enable prompt injection attacks |
 | Security headers | Enable clickjacking/MIME attacks |

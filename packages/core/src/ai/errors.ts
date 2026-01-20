@@ -1,22 +1,16 @@
-export const AI_ERROR_CODES = [
-  "API_KEY_MISSING",
-  "API_KEY_INVALID",
-  "RATE_LIMITED",
-  "MODEL_ERROR",
-  "NETWORK_ERROR",
-  "PARSE_ERROR",
-  "STREAM_ERROR",
-  "UNSUPPORTED_PROVIDER",
-] as const;
+import { type AppError, createError } from "../errors.js";
 
-export type AIErrorCode = typeof AI_ERROR_CODES[number];
+export type AIErrorCode =
+  | "API_KEY_MISSING"
+  | "API_KEY_INVALID"
+  | "RATE_LIMITED"
+  | "MODEL_ERROR"
+  | "NETWORK_ERROR"
+  | "PARSE_ERROR"
+  | "STREAM_ERROR"
+  | "UNSUPPORTED_PROVIDER";
 
-export interface AIError {
-  code: AIErrorCode;
-  message: string;
-  details?: string;
-}
+export type AIError = AppError<AIErrorCode>;
 
-export function createAIError(code: AIErrorCode, message: string, details?: string): AIError {
-  return { code, message, details };
-}
+export const createAIError = (code: AIErrorCode, message: string, details?: string) =>
+  createError(code, message, details);
