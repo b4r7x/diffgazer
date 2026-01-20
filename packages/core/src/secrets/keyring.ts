@@ -22,6 +22,16 @@ async function getKeyring(): Promise<typeof import("@napi-rs/keyring") | null> {
   }
 }
 
+async function withKeyring<T>(
+  fn: (keyring: typeof import("@napi-rs/keyring")) => Result<T, SecretsError>
+): Promise<Result<T, SecretsError>> {
+  const keyring = await getKeyring();
+  if (!keyring) {
+    return err(secretsError("KEYRING_UNAVAILABLE", "System keyring not available"));
+  }
+  return fn(keyring);
+}
+
 export async function isKeyringAvailable(): Promise<boolean> {
   const keyring = await getKeyring();
   if (!keyring) {
@@ -35,62 +45,53 @@ export async function isKeyringAvailable(): Promise<boolean> {
 
     entry.setPassword(testValue);
     const readBack = entry.getPassword();
-    const matches = readBack === testValue;
 
     try {
       entry.deletePassword();
     } catch {}
 
-    return matches;
+    return readBack === testValue;
   } catch {
     return false;
   }
 }
 
 export async function getSecret(key: string): Promise<Result<string, SecretsError>> {
-  const keyring = await getKeyring();
-  if (!keyring) {
-    return err(secretsError("KEYRING_UNAVAILABLE", "System keyring not available"));
-  }
-
-  try {
-    const entry = new keyring.Entry(SERVICE_NAME, key);
-    const password = entry.getPassword();
-    if (password === null) {
-      return err(secretsError("SECRET_NOT_FOUND", `Secret '${key}' not found`));
+  return withKeyring((keyring) => {
+    try {
+      const entry = new keyring.Entry(SERVICE_NAME, key);
+      const password = entry.getPassword();
+      if (password === null) {
+        return err(secretsError("SECRET_NOT_FOUND", `Secret '${key}' not found`));
+      }
+      return ok(password);
+    } catch {
+      return err(secretsError("READ_FAILED", `Failed to read secret '${key}'`));
     }
-    return ok(password);
-  } catch {
-    return err(secretsError("SECRET_NOT_FOUND", `Secret '${key}' not found`));
-  }
+  });
 }
 
 export async function setSecret(key: string, value: string): Promise<Result<void, SecretsError>> {
-  const keyring = await getKeyring();
-  if (!keyring) {
-    return err(secretsError("KEYRING_UNAVAILABLE", "System keyring not available"));
-  }
-
-  try {
-    const entry = new keyring.Entry(SERVICE_NAME, key);
-    entry.setPassword(value);
-    return ok(undefined);
-  } catch {
-    return err(secretsError("WRITE_FAILED", "Failed to store secret"));
-  }
+  return withKeyring((keyring) => {
+    try {
+      const entry = new keyring.Entry(SERVICE_NAME, key);
+      entry.setPassword(value);
+      return ok(undefined);
+    } catch {
+      return err(secretsError("WRITE_FAILED", "Failed to store secret"));
+    }
+  });
 }
 
 export async function deleteSecret(key: string): Promise<Result<void, SecretsError>> {
-  const keyring = await getKeyring();
-  if (!keyring) {
-    return err(secretsError("KEYRING_UNAVAILABLE", "System keyring not available"));
-  }
-
-  try {
-    const entry = new keyring.Entry(SERVICE_NAME, key);
-    entry.deletePassword();
-    return ok(undefined);
-  } catch {
-    return ok(undefined);
-  }
+  return withKeyring((keyring) => {
+    try {
+      const entry = new keyring.Entry(SERVICE_NAME, key);
+      entry.deletePassword();
+      return ok(undefined);
+    } catch {
+      // Idempotent: treat delete of non-existent secret as success
+      return ok(undefined);
+    }
+  });
 }
