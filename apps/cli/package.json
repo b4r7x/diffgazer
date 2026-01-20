@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.19.9",
+    "@repo/api": "workspace:*",
     "@repo/core": "workspace:*",
     "@repo/schemas": "workspace:*",
     "@repo/server": "workspace:*",

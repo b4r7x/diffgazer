@@ -198,6 +198,13 @@ stargazer/
 │   │   ├── cli.json              # CLI apps (extends node, adds JSX)
 │   │   └── package.json
 │   │
+│   ├── api/                      # @repo/api - Shared API client (Bulletproof fetch pattern)
+│   │   ├── src/
+│   │   │   ├── index.ts          # Exports: createApiClient, types
+│   │   │   ├── client.ts         # Fetch wrapper with interceptors
+│   │   │   └── types.ts          # ApiClient, ApiClientConfig, ApiError
+│   │   └── package.json
+│   │
 │   ├── schemas/                  # Zod schemas & types (leaf package)
 │   │   ├── src/
 │   │   │   ├── index.ts
@@ -263,6 +270,7 @@ stargazer/
 - `apps/*` may import from any `packages/*`
 - `packages/core` may import from `schemas`, `events`
 - `packages/events` may import only from `schemas`
+- `packages/api` imports nothing from monorepo (leaf package, uses native fetch)
 - `packages/schemas` imports nothing from monorepo (leaf package)
 - No cross-imports between `apps/*`
 - Within each app: `shared -> features -> app` (unidirectional)

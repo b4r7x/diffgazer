@@ -1,7 +1,12 @@
 import { useState } from "react";
 import type { GitError } from "@repo/schemas/git";
 import type { z } from "zod";
-import { makeError } from "../lib/error.js";
+import { api } from "../lib/api.js";
+import { getErrorMessage } from "@repo/core";
+
+function createGitError(message: string): GitError {
+  return { message, code: "UNKNOWN" };
+}
 
 export type GitQueryState<TData> =
   | { status: "idle" }
@@ -11,46 +16,27 @@ export type GitQueryState<TData> =
 
 interface UseGitQueryOptions<TData> {
   endpoint: string;
-  schema: z.ZodType<{ success: true; data: TData } | { success: false; error: GitError }>;
+  schema: z.ZodType<TData>;
 }
 
-export function useGitQuery<TData>(baseUrl: string, options: UseGitQueryOptions<TData>) {
+export function useGitQuery<TData>(options: UseGitQueryOptions<TData>) {
   const { endpoint, schema } = options;
   const [state, setState] = useState<GitQueryState<TData>>({ status: "idle" });
 
   async function fetch(queryParams?: Record<string, string>) {
     setState({ status: "loading" });
     try {
-      let url = `${baseUrl}${endpoint}`;
-      if (queryParams && Object.keys(queryParams).length > 0) {
-        url += `?${new URLSearchParams(queryParams).toString()}`;
-      }
+      const data = await api().get<TData>(endpoint, queryParams);
 
-      const res = await globalThis.fetch(url);
-      if (!res.ok) {
-        setState({ status: "error", error: makeError(`HTTP ${res.status}`) });
-        return;
-      }
-
-      const json = await res.json().catch(() => null);
-      if (json === null) {
-        setState({ status: "error", error: makeError("Invalid JSON response") });
-        return;
-      }
-
-      const parsed = schema.safeParse(json);
+      const parsed = schema.safeParse(data);
       if (!parsed.success) {
-        setState({ status: "error", error: makeError("Invalid response") });
+        setState({ status: "error", error: createGitError("Invalid response") });
         return;
       }
 
-      if (parsed.data.success) {
-        setState({ status: "success", data: parsed.data.data });
-      } else {
-        setState({ status: "error", error: parsed.data.error });
-      }
+      setState({ status: "success", data: parsed.data });
     } catch (e) {
-      setState({ status: "error", error: makeError(String(e)) });
+      setState({ status: "error", error: createGitError(getErrorMessage(e)) });
     }
   }
 

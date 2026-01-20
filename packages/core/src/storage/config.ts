@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile, access } from "node:fs/promises";
+import { mkdir, readFile, writeFile, access, unlink } from "node:fs/promises";
 import { dirname } from "node:path";
 import { paths } from "./paths.js";
 import { UserConfigSchema, type UserConfig } from "@repo/schemas/config";
@@ -78,6 +78,24 @@ export async function writeConfig(config: UserConfig): Promise<Result<void, Conf
       return err(createConfigError("PERMISSION_ERROR", `Permission denied writing config file at ${configPath}`));
     }
     return err(createConfigError("WRITE_ERROR", "Failed to write config file", getErrorMessage(error)));
+  }
+
+  return ok(undefined);
+}
+
+export async function deleteConfig(): Promise<Result<void, ConfigError>> {
+  const configPath = paths.configFile();
+
+  try {
+    await unlink(configPath);
+  } catch (error) {
+    if (isNodeError(error, "ENOENT")) {
+      return ok(undefined);
+    }
+    if (isNodeError(error, "EACCES")) {
+      return err(createConfigError("PERMISSION_ERROR", `Permission denied deleting config file at ${configPath}`));
+    }
+    return err(createConfigError("WRITE_ERROR", "Failed to delete config file", getErrorMessage(error)));
   }
 
   return ok(undefined);

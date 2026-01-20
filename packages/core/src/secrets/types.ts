@@ -12,5 +12,5 @@ export type SecretsErrorCode =
 
 export type SecretsError = AppError<SecretsErrorCode>;
 
-export const secretsError = (code: SecretsErrorCode, message: string) =>
+export const createSecretsError = (code: SecretsErrorCode, message: string) =>
   createError(code, message);

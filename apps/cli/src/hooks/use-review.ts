@@ -1,11 +1,11 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useRef } from "react";
 import {
   type ReviewResult,
   type ReviewError,
   ReviewStreamEventSchema,
-  ReviewErrorSchema,
 } from "@repo/schemas/review";
-import { z } from "zod";
+import { api } from "../lib/api.js";
+import { getErrorMessage } from "@repo/core";
 
 export type ReviewState =
   | { status: "idle" }
@@ -13,28 +13,20 @@ export type ReviewState =
   | { status: "success"; data: ReviewResult }
   | { status: "error"; error: ReviewError };
 
-const ErrorResponseSchema = z.object({
-  error: ReviewErrorSchema.optional(),
-});
-
-export function useReview(baseUrl: string) {
+export function useReview() {
   const [state, setState] = useState<ReviewState>({ status: "idle" });
   const abortRef = useRef<AbortController | null>(null);
 
-  const startReview = useCallback(async (staged = true) => {
+  async function startReview(staged = true) {
     abortRef.current?.abort();
     abortRef.current = new AbortController();
     setState({ status: "loading", content: "" });
 
     try {
-      const res = await fetch(`${baseUrl}/review/stream?staged=${staged}`, { signal: abortRef.current.signal });
-      if (!res.ok) {
-        const json = await res.json().catch(() => null);
-        const parsed = ErrorResponseSchema.safeParse(json);
-        const error = parsed.success ? parsed.data.error : undefined;
-        setState({ status: "error", error: error ?? { message: `HTTP ${res.status}`, code: "INTERNAL_ERROR" } });
-        return;
-      }
+      const res = await api().stream("/review/stream", {
+        params: { staged: String(staged) },
+        signal: abortRef.current.signal,
+      });
 
       const reader = res.body?.getReader();
       if (!reader) {
@@ -96,15 +88,15 @@ export function useReview(baseUrl: string) {
       }
     } catch (error) {
       if (!(error instanceof Error && error.name === "AbortError")) {
-        setState({ status: "error", error: { message: String(error), code: "INTERNAL_ERROR" } });
+        setState({ status: "error", error: { message: getErrorMessage(error), code: "INTERNAL_ERROR" } });
       }
     }
-  }, [baseUrl]);
+  }
 
-  const reset = useCallback(() => {
+  function reset() {
     abortRef.current?.abort();
     setState({ status: "idle" });
-  }, []);
+  }
 
   return { state, startReview, reset };
 }

@@ -3,6 +3,7 @@ import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import Spinner from "ink-spinner";
 import type { SaveConfigState } from "../../hooks/use-config.js";
+import type { AIProvider } from "@repo/schemas/config";
 import { GEMINI_MODEL_INFO } from "@repo/schemas/config";
 
 type Step = "provider" | "model" | "apiKey";
@@ -10,7 +11,7 @@ type Step = "provider" | "model" | "apiKey";
 interface OnboardingScreenProps {
   saveState: SaveConfigState;
   error?: { message: string } | null;
-  onSave: (provider: string, apiKey: string, model: string) => void;
+  onSave: (provider: AIProvider, apiKey: string, model: string) => void;
 }
 
 const PROVIDERS = [
