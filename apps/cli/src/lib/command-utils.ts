@@ -31,30 +31,18 @@ export function registerShutdownHandlers(shutdown: () => Promise<void>): void {
   process.on("SIGTERM", handler);
 }
 
-export interface ShutdownOptions {
-  onStart?: () => void;
-  onSuccess?: () => void;
-  onError?: (error: unknown) => void;
-}
-
-export function createShutdownHandler(
-  cleanup: () => Promise<void>,
-  options: ShutdownOptions = {}
-): () => Promise<void> {
+export function createShutdownHandler(cleanup: () => Promise<void>): () => Promise<void> {
   let isShuttingDown = false;
 
   return async (): Promise<void> => {
     if (isShuttingDown) return;
     isShuttingDown = true;
 
-    options.onStart?.();
-
     try {
       await cleanup();
-      options.onSuccess?.();
       process.exit(0);
     } catch (error) {
-      options.onError?.(error);
+      console.error("Shutdown error:", error);
       process.exit(1);
     }
   };
