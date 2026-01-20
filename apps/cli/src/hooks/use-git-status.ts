@@ -1,53 +1,12 @@
-import { useState } from "react";
-import type { GitStatus, GitError } from "@repo/schemas/git";
+import type { GitStatus } from "@repo/schemas/git";
 import { GitStatusResponseSchema } from "@repo/schemas/git";
-import { makeError } from "../lib/error.js";
+import { useGitQuery, type GitQueryState } from "./use-git-query.js";
 
-export type GitStatusState =
-  | { status: "idle" }
-  | { status: "loading" }
-  | { status: "success"; data: GitStatus }
-  | { status: "error"; error: GitError };
+export type GitStatusState = GitQueryState<GitStatus>;
 
 export function useGitStatus(baseUrl: string) {
-  const [state, setState] = useState<GitStatusState>({ status: "idle" });
-
-  async function fetchStatus() {
-    setState({ status: "loading" });
-
-    try {
-      const res = await fetch(`${baseUrl}/git/status`);
-
-      if (!res.ok) {
-        setState({ status: "error", error: makeError(`HTTP ${res.status}`) });
-        return;
-      }
-
-      const json = await res.json().catch(() => null);
-      if (json === null) {
-        setState({ status: "error", error: makeError("Invalid JSON response") });
-        return;
-      }
-
-      const parsed = GitStatusResponseSchema.safeParse(json);
-      if (!parsed.success) {
-        setState({ status: "error", error: makeError("Invalid response") });
-        return;
-      }
-
-      if (parsed.data.success) {
-        setState({ status: "success", data: parsed.data.data });
-      } else {
-        setState({ status: "error", error: parsed.data.error });
-      }
-    } catch (e) {
-      setState({ status: "error", error: makeError(String(e)) });
-    }
-  }
-
-  function reset() {
-    setState({ status: "idle" });
-  }
-
-  return { state, fetch: fetchStatus, reset };
+  return useGitQuery<GitStatus>(baseUrl, {
+    endpoint: "/git/status",
+    schema: GitStatusResponseSchema,
+  });
 }
