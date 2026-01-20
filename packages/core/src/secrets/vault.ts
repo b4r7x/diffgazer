@@ -3,7 +3,8 @@ import { dirname, join } from "node:path";
 import { paths } from "../storage/paths.js";
 import type { Result } from "../result.js";
 import { ok, err } from "../result.js";
-import { secretsError, type SecretsError, type SecretsErrorCode } from "./types.js";
+import { secretsError, type SecretsError } from "./types.js";
+import { isNodeError } from "../errors.js";
 
 const SECRETS_FILE = "secrets.json";
 
@@ -18,10 +19,10 @@ async function readSecrets(): Promise<Result<Record<string, string>, SecretsErro
   try {
     content = await readFile(secretsPath, "utf-8");
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+    if (isNodeError(error, "ENOENT")) {
       return ok({});
     }
-    if ((error as NodeJS.ErrnoException).code === "EACCES") {
+    if (isNodeError(error, "EACCES")) {
       return err(secretsError("PERMISSION_ERROR", "Permission denied reading secrets file"));
     }
     return err(secretsError("VAULT_READ_ERROR", "Failed to read secrets file"));
@@ -42,7 +43,7 @@ async function writeSecrets(secrets: Record<string, string>): Promise<Result<voi
   try {
     await mkdir(secretsDir, { recursive: true, mode: 0o700 });
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EACCES") {
+    if (isNodeError(error, "EACCES")) {
       return err(secretsError("PERMISSION_ERROR", "Permission denied creating secrets directory"));
     }
     return err(secretsError("VAULT_WRITE_ERROR", "Failed to create secrets directory"));
@@ -53,7 +54,7 @@ async function writeSecrets(secrets: Record<string, string>): Promise<Result<voi
     await writeFile(secretsPath, content, { mode: 0o600 });
     return ok(undefined);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EACCES") {
+    if (isNodeError(error, "EACCES")) {
       return err(secretsError("PERMISSION_ERROR", "Permission denied writing secrets file"));
     }
     return err(secretsError("VAULT_WRITE_ERROR", "Failed to write secrets file"));

@@ -4,7 +4,7 @@ import { paths } from "./paths.js";
 import { UserConfigSchema, type UserConfig } from "@repo/schemas/config";
 import type { Result } from "../result.js";
 import { ok, err } from "../result.js";
-import { type AppError, createError } from "../errors.js";
+import { type AppError, createError, isNodeError, getErrorMessage } from "../errors.js";
 
 type ConfigErrorCode = "NOT_FOUND" | "PARSE_ERROR" | "VALIDATION_ERROR" | "WRITE_ERROR" | "PERMISSION_ERROR";
 export type ConfigError = AppError<ConfigErrorCode>;
@@ -28,20 +28,20 @@ export async function readConfig(): Promise<Result<UserConfig, ConfigError>> {
   try {
     content = await readFile(configPath, "utf-8");
   } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+    if (isNodeError(error, "ENOENT")) {
       return err(createConfigError("NOT_FOUND", `Config file not found at ${configPath}`));
     }
-    if (error instanceof Error && "code" in error && error.code === "EACCES") {
+    if (isNodeError(error, "EACCES")) {
       return err(createConfigError("PERMISSION_ERROR", `Permission denied reading config file at ${configPath}`));
     }
-    return err(createConfigError("PARSE_ERROR", "Failed to read config file", error instanceof Error ? error.message : String(error)));
+    return err(createConfigError("PARSE_ERROR", "Failed to read config file", getErrorMessage(error)));
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(content);
   } catch (error) {
-    return err(createConfigError("PARSE_ERROR", "Config file contains invalid JSON", error instanceof Error ? error.message : String(error)));
+    return err(createConfigError("PARSE_ERROR", "Config file contains invalid JSON", getErrorMessage(error)));
   }
 
   const result = UserConfigSchema.safeParse(parsed);
@@ -64,20 +64,20 @@ export async function writeConfig(config: UserConfig): Promise<Result<void, Conf
   try {
     await mkdir(configDir, { recursive: true });
   } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "EACCES") {
+    if (isNodeError(error, "EACCES")) {
       return err(createConfigError("PERMISSION_ERROR", `Permission denied creating config directory at ${configDir}`));
     }
-    return err(createConfigError("WRITE_ERROR", "Failed to create config directory", error instanceof Error ? error.message : String(error)));
+    return err(createConfigError("WRITE_ERROR", "Failed to create config directory", getErrorMessage(error)));
   }
 
   try {
     const content = JSON.stringify(config, null, 2) + "\n";
     await writeFile(configPath, content, { mode: 0o600 });
   } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "EACCES") {
+    if (isNodeError(error, "EACCES")) {
       return err(createConfigError("PERMISSION_ERROR", `Permission denied writing config file at ${configPath}`));
     }
-    return err(createConfigError("WRITE_ERROR", "Failed to write config file", error instanceof Error ? error.message : String(error)));
+    return err(createConfigError("WRITE_ERROR", "Failed to write config file", getErrorMessage(error)));
   }
 
   return ok(undefined);

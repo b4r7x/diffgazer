@@ -1,7 +1,7 @@
 import { createGitService } from "./git.js";
 import type { AIClient, StreamCallbacks } from "@repo/core/ai";
 
-const MAX_DIFF_SIZE_BYTES = 102400; // 100KB limit to prevent abuse
+const MAX_DIFF_SIZE_BYTES = 102400;
 
 // CVE-2025-53773: Prevent prompt injection via XML context escape
 function escapeXml(str: string): string {
@@ -85,12 +85,11 @@ export async function reviewDiff(
   const prompt = CODE_REVIEW_PROMPT.replace("{diff}", escapeXml(sanitizedDiff));
 
   const wrappedCallbacks: StreamCallbacks = {
-    onChunk: callbacks.onChunk,
+    ...callbacks,
     onComplete: async (content) => {
       warnIfCredentialsExposed(content);
       await callbacks.onComplete(content);
     },
-    onError: callbacks.onError,
   };
 
   await aiClient.generateStream(prompt, wrappedCallbacks);

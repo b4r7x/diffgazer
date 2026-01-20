@@ -5,8 +5,38 @@ import type { Result } from "../../result.js";
 import type { AIError } from "../errors.js";
 import { ok, err } from "../../result.js";
 import { createAIError } from "../errors.js";
+import { getErrorMessage, toError } from "../../errors.js";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
+const DEFAULT_TEMPERATURE = 0.7;
+const DEFAULT_MAX_TOKENS = 4096;
+
+function getGenerationConfig(config: AIClientConfig, json = false) {
+  return {
+    temperature: config.temperature ?? DEFAULT_TEMPERATURE,
+    maxOutputTokens: config.maxTokens ?? DEFAULT_MAX_TOKENS,
+    ...(json && { responseMimeType: "application/json" as const }),
+  };
+}
+
+function parseJsonSafe(text: string): Result<unknown, AIError> {
+  try {
+    return ok(JSON.parse(text));
+  } catch {
+    return err(createAIError("PARSE_ERROR", "Failed to parse JSON response", text.slice(0, 200)));
+  }
+}
+
+function classifyApiError(error: unknown): AIError {
+  const message = getErrorMessage(error);
+  if (message.includes("401") || message.includes("API key")) {
+    return createAIError("API_KEY_INVALID", "Invalid API key");
+  }
+  if (message.includes("429") || message.includes("rate limit")) {
+    return createAIError("RATE_LIMITED", "Rate limited");
+  }
+  return createAIError("MODEL_ERROR", message);
+}
 
 export function createGeminiClient(config: AIClientConfig): Result<AIClient, AIError> {
   if (!config.apiKey) {
@@ -24,29 +54,19 @@ export function createGeminiClient(config: AIClientConfig): Result<AIClient, AIE
         const response = await client.models.generateContent({
           model,
           contents: prompt,
-          config: { temperature: config.temperature ?? 0.7, maxOutputTokens: config.maxTokens ?? 4096, responseMimeType: "application/json" },
+          config: getGenerationConfig(config, true),
         });
 
-        const text = response.text ?? "";
-        try {
-          const parsed = JSON.parse(text);
-          const validated = schema.safeParse(parsed);
-          if (!validated.success) {
-            return err(createAIError("PARSE_ERROR", "Invalid response structure", validated.error.message));
-          }
-          return ok(validated.data);
-        } catch {
-          return err(createAIError("PARSE_ERROR", "Failed to parse JSON response", text.slice(0, 200)));
+        const parseResult = parseJsonSafe(response.text ?? "");
+        if (!parseResult.ok) return parseResult;
+
+        const validated = schema.safeParse(parseResult.value);
+        if (!validated.success) {
+          return err(createAIError("PARSE_ERROR", "Invalid response structure", validated.error.message));
         }
+        return ok(validated.data);
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (message.includes("401") || message.includes("API key")) {
-          return err(createAIError("API_KEY_INVALID", "Invalid API key"));
-        }
-        if (message.includes("429") || message.includes("rate")) {
-          return err(createAIError("RATE_LIMITED", "Rate limited"));
-        }
-        return err(createAIError("MODEL_ERROR", message));
+        return err(classifyApiError(error));
       }
     },
 
@@ -55,20 +75,20 @@ export function createGeminiClient(config: AIClientConfig): Result<AIClient, AIE
         const stream = await client.models.generateContentStream({
           model,
           contents: prompt,
-          config: { temperature: config.temperature ?? 0.7, maxOutputTokens: config.maxTokens ?? 4096 },
+          config: getGenerationConfig(config),
         });
 
-        let fullContent = "";
+        const chunks: string[] = [];
         for await (const chunk of stream) {
-          const text = chunk.text ?? "";
+          const text = chunk.text;
           if (text) {
-            fullContent += text;
+            chunks.push(text);
             await callbacks.onChunk(text);
           }
         }
-        await callbacks.onComplete(fullContent);
+        await callbacks.onComplete(chunks.join(""));
       } catch (error) {
-        await callbacks.onError(error instanceof Error ? error : new Error(String(error)));
+        await callbacks.onError(toError(error));
       }
     },
   };
