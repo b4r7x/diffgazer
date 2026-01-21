@@ -3,7 +3,7 @@ import { Box, Text, useInput, useApp } from "ink";
 import Spinner from "ink-spinner";
 import { GitStatusDisplay } from "../components/git-status-display.js";
 import { GitDiffDisplay } from "../components/git-diff-display.js";
-import { ReviewDisplay } from "../components/review-display.js";
+import { ReviewDisplay } from "../features/review/index.js";
 import { OnboardingScreen } from "./screens/onboarding-screen.js";
 import { SettingsScreen } from "./screens/settings-screen.js";
 import { SessionsScreen } from "./screens/sessions-screen.js";
@@ -12,7 +12,7 @@ import { useGitStatus } from "../hooks/use-git-status.js";
 import { useGitDiff } from "../hooks/use-git-diff.js";
 import { useConfig } from "../hooks/use-config.js";
 import { useSession } from "../features/sessions/index.js";
-import { useReview, useReviewHistory } from "../features/review-history/index.js";
+import { useReview, useReviewHistory } from "../features/review/index.js";
 
 type View =
   | "loading"

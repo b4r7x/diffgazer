@@ -1,47 +1,22 @@
 import type { ReactElement } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import type { ReviewHistoryMetadata, SavedReview } from "@repo/schemas/review-history";
-import type { ReviewIssue, ReviewSeverity } from "@repo/schemas/review";
+import type { ListState } from "../../types/index.js";
 import { useListNavigation } from "../../hooks/use-list-navigation.js";
 import { ListScreenWrapper } from "../../components/list-screen-wrapper.js";
 import { DeleteConfirmation } from "../../components/delete-confirmation.js";
-import { ReviewListItem } from "../../features/review-history/index.js";
+import { ReviewListItem, IssueItem } from "../../features/review/index.js";
 import { getScoreColor } from "../../lib/format.js";
 
 interface ReviewHistoryScreenProps {
   reviews: ReviewHistoryMetadata[];
   currentReview: SavedReview | null;
-  listState: "idle" | "loading" | "success" | "error";
+  listState: ListState;
   error: { message: string } | null;
   onSelect: (review: ReviewHistoryMetadata) => void;
   onDelete: (review: ReviewHistoryMetadata) => void;
   onBack: () => void;
   onClearCurrent: () => void;
-}
-
-const SEVERITY_COLORS: Record<ReviewSeverity, string> = {
-  critical: "red",
-  warning: "yellow",
-  suggestion: "blue",
-  nitpick: "gray",
-};
-
-function IssueItem({ issue }: { issue: ReviewIssue }) {
-  return (
-    <Box flexDirection="column" marginTop={1}>
-      <Text color={SEVERITY_COLORS[issue.severity]} bold>
-        [{issue.severity}] {issue.title}
-      </Text>
-      {issue.file && (
-        <Text dimColor>
-          {"  "}File: {issue.file}
-          {issue.line ? `:${issue.line}` : ""}
-        </Text>
-      )}
-      <Text>{"  "}{issue.description}</Text>
-      {issue.suggestion && <Text color="green">{"  "}Fix: {issue.suggestion}</Text>}
-    </Box>
-  );
 }
 
 function ReviewDetailView({

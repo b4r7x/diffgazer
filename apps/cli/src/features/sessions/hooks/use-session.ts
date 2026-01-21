@@ -1,6 +1,6 @@
 import { useSessionList } from "./use-session-list.js";
 import { useActiveSession, type SessionState } from "./use-active-session.js";
-import type { ListState } from "../../../hooks/use-entity-list.js";
+import type { ListState } from "../../../types/index.js";
 
 export type { SessionState };
 export type SessionListState = ListState;
