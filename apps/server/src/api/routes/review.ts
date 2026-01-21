@@ -1,10 +1,11 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { createAIClient } from "@repo/core/ai";
-import { readConfig } from "@repo/core/storage";
+import { readConfig, saveReview } from "@repo/core/storage";
 import { getApiKey } from "@repo/core/secrets";
 import { reviewDiff } from "../../services/review.js";
-import { ReviewResultSchema } from "@repo/schemas/review";
+import { createGitService } from "../../services/git.js";
+import { ReviewResultSchema, type ReviewResult } from "@repo/schemas/review";
 import { errorResponse } from "../../lib/response.js";
 
 const review = new Hono();
@@ -42,17 +43,38 @@ review.get("/stream", async (c) => {
         });
       },
       onComplete: async (content) => {
-        let result: { summary: string; issues: unknown[] } = { summary: content, issues: [] };
+        let result: ReviewResult = { summary: content, issues: [] };
+        let parseWarning: string | undefined;
         try {
           const parsed = JSON.parse(content);
           const validated = ReviewResultSchema.safeParse(parsed);
           if (validated.success) {
             result = validated.data;
+          } else {
+            parseWarning = "AI response failed schema validation, using raw content";
           }
-        } catch {}
+        } catch {
+          parseWarning = "AI response was not valid JSON, using raw content";
+        }
+
+        // Auto-save review (fire-and-forget - errors are silently ignored)
+        const gitService = createGitService();
+        gitService.getStatus().then((status) => {
+          const fileCount = staged
+            ? status.files.staged.length
+            : status.files.unstaged.length;
+
+          saveReview(process.cwd(), staged, result, {
+            branch: status.branch,
+            fileCount,
+          });
+        }).catch(() => {
+          // Silently ignore - auto-save is best-effort
+        });
+
         await stream.writeSSE({
           event: "complete",
-          data: JSON.stringify({ type: "complete", result }),
+          data: JSON.stringify({ type: "complete", result, parseWarning }),
         });
         stream.close();
       },
