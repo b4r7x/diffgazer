@@ -1,11 +1,9 @@
 import { z } from "zod";
 
-// Message Role
 export const MESSAGE_ROLES = ["user", "assistant", "system"] as const;
 export const MessageRoleSchema = z.enum(MESSAGE_ROLES);
 export type MessageRole = z.infer<typeof MessageRoleSchema>;
 
-// Session Message
 export const SessionMessageSchema = z.object({
   id: z.string().uuid(),
   role: MessageRoleSchema,
@@ -14,7 +12,6 @@ export const SessionMessageSchema = z.object({
 });
 export type SessionMessage = z.infer<typeof SessionMessageSchema>;
 
-// Session Metadata
 export const SessionMetadataSchema = z.object({
   id: z.string().uuid(),
   projectPath: z.string(),
@@ -25,14 +22,12 @@ export const SessionMetadataSchema = z.object({
 });
 export type SessionMetadata = z.infer<typeof SessionMetadataSchema>;
 
-// Full Session
 export const SessionSchema = z.object({
   metadata: SessionMetadataSchema,
   messages: z.array(SessionMessageSchema),
 });
 export type Session = z.infer<typeof SessionSchema>;
 
-// API Request Schemas
 export const CreateSessionRequestSchema = z.object({
   projectPath: z.string(),
   title: z.string().optional(),

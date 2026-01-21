@@ -18,7 +18,6 @@ config.get("/check", async (c) => {
   const configResult = await readConfig();
 
   if (!configResult.ok) {
-    // NOT_FOUND is expected - means unconfigured
     return successResponse(c, { configured: false });
   }
 
