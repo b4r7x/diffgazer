@@ -54,7 +54,6 @@ export function App({
     void config.checkConfig();
   }, []);
 
-  // Handle session initialization after config is ready
   useEffect(() => {
     if (config.checkState !== "configured" || sessionInitialized) return;
 

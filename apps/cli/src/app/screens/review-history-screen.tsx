@@ -131,7 +131,6 @@ export function ReviewHistoryScreen({
     disabled: currentReview !== null,
   });
 
-  // Show detail view if a review is loaded
   if (currentReview) {
     return <ReviewDetailView review={currentReview} onBack={onClearCurrent} />;
   }

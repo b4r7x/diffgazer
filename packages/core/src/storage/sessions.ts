@@ -45,7 +45,6 @@ export async function createSession(
 
 export const readSession = sessionStore.read;
 
-// TODO: Future chat feature - addMessage() connects session to AI conversation
 export async function addMessage(
   sessionId: string,
   role: MessageRole,

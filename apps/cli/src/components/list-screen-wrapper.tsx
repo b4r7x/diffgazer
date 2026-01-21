@@ -23,7 +23,6 @@ export function ListScreenWrapper({
   loadingMessage = "Loading...",
   children,
 }: ListScreenWrapperProps): ReactElement {
-  // Loading state
   if (state === "loading") {
     return (
       <Box flexDirection="column" padding={1}>
@@ -38,7 +37,6 @@ export function ListScreenWrapper({
     );
   }
 
-  // Error state
   if (state === "error") {
     return (
       <Box flexDirection="column" padding={1}>
@@ -53,7 +51,6 @@ export function ListScreenWrapper({
     );
   }
 
-  // Empty state
   if (isEmpty) {
     return (
       <Box flexDirection="column" padding={1}>
@@ -71,7 +68,6 @@ export function ListScreenWrapper({
     );
   }
 
-  // Success state with content
   return (
     <Box flexDirection="column" padding={1}>
       <Text bold color="cyan">

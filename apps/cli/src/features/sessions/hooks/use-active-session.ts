@@ -82,7 +82,6 @@ export function useActiveSession() {
     }
   }
 
-  // TODO: Future chat feature - addMessage() connects session to AI conversation
   async function addMessage(
     role: MessageRole,
     content: string

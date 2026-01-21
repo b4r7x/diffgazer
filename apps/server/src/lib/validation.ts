@@ -19,16 +19,30 @@ export function requireUuidParam(c: Context, paramName: string): string {
 }
 
 /**
- * Validate optional query param is safe path (no traversal).
+ * Check if a path is a safe relative path (no absolute paths, no traversal).
+ */
+export function isRelativePath(path: string): boolean {
+  // Block absolute paths
+  if (path.startsWith("/") || path.startsWith("\\") || /^[a-zA-Z]:/.test(path)) {
+    return false;
+  }
+  // Block traversal and null bytes
+  if (path.includes("..") || path.includes("\0")) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Validate optional query param is safe relative path.
  * Returns the path if valid, undefined if not provided.
- * Throws HTTPException if path contains traversal attempts.
+ * Throws HTTPException if path is invalid.
  */
 export function validateProjectPath(path: string | undefined): string | undefined {
   if (!path) return undefined;
-  // Block directory traversal attempts
-  if (path.includes("..") || path.includes("\0")) {
+  if (!isRelativePath(path)) {
     throw new HTTPException(400, {
-      message: "Invalid projectPath: path traversal not allowed",
+      message: "Invalid projectPath: must be a relative path without traversal",
     });
   }
   return path;

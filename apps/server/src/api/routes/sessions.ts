@@ -64,7 +64,6 @@ sessions.post(
   }
 );
 
-// TODO: Future chat feature - POST endpoint for adding messages to sessions
 sessions.post(
   "/:id/messages",
   zValidator("json", AddMessageRequestSchema, zodErrorHandler),

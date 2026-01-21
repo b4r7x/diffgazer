@@ -57,7 +57,6 @@ review.get("/stream", async (c) => {
           parseWarning = "AI response was not valid JSON, using raw content";
         }
 
-        // Auto-save review (fire-and-forget - errors are silently ignored)
         const gitService = createGitService();
         gitService.getStatus().then((status) => {
           const fileCount = staged
@@ -68,9 +67,7 @@ review.get("/stream", async (c) => {
             branch: status.branch,
             fileCount,
           });
-        }).catch(() => {
-          // Silently ignore - auto-save is best-effort
-        });
+        }).catch(() => {});
 
         await stream.writeSSE({
           event: "complete",

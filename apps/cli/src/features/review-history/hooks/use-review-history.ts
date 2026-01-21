@@ -29,12 +29,10 @@ export function useReviewHistory() {
     getId: (item) => item.id,
   });
 
-  // Wrapper that uses projectPath from closure (backward compat)
   async function listReviews() {
     return actions.loadList(projectPath);
   }
 
-  // Wrapper for loadReview that also updates local currentReview state
   async function loadReview(id: string) {
     const review = await actions.loadOne(id);
     setCurrentReview(review);

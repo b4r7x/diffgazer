@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile, readdir, unlink, rename } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile, readdir, unlink, rename } from "node:fs/promises";
+import { dirname } from "node:path";
 import type { ZodSchema } from "zod";
 import type { Result } from "../result.js";
 import { ok, err } from "../result.js";
@@ -112,9 +113,7 @@ export function createJsonStore<T, M>(config: JsonStoreConfig<T, M>): JsonStore<
     } catch (error) {
       try {
         await unlink(tempPath);
-      } catch {
-        // Ignore cleanup errors
-      }
+      } catch {}
       if (isNodeError(error, "EACCES")) {
         return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
       }
@@ -179,10 +178,114 @@ export function createJsonStore<T, M>(config: JsonStoreConfig<T, M>): JsonStore<
   return { ensureDir, read, write, list, remove };
 }
 
-/**
- * Filter items by projectPath and sort by date field (descending).
- * Shared helper for list functions that filter by project.
- */
+export interface StorageConfig<T> {
+  name: string;
+  filePath: () => string;
+  schema: ZodSchema<T>;
+}
+
+export interface Storage<T> {
+  exists(): Promise<boolean>;
+  read(): Promise<Result<T, StoreError>>;
+  write(item: T): Promise<Result<void, StoreError>>;
+  remove(): Promise<Result<void, StoreError>>;
+}
+
+export function createStorage<T>(config: StorageConfig<T>): Storage<T> {
+  const { name, filePath, schema } = config;
+
+  async function exists(): Promise<boolean> {
+    try {
+      await access(filePath());
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function read(): Promise<Result<T, StoreError>> {
+    const path = filePath();
+
+    let content: string;
+    try {
+      content = await readFile(path, "utf-8");
+    } catch (error) {
+      if (isNodeError(error, "ENOENT")) {
+        return err(createStoreError("NOT_FOUND", `${name} not found at ${path}`));
+      }
+      if (isNodeError(error, "EACCES")) {
+        return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
+      }
+      return err(createStoreError("PARSE_ERROR", `Failed to read ${name}`, getErrorMessage(error)));
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(content);
+    } catch (error) {
+      return err(createStoreError("PARSE_ERROR", `${name} contains invalid JSON`, getErrorMessage(error)));
+    }
+
+    const result = schema.safeParse(parsed);
+    if (!result.success) {
+      return err(createStoreError("VALIDATION_ERROR", `${name} failed validation`, result.error.message));
+    }
+
+    return ok(result.data);
+  }
+
+  async function write(item: T): Promise<Result<void, StoreError>> {
+    const validation = schema.safeParse(item);
+    if (!validation.success) {
+      return err(createStoreError("VALIDATION_ERROR", `Invalid ${name}`, validation.error.message));
+    }
+
+    const path = filePath();
+    const dir = dirname(path);
+
+    try {
+      await mkdir(dir, { recursive: true });
+    } catch (error) {
+      if (isNodeError(error, "EACCES")) {
+        return err(createStoreError("PERMISSION_ERROR", `Permission denied creating directory: ${dir}`));
+      }
+      return err(createStoreError("WRITE_ERROR", `Failed to create ${name} directory`, getErrorMessage(error)));
+    }
+
+    try {
+      const content = JSON.stringify(item, null, 2) + "\n";
+      await writeFile(path, content, { mode: 0o600 });
+    } catch (error) {
+      if (isNodeError(error, "EACCES")) {
+        return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
+      }
+      return err(createStoreError("WRITE_ERROR", `Failed to write ${name}`, getErrorMessage(error)));
+    }
+
+    return ok(undefined);
+  }
+
+  async function remove(): Promise<Result<void, StoreError>> {
+    const path = filePath();
+
+    try {
+      await unlink(path);
+    } catch (error) {
+      if (isNodeError(error, "ENOENT")) {
+        return ok(undefined);
+      }
+      if (isNodeError(error, "EACCES")) {
+        return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
+      }
+      return err(createStoreError("WRITE_ERROR", `Failed to delete ${name}`, getErrorMessage(error)));
+    }
+
+    return ok(undefined);
+  }
+
+  return { exists, read, write, remove };
+}
+
 export function filterByProjectAndSort<T extends { projectPath: string }>(
   items: T[],
   projectPath: string | undefined,

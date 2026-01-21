@@ -29,7 +29,6 @@ export function useListNavigation<T extends { id: string }>(
   useInput((input, key) => {
     if (disabled) return;
 
-    // Delete confirmation mode
     if (confirmDelete) {
       if (input === "y") {
         const item = items.find((i) => i.id === confirmDelete);
@@ -42,7 +41,6 @@ export function useListNavigation<T extends { id: string }>(
       return;
     }
 
-    // Arrow navigation
     if (key.upArrow && selectedIndex > 0) {
       setSelectedIndex(selectedIndex - 1);
     }
@@ -50,27 +48,22 @@ export function useListNavigation<T extends { id: string }>(
       setSelectedIndex(selectedIndex + 1);
     }
 
-    // Select with Enter
     if (key.return && items[selectedIndex]) {
       onSelect(items[selectedIndex]);
     }
 
-    // Delete with 'd'
     if (input === "d" && items[selectedIndex]) {
       setConfirmDelete(items[selectedIndex].id);
     }
 
-    // Back with 'b' or Escape
     if (input === "b" || key.escape) {
       onBack();
     }
 
-    // Quit with 'q'
     if (input === "q") {
       exit();
     }
 
-    // Extra handlers
     const handler = extraHandlers?.[input];
     if (handler) {
       handler();
