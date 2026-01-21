@@ -1,41 +1,21 @@
-import { useEntityList } from "../../../hooks/use-entity-list.js";
-import { api } from "../../../lib/api.js";
+import { useEntityApi } from "../../../hooks/use-entity-api.js";
 import type { Session, SessionMetadata } from "@repo/schemas/session";
 
 export function useSessionList() {
-  const projectPath = process.cwd();
-
-  const [state, actions] = useEntityList<Session, SessionMetadata>({
-    fetchList: async (path) => {
-      const res = await api().get<{
-        sessions: SessionMetadata[];
-        warnings?: string[];
-      }>(`/sessions?projectPath=${encodeURIComponent(path)}`);
-      return { items: res.sessions, warnings: res.warnings || [] };
-    },
-    fetchOne: async (id) => {
-      const res = await api().get<{ session: Session }>(`/sessions/${id}`);
-      return res.session;
-    },
-    deleteOne: async (id) => {
-      const res = await api().delete<{ existed: boolean }>(`/sessions/${id}`);
-      return { existed: res.existed };
-    },
-    getId: (item) => item.id,
+  const entity = useEntityApi<Session, SessionMetadata>({
+    endpoint: "/sessions",
+    listKey: "sessions",
+    singleKey: "session",
   });
 
-  async function listSessions() {
-    return actions.loadList(projectPath);
-  }
-
   return {
-    sessions: state.items,
-    warnings: state.warnings,
-    listState: state.listState,
-    error: state.error,
-    listSessions,
-    loadSession: actions.loadOne,
-    deleteSession: actions.remove,
-    reset: actions.reset,
+    sessions: entity.items,
+    warnings: entity.warnings,
+    listState: entity.listState,
+    error: entity.error,
+    listSessions: entity.loadList,
+    loadSession: entity.loadOne,
+    deleteSession: entity.remove,
+    reset: entity.reset,
   };
 }

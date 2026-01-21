@@ -20,6 +20,7 @@ export interface EntityListActions<T, M> {
   loadList: (projectPath: string) => Promise<M[]>;
   loadOne: (id: string) => Promise<T | null>;
   remove: (id: string) => Promise<boolean>;
+  clearCurrent: () => void;
   reset: () => void;
 }
 
@@ -76,6 +77,10 @@ export function useEntityList<T, M>(
     }
   }
 
+  function clearCurrent(): void {
+    setCurrent(null);
+  }
+
   function reset(): void {
     setItems([]);
     setWarnings([]);
@@ -86,6 +91,6 @@ export function useEntityList<T, M>(
 
   return [
     { items, warnings, current, listState, error },
-    { loadList, loadOne, remove, reset },
+    { loadList, loadOne, remove, clearCurrent, reset },
   ];
 }
