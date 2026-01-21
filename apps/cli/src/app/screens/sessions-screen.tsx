@@ -2,9 +2,9 @@ import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import type { SessionMetadata } from "@repo/schemas/session";
 import { useListNavigation } from "../../hooks/use-list-navigation.js";
-import { ListScreenWrapper } from "../components/list-screen-wrapper.js";
-import { DeleteConfirmation } from "../components/delete-confirmation.js";
-import { SessionListItem } from "../components/session-list-item.js";
+import { ListScreenWrapper } from "../../components/list-screen-wrapper.js";
+import { DeleteConfirmation } from "../../components/delete-confirmation.js";
+import { SessionListItem } from "../../features/sessions/index.js";
 
 interface SessionsScreenProps {
   sessions: SessionMetadata[];

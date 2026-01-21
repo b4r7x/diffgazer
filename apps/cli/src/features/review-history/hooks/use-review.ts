@@ -4,7 +4,7 @@ import {
   type ReviewError,
   ReviewStreamEventSchema,
 } from "@repo/schemas/review";
-import { api } from "../lib/api.js";
+import { api } from "../../../lib/api.js";
 import { getErrorMessage } from "@repo/core";
 
 export type ReviewState =

@@ -3,9 +3,9 @@ import { Box, Text, useInput, useApp } from "ink";
 import type { ReviewHistoryMetadata, SavedReview } from "@repo/schemas/review-history";
 import type { ReviewIssue, ReviewSeverity } from "@repo/schemas/review";
 import { useListNavigation } from "../../hooks/use-list-navigation.js";
-import { ListScreenWrapper } from "../components/list-screen-wrapper.js";
-import { DeleteConfirmation } from "../components/delete-confirmation.js";
-import { ReviewListItem } from "../components/review-list-item.js";
+import { ListScreenWrapper } from "../../components/list-screen-wrapper.js";
+import { DeleteConfirmation } from "../../components/delete-confirmation.js";
+import { ReviewListItem } from "../../features/review-history/index.js";
 import { getScoreColor } from "../../lib/format.js";
 
 interface ReviewHistoryScreenProps {

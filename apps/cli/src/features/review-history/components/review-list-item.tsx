@@ -1,8 +1,8 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import type { ReviewHistoryMetadata } from "@repo/schemas/review-history";
-import { SelectionIndicator } from "./selection-indicator.js";
-import { formatRelativeTime, getScoreColor } from "../../lib/format.js";
+import { SelectionIndicator } from "../../../components/selection-indicator.js";
+import { formatRelativeTime, getScoreColor } from "../../../lib/format.js";
 
 interface ReviewListItemProps {
   review: ReviewHistoryMetadata;

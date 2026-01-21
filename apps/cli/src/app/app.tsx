@@ -10,10 +10,9 @@ import { SessionsScreen } from "./screens/sessions-screen.js";
 import { ReviewHistoryScreen } from "./screens/review-history-screen.js";
 import { useGitStatus } from "../hooks/use-git-status.js";
 import { useGitDiff } from "../hooks/use-git-diff.js";
-import { useReview } from "../hooks/use-review.js";
 import { useConfig } from "../hooks/use-config.js";
-import { useSession } from "../hooks/use-session.js";
-import { useReviewHistory } from "../hooks/use-review-history.js";
+import { useSession } from "../features/sessions/index.js";
+import { useReview, useReviewHistory } from "../features/review-history/index.js";
 
 type View =
   | "loading"

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useEntityList } from "./use-entity-list.js";
-import { api } from "../lib/api.js";
+import { useEntityList } from "../../../hooks/use-entity-list.js";
+import { api } from "../../../lib/api.js";
 import type {
   SavedReview,
   ReviewHistoryMetadata,

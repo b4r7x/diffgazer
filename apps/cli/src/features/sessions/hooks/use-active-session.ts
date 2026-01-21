@@ -4,7 +4,7 @@ import type {
   SessionMessage,
   MessageRole,
 } from "@repo/schemas/session";
-import { api } from "../lib/api.js";
+import { api } from "../../../lib/api.js";
 import { getErrorMessage } from "@repo/core";
 
 export type SessionState = "idle" | "loading" | "active" | "error";

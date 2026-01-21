@@ -1,7 +1,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
-import type { ReviewState } from "../hooks/use-review.js";
+import type { ReviewState } from "../features/review-history/index.js";
 import type { ReviewIssue, ReviewSeverity } from "@repo/schemas/review";
 
 const SEVERITY_COLORS: Record<ReviewSeverity, string> = {
