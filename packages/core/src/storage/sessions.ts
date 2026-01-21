@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { paths } from "./paths.js";
-import { createJsonStore, filterByProjectAndSort, type StoreError } from "./json-store.js";
+import { createCollection, filterByProjectAndSort, type StoreError } from "./persistence.js";
 import {
   SessionSchema,
   type Session,
@@ -13,7 +13,7 @@ import { ok } from "../result.js";
 
 export type SessionError = StoreError;
 
-const sessionStore = createJsonStore<Session, SessionMetadata>({
+const sessionStore = createCollection<Session, SessionMetadata>({
   name: "session",
   dir: paths.sessions,
   filePath: paths.sessionFile,

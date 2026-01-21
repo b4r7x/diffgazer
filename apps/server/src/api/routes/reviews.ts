@@ -36,5 +36,5 @@ reviews.delete("/:id", async (c) => {
 
   if (!result.ok) return handleStoreError(c, result.error);
 
-  return successResponse(c, { deleted: true });
+  return successResponse(c, { existed: true });
 });

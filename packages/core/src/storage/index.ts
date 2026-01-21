@@ -1,5 +1,5 @@
-export { createJsonStore, createStorage, createStoreError } from "./json-store.js";
-export type { JsonStore, JsonStoreConfig, Storage, StorageConfig, StoreError, StoreErrorCode } from "./json-store.js";
+export { createCollection, createDocument, createStoreError } from "./persistence.js";
+export type { Collection, CollectionConfig, Document, DocumentConfig, StoreError, StoreErrorCode } from "./persistence.js";
 export * from "./sessions.js";
 export * from "./review-history.js";
 export * from "./config.js";

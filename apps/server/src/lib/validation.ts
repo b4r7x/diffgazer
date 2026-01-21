@@ -24,11 +24,18 @@ export function isRelativePath(path: string): boolean {
   return true;
 }
 
+export function isValidProjectPath(path: string): boolean {
+  if (path.includes("..") || path.includes("\0")) {
+    return false;
+  }
+  return true;
+}
+
 export function validateProjectPath(path: string | undefined): string | undefined {
   if (!path) return undefined;
-  if (!isRelativePath(path)) {
+  if (!isValidProjectPath(path)) {
     throw new HTTPException(400, {
-      message: "Invalid projectPath: must be a relative path without traversal",
+      message: "Invalid projectPath: contains path traversal or null bytes",
     });
   }
   return path;

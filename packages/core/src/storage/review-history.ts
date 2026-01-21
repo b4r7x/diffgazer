@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { paths } from "./paths.js";
-import { createJsonStore, filterByProjectAndSort, type StoreError } from "./json-store.js";
+import { createCollection, filterByProjectAndSort, type StoreError } from "./persistence.js";
 import {
   SavedReviewSchema,
   type SavedReview,
@@ -13,7 +13,7 @@ import { ok } from "../result.js";
 
 export type ReviewHistoryError = StoreError;
 
-const reviewStore = createJsonStore<SavedReview, ReviewHistoryMetadata>({
+const reviewStore = createCollection<SavedReview, ReviewHistoryMetadata>({
   name: "review",
   dir: paths.reviews,
   filePath: paths.reviewFile,

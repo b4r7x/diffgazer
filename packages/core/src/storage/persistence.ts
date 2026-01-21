@@ -27,7 +27,78 @@ export function createStoreError(
   return { code, message, details };
 }
 
-export interface JsonStoreConfig<T, M> {
+async function safeReadFile(path: string, name: string): Promise<Result<string, StoreError>> {
+  try {
+    const content = await readFile(path, "utf-8");
+    return ok(content);
+  } catch (error) {
+    if (isNodeError(error, "ENOENT")) {
+      return err(createStoreError("NOT_FOUND", `${name} not found: ${path}`));
+    }
+    if (isNodeError(error, "EACCES")) {
+      return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
+    }
+    return err(createStoreError("PARSE_ERROR", `Failed to read ${name}`, getErrorMessage(error)));
+  }
+}
+
+function parseAndValidate<T>(
+  content: string,
+  schema: ZodSchema<T>,
+  name: string
+): Result<T, StoreError> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch (error) {
+    return err(createStoreError("PARSE_ERROR", `${name} contains invalid JSON`, getErrorMessage(error)));
+  }
+
+  const result = schema.safeParse(parsed);
+  if (!result.success) {
+    return err(createStoreError("VALIDATION_ERROR", `${name} failed validation`, result.error.message));
+  }
+
+  return ok(result.data);
+}
+
+async function atomicWriteFile(
+  path: string,
+  content: string,
+  name: string
+): Promise<Result<void, StoreError>> {
+  const tempPath = `${path}.${Date.now()}.tmp`;
+
+  try {
+    await writeFile(tempPath, content, { mode: 0o600 });
+    await rename(tempPath, path);
+    return ok(undefined);
+  } catch (error) {
+    try {
+      await unlink(tempPath);
+    } catch {}
+    if (isNodeError(error, "EACCES")) {
+      return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
+    }
+    return err(createStoreError("WRITE_ERROR", `Failed to write ${name}`, getErrorMessage(error)));
+  }
+}
+
+async function ensureDirectory(dirPath: string, name: string): Promise<Result<void, StoreError>> {
+  try {
+    await mkdir(dirPath, { recursive: true });
+    return ok(undefined);
+  } catch (error) {
+    if (isNodeError(error, "EACCES")) {
+      return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${dirPath}`));
+    }
+    return err(
+      createStoreError("WRITE_ERROR", `Failed to create ${name} directory`, getErrorMessage(error))
+    );
+  }
+}
+
+export interface CollectionConfig<T, M> {
   name: string;
   dir: () => string;
   filePath: (id: string) => string;
@@ -36,7 +107,7 @@ export interface JsonStoreConfig<T, M> {
   getId: (item: T) => string;
 }
 
-export interface JsonStore<T, M> {
+export interface Collection<T, M> {
   ensureDir(): Promise<Result<void, StoreError>>;
   read(id: string): Promise<Result<T, StoreError>>;
   write(item: T): Promise<Result<void, StoreError>>;
@@ -44,53 +115,35 @@ export interface JsonStore<T, M> {
   remove(id: string): Promise<Result<{ existed: boolean }, StoreError>>;
 }
 
-export function createJsonStore<T, M>(config: JsonStoreConfig<T, M>): JsonStore<T, M> {
+export function createCollection<T, M>(config: CollectionConfig<T, M>): Collection<T, M> {
   const { name, dir, filePath, schema, getMetadata, getId } = config;
 
   async function ensureDir(): Promise<Result<void, StoreError>> {
-    const dirPath = dir();
-    try {
-      await mkdir(dirPath, { recursive: true });
-      return ok(undefined);
-    } catch (error) {
-      if (isNodeError(error, "EACCES")) {
-        return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${dirPath}`));
-      }
-      return err(
-        createStoreError("WRITE_ERROR", `Failed to create ${name} directory`, getErrorMessage(error))
-      );
-    }
+    return ensureDirectory(dir(), name);
   }
 
   async function read(id: string): Promise<Result<T, StoreError>> {
     const path = filePath(id);
-
-    let content: string;
-    try {
-      content = await readFile(path, "utf-8");
-    } catch (error) {
-      if (isNodeError(error, "ENOENT")) {
+    const readResult = await safeReadFile(path, name);
+    if (!readResult.ok) {
+      if (readResult.error.code === "NOT_FOUND") {
         return err(createStoreError("NOT_FOUND", `${name} not found: ${id}`));
       }
-      if (isNodeError(error, "EACCES")) {
-        return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
+      return readResult;
+    }
+
+    const parseResult = parseAndValidate(readResult.value, schema, name);
+    if (!parseResult.ok) {
+      if (parseResult.error.code === "PARSE_ERROR") {
+        return err(createStoreError("PARSE_ERROR", "Invalid JSON", parseResult.error.details));
       }
-      return err(createStoreError("PARSE_ERROR", `Failed to read ${name} file`, getErrorMessage(error)));
+      if (parseResult.error.code === "VALIDATION_ERROR") {
+        return err(createStoreError("VALIDATION_ERROR", "Schema validation failed", parseResult.error.details));
+      }
+      return parseResult;
     }
 
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(content);
-    } catch (error) {
-      return err(createStoreError("PARSE_ERROR", "Invalid JSON", getErrorMessage(error)));
-    }
-
-    const result = schema.safeParse(parsed);
-    if (!result.success) {
-      return err(createStoreError("VALIDATION_ERROR", "Schema validation failed", result.error.message));
-    }
-
-    return ok(result.data);
+    return parseResult;
   }
 
   async function write(item: T): Promise<Result<void, StoreError>> {
@@ -104,23 +157,9 @@ export function createJsonStore<T, M>(config: JsonStoreConfig<T, M>): JsonStore<
 
     const id = getId(item);
     const path = filePath(id);
-    const tempPath = `${path}.${Date.now()}.tmp`;
+    const content = JSON.stringify(item, null, 2) + "\n";
 
-    try {
-      const content = JSON.stringify(item, null, 2) + "\n";
-      await writeFile(tempPath, content, { mode: 0o600 });
-      await rename(tempPath, path);
-    } catch (error) {
-      try {
-        await unlink(tempPath);
-      } catch {}
-      if (isNodeError(error, "EACCES")) {
-        return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
-      }
-      return err(createStoreError("WRITE_ERROR", `Failed to write ${name}`, getErrorMessage(error)));
-    }
-
-    return ok(undefined);
+    return atomicWriteFile(path, content, name);
   }
 
   async function list(): Promise<Result<{ items: M[]; warnings: string[] }, StoreError>> {
@@ -178,20 +217,20 @@ export function createJsonStore<T, M>(config: JsonStoreConfig<T, M>): JsonStore<
   return { ensureDir, read, write, list, remove };
 }
 
-export interface StorageConfig<T> {
+export interface DocumentConfig<T> {
   name: string;
   filePath: () => string;
   schema: ZodSchema<T>;
 }
 
-export interface Storage<T> {
+export interface Document<T> {
   exists(): Promise<boolean>;
   read(): Promise<Result<T, StoreError>>;
   write(item: T): Promise<Result<void, StoreError>>;
   remove(): Promise<Result<void, StoreError>>;
 }
 
-export function createStorage<T>(config: StorageConfig<T>): Storage<T> {
+export function createDocument<T>(config: DocumentConfig<T>): Document<T> {
   const { name, filePath, schema } = config;
 
   async function exists(): Promise<boolean> {
@@ -205,33 +244,15 @@ export function createStorage<T>(config: StorageConfig<T>): Storage<T> {
 
   async function read(): Promise<Result<T, StoreError>> {
     const path = filePath();
-
-    let content: string;
-    try {
-      content = await readFile(path, "utf-8");
-    } catch (error) {
-      if (isNodeError(error, "ENOENT")) {
+    const readResult = await safeReadFile(path, name);
+    if (!readResult.ok) {
+      if (readResult.error.code === "NOT_FOUND") {
         return err(createStoreError("NOT_FOUND", `${name} not found at ${path}`));
       }
-      if (isNodeError(error, "EACCES")) {
-        return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
-      }
-      return err(createStoreError("PARSE_ERROR", `Failed to read ${name}`, getErrorMessage(error)));
+      return readResult;
     }
 
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(content);
-    } catch (error) {
-      return err(createStoreError("PARSE_ERROR", `${name} contains invalid JSON`, getErrorMessage(error)));
-    }
-
-    const result = schema.safeParse(parsed);
-    if (!result.success) {
-      return err(createStoreError("VALIDATION_ERROR", `${name} failed validation`, result.error.message));
-    }
-
-    return ok(result.data);
+    return parseAndValidate(readResult.value, schema, name);
   }
 
   async function write(item: T): Promise<Result<void, StoreError>> {
@@ -243,26 +264,16 @@ export function createStorage<T>(config: StorageConfig<T>): Storage<T> {
     const path = filePath();
     const dir = dirname(path);
 
-    try {
-      await mkdir(dir, { recursive: true });
-    } catch (error) {
-      if (isNodeError(error, "EACCES")) {
+    const dirResult = await ensureDirectory(dir, name);
+    if (!dirResult.ok) {
+      if (dirResult.error.code === "PERMISSION_ERROR") {
         return err(createStoreError("PERMISSION_ERROR", `Permission denied creating directory: ${dir}`));
       }
-      return err(createStoreError("WRITE_ERROR", `Failed to create ${name} directory`, getErrorMessage(error)));
+      return dirResult;
     }
 
-    try {
-      const content = JSON.stringify(item, null, 2) + "\n";
-      await writeFile(path, content, { mode: 0o600 });
-    } catch (error) {
-      if (isNodeError(error, "EACCES")) {
-        return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
-      }
-      return err(createStoreError("WRITE_ERROR", `Failed to write ${name}`, getErrorMessage(error)));
-    }
-
-    return ok(undefined);
+    const content = JSON.stringify(item, null, 2) + "\n";
+    return atomicWriteFile(path, content, name);
   }
 
   async function remove(): Promise<Result<void, StoreError>> {
@@ -270,6 +281,7 @@ export function createStorage<T>(config: StorageConfig<T>): Storage<T> {
 
     try {
       await unlink(path);
+      return ok(undefined);
     } catch (error) {
       if (isNodeError(error, "ENOENT")) {
         return ok(undefined);
@@ -279,8 +291,6 @@ export function createStorage<T>(config: StorageConfig<T>): Storage<T> {
       }
       return err(createStoreError("WRITE_ERROR", `Failed to delete ${name}`, getErrorMessage(error)));
     }
-
-    return ok(undefined);
   }
 
   return { exists, read, write, remove };

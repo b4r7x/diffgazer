@@ -82,5 +82,5 @@ sessions.delete("/:id", async (c) => {
   const result = await deleteSession(sessionId);
   if (!result.ok) return handleStoreError(c, result.error);
 
-  return successResponse(c, { deleted: true });
+  return successResponse(c, { existed: true });
 });
