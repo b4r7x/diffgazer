@@ -13,7 +13,7 @@ import { ok } from "../result.js";
 
 export type ReviewHistoryError = StoreError;
 
-const reviewStore = createCollection<SavedReview, ReviewHistoryMetadata>({
+export const reviewStore = createCollection<SavedReview, ReviewHistoryMetadata>({
   name: "review",
   dir: paths.reviews,
   filePath: paths.reviewFile,
@@ -53,8 +53,6 @@ export async function saveReview(
   if (!writeResult.ok) return writeResult;
   return ok(metadata);
 }
-
-export const readReview = reviewStore.read;
 
 export async function listReviews(
   projectPath?: string

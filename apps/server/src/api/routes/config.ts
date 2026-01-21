@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { readConfig, writeConfig, deleteConfig as deleteConfigFile } from "@repo/core/storage";
+import { configStore } from "@repo/core/storage";
 import { getApiKey, setApiKey, deleteApiKey } from "@repo/core/secrets";
 import { AIProviderSchema } from "@repo/schemas/config";
 import { errorResponse, successResponse, handleStoreError, zodErrorHandler } from "../../lib/response.js";
@@ -15,7 +15,7 @@ const SaveConfigBodySchema = z.object({
 });
 
 config.get("/check", async (c) => {
-  const configResult = await readConfig();
+  const configResult = await configStore.read();
 
   if (!configResult.ok) {
     return successResponse(c, { configured: false });
@@ -38,7 +38,7 @@ config.get("/check", async (c) => {
 });
 
 config.get("/", async (c) => {
-  const configResult = await readConfig();
+  const configResult = await configStore.read();
 
   if (!configResult.ok) {
     return handleStoreError(c, configResult.error);
@@ -68,7 +68,7 @@ config.post(
       return errorResponse(c, "Failed to verify API key storage", "INTERNAL_ERROR", 500);
     }
 
-    const existingConfig = await readConfig();
+    const existingConfig = await configStore.read();
     const configToSave = {
       provider: body.provider,
       model: body.model,
@@ -76,7 +76,7 @@ config.post(
       updatedAt: now,
     };
 
-    const writeResult = await writeConfig(configToSave);
+    const writeResult = await configStore.write(configToSave);
     if (!writeResult.ok) {
       await deleteApiKey(body.provider);
       return handleStoreError(c, writeResult.error);
@@ -90,16 +90,16 @@ config.post(
 );
 
 config.delete("/", async (c) => {
-  const configResult = await readConfig();
+  const configResult = await configStore.read();
   if (!configResult.ok) {
     return handleStoreError(c, configResult.error);
   }
 
   const provider = configResult.value.provider;
 
-  const deleteFileResult = await deleteConfigFile();
-  if (!deleteFileResult.ok) {
-    return handleStoreError(c, deleteFileResult.error);
+  const deleteResult = await configStore.remove();
+  if (!deleteResult.ok) {
+    return handleStoreError(c, deleteResult.error);
   }
 
   const deleteKeyResult = await deleteApiKey(provider);

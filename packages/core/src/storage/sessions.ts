@@ -13,7 +13,7 @@ import { ok } from "../result.js";
 
 export type SessionError = StoreError;
 
-const sessionStore = createCollection<Session, SessionMetadata>({
+export const sessionStore = createCollection<Session, SessionMetadata>({
   name: "session",
   dir: paths.sessions,
   filePath: paths.sessionFile,
@@ -42,8 +42,6 @@ export async function createSession(
   if (!writeResult.ok) return writeResult;
   return ok(session);
 }
-
-export const readSession = sessionStore.read;
 
 export async function addMessage(
   sessionId: string,

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { createAIClient } from "@repo/core/ai";
-import { readConfig, saveReview } from "@repo/core/storage";
+import { configStore, saveReview } from "@repo/core/storage";
 import { getApiKey } from "@repo/core/secrets";
 import { reviewDiff } from "../../services/review.js";
 import { createGitService } from "../../services/git.js";
@@ -11,7 +11,7 @@ import { errorResponse } from "../../lib/response.js";
 const review = new Hono();
 
 review.get("/stream", async (c) => {
-  const configResult = await readConfig();
+  const configResult = await configStore.read();
   if (!configResult.ok) {
     return errorResponse(c, "AI provider not configured. Please configure in settings.", "API_KEY_MISSING", 500);
   }

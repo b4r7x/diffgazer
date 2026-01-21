@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import {
+  sessionStore,
   createSession,
-  readSession,
   listSessions,
   addMessage,
   deleteSession,
@@ -46,7 +46,7 @@ sessions.get("/last", async (c) => {
 
 sessions.get("/:id", async (c) => {
   const sessionId = requireUuidParam(c, "id");
-  const result = await readSession(sessionId);
+  const result = await sessionStore.read(sessionId);
   if (!result.ok) return handleStoreError(c, result.error);
 
   return successResponse(c, { session: result.value });

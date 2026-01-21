@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import {
+  reviewStore,
   listReviews,
-  readReview,
   deleteReview,
 } from "@repo/core/storage";
 import { handleStoreError, successResponse } from "../../lib/response.js";
@@ -23,7 +23,7 @@ reviews.get("/", async (c) => {
 
 reviews.get("/:id", async (c) => {
   const reviewId = requireUuidParam(c, "id");
-  const result = await readReview(reviewId);
+  const result = await reviewStore.read(reviewId);
 
   if (!result.ok) return handleStoreError(c, result.error);
 
