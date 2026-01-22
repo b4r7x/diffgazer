@@ -1,9 +1,8 @@
 import type { Result } from "../result.js";
 import { ok, err } from "../result.js";
+import { APP_NAME } from "../storage/paths.js";
 import { createSecretsError } from "./types.js";
 import type { SecretsError } from "./types.js";
-
-const SERVICE_NAME = "stargazer";
 
 let keyringModule: typeof import("@napi-rs/keyring") | null = null;
 let loadAttempted = false;
@@ -41,7 +40,7 @@ export async function isKeyringAvailable(): Promise<boolean> {
   try {
     const testKey = "__stargazer_availability_test__";
     const testValue = "test_" + Date.now();
-    const entry = new keyring.Entry(SERVICE_NAME, testKey);
+    const entry = new keyring.Entry(APP_NAME, testKey);
 
     entry.setPassword(testValue);
     const readBack = entry.getPassword();
@@ -59,7 +58,7 @@ export async function isKeyringAvailable(): Promise<boolean> {
 export async function getSecret(key: string): Promise<Result<string, SecretsError>> {
   return withKeyring((keyring) => {
     try {
-      const entry = new keyring.Entry(SERVICE_NAME, key);
+      const entry = new keyring.Entry(APP_NAME, key);
       const password = entry.getPassword();
       if (password === null) {
         return err(createSecretsError("SECRET_NOT_FOUND", `Secret '${key}' not found`));
@@ -74,7 +73,7 @@ export async function getSecret(key: string): Promise<Result<string, SecretsErro
 export async function setSecret(key: string, value: string): Promise<Result<void, SecretsError>> {
   return withKeyring((keyring) => {
     try {
-      const entry = new keyring.Entry(SERVICE_NAME, key);
+      const entry = new keyring.Entry(APP_NAME, key);
       entry.setPassword(value);
       return ok(undefined);
     } catch {
@@ -86,7 +85,7 @@ export async function setSecret(key: string, value: string): Promise<Result<void
 export async function deleteSecret(key: string): Promise<Result<void, SecretsError>> {
   return withKeyring((keyring) => {
     try {
-      const entry = new keyring.Entry(SERVICE_NAME, key);
+      const entry = new keyring.Entry(APP_NAME, key);
       entry.deletePassword();
       return ok(undefined);
     } catch {

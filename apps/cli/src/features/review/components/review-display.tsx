@@ -1,30 +1,7 @@
-import React from "react";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
-import type { ReviewState } from "../hooks/use-review.js";
-import type { ReviewIssue, ReviewSeverity } from "@repo/schemas/review";
-
-const SEVERITY_COLORS: Record<ReviewSeverity, string> = {
-  critical: "red",
-  warning: "yellow",
-  suggestion: "blue",
-  nitpick: "gray",
-};
-
-function IssueItem({ issue }: { issue: ReviewIssue }) {
-  return (
-    <Box flexDirection="column" marginTop={1}>
-      <Text color={SEVERITY_COLORS[issue.severity]} bold>
-        [{issue.severity}] {issue.title}
-      </Text>
-      {issue.file && (
-        <Text dimColor>  File: {issue.file}{issue.line ? `:${issue.line}` : ""}</Text>
-      )}
-      <Text>  {issue.description}</Text>
-      {issue.suggestion && <Text color="green">  Fix: {issue.suggestion}</Text>}
-    </Box>
-  );
-}
+import type { ReviewState } from "../hooks/index.js";
+import { IssueItem } from "./issue-item.js";
 
 export function ReviewDisplay({ state, staged }: { state: ReviewState; staged: boolean }) {
   if (state.status === "idle") {

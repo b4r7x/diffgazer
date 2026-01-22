@@ -3,13 +3,16 @@ import { Box, Text, useInput, useApp } from "ink";
 import Spinner from "ink-spinner";
 import { GitStatusDisplay } from "../components/git-status-display.js";
 import { GitDiffDisplay } from "../components/git-diff-display.js";
-import { ReviewDisplay } from "../components/review-display.js";
+import { ReviewDisplay } from "../features/review/index.js";
 import { OnboardingScreen } from "./screens/onboarding-screen.js";
 import { SettingsScreen } from "./screens/settings-screen.js";
+import { SessionsScreen } from "./screens/sessions-screen.js";
+import { ReviewHistoryScreen } from "./screens/review-history-screen.js";
 import { useGitStatus } from "../hooks/use-git-status.js";
 import { useGitDiff } from "../hooks/use-git-diff.js";
-import { useReview } from "../hooks/use-review.js";
 import { useConfig } from "../hooks/use-config.js";
+import { useSession } from "../features/sessions/index.js";
+import { useReview, useReviewHistory } from "../features/review/index.js";
 
 type View =
   | "loading"
@@ -18,25 +21,55 @@ type View =
   | "git-status"
   | "git-diff"
   | "review"
-  | "settings";
+  | "settings"
+  | "sessions"
+  | "review-history";
+
+export type SessionMode = "new" | "continue" | "resume" | "picker";
 
 interface AppProps {
   address: string;
+  sessionMode?: SessionMode;
+  sessionId?: string;
 }
 
-export function App({ address }: AppProps): React.ReactElement {
+export function App({
+  address,
+  sessionMode = "new",
+  sessionId,
+}: AppProps): React.ReactElement {
   const { exit } = useApp();
   const [view, setView] = useState<View>("loading");
   const gitStatus = useGitStatus();
   const gitDiff = useGitDiff();
   const review = useReview();
   const config = useConfig();
+  const session = useSession();
+  const reviewHistory = useReviewHistory();
   const [diffStaged, setDiffStaged] = useState(false);
   const [reviewStaged, setReviewStaged] = useState(true);
+  const [sessionInitialized, setSessionInitialized] = useState(false);
 
   useEffect(() => {
     void config.checkConfig();
   }, []);
+
+  useEffect(() => {
+    if (config.checkState !== "configured" || sessionInitialized) return;
+
+    setSessionInitialized(true);
+
+    if (sessionMode === "continue") {
+      void session.continueLastSession();
+    } else if (sessionMode === "resume" && sessionId) {
+      void session.loadSession(sessionId);
+    } else if (sessionMode === "picker") {
+      void session.listSessions();
+      setView("sessions");
+    } else {
+      void session.createSession();
+    }
+  }, [config.checkState, sessionMode, sessionId, sessionInitialized]);
 
   useEffect(() => {
     if (config.checkState === "configured" || config.saveState === "success") {
@@ -78,6 +111,18 @@ export function App({ address }: AppProps): React.ReactElement {
         void config.loadSettings();
         setView("settings");
       }
+      if (input === "h") {
+        void reviewHistory.listReviews();
+        setView("review-history");
+      }
+      if (input === "H") {
+        void session.listSessions();
+        setView("sessions");
+      }
+      return;
+    }
+
+    if (view === "sessions" || view === "review-history") {
       return;
     }
 
@@ -171,7 +216,8 @@ export function App({ address }: AppProps): React.ReactElement {
       {view === "main" && (
         <Box flexDirection="column" marginTop={1}>
           <Text>
-            [g] Git Status [d] Git Diff [r] AI Review [S] Settings [q] Quit
+            [g] Git Status [d] Git Diff [r] AI Review [h] Reviews [H] Sessions [S] Settings
+            [q] Quit
           </Text>
         </Box>
       )}
@@ -220,6 +266,44 @@ export function App({ address }: AppProps): React.ReactElement {
             error={config.error}
             onDelete={() => void config.deleteConfig()}
             onBack={() => setView("main")}
+          />
+        </Box>
+      )}
+
+      {view === "sessions" && (
+        <Box flexDirection="column" marginTop={1}>
+          <SessionsScreen
+            sessions={session.sessions}
+            listState={session.listState}
+            error={session.error}
+            onSelect={(s) => {
+              void session.loadSession(s.id);
+              setView("main");
+            }}
+            onDelete={(s) => void session.deleteSession(s.id)}
+            onBack={() => setView("main")}
+            onNewSession={() => {
+              void session.createSession();
+              setView("main");
+            }}
+          />
+        </Box>
+      )}
+
+      {view === "review-history" && (
+        <Box flexDirection="column" marginTop={1}>
+          <ReviewHistoryScreen
+            reviews={reviewHistory.reviews}
+            currentReview={reviewHistory.currentReview}
+            listState={reviewHistory.listState}
+            error={reviewHistory.error}
+            onSelect={(r) => void reviewHistory.loadReview(r.id)}
+            onDelete={(r) => void reviewHistory.deleteReview(r.id)}
+            onBack={() => {
+              reviewHistory.reset();
+              setView("main");
+            }}
+            onClearCurrent={() => reviewHistory.clearCurrentReview()}
           />
         </Box>
       )}
