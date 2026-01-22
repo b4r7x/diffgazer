@@ -1,18 +1,11 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { z } from "zod";
 import { configStore } from "@repo/core/storage";
 import { getApiKey, setApiKey, deleteApiKey } from "@repo/core/secrets";
-import { AIProviderSchema } from "@repo/schemas/config";
+import { AIProviderSchema, SaveConfigRequestSchema } from "@repo/schemas/config";
 import { errorResponse, successResponse, handleStoreError, zodErrorHandler } from "../../lib/response.js";
 
 const config = new Hono();
-
-const SaveConfigBodySchema = z.object({
-  provider: AIProviderSchema,
-  apiKey: z.string().min(1, "API key is required"),
-  model: z.string().optional(),
-});
 
 config.get("/check", async (c) => {
   const configResult = await configStore.read();
@@ -52,7 +45,7 @@ config.get("/", async (c) => {
 
 config.post(
   "/",
-  zValidator("json", SaveConfigBodySchema, zodErrorHandler),
+  zValidator("json", SaveConfigRequestSchema, zodErrorHandler),
   async (c) => {
     const body = c.req.valid("json");
     const now = new Date().toISOString();

@@ -1,21 +1,16 @@
 import { useEntityList } from "./use-entity-list.js";
 import { api } from "../lib/api.js";
 
-export interface EntityApiConfig<
-  TListKey extends string,
-  TSingleKey extends string,
-> {
+export interface EntityApiConfig {
   endpoint: string;
-  listKey: TListKey;
-  singleKey: TSingleKey;
+  listKey: string;
+  singleKey: string;
 }
 
 export function useEntityApi<
   TEntity,
   TMetadata extends { id: string },
-  TListKey extends string = string,
-  TSingleKey extends string = string,
->(config: EntityApiConfig<TListKey, TSingleKey>) {
+>(config: EntityApiConfig) {
   const projectPath = process.cwd();
 
   const [state, actions] = useEntityList<TEntity, TMetadata>({

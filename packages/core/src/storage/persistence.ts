@@ -3,7 +3,8 @@ import { dirname } from "node:path";
 import type { ZodSchema } from "zod";
 import type { Result } from "../result.js";
 import { ok, err } from "../result.js";
-import { isNodeError, getErrorMessage } from "../errors.js";
+import type { AppError } from "../errors.js";
+import { isNodeError, getErrorMessage, createError } from "../errors.js";
 import { isValidUuid } from "../validation.js";
 
 export type StoreErrorCode =
@@ -13,19 +14,9 @@ export type StoreErrorCode =
   | "WRITE_ERROR"
   | "PERMISSION_ERROR";
 
-export interface StoreError {
-  code: StoreErrorCode;
-  message: string;
-  details?: string;
-}
+export type StoreError = AppError<StoreErrorCode>;
 
-export function createStoreError(
-  code: StoreErrorCode,
-  message: string,
-  details?: string
-): StoreError {
-  return { code, message, details };
-}
+export const createStoreError = createError<StoreErrorCode>;
 
 async function safeReadFile(path: string, name: string): Promise<Result<string, StoreError>> {
   try {

@@ -1,10 +1,11 @@
 import type { ReactElement, ReactNode } from "react";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
+import type { ListState } from "../types/index.js";
 
 interface ListScreenWrapperProps {
   title: string;
-  state: "idle" | "loading" | "success" | "error";
+  state: ListState;
   error: { message: string } | null;
   isEmpty: boolean;
   emptyMessage: string;

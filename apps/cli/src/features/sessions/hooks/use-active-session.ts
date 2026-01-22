@@ -114,12 +114,6 @@ export function useActiveSession() {
     }
   }
 
-  function setSession(session: Session | null) {
-    setCurrentSession(session);
-    setState(session ? "active" : "idle");
-    setError(null);
-  }
-
   function clearSession() {
     setCurrentSession(null);
     setState("idle");
@@ -134,7 +128,6 @@ export function useActiveSession() {
     loadSession,
     continueLastSession,
     addMessage,
-    setSession,
     clearSession,
   };
 }

@@ -1,15 +1,13 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
 import { paths } from "../storage/paths.js";
 import type { Result } from "../result.js";
 import { ok, err } from "../result.js";
 import { createSecretsError, type SecretsError } from "./types.js";
 import { isNodeError } from "../errors.js";
 
-const SECRETS_FILE = "secrets.json";
-
 function getSecretsPath(): string {
-  return join(paths.secretsDir(), SECRETS_FILE);
+  return paths.secretsFile();
 }
 
 async function readSecrets(): Promise<Result<Record<string, string>, SecretsError>> {
