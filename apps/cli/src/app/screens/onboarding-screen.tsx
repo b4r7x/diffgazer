@@ -3,6 +3,7 @@ import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import Spinner from "ink-spinner";
 import type { SaveConfigState } from "../../hooks/use-config.js";
+import { SelectionIndicator } from "../../components/selection-indicator.js";
 import type { AIProvider } from "@repo/schemas/config";
 import { GEMINI_MODEL_INFO } from "@repo/schemas/config";
 
@@ -119,14 +120,10 @@ export function OnboardingScreen({
           <Text bold>Step 1: Select AI Provider</Text>
           <Box flexDirection="column" marginTop={1}>
             {PROVIDERS.map((provider, index) => (
-              <Text key={provider.id}>
-                {selectedProvider === index ? (
-                  <Text color="green">{"> "}</Text>
-                ) : (
-                  "  "
-                )}
-                {provider.name}
-              </Text>
+              <Box key={provider.id}>
+                <SelectionIndicator isSelected={selectedProvider === index} />
+                <Text>{provider.name}</Text>
+              </Box>
             ))}
           </Box>
           <Box marginTop={1}>
@@ -142,17 +139,13 @@ export function OnboardingScreen({
           <Box flexDirection="column" marginTop={1}>
             {MODELS.map((model, index) => (
               <Box key={model.id} flexDirection="column">
-                <Text>
-                  {selectedModel === index ? (
-                    <Text color="green">{"> "}</Text>
-                  ) : (
-                    "  "
-                  )}
+                <Box>
+                  <SelectionIndicator isSelected={selectedModel === index} />
                   <Text bold={model.recommended}>{model.name}</Text>
                   {model.recommended && <Text color="yellow"> (Recommended)</Text>}
                   {model.tier === "paid" && <Text color="red"> [Paid]</Text>}
                   {model.tier === "free" && <Text color="green"> [Free]</Text>}
-                </Text>
+                </Box>
                 {selectedModel === index && (
                   <Text dimColor>    {model.description}</Text>
                 )}

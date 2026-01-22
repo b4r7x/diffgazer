@@ -16,6 +16,8 @@ program
   .description("Start interactive TUI")
   .option("-p, --port <port>", "Server port", "3000")
   .option("-H, --hostname <hostname>", "Server hostname", "localhost")
+  .option("-c, --continue", "Continue most recent session")
+  .option("-r, --resume [id]", "Resume specific session (or show picker)")
   .action(runCommand);
 
 program

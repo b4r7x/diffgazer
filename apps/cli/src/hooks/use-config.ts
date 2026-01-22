@@ -20,17 +20,13 @@ export type DeleteConfigState = "idle" | "deleting" | "success" | "error";
 
 export type SettingsLoadState = "idle" | "loading" | "success" | "error";
 
-interface ConfigError {
-  message: string;
-}
-
 export function useConfig() {
   const [checkState, setCheckState] = useState<ConfigCheckState>("idle");
   const [saveState, setSaveState] = useState<SaveConfigState>("idle");
   const [deleteState, setDeleteState] = useState<DeleteConfigState>("idle");
   const [settingsState, setSettingsState] = useState<SettingsLoadState>("idle");
   const [currentConfig, setCurrentConfig] = useState<CurrentConfigResponse | null>(null);
-  const [error, setError] = useState<ConfigError | null>(null);
+  const [error, setError] = useState<{ message: string } | null>(null);
 
   async function checkConfig() {
     setCheckState("loading");

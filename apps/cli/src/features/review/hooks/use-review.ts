@@ -4,7 +4,7 @@ import {
   type ReviewError,
   ReviewStreamEventSchema,
 } from "@repo/schemas/review";
-import { api } from "../lib/api.js";
+import { api } from "../../../lib/api.js";
 import { getErrorMessage } from "@repo/core";
 
 export type ReviewState =
@@ -35,7 +35,7 @@ export function useReview() {
       }
 
       const decoder = new TextDecoder();
-      const MAX_BUFFER_SIZE = 1024 * 1024; // 1MB
+      const MAX_BUFFER_SIZE = 1024 * 1024;
       let buffer = "", streamedContent = "";
       let receivedTerminal = false;
 

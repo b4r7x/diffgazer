@@ -10,7 +10,9 @@
     "./config": { "types": "./dist/config.d.ts", "import": "./dist/config.js" },
     "./git": { "types": "./dist/git.d.ts", "import": "./dist/git.js" },
     "./port": { "types": "./dist/port.d.ts", "import": "./dist/port.js" },
-    "./review": { "types": "./dist/review.d.ts", "import": "./dist/review.js" }
+    "./review": { "types": "./dist/review.d.ts", "import": "./dist/review.js" },
+    "./review-history": { "types": "./dist/review-history.d.ts", "import": "./dist/review-history.js" },
+    "./session": { "types": "./dist/session.d.ts", "import": "./dist/session.js" }
   },
   "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
   "dependencies": { "zod": "^3.23.0" },

@@ -4,6 +4,7 @@ import { join, sep } from "node:path";
 import { realpath } from "node:fs/promises";
 import { createGitService } from "../../services/git.js";
 import { errorResponse, successResponse } from "../../lib/response.js";
+import { isRelativePath } from "../../lib/validation.js";
 
 const git = new Hono();
 
@@ -13,16 +14,8 @@ type GetGitServiceResult =
   | { ok: true; service: GitService }
   | { ok: false; response: Response };
 
-function isValidRelativePath(path: string): boolean {
-  const startsWithSlash = path.startsWith("/") || path.startsWith("\\");
-  const hasDriveLetter = /^[a-zA-Z]:/.test(path);
-  const hasTraversal = path.includes("..");
-  const hasNullByte = path.includes("\x00");
-  return !startsWithSlash && !hasDriveLetter && !hasTraversal && !hasNullByte;
-}
-
 async function getGitService(c: Context, path: string | undefined): Promise<GetGitServiceResult> {
-  if (path && !isValidRelativePath(path)) {
+  if (path && !isRelativePath(path)) {
     return { ok: false, response: errorResponse(c, "Invalid path", "INVALID_PATH", 400) };
   }
 

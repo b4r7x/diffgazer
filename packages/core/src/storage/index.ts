@@ -1,8 +1,6 @@
-export { paths } from "./paths.js";
-export {
-  readConfig,
-  writeConfig,
-  deleteConfig,
-  configExists,
-  type ConfigError,
-} from "./config.js";
+export { createCollection, createDocument, createStoreError } from "./persistence.js";
+export type { Collection, CollectionConfig, Document, DocumentConfig, StoreError, StoreErrorCode } from "./persistence.js";
+export * from "./sessions.js";
+export * from "./review-history.js";
+export * from "./config.js";
+export * from "./paths.js";
