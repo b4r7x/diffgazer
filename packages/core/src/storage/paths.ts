@@ -1,14 +1,23 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { assertValidUuid } from "../validation.js";
 
-const APP_NAME = "stargazer";
+export const APP_NAME = "stargazer";
 
-function getConfigHome(): string {
-  return process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
+function getAppHome(): string {
+  return join(homedir(), `.${APP_NAME}`);
 }
 
 export const paths = {
-  config: (): string => join(getConfigHome(), APP_NAME),
-  configFile: (): string => join(getConfigHome(), APP_NAME, "config.json"),
-  secretsDir: (): string => join(getConfigHome(), APP_NAME, "secrets"),
+  appHome: (): string => getAppHome(),
+  config: (): string => getAppHome(),
+  configFile: (): string => join(getAppHome(), "config.json"),
+  secretsDir: (): string => join(getAppHome(), "secrets"),
+  secretsFile: (): string => join(getAppHome(), "secrets", "secrets.json"),
+  sessions: (): string => join(getAppHome(), "sessions"),
+  sessionFile: (sessionId: string): string =>
+    join(getAppHome(), "sessions", `${assertValidUuid(sessionId)}.json`),
+  reviews: (): string => join(getAppHome(), "reviews"),
+  reviewFile: (reviewId: string): string =>
+    join(getAppHome(), "reviews", `${assertValidUuid(reviewId)}.json`),
 } as const;
