@@ -1,7 +1,7 @@
 import { useRef, useCallback } from "react";
 import { type ZodSchema } from "zod";
 import { parseSSEStream, type SSEParseResult } from "../lib/sse.js";
-import { getErrorMessage, isAbortError } from "@repo/core";
+import { getErrorMessage, isAbortError, validateSchema } from "@repo/core";
 
 export type SSEStreamError = {
   message: string;
@@ -46,12 +46,12 @@ export function useSSEStream<TEvent extends { type: string }>(
       try {
         const result: SSEParseResult = await parseSSEStream<TEvent>(reader, {
           parseEvent(jsonData) {
-            const parseResult = schema.safeParse(jsonData);
-            if (!parseResult.success) {
-              console.error("Failed to parse stream event:", parseResult.error.message);
+            const result = validateSchema(jsonData, schema, (msg) => msg);
+            if (!result.ok) {
+              console.error("Failed to parse stream event:", result.error);
               return undefined;
             }
-            return parseResult.data;
+            return result.value;
           },
           onEvent(event) {
             if (onEvent(event)) {
