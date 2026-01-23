@@ -1,8 +1,7 @@
-import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 
-export function LoadingView(): ReactElement {
+export function LoadingView() {
   return (
     <Box flexDirection="column" padding={1}>
       <Text bold color="cyan">
