@@ -4,9 +4,9 @@ import {
   SessionMetadataSchema,
   SessionSchema,
   CreateSessionRequestSchema,
+  AddMessageRequestSchema,
 } from "./session.js";
 
-// Shared test fixtures
 const VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
 const VALID_UUID_2 = "550e8400-e29b-41d4-a716-446655440001";
 const VALID_TIMESTAMP = "2024-01-01T00:00:00.000Z";
@@ -91,63 +91,42 @@ describe("SessionSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  describe("messageCount validation", () => {
-    it("accepts session when messageCount matches messages.length", () => {
-      const session = {
-        metadata: createBaseMetadata({ messageCount: 2 }),
-        messages: [
-          createBaseMessage({ id: VALID_UUID }),
-          createBaseMessage({ id: VALID_UUID_2 }),
-        ],
-      };
-      const result = SessionSchema.safeParse(session);
-      expect(result.success).toBe(true);
-    });
+  it.each([
+    [
+      "messageCount less than messages.length",
+      { messageCount: 1 },
+      [createBaseMessage({ id: VALID_UUID }), createBaseMessage({ id: VALID_UUID_2 })],
+    ],
+    [
+      "messageCount greater than messages.length",
+      { messageCount: 5 },
+      [createBaseMessage({ id: VALID_UUID })],
+    ],
+    ["non-zero messageCount with empty messages", { messageCount: 1 }, []],
+  ])("rejects session when %s", (_, metadataOverrides, messages) => {
+    const session = {
+      metadata: createBaseMetadata(metadataOverrides),
+      messages,
+    };
+    const result = SessionSchema.safeParse(session);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toBe(
+        "messageCount must match messages.length"
+      );
+    }
+  });
 
-    it("rejects session when messageCount is less than messages.length", () => {
-      const session = {
-        metadata: createBaseMetadata({ messageCount: 1 }),
-        messages: [
-          createBaseMessage({ id: VALID_UUID }),
-          createBaseMessage({ id: VALID_UUID_2 }),
-        ],
-      };
-      const result = SessionSchema.safeParse(session);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues[0].message).toBe(
-          "messageCount must match messages.length"
-        );
-      }
-    });
-
-    it("rejects session when messageCount is greater than messages.length", () => {
-      const session = {
-        metadata: createBaseMetadata({ messageCount: 5 }),
-        messages: [createBaseMessage({ id: VALID_UUID })],
-      };
-      const result = SessionSchema.safeParse(session);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues[0].message).toBe(
-          "messageCount must match messages.length"
-        );
-      }
-    });
-
-    it("rejects empty messages with non-zero messageCount", () => {
-      const session = {
-        metadata: createBaseMetadata({ messageCount: 1 }),
-        messages: [],
-      };
-      const result = SessionSchema.safeParse(session);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues[0].message).toBe(
-          "messageCount must match messages.length"
-        );
-      }
-    });
+  it("accepts session when messageCount matches messages.length", () => {
+    const session = {
+      metadata: createBaseMetadata({ messageCount: 2 }),
+      messages: [
+        createBaseMessage({ id: VALID_UUID }),
+        createBaseMessage({ id: VALID_UUID_2 }),
+      ],
+    };
+    const result = SessionSchema.safeParse(session);
+    expect(result.success).toBe(true);
   });
 });
 
@@ -162,6 +141,25 @@ describe("CreateSessionRequestSchema", () => {
 
   it("rejects request without projectPath", () => {
     const result = CreateSessionRequestSchema.safeParse({ title: "New Session" });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("AddMessageRequestSchema", () => {
+  it.each([
+    ["user", { role: "user", content: "Test message" }],
+    ["assistant", { role: "assistant", content: "Test message" }],
+    ["system", { role: "system", content: "Test message" }],
+  ])("accepts valid %s message", (_, request) => {
+    const result = AddMessageRequestSchema.safeParse(request);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects invalid role", () => {
+    const result = AddMessageRequestSchema.safeParse({
+      role: "invalid",
+      content: "Test message",
+    });
     expect(result.success).toBe(false);
   });
 });
