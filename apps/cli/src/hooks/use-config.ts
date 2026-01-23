@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { AIProvider, CurrentConfigResponse, ConfigCheckResponse } from "@repo/schemas/config";
 import { api } from "../lib/api.js";
-import { getErrorMessage } from "@repo/core";
+import { useAsyncOperation, type AsyncStatus } from "./use-async-operation.js";
 
 /** State for checking if configuration exists */
 export type ConfigCheckState = "idle" | "loading" | "configured" | "unconfigured" | "error";
@@ -15,72 +15,95 @@ export type DeleteConfigState = "idle" | "deleting" | "success" | "error";
 /** State for loading settings */
 export type SettingsLoadState = "idle" | "loading" | "success" | "error";
 
+/**
+ * Maps AsyncStatus to ConfigCheckState based on the check result.
+ */
+function mapToCheckState(status: AsyncStatus, configured?: boolean): ConfigCheckState {
+  if (status === "idle") return "idle";
+  if (status === "loading") return "loading";
+  if (status === "error") return "error";
+  // status === "success"
+  return configured ? "configured" : "unconfigured";
+}
+
+/**
+ * Maps AsyncStatus to SaveConfigState, using "saving" instead of "loading".
+ */
+function mapToSaveState(status: AsyncStatus): SaveConfigState {
+  if (status === "loading") return "saving";
+  return status as SaveConfigState;
+}
+
+/**
+ * Maps AsyncStatus to DeleteConfigState, using "deleting" instead of "loading".
+ */
+function mapToDeleteState(status: AsyncStatus): DeleteConfigState {
+  if (status === "loading") return "deleting";
+  return status as DeleteConfigState;
+}
+
 export function useConfig() {
-  const [checkState, setCheckState] = useState<ConfigCheckState>("idle");
-  const [saveState, setSaveState] = useState<SaveConfigState>("idle");
-  const [deleteState, setDeleteState] = useState<DeleteConfigState>("idle");
-  const [settingsState, setSettingsState] = useState<SettingsLoadState>("idle");
-  const [currentConfig, setCurrentConfig] = useState<CurrentConfigResponse | null>(null);
-  const [error, setError] = useState<{ message: string } | null>(null);
+  const configCheckOp = useAsyncOperation<ConfigCheckResponse>();
+  const saveConfigOp = useAsyncOperation<void>();
+  const deleteConfigOp = useAsyncOperation<void>();
+  const settingsOp = useAsyncOperation<CurrentConfigResponse>();
+
+  // Track configured state separately since it persists across operations
+  const [isConfigured, setIsConfigured] = useState<boolean | undefined>(undefined);
 
   async function checkConfig() {
-    setCheckState("loading");
-    setError(null);
-    try {
-      const result = await api().get<ConfigCheckResponse>("/config/check");
-      setCheckState(result.configured ? "configured" : "unconfigured");
-    } catch (e) {
-      setCheckState("error");
-      setError({ message: getErrorMessage(e) });
+    const result = await configCheckOp.execute(async () => {
+      return await api().get<ConfigCheckResponse>("/config/check");
+    });
+    if (result) {
+      setIsConfigured(result.configured);
     }
   }
 
   async function saveConfig(provider: AIProvider, apiKey: string, model?: string) {
-    setSaveState("saving");
-    setError(null);
-    try {
+    const result = await saveConfigOp.execute(async () => {
       await api().post("/config", { provider, apiKey, model });
-      setSaveState("success");
-      setCheckState("configured");
-    } catch (e) {
-      setSaveState("error");
-      setError({ message: getErrorMessage(e) });
+    });
+    if (result !== null) {
+      setIsConfigured(true);
     }
   }
 
   async function loadSettings() {
-    setSettingsState("loading");
-    try {
-      const result = await api().get<CurrentConfigResponse>("/config");
-      setCurrentConfig(result);
-      setSettingsState("success");
-      setError(null);
-    } catch (e) {
-      setSettingsState("error");
-      setError({ message: getErrorMessage(e) });
-    }
+    await settingsOp.execute(async () => {
+      return await api().get<CurrentConfigResponse>("/config");
+    });
   }
 
   async function deleteConfig() {
-    setDeleteState("deleting");
-    setError(null);
-    try {
+    const result = await deleteConfigOp.execute(async () => {
       await api().delete("/config");
-      setDeleteState("success");
-      setCheckState("unconfigured");
-      setCurrentConfig(null);
-    } catch (e) {
-      setDeleteState("error");
-      setError({ message: getErrorMessage(e) });
+    });
+    if (result !== null) {
+      setIsConfigured(false);
+      settingsOp.reset();
     }
   }
+
+  // Derive backward-compatible states from async operations
+  const checkState = mapToCheckState(configCheckOp.state.status, isConfigured);
+  const saveState = mapToSaveState(saveConfigOp.state.status);
+  const deleteState = mapToDeleteState(deleteConfigOp.state.status);
+  const settingsState = settingsOp.state.status as SettingsLoadState;
+
+  // Get the most recent error from any operation
+  const error = configCheckOp.state.error
+    ?? saveConfigOp.state.error
+    ?? deleteConfigOp.state.error
+    ?? settingsOp.state.error
+    ?? null;
 
   return {
     checkState,
     saveState,
     deleteState,
     settingsState,
-    currentConfig,
+    currentConfig: settingsOp.state.data ?? null,
     error,
     checkConfig,
     saveConfig,
