@@ -16,7 +16,7 @@
     "./review-history": { "types": "./dist/review-history.d.ts", "import": "./dist/review-history.js" },
     "./session": { "types": "./dist/session.d.ts", "import": "./dist/session.js" }
   },
-  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
+  "scripts": { "build": "tsc", "type-check": "tsc --noEmit", "type-check-test": "tsc --noEmit --project tsconfig.test.json" },
   "dependencies": { "zod": "^3.23.0" },
   "devDependencies": { "@repo/tsconfig": "workspace:*", "@types/node": "^22.0.0", "typescript": "^5.7.0" }
 }
