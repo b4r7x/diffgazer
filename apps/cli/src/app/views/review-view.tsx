@@ -1,14 +1,8 @@
-import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import { ReviewDisplay } from "../../features/review/index.js";
 import type { ReviewState } from "../../features/review/index.js";
 
-interface ReviewViewProps {
-  state: ReviewState;
-  staged: boolean;
-}
-
-export function ReviewView({ state, staged }: ReviewViewProps): ReactElement {
+export function ReviewView({ state, staged }: { state: ReviewState; staged: boolean }) {
   return (
     <Box flexDirection="column" marginTop={1}>
       <ReviewDisplay state={state} staged={staged} />

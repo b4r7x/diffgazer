@@ -1,7 +1,6 @@
-import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 
-export function MainMenuView(): ReactElement {
+export function MainMenuView() {
   return (
     <Box flexDirection="column" marginTop={1}>
       <Text>

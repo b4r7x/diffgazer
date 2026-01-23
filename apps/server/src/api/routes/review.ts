@@ -11,6 +11,24 @@ import { errorResponse } from "../../lib/response.js";
 
 const review = new Hono();
 
+/**
+ * Parse raw AI content into a validated ReviewResult.
+ * Falls back to using raw content as summary if parsing fails.
+ */
+function parseReviewContent(content: string): ReviewResult {
+  try {
+    const parsed = JSON.parse(content);
+    const validated = ReviewResultSchema.safeParse(parsed);
+    if (validated.success) {
+      return validated.data;
+    }
+    console.warn("AI response failed schema validation, using raw content as summary");
+  } catch {
+    console.warn("AI response was not valid JSON, using raw content as summary");
+  }
+  return { summary: content, issues: [], overallScore: null };
+}
+
 review.get("/stream", async (c) => {
   const configResult = await configStore.read();
   if (!configResult.ok) {
@@ -36,57 +54,63 @@ review.get("/stream", async (c) => {
   const staged = c.req.query("staged") !== "false";
 
   return streamSSE(c, async (stream) => {
-    await reviewDiff(clientResult.value, staged, {
-      onChunk: async (chunk) => {
-        await stream.writeSSE({
-          event: "chunk",
-          data: JSON.stringify({ type: "chunk", content: chunk }),
-        });
-      },
-      onComplete: async (content) => {
-        let result: ReviewResult = { summary: content, issues: [], overallScore: null };
-        let parseWarning: string | undefined;
-        try {
-          const parsed = JSON.parse(content);
-          const validated = ReviewResultSchema.safeParse(parsed);
-          if (validated.success) {
-            result = validated.data;
-          } else {
-            parseWarning = "AI response failed schema validation, using raw content";
-          }
-        } catch {
-          parseWarning = "AI response was not valid JSON, using raw content";
-        }
-
-        const gitService = createGitService();
-        gitService.getStatus().then((status) => {
-          const fileCount = staged
-            ? status.files.staged.length
-            : status.files.unstaged.length;
-
-          saveReview(process.cwd(), staged, result, {
-            branch: status.branch,
-            fileCount,
+    try {
+      await reviewDiff(clientResult.value, staged, {
+        onChunk: async (chunk) => {
+          await stream.writeSSE({
+            event: "chunk",
+            data: JSON.stringify({ type: "chunk", content: chunk }),
           });
-        }).catch(() => {});
+        },
+        onComplete: async (content) => {
+          const result = parseReviewContent(content);
+          const gitService = createGitService();
+          gitService.getStatus().then((status) => {
+            const fileCount = staged
+              ? status.files.staged.length
+              : status.files.unstaged.length;
 
-        await stream.writeSSE({
-          event: "complete",
-          data: JSON.stringify({ type: "complete", result, parseWarning }),
-        });
-        stream.close();
-      },
-      onError: async (error) => {
+            saveReview(process.cwd(), staged, result, {
+              branch: status.branch,
+              fileCount,
+            });
+          }).catch(() => {});
+
+          await stream.writeSSE({
+            event: "complete",
+            data: JSON.stringify({ type: "complete", result }),
+          });
+        },
+        onError: async (error) => {
+          await stream.writeSSE({
+            event: "error",
+            data: JSON.stringify({
+              type: "error",
+              error: { message: error.message, code: ErrorCode.AI_ERROR },
+            }),
+          });
+        },
+      });
+    } catch (error) {
+      // Catch any errors from the review process that weren't handled by onError
+      // This ensures a terminal event is always sent
+      console.error("[Review] Unexpected error during review:", error);
+      try {
         await stream.writeSSE({
           event: "error",
           data: JSON.stringify({
             type: "error",
-            error: { message: error.message, code: ErrorCode.AI_ERROR },
+            error: {
+              message: error instanceof Error ? error.message : "An unexpected error occurred",
+              code: ErrorCode.INTERNAL_ERROR
+            },
           }),
         });
-        stream.close();
-      },
-    });
+      } catch (writeError) {
+        // Stream might already be closed, log and continue
+        console.error("[Review] Failed to write error event:", writeError);
+      }
+    }
   });
 });
 

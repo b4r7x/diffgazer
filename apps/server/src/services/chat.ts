@@ -7,13 +7,9 @@ import { ErrorCode, type ErrorCode as ErrorCodeType } from "@repo/schemas/errors
 import type { Result } from "@repo/core";
 import { ok, err, getErrorMessage } from "@repo/core";
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export interface ChatError {
   message: string;
-  code: typeof ErrorCode.SESSION_NOT_FOUND | typeof ErrorCode.CONFIG_NOT_FOUND | typeof ErrorCode.API_KEY_MISSING | typeof ErrorCode.AI_CLIENT_ERROR | typeof ErrorCode.MESSAGE_SAVE_ERROR;
+  code: ErrorCodeType;
 }
 
 export interface SSEWriter {
@@ -25,36 +21,6 @@ export interface ChatContext {
   aiClient: AIClient;
 }
 
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-/**
- * Builds conversation history from session messages.
- */
-function buildConversationHistory(session: Session): string {
-  return session.messages
-    .map((msg) => `${msg.role.toUpperCase()}: ${msg.content}`)
-    .join("\n\n");
-}
-
-/**
- * Builds the chat prompt with conversation context.
- */
-function buildChatPrompt(conversationHistory: string, userMessage: string): string {
-  return `You are a helpful AI assistant for code review and development discussions.
-
-Previous conversation:
-${conversationHistory}
-
-USER: ${userMessage}
-
-Respond helpfully and concisely.`;
-}
-
-/**
- * Loads session and validates it exists.
- */
 async function loadSession(sessionId: string): Promise<Result<Session, ChatError>> {
   const sessionResult = await sessionStore.read(sessionId);
   if (!sessionResult.ok) {
@@ -63,9 +29,6 @@ async function loadSession(sessionId: string): Promise<Result<Session, ChatError
   return ok(sessionResult.value);
 }
 
-/**
- * Initializes the AI client from stored configuration.
- */
 async function initializeAIClient(): Promise<Result<AIClient, ChatError>> {
   const configResult = await configStore.read();
   if (!configResult.ok) {
@@ -88,14 +51,6 @@ async function initializeAIClient(): Promise<Result<AIClient, ChatError>> {
   return ok(clientResult.value);
 }
 
-// ============================================================================
-// Main Service Functions
-// ============================================================================
-
-/**
- * Prepares the chat context by loading session and initializing AI client.
- * Call this before streaming to validate everything is ready.
- */
 export async function prepareChatContext(sessionId: string): Promise<Result<ChatContext, ChatError>> {
   const sessionResult = await loadSession(sessionId);
   if (!sessionResult.ok) return sessionResult;
@@ -109,9 +64,6 @@ export async function prepareChatContext(sessionId: string): Promise<Result<Chat
   });
 }
 
-/**
- * Saves a user message to the session.
- */
 export async function saveUserMessage(
   sessionId: string,
   message: string
@@ -123,18 +75,24 @@ export async function saveUserMessage(
   return ok(undefined);
 }
 
-/**
- * Streams a chat response to an SSE writer.
- * Handles prompt construction, streaming, response persistence, and SSE formatting.
- */
 export async function streamChatToSSE(
   sessionId: string,
   userMessage: string,
   context: ChatContext,
   stream: SSEWriter
 ): Promise<void> {
-  const conversationHistory = buildConversationHistory(context.session);
-  const prompt = buildChatPrompt(conversationHistory, userMessage);
+  const conversationHistory = context.session.messages
+    .map((msg) => `${msg.role.toUpperCase()}: ${msg.content}`)
+    .join("\n\n");
+
+  const prompt = `You are a helpful AI assistant for code review and development discussions.
+
+Previous conversation:
+${conversationHistory}
+
+USER: ${userMessage}
+
+Respond helpfully and concisely.`;
 
   try {
     await context.aiClient.generateStream(prompt, {
