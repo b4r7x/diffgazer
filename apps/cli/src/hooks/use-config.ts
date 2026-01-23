@@ -3,21 +3,16 @@ import type { AIProvider, CurrentConfigResponse, ConfigCheckResponse } from "@re
 import { api } from "../lib/api.js";
 import { getErrorMessage } from "@repo/core";
 
-export type ConfigCheckState =
-  | "idle"
-  | "loading"
-  | "configured"
-  | "unconfigured"
-  | "error";
+/** State for checking if configuration exists */
+export type ConfigCheckState = "idle" | "loading" | "configured" | "unconfigured" | "error";
 
-export type SaveConfigState =
-  | "idle"
-  | "saving"
-  | "success"
-  | "error";
+/** State for saving configuration */
+export type SaveConfigState = "idle" | "saving" | "success" | "error";
 
+/** State for deleting configuration */
 export type DeleteConfigState = "idle" | "deleting" | "success" | "error";
 
+/** State for loading settings */
 export type SettingsLoadState = "idle" | "loading" | "success" | "error";
 
 export function useConfig() {

@@ -1,11 +1,16 @@
-import { useState, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   type ReviewResult,
   type ReviewError,
+  type ReviewStreamEvent,
   ReviewStreamEventSchema,
 } from "@repo/schemas/review";
 import { api } from "../../../lib/api.js";
-import { getErrorMessage } from "@repo/core";
+import { truncateToDisplayLength } from "../../../lib/string-utils.js";
+import { useSSEStream, type SSEStreamError } from "../../../hooks/use-sse-stream.js";
+
+/** Maximum characters to keep in the display buffer for UI rendering. */
+const MAX_DISPLAY_LENGTH = 50_000;
 
 export type ReviewState =
   | { status: "idle" }
@@ -13,88 +18,78 @@ export type ReviewState =
   | { status: "success"; data: ReviewResult }
   | { status: "error"; error: ReviewError };
 
+/** Helper to create a properly typed error state for ReviewState */
+function createReviewErrorState(message: string): ReviewState {
+  return { status: "error", error: { message, code: "INTERNAL_ERROR" } };
+}
+
 export function useReview() {
   const [state, setState] = useState<ReviewState>({ status: "idle" });
-  const abortRef = useRef<AbortController | null>(null);
 
-  async function startReview(staged = true) {
-    abortRef.current?.abort();
-    abortRef.current = new AbortController();
+  // Use a ref to track streamed content across event callbacks
+  const streamedContentRef = useRef("");
+
+  const handleEvent = useCallback((event: ReviewStreamEvent): boolean => {
+    if (event.type === "chunk") {
+      streamedContentRef.current = truncateToDisplayLength(
+        streamedContentRef.current,
+        event.content,
+        MAX_DISPLAY_LENGTH
+      );
+      setState({ status: "loading", content: streamedContentRef.current });
+      return false; // not terminal
+    }
+    if (event.type === "complete") {
+      setState({ status: "success", data: event.result });
+      return true; // terminal
+    }
+    if (event.type === "error") {
+      setState({ status: "error", error: event.error });
+      return true; // terminal
+    }
+    return false;
+  }, []);
+
+  const handleError = useCallback((error: SSEStreamError): void => {
+    setState(createReviewErrorState(error.message));
+  }, []);
+
+  const { processStream, resetController, abort } = useSSEStream({
+    schema: ReviewStreamEventSchema,
+    onEvent: handleEvent,
+    onError: handleError,
+  });
+
+  async function startReview(staged = true): Promise<void> {
+    const controller = resetController();
+    streamedContentRef.current = "";
     setState({ status: "loading", content: "" });
 
     try {
       const res = await api().stream("/review/stream", {
         params: { staged: String(staged) },
-        signal: abortRef.current.signal,
+        signal: controller.signal,
       });
 
       const reader = res.body?.getReader();
       if (!reader) {
-        setState({ status: "error", error: { message: "No response body", code: "INTERNAL_ERROR" } });
+        setState(createReviewErrorState("No response body"));
         return;
       }
 
-      const decoder = new TextDecoder();
-      const MAX_BUFFER_SIZE = 1024 * 1024;
-      let buffer = "", streamedContent = "";
-      let receivedTerminal = false;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        if (buffer.length > MAX_BUFFER_SIZE) {
-          reader.cancel();
-          setState({ status: "error", error: { message: "SSE buffer exceeded maximum size", code: "INTERNAL_ERROR" } });
-          return;
-        }
-
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            let parsed: unknown;
-            try {
-              parsed = JSON.parse(line.slice(6));
-            } catch {
-              parsed = undefined;
-            }
-            const parseResult = ReviewStreamEventSchema.safeParse(parsed);
-
-            if (!parseResult.success) {
-              console.error("Failed to parse stream event:", parseResult.error.message);
-              continue;
-            }
-
-            const event = parseResult.data;
-            if (event.type === "chunk") {
-              streamedContent += event.content;
-              setState({ status: "loading", content: streamedContent });
-            } else if (event.type === "complete") {
-              receivedTerminal = true;
-              setState({ status: "success", data: event.result });
-            } else if (event.type === "error") {
-              receivedTerminal = true;
-              setState({ status: "error", error: event.error });
-            }
-          }
-        }
-      }
-
-      if (!receivedTerminal) {
-        setState({ status: "error", error: { message: "Stream ended unexpectedly", code: "INTERNAL_ERROR" } });
-      }
+      await processStream(reader);
     } catch (error) {
+      // Pre-stream errors (e.g., network failure before getting reader)
+      // are not handled by useSSEStream, so we catch them here
       if (!(error instanceof Error && error.name === "AbortError")) {
-        setState({ status: "error", error: { message: getErrorMessage(error), code: "INTERNAL_ERROR" } });
+        const message = error instanceof Error ? error.message : String(error);
+        setState(createReviewErrorState(message));
       }
     }
   }
 
-  function reset() {
-    abortRef.current?.abort();
+  function reset(): void {
+    abort();
     setState({ status: "idle" });
   }
 

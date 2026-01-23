@@ -4,6 +4,8 @@ import { Command } from "commander";
 import { runCommand } from "./commands/run.js";
 import { serveCommand } from "./commands/serve.js";
 
+const DEFAULT_PORT = "3000";
+
 const program = new Command();
 
 program
@@ -14,7 +16,7 @@ program
 program
   .command("run")
   .description("Start interactive TUI")
-  .option("-p, --port <port>", "Server port", "3000")
+  .option("-p, --port <port>", "Server port", DEFAULT_PORT)
   .option("-H, --hostname <hostname>", "Server hostname", "localhost")
   .option("-c, --continue", "Continue most recent session")
   .option("-r, --resume [id]", "Resume specific session (or show picker)")
@@ -23,7 +25,7 @@ program
 program
   .command("serve")
   .description("Start headless server")
-  .option("-p, --port <port>", "Server port", "3000")
+  .option("-p, --port <port>", "Server port", DEFAULT_PORT)
   .option("-H, --hostname <hostname>", "Server hostname", "localhost")
   .action(serveCommand);
 

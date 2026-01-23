@@ -5,9 +5,9 @@ export {
   type DeleteConfigState,
   type SettingsLoadState,
 } from "./use-config.js";
-export { useEntityApi, type EntityApiConfig } from "./use-entity-api.js";
 export {
   useEntityList,
+  type ListState,
   type EntityListConfig,
   type EntityListState,
   type EntityListActions,
@@ -20,3 +20,11 @@ export {
   type UseListNavigationOptions,
   type UseListNavigationResult,
 } from "./use-list-navigation.js";
+export {
+  useSSEStream,
+  type SSEStreamError,
+  type BaseStreamEvent,
+  type UseSSEStreamConfig,
+  type ProcessStreamResult,
+  type UseSSEStreamReturn,
+} from "./use-sse-stream.js";

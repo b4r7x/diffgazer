@@ -4,20 +4,18 @@ import { assertValidUuid } from "../validation.js";
 
 export const APP_NAME = "stargazer";
 
-function getAppHome(): string {
-  return join(homedir(), `.${APP_NAME}`);
-}
+const APP_HOME = join(homedir(), `.${APP_NAME}`);
 
 export const paths = {
-  appHome: (): string => getAppHome(),
-  config: (): string => getAppHome(),
-  configFile: (): string => join(getAppHome(), "config.json"),
-  secretsDir: (): string => join(getAppHome(), "secrets"),
-  secretsFile: (): string => join(getAppHome(), "secrets", "secrets.json"),
-  sessions: (): string => join(getAppHome(), "sessions"),
+  appHome: APP_HOME,
+  config: APP_HOME,
+  configFile: join(APP_HOME, "config.json"),
+  secretsDir: join(APP_HOME, "secrets"),
+  secretsFile: join(APP_HOME, "secrets", "secrets.json"),
+  sessions: join(APP_HOME, "sessions"),
   sessionFile: (sessionId: string): string =>
-    join(getAppHome(), "sessions", `${assertValidUuid(sessionId)}.json`),
-  reviews: (): string => join(getAppHome(), "reviews"),
+    join(APP_HOME, "sessions", `${assertValidUuid(sessionId)}.json`),
+  reviews: join(APP_HOME, "reviews"),
   reviewFile: (reviewId: string): string =>
-    join(getAppHome(), "reviews", `${assertValidUuid(reviewId)}.json`),
+    join(APP_HOME, "reviews", `${assertValidUuid(reviewId)}.json`),
 } as const;

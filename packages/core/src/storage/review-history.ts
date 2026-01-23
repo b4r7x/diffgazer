@@ -11,15 +11,13 @@ import type { ReviewResult } from "@repo/schemas/review";
 import type { Result } from "../result.js";
 import { ok } from "../result.js";
 
-export type ReviewHistoryError = StoreError;
-
 export const reviewStore = createCollection<SavedReview, ReviewHistoryMetadata>({
   name: "review",
   dir: paths.reviews,
   filePath: paths.reviewFile,
   schema: SavedReviewSchema,
-  getMetadata: (r) => r.metadata,
-  getId: (r) => r.metadata.id,
+  getMetadata: (review) => review.metadata,
+  getId: (review) => review.metadata.id,
 });
 
 function countIssuesBySeverity(
@@ -34,7 +32,7 @@ export async function saveReview(
   staged: boolean,
   result: ReviewResult,
   gitContext: ReviewGitContext
-): Promise<Result<ReviewHistoryMetadata, ReviewHistoryError>> {
+): Promise<Result<ReviewHistoryMetadata, StoreError>> {
   const now = new Date().toISOString();
   const metadata: ReviewHistoryMetadata = {
     id: randomUUID(),
@@ -42,7 +40,7 @@ export async function saveReview(
     createdAt: now,
     staged,
     branch: gitContext.branch,
-    overallScore: result.overallScore ?? null,
+    overallScore: result.overallScore,
     issueCount: result.issues.length,
     criticalCount: countIssuesBySeverity(result.issues, "critical"),
     warningCount: countIssuesBySeverity(result.issues, "warning"),
@@ -56,18 +54,10 @@ export async function saveReview(
 
 export async function listReviews(
   projectPath?: string
-): Promise<Result<{ items: ReviewHistoryMetadata[]; warnings: string[] }, ReviewHistoryError>> {
+): Promise<Result<{ items: ReviewHistoryMetadata[]; warnings: string[] }, StoreError>> {
   const result = await reviewStore.list();
   if (!result.ok) return result;
 
   const items = filterByProjectAndSort(result.value.items, projectPath, "createdAt");
   return ok({ items, warnings: result.value.warnings });
-}
-
-export async function deleteReview(
-  reviewId: string
-): Promise<Result<void, ReviewHistoryError>> {
-  const result = await reviewStore.remove(reviewId);
-  if (!result.ok) return result;
-  return ok(undefined);
 }

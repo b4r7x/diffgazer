@@ -5,10 +5,19 @@ import type { AIError } from "./errors.js";
 
 export type { AIProvider };
 
+export interface StreamMetadata {
+  truncated: boolean;
+  finishReason?: string;
+}
+
 export interface StreamCallbacks {
   onChunk: (chunk: string) => void | Promise<void>;
-  onComplete: (fullContent: string) => void | Promise<void>;
+  onComplete: (fullContent: string, metadata: StreamMetadata) => void | Promise<void>;
   onError: (error: Error) => void | Promise<void>;
+}
+
+export interface GenerateStreamOptions {
+  responseSchema?: Record<string, unknown>;
 }
 
 export interface AIClientConfig {
@@ -21,5 +30,5 @@ export interface AIClientConfig {
 export interface AIClient {
   readonly provider: AIProvider;
   generate<T extends z.ZodType>(prompt: string, schema: T): Promise<Result<z.infer<T>, AIError>>;
-  generateStream(prompt: string, callbacks: StreamCallbacks): Promise<void>;
+  generateStream(prompt: string, callbacks: StreamCallbacks, options?: GenerateStreamOptions): Promise<void>;
 }
