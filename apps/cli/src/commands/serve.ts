@@ -31,14 +31,6 @@ export async function serveCommand(options: CommandOptions): Promise<void> {
 
   registerShutdownHandlers(shutdown);
 
-  /**
-   * Keep the process alive indefinitely until a shutdown signal is received.
-   *
-   * This promise intentionally never resolves. The process will remain running,
-   * allowing the HTTP server to handle requests, until SIGINT/SIGTERM triggers
-   * the shutdown handler above. This is a common pattern for long-running CLI
-   * servers where we need to prevent the main function from returning while
-   * still allowing async cleanup on termination.
-   */
+  // Keep the process alive indefinitely until a shutdown signal is received.
   await new Promise(() => {});
 }
