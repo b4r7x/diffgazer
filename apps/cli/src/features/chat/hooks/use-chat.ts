@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import { getErrorMessage } from "@repo/core";
+import { getErrorMessage, isAbortError } from "@repo/core";
 import { api } from "../../../lib/api.js";
 import { type ChatStreamEvent, type ChatError, ChatStreamEventSchema } from "@repo/schemas/chat";
 import { useSSEStream, type SSEStreamError } from "../../../hooks/use-sse-stream.js";
@@ -76,7 +76,7 @@ export function useChat(): UseChatReturn {
     } catch (error) {
       // Pre-stream errors (e.g., network failure before getting reader)
       // are not handled by useSSEStream, so we catch them here
-      if (!(error instanceof Error && error.name === "AbortError")) {
+      if (!isAbortError(error)) {
         setChatState(createErrorState(getErrorMessage(error)));
       }
     }

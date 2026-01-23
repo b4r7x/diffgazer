@@ -1,4 +1,5 @@
-import { useCallback, useRef, useEffect } from "react";
+import { useCallback, useRef } from "react";
+import { getErrorMessage } from "@repo/core";
 import { api } from "../../lib/api.js";
 
 interface ReviewData {
@@ -48,8 +49,8 @@ export function useDiscussReview({ session, reviewHistory }: UseDiscussReviewOpt
       await api().request("PATCH", `/reviews/${currentReview.metadata.id}`, {
         body: { sessionId: newSession.metadata.id },
       });
-    } catch {
-      // Link failed, continue anyway
+    } catch (e) {
+      console.warn("Failed to link review to session:", getErrorMessage(e));
     }
 
     const systemMessage =
@@ -65,8 +66,8 @@ export function useDiscussReview({ session, reviewHistory }: UseDiscussReviewOpt
         role: "system",
         content: systemMessage,
       });
-    } catch {
-      // Message failed, continue anyway
+    } catch (e) {
+      console.warn("Failed to add system message:", getErrorMessage(e));
     }
 
     reviewHistory.reset();

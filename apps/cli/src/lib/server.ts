@@ -1,6 +1,6 @@
 import { serve, type ServerType } from "@hono/node-server";
 import { createServer } from "@repo/server";
-import { DEFAULT_HOST } from "./command-utils.js";
+import { DEFAULT_HOST } from "./constants.js";
 
 export interface ServerManagerOptions {
   port: number;

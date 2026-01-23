@@ -8,6 +8,7 @@ import { createError, toError } from "../../errors.js";
 import { safeParseJson } from "../../json.js";
 import { createErrorClassifier } from "../../utils/error-classifier.js";
 import { validateSchema } from "../../utils/validation.js";
+import { truncate } from "../../string.js";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 const DEFAULT_TEMPERATURE = 0.7;
@@ -41,7 +42,7 @@ const BLOCKED_FINISH_REASONS = new Set([
 
 function parseJsonSafe(text: string): Result<unknown, AIError> {
   return safeParseJson(text, (message) =>
-    createError<AIErrorCode>("PARSE_ERROR", `Failed to parse JSON response: ${message}`, text.slice(0, 200))
+    createError<AIErrorCode>("PARSE_ERROR", `Failed to parse JSON response: ${message}`, truncate(text, 200))
   );
 }
 

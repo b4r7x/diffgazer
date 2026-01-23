@@ -43,15 +43,6 @@ export function createMappedErrorFactory<DomainCode extends string>(
   return (code, message, details) => errorCreator(mapping[code], message, details);
 }
 
-export function createFileIOError(
-  code: FileIOErrorCode,
-  message: string,
-  path: string,
-  details?: string
-): FileIOError {
-  return { code, message, path, details };
-}
-
 export async function safeReadFile<E>(
   path: string,
   name: string,

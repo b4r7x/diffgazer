@@ -3,7 +3,7 @@ export { ok, err } from "./result.js";
 export type { AppError } from "./errors.js";
 export { createError, getErrorMessage, isNodeError, toError, isAbortError } from "./errors.js";
 export { createErrorClassifier } from "./utils/error-classifier.js";
-export { safeParseJson, extractJson } from "./json.js";
+export { safeParseJson } from "./json.js";
 export { UuidSchema, isValidUuid, assertValidUuid } from "./validation.js";
 export { validateSchema, parseAndValidate, isRelativePath, isValidProjectPath } from "./utils/validation.js";
 export { createErrorState } from "./utils/state-helpers.js";
@@ -13,7 +13,6 @@ export {
   safeReadFile,
   atomicWriteFile,
   ensureDirectory,
-  createFileIOError,
   type FileIOError,
   type FileIOErrorCode,
   type ErrorFactory,

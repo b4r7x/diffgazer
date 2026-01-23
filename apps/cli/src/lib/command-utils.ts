@@ -1,7 +1,9 @@
 import { createServerManager } from "./server.js";
 import { parsePort } from "@repo/schemas/port";
+import { DEFAULT_HOST } from "./constants.js";
 
-export const DEFAULT_HOST = "localhost";
+// Re-export for backward compatibility
+export { DEFAULT_HOST } from "./constants.js";
 
 export interface CommandOptions {
   port: string;
