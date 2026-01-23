@@ -1,10 +1,6 @@
-import { z } from "zod";
-import type { Result } from "./result.js";
-import { ok, err } from "./result.js";
-import type { AppError } from "./errors.js";
-import { createError } from "./errors.js";
+import { UuidSchema } from "@repo/schemas/errors";
 
-export const UuidSchema = z.string().uuid();
+export { UuidSchema };
 
 export function isValidUuid(id: string): boolean {
   return UuidSchema.safeParse(id).success;
@@ -15,13 +11,4 @@ export function assertValidUuid(id: string): string {
     throw new Error(`Invalid UUID format: ${id}`);
   }
   return id;
-}
-
-export type ValidationError = AppError<"VALIDATION_ERROR">;
-
-export function validateUuid(id: string): Result<string, ValidationError> {
-  if (!UuidSchema.safeParse(id).success) {
-    return err(createError("VALIDATION_ERROR", `Invalid UUID format: ${id}`));
-  }
-  return ok(id);
 }

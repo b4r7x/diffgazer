@@ -1,6 +1,6 @@
 import { createGitService } from "./git.js";
 import type { AIClient, StreamCallbacks } from "@repo/core/ai";
-import { createErrorClassifier, getErrorMessage } from "@repo/core";
+import { createErrorClassifier, getErrorMessage, safeParseJson } from "@repo/core";
 import { parseDiff } from "@repo/core/diff";
 import { saveReview } from "@repo/core/storage";
 import { ReviewResultSchema, type ReviewResult } from "@repo/schemas/review";
@@ -138,17 +138,20 @@ export async function reviewDiff(
 }
 
 function parseReviewContent(content: string): ReviewResult {
-  try {
-    const parsed = JSON.parse(content);
-    const validated = ReviewResultSchema.safeParse(parsed);
-    if (validated.success) {
-      return validated.data;
-    }
-    console.warn("AI response failed schema validation, using raw content as summary");
-  } catch {
+  const parseResult = safeParseJson(content, () => "invalid_json" as const);
+
+  if (!parseResult.ok) {
     console.warn("AI response was not valid JSON, using raw content as summary");
+    return { summary: content, issues: [], overallScore: null };
   }
-  return { summary: content, issues: [], overallScore: null };
+
+  const validated = ReviewResultSchema.safeParse(parseResult.value);
+  if (!validated.success) {
+    console.warn("AI response failed schema validation, using raw content as summary");
+    return { summary: content, issues: [], overallScore: null };
+  }
+
+  return validated.data;
 }
 
 export async function streamReviewToSSE(
