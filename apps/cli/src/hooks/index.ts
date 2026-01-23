@@ -20,11 +20,4 @@ export {
   type UseListNavigationOptions,
   type UseListNavigationResult,
 } from "./use-list-navigation.js";
-export {
-  useSSEStream,
-  type SSEStreamError,
-  type BaseStreamEvent,
-  type UseSSEStreamConfig,
-  type ProcessStreamResult,
-  type UseSSEStreamReturn,
-} from "./use-sse-stream.js";
+export { useSSEStream, type SSEStreamError } from "./use-sse-stream.js";
