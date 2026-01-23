@@ -1,23 +1,23 @@
 import { z } from "zod";
+import { UuidSchema, createdAtField, timestampFields } from "./errors.js";
 
 export const MESSAGE_ROLES = ["user", "assistant", "system"] as const;
 export const MessageRoleSchema = z.enum(MESSAGE_ROLES);
 export type MessageRole = z.infer<typeof MessageRoleSchema>;
 
 export const SessionMessageSchema = z.object({
-  id: z.string().uuid(),
+  id: UuidSchema,
   role: MessageRoleSchema,
   content: z.string(),
-  createdAt: z.string().datetime(),
+  ...createdAtField,
 });
 export type SessionMessage = z.infer<typeof SessionMessageSchema>;
 
 export const SessionMetadataSchema = z.object({
-  id: z.string().uuid(),
+  id: UuidSchema,
   projectPath: z.string(),
   title: z.string().optional(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
+  ...timestampFields,
   messageCount: z.number().int().nonnegative(),
 });
 export type SessionMetadata = z.infer<typeof SessionMetadataSchema>;

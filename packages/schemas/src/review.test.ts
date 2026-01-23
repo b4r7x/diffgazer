@@ -27,12 +27,18 @@ function createValidIssue(overrides = {}) {
 }
 
 describe("ScoreSchema", () => {
-  it.each([0, 5, 10, 7.5, null])("accepts valid score: %s", (score) => {
-    expect(ScoreSchema.safeParse(score).success).toBe(true);
-  });
-
-  it.each([-1, -0.1, 11, 10.1])("rejects out-of-range score: %s", (score) => {
-    expect(ScoreSchema.safeParse(score).success).toBe(false);
+  it.each([
+    [0, true],
+    [5, true],
+    [10, true],
+    [7.5, true],
+    [null, true],
+    [-1, false],
+    [-0.1, false],
+    [11, false],
+    [10.1, false],
+  ])("validates score %s as %s", (score, expected) => {
+    expect(ScoreSchema.safeParse(score).success).toBe(expected);
   });
 });
 
@@ -57,101 +63,48 @@ describe("ReviewCategorySchema", () => {
 });
 
 describe("ReviewIssueSchema", () => {
-  it("accepts valid issue with all fields", () => {
-    expect(ReviewIssueSchema.safeParse(createValidIssue()).success).toBe(true);
-  });
-
   it.each([
-    { file: "src/app.ts", line: 100 },
-    { file: "src/app.ts", line: null },
-    { file: null, line: null },
-    { suggestion: null },
-  ])("accepts issue with %o", (overrides) => {
-    expect(ReviewIssueSchema.safeParse(createValidIssue(overrides)).success).toBe(true);
+    [{}, true],
+    [{ file: "src/app.ts", line: 100 }, true],
+    [{ file: "src/app.ts", line: null }, true],
+    [{ file: null, line: null }, true],
+    [{ suggestion: null }, true],
+    [{ file: null, line: 42 }, false],
+    [{ severity: "invalid" }, false],
+    [{ category: "invalid" }, false],
+  ])("validates issue with %o as %s", (overrides, expected) => {
+    expect(ReviewIssueSchema.safeParse(createValidIssue(overrides)).success).toBe(expected);
   });
 
-  it("rejects issue with line but no file", () => {
+  it("provides correct error message for line without file", () => {
     const result = ReviewIssueSchema.safeParse(createValidIssue({ file: null, line: 42 }));
-    expect(result.success).toBe(false);
     expect(result.error?.issues[0].message).toBe("Line number requires a file to be specified");
   });
 
   it("rejects issue with missing required fields", () => {
     expect(ReviewIssueSchema.safeParse({ severity: "warning", category: "logic" }).success).toBe(false);
   });
-
-  it.each([{ severity: "invalid" }, { category: "invalid" }])("rejects issue with %o", (overrides) => {
-    expect(ReviewIssueSchema.safeParse(createValidIssue(overrides)).success).toBe(false);
-  });
 });
 
 describe("ReviewResultSchema", () => {
-  it("accepts valid result with issues", () => {
-    const result = ReviewResultSchema.safeParse({
-      summary: "Code review completed",
-      issues: [createValidIssue()],
-      overallScore: 8,
-    });
-    expect(result.success).toBe(true);
-  });
-
   it.each([
-    { summary: "No issues found", issues: [], overallScore: 10 },
-    { summary: "Review completed", issues: [], overallScore: null },
-  ])("accepts result: %o", (data) => {
-    expect(ReviewResultSchema.safeParse(data).success).toBe(true);
-  });
-
-  it("rejects result with invalid issue", () => {
-    const result = ReviewResultSchema.safeParse({
-      summary: "Review completed",
-      issues: [createValidIssue({ file: null, line: 42 })],
-      overallScore: 5,
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects result with overallScore out of range", () => {
-    const result = ReviewResultSchema.safeParse({
-      summary: "Review completed",
-      issues: [],
-      overallScore: 15,
-    });
-    expect(result.success).toBe(false);
+    [{ summary: "Code review completed", issues: [createValidIssue()], overallScore: 8 }, true],
+    [{ summary: "No issues found", issues: [], overallScore: 10 }, true],
+    [{ summary: "Review completed", issues: [], overallScore: null }, true],
+    [{ summary: "Review", issues: [createValidIssue({ file: null, line: 42 })], overallScore: 5 }, false],
+    [{ summary: "Review", issues: [], overallScore: 15 }, false],
+  ])("validates result %o as %s", (data, expected) => {
+    expect(ReviewResultSchema.safeParse(data).success).toBe(expected);
   });
 });
 
 describe("FileReviewResultSchema", () => {
-  it("accepts valid file review result", () => {
-    const result = FileReviewResultSchema.safeParse({
-      filePath: "src/index.ts",
-      summary: "File review completed",
-      issues: [createValidIssue()],
-      score: 7,
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("accepts file review result with parseError flag", () => {
-    const result = FileReviewResultSchema.safeParse({
-      filePath: "src/index.ts",
-      summary: "Raw AI output here",
-      issues: [],
-      score: null,
-      parseError: true,
-      parseErrorMessage: "Invalid JSON response",
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("rejects file review result with invalid issue", () => {
-    const result = FileReviewResultSchema.safeParse({
-      filePath: "src/index.ts",
-      summary: "File review completed",
-      issues: [createValidIssue({ file: null, line: 42 })],
-      score: 5,
-    });
-    expect(result.success).toBe(false);
+  it.each([
+    [{ filePath: "src/index.ts", summary: "File review completed", issues: [createValidIssue()], score: 7 }, true],
+    [{ filePath: "src/index.ts", summary: "Raw AI output", issues: [], score: null, parseError: true, parseErrorMessage: "Invalid JSON" }, true],
+    [{ filePath: "src/index.ts", summary: "File review", issues: [createValidIssue({ file: null, line: 42 })], score: 5 }, false],
+  ])("validates file review result %o as %s", (data, expected) => {
+    expect(FileReviewResultSchema.safeParse(data).success).toBe(expected);
   });
 });
 
@@ -169,55 +122,24 @@ describe("ReviewErrorCodeSchema", () => {
 });
 
 describe("ReviewErrorSchema", () => {
-  it("accepts valid error", () => {
-    expect(ReviewErrorSchema.safeParse({ message: "No diff found", code: "NO_DIFF" }).success).toBe(true);
-  });
-
-  it.each([{ code: "NO_DIFF" }, { message: "Error message" }])("rejects incomplete error: %o", (data) => {
-    expect(ReviewErrorSchema.safeParse(data).success).toBe(false);
+  it.each([
+    [{ message: "No diff found", code: "NO_DIFF" }, true],
+    [{ code: "NO_DIFF" }, false],
+    [{ message: "Error message" }, false],
+  ])("validates error %o as %s", (data, expected) => {
+    expect(ReviewErrorSchema.safeParse(data).success).toBe(expected);
   });
 });
 
 describe("ReviewStreamEventSchema", () => {
-  it("accepts valid chunk event", () => {
-    const result = ReviewStreamEventSchema.safeParse({
-      type: "chunk",
-      content: "Some streaming content",
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("accepts valid complete event", () => {
-    const result = ReviewStreamEventSchema.safeParse({
-      type: "complete",
-      result: { summary: "Review completed", issues: [], overallScore: 8 },
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("accepts valid error event", () => {
-    const result = ReviewStreamEventSchema.safeParse({
-      type: "error",
-      error: { message: "AI service unavailable", code: "AI_ERROR" },
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("rejects event with invalid type", () => {
-    const result = ReviewStreamEventSchema.safeParse({ type: "invalid", data: "some data" });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects complete event with invalid issue", () => {
-    const result = ReviewStreamEventSchema.safeParse({
-      type: "complete",
-      result: {
-        summary: "Review completed",
-        issues: [createValidIssue({ file: null, line: 42 })],
-        overallScore: 8,
-      },
-    });
-    expect(result.success).toBe(false);
+  it.each([
+    ["chunk", { type: "chunk", content: "Some streaming content" }, true],
+    ["complete", { type: "complete", result: { summary: "Review completed", issues: [], overallScore: 8 } }, true],
+    ["error", { type: "error", error: { message: "AI service unavailable", code: "AI_ERROR" } }, true],
+    ["invalid type", { type: "invalid", data: "some data" }, false],
+    ["invalid nested issue", { type: "complete", result: { summary: "Review", issues: [createValidIssue({ file: null, line: 42 })], overallScore: 8 } }, false],
+  ])("validates %s event as %s", (_label, data, expected) => {
+    expect(ReviewStreamEventSchema.safeParse(data).success).toBe(expected);
   });
 
   it("strips extra fields from events", () => {

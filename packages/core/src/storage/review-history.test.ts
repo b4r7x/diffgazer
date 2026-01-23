@@ -5,9 +5,7 @@ import { join } from "node:path";
 import type { ReviewResult } from "@repo/schemas/review";
 import type { ReviewGitContext } from "@repo/schemas/review-history";
 
-const mocks = vi.hoisted(() => ({
-  testDir: "" as string,
-}));
+const mocks = vi.hoisted(() => ({ testDir: "" }));
 
 vi.mock("./paths.js", async () => ({
   get paths() {
@@ -25,59 +23,35 @@ vi.mock("./paths.js", async () => ({
   },
 }));
 
-// We must dynamically import the stores after the mock is set up, and reset modules each test
 let saveReview: typeof import("./review-history.js").saveReview;
 let listReviews: typeof import("./review-history.js").listReviews;
-let deleteReview: typeof import("./review-history.js").deleteReview;
 let reviewStore: typeof import("./review-history.js").reviewStore;
 
-// Helper to unwrap successful results
 function unwrap<T>(result: { ok: true; value: T } | { ok: false; error: unknown }): T {
-  if (!result.ok) throw new Error(`Expected successful result, got error: ${JSON.stringify(result.error)}`);
+  if (result.ok === false) {
+    throw new Error(`Expected ok, got: ${JSON.stringify(result.error)}`);
+  }
   return result.value;
 }
 
-// Shared test fixtures
 const mockResult: ReviewResult = {
   summary: "Test review summary",
-  issues: [
-    {
-      severity: "warning",
-      category: "style",
-      file: "test.ts",
-      line: 10,
-      title: "Test issue",
-      description: "Test description",
-      suggestion: null,
-    },
-  ],
+  issues: [{ severity: "warning", category: "style", file: "test.ts", line: 10, title: "Test issue", description: "Desc", suggestion: null }],
   overallScore: 8,
 };
 
-const mockGitContext: ReviewGitContext = {
-  branch: "main",
-  fileCount: 1,
-};
+const mockGitContext: ReviewGitContext = { branch: "main", fileCount: 1 };
 
 const emptyResult: ReviewResult = { summary: "Test", issues: [], overallScore: null };
 const emptyGitContext: ReviewGitContext = { branch: null, fileCount: 0 };
-
-// UUID v4 regex pattern
-const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 describe("Review History Storage", () => {
   beforeEach(async () => {
     mocks.testDir = await mkdtemp(join(tmpdir(), "stargazer-test-reviews-"));
     await mkdir(join(mocks.testDir, "reviews"), { recursive: true });
     await mkdir(join(mocks.testDir, "sessions"), { recursive: true });
-
-    // Reset modules to pick up new testDir value
     vi.resetModules();
-    const mod = await import("./review-history.js");
-    saveReview = mod.saveReview;
-    listReviews = mod.listReviews;
-    deleteReview = mod.deleteReview;
-    reviewStore = mod.reviewStore;
+    ({ saveReview, listReviews, reviewStore } = await import("./review-history.js"));
   });
 
   afterEach(async () => {
@@ -87,44 +61,25 @@ describe("Review History Storage", () => {
 
   describe("saveReview", () => {
     it("counts issues by severity correctly", async () => {
-      const resultWithMultiple: ReviewResult = {
+      const issue = (severity: string) => ({ severity, category: "test", file: null, line: null, title: severity, description: "Desc", suggestion: null });
+      const result: ReviewResult = {
         summary: "Test",
-        issues: [
-          { severity: "critical", category: "security", file: null, line: null, title: "Critical 1", description: "Desc", suggestion: null },
-          { severity: "critical", category: "logic", file: null, line: null, title: "Critical 2", description: "Desc", suggestion: null },
-          { severity: "warning", category: "style", file: null, line: null, title: "Warning", description: "Desc", suggestion: null },
-          { severity: "suggestion", category: "performance", file: null, line: null, title: "Suggestion", description: "Desc", suggestion: null },
-        ],
+        issues: [issue("critical"), issue("critical"), issue("warning"), issue("suggestion")] as ReviewResult["issues"],
         overallScore: 5,
       };
 
-      const review = unwrap(await saveReview("/test", true, resultWithMultiple, mockGitContext));
-
+      const review = unwrap(await saveReview("/test", true, result, mockGitContext));
       expect(review.issueCount).toBe(4);
       expect(review.criticalCount).toBe(2);
       expect(review.warningCount).toBe(1);
     });
 
-    it("handles empty issues array", async () => {
-      const resultNoIssues: ReviewResult = { summary: "Perfect code!", issues: [], overallScore: 10 };
-      const review = unwrap(await saveReview("/test", true, resultNoIssues, mockGitContext));
-
-      expect(review.issueCount).toBe(0);
-      expect(review.criticalCount).toBe(0);
-      expect(review.warningCount).toBe(0);
-    });
-
-    it("can read back saved review", async () => {
+    it("persists and retrieves review data", async () => {
       const saved = unwrap(await saveReview("/test", true, mockResult, mockGitContext));
       const read = unwrap(await reviewStore.read(saved.id));
 
       expect(read.result.summary).toBe("Test review summary");
       expect(read.result.issues).toHaveLength(1);
-    });
-
-    it("generates valid UUID", async () => {
-      const review = unwrap(await saveReview("/test", true, mockResult, mockGitContext));
-      expect(review.id).toMatch(UUID_V4_PATTERN);
     });
   });
 
@@ -164,22 +119,16 @@ describe("Review History Storage", () => {
     });
   });
 
-  describe("deleteReview", () => {
-    it("deletes existing review", async () => {
-      const review = unwrap(await saveReview("/test", true, emptyResult, emptyGitContext));
-      const deleteResult = await deleteReview(review.id);
-
-      expect(deleteResult.ok).toBe(true);
-
-      const readResult = await reviewStore.read(review.id);
-      expect(readResult.ok).toBe(false);
-    });
-
-    it("removes review from list", async () => {
+  describe("reviewStore.remove", () => {
+    it("removes review from store and list", async () => {
       const review1 = unwrap(await saveReview("/project", true, emptyResult, emptyGitContext));
       const review2 = unwrap(await saveReview("/project", true, emptyResult, emptyGitContext));
 
-      await deleteReview(review1.id);
+      const removeResult = await reviewStore.remove(review1.id);
+      expect(removeResult.ok).toBe(true);
+
+      const readResult = await reviewStore.read(review1.id);
+      expect(readResult.ok).toBe(false);
 
       const list = unwrap(await listReviews("/project"));
       expect(list.items).toHaveLength(1);

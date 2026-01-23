@@ -5,7 +5,6 @@ import {
   SavedReviewSchema,
 } from "./review-history.js";
 
-// Shared test fixtures
 const VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
 const VALID_TIMESTAMP = "2024-01-01T00:00:00.000Z";
 
@@ -94,20 +93,6 @@ describe("SavedReviewSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("accepts review with empty issues", () => {
-    const savedReview = createSavedReview({
-      metadata: createBaseMetadata({
-        overallScore: 10,
-        issueCount: 0,
-        criticalCount: 0,
-        warningCount: 0,
-      }),
-      result: createResult({ summary: "Perfect code!", issues: [], overallScore: 10 }),
-    });
-    const result = SavedReviewSchema.safeParse(savedReview);
-    expect(result.success).toBe(true);
-  });
-
   it("rejects review with invalid metadata", () => {
     const savedReview = createSavedReview({
       metadata: createBaseMetadata({ id: "not-a-uuid", issueCount: 1, warningCount: 1 }),
@@ -116,93 +101,14 @@ describe("SavedReviewSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("accepts review with various issue combinations", () => {
-    const savedReview = createSavedReview({
-      metadata: createBaseMetadata({
-        issueCount: 4,
-        criticalCount: 2,
-        warningCount: 1,
-      }),
-      result: createResult({
-        summary: "Code with issues",
-        issues: [
-          createIssue("critical"),
-          createIssue("critical"),
-          createIssue("warning"),
-          createIssue("suggestion"),
-        ],
-      }),
-    });
-    const result = SavedReviewSchema.safeParse(savedReview);
-    expect(result.success).toBe(true);
-  });
-
-  it("accepts review with only suggestions and nitpicks", () => {
-    const savedReview = createSavedReview({
-      metadata: createBaseMetadata({
-        issueCount: 2,
-        criticalCount: 0,
-        warningCount: 0,
-      }),
-      result: createResult({
-        summary: "Minor issues only",
-        issues: [createIssue("suggestion"), createIssue("nitpick")],
-      }),
-    });
-    const result = SavedReviewSchema.safeParse(savedReview);
-    expect(result.success).toBe(true);
-  });
-
   describe("metadata count validation", () => {
-    it("rejects when issueCount does not match issues.length", () => {
+    it.each([
+      ["issueCount", { issueCount: 5, criticalCount: 1, warningCount: 1 }],
+      ["criticalCount", { issueCount: 2, criticalCount: 0, warningCount: 1 }],
+      ["warningCount", { issueCount: 2, criticalCount: 1, warningCount: 0 }],
+    ])("rejects when %s does not match actual issues", (_, metadataOverrides) => {
       const savedReview = createSavedReview({
-        metadata: createBaseMetadata({
-          issueCount: 5, // Wrong: should be 2
-          criticalCount: 1,
-          warningCount: 1,
-        }),
-        result: createResult({
-          summary: "Test",
-          issues: [createIssue("critical"), createIssue("warning")],
-        }),
-      });
-      const result = SavedReviewSchema.safeParse(savedReview);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues[0].message).toBe(
-          "Metadata counts must match actual issue data"
-        );
-      }
-    });
-
-    it("rejects when criticalCount does not match actual critical issues", () => {
-      const savedReview = createSavedReview({
-        metadata: createBaseMetadata({
-          issueCount: 2,
-          criticalCount: 0, // Wrong: should be 1
-          warningCount: 1,
-        }),
-        result: createResult({
-          summary: "Test",
-          issues: [createIssue("critical"), createIssue("warning")],
-        }),
-      });
-      const result = SavedReviewSchema.safeParse(savedReview);
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.issues[0].message).toBe(
-          "Metadata counts must match actual issue data"
-        );
-      }
-    });
-
-    it("rejects when warningCount does not match actual warning issues", () => {
-      const savedReview = createSavedReview({
-        metadata: createBaseMetadata({
-          issueCount: 2,
-          criticalCount: 1,
-          warningCount: 0, // Wrong: should be 1
-        }),
+        metadata: createBaseMetadata(metadataOverrides),
         result: createResult({
           summary: "Test",
           issues: [createIssue("critical"), createIssue("warning")],

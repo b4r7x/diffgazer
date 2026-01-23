@@ -1,10 +1,11 @@
 import { z } from "zod";
+import { UuidSchema, createdAtField } from "./errors.js";
 import { ReviewResultSchema, ScoreSchema } from "./review.js";
 
 export const ReviewHistoryMetadataSchema = z.object({
-  id: z.string().uuid(),
+  id: UuidSchema,
   projectPath: z.string(),
-  createdAt: z.string().datetime(),
+  ...createdAtField,
   staged: z.boolean(),
   branch: z.string().nullable(),
   overallScore: ScoreSchema,

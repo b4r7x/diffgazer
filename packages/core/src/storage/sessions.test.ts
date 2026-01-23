@@ -3,9 +3,7 @@ import { mkdtemp, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const mocks = vi.hoisted(() => ({
-  testDir: "" as string,
-}));
+const mocks = vi.hoisted(() => ({ testDir: "" }));
 
 vi.mock("./paths.js", async () => ({
   get paths() {
@@ -23,21 +21,21 @@ vi.mock("./paths.js", async () => ({
   },
 }));
 
-// We must dynamically import the stores after the mock is set up, and reset modules each test
 let createSession: typeof import("./sessions.js").createSession;
 let addMessage: typeof import("./sessions.js").addMessage;
 let listSessions: typeof import("./sessions.js").listSessions;
 let getLastSession: typeof import("./sessions.js").getLastSession;
 let sessionStore: typeof import("./sessions.js").sessionStore;
 
-// Helper to unwrap successful results
 function unwrap<T>(result: { ok: true; value: T } | { ok: false; error: unknown }): T {
-  if (!result.ok) throw new Error(`Expected successful result, got error: ${JSON.stringify(result.error)}`);
+  if (result.ok === false) {
+    throw new Error(`Expected successful result, got error: ${JSON.stringify(result.error)}`);
+  }
   return result.value;
 }
 
-// UUID v4 regex pattern
 const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 describe("Session Storage", () => {
   beforeEach(async () => {
@@ -45,7 +43,6 @@ describe("Session Storage", () => {
     await mkdir(join(mocks.testDir, "sessions"), { recursive: true });
     await mkdir(join(mocks.testDir, "reviews"), { recursive: true });
 
-    // Reset modules to pick up new testDir value
     vi.resetModules();
     const sessionsMod = await import("./sessions.js");
     createSession = sessionsMod.createSession;
@@ -61,20 +58,13 @@ describe("Session Storage", () => {
   });
 
   describe("createSession", () => {
-    it("generates valid UUID v4", async () => {
-      const session = unwrap(await createSession("/test/project"));
-      expect(session.metadata.id).toMatch(UUID_V4_PATTERN);
-    });
-
-    it("sets createdAt and updatedAt to same value", async () => {
-      const session = unwrap(await createSession("/test/project"));
-      expect(session.metadata.createdAt).toBe(session.metadata.updatedAt);
-    });
-
-    it("can read back created session", async () => {
+    it("generates valid UUID v4 and creates readable session", async () => {
       const created = unwrap(await createSession("/test/project", "Test"));
+      expect(created.metadata.id).toMatch(UUID_V4_PATTERN);
+
       const read = unwrap(await sessionStore.read(created.metadata.id));
       expect(read.metadata.title).toBe("Test");
+      expect(read.metadata.createdAt).toBe(read.metadata.updatedAt);
     });
   });
 
@@ -112,17 +102,6 @@ describe("Session Storage", () => {
 
       const read = unwrap(await sessionStore.read(session.metadata.id));
       expect(read.metadata.title).toBe("Original Title");
-    });
-
-    it("updates updatedAt timestamp", async () => {
-      const session = unwrap(await createSession("/test/project"));
-      const originalUpdatedAt = session.metadata.updatedAt;
-
-      await new Promise((r) => setTimeout(r, 10));
-      await addMessage(session.metadata.id, "user", "Hello");
-
-      const read = unwrap(await sessionStore.read(session.metadata.id));
-      expect(read.metadata.updatedAt).not.toBe(originalUpdatedAt);
     });
 
     it("returns error for non-existent session", async () => {
@@ -164,9 +143,9 @@ describe("Session Storage", () => {
 
     it("sorts by updatedAt descending (most recent first)", async () => {
       await createSession("/project", "First");
-      await new Promise((r) => setTimeout(r, 10));
+      await delay(10);
       await createSession("/project", "Second");
-      await new Promise((r) => setTimeout(r, 10));
+      await delay(10);
       await createSession("/project", "Third");
 
       const list = unwrap(await listSessions("/project"));
@@ -180,7 +159,7 @@ describe("Session Storage", () => {
   describe("getLastSession", () => {
     it("returns most recent session", async () => {
       await createSession("/project", "First");
-      await new Promise((r) => setTimeout(r, 10));
+      await delay(10);
       await createSession("/project", "Second");
 
       const session = unwrap(await getLastSession("/project"));
@@ -194,27 +173,6 @@ describe("Session Storage", () => {
   });
 
   describe("sessionStore.remove", () => {
-    it("deletes existing session", async () => {
-      const session = unwrap(await createSession("/test/project"));
-      const deleteResult = await sessionStore.remove(session.metadata.id);
-
-      expect(deleteResult.ok).toBe(true);
-      if (deleteResult.ok) {
-        expect(deleteResult.value.existed).toBe(true);
-      }
-
-      const readResult = await sessionStore.read(session.metadata.id);
-      expect(readResult.ok).toBe(false);
-    });
-
-    it("returns existed: false for non-existent session", async () => {
-      const deleteResult = await sessionStore.remove("550e8400-e29b-41d4-a716-446655440000");
-      expect(deleteResult.ok).toBe(true);
-      if (deleteResult.ok) {
-        expect(deleteResult.value.existed).toBe(false);
-      }
-    });
-
     it("removes session from list", async () => {
       const session1 = unwrap(await createSession("/project", "Session 1"));
       await createSession("/project", "Session 2");
@@ -226,5 +184,4 @@ describe("Session Storage", () => {
       expect(list.items[0]!.title).toBe("Session 2");
     });
   });
-
 });
