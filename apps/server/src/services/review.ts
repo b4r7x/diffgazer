@@ -203,7 +203,7 @@ export async function streamReviewToSSE(
       data: JSON.stringify({
         type: "error",
         error: {
-          message: error instanceof Error ? error.message : "An unexpected error occurred",
+          message: getErrorMessage(error),
           code: ErrorCode.INTERNAL_ERROR,
         },
       }),

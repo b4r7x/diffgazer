@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { getErrorMessage } from "@repo/core";
+import { useState, useCallback } from "react";
+import { useAsyncOperation, type AsyncStatus } from "./use-async-operation";
 
 export type ListState = "idle" | "loading" | "success" | "error";
 
@@ -26,73 +26,95 @@ export interface EntityListActions<T, M> {
   reset: () => void;
 }
 
+// Map AsyncStatus to ListState (they're compatible but we maintain the existing type)
+function toListState(status: AsyncStatus): ListState {
+  return status;
+}
+
 export function useEntityList<T, M>(
   config: EntityListConfig<T, M>
 ): [EntityListState<T, M>, EntityListActions<T, M>] {
-  const [items, setItems] = useState<M[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [current, setCurrent] = useState<T | null>(null);
-  const [listState, setListState] = useState<ListState>("idle");
-  const [error, setError] = useState<{ message: string } | null>(null);
 
-  async function loadList(projectPath: string): Promise<M[]> {
-    setListState("loading");
-    setError(null);
-    try {
-      const result = await config.fetchList(projectPath);
-      setItems(result.items);
-      setWarnings(result.warnings);
-      setListState("success");
-      return result.items;
-    } catch (e) {
-      setListState("error");
-      setError({ message: getErrorMessage(e) });
-      return [];
-    }
-  }
+  // Use useAsyncOperation for list fetching
+  const listOp = useAsyncOperation<M[]>();
 
-  async function loadOne(id: string): Promise<T | null> {
-    setListState("loading");
-    setError(null);
-    try {
-      const entity = await config.fetchOne(id);
-      setCurrent(entity);
-      setListState("success");
-      return entity;
-    } catch (e) {
-      setListState("error");
-      setError({ message: getErrorMessage(e) });
-      return null;
-    }
-  }
+  // Use useAsyncOperation for remove operation (to capture errors)
+  const removeOp = useAsyncOperation<boolean>();
 
-  async function remove(id: string): Promise<boolean> {
-    try {
-      const result = await config.deleteOne(id);
-      if (result.existed) {
-        setItems((prev) => prev.filter((item) => config.getId(item) !== id));
-      }
-      return result.existed;
-    } catch (e) {
-      setError({ message: getErrorMessage(e) });
-      return false;
-    }
-  }
+  const loadList = useCallback(
+    async (projectPath: string): Promise<M[]> => {
+      const result = await listOp.execute(async () => {
+        const response = await config.fetchList(projectPath);
+        setWarnings(response.warnings);
+        return response.items;
+      });
+      return result ?? [];
+    },
+    [listOp, config]
+  );
 
-  function clearCurrent(): void {
+  const loadOne = useCallback(
+    async (id: string): Promise<T | null> => {
+      // Store current items to preserve them during the operation
+      const currentItems = listOp.state.data ?? [];
+      let fetchedEntity: T | null = null;
+
+      const result = await listOp.execute(async () => {
+        const entity = await config.fetchOne(id);
+        fetchedEntity = entity;
+        setCurrent(entity);
+        // Return existing items to preserve list state
+        return currentItems;
+      });
+
+      // If execute succeeded (result is non-null), return the fetched entity
+      return result !== null ? fetchedEntity : null;
+    },
+    [listOp, config]
+  );
+
+  const remove = useCallback(
+    async (id: string): Promise<boolean> => {
+      const result = await removeOp.execute(async () => {
+        const response = await config.deleteOne(id);
+        if (response.existed) {
+          listOp.setData(
+            (listOp.state.data ?? []).filter(
+              (item) => config.getId(item) !== id
+            )
+          );
+        }
+        return response.existed;
+      });
+      return result ?? false;
+    },
+    [removeOp, listOp, config]
+  );
+
+  const clearCurrent = useCallback((): void => {
     setCurrent(null);
-  }
+  }, []);
 
-  function reset(): void {
-    setItems([]);
+  const reset = useCallback((): void => {
+    listOp.reset();
+    removeOp.reset();
     setWarnings([]);
     setCurrent(null);
-    setListState("idle");
-    setError(null);
-  }
+  }, [listOp, removeOp]);
+
+  // Derive error from either operation (prioritize list errors, fall back to remove errors)
+  const error = listOp.state.error ?? removeOp.state.error ?? null;
 
   return [
-    { items, warnings, current, listState, error },
+    {
+      items: listOp.state.data ?? [],
+      warnings,
+      current,
+      listState: toListState(listOp.state.status),
+      error,
+    },
     { loadList, loadOne, remove, clearCurrent, reset },
   ];
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type {
   Session,
   SessionMessage,
@@ -7,6 +7,10 @@ import type {
 import { api } from "../../../lib/api.js";
 import { getErrorMessage } from "@repo/core";
 import { type ApiError } from "@repo/api";
+import {
+  useAsyncOperation,
+  type AsyncError,
+} from "../../../hooks/use-async-operation.js";
 
 export type SessionState = "idle" | "loading" | "active" | "error";
 
@@ -16,105 +20,117 @@ function isNotFoundError(e: unknown): e is ApiError {
   return err.code === "NOT_FOUND" || err.status === 404;
 }
 
+/**
+ * Maps async operation status to session state.
+ * "success" in async operation means "active" session.
+ */
+function mapStatusToState(
+  status: "idle" | "loading" | "success" | "error"
+): SessionState {
+  return status === "success" ? "active" : status;
+}
+
 export function useActiveSession() {
   const projectPath = process.cwd();
 
-  const [state, setState] = useState<SessionState>("idle");
-  const [currentSession, setCurrentSession] = useState<Session | null>(null);
-  const [error, setError] = useState<{ message: string } | null>(null);
+  const {
+    state: asyncState,
+    execute,
+    reset,
+    setData,
+  } = useAsyncOperation<Session>();
 
-  async function createSession(title?: string): Promise<Session | null> {
-    setState("loading");
-    setError(null);
-    try {
-      const result = await api().post<{ session: Session }>("/sessions", {
-        projectPath,
-        title,
+  // Separate error state for message operations that don't affect session state
+  const [messageError, setMessageError] = useState<AsyncError | null>(null);
+
+  const state = mapStatusToState(asyncState.status);
+  const currentSession = asyncState.data ?? null;
+  // Combine session errors with message errors, prioritizing session errors
+  const error = asyncState.error ?? messageError;
+
+  const createSession = useCallback(
+    async (title?: string): Promise<Session | null> => {
+      return execute(async () => {
+        const result = await api().post<{ session: Session }>("/sessions", {
+          projectPath,
+          title,
+        });
+        return result.session;
       });
-      setCurrentSession(result.session);
-      setState("active");
-      return result.session;
-    } catch (e) {
-      setState("error");
-      setError({ message: getErrorMessage(e) });
-      return null;
-    }
-  }
+    },
+    [execute, projectPath]
+  );
 
-  async function loadSession(sessionId: string): Promise<Session | null> {
-    setState("loading");
-    setError(null);
-    try {
-      const result = await api().get<{ session: Session }>(
-        `/sessions/${sessionId}`
-      );
-      setCurrentSession(result.session);
-      setState("active");
-      return result.session;
-    } catch (e) {
-      setState("error");
-      setError({ message: getErrorMessage(e) });
-      return null;
-    }
-  }
+  const loadSession = useCallback(
+    async (sessionId: string): Promise<Session | null> => {
+      return execute(async () => {
+        const result = await api().get<{ session: Session }>(
+          `/sessions/${sessionId}`
+        );
+        return result.session;
+      });
+    },
+    [execute]
+  );
 
-  async function continueLastSession(): Promise<Session | null> {
-    setState("loading");
-    setError(null);
-    try {
-      const result = await api().get<{ session: Session }>(
-        `/sessions/last?projectPath=${encodeURIComponent(projectPath)}`
-      );
-      setCurrentSession(result.session);
-      setState("active");
-      return result.session;
-    } catch (e) {
-      if (isNotFoundError(e)) {
-        return createSession();
+  const continueLastSession = useCallback(async (): Promise<Session | null> => {
+    return execute(async () => {
+      try {
+        const result = await api().get<{ session: Session }>(
+          `/sessions/last?projectPath=${encodeURIComponent(projectPath)}`
+        );
+        return result.session;
+      } catch (e) {
+        if (isNotFoundError(e)) {
+          // Create a new session if no last session exists
+          const result = await api().post<{ session: Session }>("/sessions", {
+            projectPath,
+          });
+          return result.session;
+        }
+        throw e;
       }
-      setState("error");
-      setError({ message: getErrorMessage(e) });
-      return null;
-    }
-  }
+    });
+  }, [execute, projectPath]);
 
-  async function addMessage(
-    role: MessageRole,
-    content: string
-  ): Promise<SessionMessage | null> {
-    if (!currentSession) return null;
+  const addMessage = useCallback(
+    async (role: MessageRole, content: string): Promise<SessionMessage | null> => {
+      if (!currentSession) return null;
 
-    try {
-      const result = await api().post<{ message: SessionMessage }>(
-        `/sessions/${currentSession.metadata.id}/messages`,
-        { role, content }
-      );
+      // Clear any previous message error
+      setMessageError(null);
 
-      setCurrentSession((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          messages: [...prev.messages, result.message],
+      try {
+        const result = await api().post<{ message: SessionMessage }>(
+          `/sessions/${currentSession.metadata.id}/messages`,
+          { role, content }
+        );
+
+        // Update session with new message
+        setData({
+          ...currentSession,
+          messages: [...currentSession.messages, result.message],
           metadata: {
-            ...prev.metadata,
-            messageCount: prev.metadata.messageCount + 1,
+            ...currentSession.metadata,
+            messageCount: currentSession.metadata.messageCount + 1,
             updatedAt: result.message.createdAt,
           },
-        };
-      });
+        });
 
-      return result.message;
-    } catch (e) {
-      setError({ message: `Failed to send message: ${getErrorMessage(e)}` });
-      return null;
-    }
-  }
+        return result.message;
+      } catch (e) {
+        // Set error without changing session state - keeps session "active"
+        setMessageError({ message: `Failed to send message: ${getErrorMessage(e)}` });
+        return null;
+      }
+    },
+    [currentSession, setData]
+  );
 
-  function clearSession() {
-    setCurrentSession(null);
-    setState("idle");
-    setError(null);
-  }
+  const clearSession = useCallback(() => {
+    reset();
+    setMessageError(null);
+  }, [reset]);
 
   return {
     state,
