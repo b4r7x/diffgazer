@@ -9,10 +9,8 @@ import { sanitizeUnicode, escapeXml } from "../lib/sanitization.js";
 import type { SSEWriter } from "../lib/ai-client.js";
 import { writeSSEChunk, writeSSEComplete, writeSSEError } from "../lib/sse-helpers.js";
 
-// 100KB limit balances meaningful reviews with memory/token constraints
 const MAX_DIFF_SIZE_BYTES = 102400;
 
-// OWASP LLM07:2025 - Detect credential exposure in AI responses
 const CREDENTIAL_PATTERNS = [
   /sk-ant-[a-zA-Z0-9-]+/,
   /sk-[a-zA-Z0-9]{48}/,
@@ -87,7 +85,6 @@ const classifyGitDiffError = createErrorClassifier<GitDiffErrorCode>(
   (original) => `Failed to get git diff: ${original}`
 );
 
-/** @internal Exported for testing */
 export function createGitDiffError(error: unknown): Error {
   const originalMessage = getErrorMessage(error);
   const classified = classifyGitDiffError(error);

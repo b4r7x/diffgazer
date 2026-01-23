@@ -20,7 +20,6 @@ interface UseGitQueryOptions<TData> {
   schema: z.ZodType<TData>;
 }
 
-/** Adapter for backward compatibility with GitQueryState consumers. */
 function toGitQueryState<TData>(
   asyncState: AsyncState<TData>
 ): GitQueryState<TData> {
@@ -39,7 +38,6 @@ function toGitQueryState<TData>(
   }
 }
 
-/** Hook for fetching and validating git API endpoints. */
 export function useGitQuery<TData>(options: UseGitQueryOptions<TData>) {
   const { endpoint, schema } = options;
   const { state: asyncState, execute, reset } = useAsyncOperation<TData>();

@@ -133,7 +133,6 @@ function parseFileReviewResult(filePath: string, content: string): FileReviewRes
   };
 }
 
-/** Reviews diff files in parallel batches with concurrency control. */
 export async function reviewDiffChunked(
   aiClient: AIClient,
   staged: boolean,

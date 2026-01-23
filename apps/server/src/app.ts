@@ -11,7 +11,6 @@ export function createServer(): Hono {
 
   app.use(logger());
 
-  // CVE-2024-28224: Host header validation prevents DNS rebinding
   app.use("*", async (c, next): Promise<void | Response> => {
     const host = c.req.header("host")?.split(":")[0];
     if (host && !["localhost", "127.0.0.1"].includes(host)) {
@@ -22,12 +21,10 @@ export function createServer(): Hono {
 
   app.use(csrf());
 
-  // CVE-2024-28224: CORS localhost restriction prevents DNS rebinding
   app.use(
     "*",
     cors({
       origin: (origin) => {
-        // Allow requests with no origin (e.g., same-origin, curl, etc.)
         if (!origin) return origin;
 
         try {

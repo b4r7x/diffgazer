@@ -29,7 +29,6 @@ interface UseDiscussReviewOptions {
   reviewHistory: ReviewHistoryActions;
 }
 
-/** Creates a chat session linked to a code review with context. */
 export function useDiscussReview({ session, reviewHistory }: UseDiscussReviewOptions) {
   const navigateToChatRef = useRef<(() => void) | null>(null);
 

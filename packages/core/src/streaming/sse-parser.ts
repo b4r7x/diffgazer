@@ -1,7 +1,6 @@
 import { safeParseJson } from "../json.js";
 import { truncate } from "../string.js";
 
-// 1 MB buffer limit to prevent memory exhaustion from malformed streams
 const MAX_BUFFER_SIZE = 1024 * 1024;
 
 export interface SSEParserOptions<T> {
@@ -72,7 +71,6 @@ export async function parseSSEStream<T>(
     }
   }
 
-  // Handle final event that may not end with newline
   if (buffer.trim()) {
     const parsed = parseSSELine(buffer);
     if (parsed !== undefined) {

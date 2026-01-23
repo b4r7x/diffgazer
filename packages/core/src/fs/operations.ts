@@ -6,7 +6,6 @@ import { isNodeError, getErrorMessage } from "../errors.js";
 
 export type FileIOErrorCode = "NOT_FOUND" | "PERMISSION_DENIED" | "READ_ERROR" | "WRITE_ERROR";
 
-/** File I/O error with filesystem path context. */
 export interface FileIOError {
   code: FileIOErrorCode;
   message: string;

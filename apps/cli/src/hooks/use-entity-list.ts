@@ -1,8 +1,6 @@
 import { useState, useCallback } from "react";
 import { useAsyncOperation, type AsyncStatus } from "./use-async-operation.js";
 
-export type ListState = "idle" | "loading" | "success" | "error";
-
 export interface EntityListConfig<T, M> {
   fetchList: (projectPath: string) => Promise<{ items: M[]; warnings: string[] }>;
   fetchOne: (id: string) => Promise<T>;
@@ -14,7 +12,7 @@ export interface EntityListState<T, M> {
   items: M[];
   warnings: string[];
   current: T | null;
-  listState: ListState;
+  listState: AsyncStatus;
   error: { message: string } | null;
 }
 
@@ -26,9 +24,6 @@ export interface EntityListActions<T, M> {
   reset: () => void;
 }
 
-function toListState(status: AsyncStatus): ListState {
-  return status;
-}
 
 export function useEntityList<T, M>(
   config: EntityListConfig<T, M>
@@ -104,7 +99,7 @@ export function useEntityList<T, M>(
       items: listOp.state.data ?? [],
       warnings,
       current,
-      listState: toListState(listOp.state.status),
+      listState: listOp.state.status,
       error,
     },
     { loadList, loadOne, remove, clearCurrent, reset },

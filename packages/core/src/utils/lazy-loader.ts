@@ -6,7 +6,6 @@ interface LazyLoadState<T> {
   attempted: boolean;
 }
 
-/** Factory for lazy-loading optional modules with error handling and caching. */
 export function createLazyLoader<T>(
   loader: () => Promise<T>
 ): () => Promise<LazyLoadState<T>> {

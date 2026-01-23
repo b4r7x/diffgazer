@@ -6,7 +6,6 @@ export interface AggregationResult {
   partialFailures: Array<{ file: string; error: string }>;
 }
 
-/** Combines file reviews into overall result. Parse errors tracked separately. */
 export function aggregateReviews(
   fileResults: FileReviewResult[],
   partialFailures: Array<{ file: string; error: string }>
