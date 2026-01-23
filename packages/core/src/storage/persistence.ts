@@ -32,21 +32,6 @@ export type StoreErrorCode =
   | "WRITE_ERROR"
   | "PERMISSION_ERROR";
 
-/**
- * Error type for storage/persistence operations.
- * Used by Collection and Document abstractions for type-safe error handling.
- *
- * @example
- * ```typescript
- * const result = await collection.read(id);
- * if (!result.ok) {
- *   const error: StoreError = result.error;
- *   if (error.code === "NOT_FOUND") {
- *     // Handle missing resource
- *   }
- * }
- * ```
- */
 export type StoreError = AppError<StoreErrorCode>;
 
 export const createStoreError = createError<StoreErrorCode>;

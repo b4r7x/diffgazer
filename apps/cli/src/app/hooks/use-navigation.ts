@@ -70,9 +70,6 @@ type KeyActionMap = Record<string, () => void>;
 /** Views that ignore all input */
 const PASSIVE_VIEWS: ReadonlySet<View> = new Set<View>(["loading", "onboarding", "sessions"]);
 
-/**
- * Creates handler from key-action map. Returns early on first match.
- */
 function createKeyHandler(keyActions: KeyActionMap): InputHandler {
   return (input: string) => {
     const action = keyActions[input];
@@ -80,9 +77,7 @@ function createKeyHandler(keyActions: KeyActionMap): InputHandler {
   };
 }
 
-/**
- * Creates handler with back navigation support (escape or 'b' key).
- */
+/** Adds escape/'b' back navigation to key handler. */
 function createKeyHandlerWithBack(
   keyActions: KeyActionMap,
   onBack: () => void
@@ -97,10 +92,6 @@ function createKeyHandlerWithBack(
   };
 }
 
-/**
- * Hook to manage view navigation state and input handling.
- * Extracts all view-related state and keyboard navigation logic from App.
- */
 export function useNavigation(actions: ViewActions): UseNavigationResult {
   const { exit } = useApp();
   const [view, setView] = useState<View>("loading");

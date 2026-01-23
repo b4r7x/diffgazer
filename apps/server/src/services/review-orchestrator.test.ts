@@ -1,13 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import type { FileReviewResult } from "@repo/schemas/review";
 
-// We need to test the parseFileReviewResult function which is not exported.
-// Import the module and access through the reviewSingleFile flow, or extract for testing.
-// For now, let's test via the aggregator which consumes FileReviewResult objects.
-
-// Since parseFileReviewResult is not exported, we test the behavior through
-// integration with the aggregator. We also add unit tests for the schema.
-
 describe("FileReviewResult with parseError", () => {
   describe("schema validation", () => {
     it("accepts result with parseError: false", () => {
@@ -41,17 +34,12 @@ describe("FileReviewResult with parseError", () => {
         issues: [],
         score: 8,
       };
-      // parseError is optional, should be undefined
       expect(result.parseError).toBeUndefined();
     });
   });
 });
 
-// Test the parseFileReviewResult behavior by testing expected outputs
 describe("parseFileReviewResult behavior expectations", () => {
-  // These tests document the expected behavior of parseFileReviewResult
-  // The actual function is internal, but we can verify through integration tests
-
   describe("valid JSON responses", () => {
     const validResponses = [
       {
@@ -84,7 +72,6 @@ describe("parseFileReviewResult behavior expectations", () => {
     ];
 
     it.each(validResponses)("should parse $name without error", ({ expectedParseError }) => {
-      // These inputs should result in parseError: false
       expect(expectedParseError).toBe(false);
     });
   });
@@ -149,39 +136,22 @@ describe("parseFileReviewResult behavior expectations", () => {
     ];
 
     it.each(invalidResponses)("should set parseError for $name", ({ input, expectedError }) => {
-      // These inputs should result in parseError: true with appropriate error message
-      // The actual parsing logic is tested through integration
       expect(expectedError).toBeDefined();
       expect(input).toBeDefined();
     });
   });
 });
 
-// Document the user-visible behavior when parse errors occur
 describe("user experience with parse errors", () => {
   it("should show warning in summary when files have parse errors", () => {
-    // When parseError: true, the aggregator should:
-    // 1. Exclude issues from the aggregated list (they're unreliable)
-    // 2. Add a WARNING to the summary
-    // 3. Not count the file in successful reviews
-
-    // This is tested in review-aggregator.test.ts
     expect(true).toBe(true);
   });
 
   it("should preserve raw AI output in summary for debugging", () => {
-    // When parseError: true, the summary should contain:
-    // "[Parse Error] AI response could not be parsed. Raw output: ..."
-    // This gives users and developers visibility into what went wrong
     expect(true).toBe(true);
   });
 
   it("should log error with full context for debugging", () => {
-    // console.error should be called with:
-    // - [PARSE_ERROR] prefix
-    // - File path
-    // - Error message
-    // - Raw content (first 500 chars)
     expect(true).toBe(true);
   });
 });

@@ -20,10 +20,7 @@ function isNotFoundError(e: unknown): e is ApiError {
   return err.code === "NOT_FOUND" || err.status === 404;
 }
 
-/**
- * Maps async operation status to session state.
- * "success" in async operation means "active" session.
- */
+/** Maps "success" status to "active" for session semantics. */
 function mapStatusToState(
   status: "idle" | "loading" | "success" | "error"
 ): SessionState {
@@ -39,13 +36,10 @@ export function useActiveSession() {
     reset,
     setData,
   } = useAsyncOperation<Session>();
-
-  // Separate error state for message operations that don't affect session state
   const [messageError, setMessageError] = useState<AsyncError | null>(null);
 
   const state = mapStatusToState(asyncState.status);
   const currentSession = asyncState.data ?? null;
-  // Combine session errors with message errors, prioritizing session errors
   const error = asyncState.error ?? messageError;
 
   const createSession = useCallback(
@@ -82,7 +76,6 @@ export function useActiveSession() {
         return result.session;
       } catch (e) {
         if (isNotFoundError(e)) {
-          // Create a new session if no last session exists
           const result = await api().post<{ session: Session }>("/sessions", {
             projectPath,
           });
@@ -97,7 +90,6 @@ export function useActiveSession() {
     async (role: MessageRole, content: string): Promise<SessionMessage | null> => {
       if (!currentSession) return null;
 
-      // Clear any previous message error
       setMessageError(null);
 
       try {
@@ -106,7 +98,6 @@ export function useActiveSession() {
           { role, content }
         );
 
-        // Update session with new message
         setData({
           ...currentSession,
           messages: [...currentSession.messages, result.message],
@@ -119,7 +110,6 @@ export function useActiveSession() {
 
         return result.message;
       } catch (e) {
-        // Set error without changing session state - keeps session "active"
         setMessageError({ message: `Failed to send message: ${getErrorMessage(e)}` });
         return null;
       }

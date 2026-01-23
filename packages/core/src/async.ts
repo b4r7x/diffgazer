@@ -1,6 +1,3 @@
-/**
- * Retry an async function with exponential backoff.
- */
 export async function retry<T>(
   fn: () => Promise<T>,
   options: { maxAttempts?: number; initialDelay?: number; maxDelay?: number } = {}
@@ -21,9 +18,6 @@ export async function retry<T>(
   throw lastError;
 }
 
-/**
- * Add a timeout to a promise.
- */
 export function timeout<T>(promise: Promise<T>, ms: number, message = "Operation timed out"): Promise<T> {
   return Promise.race([
     promise,
@@ -31,9 +25,6 @@ export function timeout<T>(promise: Promise<T>, ms: number, message = "Operation
   ]);
 }
 
-/**
- * Create a debounced version of a function.
- */
 export function debounce<T extends (...args: unknown[]) => unknown>(
   fn: T,
   delay: number

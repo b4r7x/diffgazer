@@ -1,8 +1,3 @@
-/**
- * Tests for use-review buffer growth protection algorithm
- * Verifies streamedContent remains bounded to prevent OOM
- */
-
 import { describe, it, expect } from 'vitest';
 
 function appendWithBound(

@@ -27,13 +27,11 @@ interface BranchInfo {
 function parseBranchLine(line: string): BranchInfo {
   const result: BranchInfo = { branch: null, remoteBranch: null, ahead: 0, behind: 0 };
 
-  // Simple case: "main" (no tracking info)
   if (!line.includes("...")) {
     result.branch = line || null;
     return result;
   }
 
-  // With tracking: "main...origin/main [ahead 1, behind 2]"
   const [local, rest] = line.split("...");
   result.branch = local || null;
 

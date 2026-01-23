@@ -1,12 +1,13 @@
 import { createGitService } from "./git.js";
 import type { AIClient, StreamCallbacks } from "@repo/core/ai";
-import { createErrorClassifier, getErrorMessage, safeParseJson } from "@repo/core";
+import { createErrorClassifier, getErrorMessage, safeParseJson, validateSchema } from "@repo/core";
 import { parseDiff } from "@repo/core/diff";
 import { saveReview } from "@repo/core/storage";
 import { ReviewResultSchema, type ReviewResult } from "@repo/schemas/review";
 import { ErrorCode } from "@repo/schemas/errors";
 import { sanitizeUnicode, escapeXml } from "../lib/sanitization.js";
 import type { SSEWriter } from "../lib/ai-client.js";
+import { writeSSEChunk, writeSSEComplete, writeSSEError } from "../lib/sse-helpers.js";
 
 // 100KB limit balances meaningful reviews with memory/token constraints
 const MAX_DIFF_SIZE_BYTES = 102400;
@@ -145,13 +146,13 @@ function parseReviewContent(content: string): ReviewResult {
     return { summary: content, issues: [], overallScore: null };
   }
 
-  const validated = ReviewResultSchema.safeParse(parseResult.value);
-  if (!validated.success) {
+  const validated = validateSchema(parseResult.value, ReviewResultSchema, (msg) => msg);
+  if (!validated.ok) {
     console.warn("AI response failed schema validation, using raw content as summary");
     return { summary: content, issues: [], overallScore: null };
   }
 
-  return validated.data;
+  return validated.value;
 }
 
 export async function streamReviewToSSE(
@@ -162,10 +163,7 @@ export async function streamReviewToSSE(
   try {
     await reviewDiff(aiClient, staged, {
       onChunk: async (chunk) => {
-        await stream.writeSSE({
-          event: "chunk",
-          data: JSON.stringify({ type: "chunk", content: chunk }),
-        });
+        await writeSSEChunk(stream, chunk);
       },
       onComplete: async (content) => {
         const result = parseReviewContent(content);
@@ -181,32 +179,14 @@ export async function streamReviewToSSE(
           });
         }).catch(() => {});
 
-        await stream.writeSSE({
-          event: "complete",
-          data: JSON.stringify({ type: "complete", result }),
-        });
+        await writeSSEComplete(stream, { result });
       },
       onError: async (error) => {
-        await stream.writeSSE({
-          event: "error",
-          data: JSON.stringify({
-            type: "error",
-            error: { message: error.message, code: ErrorCode.AI_ERROR },
-          }),
-        });
+        await writeSSEError(stream, error.message, ErrorCode.AI_ERROR);
       },
     });
   } catch (error) {
     console.error("[Review] Unexpected error during review:", error);
-    await stream.writeSSE({
-      event: "error",
-      data: JSON.stringify({
-        type: "error",
-        error: {
-          message: getErrorMessage(error),
-          code: ErrorCode.INTERNAL_ERROR,
-        },
-      }),
-    });
+    await writeSSEError(stream, getErrorMessage(error), ErrorCode.INTERNAL_ERROR);
   }
 }

@@ -1,8 +1,8 @@
 import { createServerManager } from "./server.js";
 import { parsePort } from "@repo/schemas/port";
+import { getErrorMessage } from "@repo/core";
 import { DEFAULT_HOST } from "./constants.js";
 
-// Re-export for backward compatibility
 export { DEFAULT_HOST } from "./constants.js";
 
 export interface CommandOptions {
@@ -40,7 +40,7 @@ export function createShutdownHandler(cleanup: () => Promise<void>): () => Promi
       await cleanup();
       process.exit(0);
     } catch (error) {
-      console.error("Shutdown error:", error);
+      console.error("Shutdown error:", getErrorMessage(error));
       process.exit(1);
     }
   };

@@ -20,25 +20,8 @@ export const AI_SPECIFIC_CODES = [
   "UNSUPPORTED_PROVIDER",
 ] as const;
 
-/** Union type of AI-specific error codes */
 export type AISpecificCode = (typeof AI_SPECIFIC_CODES)[number];
 
-/**
- * All error codes that can occur in AI operations.
- * Combines shared error codes (from schemas) with AI-specific codes.
- */
 export type AIErrorCode = SharedErrorCode | AISpecificCode;
 
-/**
- * Error type for AI-related operations.
- * Follows the AppError pattern with AIErrorCode as the code type.
- *
- * @example
- * ```typescript
- * const error: AIError = {
- *   code: "API_KEY_INVALID",
- *   message: "OpenAI API key not configured",
- * };
- * ```
- */
 export type AIError = AppError<AIErrorCode>;

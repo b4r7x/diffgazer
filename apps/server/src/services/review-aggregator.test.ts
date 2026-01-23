@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { aggregateReviews } from "./review-aggregator.js";
 import type { FileReviewResult, ReviewIssue } from "@repo/schemas/review";
 
-// Test fixtures
 function createIssue(overrides: Partial<ReviewIssue> = {}): ReviewIssue {
   return {
     severity: "warning",
@@ -55,7 +54,7 @@ describe("aggregateReviews", () => {
 
       const result = aggregateReviews(fileResults, []);
 
-      expect(result.result.overallScore).toBe(8); // (8 + 6 + 10) / 3 = 8
+      expect(result.result.overallScore).toBe(8);
     });
 
     it("generates summary with file and issue counts", () => {
@@ -82,7 +81,7 @@ describe("aggregateReviews", () => {
         createFileResult({
           filePath: "bad.ts",
           summary: "[Parse Error] AI response could not be parsed",
-          issues: [], // Empty because of parse error
+          issues: [],
           score: null,
           parseError: true,
           parseErrorMessage: "Unexpected token",
@@ -91,7 +90,6 @@ describe("aggregateReviews", () => {
 
       const result = aggregateReviews(fileResults, []);
 
-      // Should only include issues from the successful parse
       expect(result.result.issues).toHaveLength(1);
       expect(result.result.issues[0]?.file).toBe("good.ts");
     });
@@ -104,7 +102,6 @@ describe("aggregateReviews", () => {
 
       const result = aggregateReviews(fileResults, []);
 
-      // Should only average the successful file's score
       expect(result.result.overallScore).toBe(8);
     });
 
@@ -147,7 +144,6 @@ describe("aggregateReviews", () => {
 
       const result = aggregateReviews(fileResults, []);
 
-      // Should say "Reviewed 2 files" not "Reviewed 3 files"
       expect(result.result.summary).toContain("Reviewed 2 files");
     });
 
@@ -177,9 +173,8 @@ describe("aggregateReviews", () => {
 
       const result = aggregateReviews(fileResults, partialFailures);
 
-      // Summary should mention both
-      expect(result.result.summary).toContain("WARNING"); // For parse error
-      expect(result.result.summary).toContain("could not be reviewed"); // For partial failure
+      expect(result.result.summary).toContain("WARNING");
+      expect(result.result.summary).toContain("could not be reviewed");
     });
 
     it("maintains partial failures in result for client access", () => {
@@ -220,10 +215,9 @@ describe("aggregateReviews", () => {
           issues: [createIssue({ severity: "critical" })],
           parseError: false,
         }),
-        // This file's issues should be ignored due to parse error
         createFileResult({
           filePath: "bad.ts",
-          issues: [createIssue({ severity: "critical" })], // Would be empty in practice
+          issues: [createIssue({ severity: "critical" })],
           parseError: true,
           parseErrorMessage: "Error",
         }),
@@ -231,7 +225,6 @@ describe("aggregateReviews", () => {
 
       const result = aggregateReviews(fileResults, []);
 
-      // Should only count the critical from the successful file
       expect(result.result.summary).toContain("1 critical");
     });
   });
@@ -269,7 +262,6 @@ describe("aggregateReviews", () => {
 
       const result = aggregateReviews(fileResults, []);
 
-      // fileResults should be preserved for UI to show details
       expect(result.fileResults).toHaveLength(2);
       expect(result.fileResults.find(f => f.filePath === "bad.ts")?.parseError).toBe(true);
     });

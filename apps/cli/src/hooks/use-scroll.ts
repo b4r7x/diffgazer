@@ -1,8 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useStdout, useInput } from "ink";
 
-// Default terminal height when stdout dimensions are unavailable.
-
 const DEFAULT_TERMINAL_HEIGHT = 24;
 
 interface UseScrollOptions {

@@ -3,40 +3,26 @@ import type { AIProvider, CurrentConfigResponse, ConfigCheckResponse } from "@re
 import { api } from "../lib/api.js";
 import { useAsyncOperation, type AsyncStatus } from "./use-async-operation.js";
 
-/** State for checking if configuration exists */
 export type ConfigCheckState = "idle" | "loading" | "configured" | "unconfigured" | "error";
 
-/** State for saving configuration */
 export type SaveConfigState = "idle" | "saving" | "success" | "error";
 
-/** State for deleting configuration */
 export type DeleteConfigState = "idle" | "deleting" | "success" | "error";
 
-/** State for loading settings */
 export type SettingsLoadState = "idle" | "loading" | "success" | "error";
 
-/**
- * Maps AsyncStatus to ConfigCheckState based on the check result.
- */
 function mapToCheckState(status: AsyncStatus, configured?: boolean): ConfigCheckState {
   if (status === "idle") return "idle";
   if (status === "loading") return "loading";
   if (status === "error") return "error";
-  // status === "success"
   return configured ? "configured" : "unconfigured";
 }
 
-/**
- * Maps AsyncStatus to SaveConfigState, using "saving" instead of "loading".
- */
 function mapToSaveState(status: AsyncStatus): SaveConfigState {
   if (status === "loading") return "saving";
   return status as SaveConfigState;
 }
 
-/**
- * Maps AsyncStatus to DeleteConfigState, using "deleting" instead of "loading".
- */
 function mapToDeleteState(status: AsyncStatus): DeleteConfigState {
   if (status === "loading") return "deleting";
   return status as DeleteConfigState;
@@ -48,7 +34,6 @@ export function useConfig() {
   const deleteConfigOp = useAsyncOperation<void>();
   const settingsOp = useAsyncOperation<CurrentConfigResponse>();
 
-  // Track configured state separately since it persists across operations
   const [isConfigured, setIsConfigured] = useState<boolean | undefined>(undefined);
 
   async function checkConfig() {
@@ -85,13 +70,11 @@ export function useConfig() {
     }
   }
 
-  // Derive backward-compatible states from async operations
   const checkState = mapToCheckState(configCheckOp.state.status, isConfigured);
   const saveState = mapToSaveState(saveConfigOp.state.status);
   const deleteState = mapToDeleteState(deleteConfigOp.state.status);
   const settingsState = settingsOp.state.status as SettingsLoadState;
 
-  // Get the most recent error from any operation
   const error = configCheckOp.state.error
     ?? saveConfigOp.state.error
     ?? deleteConfigOp.state.error

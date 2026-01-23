@@ -1,15 +1,6 @@
-/**
- * Tests for useAsyncOperation hook
- * Tests the state transition logic and helper functions
- */
-
 import { describe, it, expect } from "vitest";
 import type { AsyncState, AsyncStatus } from "./use-async-operation.js";
 
-/**
- * Pure function that computes the initial state based on whether initial data is provided.
- * This mirrors the logic in useAsyncOperation's useState initialization.
- */
 function computeInitialState<T>(initialData?: T): AsyncState<T> {
   return {
     status: initialData !== undefined ? "success" : "idle",
@@ -17,25 +8,14 @@ function computeInitialState<T>(initialData?: T): AsyncState<T> {
   };
 }
 
-/**
- * Pure function that computes the state transition when starting an operation.
- * Preserves existing data while clearing errors and setting loading status.
- */
 function computeLoadingState<T>(prevState: AsyncState<T>): AsyncState<T> {
   return { ...prevState, status: "loading", error: undefined };
 }
 
-/**
- * Pure function that computes the state on successful operation.
- */
 function computeSuccessState<T>(data: T): AsyncState<T> {
   return { status: "success", data };
 }
 
-/**
- * Pure function that computes the state on failed operation.
- * Preserves previous data while setting error.
- */
 function computeErrorState<T>(
   prevState: AsyncState<T>,
   errorMessage: string
@@ -43,20 +23,14 @@ function computeErrorState<T>(
   return {
     status: "error",
     error: { message: errorMessage },
-    data: prevState.data, // preserve previous data on error
+    data: prevState.data,
   };
 }
 
-/**
- * Pure function that computes the reset state.
- */
 function computeResetState<T>(): AsyncState<T> {
   return { status: "idle" };
 }
 
-/**
- * Pure function that computes the state when manually setting data.
- */
 function computeSetDataState<T>(data: T): AsyncState<T> {
   return { status: "success", data };
 }
@@ -287,7 +261,6 @@ describe("useAsyncOperation - State Transitions", () => {
     });
 
     it("setData overwrites any previous state", () => {
-      // From error state
       let state: AsyncState<string> = computeErrorState(
         { status: "loading", data: "old" },
         "error"

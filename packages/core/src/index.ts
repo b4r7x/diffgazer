@@ -23,11 +23,6 @@ export {
   type SSEParseResult,
 } from "./streaming/index.js";
 
-// String utilities
 export { truncate, slugify } from "./string.js";
-
-// Async utilities
 export { retry, timeout, debounce } from "./async.js";
-
-// Array utilities
 export { groupBy, chunk, unique, uniqueBy } from "./array.js";
