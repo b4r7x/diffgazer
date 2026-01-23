@@ -16,15 +16,6 @@ import {
 } from "../fs/operations.js";
 import { parseAndValidate, validateSchema } from "../utils/validation.js";
 
-/**
- * Error codes for storage/persistence operations.
- *
- * - `NOT_FOUND`: The requested resource does not exist
- * - `PARSE_ERROR`: Failed to parse stored data (invalid JSON)
- * - `VALIDATION_ERROR`: Data failed schema validation
- * - `WRITE_ERROR`: Failed to write data to storage
- * - `PERMISSION_ERROR`: Insufficient permissions to access storage
- */
 export type StoreErrorCode =
   | "NOT_FOUND"
   | "PARSE_ERROR"

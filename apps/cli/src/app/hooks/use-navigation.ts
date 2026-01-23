@@ -67,7 +67,6 @@ type InputKey = { escape: boolean };
 type InputHandler = (input: string, key: InputKey) => void;
 type KeyActionMap = Record<string, () => void>;
 
-/** Views that ignore all input */
 const PASSIVE_VIEWS: ReadonlySet<View> = new Set<View>(["loading", "onboarding", "sessions"]);
 
 function createKeyHandler(keyActions: KeyActionMap): InputHandler {
@@ -77,7 +76,6 @@ function createKeyHandler(keyActions: KeyActionMap): InputHandler {
   };
 }
 
-/** Adds escape/'b' back navigation to key handler. */
 function createKeyHandlerWithBack(
   keyActions: KeyActionMap,
   onBack: () => void
