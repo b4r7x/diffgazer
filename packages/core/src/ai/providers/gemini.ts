@@ -4,7 +4,10 @@ import type { AIClient, AIClientConfig, StreamCallbacks, GenerateStreamOptions }
 import type { Result } from "../../result.js";
 import type { AIError, AIErrorCode } from "../errors.js";
 import { ok, err } from "../../result.js";
-import { createError, getErrorMessage, toError } from "../../errors.js";
+import { createError, toError } from "../../errors.js";
+import { safeParseJson } from "../../json.js";
+import { createErrorClassifier } from "../../utils/error-classifier.js";
+import { validateSchema } from "../../utils/validation.js";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 const DEFAULT_TEMPERATURE = 0.7;
@@ -37,22 +40,23 @@ const BLOCKED_FINISH_REASONS = new Set([
 ]);
 
 function parseJsonSafe(text: string): Result<unknown, AIError> {
-  try {
-    return ok(JSON.parse(text));
-  } catch {
-    return err(createError<AIErrorCode>("PARSE_ERROR", "Failed to parse JSON response", text.slice(0, 200)));
-  }
+  return safeParseJson(text, (message) =>
+    createError<AIErrorCode>("PARSE_ERROR", `Failed to parse JSON response: ${message}`, text.slice(0, 200))
+  );
 }
 
+const classifyError = createErrorClassifier<AIErrorCode>(
+  [
+    { patterns: ["401", "api key"], code: "API_KEY_INVALID", message: "Invalid API key" },
+    { patterns: ["429", "rate limit"], code: "RATE_LIMITED", message: "Rate limited" },
+  ],
+  "MODEL_ERROR",
+  (msg) => msg
+);
+
 function classifyApiError(error: unknown): AIError {
-  const message = getErrorMessage(error);
-  if (message.includes("401") || message.includes("API key")) {
-    return createError<AIErrorCode>("API_KEY_INVALID", "Invalid API key");
-  }
-  if (message.includes("429") || message.includes("rate limit")) {
-    return createError<AIErrorCode>("RATE_LIMITED", "Rate limited");
-  }
-  return createError<AIErrorCode>("MODEL_ERROR", message);
+  const { code, message } = classifyError(error);
+  return createError<AIErrorCode>(code, message);
 }
 
 export function createGeminiClient(config: AIClientConfig): Result<AIClient, AIError> {
@@ -77,11 +81,9 @@ export function createGeminiClient(config: AIClientConfig): Result<AIClient, AIE
         const parseResult = parseJsonSafe(response.text ?? "");
         if (!parseResult.ok) return parseResult;
 
-        const validated = schema.safeParse(parseResult.value);
-        if (!validated.success) {
-          return err(createError<AIErrorCode>("PARSE_ERROR", "Invalid response structure", validated.error.message));
-        }
-        return ok(validated.data);
+        return validateSchema(parseResult.value, schema, (message) =>
+          createError<AIErrorCode>("PARSE_ERROR", "Invalid response structure", message)
+        );
       } catch (error) {
         return err(classifyApiError(error));
       }

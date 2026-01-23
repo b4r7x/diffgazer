@@ -6,31 +6,12 @@ import {
   CreateSessionRequestSchema,
   AddMessageRequestSchema,
 } from "./session.js";
-
-const VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
-const VALID_UUID_2 = "550e8400-e29b-41d4-a716-446655440001";
-const VALID_TIMESTAMP = "2024-01-01T00:00:00.000Z";
-
-function createBaseMessage(overrides = {}) {
-  return {
-    id: VALID_UUID,
-    role: "user",
-    content: "Hello, world!",
-    createdAt: VALID_TIMESTAMP,
-    ...overrides,
-  };
-}
-
-function createBaseMetadata(overrides = {}) {
-  return {
-    id: VALID_UUID,
-    projectPath: "/home/user/project",
-    createdAt: VALID_TIMESTAMP,
-    updatedAt: VALID_TIMESTAMP,
-    messageCount: 0,
-    ...overrides,
-  };
-}
+import {
+  VALID_UUID,
+  VALID_UUID_2,
+  createBaseMessage,
+  createSessionMetadata as createBaseMetadata,
+} from "../__test__/testing.js";
 
 describe("SessionMessageSchema", () => {
   it.each([
@@ -111,7 +92,7 @@ describe("SessionSchema", () => {
     const result = SessionSchema.safeParse(session);
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error.issues[0].message).toBe(
+      expect(result.error.issues[0]?.message).toBe(
         "messageCount must match messages.length"
       );
     }

@@ -1,23 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtemp, rm, mkdir } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { createStorageTestContext, createPathsMock, unwrap, delay, UUID_V4_PATTERN } from "../../__test__/testing.js";
 
 const mocks = vi.hoisted(() => ({ testDir: "" }));
 
 vi.mock("./paths.js", async () => ({
   get paths() {
-    return {
-      reviews: join(mocks.testDir, "reviews"),
-      sessions: join(mocks.testDir, "sessions"),
-      sessionFile: (id: string) => join(mocks.testDir, "sessions", `${id}.json`),
-      reviewFile: (id: string) => join(mocks.testDir, "reviews", `${id}.json`),
-      config: mocks.testDir,
-      configFile: join(mocks.testDir, "config.json"),
-      secretsDir: join(mocks.testDir, "secrets"),
-      secretsFile: join(mocks.testDir, "secrets", "secrets.json"),
-      appHome: mocks.testDir,
-    };
+    return createPathsMock(mocks);
   },
 }));
 
@@ -27,21 +15,13 @@ let listSessions: typeof import("./sessions.js").listSessions;
 let getLastSession: typeof import("./sessions.js").getLastSession;
 let sessionStore: typeof import("./sessions.js").sessionStore;
 
-function unwrap<T>(result: { ok: true; value: T } | { ok: false; error: unknown }): T {
-  if (result.ok === false) {
-    throw new Error(`Expected successful result, got error: ${JSON.stringify(result.error)}`);
-  }
-  return result.value;
-}
-
-const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 describe("Session Storage", () => {
+  let cleanup: () => Promise<void>;
+
   beforeEach(async () => {
-    mocks.testDir = await mkdtemp(join(tmpdir(), "stargazer-test-sessions-"));
-    await mkdir(join(mocks.testDir, "sessions"), { recursive: true });
-    await mkdir(join(mocks.testDir, "reviews"), { recursive: true });
+    const context = await createStorageTestContext("sessions");
+    mocks.testDir = context.testDir;
+    cleanup = context.cleanup;
 
     vi.resetModules();
     const sessionsMod = await import("./sessions.js");
@@ -54,7 +34,7 @@ describe("Session Storage", () => {
 
   afterEach(async () => {
     vi.clearAllMocks();
-    await rm(mocks.testDir, { recursive: true, force: true });
+    await cleanup();
   });
 
   describe("createSession", () => {

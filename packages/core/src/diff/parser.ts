@@ -1,5 +1,15 @@
 import type { FileDiff, DiffHunk, ParsedDiff, DiffOperation } from "./types.js";
 
+export type DiffLineType = "addition" | "deletion" | "hunk-header" | "file-header" | "context";
+
+export function classifyDiffLine(line: string): DiffLineType {
+  if (line.startsWith("+") && !line.startsWith("+++")) return "addition";
+  if (line.startsWith("-") && !line.startsWith("---")) return "deletion";
+  if (line.startsWith("@@")) return "hunk-header";
+  if (line.startsWith("diff ") || line.startsWith("index ")) return "file-header";
+  return "context";
+}
+
 const DIFF_HEADER_PATTERN = /^diff --git a\/(.+) b\/(.+)$/;
 const HUNK_HEADER_PATTERN = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 const OLD_FILE_PATTERN = /^--- (?:a\/(.+)|\/dev\/null)$/;
@@ -67,9 +77,10 @@ function countChanges(hunks: DiffHunk[]): { additions: number; deletions: number
   for (const hunk of hunks) {
     const lines = hunk.content.split("\n");
     for (const line of lines) {
-      if (line.startsWith("+") && !line.startsWith("+++")) {
+      const lineType = classifyDiffLine(line);
+      if (lineType === "addition") {
         additions++;
-      } else if (line.startsWith("-") && !line.startsWith("---")) {
+      } else if (lineType === "deletion") {
         deletions++;
       }
     }
@@ -95,7 +106,6 @@ export function parseDiff(diffText: string): ParsedDiff {
 
       i++;
 
-      // Extended headers: index, mode, rename, etc.
       while (i < lines.length && !lines[i]?.startsWith("---") && !lines[i]?.startsWith("diff --git ")) {
         const renameLine = lines[i];
         if (renameLine?.startsWith("rename from ")) {
@@ -106,19 +116,13 @@ export function parseDiff(diffText: string): ParsedDiff {
 
       const oldMatch = lines[i]?.match(OLD_FILE_PATTERN);
       if (oldMatch) {
-        if (oldMatch[1] === undefined) {
-          oldPath = null; // /dev/null means new file
-        }
+        oldPath = oldMatch[1] ?? null;
         i++;
       }
 
       const newMatch = lines[i]?.match(NEW_FILE_PATTERN);
       if (newMatch) {
-        if (newMatch[1] === undefined) {
-          newPath = null; // /dev/null means deleted file
-        } else {
-          newPath = newMatch[1];
-        }
+        newPath = newMatch[1] ?? null;
         i++;
       }
 

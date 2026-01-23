@@ -12,19 +12,7 @@ import {
   ReviewStreamEventSchema,
   ScoreSchema,
 } from "./review.js";
-
-function createValidIssue(overrides = {}) {
-  return {
-    severity: "warning",
-    category: "logic",
-    file: "src/index.ts",
-    line: 42,
-    title: "Test Issue",
-    description: "This is a test issue description",
-    suggestion: "Consider fixing this",
-    ...overrides,
-  };
-}
+import { createValidIssue } from "../__test__/testing.js";
 
 describe("ScoreSchema", () => {
   it.each([
@@ -78,7 +66,7 @@ describe("ReviewIssueSchema", () => {
 
   it("provides correct error message for line without file", () => {
     const result = ReviewIssueSchema.safeParse(createValidIssue({ file: null, line: 42 }));
-    expect(result.error?.issues[0].message).toBe("Line number requires a file to be specified");
+    expect(result.error?.issues[0]?.message).toBe("Line number requires a file to be specified");
   });
 
   it("rejects issue with missing required fields", () => {
