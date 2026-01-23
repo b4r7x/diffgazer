@@ -1,10 +1,10 @@
 import type { ReactElement } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import type { ReviewHistoryMetadata, SavedReview } from "@repo/schemas/review-history";
-import type { ListState } from "../../types/index.js";
-import { useListNavigation } from "../../hooks/use-list-navigation.js";
+import { useListNavigation, type ListState } from "../../hooks/index.js";
 import { ListScreenWrapper } from "../../components/list-screen-wrapper.js";
 import { DeleteConfirmation } from "../../components/delete-confirmation.js";
+import { Separator } from "../../components/ui/separator.js";
 import { ReviewListItem, IssueItem } from "../../features/review/index.js";
 import { getScoreColor } from "../../lib/format.js";
 
@@ -44,7 +44,7 @@ function ReviewDetailView({
       <Text bold color="cyan">
         Review Details
       </Text>
-      <Text dimColor>{"─".repeat(40)}</Text>
+      <Separator />
 
       <Box marginTop={1} flexDirection="column">
         <Text>

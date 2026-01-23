@@ -3,7 +3,8 @@ import { zValidator } from "@hono/zod-validator";
 import { configStore } from "@repo/core/storage";
 import { getApiKey, setApiKey, deleteApiKey } from "@repo/core/secrets";
 import { AIProviderSchema, SaveConfigRequestSchema } from "@repo/schemas/config";
-import { errorResponse, successResponse, handleStoreError, zodErrorHandler } from "../../lib/response.js";
+import { ErrorCode } from "@repo/schemas/errors";
+import { errorResponse, ok, handleStoreError, zodErrorHandler } from "../../lib/response.js";
 
 const config = new Hono();
 
@@ -11,17 +12,17 @@ config.get("/check", async (c) => {
   const configResult = await configStore.read();
 
   if (!configResult.ok) {
-    return successResponse(c, { configured: false });
+    return ok(c, { configured: false });
   }
 
   const storedConfig = configResult.value;
   const apiKeyResult = await getApiKey(storedConfig.provider);
 
   if (!apiKeyResult.ok || !apiKeyResult.value) {
-    return successResponse(c, { configured: false });
+    return ok(c, { configured: false });
   }
 
-  return successResponse(c, {
+  return ok(c, {
     configured: true,
     config: {
       provider: storedConfig.provider,
@@ -37,7 +38,7 @@ config.get("/", async (c) => {
     return handleStoreError(c, configResult.error);
   }
 
-  return successResponse(c, {
+  return ok(c, {
     provider: configResult.value.provider,
     model: configResult.value.model,
   });
@@ -52,13 +53,13 @@ config.post(
 
     const keyResult = await setApiKey(body.provider, body.apiKey);
     if (!keyResult.ok) {
-      return errorResponse(c, keyResult.error.message, "INTERNAL_ERROR", 500);
+      return errorResponse(c, keyResult.error.message, ErrorCode.INTERNAL_ERROR, 500);
     }
 
     const verifyResult = await getApiKey(body.provider);
     if (!verifyResult.ok || !verifyResult.value) {
       await deleteApiKey(body.provider);
-      return errorResponse(c, "Failed to verify API key storage", "INTERNAL_ERROR", 500);
+      return errorResponse(c, "Failed to verify API key storage", ErrorCode.INTERNAL_ERROR, 500);
     }
 
     const existingConfig = await configStore.read();
@@ -75,7 +76,7 @@ config.post(
       return handleStoreError(c, writeResult.error);
     }
 
-    return successResponse(c, {
+    return ok(c, {
       provider: body.provider,
       model: body.model,
     });
@@ -97,10 +98,10 @@ config.delete("/", async (c) => {
 
   const deleteKeyResult = await deleteApiKey(provider);
   if (!deleteKeyResult.ok) {
-    return successResponse(c, { deleted: true, warning: "Config removed but API key deletion failed" });
+    return ok(c, { deleted: true, warning: "Config removed but API key deletion failed" });
   }
 
-  return successResponse(c, { deleted: true });
+  return ok(c, { deleted: true });
 });
 
 export { config };

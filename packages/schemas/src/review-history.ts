@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ReviewResultSchema } from "./review.js";
+import { ReviewResultSchema, ScoreSchema } from "./review.js";
 
 export const ReviewHistoryMetadataSchema = z.object({
   id: z.string().uuid(),
@@ -7,7 +7,7 @@ export const ReviewHistoryMetadataSchema = z.object({
   createdAt: z.string().datetime(),
   staged: z.boolean(),
   branch: z.string().nullable(),
-  overallScore: z.number().min(0).max(10).nullable(),
+  overallScore: ScoreSchema,
   issueCount: z.number().int().nonnegative(),
   criticalCount: z.number().int().nonnegative(),
   warningCount: z.number().int().nonnegative(),
@@ -20,9 +20,26 @@ export const ReviewGitContextSchema = z.object({
 });
 export type ReviewGitContext = z.infer<typeof ReviewGitContextSchema>;
 
-export const SavedReviewSchema = z.object({
-  metadata: ReviewHistoryMetadataSchema,
-  result: ReviewResultSchema,
-  gitContext: ReviewGitContextSchema,
-});
+export const SavedReviewSchema = z
+  .object({
+    metadata: ReviewHistoryMetadataSchema,
+    result: ReviewResultSchema,
+    gitContext: ReviewGitContextSchema,
+  })
+  .refine(
+    (data) => {
+      const issues = data.result.issues;
+      const criticalCount = issues.filter((i) => i.severity === "critical").length;
+      const warningCount = issues.filter((i) => i.severity === "warning").length;
+
+      return (
+        data.metadata.issueCount === issues.length &&
+        data.metadata.criticalCount === criticalCount &&
+        data.metadata.warningCount === warningCount
+      );
+    },
+    {
+      message: "Metadata counts must match actual issue data",
+    }
+  );
 export type SavedReview = z.infer<typeof SavedReviewSchema>;

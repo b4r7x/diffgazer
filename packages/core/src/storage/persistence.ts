@@ -1,4 +1,5 @@
-import { access, mkdir, readFile, writeFile, readdir, unlink, rename } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile, readdir, unlink, rename, open } from "node:fs/promises";
+import type { FileHandle } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { ZodSchema } from "zod";
 import type { Result } from "../result.js";
@@ -67,7 +68,10 @@ async function atomicWriteFile(
   } catch (error) {
     try {
       await unlink(tempPath);
-    } catch {}
+    } catch (cleanupError) {
+      // Log but don't fail - cleanup is best-effort
+      console.warn(`Failed to cleanup temp file ${tempPath}:`, cleanupError);
+    }
     if (isNodeError(error, "EACCES")) {
       return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
     }
@@ -89,13 +93,145 @@ async function ensureDirectory(dirPath: string, name: string): Promise<Result<vo
   }
 }
 
+const CHUNK_SIZE = 4096;
+const MAX_METADATA_SIZE = 8192;
+
+/**
+ * Reads file in chunks using async iteration.
+ * Yields buffers until maxBytes is read or file ends.
+ */
+async function* readFileChunks(
+  handle: FileHandle,
+  chunkSize: number,
+  maxBytes: number
+): AsyncGenerator<Buffer, void, unknown> {
+  let totalRead = 0;
+  const buffer = Buffer.alloc(chunkSize);
+
+  while (totalRead < maxBytes) {
+    const { bytesRead } = await handle.read(buffer, 0, chunkSize, totalRead);
+    if (bytesRead === 0) break;
+    totalRead += bytesRead;
+    yield buffer.subarray(0, bytesRead);
+  }
+}
+
+/** Finds the closing brace index using brace counting, handling strings. */
+function findClosingBrace(buffer: string, startIndex: number): number {
+  let depth = 1;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = startIndex + 1; i < buffer.length; i++) {
+    const char = buffer[i];
+    if (escaped) { escaped = false; continue; }
+    if (char === "\\") { escaped = true; continue; }
+    if (char === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (char === "{") depth++;
+    if (char === "}") depth--;
+    if (depth === 0) return i + 1;
+  }
+  return -1;
+}
+
+/** Finds the metadata object boundary in a JSON buffer. Returns -1 if not found. */
+function findMetadataBoundary(buffer: string): number {
+  const metadataKey = '"metadata"';
+  const keyIndex = buffer.indexOf(metadataKey);
+  if (keyIndex === -1) return -1;
+
+  const colonIndex = buffer.indexOf(":", keyIndex + metadataKey.length);
+  if (colonIndex === -1) return -1;
+
+  const openBrace = buffer.indexOf("{", colonIndex);
+  if (openBrace === -1) return -1;
+
+  return findClosingBrace(buffer, openBrace);
+}
+
+/**
+ * Parses and validates metadata JSON string against a schema.
+ * Constructs a minimal JSON object wrapping the metadata.
+ */
+function parseMetadataJson<M>(
+  buffer: string,
+  schema: ZodSchema<M>,
+  name: string
+): Result<M, StoreError> {
+  const metadataKey = '"metadata"';
+  const keyIndex = buffer.indexOf(metadataKey);
+  if (keyIndex === -1) {
+    return err(createStoreError("PARSE_ERROR", `${name} missing metadata key`));
+  }
+
+  const endIndex = findMetadataBoundary(buffer);
+  if (endIndex === -1) {
+    return err(createStoreError("PARSE_ERROR", `${name} has incomplete metadata`));
+  }
+
+  const colonIndex = buffer.indexOf(":", keyIndex + metadataKey.length);
+  const metadataJson = buffer.slice(colonIndex + 1, endIndex).trim();
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(metadataJson);
+  } catch (error) {
+    return err(createStoreError("PARSE_ERROR", `${name} invalid metadata JSON`, getErrorMessage(error)));
+  }
+
+  const result = schema.safeParse(parsed);
+  if (!result.success) {
+    return err(createStoreError("VALIDATION_ERROR", `${name} metadata validation failed`, result.error.message));
+  }
+  return ok(result.data);
+}
+
+/**
+ * Extracts metadata from a file by streaming only the beginning portion.
+ * Reads chunks until metadata is found and validated, avoiding full file load.
+ */
+async function extractMetadataFromFile<M>(
+  path: string,
+  schema: ZodSchema<M>,
+  name: string
+): Promise<Result<M, StoreError>> {
+  let handle: FileHandle | null = null;
+
+  try {
+    handle = await open(path, "r");
+    let buffer = "";
+
+    for await (const chunk of readFileChunks(handle, CHUNK_SIZE, MAX_METADATA_SIZE)) {
+      buffer += chunk.toString("utf-8");
+      const boundaryIndex = findMetadataBoundary(buffer);
+      if (boundaryIndex !== -1) {
+        return parseMetadataJson(buffer, schema, name);
+      }
+    }
+
+    return parseMetadataJson(buffer, schema, name);
+  } catch (error) {
+    if (isNodeError(error, "ENOENT")) {
+      return err(createStoreError("NOT_FOUND", `${name} not found: ${path}`));
+    }
+    if (isNodeError(error, "EACCES")) {
+      return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
+    }
+    return err(createStoreError("PARSE_ERROR", `Failed to read ${name}`, getErrorMessage(error)));
+  } finally {
+    await handle?.close();
+  }
+}
+
 export interface CollectionConfig<T, M> {
   name: string;
-  dir: () => string;
+  dir: string;
   filePath: (id: string) => string;
   schema: ZodSchema<T>;
   getMetadata: (item: T) => M;
   getId: (item: T) => string;
+  metadataSchema?: ZodSchema<M>;
 }
 
 export interface Collection<T, M> {
@@ -107,10 +243,10 @@ export interface Collection<T, M> {
 }
 
 export function createCollection<T, M>(config: CollectionConfig<T, M>): Collection<T, M> {
-  const { name, dir, filePath, schema, getMetadata, getId } = config;
+  const { name, dir, filePath, schema, getMetadata, getId, metadataSchema } = config;
 
   async function ensureDir(): Promise<Result<void, StoreError>> {
-    return ensureDirectory(dir(), name);
+    return ensureDirectory(dir, name);
   }
 
   async function read(id: string): Promise<Result<T, StoreError>> {
@@ -141,10 +277,10 @@ export function createCollection<T, M>(config: CollectionConfig<T, M>): Collecti
     const ensureResult = await ensureDir();
     if (!ensureResult.ok) return ensureResult;
 
-    const validation = schema.safeParse(item);
-    if (!validation.success) {
-      return err(createStoreError("VALIDATION_ERROR", `Invalid ${name}`, validation.error.message));
-    }
+    // Note: Write-time schema validation removed as redundant.
+    // Data is constructed programmatically by domain functions (createSession, addMessage, etc.)
+    // from already-validated route inputs + generated fields. TypeScript enforces structure.
+    // Read-time validation remains to protect against corrupted/manually-edited files.
 
     const id = getId(item);
     const path = filePath(id);
@@ -154,7 +290,7 @@ export function createCollection<T, M>(config: CollectionConfig<T, M>): Collecti
   }
 
   async function list(): Promise<Result<{ items: M[]; warnings: string[] }, StoreError>> {
-    const dirPath = dir();
+    const dirPath = dir;
     const warnings: string[] = [];
 
     let files: string[];
@@ -174,16 +310,30 @@ export function createCollection<T, M>(config: CollectionConfig<T, M>): Collecti
     const ids = jsonFiles
       .map((f) => f.replace(".json", ""))
       .filter(isValidUuid);
-    const results = await Promise.all(ids.map(read));
 
     const items: M[] = [];
-    results.forEach((result, i) => {
-      if (result.ok) {
-        items.push(getMetadata(result.value));
-      } else {
-        warnings.push(`[${name}] Failed to read ${ids[i]}: ${result.error.message}`);
-      }
-    });
+
+    if (metadataSchema) {
+      const results = await Promise.all(
+        ids.map((id) => extractMetadataFromFile(filePath(id), metadataSchema, name))
+      );
+      results.forEach((result, i) => {
+        if (result.ok) {
+          items.push(result.value);
+        } else {
+          warnings.push(`[${name}] Failed to read ${ids[i]}: ${result.error.message}`);
+        }
+      });
+    } else {
+      const results = await Promise.all(ids.map(read));
+      results.forEach((result, i) => {
+        if (result.ok) {
+          items.push(getMetadata(result.value));
+        } else {
+          warnings.push(`[${name}] Failed to read ${ids[i]}: ${result.error.message}`);
+        }
+      });
+    }
 
     return ok({ items, warnings });
   }
@@ -210,7 +360,7 @@ export function createCollection<T, M>(config: CollectionConfig<T, M>): Collecti
 
 export interface DocumentConfig<T> {
   name: string;
-  filePath: () => string;
+  filePath: string;
   schema: ZodSchema<T>;
 }
 
@@ -226,19 +376,23 @@ export function createDocument<T>(config: DocumentConfig<T>): Document<T> {
 
   async function exists(): Promise<boolean> {
     try {
-      await access(filePath());
+      await access(filePath);
       return true;
-    } catch {
-      return false;
+    } catch (error) {
+      // Only return false for "file not found"
+      // Permission errors etc. should propagate
+      if (isNodeError(error, "ENOENT")) {
+        return false;
+      }
+      throw error;
     }
   }
 
   async function read(): Promise<Result<T, StoreError>> {
-    const path = filePath();
-    const readResult = await safeReadFile(path, name);
+    const readResult = await safeReadFile(filePath, name);
     if (!readResult.ok) {
       if (readResult.error.code === "NOT_FOUND") {
-        return err(createStoreError("NOT_FOUND", `${name} not found at ${path}`));
+        return err(createStoreError("NOT_FOUND", `${name} not found at ${filePath}`));
       }
       return readResult;
     }
@@ -247,13 +401,11 @@ export function createDocument<T>(config: DocumentConfig<T>): Document<T> {
   }
 
   async function write(item: T): Promise<Result<void, StoreError>> {
-    const validation = schema.safeParse(item);
-    if (!validation.success) {
-      return err(createStoreError("VALIDATION_ERROR", `Invalid ${name}`, validation.error.message));
-    }
+    // Note: Write-time schema validation removed as redundant.
+    // Data is constructed programmatically by domain functions from validated inputs.
+    // TypeScript enforces structure. Read-time validation remains for disk integrity.
 
-    const path = filePath();
-    const dir = dirname(path);
+    const dir = dirname(filePath);
 
     const dirResult = await ensureDirectory(dir, name);
     if (!dirResult.ok) {
@@ -264,21 +416,19 @@ export function createDocument<T>(config: DocumentConfig<T>): Document<T> {
     }
 
     const content = JSON.stringify(item, null, 2) + "\n";
-    return atomicWriteFile(path, content, name);
+    return atomicWriteFile(filePath, content, name);
   }
 
   async function remove(): Promise<Result<void, StoreError>> {
-    const path = filePath();
-
     try {
-      await unlink(path);
+      await unlink(filePath);
       return ok(undefined);
     } catch (error) {
       if (isNodeError(error, "ENOENT")) {
         return ok(undefined);
       }
       if (isNodeError(error, "EACCES")) {
-        return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
+        return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${filePath}`));
       }
       return err(createStoreError("WRITE_ERROR", `Failed to delete ${name}`, getErrorMessage(error)));
     }

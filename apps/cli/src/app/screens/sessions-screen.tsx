@@ -1,8 +1,7 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import type { SessionMetadata } from "@repo/schemas/session";
-import type { ListState } from "../../types/index.js";
-import { useListNavigation } from "../../hooks/use-list-navigation.js";
+import { useListNavigation, type ListState } from "../../hooks/index.js";
 import { ListScreenWrapper } from "../../components/list-screen-wrapper.js";
 import { DeleteConfirmation } from "../../components/delete-confirmation.js";
 import { SessionListItem } from "../../features/sessions/index.js";

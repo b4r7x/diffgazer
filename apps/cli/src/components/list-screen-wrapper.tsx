@@ -1,7 +1,8 @@
 import type { ReactElement, ReactNode } from "react";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
-import type { ListState } from "../types/index.js";
+import type { ListState } from "../hooks/index.js";
+import { Separator } from "./ui/separator.js";
 
 interface ListScreenWrapperProps {
   title: string;
@@ -58,7 +59,7 @@ export function ListScreenWrapper({
         <Text bold color="cyan">
           {title}
         </Text>
-        <Text dimColor>{"─".repeat(40)}</Text>
+        <Separator />
         <Box marginTop={1}>
           <Text>{emptyMessage}</Text>
         </Box>
@@ -74,7 +75,7 @@ export function ListScreenWrapper({
       <Text bold color="cyan">
         {title}
       </Text>
-      <Text dimColor>{"─".repeat(40)}</Text>
+      <Separator />
       {children}
     </Box>
   );

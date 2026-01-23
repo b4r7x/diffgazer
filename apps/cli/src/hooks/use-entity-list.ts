@@ -1,5 +1,6 @@
 import { useState } from "react";
-import type { ListState } from "../types/index.js";
+
+export type ListState = "idle" | "loading" | "success" | "error";
 
 export interface EntityListConfig<T, M> {
   fetchList: (projectPath: string) => Promise<{ items: M[]; warnings: string[] }>;

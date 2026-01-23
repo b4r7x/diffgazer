@@ -11,65 +11,59 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
   const { baseUrl } = config;
 
   async function parse<T>(response: Response): Promise<T> {
-    const data = (await response.json().catch(() => null)) as {
-      success?: boolean;
-      data?: T;
-      error?: { message?: string; code?: string };
-    } | null;
-
-    if (data === null) {
+    const body = await response.json().catch(() => null);
+    if (body === null) {
       throw createApiError("Invalid JSON response", response.status);
     }
-
-    if (data.success === false) {
-      throw createApiError(
-        data.error?.message ?? "Request failed",
-        response.status,
-        data.error?.code
-      );
-    }
-
-    return (data.data ?? data) as T;
+    return body as T;
   }
 
   async function send(
     method: string,
     path: string,
-    opts?: { body?: unknown; params?: Record<string, string>; signal?: AbortSignal }
+    options?: { body?: unknown; params?: Record<string, string>; signal?: AbortSignal }
   ): Promise<Response> {
     let url = `${baseUrl}${path}`;
-    if (opts?.params) {
-      const qs = new URLSearchParams(opts.params).toString();
-      if (qs) url += `?${qs}`;
+    if (options?.params) {
+      const queryString = new URLSearchParams(options.params).toString();
+      if (queryString) url += `?${queryString}`;
     }
 
     const response = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: opts?.body ? JSON.stringify(opts.body) : undefined,
-      signal: opts?.signal,
+      body: options?.body ? JSON.stringify(options.body) : undefined,
+      signal: options?.signal,
     });
 
     if (!response.ok) {
-      const data = (await response.json().catch(() => null)) as {
+      const responseBody = (await response.json().catch(() => null)) as {
         error?: { message?: string; code?: string };
       } | null;
-      throw createApiError(data?.error?.message ?? `HTTP ${response.status}`, response.status, data?.error?.code);
+      throw createApiError(responseBody?.error?.message ?? `HTTP ${response.status}`, response.status, responseBody?.error?.code);
     }
 
     return response;
   }
 
-  async function json<T>(method: string, path: string, opts?: { body?: unknown; params?: Record<string, string> }): Promise<T> {
-    return parse<T>(await send(method, path, opts));
-  }
-
   return {
-    get: <T>(path: string, params?: Record<string, string>) => json<T>("GET", path, { params }),
-    post: <T>(path: string, body?: unknown) => json<T>("POST", path, { body }),
-    put: <T>(path: string, body?: unknown) => json<T>("PUT", path, { body }),
-    delete: <T>(path: string) => json<T>("DELETE", path),
-    stream: (path: string, opts?: StreamOptions) => send("GET", path, opts),
+    get: async <T>(path: string, params?: Record<string, string>): Promise<T> => {
+      const response = await send("GET", path, { params });
+      return parse<T>(response);
+    },
+    post: async <T>(path: string, body?: unknown): Promise<T> => {
+      const response = await send("POST", path, { body });
+      return parse<T>(response);
+    },
+    put: async <T>(path: string, body?: unknown): Promise<T> => {
+      const response = await send("PUT", path, { body });
+      return parse<T>(response);
+    },
+    delete: async <T>(path: string): Promise<T> => {
+      const response = await send("DELETE", path);
+      return parse<T>(response);
+    },
+    stream: (path: string, options?: StreamOptions) => send("GET", path, options),
     request: send,
   };
 }

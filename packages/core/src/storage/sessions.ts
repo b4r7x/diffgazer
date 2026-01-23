@@ -11,21 +11,21 @@ import {
 import type { Result } from "../result.js";
 import { ok } from "../result.js";
 
-export type SessionError = StoreError;
+const AUTO_TITLE_MAX_LENGTH = 50;
 
 export const sessionStore = createCollection<Session, SessionMetadata>({
   name: "session",
   dir: paths.sessions,
   filePath: paths.sessionFile,
   schema: SessionSchema,
-  getMetadata: (s) => s.metadata,
-  getId: (s) => s.metadata.id,
+  getMetadata: (session) => session.metadata,
+  getId: (session) => session.metadata.id,
 });
 
 export async function createSession(
   projectPath: string,
   title?: string
-): Promise<Result<Session, SessionError>> {
+): Promise<Result<Session, StoreError>> {
   const now = new Date().toISOString();
   const session: Session = {
     metadata: {
@@ -47,7 +47,7 @@ export async function addMessage(
   sessionId: string,
   role: MessageRole,
   content: string
-): Promise<Result<SessionMessage, SessionError>> {
+): Promise<Result<SessionMessage, StoreError>> {
   const sessionResult = await sessionStore.read(sessionId);
   if (!sessionResult.ok) return sessionResult;
 
@@ -59,7 +59,7 @@ export async function addMessage(
   session.metadata.updatedAt = now;
   session.metadata.messageCount = session.messages.length;
   if (!session.metadata.title && role === "user") {
-    session.metadata.title = content.slice(0, 50) + (content.length > 50 ? "..." : "");
+    session.metadata.title = content.slice(0, AUTO_TITLE_MAX_LENGTH) + (content.length > AUTO_TITLE_MAX_LENGTH ? "..." : "");
   }
 
   const writeResult = await sessionStore.write(session);
@@ -69,7 +69,7 @@ export async function addMessage(
 
 export async function listSessions(
   projectPath?: string
-): Promise<Result<{ items: SessionMetadata[]; warnings: string[] }, SessionError>> {
+): Promise<Result<{ items: SessionMetadata[]; warnings: string[] }, StoreError>> {
   const result = await sessionStore.list();
   if (!result.ok) return result;
 
@@ -79,18 +79,10 @@ export async function listSessions(
 
 export async function getLastSession(
   projectPath: string
-): Promise<Result<Session | null, SessionError>> {
+): Promise<Result<Session | null, StoreError>> {
   const listResult = await listSessions(projectPath);
   if (!listResult.ok) return listResult;
   const first = listResult.value.items[0];
   if (!first) return ok(null);
   return sessionStore.read(first.id);
-}
-
-export async function deleteSession(
-  sessionId: string
-): Promise<Result<void, SessionError>> {
-  const result = await sessionStore.remove(sessionId);
-  if (!result.ok) return result;
-  return ok(undefined);
 }

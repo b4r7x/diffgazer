@@ -5,16 +5,16 @@ import {
   createSession,
   listSessions,
   addMessage,
-  deleteSession,
   getLastSession,
 } from "@repo/core/storage";
 import {
   CreateSessionRequestSchema,
   AddMessageRequestSchema,
 } from "@repo/schemas/session";
+import { ErrorCode } from "@repo/schemas/errors";
 import {
   errorResponse,
-  successResponse,
+  ok,
   handleStoreError,
   zodErrorHandler,
 } from "../../lib/response.js";
@@ -27,7 +27,7 @@ sessions.get("/", async (c) => {
   const result = await listSessions(projectPath);
   if (!result.ok) return handleStoreError(c, result.error);
 
-  return successResponse(c, {
+  return ok(c, {
     sessions: result.value.items,
     warnings: result.value.warnings.length > 0 ? result.value.warnings : undefined,
   });
@@ -35,13 +35,13 @@ sessions.get("/", async (c) => {
 
 sessions.get("/last", async (c) => {
   const projectPath = validateProjectPath(c.req.query("projectPath"));
-  if (!projectPath) return errorResponse(c, "projectPath required", "VALIDATION_ERROR", 400);
+  if (!projectPath) return errorResponse(c, "projectPath required", ErrorCode.VALIDATION_ERROR, 400);
 
   const result = await getLastSession(projectPath);
   if (!result.ok) return handleStoreError(c, result.error);
-  if (!result.value) return errorResponse(c, "No sessions found", "NOT_FOUND", 404);
+  if (!result.value) return errorResponse(c, "No sessions found", ErrorCode.NOT_FOUND, 404);
 
-  return successResponse(c, { session: result.value });
+  return ok(c, { session: result.value });
 });
 
 sessions.get("/:id", async (c) => {
@@ -49,7 +49,7 @@ sessions.get("/:id", async (c) => {
   const result = await sessionStore.read(sessionId);
   if (!result.ok) return handleStoreError(c, result.error);
 
-  return successResponse(c, { session: result.value });
+  return ok(c, { session: result.value });
 });
 
 sessions.post(
@@ -60,7 +60,7 @@ sessions.post(
     const result = await createSession(body.projectPath, body.title);
     if (!result.ok) return handleStoreError(c, result.error);
 
-    return successResponse(c, { session: result.value });
+    return ok(c, { session: result.value });
   }
 );
 
@@ -73,14 +73,14 @@ sessions.post(
     const result = await addMessage(sessionId, body.role, body.content);
     if (!result.ok) return handleStoreError(c, result.error);
 
-    return successResponse(c, { message: result.value });
+    return ok(c, { message: result.value });
   }
 );
 
 sessions.delete("/:id", async (c) => {
   const sessionId = requireUuidParam(c, "id");
-  const result = await deleteSession(sessionId);
+  const result = await sessionStore.remove(sessionId);
   if (!result.ok) return handleStoreError(c, result.error);
 
-  return successResponse(c, { existed: true });
+  return ok(c, { existed: result.value.existed });
 });

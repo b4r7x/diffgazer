@@ -7,7 +7,9 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./chat": { "types": "./dist/chat.d.ts", "import": "./dist/chat.js" },
     "./config": { "types": "./dist/config.d.ts", "import": "./dist/config.js" },
+    "./errors": { "types": "./dist/errors.d.ts", "import": "./dist/errors.js" },
     "./git": { "types": "./dist/git.d.ts", "import": "./dist/git.js" },
     "./port": { "types": "./dist/port.d.ts", "import": "./dist/port.js" },
     "./review": { "types": "./dist/review.d.ts", "import": "./dist/review.js" },

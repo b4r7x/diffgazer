@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SHARED_ERROR_CODES, type SharedErrorCode } from "./errors.js";
 
 export const AI_PROVIDERS = ["gemini"] as const;
 export const AIProviderSchema = z.enum(AI_PROVIDERS);
@@ -15,15 +16,16 @@ export const GEMINI_MODELS = [
 export const GeminiModelSchema = z.enum(GEMINI_MODELS);
 export type GeminiModel = z.infer<typeof GeminiModelSchema>;
 
-export interface ModelInfo {
-  id: string;
-  name: string;
-  description: string;
-  tier: "free" | "paid";
-  recommended?: boolean;
-}
+export const ModelInfoSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  tier: z.enum(["free", "paid"]),
+  recommended: z.boolean().optional(),
+});
+export type ModelInfo = z.infer<typeof ModelInfoSchema>;
 
-export const GEMINI_MODEL_INFO: Record<GeminiModel, ModelInfo> = {
+const _geminiModelInfo = {
   "gemini-3-flash-preview": {
     id: "gemini-3-flash-preview",
     name: "Gemini 3 Flash",
@@ -55,45 +57,71 @@ export const GEMINI_MODEL_INFO: Record<GeminiModel, ModelInfo> = {
     description: "Best quality for complex analysis",
     tier: "free",
   },
-};
+} as const satisfies Record<GeminiModel, ModelInfo>;
 
-export interface ProviderInfo {
-  id: AIProvider;
-  name: string;
-  defaultModel: string;
-  models: readonly string[];
-}
+// Validate GEMINI_MODEL_INFO at module load time
+export const GEMINI_MODEL_INFO: Record<GeminiModel, ModelInfo> = Object.fromEntries(
+  Object.entries(_geminiModelInfo).map(([key, value]) => [key, ModelInfoSchema.parse(value)])
+) as Record<GeminiModel, ModelInfo>;
 
-export const AVAILABLE_PROVIDERS: ProviderInfo[] = [
+export const ProviderInfoSchema = z.object({
+  id: AIProviderSchema,
+  name: z.string(),
+  defaultModel: z.string(),
+  models: z.array(z.string()).readonly(),
+});
+export type ProviderInfo = z.infer<typeof ProviderInfoSchema>;
+
+const _availableProviders = [
   {
     id: "gemini",
     name: "Google Gemini",
     defaultModel: "gemini-2.5-flash",
     models: GEMINI_MODELS,
   },
-];
+] as const satisfies readonly ProviderInfo[];
+
+// Validate AVAILABLE_PROVIDERS at module load time
+export const AVAILABLE_PROVIDERS: ProviderInfo[] = _availableProviders.map((provider) =>
+  ProviderInfoSchema.parse(provider)
+);
 
 export const UserConfigSchema = z.object({
   provider: AIProviderSchema,
   model: z.string().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
+}).refine((data) => {
+  if (!data.model) return true; // No model specified is OK
+
+  if (data.provider === "gemini") {
+    return GEMINI_MODELS.includes(data.model as GeminiModel);
+  }
+
+  // Add other providers here as they're added
+  return true;
+}, {
+  message: "Model is not valid for the selected provider",
+  path: ["model"],
 });
 export type UserConfig = z.infer<typeof UserConfigSchema>;
 
-export const CONFIG_ERROR_CODES = [
+/** Config-specific error codes (domain-specific) */
+export const CONFIG_SPECIFIC_CODES = [
   "NOT_CONFIGURED",
   "INVALID_PROVIDER",
   "INVALID_API_KEY",
   "CONFIG_NOT_FOUND",
   "CONFIG_WRITE_FAILED",
   "CONFIG_READ_FAILED",
-  "INTERNAL_ERROR",
   "UNKNOWN",
 ] as const;
+export type ConfigSpecificCode = (typeof CONFIG_SPECIFIC_CODES)[number];
 
+/** All config error codes: shared + domain-specific */
+export const CONFIG_ERROR_CODES = [...SHARED_ERROR_CODES, ...CONFIG_SPECIFIC_CODES] as const;
 export const ConfigErrorCodeSchema = z.enum(CONFIG_ERROR_CODES);
-export type ConfigErrorCode = z.infer<typeof ConfigErrorCodeSchema>;
+export type ConfigErrorCode = SharedErrorCode | ConfigSpecificCode;
 
 export const ConfigErrorSchema = z.object({
   message: z.string(),
@@ -108,13 +136,22 @@ export const SaveConfigRequestSchema = z.object({
 });
 export type SaveConfigRequest = z.infer<typeof SaveConfigRequestSchema>;
 
-export const ConfigCheckResponseSchema = z.object({
-  configured: z.boolean(),
+const ConfiguredSchema = z.object({
+  configured: z.literal(true),
   config: z.object({
     provider: AIProviderSchema,
     model: z.string().optional(),
-  }).optional(),
+  }),
 });
+
+const UnconfiguredSchema = z.object({
+  configured: z.literal(false),
+});
+
+export const ConfigCheckResponseSchema = z.discriminatedUnion("configured", [
+  ConfiguredSchema,
+  UnconfiguredSchema,
+]);
 export type ConfigCheckResponse = z.infer<typeof ConfigCheckResponseSchema>;
 
 export const CurrentConfigResponseSchema = z.object({

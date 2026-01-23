@@ -9,12 +9,7 @@ export interface ServerManagerOptions {
 
 export type ServerAddress = Required<ServerManagerOptions>;
 
-export interface ServerManager {
-  start: () => Promise<ServerAddress>;
-  stop: () => Promise<void>;
-}
-
-export function createServerManager(options: ServerManagerOptions): ServerManager {
+export function createServerManager(options: ServerManagerOptions) {
   const { port, hostname = DEFAULT_HOST } = options;
 
   let server: ServerType | null = null;

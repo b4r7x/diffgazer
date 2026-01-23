@@ -22,10 +22,15 @@ export const SessionMetadataSchema = z.object({
 });
 export type SessionMetadata = z.infer<typeof SessionMetadataSchema>;
 
-export const SessionSchema = z.object({
-  metadata: SessionMetadataSchema,
-  messages: z.array(SessionMessageSchema),
-});
+export const SessionSchema = z
+  .object({
+    metadata: SessionMetadataSchema,
+    messages: z.array(SessionMessageSchema),
+  })
+  .refine(
+    (data) => data.metadata.messageCount === data.messages.length,
+    { message: "messageCount must match messages.length" }
+  );
 export type Session = z.infer<typeof SessionSchema>;
 
 export const CreateSessionRequestSchema = z.object({

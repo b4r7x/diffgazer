@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SHARED_ERROR_CODES, type SharedErrorCode } from "./errors.js";
 
 export const GIT_FILE_STATUS_CODES = ["M", "T", "A", "D", "R", "C", "U", "?", "!", " "] as const;
 export const GitFileStatusCodeSchema = z.enum(GIT_FILE_STATUS_CODES);
@@ -30,18 +31,21 @@ export const GitStatusSchema = z.object({
 });
 export type GitStatus = z.infer<typeof GitStatusSchema>;
 
-export const GIT_ERROR_CODES = [
+/** Git-specific error codes (domain-specific) */
+export const GIT_SPECIFIC_CODES = [
   "NOT_GIT_REPO",
   "GIT_NOT_FOUND",
   "COMMAND_FAILED",
   "INVALID_PATH",
-  "INTERNAL_ERROR",
   "NOT_FOUND",
   "UNKNOWN",
 ] as const;
+export type GitSpecificCode = (typeof GIT_SPECIFIC_CODES)[number];
 
+/** All git error codes: shared + domain-specific */
+export const GIT_ERROR_CODES = [...SHARED_ERROR_CODES, ...GIT_SPECIFIC_CODES] as const;
 export const GitErrorCodeSchema = z.enum(GIT_ERROR_CODES);
-export type GitErrorCode = z.infer<typeof GitErrorCodeSchema>;
+export type GitErrorCode = SharedErrorCode | GitSpecificCode;
 
 export const GitErrorSchema = z.object({
   message: z.string(),
