@@ -12,7 +12,7 @@
     "./storage": { "types": "./dist/storage/index.d.ts", "import": "./dist/storage/index.js" },
     "./secrets": { "types": "./dist/secrets/index.d.ts", "import": "./dist/secrets/index.js" }
   },
-  "scripts": { "build": "tsc", "type-check": "tsc --noEmit" },
+  "scripts": { "build": "tsc", "type-check": "tsc --noEmit", "type-check-test": "tsc --noEmit --project tsconfig.test.json" },
   "sideEffects": false,
   "dependencies": {
     "@google/genai": "^1.0.0",

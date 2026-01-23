@@ -1,6 +1,8 @@
 import { useState, useCallback } from "react";
 import { useAsyncOperation, type AsyncStatus } from "./use-async-operation.js";
 
+export type ListState = AsyncStatus;
+
 export interface EntityListConfig<T, M> {
   fetchList: (projectPath: string) => Promise<{ items: M[]; warnings: string[] }>;
   fetchOne: (id: string) => Promise<T>;
