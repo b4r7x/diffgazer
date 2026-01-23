@@ -28,9 +28,7 @@ export function parseAndValidate<T, E>(
   return validateSchema(parseResult.value, schema, validationErrorFactory);
 }
 
-/**
- * Check if a path is relative (not absolute and without path traversal).
- */
+/** Returns true if path is relative (no absolute prefix, no ".." traversal). */
 export function isRelativePath(path: string): boolean {
   if (path.startsWith("/") || path.startsWith("\\") || /^[a-zA-Z]:/.test(path)) {
     return false;
@@ -41,9 +39,7 @@ export function isRelativePath(path: string): boolean {
   return true;
 }
 
-/**
- * Check if a project path is valid (no path traversal or null bytes).
- */
+/** Validates path has no ".." traversal or null bytes. */
 export function isValidProjectPath(path: string): boolean {
   if (path.includes("..") || path.includes("\0")) {
     return false;

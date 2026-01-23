@@ -24,10 +24,7 @@ interface UseAppInitOptions {
   setView: (view: View) => void;
 }
 
-/**
- * Hook that orchestrates app initialization: config check, view state, and session init.
- * Combines multiple initialization effects into a single cohesive hook.
- */
+/** Orchestrates app startup: config check, view routing, session init. */
 export function useAppInit({
   config,
   sessionMode,

@@ -5,6 +5,7 @@ import { ErrorCode } from "@repo/schemas/errors";
 import type { Result } from "@repo/core";
 import { ok, err, getErrorMessage } from "@repo/core";
 import { initializeAIClient, type SSEWriter } from "../lib/ai-client.js";
+import { writeSSEChunk, writeSSEComplete, writeSSEError } from "../lib/sse-helpers.js";
 import { type ChatError } from "@repo/schemas/chat";
 
 export type { SSEWriter };
@@ -69,29 +70,17 @@ Respond helpfully and concisely.`;
   try {
     await context.aiClient.generateStream(prompt, {
       onChunk: async (chunk) => {
-        await stream.writeSSE({
-          event: "chunk",
-          data: JSON.stringify({ type: "chunk", content: chunk }),
-        });
+        await writeSSEChunk(stream, chunk);
       },
       onComplete: async (content, metadata) => {
         await addMessage(sessionId, "assistant", content);
-        await stream.writeSSE({
-          event: "complete",
-          data: JSON.stringify({ type: "complete", content, truncated: metadata.truncated }),
-        });
+        await writeSSEComplete(stream, { content, truncated: metadata.truncated });
       },
       onError: async (error) => {
-        await stream.writeSSE({
-          event: "error",
-          data: JSON.stringify({ type: "error", error: { message: error.message, code: ErrorCode.AI_ERROR } }),
-        });
+        await writeSSEError(stream, error.message, ErrorCode.AI_ERROR);
       },
     });
   } catch (error) {
-    await stream.writeSSE({
-      event: "error",
-      data: JSON.stringify({ type: "error", error: { message: getErrorMessage(error), code: ErrorCode.STREAM_ERROR } }),
-    });
+    await writeSSEError(stream, getErrorMessage(error), ErrorCode.STREAM_ERROR);
   }
 }

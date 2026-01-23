@@ -3,7 +3,6 @@ import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import type { GitDiffState } from "../hooks/use-git-diff.js";
 
-//Maximum number of diff lines to display in the UI.
 const MAX_DIFF_LINES_DISPLAY = 50;
 
 function DiffLine({ line }: { line: string }): React.ReactNode {

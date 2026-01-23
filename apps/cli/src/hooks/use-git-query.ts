@@ -9,32 +9,18 @@ function createGitError(message: string): GitError {
   return { message, code: "UNKNOWN" };
 }
 
-/**
- * State representation for git query operations.
- * Maintains backward compatibility with the discriminated union pattern.
- * @template TData The type of data returned by the query
- */
 export type GitQueryState<TData> =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "success"; data: TData }
   | { status: "error"; error: GitError };
 
-/**
- * Options for configuring a git query.
- * @template TData The type of data expected from the API endpoint
- */
 interface UseGitQueryOptions<TData> {
-  /** API endpoint path (e.g., "/git/status") */
   endpoint: string;
-  /** Zod schema for validating the response data */
   schema: z.ZodType<TData>;
 }
 
-/**
- * Converts internal AsyncState to the public GitQueryState format.
- * This maintains backward compatibility with existing consumers.
- */
+/** Adapter for backward compatibility with GitQueryState consumers. */
 function toGitQueryState<TData>(
   asyncState: AsyncState<TData>
 ): GitQueryState<TData> {
@@ -53,32 +39,7 @@ function toGitQueryState<TData>(
   }
 }
 
-/**
- * Hook for querying git-related API endpoints with schema validation.
- *
- * Uses the shared useAsyncOperation hook internally for state management,
- * while maintaining the existing API surface for backward compatibility.
- *
- * @template TData The type of data expected from the API endpoint
- * @param options Configuration options including endpoint and validation schema
- * @returns Object with state, fetch function, and reset function
- *
- * @example
- * ```tsx
- * const { state, fetch, reset } = useGitQuery({
- *   endpoint: "/git/status",
- *   schema: GitStatusSchema,
- * });
- *
- * useEffect(() => {
- *   fetch();
- * }, [fetch]);
- *
- * if (state.status === "success") {
- *   return <StatusDisplay data={state.data} />;
- * }
- * ```
- */
+/** Hook for fetching and validating git API endpoints. */
 export function useGitQuery<TData>(options: UseGitQueryOptions<TData>) {
   const { endpoint, schema } = options;
   const { state: asyncState, execute, reset } = useAsyncOperation<TData>();
@@ -99,7 +60,6 @@ export function useGitQuery<TData>(options: UseGitQueryOptions<TData>) {
     [endpoint, schema, execute]
   );
 
-  // Convert to the expected GitQueryState format for backward compatibility
   const state = toGitQueryState(asyncState);
 
   return { state, fetch, reset };

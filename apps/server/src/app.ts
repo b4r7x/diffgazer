@@ -20,7 +20,6 @@ export function createServer(): Hono {
     await next();
   });
 
-  // CSRF protection for state-changing endpoints
   app.use(csrf());
 
   // CVE-2024-28224: CORS localhost restriction prevents DNS rebinding
@@ -31,28 +30,23 @@ export function createServer(): Hono {
         // Allow requests with no origin (e.g., same-origin, curl, etc.)
         if (!origin) return origin;
 
-        // Parse the origin URL
         try {
           const url = new URL(origin);
           const hostname = url.hostname;
 
-          // Allow only localhost and 127.0.0.1
           if (hostname === "localhost" || hostname === "127.0.0.1") {
             return origin;
           }
         } catch {
-          // Invalid origin URL
           return "";
         }
 
-        // Reject all other origins
         return "";
       },
       credentials: true,
     }),
   );
 
-  // Security headers: X-Frame-Options, X-Content-Type-Options
   app.use("*", async (c, next) => {
     await next();
     c.header("X-Frame-Options", "DENY");

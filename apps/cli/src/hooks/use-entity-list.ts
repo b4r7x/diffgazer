@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useAsyncOperation, type AsyncStatus } from "./use-async-operation";
+import { useAsyncOperation, type AsyncStatus } from "./use-async-operation.js";
 
 export type ListState = "idle" | "loading" | "success" | "error";
 
@@ -26,7 +26,6 @@ export interface EntityListActions<T, M> {
   reset: () => void;
 }
 
-// Map AsyncStatus to ListState (they're compatible but we maintain the existing type)
 function toListState(status: AsyncStatus): ListState {
   return status;
 }
@@ -37,10 +36,7 @@ export function useEntityList<T, M>(
   const [warnings, setWarnings] = useState<string[]>([]);
   const [current, setCurrent] = useState<T | null>(null);
 
-  // Use useAsyncOperation for list fetching
   const listOp = useAsyncOperation<M[]>();
-
-  // Use useAsyncOperation for remove operation (to capture errors)
   const removeOp = useAsyncOperation<boolean>();
 
   const loadList = useCallback(
@@ -57,7 +53,6 @@ export function useEntityList<T, M>(
 
   const loadOne = useCallback(
     async (id: string): Promise<T | null> => {
-      // Store current items to preserve them during the operation
       const currentItems = listOp.state.data ?? [];
       let fetchedEntity: T | null = null;
 
@@ -65,12 +60,10 @@ export function useEntityList<T, M>(
         const entity = await config.fetchOne(id);
         fetchedEntity = entity;
         setCurrent(entity);
-        // Return existing items to preserve list state
         return currentItems;
       });
 
-      // If execute succeeded (result is non-null), return the fetched entity
-      return result !== null ? fetchedEntity : null;
+        return result !== null ? fetchedEntity : null;
     },
     [listOp, config]
   );
@@ -82,7 +75,7 @@ export function useEntityList<T, M>(
         if (response.existed) {
           listOp.setData(
             (listOp.state.data ?? []).filter(
-              (item) => config.getId(item) !== id
+              (item: M) => config.getId(item) !== id
             )
           );
         }
@@ -104,7 +97,6 @@ export function useEntityList<T, M>(
     setCurrent(null);
   }, [listOp, removeOp]);
 
-  // Derive error from either operation (prioritize list errors, fall back to remove errors)
   const error = listOp.state.error ?? removeOp.state.error ?? null;
 
   return [

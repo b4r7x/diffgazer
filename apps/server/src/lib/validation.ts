@@ -4,7 +4,6 @@ import { HTTPException } from "hono/http-exception";
 import { isValidUuid, isValidProjectPath } from "@repo/core";
 import type { StoreErrorCode } from "@repo/core/storage";
 
-// Re-export path validation from @repo/core
 export { isRelativePath, isValidProjectPath } from "@repo/core";
 
 export function requireUuidParam(c: Context, paramName: string): string {
