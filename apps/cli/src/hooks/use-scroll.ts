@@ -1,10 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useStdout, useInput } from "ink";
 
-/**
- * Default terminal height when stdout dimensions are unavailable.
- * Standard terminal height for most environments (80x24 default).
- */
+// Default terminal height when stdout dimensions are unavailable.
+
 const DEFAULT_TERMINAL_HEIGHT = 24;
 
 interface UseScrollOptions {
@@ -41,13 +39,18 @@ export function useScroll(options: UseScrollOptions): UseScrollReturn {
     const max = maxScrollRef.current;
     if (key.upArrow) setScrollOffset((o) => Math.max(0, o - 1));
     if (key.downArrow) setScrollOffset((o) => Math.min(max, o + 1));
-    if (key.pageUp) setScrollOffset((o) => Math.max(0, o - (visibleHeight - 2)));
-    if (key.pageDown) setScrollOffset((o) => Math.min(max, o + (visibleHeight - 2)));
+    if (key.pageUp)
+      setScrollOffset((o) => Math.max(0, o - (visibleHeight - 2)));
+    if (key.pageDown)
+      setScrollOffset((o) => Math.min(max, o + (visibleHeight - 2)));
     if (input === "g") setScrollOffset(0);
     if (input === "G") setScrollOffset(max);
   });
 
-  const scrollToBottom = useCallback(() => setScrollOffset(maxScrollRef.current), []);
+  const scrollToBottom = useCallback(
+    () => setScrollOffset(maxScrollRef.current),
+    [],
+  );
 
   return {
     scrollOffset,

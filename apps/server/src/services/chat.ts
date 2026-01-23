@@ -1,19 +1,16 @@
-import type { AIClient, StreamCallbacks } from "@repo/core/ai";
+import type { AIClient } from "@repo/core/ai";
 import type { Session } from "@repo/schemas/session";
-import { addMessage, sessionStore, configStore } from "@repo/core/storage";
-import { createAIClient } from "@repo/core/ai";
-import { getApiKey } from "@repo/core/secrets";
+import { addMessage, sessionStore } from "@repo/core/storage";
 import { ErrorCode, type ErrorCode as ErrorCodeType } from "@repo/schemas/errors";
 import type { Result } from "@repo/core";
 import { ok, err, getErrorMessage } from "@repo/core";
+import { initializeAIClient, type SSEWriter } from "../lib/ai-client.js";
+
+export type { SSEWriter };
 
 export interface ChatError {
   message: string;
   code: ErrorCodeType;
-}
-
-export interface SSEWriter {
-  writeSSE: (data: { event: string; data: string }) => Promise<void>;
 }
 
 export interface ChatContext {
@@ -27,28 +24,6 @@ async function loadSession(sessionId: string): Promise<Result<Session, ChatError
     return err({ message: "Session not found", code: ErrorCode.SESSION_NOT_FOUND });
   }
   return ok(sessionResult.value);
-}
-
-async function initializeAIClient(): Promise<Result<AIClient, ChatError>> {
-  const configResult = await configStore.read();
-  if (!configResult.ok) {
-    return err({ message: "AI provider not configured", code: ErrorCode.CONFIG_NOT_FOUND });
-  }
-
-  const apiKeyResult = await getApiKey(configResult.value.provider);
-  if (!apiKeyResult.ok) {
-    return err({ message: "API key not found", code: ErrorCode.API_KEY_MISSING });
-  }
-
-  const clientResult = createAIClient({
-    apiKey: apiKeyResult.value,
-    model: configResult.value.model,
-  });
-  if (!clientResult.ok) {
-    return err({ message: clientResult.error.message, code: ErrorCode.AI_CLIENT_ERROR });
-  }
-
-  return ok(clientResult.value);
 }
 
 export async function prepareChatContext(sessionId: string): Promise<Result<ChatContext, ChatError>> {
