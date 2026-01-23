@@ -1,0 +1,4 @@
+{
+  "extends": "@repo/tsconfig/cli-test.json",
+  "include": ["src", "vitest.config.ts"]
+}

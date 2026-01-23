@@ -15,7 +15,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "type-check-test": "tsc --noEmit --project tsconfig.test.json"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.9",

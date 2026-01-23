@@ -1,10 +1,4 @@
 {
-  "extends": "@repo/tsconfig/node.json",
-  "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": ".",
-    "noEmit": true
-  },
-  "include": ["src", "__test__"],
-  "exclude": ["node_modules", "dist"]
+  "extends": "@repo/tsconfig/test.json",
+  "include": ["src", "__test__", "vitest.config.ts"]
 }
