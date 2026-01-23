@@ -8,6 +8,7 @@
   "exports": {
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
     "./ai": { "types": "./dist/ai/index.d.ts", "import": "./dist/ai/index.js" },
+    "./diff": { "types": "./dist/diff/index.d.ts", "import": "./dist/diff/index.js" },
     "./storage": { "types": "./dist/storage/index.d.ts", "import": "./dist/storage/index.js" },
     "./secrets": { "types": "./dist/secrets/index.d.ts", "import": "./dist/secrets/index.js" }
   },

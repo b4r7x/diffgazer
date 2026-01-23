@@ -1,4 +1,4 @@
-import { type AppError, createError } from "../errors.js";
+import type { AppError } from "../errors.js";
 
 export type SecretsErrorCode =
   | "KEYRING_UNAVAILABLE"
@@ -11,6 +11,3 @@ export type SecretsErrorCode =
   | "PARSE_ERROR";
 
 export type SecretsError = AppError<SecretsErrorCode>;
-
-export const createSecretsError = (code: SecretsErrorCode, message: string) =>
-  createError(code, message);

@@ -2,6 +2,12 @@ import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import type { GitDiffState } from "../hooks/use-git-diff.js";
 
+/**
+ * Maximum number of diff lines to display in the UI.
+ * Prevents terminal performance issues with very large diffs.
+ */
+const MAX_DIFF_LINES_DISPLAY = 50;
+
 function DiffLine({ line }: { line: string }) {
   if (line.startsWith("+") && !line.startsWith("+++")) {
     return <Text color="green">{line}</Text>;
@@ -51,11 +57,11 @@ export function GitDiffDisplay({ state, staged }: { state: GitDiffState; staged:
         {staged ? "Staged" : "Unstaged"} Changes
       </Text>
       <Box flexDirection="column" marginTop={1}>
-        {lines.slice(0, 50).map((line, i) => (
+        {lines.slice(0, MAX_DIFF_LINES_DISPLAY).map((line, i) => (
           <DiffLine key={i} line={line} />
         ))}
-        {lines.length > 50 && (
-          <Text dimColor>... ({lines.length - 50} more lines)</Text>
+        {lines.length > MAX_DIFF_LINES_DISPLAY && (
+          <Text dimColor>... ({lines.length - MAX_DIFF_LINES_DISPLAY} more lines)</Text>
         )}
       </Box>
     </Box>

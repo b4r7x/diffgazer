@@ -1,4 +1,4 @@
-import { createServerManager, type ServerManager } from "./server.js";
+import { createServerManager } from "./server.js";
 import { parsePort } from "@repo/schemas/port";
 
 export const DEFAULT_HOST = "localhost";
@@ -9,7 +9,7 @@ export interface CommandOptions {
 }
 
 export interface InitializedServer {
-  manager: ServerManager;
+  manager: ReturnType<typeof createServerManager>;
   address: string;
 }
 

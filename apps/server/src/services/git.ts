@@ -4,6 +4,19 @@ import { GIT_FILE_STATUS_CODES, type GitStatus, type GitStatusFiles, type GitFil
 
 const execFileAsync = promisify(execFile);
 
+const GIT_DIFF_MAX_BUFFER = 5 * 1024 * 1024;
+
+const EMPTY_GIT_STATUS: GitStatus = {
+  isGitRepo: false,
+  branch: null,
+  remoteBranch: null,
+  ahead: 0,
+  behind: 0,
+  files: { staged: [], unstaged: [], untracked: [] },
+  hasChanges: false,
+  conflicted: [],
+};
+
 interface BranchInfo {
   branch: string | null;
   remoteBranch: string | null;
@@ -40,6 +53,32 @@ function toStatusCode(char: string): GitFileStatusCode {
   return STATUS_CODES.has(char) ? (char as GitFileStatusCode) : " ";
 }
 
+interface CategorizedFile {
+  entry: GitFileEntry;
+  isConflicted: boolean;
+  isUntracked: boolean;
+  isStaged: boolean;
+  isUnstaged: boolean;
+}
+
+function categorizeGitFile(line: string): CategorizedFile | null {
+  if (line.length < 3) return null;
+
+  const indexStatus = toStatusCode(line[0] ?? " ");
+  const workTreeStatus = toStatusCode(line[1] ?? " ");
+  const path = line.slice(3);
+
+  const entry: GitFileEntry = { path, indexStatus, workTreeStatus };
+
+  return {
+    entry,
+    isConflicted: indexStatus === "U" || workTreeStatus === "U",
+    isUntracked: indexStatus === "?" && workTreeStatus === "?",
+    isStaged: indexStatus !== " " && indexStatus !== "?",
+    isUnstaged: workTreeStatus !== " " && workTreeStatus !== "?",
+  };
+}
+
 function parseGitStatusOutput(output: string): {
   branch: string | null;
   remoteBranch: string | null;
@@ -59,8 +98,7 @@ function parseGitStatusOutput(output: string): {
 
   for (const line of lines) {
     if (line.startsWith("## ")) {
-      const branchInfo = line.slice(3);
-      const parsed = parseBranchLine(branchInfo);
+      const parsed = parseBranchLine(line.slice(3));
       branch = parsed.branch;
       remoteBranch = parsed.remoteBranch;
       ahead = parsed.ahead;
@@ -68,29 +106,15 @@ function parseGitStatusOutput(output: string): {
       continue;
     }
 
-    if (line.length < 3) continue;
-    const indexStatus = toStatusCode(line[0] ?? " ");
-    const workTreeStatus = toStatusCode(line[1] ?? " ");
-    const path = line.slice(3);
+    const categorized = categorizeGitFile(line);
+    if (!categorized) continue;
 
-    const entry: GitFileEntry = { path, indexStatus, workTreeStatus };
+    const { entry, isConflicted, isUntracked, isStaged, isUnstaged } = categorized;
 
-    const isConflicted = indexStatus === "U" || workTreeStatus === "U";
-    const isUntracked = indexStatus === "?" && workTreeStatus === "?";
-    const isStaged = indexStatus !== " " && indexStatus !== "?";
-    const isUnstaged = workTreeStatus !== " " && workTreeStatus !== "?";
-
-    if (isConflicted) {
-      conflicted.push(path);
-    }
-    if (isUntracked) {
-      untracked.push(entry);
-    } else if (isStaged) {
-      staged.push(entry);
-    }
-    if (isUnstaged) {
-      unstaged.push(entry);
-    }
+    if (isConflicted) conflicted.push(entry.path);
+    if (isUntracked) untracked.push(entry);
+    else if (isStaged) staged.push(entry);
+    if (isUnstaged) unstaged.push(entry);
   }
 
   return { branch, remoteBranch, ahead, behind, files: { staged, unstaged, untracked }, conflicted };
@@ -113,17 +137,13 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
       const hasChanges = parsed.files.staged.length > 0 || parsed.files.unstaged.length > 0 || parsed.files.untracked.length > 0;
       return { isGitRepo: true, ...parsed, hasChanges };
     } catch {
-      return {
-        isGitRepo: false, branch: null, remoteBranch: null,
-        ahead: 0, behind: 0, files: { staged: [], unstaged: [], untracked: [] },
-        hasChanges: false, conflicted: [],
-      };
+      return EMPTY_GIT_STATUS;
     }
   }
 
   async function getDiff(staged = false): Promise<string> {
     const args = staged ? ["diff", "--cached"] : ["diff"];
-    const { stdout } = await execFileAsync("git", args, { cwd, timeout, maxBuffer: 5 * 1024 * 1024 });
+    const { stdout } = await execFileAsync("git", args, { cwd, timeout, maxBuffer: GIT_DIFF_MAX_BUFFER });
     return stdout;
   }
 

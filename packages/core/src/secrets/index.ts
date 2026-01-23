@@ -2,8 +2,8 @@ import { isKeyringAvailable, getSecret, setSecret, deleteSecret } from "./keyrin
 import { getVaultSecret, setVaultSecret, deleteVaultSecret } from "./vault.js";
 import type { Result } from "../result.js";
 import { ok, err } from "../result.js";
-import { createSecretsError } from "./types.js";
-import type { SecretsError } from "./types.js";
+import { createError } from "../errors.js";
+import type { SecretsError, SecretsErrorCode } from "./types.js";
 
 export type { SecretsError } from "./types.js";
 
@@ -46,7 +46,7 @@ export async function getApiKey(provider: string): Promise<Result<string, Secret
   const envValue = getEnvApiKey(provider);
   if (envValue) return ok(envValue);
 
-  return err(createSecretsError("SECRET_NOT_FOUND", `API key for '${provider}' not found`));
+  return err(createError<SecretsErrorCode>("SECRET_NOT_FOUND", `API key for '${provider}' not found`));
 }
 
 export async function setApiKey(provider: string, apiKey: string): Promise<Result<void, SecretsError>> {

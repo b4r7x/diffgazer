@@ -26,3 +26,11 @@ export function getErrorMessage(error: unknown): string {
 export function toError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
+
+/**
+ * Check if error is an AbortError (from AbortController).
+ * Useful for ignoring cancelled requests in streaming operations.
+ */
+export function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}

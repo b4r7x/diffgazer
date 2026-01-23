@@ -1,46 +1,63 @@
 import { GoogleGenAI } from "@google/genai";
 import type { z } from "zod";
-import type { AIClient, AIClientConfig, StreamCallbacks } from "../types.js";
+import type { AIClient, AIClientConfig, StreamCallbacks, GenerateStreamOptions } from "../types.js";
 import type { Result } from "../../result.js";
-import type { AIError } from "../errors.js";
+import type { AIError, AIErrorCode } from "../errors.js";
 import { ok, err } from "../../result.js";
-import { createAIError } from "../errors.js";
-import { getErrorMessage, toError } from "../../errors.js";
+import { createError, getErrorMessage, toError } from "../../errors.js";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_MAX_TOKENS = 4096;
 
-function getGenerationConfig(config: AIClientConfig, json = false) {
+interface GenerationConfigOptions {
+  json?: boolean;
+  responseSchema?: Record<string, unknown>;
+}
+
+function getGenerationConfig(config: AIClientConfig, options: GenerationConfigOptions = {}) {
   return {
     temperature: config.temperature ?? DEFAULT_TEMPERATURE,
     maxOutputTokens: config.maxTokens ?? DEFAULT_MAX_TOKENS,
-    ...(json && { responseMimeType: "application/json" as const }),
+    ...(options.json && { responseMimeType: "application/json" as const }),
+    ...(options.responseSchema && {
+      responseMimeType: "application/json" as const,
+      responseSchema: options.responseSchema,
+    }),
   };
 }
+
+const BLOCKED_FINISH_REASONS = new Set([
+  "SAFETY",
+  "RECITATION",
+  "PROHIBITED_CONTENT",
+  "SPII",
+  "BLOCKLIST",
+  "OTHER",
+]);
 
 function parseJsonSafe(text: string): Result<unknown, AIError> {
   try {
     return ok(JSON.parse(text));
   } catch {
-    return err(createAIError("PARSE_ERROR", "Failed to parse JSON response", text.slice(0, 200)));
+    return err(createError<AIErrorCode>("PARSE_ERROR", "Failed to parse JSON response", text.slice(0, 200)));
   }
 }
 
 function classifyApiError(error: unknown): AIError {
   const message = getErrorMessage(error);
   if (message.includes("401") || message.includes("API key")) {
-    return createAIError("API_KEY_INVALID", "Invalid API key");
+    return createError<AIErrorCode>("API_KEY_INVALID", "Invalid API key");
   }
   if (message.includes("429") || message.includes("rate limit")) {
-    return createAIError("RATE_LIMITED", "Rate limited");
+    return createError<AIErrorCode>("RATE_LIMITED", "Rate limited");
   }
-  return createAIError("MODEL_ERROR", message);
+  return createError<AIErrorCode>("MODEL_ERROR", message);
 }
 
 export function createGeminiClient(config: AIClientConfig): Result<AIClient, AIError> {
   if (!config.apiKey) {
-    return err(createAIError("API_KEY_MISSING", "Gemini API key is required"));
+    return err(createError<AIErrorCode>("API_KEY_MISSING", "Gemini API key is required"));
   }
 
   const client = new GoogleGenAI({ apiKey: config.apiKey });
@@ -54,7 +71,7 @@ export function createGeminiClient(config: AIClientConfig): Result<AIClient, AIE
         const response = await client.models.generateContent({
           model,
           contents: prompt,
-          config: getGenerationConfig(config, true),
+          config: getGenerationConfig(config, { json: true }),
         });
 
         const parseResult = parseJsonSafe(response.text ?? "");
@@ -62,7 +79,7 @@ export function createGeminiClient(config: AIClientConfig): Result<AIClient, AIE
 
         const validated = schema.safeParse(parseResult.value);
         if (!validated.success) {
-          return err(createAIError("PARSE_ERROR", "Invalid response structure", validated.error.message));
+          return err(createError<AIErrorCode>("PARSE_ERROR", "Invalid response structure", validated.error.message));
         }
         return ok(validated.data);
       } catch (error) {
@@ -70,23 +87,35 @@ export function createGeminiClient(config: AIClientConfig): Result<AIClient, AIE
       }
     },
 
-    async generateStream(prompt: string, callbacks: StreamCallbacks): Promise<void> {
+    async generateStream(prompt: string, callbacks: StreamCallbacks, options?: GenerateStreamOptions): Promise<void> {
       try {
         const stream = await client.models.generateContentStream({
           model,
           contents: prompt,
-          config: getGenerationConfig(config),
+          config: getGenerationConfig(config, { responseSchema: options?.responseSchema }),
         });
 
         const chunks: string[] = [];
+        let finishReason: string | undefined;
+
         for await (const chunk of stream) {
           const text = chunk.text;
           if (text) {
             chunks.push(text);
             await callbacks.onChunk(text);
           }
+
+          const candidate = chunk.candidates?.[0];
+          if (candidate?.finishReason) {
+            finishReason = candidate.finishReason;
+            if (BLOCKED_FINISH_REASONS.has(finishReason)) {
+              console.warn(`[Gemini] Response blocked with reason: ${finishReason}`);
+            }
+          }
         }
-        await callbacks.onComplete(chunks.join(""));
+
+        const truncated = finishReason === "MAX_TOKENS";
+        await callbacks.onComplete(chunks.join(""), { truncated, finishReason });
       } catch (error) {
         await callbacks.onError(toError(error));
       }

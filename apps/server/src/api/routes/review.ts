@@ -6,6 +6,7 @@ import { getApiKey } from "@repo/core/secrets";
 import { reviewDiff } from "../../services/review.js";
 import { createGitService } from "../../services/git.js";
 import { ReviewResultSchema, type ReviewResult } from "@repo/schemas/review";
+import { ErrorCode } from "@repo/schemas/errors";
 import { errorResponse } from "../../lib/response.js";
 
 const review = new Hono();
@@ -13,23 +14,23 @@ const review = new Hono();
 review.get("/stream", async (c) => {
   const configResult = await configStore.read();
   if (!configResult.ok) {
-    return errorResponse(c, "AI provider not configured. Please configure in settings.", "API_KEY_MISSING", 500);
+    return errorResponse(c, "AI provider not configured. Please configure in settings.", ErrorCode.API_KEY_MISSING, 500);
   }
 
   const config = configResult.value;
   const apiKeyResult = await getApiKey(config.provider);
 
   if (!apiKeyResult.ok || !apiKeyResult.value) {
-    return errorResponse(c, `API key not found for provider '${config.provider}'. Please configure in settings.`, "API_KEY_MISSING", 500);
+    return errorResponse(c, `API key not found for provider '${config.provider}'. Please configure in settings.`, ErrorCode.API_KEY_MISSING, 500);
   }
 
-  const clientResult = createAIClient(config.provider, {
+  const clientResult = createAIClient({
     apiKey: apiKeyResult.value,
     model: config.model,
   });
 
   if (!clientResult.ok) {
-    return errorResponse(c, clientResult.error.message, "AI_ERROR", 500);
+    return errorResponse(c, clientResult.error.message, ErrorCode.AI_ERROR, 500);
   }
 
   const staged = c.req.query("staged") !== "false";
@@ -43,7 +44,7 @@ review.get("/stream", async (c) => {
         });
       },
       onComplete: async (content) => {
-        let result: ReviewResult = { summary: content, issues: [] };
+        let result: ReviewResult = { summary: content, issues: [], overallScore: null };
         let parseWarning: string | undefined;
         try {
           const parsed = JSON.parse(content);
@@ -80,7 +81,7 @@ review.get("/stream", async (c) => {
           event: "error",
           data: JSON.stringify({
             type: "error",
-            error: { message: error.message, code: "AI_ERROR" },
+            error: { message: error.message, code: ErrorCode.AI_ERROR },
           }),
         });
         stream.close();

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { cors } from "hono/cors";
 import { csrf } from "hono/csrf";
+import { ErrorCode } from "@repo/schemas/errors";
 import { routes } from "./api/routes/index.js";
 import { errorResponse } from "./lib/response.js";
 
@@ -62,11 +63,11 @@ export function createServer(): Hono {
 
   app.onError((err, c) => {
     console.error("Unhandled error:", err);
-    return errorResponse(c, "Internal server error", "INTERNAL_ERROR", 500);
+    return errorResponse(c, "Internal server error", ErrorCode.INTERNAL_ERROR, 500);
   });
 
   app.notFound((c) => {
-    return errorResponse(c, "Not found", "NOT_FOUND", 404);
+    return errorResponse(c, "Not found", ErrorCode.NOT_FOUND, 404);
   });
 
   return app;

@@ -1,7 +1,14 @@
 import { useState, useEffect } from "react";
 import type { ReactElement } from "react";
-import { Box, Text, useInput } from "ink";
-import Spinner from "ink-spinner";
+import { useInput } from "ink";
+import {
+  SettingsMainView,
+  SettingsDeleteConfirm,
+  SettingsLoading,
+  SettingsError,
+  SettingsDeleting,
+  SettingsDeleteSuccess,
+} from "../../components/settings/index.js";
 
 interface SettingsScreenProps {
   provider: string;
@@ -52,116 +59,40 @@ export function SettingsScreen({
   });
 
   if (settingsState === "loading") {
-    return (
-      <Box flexDirection="column" padding={1}>
-        <Text bold color="cyan">Stargazer Settings</Text>
-        <Box marginTop={1}>
-          <Spinner type="dots" />
-          <Text> Loading settings...</Text>
-        </Box>
-      </Box>
-    );
+    return <SettingsLoading />;
   }
 
   if (settingsState === "error") {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Text bold color="cyan">Stargazer Settings</Text>
-        <Box marginTop={1} flexDirection="column">
-          <Text color="red">Error: Failed to load settings</Text>
-          {error?.message && (
-            <Text color="red" dimColor>({error.message})</Text>
-          )}
-        </Box>
-        <Box marginTop={1}>
-          <Text dimColor>[b] Back</Text>
-        </Box>
-      </Box>
+      <SettingsError
+        message="Failed to load settings"
+        errorDetail={error?.message}
+        actions="[b] Back"
+      />
     );
   }
 
   if (deleteState === "deleting") {
-    return (
-      <Box flexDirection="column" padding={1}>
-        <Text bold color="cyan">Stargazer Settings</Text>
-        <Box marginTop={1}>
-          <Spinner type="dots" />
-          <Text> Deleting configuration...</Text>
-        </Box>
-      </Box>
-    );
+    return <SettingsDeleting />;
   }
 
   if (deleteState === "success") {
-    return (
-      <Box flexDirection="column" padding={1}>
-        <Text bold color="cyan">Stargazer Settings</Text>
-        <Box marginTop={1}>
-          <Text color="green">Configuration deleted successfully.</Text>
-        </Box>
-        <Box marginTop={1}>
-          <Text dimColor>Returning to setup...</Text>
-        </Box>
-      </Box>
-    );
+    return <SettingsDeleteSuccess />;
   }
 
   if (deleteState === "error") {
     return (
-      <Box flexDirection="column" padding={1}>
-        <Text bold color="cyan">Stargazer Settings</Text>
-        <Box marginTop={1} flexDirection="column">
-          <Text color="red">Error: Failed to delete configuration</Text>
-          {error?.message && (
-            <Text color="red" dimColor>({error.message})</Text>
-          )}
-        </Box>
-        <Box marginTop={1}>
-          <Text dimColor>[r] Retry  [b] Back</Text>
-        </Box>
-      </Box>
+      <SettingsError
+        message="Failed to delete configuration"
+        errorDetail={error?.message}
+        actions="[r] Retry  [b] Back"
+      />
     );
   }
 
   if (step === "confirm_delete") {
-    return (
-      <Box flexDirection="column" padding={1}>
-        <Text bold color="cyan">Stargazer Settings</Text>
-        <Text dimColor>{"─".repeat(20)}</Text>
-        <Box marginTop={1} flexDirection="column">
-          <Text color="yellow">Are you sure you want to delete your configuration?</Text>
-          <Text dimColor>This will remove your API key and provider settings.</Text>
-        </Box>
-        <Box marginTop={1}>
-          <Text dimColor>[y] Yes, delete  [n] No, cancel</Text>
-        </Box>
-      </Box>
-    );
+    return <SettingsDeleteConfirm />;
   }
 
-  return (
-    <Box flexDirection="column" padding={1}>
-      <Text bold color="cyan">Stargazer Settings</Text>
-      <Text dimColor>{"─".repeat(20)}</Text>
-
-      <Box flexDirection="column" marginTop={1}>
-        <Text>
-          <Text dimColor>Provider: </Text>
-          <Text>{provider}</Text>
-        </Text>
-        <Text>
-          <Text dimColor>Model: </Text>
-          <Text>{model ?? "Default"}</Text>
-        </Text>
-        <Text>
-          <Text dimColor>API Key: </Text>
-          <Text>{"•".repeat(10)}</Text>
-        </Text>
-      </Box>
-
-      <Box marginTop={1}>
-        <Text dimColor>[d] Delete Configuration  [b] Back</Text>
-      </Box>
-    </Box>
-  );
+  return <SettingsMainView provider={provider} model={model} />;
 }
