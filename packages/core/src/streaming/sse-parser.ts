@@ -1,4 +1,5 @@
 import { safeParseJson } from "../json.js";
+import { truncate } from "../string.js";
 
 // 1 MB buffer limit to prevent memory exhaustion from malformed streams
 const MAX_BUFFER_SIZE = 1024 * 1024;
@@ -18,8 +19,7 @@ function parseSSELine(line: string): unknown | undefined {
 
   const jsonStr = line.slice(6);
   const result = safeParseJson(jsonStr, (message, details) => {
-    const preview = jsonStr.slice(0, 100) + (jsonStr.length > 100 ? "..." : "");
-    console.debug(`Failed to parse SSE event: ${preview}${details ? ` (${details})` : ""}`);
+    console.debug(`Failed to parse SSE event: ${truncate(jsonStr, 100)}${details ? ` (${details})` : ""}`);
     return undefined;
   });
 

@@ -1,5 +1,6 @@
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
+import { truncate } from "@repo/core";
 import type { ReviewState } from "../hooks/index.js";
 import { IssueItem } from "./issue-item.js";
 
@@ -15,7 +16,7 @@ export function ReviewDisplay({ state, staged }: { state: ReviewState; staged: b
           <Spinner type="dots" />
           <Text> Reviewing {staged ? "staged" : "unstaged"} changes...</Text>
         </Box>
-        {state.content && <Text dimColor>{state.content.slice(0, 200)}...</Text>}
+        {state.content && <Text dimColor>{truncate(state.content, 200)}</Text>}
       </Box>
     );
   }

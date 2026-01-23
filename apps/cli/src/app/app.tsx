@@ -12,8 +12,9 @@ import {
   SessionsView,
   ReviewHistoryView,
 } from "./views/index.js";
+import type { SessionMode } from "./types.js";
 
-export type SessionMode = "new" | "continue" | "resume" | "picker";
+export type { SessionMode };
 
 interface AppProps {
   address: string;
