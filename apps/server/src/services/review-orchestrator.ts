@@ -1,6 +1,6 @@
 import type { AIClient, StreamMetadata } from "@repo/core/ai";
 import type { ReviewResult, FileReviewResult } from "@repo/schemas/review";
-import { safeParseJson } from "@repo/core";
+import { getErrorMessage, safeParseJson } from "@repo/core";
 import { parseDiff, type FileDiff } from "@repo/core/diff";
 import { createGitService } from "./git.js";
 import { aggregateReviews } from "./review-aggregator.js";
@@ -170,8 +170,7 @@ export async function reviewDiffChunked(
   try {
     files = await getDiffForReview(staged);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    await callbacks.onError(new Error(`Failed to get git diff: ${message}`));
+    await callbacks.onError(new Error(`Failed to get git diff: ${getErrorMessage(error)}`));
     return;
   }
 
@@ -191,7 +190,7 @@ export async function reviewDiffChunked(
         fileResults.push(result);
         await callbacks.onFileComplete(file.filePath, result);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage = getErrorMessage(error);
         partialFailures.push({ file: file.filePath, error: errorMessage });
         await callbacks.onFileError(file.filePath, error instanceof Error ? error : new Error(errorMessage));
       }
