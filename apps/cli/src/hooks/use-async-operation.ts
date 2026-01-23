@@ -21,7 +21,6 @@ export interface UseAsyncOperationResult<T> {
   setData: (data: T) => void;
 }
 
-/** React hook for async operations with loading/success/error state management. */
 export function useAsyncOperation<T>(
   initialData?: T
 ): UseAsyncOperationResult<T> {

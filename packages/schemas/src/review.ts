@@ -8,13 +8,6 @@ import {
 
 export const ScoreSchema = z.number().min(0).max(10).nullable();
 
-/**
- * A numeric score from 0-10 representing code review quality assessment.
- * - 0-3: Critical issues, needs significant work
- * - 4-6: Has issues but acceptable
- * - 7-10: Good to excellent quality
- * - null: Score not applicable or could not be determined
- */
 export type Score = z.infer<typeof ScoreSchema>;
 
 export const REVIEW_SEVERITY = ["critical", "warning", "suggestion", "nitpick"] as const;
@@ -53,7 +46,6 @@ export const FileReviewResultSchema = z.object({
   summary: z.string(),
   issues: z.array(ReviewIssueSchema),
   score: ScoreSchema,
-  /** When true, AI response couldn't be parsed - summary contains raw output */
   parseError: z.boolean().optional(),
   parseErrorMessage: z.string().optional(),
 });

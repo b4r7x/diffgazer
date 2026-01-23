@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { truncate, slugify } from "./string.js";
+import { truncate, truncateToDisplayLength } from "./string.js";
 
 describe("truncate", () => {
   it("returns string unchanged if shorter than maxLength", () => {
@@ -30,44 +30,24 @@ describe("truncate", () => {
   });
 });
 
-describe("slugify", () => {
-  it("converts to lowercase", () => {
-    expect(slugify("Hello World")).toBe("hello-world");
-    expect(slugify("UPPERCASE")).toBe("uppercase");
+describe("truncateToDisplayLength", () => {
+  it("returns combined string if shorter than maxLength", () => {
+    expect(truncateToDisplayLength("hello", " world", 20)).toBe("hello world");
   });
 
-  it("replaces spaces with hyphens", () => {
-    expect(slugify("hello world")).toBe("hello-world");
-    expect(slugify("multiple   spaces")).toBe("multiple-spaces");
+  it("truncates from beginning when exceeding maxLength", () => {
+    expect(truncateToDisplayLength("hello", " world", 8)).toBe("lo world");
   });
 
-  it("removes special characters", () => {
-    expect(slugify("hello@world!")).toBe("helloworld");
-    expect(slugify("test#123")).toBe("test123");
+  it("handles empty existing string", () => {
+    expect(truncateToDisplayLength("", "hello", 3)).toBe("llo");
   });
 
-  it("handles underscores and existing hyphens", () => {
-    expect(slugify("hello_world")).toBe("hello-world");
-    expect(slugify("hello-world")).toBe("hello-world");
-    expect(slugify("hello__world--test")).toBe("hello-world-test");
+  it("handles empty new content", () => {
+    expect(truncateToDisplayLength("hello", "", 3)).toBe("llo");
   });
 
-  it("trims leading and trailing hyphens", () => {
-    expect(slugify("--hello--")).toBe("hello");
-    expect(slugify("  hello  ")).toBe("hello");
-  });
-
-  it("handles empty string", () => {
-    expect(slugify("")).toBe("");
-  });
-
-  it("handles strings with only special characters", () => {
-    expect(slugify("@#$%")).toBe("");
-  });
-
-  it("handles complex real-world examples", () => {
-    expect(slugify("My Blog Post Title!")).toBe("my-blog-post-title");
-    expect(slugify("API v2.0 Release")).toBe("api-v20-release");
-    expect(slugify("   Spaces   Everywhere   ")).toBe("spaces-everywhere");
+  it("handles exact maxLength match", () => {
+    expect(truncateToDisplayLength("hello", " world", 11)).toBe("hello world");
   });
 });

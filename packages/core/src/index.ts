@@ -23,6 +23,5 @@ export {
   type SSEParseResult,
 } from "./streaming/index.js";
 
-export { truncate, slugify } from "./string.js";
-export { retry, timeout, debounce } from "./async.js";
-export { groupBy, chunk, unique, uniqueBy } from "./array.js";
+export { truncate, truncateToDisplayLength } from "./string.js";
+export { chunk } from "./array.js";

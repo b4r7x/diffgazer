@@ -24,7 +24,6 @@ interface UseAppInitOptions {
   setView: (view: View) => void;
 }
 
-/** Orchestrates app startup: config check, view routing, session init. */
 export function useAppInit({
   config,
   sessionMode,

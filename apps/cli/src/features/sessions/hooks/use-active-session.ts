@@ -20,7 +20,6 @@ function isNotFoundError(e: unknown): e is ApiError {
   return err.code === "NOT_FOUND" || err.status === 404;
 }
 
-/** Maps "success" status to "active" for session semantics. */
 function mapStatusToState(
   status: "idle" | "loading" | "success" | "error"
 ): SessionState {
