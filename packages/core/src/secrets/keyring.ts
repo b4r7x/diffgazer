@@ -1,56 +1,47 @@
 import type { Result } from "../result.js";
 import { ok, err } from "../result.js";
 import { APP_NAME } from "../storage/paths.js";
-import { createError, getErrorMessage } from "../errors.js";
+import { createError, getErrorMessage, isNodeError } from "../errors.js";
+import { createLazyLoader } from "../utils/lazy-loader.js";
 import type { SecretsError, SecretsErrorCode } from "./types.js";
 
-/** Store the import error for diagnostic purposes */
-let keyringLoadError: string | null = null;
+type KeyringModule = typeof import("@napi-rs/keyring");
 
-let keyringModule: typeof import("@napi-rs/keyring") | null = null;
-let loadAttempted = false;
+const getKeyringState = createLazyLoader<KeyringModule>(
+  () => import("@napi-rs/keyring")
+);
 
-async function getKeyring(): Promise<typeof import("@napi-rs/keyring") | null> {
-  if (loadAttempted) {
-    return keyringModule;
-  }
-  loadAttempted = true;
-
-  try {
-    keyringModule = await import("@napi-rs/keyring");
-    return keyringModule;
-  } catch (error) {
-    keyringLoadError = getErrorMessage(error);
-    return null;
-  }
+function createKeyringErrorFactory(
+  defaultCode: SecretsErrorCode
+): (error: unknown, message: string) => SecretsError {
+  return (error, message) => {
+    const code = isNodeError(error, "EACCES") ? "PERMISSION_ERROR" : defaultCode;
+    return createError<SecretsErrorCode>(code, message, getErrorMessage(error));
+  };
 }
 
+const readErrorFactory = createKeyringErrorFactory("READ_FAILED");
+const writeErrorFactory = createKeyringErrorFactory("WRITE_FAILED");
+
 async function withKeyring<T>(
-  fn: (keyring: typeof import("@napi-rs/keyring")) => Result<T, SecretsError>
+  fn: (keyring: KeyringModule) => Result<T, SecretsError>
 ): Promise<Result<T, SecretsError>> {
-  const keyring = await getKeyring();
+  const { module: keyring, error } = await getKeyringState();
   if (!keyring) {
     return err(
       createError<SecretsErrorCode>(
         "KEYRING_UNAVAILABLE",
         "System keyring not available",
-        keyringLoadError ?? undefined
+        error ?? undefined
       )
     );
   }
   return fn(keyring);
 }
 
-/**
- * Check if the system keyring is available and functional.
- * Returns detailed information about availability status.
- */
 export async function isKeyringAvailable(): Promise<boolean> {
-  const keyring = await getKeyring();
-  if (!keyring) {
-    // Module failed to load - error already captured in keyringLoadError
-    return false;
-  }
+  const { module: keyring } = await getKeyringState();
+  if (!keyring) return false;
 
   try {
     const testKey = "__stargazer_availability_test__";
@@ -63,20 +54,12 @@ export async function isKeyringAvailable(): Promise<boolean> {
     try {
       entry.deletePassword();
     } catch (cleanupError) {
-      // Log cleanup failure but don't fail the availability check
-      // The test key will be orphaned but won't affect functionality
-      console.warn(
-        `[keyring] Failed to clean up test key: ${getErrorMessage(cleanupError)}`
-      );
+      console.warn(`[keyring] Failed to clean up test key: ${getErrorMessage(cleanupError)}`);
     }
 
     return readBack === testValue;
   } catch (error) {
-    // Keyring operations failed - this indicates the keyring is not functional
-    // Common causes: no keyring daemon running, permission denied, locked keyring
-    console.warn(
-      `[keyring] Availability check failed: ${getErrorMessage(error)}`
-    );
+    console.warn(`[keyring] Availability check failed: ${getErrorMessage(error)}`);
     return false;
   }
 }
@@ -91,24 +74,7 @@ export async function getSecret(key: string): Promise<Result<string, SecretsErro
       }
       return ok(password);
     } catch (error) {
-      const errorMessage = getErrorMessage(error);
-      // Check for permission-related errors to provide more specific feedback
-      if (errorMessage.toLowerCase().includes("permission") || errorMessage.toLowerCase().includes("access denied")) {
-        return err(
-          createError<SecretsErrorCode>(
-            "PERMISSION_ERROR",
-            `Permission denied reading secret '${key}'`,
-            errorMessage
-          )
-        );
-      }
-      return err(
-        createError<SecretsErrorCode>(
-          "READ_FAILED",
-          `Failed to read secret '${key}'`,
-          errorMessage
-        )
-      );
+      return err(readErrorFactory(error, `Failed to read secret '${key}'`));
     }
   });
 }
@@ -120,26 +86,17 @@ export async function setSecret(key: string, value: string): Promise<Result<void
       entry.setPassword(value);
       return ok(undefined);
     } catch (error) {
-      const errorMessage = getErrorMessage(error);
-      // Check for permission-related errors to provide more specific feedback
-      if (errorMessage.toLowerCase().includes("permission") || errorMessage.toLowerCase().includes("access denied")) {
-        return err(
-          createError<SecretsErrorCode>(
-            "PERMISSION_ERROR",
-            `Permission denied storing secret '${key}'`,
-            errorMessage
-          )
-        );
-      }
-      return err(
-        createError<SecretsErrorCode>(
-          "WRITE_FAILED",
-          `Failed to store secret '${key}'`,
-          errorMessage
-        )
-      );
+      return err(writeErrorFactory(error, `Failed to store secret '${key}'`));
     }
   });
+}
+
+function isNotFoundError(error: unknown): boolean {
+  if (isNodeError(error, "ENOENT")) {
+    return true;
+  }
+  const msg = getErrorMessage(error).toLowerCase();
+  return msg.includes("not found") || msg.includes("no such") || msg.includes("does not exist");
 }
 
 export async function deleteSecret(key: string): Promise<Result<void, SecretsError>> {
@@ -149,38 +106,10 @@ export async function deleteSecret(key: string): Promise<Result<void, SecretsErr
       entry.deletePassword();
       return ok(undefined);
     } catch (error) {
-      const errorMessage = getErrorMessage(error);
-      // Check if this is a "not found" error - treat as success (idempotent delete)
-      // Common patterns: "No such secret", "not found", "does not exist"
-      const isNotFoundError =
-        errorMessage.toLowerCase().includes("not found") ||
-        errorMessage.toLowerCase().includes("no such") ||
-        errorMessage.toLowerCase().includes("does not exist");
-
-      if (isNotFoundError) {
-        // Idempotent: treat delete of non-existent secret as success
+      if (isNotFoundError(error)) {
         return ok(undefined);
       }
-
-      // Check for permission-related errors
-      if (errorMessage.toLowerCase().includes("permission") || errorMessage.toLowerCase().includes("access denied")) {
-        return err(
-          createError<SecretsErrorCode>(
-            "PERMISSION_ERROR",
-            `Permission denied deleting secret '${key}'`,
-            errorMessage
-          )
-        );
-      }
-
-      // Propagate other errors - they indicate real problems
-      return err(
-        createError<SecretsErrorCode>(
-          "WRITE_FAILED",
-          `Failed to delete secret '${key}'`,
-          errorMessage
-        )
-      );
+      return err(writeErrorFactory(error, `Failed to delete secret '${key}'`));
     }
   });
 }

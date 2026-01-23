@@ -1,58 +1,67 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { paths } from "../storage/paths.js";
 import type { Result } from "../result.js";
 import { ok, err } from "../result.js";
 import type { SecretsError, SecretsErrorCode } from "./types.js";
-import { createError, isNodeError } from "../errors.js";
+import { createError } from "../errors.js";
+import { safeParseJson } from "../json.js";
+import {
+  safeReadFile,
+  ensureDirectory,
+  atomicWriteFile,
+  createMappedErrorFactory,
+} from "../fs/operations.js";
+
+const readErrorFactory = createMappedErrorFactory<SecretsErrorCode>(
+  {
+    NOT_FOUND: "VAULT_READ_ERROR",
+    PERMISSION_DENIED: "PERMISSION_ERROR",
+    READ_ERROR: "VAULT_READ_ERROR",
+    WRITE_ERROR: "VAULT_READ_ERROR",
+  },
+  createError
+);
+
+const writeErrorFactory = createMappedErrorFactory<SecretsErrorCode>(
+  {
+    NOT_FOUND: "VAULT_WRITE_ERROR",
+    PERMISSION_DENIED: "PERMISSION_ERROR",
+    READ_ERROR: "VAULT_WRITE_ERROR",
+    WRITE_ERROR: "VAULT_WRITE_ERROR",
+  },
+  createError
+);
 
 async function readSecrets(): Promise<Result<Record<string, string>, SecretsError>> {
   const secretsPath = paths.secretsFile;
 
-  let content: string;
-  try {
-    content = await readFile(secretsPath, "utf-8");
-  } catch (error) {
-    if (isNodeError(error, "ENOENT")) {
+  const readResult = await safeReadFile(secretsPath, "secrets file", readErrorFactory);
+  if (!readResult.ok) {
+    if (readResult.error.code === "VAULT_READ_ERROR" && readResult.error.message.includes("not found")) {
       return ok({});
     }
-    if (isNodeError(error, "EACCES")) {
-      return err(createError<SecretsErrorCode>("PERMISSION_ERROR", "Permission denied reading secrets file"));
-    }
-    return err(createError<SecretsErrorCode>("VAULT_READ_ERROR", "Failed to read secrets file"));
+    return readResult;
   }
 
-  try {
-    const parsed = JSON.parse(content) as Record<string, string>;
-    return ok(parsed);
-  } catch {
-    return err(createError<SecretsErrorCode>("PARSE_ERROR", "Secrets file contains invalid JSON"));
+  const parseResult = safeParseJson(readResult.value, (message, details) =>
+    createError<SecretsErrorCode>("PARSE_ERROR", `Secrets file: ${message}`, details)
+  );
+  if (!parseResult.ok) {
+    return parseResult;
   }
+  return ok(parseResult.value as Record<string, string>);
 }
 
 async function writeSecrets(secrets: Record<string, string>): Promise<Result<void, SecretsError>> {
   const secretsPath = paths.secretsFile;
-  const secretsDir = dirname(secretsPath);
 
-  try {
-    await mkdir(secretsDir, { recursive: true, mode: 0o700 });
-  } catch (error) {
-    if (isNodeError(error, "EACCES")) {
-      return err(createError<SecretsErrorCode>("PERMISSION_ERROR", "Permission denied creating secrets directory"));
-    }
-    return err(createError<SecretsErrorCode>("VAULT_WRITE_ERROR", "Failed to create secrets directory"));
+  const dirResult = await ensureDirectory(dirname(secretsPath), "secrets", writeErrorFactory, { mode: 0o700 });
+  if (!dirResult.ok) {
+    return dirResult;
   }
 
-  try {
-    const content = JSON.stringify(secrets, null, 2) + "\n";
-    await writeFile(secretsPath, content, { mode: 0o600 });
-    return ok(undefined);
-  } catch (error) {
-    if (isNodeError(error, "EACCES")) {
-      return err(createError<SecretsErrorCode>("PERMISSION_ERROR", "Permission denied writing secrets file"));
-    }
-    return err(createError<SecretsErrorCode>("VAULT_WRITE_ERROR", "Failed to write secrets file"));
-  }
+  const content = JSON.stringify(secrets, null, 2) + "\n";
+  return atomicWriteFile(secretsPath, content, "secrets file", writeErrorFactory, { mode: 0o600 });
 }
 
 export async function getVaultSecret(secretKey: string): Promise<Result<string, SecretsError>> {

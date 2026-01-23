@@ -1,12 +1,20 @@
-import { access, mkdir, readFile, writeFile, readdir, unlink, rename, open } from "node:fs/promises";
+import { access, readdir, unlink, open } from "node:fs/promises";
 import type { FileHandle } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { ZodSchema } from "zod";
 import type { Result } from "../result.js";
 import { ok, err } from "../result.js";
 import type { AppError } from "../errors.js";
-import { isNodeError, getErrorMessage, createError } from "../errors.js";
+import { isNodeError, createError, getErrorMessage } from "../errors.js";
+import { safeParseJson } from "../json.js";
 import { isValidUuid } from "../validation.js";
+import {
+  safeReadFile as genericSafeReadFile,
+  atomicWriteFile as genericAtomicWriteFile,
+  ensureDirectory as genericEnsureDirectory,
+  createMappedErrorFactory,
+} from "../fs/operations.js";
+import { parseAndValidate, validateSchema } from "../utils/validation.js";
 
 export type StoreErrorCode =
   | "NOT_FOUND"
@@ -19,39 +27,18 @@ export type StoreError = AppError<StoreErrorCode>;
 
 export const createStoreError = createError<StoreErrorCode>;
 
+const storeErrorFactory = createMappedErrorFactory<StoreErrorCode>(
+  {
+    NOT_FOUND: "NOT_FOUND",
+    PERMISSION_DENIED: "PERMISSION_ERROR",
+    READ_ERROR: "PARSE_ERROR",
+    WRITE_ERROR: "WRITE_ERROR",
+  },
+  createError
+);
+
 async function safeReadFile(path: string, name: string): Promise<Result<string, StoreError>> {
-  try {
-    const content = await readFile(path, "utf-8");
-    return ok(content);
-  } catch (error) {
-    if (isNodeError(error, "ENOENT")) {
-      return err(createStoreError("NOT_FOUND", `${name} not found: ${path}`));
-    }
-    if (isNodeError(error, "EACCES")) {
-      return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
-    }
-    return err(createStoreError("PARSE_ERROR", `Failed to read ${name}`, getErrorMessage(error)));
-  }
-}
-
-function parseAndValidate<T>(
-  content: string,
-  schema: ZodSchema<T>,
-  name: string
-): Result<T, StoreError> {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(content);
-  } catch (error) {
-    return err(createStoreError("PARSE_ERROR", `${name} contains invalid JSON`, getErrorMessage(error)));
-  }
-
-  const result = schema.safeParse(parsed);
-  if (!result.success) {
-    return err(createStoreError("VALIDATION_ERROR", `${name} failed validation`, result.error.message));
-  }
-
-  return ok(result.data);
+  return genericSafeReadFile(path, name, storeErrorFactory);
 }
 
 async function atomicWriteFile(
@@ -59,47 +46,16 @@ async function atomicWriteFile(
   content: string,
   name: string
 ): Promise<Result<void, StoreError>> {
-  const tempPath = `${path}.${Date.now()}.tmp`;
-
-  try {
-    await writeFile(tempPath, content, { mode: 0o600 });
-    await rename(tempPath, path);
-    return ok(undefined);
-  } catch (error) {
-    try {
-      await unlink(tempPath);
-    } catch (cleanupError) {
-      // Log but don't fail - cleanup is best-effort
-      console.warn(`Failed to cleanup temp file ${tempPath}:`, cleanupError);
-    }
-    if (isNodeError(error, "EACCES")) {
-      return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
-    }
-    return err(createStoreError("WRITE_ERROR", `Failed to write ${name}`, getErrorMessage(error)));
-  }
+  return genericAtomicWriteFile(path, content, name, storeErrorFactory);
 }
 
 async function ensureDirectory(dirPath: string, name: string): Promise<Result<void, StoreError>> {
-  try {
-    await mkdir(dirPath, { recursive: true });
-    return ok(undefined);
-  } catch (error) {
-    if (isNodeError(error, "EACCES")) {
-      return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${dirPath}`));
-    }
-    return err(
-      createStoreError("WRITE_ERROR", `Failed to create ${name} directory`, getErrorMessage(error))
-    );
-  }
+  return genericEnsureDirectory(dirPath, name, storeErrorFactory);
 }
 
 const CHUNK_SIZE = 4096;
 const MAX_METADATA_SIZE = 8192;
 
-/**
- * Reads file in chunks using async iteration.
- * Yields buffers until maxBytes is read or file ends.
- */
 async function* readFileChunks(
   handle: FileHandle,
   chunkSize: number,
@@ -116,7 +72,6 @@ async function* readFileChunks(
   }
 }
 
-/** Finds the closing brace index using brace counting, handling strings. */
 function findClosingBrace(buffer: string, startIndex: number): number {
   let depth = 1;
   let inString = false;
@@ -135,7 +90,6 @@ function findClosingBrace(buffer: string, startIndex: number): number {
   return -1;
 }
 
-/** Finds the metadata object boundary in a JSON buffer. Returns -1 if not found. */
 function findMetadataBoundary(buffer: string): number {
   const metadataKey = '"metadata"';
   const keyIndex = buffer.indexOf(metadataKey);
@@ -150,10 +104,6 @@ function findMetadataBoundary(buffer: string): number {
   return findClosingBrace(buffer, openBrace);
 }
 
-/**
- * Parses and validates metadata JSON string against a schema.
- * Constructs a minimal JSON object wrapping the metadata.
- */
 function parseMetadataJson<M>(
   buffer: string,
   schema: ZodSchema<M>,
@@ -173,24 +123,20 @@ function parseMetadataJson<M>(
   const colonIndex = buffer.indexOf(":", keyIndex + metadataKey.length);
   const metadataJson = buffer.slice(colonIndex + 1, endIndex).trim();
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(metadataJson);
-  } catch (error) {
-    return err(createStoreError("PARSE_ERROR", `${name} invalid metadata JSON`, getErrorMessage(error)));
+  const parseResult = safeParseJson(metadataJson, (message) =>
+    createStoreError("PARSE_ERROR", `${name} metadata: ${message}`)
+  );
+  if (!parseResult.ok) {
+    return parseResult;
   }
 
-  const result = schema.safeParse(parsed);
-  if (!result.success) {
-    return err(createStoreError("VALIDATION_ERROR", `${name} metadata validation failed`, result.error.message));
-  }
-  return ok(result.data);
+  return validateSchema(
+    parseResult.value,
+    schema,
+    (message) => createStoreError("VALIDATION_ERROR", `${name} metadata validation failed`, message)
+  );
 }
 
-/**
- * Extracts metadata from a file by streaming only the beginning portion.
- * Reads chunks until metadata is found and validated, avoiding full file load.
- */
 async function extractMetadataFromFile<M>(
   path: string,
   schema: ZodSchema<M>,
@@ -252,35 +198,18 @@ export function createCollection<T, M>(config: CollectionConfig<T, M>): Collecti
   async function read(id: string): Promise<Result<T, StoreError>> {
     const path = filePath(id);
     const readResult = await safeReadFile(path, name);
-    if (!readResult.ok) {
-      if (readResult.error.code === "NOT_FOUND") {
-        return err(createStoreError("NOT_FOUND", `${name} not found: ${id}`));
-      }
-      return readResult;
-    }
-
-    const parseResult = parseAndValidate(readResult.value, schema, name);
-    if (!parseResult.ok) {
-      if (parseResult.error.code === "PARSE_ERROR") {
-        return err(createStoreError("PARSE_ERROR", "Invalid JSON", parseResult.error.details));
-      }
-      if (parseResult.error.code === "VALIDATION_ERROR") {
-        return err(createStoreError("VALIDATION_ERROR", "Schema validation failed", parseResult.error.details));
-      }
-      return parseResult;
-    }
-
-    return parseResult;
+    if (!readResult.ok) return readResult;
+    return parseAndValidate(
+      readResult.value,
+      schema,
+      (message) => createStoreError("PARSE_ERROR", `${name}: ${message}`),
+      (message) => createStoreError("VALIDATION_ERROR", `${name} failed validation`, message)
+    );
   }
 
   async function write(item: T): Promise<Result<void, StoreError>> {
     const ensureResult = await ensureDir();
     if (!ensureResult.ok) return ensureResult;
-
-    // Note: Write-time schema validation removed as redundant.
-    // Data is constructed programmatically by domain functions (createSession, addMessage, etc.)
-    // from already-validated route inputs + generated fields. TypeScript enforces structure.
-    // Read-time validation remains to protect against corrupted/manually-edited files.
 
     const id = getId(item);
     const path = filePath(id);
@@ -290,18 +219,17 @@ export function createCollection<T, M>(config: CollectionConfig<T, M>): Collecti
   }
 
   async function list(): Promise<Result<{ items: M[]; warnings: string[] }, StoreError>> {
-    const dirPath = dir;
     const warnings: string[] = [];
 
     let files: string[];
     try {
-      files = await readdir(dirPath);
+      files = await readdir(dir);
     } catch (error) {
       if (isNodeError(error, "ENOENT")) {
         return ok({ items: [], warnings });
       }
       if (isNodeError(error, "EACCES")) {
-        return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${dirPath}`));
+        return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${dir}`));
       }
       return err(createStoreError("PARSE_ERROR", `Failed to read ${name} directory`, getErrorMessage(error)));
     }
@@ -379,41 +307,26 @@ export function createDocument<T>(config: DocumentConfig<T>): Document<T> {
       await access(filePath);
       return true;
     } catch (error) {
-      // Only return false for "file not found"
-      // Permission errors etc. should propagate
-      if (isNodeError(error, "ENOENT")) {
-        return false;
-      }
+      if (isNodeError(error, "ENOENT")) return false;
       throw error;
     }
   }
 
   async function read(): Promise<Result<T, StoreError>> {
     const readResult = await safeReadFile(filePath, name);
-    if (!readResult.ok) {
-      if (readResult.error.code === "NOT_FOUND") {
-        return err(createStoreError("NOT_FOUND", `${name} not found at ${filePath}`));
-      }
-      return readResult;
-    }
-
-    return parseAndValidate(readResult.value, schema, name);
+    if (!readResult.ok) return readResult;
+    return parseAndValidate(
+      readResult.value,
+      schema,
+      (message) => createStoreError("PARSE_ERROR", `${name}: ${message}`),
+      (message) => createStoreError("VALIDATION_ERROR", `${name} failed validation`, message)
+    );
   }
 
   async function write(item: T): Promise<Result<void, StoreError>> {
-    // Note: Write-time schema validation removed as redundant.
-    // Data is constructed programmatically by domain functions from validated inputs.
-    // TypeScript enforces structure. Read-time validation remains for disk integrity.
-
     const dir = dirname(filePath);
-
     const dirResult = await ensureDirectory(dir, name);
-    if (!dirResult.ok) {
-      if (dirResult.error.code === "PERMISSION_ERROR") {
-        return err(createStoreError("PERMISSION_ERROR", `Permission denied creating directory: ${dir}`));
-      }
-      return dirResult;
-    }
+    if (!dirResult.ok) return dirResult;
 
     const content = JSON.stringify(item, null, 2) + "\n";
     return atomicWriteFile(filePath, content, name);
@@ -442,10 +355,7 @@ export function filterByProjectAndSort<T extends { projectPath: string }>(
   projectPath: string | undefined,
   dateField: keyof T
 ): T[] {
-  let filtered = items;
-  if (projectPath) {
-    filtered = items.filter((item) => item.projectPath === projectPath);
-  }
+  const filtered = projectPath ? items.filter((item) => item.projectPath === projectPath) : items;
   return filtered.sort(
     (a, b) => new Date(b[dateField] as string).getTime() - new Date(a[dateField] as string).getTime()
   );

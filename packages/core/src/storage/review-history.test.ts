@@ -1,7 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtemp, rm, mkdir } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { createStorageTestContext, createPathsMock, unwrap, delay } from "../../__test__/testing.js";
 import type { ReviewResult } from "@repo/schemas/review";
 import type { ReviewGitContext } from "@repo/schemas/review-history";
 
@@ -9,30 +7,13 @@ const mocks = vi.hoisted(() => ({ testDir: "" }));
 
 vi.mock("./paths.js", async () => ({
   get paths() {
-    return {
-      reviews: join(mocks.testDir, "reviews"),
-      sessions: join(mocks.testDir, "sessions"),
-      sessionFile: (id: string) => join(mocks.testDir, "sessions", `${id}.json`),
-      reviewFile: (id: string) => join(mocks.testDir, "reviews", `${id}.json`),
-      config: mocks.testDir,
-      configFile: join(mocks.testDir, "config.json"),
-      secretsDir: join(mocks.testDir, "secrets"),
-      secretsFile: join(mocks.testDir, "secrets", "secrets.json"),
-      appHome: mocks.testDir,
-    };
+    return createPathsMock(mocks);
   },
 }));
 
 let saveReview: typeof import("./review-history.js").saveReview;
 let listReviews: typeof import("./review-history.js").listReviews;
 let reviewStore: typeof import("./review-history.js").reviewStore;
-
-function unwrap<T>(result: { ok: true; value: T } | { ok: false; error: unknown }): T {
-  if (result.ok === false) {
-    throw new Error(`Expected ok, got: ${JSON.stringify(result.error)}`);
-  }
-  return result.value;
-}
 
 const mockResult: ReviewResult = {
   summary: "Test review summary",
@@ -46,17 +27,20 @@ const emptyResult: ReviewResult = { summary: "Test", issues: [], overallScore: n
 const emptyGitContext: ReviewGitContext = { branch: null, fileCount: 0 };
 
 describe("Review History Storage", () => {
+  let cleanup: () => Promise<void>;
+
   beforeEach(async () => {
-    mocks.testDir = await mkdtemp(join(tmpdir(), "stargazer-test-reviews-"));
-    await mkdir(join(mocks.testDir, "reviews"), { recursive: true });
-    await mkdir(join(mocks.testDir, "sessions"), { recursive: true });
+    const context = await createStorageTestContext("reviews");
+    mocks.testDir = context.testDir;
+    cleanup = context.cleanup;
+
     vi.resetModules();
     ({ saveReview, listReviews, reviewStore } = await import("./review-history.js"));
   });
 
   afterEach(async () => {
     vi.clearAllMocks();
-    await rm(mocks.testDir, { recursive: true, force: true });
+    await cleanup();
   });
 
   describe("saveReview", () => {
@@ -108,7 +92,7 @@ describe("Review History Storage", () => {
 
     it("sorts by createdAt descending", async () => {
       await saveReview("/project", true, { ...emptyResult, summary: "First" }, emptyGitContext);
-      await new Promise((r) => setTimeout(r, 10));
+      await delay(10);
       await saveReview("/project", true, { ...emptyResult, summary: "Second" }, emptyGitContext);
 
       const list = unwrap(await listReviews("/project"));

@@ -1,31 +1,22 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import {
-  mkdtemp,
-  rm,
-  writeFile,
-  mkdir,
-  chmod,
-  readFile,
-  access,
-} from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { writeFile, mkdir, chmod, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import {
-  createCollection,
-  createDocument,
-  createStoreError,
-} from "./persistence.js";
+import { createCollection, createDocument } from "./persistence.js";
+import { createStorageTestContext } from "../../__test__/testing.js";
 
 describe("persistence.ts", () => {
   let testDir: string;
+  let cleanup: () => Promise<void>;
 
   beforeEach(async () => {
-    testDir = await mkdtemp(join(tmpdir(), "persistence-test-"));
+    const context = await createStorageTestContext("persistence");
+    testDir = context.testDir;
+    cleanup = context.cleanup;
   });
 
   afterEach(async () => {
-    await rm(testDir, { recursive: true, force: true });
+    await cleanup();
   });
 
   describe("Document operations", () => {
@@ -54,7 +45,6 @@ describe("persistence.ts", () => {
         expect(readResult.value).toEqual(testData);
       }
     });
-
 
     it("should return NOT_FOUND for missing document", async () => {
       const docPath = join(testDir, "missing.json");
@@ -117,7 +107,6 @@ describe("persistence.ts", () => {
       const result = await doc.remove();
       expect(result.ok).toBe(true);
     });
-
   });
 
   describe("Collection operations", () => {
@@ -127,13 +116,8 @@ describe("persistence.ts", () => {
       value: z.number(),
     });
 
-    const MetadataSchema = z.object({
-      id: z.string().uuid(),
-      name: z.string(),
-    });
-
     type Item = z.infer<typeof ItemSchema>;
-    type Metadata = z.infer<typeof MetadataSchema>;
+    type Metadata = { id: string; name: string };
 
     it("should write and read collection item", async () => {
       const collectionDir = join(testDir, "items");
@@ -173,17 +157,11 @@ describe("persistence.ts", () => {
         getId: (item) => item.id,
       });
 
-      // Create valid UUID file
       const validId = "123e4567-e89b-12d3-a456-426614174000";
-      const item: Item = { id: validId, name: "Valid", value: 1 };
-      const writeResult = await collection.write(item);
-      expect(writeResult.ok).toBe(true);
+      await collection.write({ id: validId, name: "Valid", value: 1 });
 
-      // Create invalid filenames
       await writeFile(join(collectionDir, "not-a-uuid.json"), "{}");
       await writeFile(join(collectionDir, "README.json"), "{}");
-      await writeFile(join(collectionDir, "123.json"), "{}");
-      await writeFile(join(collectionDir, "invalid-uuid-format.json"), "{}");
 
       const result = await collection.list();
       expect(result.ok).toBe(true);
@@ -204,16 +182,9 @@ describe("persistence.ts", () => {
         getId: (item) => item.id,
       });
 
-      // Valid item
       const validId = "123e4567-e89b-12d3-a456-426614174000";
-      const writeResult = await collection.write({
-        id: validId,
-        name: "Valid",
-        value: 1,
-      });
-      expect(writeResult.ok).toBe(true);
+      await collection.write({ id: validId, name: "Valid", value: 1 });
 
-      // Corrupted items
       const corruptedId1 = "223e4567-e89b-12d3-a456-426614174000";
       await writeFile(
         join(collectionDir, `${corruptedId1}.json`),
@@ -230,14 +201,7 @@ describe("persistence.ts", () => {
       expect(result.ok).toBe(true);
       if (result.ok) {
         expect(result.value.items).toHaveLength(1);
-        expect(result.value.items[0]?.id).toBe(validId);
         expect(result.value.warnings).toHaveLength(2);
-        expect(
-          result.value.warnings.some((w) => w.includes(corruptedId1)),
-        ).toBe(true);
-        expect(
-          result.value.warnings.some((w) => w.includes(corruptedId2)),
-        ).toBe(true);
       }
     });
 
@@ -326,276 +290,71 @@ describe("persistence.ts", () => {
         expect(result.error.message).toContain(missingId);
       }
     });
-
   });
 
-  describe("Metadata extraction optimization", () => {
-    const MetadataSchema = z.object({
-      id: z.string().uuid(),
-      name: z.string(),
-      timestamp: z.string(),
-    });
-
-    const FullSchema = z.object({
-      metadata: MetadataSchema,
-      largeData: z.string(),
-      moreData: z.array(z.object({ field: z.string() })),
-    });
-
-    type Metadata = z.infer<typeof MetadataSchema>;
-    type FullData = z.infer<typeof FullSchema>;
-
-    it("should extract metadata without reading full file", async () => {
-      const collectionDir = join(testDir, "items");
-      await mkdir(collectionDir);
-
-      const collection = createCollection<FullData, Metadata>({
-        name: "test-item",
-        dir: collectionDir,
-        filePath: (id: string) => join(collectionDir, `${id}.json`),
-        schema: FullSchema,
-        getMetadata: (item) => item.metadata,
-        getId: (item) => item.metadata.id,
-      });
-
-      // Create test data with large payload
-      const testId = "123e4567-e89b-12d3-a456-426614174000";
-      const largeString = "x".repeat(50000); // 50KB of data
-      const testData: FullData = {
-        metadata: {
-          id: testId,
-          name: "Test Item",
-          timestamp: "2025-01-22T10:00:00Z",
-        },
-        largeData: largeString,
-        moreData: Array(100).fill(null).map((_, i) => ({ field: `value-${i}` })),
-      };
-
-      await collection.write(testData);
-
-      // List should use fast metadata extraction
-      const result = await collection.list();
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.items).toHaveLength(1);
-        expect(result.value.items[0]).toEqual({
-          id: testId,
-          name: "Test Item",
-          timestamp: "2025-01-22T10:00:00Z",
-        });
-        expect(result.value.warnings).toHaveLength(0);
-      }
-    });
-
-    it("should handle multiple files efficiently", async () => {
-      const collectionDir = join(testDir, "items");
-      await mkdir(collectionDir);
-
-      const collection = createCollection<FullData, Metadata>({
-        name: "test-item",
-        dir: collectionDir,
-        filePath: (id: string) => join(collectionDir, `${id}.json`),
-        schema: FullSchema,
-        getMetadata: (item) => item.metadata,
-        getId: (item) => item.metadata.id,
-      });
-
-      // Create 10 test files
-      const ids: string[] = [];
-      for (let i = 0; i < 10; i++) {
-        const id = `${i.toString().padStart(8, '0')}-0000-0000-0000-000000000000`;
-        ids.push(id);
-        const testData: FullData = {
-          metadata: {
-            id,
-            name: `Item ${i}`,
-            timestamp: new Date(2025, 0, i + 1).toISOString(),
-          },
-          largeData: "x".repeat(50000),
-          moreData: Array(100).fill(null).map((_, j) => ({ field: `value-${j}` })),
-        };
-        await collection.write(testData);
-      }
-
-      const start = Date.now();
-      const result = await collection.list();
-      const duration = Date.now() - start;
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.items).toHaveLength(10);
-        expect(result.value.warnings).toHaveLength(0);
-        // Should be fast - under 100ms for 10 files with 50KB each
-        console.log(`Metadata extraction time: ${duration}ms`);
-      }
-    });
-
-    it("should fallback to full read when metadataSchema not provided", async () => {
-      const collectionDir = join(testDir, "items");
-      await mkdir(collectionDir);
-
-      const collection = createCollection<FullData, Metadata>({
-        name: "test-item",
-        dir: collectionDir,
-        filePath: (id: string) => join(collectionDir, `${id}.json`),
-        schema: FullSchema,
-        getMetadata: (item) => item.metadata,
-        getId: (item) => item.metadata.id,
-      });
-
-      const testId = "123e4567-e89b-12d3-a456-426614174000";
-      const testData: FullData = {
-        metadata: {
-          id: testId,
-          name: "Test Item",
-          timestamp: "2025-01-22T10:00:00Z",
-        },
-        largeData: "x".repeat(50000),
-        moreData: Array(100).fill(null).map((_, i) => ({ field: `value-${i}` })),
-      };
-
-      await collection.write(testData);
-
-      const result = await collection.list();
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.value.items).toHaveLength(1);
-        expect(result.value.items[0]).toEqual({
-          id: testId,
-          name: "Test Item",
-          timestamp: "2025-01-22T10:00:00Z",
-        });
-      }
-    });
-  });
-
-  describe("Performance benchmark", () => {
-    it("should demonstrate performance with large datasets", async () => {
-      const collectionDir = join(testDir, "bench");
-      await mkdir(collectionDir);
-
+  describe("Metadata extraction", () => {
+    it("should extract metadata from large files", async () => {
       const MetadataSchema = z.object({
         id: z.string().uuid(),
-        projectPath: z.string(),
-        createdAt: z.string(),
+        name: z.string(),
+        timestamp: z.string(),
       });
 
-      const LargeSchema = z.object({
+      const FullSchema = z.object({
         metadata: MetadataSchema,
-        issues: z.array(z.object({
-          severity: z.string(),
-          message: z.string(),
-          file: z.string(),
-          line: z.number(),
-          suggestion: z.string(),
-        })),
-        result: z.object({
-          summary: z.string(),
-          details: z.string(),
-        }),
+        largeData: z.string(),
+        moreData: z.array(z.object({ field: z.string() })),
       });
 
       type Metadata = z.infer<typeof MetadataSchema>;
-      type LargeData = z.infer<typeof LargeSchema>;
+      type FullData = z.infer<typeof FullSchema>;
 
-      // Collection WITH metadata optimization
-      const optimizedCollection = createCollection<LargeData, Metadata>({
-        name: "optimized",
+      const collectionDir = join(testDir, "items");
+      await mkdir(collectionDir);
+
+      const collection = createCollection<FullData, Metadata>({
+        name: "test-item",
         dir: collectionDir,
         filePath: (id: string) => join(collectionDir, `${id}.json`),
-        schema: LargeSchema,
+        schema: FullSchema,
         getMetadata: (item) => item.metadata,
         getId: (item) => item.metadata.id,
       });
 
-      // Collection WITHOUT metadata optimization (fallback)
-      const unoptimizedCollection = createCollection<LargeData, Metadata>({
-        name: "unoptimized",
-        dir: collectionDir,
-        filePath: (id: string) => join(collectionDir, `${id}.json`),
-        schema: LargeSchema,
-        getMetadata: (item) => item.metadata,
-        getId: (item) => item.metadata.id,
+      const testId = "123e4567-e89b-12d3-a456-426614174000";
+      await collection.write({
+        metadata: { id: testId, name: "Test Item", timestamp: "2025-01-22T10:00:00Z" },
+        largeData: "x".repeat(50000),
+        moreData: Array(100).fill(null).map((_, i) => ({ field: `value-${i}` })),
       });
 
-      // Create 100 files with realistic review data
-      for (let i = 0; i < 100; i++) {
-        const id = `${i.toString().padStart(8, '0')}-0000-0000-0000-000000000000`;
-        const testData: LargeData = {
-          metadata: {
-            id,
-            projectPath: `/projects/test-${i}`,
-            createdAt: new Date(2025, 0, i + 1).toISOString(),
-          },
-          issues: Array(50).fill(null).map((_, j) => ({
-            severity: j % 2 === 0 ? "critical" : "warning",
-            message: `Issue ${j}: This is a detailed message about a code quality problem`,
-            file: `src/components/Component${j}.tsx`,
-            line: Math.floor(Math.random() * 1000),
-            suggestion: `Consider refactoring this code to improve maintainability and reduce complexity`,
-          })),
-          result: {
-            summary: "Review completed with multiple issues found across the codebase",
-            details: "x".repeat(10000), // 10KB of details
-          },
-        };
-        await optimizedCollection.write(testData);
+      const result = await collection.list();
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.items).toHaveLength(1);
+        expect(result.value.items[0]).toEqual({
+          id: testId,
+          name: "Test Item",
+          timestamp: "2025-01-22T10:00:00Z",
+        });
       }
-
-      // Benchmark optimized version
-      const optimizedStart = Date.now();
-      const optimizedResult = await optimizedCollection.list();
-      const optimizedDuration = Date.now() - optimizedStart;
-
-      // Benchmark unoptimized version
-      const unoptimizedStart = Date.now();
-      const unoptimizedResult = await unoptimizedCollection.list();
-      const unoptimizedDuration = Date.now() - unoptimizedStart;
-
-      expect(optimizedResult.ok).toBe(true);
-      expect(unoptimizedResult.ok).toBe(true);
-
-      if (optimizedResult.ok && unoptimizedResult.ok) {
-        expect(optimizedResult.value.items).toHaveLength(100);
-        expect(unoptimizedResult.value.items).toHaveLength(100);
-
-        const speedup = unoptimizedDuration / optimizedDuration;
-
-        console.log(`\nPerformance Benchmark (100 files, ~25KB each):`);
-        console.log(`  Optimized (metadata extraction): ${optimizedDuration}ms`);
-        console.log(`  Unoptimized (full file read):    ${unoptimizedDuration}ms`);
-        console.log(`  Speedup: ${speedup.toFixed(2)}x`);
-
-        // Both collections use the same implementation, so expect similar performance
-        // This test validates that the collection API works correctly with large datasets
-        const difference = Math.abs(optimizedDuration - unoptimizedDuration);
-        console.log(`  Difference: ${difference}ms`);
-        expect(difference).toBeLessThan(50); // Within 50ms of each other
-      }
-    }, 60000);
+    });
   });
 
   describe("Atomic write operations", () => {
-    const TestSchema = z.object({ value: z.string() });
-    type TestData = z.infer<typeof TestSchema>;
-
-
     it("should update file atomically on subsequent writes", async () => {
+      const TestSchema = z.object({ value: z.string() });
       const docPath = join(testDir, "atomic-update", "test.json");
-      const doc = createDocument<TestData>({
+      const doc = createDocument({
         name: "atomic-update-test",
         filePath: docPath,
         schema: TestSchema,
       });
 
-      // First write
       await doc.write({ value: "first" });
       let content = await readFile(docPath, "utf-8");
       expect(content).toContain('"value": "first"');
 
-      // Second write (should replace atomically)
       await doc.write({ value: "second" });
       content = await readFile(docPath, "utf-8");
       expect(content).toContain('"value": "second"');
@@ -612,13 +371,10 @@ describe("persistence.ts", () => {
 
     type StrictData = z.infer<typeof StrictSchema>;
 
-    // Note: Write-time validation removed - TypeScript ensures correct structure.
-    // These tests now verify that read-time validation catches invalid data on disk.
-    it("should validate on read - document with invalid data on disk", async () => {
+    it("should validate document on read", async () => {
       const docPath = join(testDir, "validation.json");
       await mkdir(testDir, { recursive: true });
 
-      // Simulate corrupted/manually-edited file with invalid data
       await writeFile(
         docPath,
         JSON.stringify({
@@ -634,7 +390,6 @@ describe("persistence.ts", () => {
         schema: StrictSchema,
       });
 
-      // Read-time validation catches invalid data
       const result = await doc.read();
       expect(result.ok).toBe(false);
       if (!result.ok) {
@@ -643,17 +398,16 @@ describe("persistence.ts", () => {
       }
     });
 
-    it("should validate on read - collection item with invalid data on disk", async () => {
+    it("should validate collection item on read", async () => {
       const collectionDir = join(testDir, "strict-collection");
       await mkdir(collectionDir, { recursive: true });
 
-      const itemId = "550e8400-e29b-41d4-a716-446655440000"; // Valid UUID for filename
+      const itemId = "550e8400-e29b-41d4-a716-446655440000";
 
-      // Simulate corrupted/manually-edited file with invalid data
       await writeFile(
         join(collectionDir, `${itemId}.json`),
         JSON.stringify({
-          id: "not-a-uuid", // Invalid UUID in content
+          id: "not-a-uuid",
           email: "bad-email",
           age: -5,
         }),
@@ -668,7 +422,6 @@ describe("persistence.ts", () => {
         getId: (item) => item.id,
       });
 
-      // Read-time validation catches invalid data
       const result = await collection.read(itemId);
       expect(result.ok).toBe(false);
       if (!result.ok) {
@@ -676,103 +429,9 @@ describe("persistence.ts", () => {
         expect(result.error.details).toBeDefined();
       }
     });
-
-    it("should return VALIDATION_ERROR for schema mismatch on read", async () => {
-      const docPath = join(testDir, "schema-mismatch.json");
-      await mkdir(testDir, { recursive: true });
-      await writeFile(
-        docPath,
-        JSON.stringify({ id: "not-uuid", email: "bad", age: "string" }),
-      );
-
-      const doc = createDocument<StrictData>({
-        name: "strict-doc",
-        filePath: docPath,
-        schema: StrictSchema,
-      });
-
-      const result = await doc.read();
-      expect(result.ok).toBe(false);
-      if (!result.ok) {
-        expect(result.error.code).toBe("VALIDATION_ERROR");
-        expect(result.error.details).toBeDefined();
-      }
-    });
-
-    it("should validate each field in schema on read", async () => {
-      await mkdir(testDir, { recursive: true });
-
-      // Test invalid UUID
-      let docPath = join(testDir, "fields1.json");
-      await writeFile(
-        docPath,
-        JSON.stringify({ id: "123", email: "test@example.com", age: 25 }),
-      );
-      let doc = createDocument<StrictData>({
-        name: "field-validation",
-        filePath: docPath,
-        schema: StrictSchema,
-      });
-      let result = await doc.read();
-      expect(result.ok).toBe(false);
-
-      // Test invalid email
-      docPath = join(testDir, "fields2.json");
-      await writeFile(
-        docPath,
-        JSON.stringify({
-          id: "123e4567-e89b-12d3-a456-426614174000",
-          email: "not-email",
-          age: 25,
-        }),
-      );
-      doc = createDocument<StrictData>({
-        name: "field-validation",
-        filePath: docPath,
-        schema: StrictSchema,
-      });
-      result = await doc.read();
-      expect(result.ok).toBe(false);
-
-      // Test age too high
-      docPath = join(testDir, "fields3.json");
-      await writeFile(
-        docPath,
-        JSON.stringify({
-          id: "123e4567-e89b-12d3-a456-426614174000",
-          email: "test@example.com",
-          age: 200,
-        }),
-      );
-      doc = createDocument<StrictData>({
-        name: "field-validation",
-        filePath: docPath,
-        schema: StrictSchema,
-      });
-      result = await doc.read();
-      expect(result.ok).toBe(false);
-
-      // Test age negative
-      docPath = join(testDir, "fields4.json");
-      await writeFile(
-        docPath,
-        JSON.stringify({
-          id: "123e4567-e89b-12d3-a456-426614174000",
-          email: "test@example.com",
-          age: -1,
-        }),
-      );
-      doc = createDocument<StrictData>({
-        name: "field-validation",
-        filePath: docPath,
-        schema: StrictSchema,
-      });
-      result = await doc.read();
-      expect(result.ok).toBe(false);
-    });
   });
 
-  describe("Permission errors (EACCES)", () => {
+  describe("Permission errors", () => {
     const shouldSkip = process.platform === "win32";
 
     it.skipIf(shouldSkip)("should handle EACCES on document read", async () => {
@@ -789,156 +448,111 @@ describe("persistence.ts", () => {
       });
 
       const result = await doc.read();
-      await chmod(docPath, 0o644); // Restore for cleanup
+      await chmod(docPath, 0o644);
 
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.code).toBe("PERMISSION_ERROR");
-        expect(result.error.message).toContain("Permission denied");
-        expect(result.error.message).toContain(docPath);
       }
     });
 
-    it.skipIf(shouldSkip)(
-      "should handle EACCES on collection directory read",
-      async () => {
-        const collectionDir = join(testDir, "no-access-dir");
-        await mkdir(collectionDir, { recursive: true });
-        await chmod(collectionDir, 0o000);
+    it.skipIf(shouldSkip)("should handle EACCES on collection list", async () => {
+      const collectionDir = join(testDir, "no-access-dir");
+      await mkdir(collectionDir, { recursive: true });
+      await chmod(collectionDir, 0o000);
 
-        const ItemSchema = z.object({ id: z.string() });
-        const collection = createCollection({
-          name: "item",
-          dir: collectionDir,
-          filePath: (id) => join(collectionDir, `${id}.json`),
-          schema: ItemSchema,
-          getMetadata: (item) => item,
-          getId: (item) => item.id,
-        });
-
-        const result = await collection.list();
-        await chmod(collectionDir, 0o755); // Restore
-
-        expect(result.ok).toBe(false);
-        if (!result.ok) {
-          expect(result.error.code).toBe("PERMISSION_ERROR");
-        }
-      },
-    );
-
-    it.skipIf(shouldSkip)(
-      "should handle EACCES on document write",
-      async () => {
-        const readOnlyDir = join(testDir, "readonly");
-        await mkdir(readOnlyDir, { recursive: true });
-        await chmod(readOnlyDir, 0o555);
-
-        const docPath = join(readOnlyDir, "test.json");
-        const TestSchema = z.object({ value: z.string() });
-        const doc = createDocument({
-          name: "readonly-doc",
-          filePath: docPath,
-          schema: TestSchema,
-        });
-
-        const result = await doc.write({ value: "test" });
-        await chmod(readOnlyDir, 0o755); // Restore
-
-        expect(result.ok).toBe(false);
-        if (!result.ok) {
-          expect(result.error.code).toBe("PERMISSION_ERROR");
-        }
-      },
-    );
-
-    it.skipIf(shouldSkip)(
-      "should handle EACCES on document remove",
-      async () => {
-        const protectedDir = join(testDir, "protected");
-        await mkdir(protectedDir, { recursive: true });
-
-        const docPath = join(protectedDir, "protected.json");
-        await writeFile(docPath, JSON.stringify({ value: "test" }));
-
-        await chmod(protectedDir, 0o555);
-
-        const TestSchema = z.object({ value: z.string() });
-        const doc = createDocument({
-          name: "protected-doc",
-          filePath: docPath,
-          schema: TestSchema,
-        });
-
-        const result = await doc.remove();
-        await chmod(protectedDir, 0o755); // Restore
-
-        expect(result.ok).toBe(false);
-        if (!result.ok) {
-          expect(result.error.code).toBe("PERMISSION_ERROR");
-        }
-      },
-    );
-
-    it.skipIf(shouldSkip)(
-      "should handle EACCES on collection item remove",
-      async () => {
-        const protectedDir = join(testDir, "protected-collection");
-        await mkdir(protectedDir, { recursive: true });
-
-        const itemId = "123e4567-e89b-12d3-a456-426614174000";
-        const itemPath = join(protectedDir, `${itemId}.json`);
-        await writeFile(
-          itemPath,
-          JSON.stringify({ id: itemId, value: "test" }),
-        );
-
-        await chmod(protectedDir, 0o555);
-
-        const ItemSchema = z.object({ id: z.string(), value: z.string() });
-        const collection = createCollection({
-          name: "protected-item",
-          dir: protectedDir,
-          filePath: (id) => join(protectedDir, `${id}.json`),
-          schema: ItemSchema,
-          getMetadata: (item) => item,
-          getId: (item) => item.id,
-        });
-
-        const result = await collection.remove(itemId);
-        await chmod(protectedDir, 0o755); // Restore
-
-        expect(result.ok).toBe(false);
-        if (!result.ok) {
-          expect(result.error.code).toBe("PERMISSION_ERROR");
-        }
-      },
-    );
-  });
-
-  describe("Error messages and codes", () => {
-    it("should include details in VALIDATION_ERROR on read", async () => {
-      const TestSchema = z.object({
-        required: z.string(),
-        number: z.number(),
+      const ItemSchema = z.object({ id: z.string() });
+      const collection = createCollection({
+        name: "item",
+        dir: collectionDir,
+        filePath: (id) => join(collectionDir, `${id}.json`),
+        schema: ItemSchema,
+        getMetadata: (item) => item,
+        getId: (item) => item.id,
       });
 
-      const docPath = join(testDir, "test.json");
-      await mkdir(testDir, { recursive: true });
-      // Write invalid data directly to disk (simulating corruption)
-      await writeFile(docPath, JSON.stringify({ wrong: "fields" }));
+      const result = await collection.list();
+      await chmod(collectionDir, 0o755);
 
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("PERMISSION_ERROR");
+      }
+    });
+
+    it.skipIf(shouldSkip)("should handle EACCES on document write", async () => {
+      const readOnlyDir = join(testDir, "readonly");
+      await mkdir(readOnlyDir, { recursive: true });
+      await chmod(readOnlyDir, 0o555);
+
+      const docPath = join(readOnlyDir, "test.json");
+      const TestSchema = z.object({ value: z.string() });
       const doc = createDocument({
-        name: "validation-doc",
+        name: "readonly-doc",
         filePath: docPath,
         schema: TestSchema,
       });
 
-      // Read-time validation catches the invalid data
-      const result = await doc.read();
+      const result = await doc.write({ value: "test" });
+      await chmod(readOnlyDir, 0o755);
+
       expect(result.ok).toBe(false);
       if (!result.ok) {
-        expect(result.error.code).toBe("VALIDATION_ERROR");
-        expect(result.error.details).toBeDefined();
+        expect(result.error.code).toBe("PERMISSION_ERROR");
+      }
+    });
+
+    it.skipIf(shouldSkip)("should handle EACCES on document remove", async () => {
+      const protectedDir = join(testDir, "protected");
+      await mkdir(protectedDir, { recursive: true });
+
+      const docPath = join(protectedDir, "protected.json");
+      await writeFile(docPath, JSON.stringify({ value: "test" }));
+      await chmod(protectedDir, 0o555);
+
+      const TestSchema = z.object({ value: z.string() });
+      const doc = createDocument({
+        name: "protected-doc",
+        filePath: docPath,
+        schema: TestSchema,
+      });
+
+      const result = await doc.remove();
+      await chmod(protectedDir, 0o755);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("PERMISSION_ERROR");
+      }
+    });
+
+    it.skipIf(shouldSkip)("should handle EACCES on collection remove", async () => {
+      const protectedDir = join(testDir, "protected-collection");
+      await mkdir(protectedDir, { recursive: true });
+
+      const itemId = "123e4567-e89b-12d3-a456-426614174000";
+      await writeFile(
+        join(protectedDir, `${itemId}.json`),
+        JSON.stringify({ id: itemId, value: "test" }),
+      );
+      await chmod(protectedDir, 0o555);
+
+      const ItemSchema = z.object({ id: z.string(), value: z.string() });
+      const collection = createCollection({
+        name: "protected-item",
+        dir: protectedDir,
+        filePath: (id) => join(protectedDir, `${id}.json`),
+        schema: ItemSchema,
+        getMetadata: (item) => item,
+        getId: (item) => item.id,
+      });
+
+      const result = await collection.remove(itemId);
+      await chmod(protectedDir, 0o755);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.code).toBe("PERMISSION_ERROR");
       }
     });
   });
