@@ -1,37 +1,25 @@
 import { describe, it, expect } from "vitest";
-import { ConfigCheckResponseSchema, type ConfigCheckResponse } from "./config.js";
+import { ConfigCheckResponseSchema } from "./config.js";
 
 describe("ConfigCheckResponseSchema discriminated union", () => {
   describe("valid states", () => {
     it("accepts configured: true with config", () => {
-      const validConfigured = {
-        configured: true as const,
-        config: { provider: "gemini" as const },
-      };
-      const result = ConfigCheckResponseSchema.safeParse(validConfigured);
-      expect(result.success).toBe(true);
-    });
-
-    it("accepts configured: true with config including optional model", () => {
-      const validConfiguredWithModel = {
-        configured: true as const,
-        config: { provider: "gemini" as const, model: "gemini-2.5-flash" },
-      };
-      const result = ConfigCheckResponseSchema.safeParse(validConfiguredWithModel);
+      const result = ConfigCheckResponseSchema.safeParse({
+        configured: true,
+        config: { provider: "gemini", model: "gemini-2.5-flash" },
+      });
       expect(result.success).toBe(true);
     });
 
     it("accepts configured: false without config", () => {
-      const validUnconfigured = { configured: false as const };
-      const result = ConfigCheckResponseSchema.safeParse(validUnconfigured);
+      const result = ConfigCheckResponseSchema.safeParse({ configured: false });
       expect(result.success).toBe(true);
     });
   });
 
-  describe("invalid states - making illegal states unrepresentable", () => {
+  describe("invalid states", () => {
     it("rejects configured: true without config", () => {
-      const invalidConfiguredNoConfig = { configured: true as const };
-      const result = ConfigCheckResponseSchema.safeParse(invalidConfiguredNoConfig);
+      const result = ConfigCheckResponseSchema.safeParse({ configured: true });
       expect(result.success).toBe(false);
     });
   });

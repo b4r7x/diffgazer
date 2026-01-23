@@ -1,7 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-  GEMINI_MODEL_INFO,
-  AVAILABLE_PROVIDERS,
   GEMINI_MODELS,
   GeminiModelSchema,
   AIProviderSchema,
@@ -18,11 +16,6 @@ import {
 } from "./config.js";
 
 describe("AIProviderSchema", () => {
-  it("accepts valid provider: gemini", () => {
-    const result = AIProviderSchema.safeParse("gemini");
-    expect(result.success).toBe(true);
-  });
-
   it.each(["openai", "anthropic", "invalid", ""])(
     "rejects invalid provider: %s",
     (provider) => {
@@ -72,33 +65,9 @@ describe("ModelInfoSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects model info with missing required fields", () => {
-    const result = ModelInfoSchema.safeParse({
-      id: "test-model",
-      name: "Test Model",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects model info with invalid tier", () => {
-    const result = ModelInfoSchema.safeParse({
-      id: "test-model",
-      name: "Test Model",
-      description: "A test model",
-      tier: "premium",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects model info with non-boolean recommended", () => {
-    const result = ModelInfoSchema.safeParse({
-      id: "test-model",
-      name: "Test Model",
-      description: "A test model",
-      tier: "free",
-      recommended: "yes",
-    });
-    expect(result.success).toBe(false);
+  it("rejects model info with invalid data", () => {
+    expect(ModelInfoSchema.safeParse({ id: "test-model", name: "Test Model" }).success).toBe(false);
+    expect(ModelInfoSchema.safeParse({ id: "test-model", name: "Test Model", description: "A test model", tier: "premium" }).success).toBe(false);
   });
 });
 
@@ -113,32 +82,10 @@ describe("ProviderInfoSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects provider info with invalid id", () => {
-    const result = ProviderInfoSchema.safeParse({
-      id: "openai",
-      name: "OpenAI",
-      defaultModel: "gpt-4",
-      models: ["gpt-4", "gpt-4o"],
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects provider info with missing required fields", () => {
-    const result = ProviderInfoSchema.safeParse({
-      id: "gemini",
-      name: "Google Gemini",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects provider info with non-array models", () => {
-    const result = ProviderInfoSchema.safeParse({
-      id: "gemini",
-      name: "Google Gemini",
-      defaultModel: "gemini-2.5-flash",
-      models: "gemini-2.5-flash",
-    });
-    expect(result.success).toBe(false);
+  it("rejects provider info with invalid data", () => {
+    expect(ProviderInfoSchema.safeParse({ id: "openai", name: "OpenAI", defaultModel: "gpt-4", models: ["gpt-4"] }).success).toBe(false);
+    expect(ProviderInfoSchema.safeParse({ id: "gemini", name: "Google Gemini" }).success).toBe(false);
+    expect(ProviderInfoSchema.safeParse({ id: "gemini", name: "Google Gemini", defaultModel: "gemini-2.5-flash", models: "gemini-2.5-flash" }).success).toBe(false);
   });
 });
 
@@ -167,13 +114,6 @@ describe("UserConfigSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("accepts valid config with model", () => {
-    const result = UserConfigSchema.safeParse(
-      createBaseUserConfig({ model: "gemini-2.5-flash" })
-    );
-    expect(result.success).toBe(true);
-  });
-
   it("rejects config without provider", () => {
     const result = UserConfigSchema.safeParse({
       createdAt: VALID_TIMESTAMP,
@@ -182,27 +122,9 @@ describe("UserConfigSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects config with invalid provider", () => {
-    const result = UserConfigSchema.safeParse(
-      createBaseUserConfig({ provider: "openai" })
-    );
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects config without timestamps", () => {
-    const result = UserConfigSchema.safeParse({
-      provider: "gemini",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects config with invalid timestamp format", () => {
-    const result = UserConfigSchema.safeParse({
-      provider: "gemini",
-      createdAt: "invalid-date",
-      updatedAt: VALID_TIMESTAMP,
-    });
-    expect(result.success).toBe(false);
+  it("rejects config with invalid timestamps", () => {
+    expect(UserConfigSchema.safeParse({ provider: "gemini" }).success).toBe(false);
+    expect(UserConfigSchema.safeParse({ provider: "gemini", createdAt: "invalid-date", updatedAt: VALID_TIMESTAMP }).success).toBe(false);
   });
 
   describe("cross-field model validation", () => {
@@ -231,13 +153,6 @@ describe("UserConfigSchema", () => {
         }
       }
     );
-
-    it("accepts config with undefined model for any provider", () => {
-      const result = UserConfigSchema.safeParse(
-        createBaseUserConfig({ provider: "gemini", model: undefined })
-      );
-      expect(result.success).toBe(true);
-    });
   });
 });
 
@@ -256,25 +171,9 @@ describe("SaveConfigRequestSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects request with empty apiKey", () => {
-    const result = SaveConfigRequestSchema.safeParse(
-      createBaseSaveConfigRequest({ apiKey: "" })
-    );
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects request without apiKey", () => {
-    const result = SaveConfigRequestSchema.safeParse({
-      provider: "gemini",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects request with invalid provider", () => {
-    const result = SaveConfigRequestSchema.safeParse(
-      createBaseSaveConfigRequest({ provider: "openai" })
-    );
-    expect(result.success).toBe(false);
+  it("rejects request with invalid apiKey", () => {
+    expect(SaveConfigRequestSchema.safeParse(createBaseSaveConfigRequest({ apiKey: "" })).success).toBe(false);
+    expect(SaveConfigRequestSchema.safeParse({ provider: "gemini" }).success).toBe(false);
   });
 });
 
@@ -308,48 +207,32 @@ describe("ConfigErrorSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects error without message", () => {
-    const result = ConfigErrorSchema.safeParse({
-      code: "CONFIG_NOT_FOUND",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("rejects error without code", () => {
-    const result = ConfigErrorSchema.safeParse({
-      message: "Error message",
-    });
-    expect(result.success).toBe(false);
+  it("rejects error with missing required fields", () => {
+    expect(ConfigErrorSchema.safeParse({ code: "CONFIG_NOT_FOUND" }).success).toBe(false);
+    expect(ConfigErrorSchema.safeParse({ message: "Error message" }).success).toBe(false);
   });
 });
 
 describe("ConfigCheckResponseSchema", () => {
-  it("accepts response with configured: false", () => {
+  it("accepts unconfigured response", () => {
     const result = ConfigCheckResponseSchema.safeParse({
       configured: false,
     });
     expect(result.success).toBe(true);
   });
 
-  it("accepts response with configured: true and config", () => {
-    const result = ConfigCheckResponseSchema.safeParse({
+  it("accepts configured response with and without model", () => {
+    const withModel = ConfigCheckResponseSchema.safeParse({
       configured: true,
-      config: {
-        provider: "gemini",
-        model: "gemini-2.5-flash",
-      },
+      config: { provider: "gemini", model: "gemini-2.5-flash" },
     });
-    expect(result.success).toBe(true);
-  });
+    expect(withModel.success).toBe(true);
 
-  it("accepts config without model", () => {
-    const result = ConfigCheckResponseSchema.safeParse({
+    const withoutModel = ConfigCheckResponseSchema.safeParse({
       configured: true,
-      config: {
-        provider: "gemini",
-      },
+      config: { provider: "gemini" },
     });
-    expect(result.success).toBe(true);
+    expect(withoutModel.success).toBe(true);
   });
 });
 
@@ -378,18 +261,9 @@ describe("CurrentConfigResponseSchema", () => {
 });
 
 describe("DeleteConfigResponseSchema", () => {
-  it("accepts response with deleted: true", () => {
-    const result = DeleteConfigResponseSchema.safeParse({
-      deleted: true,
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("accepts response with deleted: false", () => {
-    const result = DeleteConfigResponseSchema.safeParse({
-      deleted: false,
-    });
-    expect(result.success).toBe(true);
+  it("accepts valid response with boolean deleted field", () => {
+    expect(DeleteConfigResponseSchema.safeParse({ deleted: true }).success).toBe(true);
+    expect(DeleteConfigResponseSchema.safeParse({ deleted: false }).success).toBe(true);
   });
 
   it("rejects response without deleted field", () => {

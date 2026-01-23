@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SHARED_ERROR_CODES, type SharedErrorCode } from "./errors.js";
+import { createDomainErrorCodes, createDomainErrorSchema, type SharedErrorCode } from "./errors.js";
 
 export const GIT_FILE_STATUS_CODES = ["M", "T", "A", "D", "R", "C", "U", "?", "!", " "] as const;
 export const GitFileStatusCodeSchema = z.enum(GIT_FILE_STATUS_CODES);
@@ -31,7 +31,6 @@ export const GitStatusSchema = z.object({
 });
 export type GitStatus = z.infer<typeof GitStatusSchema>;
 
-/** Git-specific error codes (domain-specific) */
 export const GIT_SPECIFIC_CODES = [
   "NOT_GIT_REPO",
   "GIT_NOT_FOUND",
@@ -42,16 +41,11 @@ export const GIT_SPECIFIC_CODES = [
 ] as const;
 export type GitSpecificCode = (typeof GIT_SPECIFIC_CODES)[number];
 
-/** All git error codes: shared + domain-specific */
-export const GIT_ERROR_CODES = [...SHARED_ERROR_CODES, ...GIT_SPECIFIC_CODES] as const;
-export const GitErrorCodeSchema = z.enum(GIT_ERROR_CODES);
+export const GIT_ERROR_CODES = createDomainErrorCodes(GIT_SPECIFIC_CODES);
+export const GitErrorCodeSchema = z.enum(GIT_ERROR_CODES as unknown as [string, ...string[]]);
 export type GitErrorCode = SharedErrorCode | GitSpecificCode;
 
-export const GitErrorSchema = z.object({
-  message: z.string(),
-  code: GitErrorCodeSchema,
-  details: z.string().optional(),
-});
+export const GitErrorSchema = createDomainErrorSchema(GIT_SPECIFIC_CODES, { includeDetails: true });
 export type GitError = z.infer<typeof GitErrorSchema>;
 
 export const GitDiffSchema = z.object({
