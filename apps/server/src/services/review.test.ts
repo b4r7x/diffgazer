@@ -1,9 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createGitDiffError } from "./review.js";
 
-/**
- * Creates a mock Node.js system error with an error code
- */
 function createNodeError(code: string, message: string): NodeJS.ErrnoException {
   const error = new Error(message) as NodeJS.ErrnoException;
   error.code = code;
@@ -19,7 +16,7 @@ describe("createGitDiffError", () => {
 
       expect(result.message).toContain("Git is not installed or not in PATH");
       expect(result.message).toContain("Please install git");
-      expect(result.message).toContain("spawn git ENOENT"); // Original preserved
+      expect(result.message).toContain("spawn git ENOENT");
     });
   });
 
@@ -31,7 +28,7 @@ describe("createGitDiffError", () => {
 
       expect(result.message).toContain("Permission denied");
       expect(result.message).toContain("Check file permissions");
-      expect(result.message).toContain("permission denied"); // Original preserved
+      expect(result.message).toContain("permission denied");
     });
   });
 
@@ -43,7 +40,7 @@ describe("createGitDiffError", () => {
 
       expect(result.message).toContain("timed out");
       expect(result.message).toContain("repository may be too large");
-      expect(result.message).toContain("operation timed out"); // Original preserved
+      expect(result.message).toContain("operation timed out");
     });
 
     it("handles timeout message without error code", () => {
@@ -52,7 +49,7 @@ describe("createGitDiffError", () => {
       const result = createGitDiffError(error);
 
       expect(result.message).toContain("timed out");
-      expect(result.message).toContain("Command timed out after 10000ms"); // Original preserved
+      expect(result.message).toContain("Command timed out after 10000ms");
     });
   });
 
@@ -64,7 +61,7 @@ describe("createGitDiffError", () => {
 
       expect(result.message).toContain("exceeded buffer limit");
       expect(result.message).toContain("too large to process");
-      expect(result.message).toContain("stdout maxBuffer"); // Original preserved
+      expect(result.message).toContain("stdout maxBuffer");
     });
 
     it("handles generic maxBuffer error", () => {
@@ -84,7 +81,7 @@ describe("createGitDiffError", () => {
 
       expect(result.message).toContain("Not a git repository");
       expect(result.message).toContain("run this command from within a git repository");
-      expect(result.message).toContain("fatal:"); // Original preserved
+      expect(result.message).toContain("fatal:");
     });
 
     it("handles generic fatal git errors", () => {
@@ -93,7 +90,7 @@ describe("createGitDiffError", () => {
       const result = createGitDiffError(error);
 
       expect(result.message).toContain("Not a git repository");
-      expect(result.message).toContain("fatal:"); // Original preserved
+      expect(result.message).toContain("fatal:");
     });
   });
 
@@ -104,7 +101,7 @@ describe("createGitDiffError", () => {
       const result = createGitDiffError(error);
 
       expect(result.message).toContain("Failed to get git diff");
-      expect(result.message).toContain("Some unexpected git error"); // Original preserved
+      expect(result.message).toContain("Some unexpected git error");
     });
 
     it("handles non-Error values", () => {

@@ -29,10 +29,7 @@ interface UseDiscussReviewOptions {
   reviewHistory: ReviewHistoryActions;
 }
 
-/**
- * Hook that handles starting a chat discussion about a code review.
- * Creates a new session, links it to the review, and sets up context.
- */
+/** Creates a chat session linked to a code review with context. */
 export function useDiscussReview({ session, reviewHistory }: UseDiscussReviewOptions) {
   const navigateToChatRef = useRef<(() => void) | null>(null);
 

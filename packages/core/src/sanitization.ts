@@ -1,9 +1,4 @@
 /**
- * Sanitization utilities for handling untrusted input
- * Provides functions for cleaning unicode and escaping special characters
- */
-
-/**
  * Remove potentially problematic unicode characters from text.
  * Removes zero-width characters, tag characters, bidirectional overrides,
  * and variation selectors that could cause display issues or security concerns.
@@ -16,10 +11,6 @@ export function sanitizeUnicode(s: string): string {
     .replace(/[\uFE00-\uFE0F]/g, "");             // Variation selectors
 }
 
-/**
- * Escape XML/HTML special characters to prevent injection.
- * Converts &, <, and > to their entity equivalents.
- */
 export function escapeXml(str: string): string {
   return str
     .replace(/&/g, "&amp;")

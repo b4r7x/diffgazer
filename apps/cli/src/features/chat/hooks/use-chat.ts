@@ -18,23 +18,21 @@ interface UseChatReturn {
 
 export function useChat(): UseChatReturn {
   const [chatState, setChatState] = useState<ChatState>({ status: "idle" });
-
-  // Use a ref to track full content across event callbacks
   const fullContentRef = useRef("");
 
   const handleEvent = useCallback((event: ChatStreamEvent): boolean => {
     if (event.type === "chunk") {
       fullContentRef.current += event.content;
       setChatState({ status: "loading", streamContent: fullContentRef.current });
-      return false; // not terminal
+      return false;
     }
     if (event.type === "complete") {
       setChatState({ status: "idle" });
-      return true; // terminal
+      return true;
     }
     if (event.type === "error") {
       setChatState({ status: "error", error: event.error });
-      return true; // terminal
+      return true;
     }
     return false;
   }, []);
@@ -43,7 +41,6 @@ export function useChat(): UseChatReturn {
     setChatState(createErrorState(error.message));
   }, []);
 
-  // For chat, we want to reset to idle on unexpected end instead of showing error
   const handleUnexpectedEnd = useCallback((): void => {
     setChatState({ status: "idle" });
   }, []);
@@ -74,8 +71,6 @@ export function useChat(): UseChatReturn {
 
       await processStream(reader);
     } catch (error) {
-      // Pre-stream errors (e.g., network failure before getting reader)
-      // are not handled by useSSEStream, so we catch them here
       if (!isAbortError(error)) {
         setChatState(createErrorState(getErrorMessage(error)));
       }

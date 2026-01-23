@@ -6,11 +6,7 @@ export interface AggregationResult {
   partialFailures: Array<{ file: string; error: string }>;
 }
 
-/**
- * Aggregates multiple file-level review results into a single overall review.
- * Combines issues from all files, computes overall score, and generates summary.
- * Tracks parse errors separately from complete failures to surface degraded results.
- */
+/** Combines file reviews into overall result. Parse errors tracked separately. */
 export function aggregateReviews(
   fileResults: FileReviewResult[],
   partialFailures: Array<{ file: string; error: string }>
@@ -20,13 +16,11 @@ export function aggregateReviews(
   const parseErrors: Array<{ file: string; error: string }> = [];
 
   for (const fileResult of fileResults) {
-    // Track files with parse errors separately - their issues array is unreliable
     if (fileResult.parseError) {
       parseErrors.push({
         file: fileResult.filePath,
         error: fileResult.parseErrorMessage ?? "Unknown parse error",
       });
-      // Do NOT include issues from parse-errored results - they are empty/unreliable
       continue;
     }
 
@@ -74,7 +68,6 @@ function buildSummary(
     summary += ` (${parts.join(", ")})`;
   }
 
-  // Surface parse errors prominently - these indicate degraded results
   if (parseErrors.length > 0) {
     summary += ` WARNING: ${parseErrors.length} file${parseErrors.length !== 1 ? "s" : ""} had AI response parsing errors - review may be incomplete.`;
   }

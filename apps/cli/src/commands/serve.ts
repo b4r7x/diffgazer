@@ -31,6 +31,5 @@ export async function serveCommand(options: CommandOptions): Promise<void> {
 
   registerShutdownHandlers(shutdown);
 
-  // Keep the process alive indefinitely until a shutdown signal is received.
   await new Promise(() => {});
 }

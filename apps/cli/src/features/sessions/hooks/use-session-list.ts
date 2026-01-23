@@ -2,10 +2,6 @@ import { useEntityList } from "../../../hooks/use-entity-list.js";
 import { api } from "../../../lib/api.js";
 import type { Session, SessionMetadata } from "@repo/schemas/session";
 
-/**
- * Hook for managing session list operations (list, load, delete).
- * Uses useEntityList with session-specific API configuration.
- */
 export function useSessionList() {
   const projectPath = process.cwd();
 

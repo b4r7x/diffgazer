@@ -3,6 +3,7 @@ import type { Context } from "hono";
 import { join, sep } from "node:path";
 import { realpath } from "node:fs/promises";
 import { ErrorCode } from "@repo/schemas/errors";
+import { getErrorMessage } from "@repo/core";
 import { createGitService } from "../../services/git.js";
 import { errorResponse, ok } from "../../lib/response.js";
 import { isRelativePath } from "../../lib/validation.js";
@@ -49,7 +50,7 @@ git.get("/status", async (c) => {
     }
     return ok(c, status);
   } catch (error) {
-    console.error("Git status error:", error);
+    console.error("Git status error:", getErrorMessage(error));
     return errorResponse(c, "Failed to retrieve git status", ErrorCode.COMMAND_FAILED, 500);
   }
 });
@@ -69,7 +70,7 @@ git.get("/diff", async (c) => {
     const diff = await result.service.getDiff(staged);
     return ok(c, { diff, staged });
   } catch (error) {
-    console.error("Git diff error:", error);
+    console.error("Git diff error:", getErrorMessage(error));
     return errorResponse(c, "Failed to retrieve git diff", ErrorCode.COMMAND_FAILED, 500);
   }
 });

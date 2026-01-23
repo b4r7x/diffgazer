@@ -22,19 +22,4 @@ export type SecretsErrorCode =
   | "VAULT_WRITE_ERROR"
   | "PARSE_ERROR";
 
-/**
- * Error type for secrets management operations.
- * Covers both system keyring operations and encrypted vault storage.
- *
- * @example
- * ```typescript
- * const result = await getSecret("API_KEY");
- * if (!result.ok) {
- *   const error: SecretsError = result.error;
- *   if (error.code === "SECRET_NOT_FOUND") {
- *     // Prompt user to configure the secret
- *   }
- * }
- * ```
- */
 export type SecretsError = AppError<SecretsErrorCode>;

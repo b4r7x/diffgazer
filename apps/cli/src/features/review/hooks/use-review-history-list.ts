@@ -2,10 +2,6 @@ import { useEntityList } from "../../../hooks/use-entity-list.js";
 import { api } from "../../../lib/api.js";
 import type { SavedReview, ReviewHistoryMetadata } from "@repo/schemas/review-history";
 
-/**
- * Hook for managing review history list operations (list, load, delete).
- * Uses useEntityList with review-specific API configuration.
- */
 export function useReviewHistoryList() {
   const projectPath = process.cwd();
 

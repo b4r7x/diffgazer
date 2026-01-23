@@ -1,6 +1,8 @@
 import type { AIClient, StreamMetadata } from "@repo/core/ai";
 import type { ReviewResult, FileReviewResult } from "@repo/schemas/review";
-import { getErrorMessage, safeParseJson, truncate, chunk } from "@repo/core";
+import { ReviewIssueSchema, ScoreSchema } from "@repo/schemas/review";
+import { getErrorMessage, safeParseJson, truncate, chunk, validateSchema } from "@repo/core";
+import { z } from "zod";
 import { parseDiff, type FileDiff } from "@repo/core/diff";
 import { createGitService } from "./git.js";
 import { aggregateReviews } from "./review-aggregator.js";
@@ -18,10 +20,6 @@ export interface ChunkedReviewCallbacks {
   onError: (error: Error) => Promise<void>;
 }
 
-/**
- * Retrieves and parses the git diff for review.
- * Returns parsed diff files or throws if no changes exist.
- */
 async function getDiffForReview(
   staged: boolean,
   projectPath?: string
@@ -37,10 +35,6 @@ async function getDiffForReview(
   return parsed.files;
 }
 
-/**
- * Creates batches of files for parallel processing.
- * Each batch contains up to batchSize files.
- */
 function createReviewBatches(
   files: FileDiff[],
   batchSize: number = DEFAULT_BATCH_SIZE
@@ -60,7 +54,7 @@ async function reviewSingleFile(
       content += chunk;
       await callbacks.onChunk(chunk);
     },
-    onComplete: async () => { /* handled below */ },
+    onComplete: async () => {},
     onError: async (error) => { throw error; },
   });
 
@@ -86,28 +80,11 @@ interface ParseError {
   details?: string;
 }
 
-function validateFileReviewJson(json: unknown): ParseError | null {
-  if (typeof json !== "object" || json === null) {
-    return { message: "AI response is not a JSON object" };
-  }
-
-  const obj = json as Record<string, unknown>;
-  const { summary, issues, score } = obj;
-
-  if (typeof summary !== "string") {
-    return { message: `Invalid summary: expected string, got ${typeof summary}` };
-  }
-
-  if (!Array.isArray(issues)) {
-    return { message: `Invalid issues: expected array, got ${typeof issues}` };
-  }
-
-  if (score !== null && score !== undefined && typeof score !== "number") {
-    return { message: `Invalid score: expected number or null, got ${typeof score}` };
-  }
-
-  return null;
-}
+const AIFileReviewResponseSchema = z.object({
+  summary: z.string(),
+  issues: z.array(ReviewIssueSchema),
+  score: ScoreSchema,
+});
 
 function createParseErrorResult(filePath: string, errorMessage: string, content: string): FileReviewResult {
   console.error(
@@ -136,25 +113,27 @@ function parseFileReviewResult(filePath: string, content: string): FileReviewRes
     return createParseErrorResult(filePath, errorMessage, content);
   }
 
-  const validationError = validateFileReviewJson(parseResult.value);
-  if (validationError) {
-    return createParseErrorResult(filePath, validationError.message, content);
+  const validationResult = validateSchema(
+    parseResult.value,
+    AIFileReviewResponseSchema,
+    (message) => ({ message })
+  );
+
+  if (!validationResult.ok) {
+    return createParseErrorResult(filePath, validationResult.error.message, content);
   }
 
-  const json = parseResult.value as Record<string, unknown>;
+  const response = validationResult.value;
   return {
     filePath,
-    summary: json.summary as string,
-    issues: json.issues as FileReviewResult["issues"],
-    score: (json.score as number) ?? null,
+    summary: response.summary,
+    issues: response.issues,
+    score: response.score,
     parseError: false,
   };
 }
 
-/**
- * Reviews a git diff by processing files in batches with concurrency control.
- * Orchestrates: git diff retrieval -> batching -> parallel review -> aggregation
- */
+/** Reviews diff files in parallel batches with concurrency control. */
 export async function reviewDiffChunked(
   aiClient: AIClient,
   staged: boolean,
