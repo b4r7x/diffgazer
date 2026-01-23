@@ -4,7 +4,8 @@ export type { AppError } from "./errors.js";
 export { createError, getErrorMessage, isNodeError, toError, isAbortError } from "./errors.js";
 export { createErrorClassifier } from "./utils/error-classifier.js";
 export { safeParseJson } from "./json.js";
-export { UuidSchema, isValidUuid, assertValidUuid, validateUuid, type ValidationError } from "./validation.js";
+export { UuidSchema, isValidUuid, assertValidUuid } from "./validation.js";
+export { validateSchema, parseAndValidate } from "./utils/validation.js";
 export {
   safeReadFile,
   atomicWriteFile,

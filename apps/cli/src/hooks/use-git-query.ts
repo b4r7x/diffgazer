@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { GitError } from "@repo/schemas/git";
 import type { z } from "zod";
 import { api } from "../lib/api.js";
-import { getErrorMessage } from "@repo/core";
+import { getErrorMessage, validateSchema } from "@repo/core";
 
 function createGitError(message: string): GitError {
   return { message, code: "UNKNOWN" };
@@ -28,13 +28,13 @@ export function useGitQuery<TData>(options: UseGitQueryOptions<TData>) {
     try {
       const data = await api().get<TData>(endpoint, queryParams);
 
-      const parsed = schema.safeParse(data);
-      if (!parsed.success) {
-        setState({ status: "error", error: createGitError("Invalid response") });
+      const result = validateSchema(data, schema, createGitError);
+      if (!result.ok) {
+        setState({ status: "error", error: result.error });
         return;
       }
 
-      setState({ status: "success", data: parsed.data });
+      setState({ status: "success", data: result.value });
     } catch (e) {
       setState({ status: "error", error: createGitError(getErrorMessage(e)) });
     }

@@ -1,3 +1,5 @@
+import { safeParseJson } from "@repo/core";
+
 // 1 MB buffer limit to prevent memory exhaustion from malformed streams
 const MAX_BUFFER_SIZE = 1024 * 1024;
 
@@ -13,15 +15,15 @@ export interface SSEParseResult {
 
 function parseSSELine(line: string): unknown | undefined {
   if (!line.startsWith("data: ")) return undefined;
-  try {
-    return JSON.parse(line.slice(6));
-  } catch {
-    const jsonStr = line.slice(6);
-    console.debug(
-      `Failed to parse SSE event: ${jsonStr.slice(0, 100)}${jsonStr.length > 100 ? "..." : ""}`
-    );
+
+  const jsonStr = line.slice(6);
+  const result = safeParseJson(jsonStr, (message, details) => {
+    const preview = jsonStr.slice(0, 100) + (jsonStr.length > 100 ? "..." : "");
+    console.debug(`Failed to parse SSE event: ${preview}${details ? ` (${details})` : ""}`);
     return undefined;
-  }
+  });
+
+  return result.ok ? result.value : undefined;
 }
 
 function emitParsedEvent<T>(

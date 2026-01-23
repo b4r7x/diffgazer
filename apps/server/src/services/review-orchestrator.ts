@@ -1,5 +1,6 @@
 import type { AIClient, StreamMetadata } from "@repo/core/ai";
 import type { ReviewResult, FileReviewResult } from "@repo/schemas/review";
+import { safeParseJson } from "@repo/core";
 import { parseDiff, type FileDiff } from "@repo/core/diff";
 import { createGitService } from "./git.js";
 import { aggregateReviews } from "./review-aggregator.js";
@@ -86,59 +87,74 @@ Respond with JSON only: { "summary": "...", "issues": [...], "score": 0-10 }
 Each issue: { "severity": "critical|warning|suggestion|nitpick", "category": "security|performance|style|logic|documentation|best-practice", "file": "${file.filePath}", "line": number or null, "title": "...", "description": "...", "suggestion": "fix or null" }`;
 }
 
-function parseFileReviewResult(filePath: string, content: string): FileReviewResult {
-  try {
-    const json = JSON.parse(content);
+interface ParseError {
+  message: string;
+  details?: string;
+}
 
-    // Validate that parsed JSON has expected structure
-    if (typeof json !== "object" || json === null) {
-      throw new Error("AI response is not a JSON object");
-    }
-
-    // Validate required fields exist with correct types
-    const summary = json.summary;
-    const issues = json.issues;
-    const score = json.score;
-
-    if (typeof summary !== "string") {
-      throw new Error(`Invalid summary: expected string, got ${typeof summary}`);
-    }
-
-    if (!Array.isArray(issues)) {
-      throw new Error(`Invalid issues: expected array, got ${typeof issues}`);
-    }
-
-    if (score !== null && score !== undefined && typeof score !== "number") {
-      throw new Error(`Invalid score: expected number or null, got ${typeof score}`);
-    }
-
-    return {
-      filePath,
-      summary,
-      issues,
-      score: score ?? null,
-      parseError: false,
-    };
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-
-    // Log with full context for debugging
-    console.error(
-      `[PARSE_ERROR] Failed to parse AI review response for ${filePath}. ` +
-      `Error: ${errorMessage}. ` +
-      `Raw content (first 500 chars): ${content.slice(0, 500)}${content.length > 500 ? "..." : ""}`
-    );
-
-    // Return result with explicit parse error flag - DO NOT silently degrade
-    return {
-      filePath,
-      summary: `[Parse Error] AI response could not be parsed. Raw output: ${content.slice(0, 200)}${content.length > 200 ? "..." : ""}`,
-      issues: [],
-      score: null,
-      parseError: true,
-      parseErrorMessage: errorMessage,
-    };
+function validateFileReviewJson(json: unknown): ParseError | null {
+  if (typeof json !== "object" || json === null) {
+    return { message: "AI response is not a JSON object" };
   }
+
+  const obj = json as Record<string, unknown>;
+  const { summary, issues, score } = obj;
+
+  if (typeof summary !== "string") {
+    return { message: `Invalid summary: expected string, got ${typeof summary}` };
+  }
+
+  if (!Array.isArray(issues)) {
+    return { message: `Invalid issues: expected array, got ${typeof issues}` };
+  }
+
+  if (score !== null && score !== undefined && typeof score !== "number") {
+    return { message: `Invalid score: expected number or null, got ${typeof score}` };
+  }
+
+  return null;
+}
+
+function createParseErrorResult(filePath: string, errorMessage: string, content: string): FileReviewResult {
+  console.error(
+    `[PARSE_ERROR] Failed to parse AI review response for ${filePath}. ` +
+    `Error: ${errorMessage}. ` +
+    `Raw content (first 500 chars): ${content.slice(0, 500)}${content.length > 500 ? "..." : ""}`
+  );
+
+  return {
+    filePath,
+    summary: `[Parse Error] AI response could not be parsed. Raw output: ${content.slice(0, 200)}${content.length > 200 ? "..." : ""}`,
+    issues: [],
+    score: null,
+    parseError: true,
+    parseErrorMessage: errorMessage,
+  };
+}
+
+function parseFileReviewResult(filePath: string, content: string): FileReviewResult {
+  const parseResult = safeParseJson<ParseError>(content, (message, details) => ({ message, details }));
+
+  if (!parseResult.ok) {
+    const errorMessage = parseResult.error.details
+      ? `${parseResult.error.message}: ${parseResult.error.details}`
+      : parseResult.error.message;
+    return createParseErrorResult(filePath, errorMessage, content);
+  }
+
+  const validationError = validateFileReviewJson(parseResult.value);
+  if (validationError) {
+    return createParseErrorResult(filePath, validationError.message, content);
+  }
+
+  const json = parseResult.value as Record<string, unknown>;
+  return {
+    filePath,
+    summary: json.summary as string,
+    issues: json.issues as FileReviewResult["issues"],
+    score: (json.score as number) ?? null,
+    parseError: false,
+  };
 }
 
 /**
