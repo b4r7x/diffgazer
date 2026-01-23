@@ -1,8 +1,11 @@
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { HTTPException } from "hono/http-exception";
-import { isValidUuid } from "@repo/core";
+import { isValidUuid, isValidProjectPath } from "@repo/core";
 import type { StoreErrorCode } from "@repo/core/storage";
+
+// Re-export path validation from @repo/core
+export { isRelativePath, isValidProjectPath } from "@repo/core";
 
 export function requireUuidParam(c: Context, paramName: string): string {
   const value = c.req.param(paramName);
@@ -12,23 +15,6 @@ export function requireUuidParam(c: Context, paramName: string): string {
     });
   }
   return value;
-}
-
-export function isRelativePath(path: string): boolean {
-  if (path.startsWith("/") || path.startsWith("\\") || /^[a-zA-Z]:/.test(path)) {
-    return false;
-  }
-  if (path.includes("..") || path.includes("\0")) {
-    return false;
-  }
-  return true;
-}
-
-export function isValidProjectPath(path: string): boolean {
-  if (path.includes("..") || path.includes("\0")) {
-    return false;
-  }
-  return true;
 }
 
 export function validateProjectPath(path: string | undefined): string | undefined {

@@ -6,13 +6,9 @@ import type {
 } from "@repo/schemas/session";
 import { api } from "../../../lib/api.js";
 import { getErrorMessage } from "@repo/core";
+import { type ApiError } from "@repo/api";
 
 export type SessionState = "idle" | "loading" | "active" | "error";
-
-interface ApiError {
-  code?: string;
-  status?: number;
-}
 
 function isNotFoundError(e: unknown): e is ApiError {
   if (!e || typeof e !== "object") return false;

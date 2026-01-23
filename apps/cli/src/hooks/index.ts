@@ -1,4 +1,11 @@
 export {
+  useAsyncOperation,
+  type AsyncStatus,
+  type AsyncError,
+  type AsyncState,
+  type UseAsyncOperationResult,
+} from "./use-async-operation.js";
+export {
   useConfig,
   type ConfigCheckState,
   type SaveConfigState,
