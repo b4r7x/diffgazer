@@ -1,3 +1,4 @@
+import { classifyDiffLine } from "@repo/core/diff";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import type { GitDiffState } from "../hooks/use-git-diff.js";
@@ -5,20 +6,21 @@ import type { GitDiffState } from "../hooks/use-git-diff.js";
 //Maximum number of diff lines to display in the UI.
 const MAX_DIFF_LINES_DISPLAY = 50;
 
-function DiffLine({ line }: { line: string }) {
-  if (line.startsWith("+") && !line.startsWith("+++")) {
-    return <Text color="green">{line}</Text>;
+function DiffLine({ line }: { line: string }): React.ReactNode {
+  const lineType = classifyDiffLine(line);
+
+  switch (lineType) {
+    case "addition":
+      return <Text color="green">{line}</Text>;
+    case "deletion":
+      return <Text color="red">{line}</Text>;
+    case "hunk-header":
+      return <Text color="cyan">{line}</Text>;
+    case "file-header":
+      return <Text bold>{line}</Text>;
+    case "context":
+      return <Text>{line}</Text>;
   }
-  if (line.startsWith("-") && !line.startsWith("---")) {
-    return <Text color="red">{line}</Text>;
-  }
-  if (line.startsWith("@@")) {
-    return <Text color="cyan">{line}</Text>;
-  }
-  if (line.startsWith("diff ") || line.startsWith("index ")) {
-    return <Text bold>{line}</Text>;
-  }
-  return <Text>{line}</Text>;
 }
 
 export function GitDiffDisplay({

@@ -1,6 +1,7 @@
 import { createGitService } from "./git.js";
 import type { AIClient, StreamCallbacks } from "@repo/core/ai";
-import { isNodeError, getErrorMessage } from "@repo/core";
+import { createErrorClassifier, getErrorMessage } from "@repo/core";
+import { parseDiff } from "@repo/core/diff";
 import { saveReview } from "@repo/core/storage";
 import { ReviewResultSchema, type ReviewResult } from "@repo/schemas/review";
 import { ErrorCode } from "@repo/schemas/errors";
@@ -45,41 +46,55 @@ Each issue: { "severity": "critical|warning|suggestion|nitpick", "category": "se
 
 const gitService = createGitService();
 
+type GitDiffErrorCode =
+  | "GIT_NOT_FOUND"
+  | "PERMISSION_DENIED"
+  | "TIMEOUT"
+  | "BUFFER_EXCEEDED"
+  | "NOT_A_REPOSITORY"
+  | "UNKNOWN";
+
+const classifyGitDiffError = createErrorClassifier<GitDiffErrorCode>(
+  [
+    {
+      patterns: ["enoent", "spawn git", "not found"],
+      code: "GIT_NOT_FOUND",
+      message: "Git is not installed or not in PATH. Please install git and try again.",
+    },
+    {
+      patterns: ["eacces", "permission denied"],
+      code: "PERMISSION_DENIED",
+      message: "Permission denied when accessing git. Check file permissions.",
+    },
+    {
+      patterns: ["etimedout", "timed out", "timeout"],
+      code: "TIMEOUT",
+      message: "Git operation timed out. The repository may be too large or the system is under heavy load.",
+    },
+    {
+      patterns: ["maxbuffer", "stdout maxbuffer"],
+      code: "BUFFER_EXCEEDED",
+      message: "Git diff output exceeded buffer limit. The changes may be too large to process.",
+    },
+    {
+      patterns: ["not a git repository", "fatal:"],
+      code: "NOT_A_REPOSITORY",
+      message: "Not a git repository. Please run this command from within a git repository.",
+    },
+  ],
+  "UNKNOWN",
+  (original) => `Failed to get git diff: ${original}`
+);
+
 /** @internal Exported for testing */
 export function createGitDiffError(error: unknown): Error {
   const originalMessage = getErrorMessage(error);
+  const classified = classifyGitDiffError(error);
 
-  if (isNodeError(error, "ENOENT")) {
-    return new Error(
-      `Git is not installed or not in PATH. Please install git and try again. (Original: ${originalMessage})`
-    );
+  if (classified.code === "UNKNOWN") {
+    return new Error(classified.message);
   }
-
-  if (isNodeError(error, "EACCES")) {
-    return new Error(
-      `Permission denied when accessing git. Check file permissions. (Original: ${originalMessage})`
-    );
-  }
-
-  if (isNodeError(error, "ETIMEDOUT") || originalMessage.includes("timed out")) {
-    return new Error(
-      `Git operation timed out. The repository may be too large or the system is under heavy load. (Original: ${originalMessage})`
-    );
-  }
-
-  if (originalMessage.includes("maxBuffer") || originalMessage.includes("stdout maxBuffer")) {
-    return new Error(
-      `Git diff output exceeded buffer limit. The changes may be too large to process. (Original: ${originalMessage})`
-    );
-  }
-
-  if (originalMessage.includes("not a git repository") || originalMessage.includes("fatal:")) {
-    return new Error(
-      `Not a git repository. Please run this command from within a git repository. (Original: ${originalMessage})`
-    );
-  }
-
-  return new Error(`Failed to get git diff: ${originalMessage}`);
+  return new Error(`${classified.message} (Original: ${originalMessage})`);
 }
 
 export async function reviewDiff(
@@ -100,10 +115,10 @@ export async function reviewDiff(
     return;
   }
 
-  const diffSizeBytes = Buffer.byteLength(diff, "utf-8");
-  if (diffSizeBytes > MAX_DIFF_SIZE_BYTES) {
+  const parsed = parseDiff(diff);
+  if (parsed.totalStats.totalSizeBytes > MAX_DIFF_SIZE_BYTES) {
     callbacks.onError(
-      new Error(`Diff size (${diffSizeBytes} bytes) exceeds maximum allowed size (${MAX_DIFF_SIZE_BYTES} bytes)`)
+      new Error(`Diff size (${parsed.totalStats.totalSizeBytes} bytes) exceeds maximum allowed size (${MAX_DIFF_SIZE_BYTES} bytes)`)
     );
     return;
   }

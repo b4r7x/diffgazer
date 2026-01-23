@@ -4,24 +4,7 @@ import {
   ReviewGitContextSchema,
   SavedReviewSchema,
 } from "./review-history.js";
-
-const VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
-const VALID_TIMESTAMP = "2024-01-01T00:00:00.000Z";
-
-function createBaseMetadata(overrides = {}) {
-  return {
-    id: VALID_UUID,
-    projectPath: "/home/user/project",
-    createdAt: VALID_TIMESTAMP,
-    staged: true,
-    branch: "main",
-    overallScore: 8,
-    issueCount: 0,
-    criticalCount: 0,
-    warningCount: 0,
-    ...overrides,
-  };
-}
+import { createReviewHistoryMetadata as createBaseMetadata } from "../__test__/testing.js";
 
 describe("ReviewHistoryMetadataSchema", () => {
   it("accepts valid metadata with all fields", () => {
@@ -117,7 +100,7 @@ describe("SavedReviewSchema", () => {
       const result = SavedReviewSchema.safeParse(savedReview);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0].message).toBe(
+        expect(result.error.issues[0]?.message).toBe(
           "Metadata counts must match actual issue data"
         );
       }
