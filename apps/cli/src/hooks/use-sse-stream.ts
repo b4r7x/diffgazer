@@ -1,7 +1,12 @@
 import { useRef, useCallback } from "react";
 import { type ZodSchema } from "zod";
-import { parseSSEStream, type SSEParseResult } from "../lib/sse.js";
-import { getErrorMessage, isAbortError, validateSchema } from "@repo/core";
+import {
+  getErrorMessage,
+  isAbortError,
+  parseSSEStream,
+  type SSEParseResult,
+  validateSchema,
+} from "@repo/core";
 
 export type SSEStreamError = {
   message: string;

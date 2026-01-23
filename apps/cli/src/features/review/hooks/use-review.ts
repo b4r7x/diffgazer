@@ -5,6 +5,7 @@ import {
   type ReviewStreamEvent,
   ReviewStreamEventSchema,
 } from "@repo/schemas/review";
+import { getErrorMessage } from "@repo/core";
 import { api } from "../../../lib/api.js";
 import { truncateToDisplayLength } from "../../../lib/string-utils.js";
 import { useSSEStream, type SSEStreamError } from "../../../hooks/use-sse-stream.js";
@@ -82,8 +83,7 @@ export function useReview() {
       // Pre-stream errors (e.g., network failure before getting reader)
       // are not handled by useSSEStream, so we catch them here
       if (!(error instanceof Error && error.name === "AbortError")) {
-        const message = error instanceof Error ? error.message : String(error);
-        setState(createReviewErrorState(message));
+        setState(createReviewErrorState(getErrorMessage(error)));
       }
     }
   }

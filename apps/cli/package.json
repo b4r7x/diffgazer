@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@repo/tsconfig": "workspace:*",
+    "@testing-library/react": "^16.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "tsx": "^4.21.0",
