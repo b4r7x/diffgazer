@@ -6,7 +6,21 @@ import {
   type SharedErrorCode,
 } from "./errors.js";
 
+/**
+ * Schema for review scores (0-10 scale, nullable for cases where scoring is not applicable).
+ * Used in ReviewResult.overallScore and FileReviewResult.score.
+ */
 export const ScoreSchema = z.number().min(0).max(10).nullable();
+
+/**
+ * A numeric score from 0-10 representing code review quality assessment.
+ * - 0-3: Critical issues, needs significant work
+ * - 4-6: Has issues but acceptable
+ * - 7-10: Good to excellent quality
+ * - null: Score not applicable or could not be determined
+ *
+ * Part of the public API for review results.
+ */
 export type Score = z.infer<typeof ScoreSchema>;
 
 export const REVIEW_SEVERITY = ["critical", "warning", "suggestion", "nitpick"] as const;
@@ -40,15 +54,37 @@ export const ReviewResultSchema = z.object({
 });
 export type ReviewResult = z.infer<typeof ReviewResultSchema>;
 
+/**
+ * Schema for individual file review results used in chunked/batched review operations.
+ *
+ * Each file in a diff is reviewed separately, producing a FileReviewResult.
+ * These are then aggregated into an overall ReviewResult via the review-aggregator service.
+ *
+ * The parseError fields track cases where AI output couldn't be parsed, allowing
+ * the aggregator to distinguish between review failures and parse failures.
+ */
 export const FileReviewResultSchema = z.object({
   filePath: z.string(),
   summary: z.string(),
   issues: z.array(ReviewIssueSchema),
   score: ScoreSchema,
-  // When true, AI response couldn't be parsed - summary contains raw output
+  /** When true, AI response couldn't be parsed - summary contains raw output */
   parseError: z.boolean().optional(),
+  /** Error message describing why parsing failed */
   parseErrorMessage: z.string().optional(),
 });
+
+/**
+ * Result of reviewing a single file in a chunked review operation.
+ *
+ * Used by:
+ * - `review-orchestrator.ts`: Produces FileReviewResult for each file in a diff
+ * - `review-aggregator.ts`: Combines multiple FileReviewResults into a final ReviewResult
+ *
+ * The parseError/parseErrorMessage fields allow graceful degradation when AI
+ * responses cannot be parsed - the file is still tracked but excluded from
+ * issue aggregation.
+ */
 export type FileReviewResult = z.infer<typeof FileReviewResultSchema>;
 
 export const REVIEW_SPECIFIC_CODES = ["NO_DIFF", "AI_ERROR"] as const;

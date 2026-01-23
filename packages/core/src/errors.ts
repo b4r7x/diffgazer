@@ -1,9 +1,39 @@
+/**
+ * Base error interface for all domain errors in the application.
+ *
+ * Domain-specific error types should use this pattern:
+ * ```typescript
+ * type MyErrorCode = "NOT_FOUND" | "INVALID_INPUT";
+ * type MyError = AppError<MyErrorCode>;
+ * ```
+ *
+ * For errors that need additional context (e.g., file path), create a
+ * specialized interface that extends this pattern:
+ * ```typescript
+ * interface FileIOError extends AppError<FileIOErrorCode> {
+ *   path: string;
+ * }
+ * ```
+ *
+ * @template C - Union of string literal error codes for this domain
+ */
 export interface AppError<C extends string = string> {
+  /** Domain-specific error code identifying the error type */
   code: C;
+  /** Human-readable error message */
   message: string;
+  /** Optional additional context (e.g., stack traces, underlying errors) */
   details?: string;
 }
 
+/**
+ * Creates an AppError with the given code, message, and optional details.
+ *
+ * @example
+ * ```typescript
+ * const error = createError("NOT_FOUND", "User not found", "ID: 123");
+ * ```
+ */
 export function createError<C extends string>(
   code: C,
   message: string,

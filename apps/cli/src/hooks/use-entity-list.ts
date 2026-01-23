@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getErrorMessage } from "@repo/core";
 
 export type ListState = "idle" | "loading" | "success" | "error";
 
@@ -45,7 +46,7 @@ export function useEntityList<T, M>(
       return result.items;
     } catch (e) {
       setListState("error");
-      setError({ message: e instanceof Error ? e.message : String(e) });
+      setError({ message: getErrorMessage(e) });
       return [];
     }
   }
@@ -60,7 +61,7 @@ export function useEntityList<T, M>(
       return entity;
     } catch (e) {
       setListState("error");
-      setError({ message: e instanceof Error ? e.message : String(e) });
+      setError({ message: getErrorMessage(e) });
       return null;
     }
   }
@@ -73,7 +74,7 @@ export function useEntityList<T, M>(
       }
       return result.existed;
     } catch (e) {
-      setError({ message: e instanceof Error ? e.message : String(e) });
+      setError({ message: getErrorMessage(e) });
       return false;
     }
   }

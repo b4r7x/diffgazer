@@ -1,17 +1,14 @@
 import type { AIClient } from "@repo/core/ai";
 import type { Session } from "@repo/schemas/session";
 import { addMessage, sessionStore } from "@repo/core/storage";
-import { ErrorCode, type ErrorCode as ErrorCodeType } from "@repo/schemas/errors";
+import { ErrorCode } from "@repo/schemas/errors";
 import type { Result } from "@repo/core";
 import { ok, err, getErrorMessage } from "@repo/core";
 import { initializeAIClient, type SSEWriter } from "../lib/ai-client.js";
+import { type ChatError } from "@repo/schemas/chat";
 
 export type { SSEWriter };
-
-export interface ChatError {
-  message: string;
-  code: ErrorCodeType;
-}
+export type { ChatError };
 
 export interface ChatContext {
   session: Session;

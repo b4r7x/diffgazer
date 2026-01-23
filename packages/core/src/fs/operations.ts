@@ -4,12 +4,33 @@ import { ok, err } from "../result.js";
 import type { AppError } from "../errors.js";
 import { isNodeError, getErrorMessage } from "../errors.js";
 
+/** Error codes specific to file I/O operations */
 export type FileIOErrorCode = "NOT_FOUND" | "PERMISSION_DENIED" | "READ_ERROR" | "WRITE_ERROR";
 
+/**
+ * Error type for file I/O operations.
+ *
+ * Extends the AppError pattern with an additional `path` field to capture
+ * the filesystem path involved in the error. This provides better context
+ * for debugging and error messages.
+ *
+ * @example
+ * ```typescript
+ * const error: FileIOError = {
+ *   code: "NOT_FOUND",
+ *   message: "Config file not found",
+ *   path: "/home/user/.config/app.json",
+ * };
+ * ```
+ */
 export interface FileIOError {
+  /** File I/O error code */
   code: FileIOErrorCode;
+  /** Human-readable error message */
   message: string;
+  /** Filesystem path that caused the error */
   path: string;
+  /** Optional additional context */
   details?: string;
 }
 
