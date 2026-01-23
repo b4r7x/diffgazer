@@ -1,6 +1,6 @@
 import type { AIClient, StreamMetadata } from "@repo/core/ai";
 import type { ReviewResult, FileReviewResult } from "@repo/schemas/review";
-import { getErrorMessage, safeParseJson } from "@repo/core";
+import { getErrorMessage, safeParseJson, truncate, chunk } from "@repo/core";
 import { parseDiff, type FileDiff } from "@repo/core/diff";
 import { createGitService } from "./git.js";
 import { aggregateReviews } from "./review-aggregator.js";
@@ -45,13 +45,7 @@ function createReviewBatches(
   files: FileDiff[],
   batchSize: number = DEFAULT_BATCH_SIZE
 ): FileDiff[][] {
-  const batches: FileDiff[][] = [];
-
-  for (let i = 0; i < files.length; i += batchSize) {
-    batches.push(files.slice(i, i + batchSize));
-  }
-
-  return batches;
+  return chunk(files, batchSize);
 }
 
 async function reviewSingleFile(
@@ -119,12 +113,12 @@ function createParseErrorResult(filePath: string, errorMessage: string, content:
   console.error(
     `[PARSE_ERROR] Failed to parse AI review response for ${filePath}. ` +
     `Error: ${errorMessage}. ` +
-    `Raw content (first 500 chars): ${content.slice(0, 500)}${content.length > 500 ? "..." : ""}`
+    `Raw content (first 500 chars): ${truncate(content, 500)}`
   );
 
   return {
     filePath,
-    summary: `[Parse Error] AI response could not be parsed. Raw output: ${content.slice(0, 200)}${content.length > 200 ? "..." : ""}`,
+    summary: `[Parse Error] AI response could not be parsed. Raw output: ${truncate(content, 200)}`,
     issues: [],
     score: null,
     parseError: true,
