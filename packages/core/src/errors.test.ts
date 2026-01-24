@@ -6,6 +6,7 @@ import {
   toError,
   isAbortError,
 } from "./errors.js";
+import { createErrnoException } from "./__test__/testing.js";
 
 describe("createError", () => {
   it("creates error object with code and message", () => {
@@ -44,15 +45,13 @@ describe("createError", () => {
 
 describe("isNodeError", () => {
   it("returns true for NodeJS.ErrnoException with matching code", () => {
-    const nodeError = new Error("File not found") as NodeJS.ErrnoException;
-    nodeError.code = "ENOENT";
+    const nodeError = createErrnoException("File not found", "ENOENT");
 
     expect(isNodeError(nodeError, "ENOENT")).toBe(true);
   });
 
   it("returns false for NodeJS.ErrnoException with non-matching code", () => {
-    const nodeError = new Error("Permission denied") as NodeJS.ErrnoException;
-    nodeError.code = "EACCES";
+    const nodeError = createErrnoException("Permission denied", "EACCES");
 
     expect(isNodeError(nodeError, "ENOENT")).toBe(false);
   });
@@ -71,22 +70,19 @@ describe("isNodeError", () => {
   });
 
   it("detects ENOENT errors", () => {
-    const enoent = new Error("No such file") as NodeJS.ErrnoException;
-    enoent.code = "ENOENT";
+    const enoent = createErrnoException("No such file", "ENOENT");
 
     expect(isNodeError(enoent, "ENOENT")).toBe(true);
   });
 
   it("detects EACCES errors", () => {
-    const eacces = new Error("Permission denied") as NodeJS.ErrnoException;
-    eacces.code = "EACCES";
+    const eacces = createErrnoException("Permission denied", "EACCES");
 
     expect(isNodeError(eacces, "EACCES")).toBe(true);
   });
 
   it("uses type guard correctly", () => {
-    const error: unknown = new Error("Test") as NodeJS.ErrnoException;
-    (error as NodeJS.ErrnoException).code = "ENOENT";
+    const error: unknown = createErrnoException("Test", "ENOENT");
 
     if (isNodeError(error, "ENOENT")) {
       expect(error.code).toBe("ENOENT");

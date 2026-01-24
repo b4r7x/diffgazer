@@ -12,7 +12,6 @@ import {
   ConfigCheckResponseSchema,
   CurrentConfigResponseSchema,
   DeleteConfigResponseSchema,
-  type GeminiModel,
 } from "./config.js";
 
 describe("AIProviderSchema", () => {
@@ -34,7 +33,7 @@ describe("AIProviderSchema", () => {
 });
 
 describe("GeminiModelSchema", () => {
-  it.each(GEMINI_MODELS as unknown as GeminiModel[])(
+  it.each([...GEMINI_MODELS])(
     "accepts valid model: %s",
     (model) => {
       const result = GeminiModelSchema.safeParse(model);
@@ -156,7 +155,7 @@ describe("UserConfigSchema", () => {
   });
 
   describe("cross-field model validation", () => {
-    it.each(GEMINI_MODELS as unknown as GeminiModel[])(
+    it.each([...GEMINI_MODELS])(
       "accepts valid gemini model: %s",
       (model) => {
         const result = UserConfigSchema.safeParse(
