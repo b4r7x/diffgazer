@@ -1,84 +1,14 @@
-# /project-update - Update Project Documentation for AI
+# /project-update - Update Project Documentation
 
 ## Purpose
 
-Updates project documentation so future AI sessions can quickly understand the codebase. Run this after significant changes.
+Updates project documentation so AI sessions can quickly understand the codebase. Run after significant changes.
 
 ---
 
 ## Execution
 
 Use Task tool with subagent_type: "documentation-specialist"
-
-Prompt:
-```
-Update Stargazer project documentation for AI consumption.
-
-## What to Update
-
-### 1. CLAUDE.md (Primary AI Context)
-Location: /Users/voitz/Projects/stargazer/CLAUDE.md
-
-This is the FIRST thing AI reads. Keep it:
-- Concise (fits in context window)
-- Current (reflects actual state)
-- Actionable (tells AI what to do/not do)
-
-Update sections:
-- Project Overview (if changed)
-- Tech Stack (if dependencies changed)
-- Essential Commands
-- Architecture Decisions (if new ADRs)
-- Patterns to Preserve
-- Shared Utilities (if new ones added)
-
-### 2. Architecture Overview
-Location: /Users/voitz/Projects/stargazer/docs/architecture/overview.md
-
-Update:
-- Component diagram (if structure changed)
-- Data flow (if new flows added)
-- Key decisions summary
-
-### 3. Feature Documentation
-Location: /Users/voitz/Projects/stargazer/docs/features/
-
-For each major feature, ensure docs exist:
-- review-flow.md
-- ai-integration.md
-- lenses.md
-- Add new feature docs if features were added
-
-### 4. CLI Commands Reference
-Location: /Users/voitz/Projects/stargazer/docs/reference/cli-commands.md
-
-Update with any new commands or changed options.
-
-### 5. API Endpoints Reference
-Location: /Users/voitz/Projects/stargazer/docs/reference/api-endpoints.md
-
-Update with any new routes.
-
-## How to Update
-
-1. Read current state of each file
-2. Explore codebase for changes:
-   - git log --oneline -20 (recent commits)
-   - Check packages/*/src/ for new modules
-   - Check apps/*/src/ for new features
-3. Update docs to reflect current reality
-4. Keep format AI-readable:
-   - Clear headers
-   - Tables for quick reference
-   - Code examples where helpful
-
-## Output
-
-Report what was updated:
-- Files modified
-- Key changes documented
-- Any gaps still remaining
-```
 
 ---
 
@@ -87,35 +17,68 @@ Report what was updated:
 - After implementing new features
 - After major refactoring
 - After adding new packages/modules
-- Weekly maintenance
-- Before sharing project with others
+- Before releases
+- When onboarding new contributors
 
 ---
 
-## AI-Readable Format Guidelines
+## What Gets Updated
 
-### Good (AI can parse quickly):
+### 1. CLAUDE.md (Primary AI Context)
+The FIRST thing AI reads. Must be concise and current.
+
+### 2. /docs/ Structure
+```
+/docs/
+├── architecture/    # System design
+├── packages/        # Package docs
+├── apps/            # App docs
+├── features/        # Feature docs
+├── ui/              # UI documentation
+├── guides/          # How-to guides
+└── reference/       # CLI, API, utilities
+```
+
+### 3. Templates Used
+- Package template (exports, usage, structure)
+- Feature template (overview, files, data model, API)
+- CLI command template (options, examples)
+
+---
+
+## Validation
+
+The agent will verify:
+- [ ] CLAUDE.md reflects current state
+- [ ] All packages documented
+- [ ] All features documented
+- [ ] All CLI commands listed
+- [ ] All API endpoints listed
+- [ ] Code examples runnable
+- [ ] No broken links
+
+---
+
+## AI-Readable Format
+
+**Good:** Tables, code examples, clear headers
 ```markdown
-## Feature: Review Engine
-
-**Location:** `packages/core/src/review/`
-
-**Key Files:**
 | File | Purpose |
 |------|---------|
-| triage.ts | Initial review pass |
-| drilldown.ts | Deep issue analysis |
-
-**Usage:**
-\`\`\`typescript
-import { triageReview } from '@repo/core/review';
-const result = await triageReview(diff, lenses, client);
-\`\`\`
+| triage.ts | Initial pass |
 ```
 
-### Bad (AI struggles):
+**Bad:** Long prose paragraphs
 ```markdown
-The review engine is located in the core package and contains
-various files for different purposes. The triage file handles
-the initial pass while drilldown does deeper analysis...
+The triage file handles the initial pass while...
 ```
+
+---
+
+## Output
+
+Agent reports:
+1. Files created/modified
+2. Key changes documented
+3. Validation status
+4. Gaps remaining
