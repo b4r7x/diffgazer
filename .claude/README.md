@@ -12,6 +12,13 @@ This directory contains prompts, workflows, and documentation for Claude Code.
 │   ├── run-reusability-audit.md
 │   └── typecheck-fix.md
 ├── workflows/         # Detailed multi-phase workflows
+│   ├── master-orchestrator.md       # Run all improvement workflows
+│   ├── 01-package-structure-audit.md
+│   ├── 02-cli-bulletproof-verification.md
+│   ├── 03-server-bulletproof-verification.md
+│   ├── 04-ai-sdk-migration.md
+│   ├── 05-review-flow-implementation.md
+│   ├── 06-documentation-generator.md
 │   ├── code-review-workflow.md
 │   ├── code-simplification-workflow.md
 │   ├── codebase-reusability-audit.md
