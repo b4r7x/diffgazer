@@ -107,7 +107,7 @@ function createParseErrorResult(filePath: string, errorMessage: string, content:
   };
 }
 
-function parseFileReviewResult(filePath: string, content: string): FileReviewResult {
+export function parseFileReviewResult(filePath: string, content: string): FileReviewResult {
   const parseResult = safeParseJson<ParseError>(content, (message, details) => ({ message, details }));
 
   if (!parseResult.ok) {

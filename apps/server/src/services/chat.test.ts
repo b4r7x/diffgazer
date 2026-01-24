@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Session } from "@repo/schemas/session";
-import type { AIClient } from "@repo/core/ai";
+import type { AIClient, StreamCallbacks } from "@repo/core/ai";
 import { ErrorCode } from "@repo/schemas/errors";
 
 const mockSessionStore = vi.hoisted(() => ({
@@ -154,11 +154,13 @@ describe("Chat Service", () => {
         messages: [],
       };
 
-      const mockGenerateStream = vi.fn().mockImplementation(async (prompt, callbacks) => {
-        expect(prompt).toContain("&lt;malicious&gt;");
-        expect(prompt).not.toContain("<malicious>");
-        await callbacks.onComplete("Response", { truncated: false });
-      });
+      const mockGenerateStream = vi
+        .fn()
+        .mockImplementation(async (prompt: string, callbacks: StreamCallbacks) => {
+          expect(prompt).toContain("&lt;malicious&gt;");
+          expect(prompt).not.toContain("<malicious>");
+          await callbacks.onComplete("Response", { truncated: false });
+        });
 
       const mockClient: AIClient = {
         provider: "anthropic",
@@ -205,11 +207,13 @@ describe("Chat Service", () => {
         ],
       };
 
-      const mockGenerateStream = vi.fn().mockImplementation(async (prompt, callbacks) => {
-        expect(prompt).toContain("&lt;script&gt;");
-        expect(prompt).not.toContain("<script>");
-        await callbacks.onComplete("Response", { truncated: false });
-      });
+      const mockGenerateStream = vi
+        .fn()
+        .mockImplementation(async (prompt: string, callbacks: StreamCallbacks) => {
+          expect(prompt).toContain("&lt;script&gt;");
+          expect(prompt).not.toContain("<script>");
+          await callbacks.onComplete("Response", { truncated: false });
+        });
 
       const mockClient: AIClient = {
         provider: "anthropic",
@@ -243,11 +247,13 @@ describe("Chat Service", () => {
         messages: [],
       };
 
-      const mockGenerateStream = vi.fn().mockImplementation(async (prompt, callbacks) => {
-        await callbacks.onChunk("Hello ");
-        await callbacks.onChunk("world");
-        await callbacks.onComplete("Hello world", { truncated: false });
-      });
+      const mockGenerateStream = vi
+        .fn()
+        .mockImplementation(async (_prompt: string, callbacks: StreamCallbacks) => {
+          await callbacks.onChunk("Hello ");
+          await callbacks.onChunk("world");
+          await callbacks.onComplete("Hello world", { truncated: false });
+        });
 
       const mockClient: AIClient = {
         provider: "anthropic",
@@ -288,9 +294,11 @@ describe("Chat Service", () => {
         messages: [],
       };
 
-      const mockGenerateStream = vi.fn().mockImplementation(async (prompt, callbacks) => {
-        await callbacks.onComplete("Complete response", { truncated: true });
-      });
+      const mockGenerateStream = vi
+        .fn()
+        .mockImplementation(async (_prompt: string, callbacks: StreamCallbacks) => {
+          await callbacks.onComplete("Complete response", { truncated: true });
+        });
 
       const mockClient: AIClient = {
         provider: "anthropic",
@@ -331,9 +339,11 @@ describe("Chat Service", () => {
         messages: [],
       };
 
-      const mockGenerateStream = vi.fn().mockImplementation(async (prompt, callbacks) => {
-        await callbacks.onComplete("AI response", { truncated: false });
-      });
+      const mockGenerateStream = vi
+        .fn()
+        .mockImplementation(async (_prompt: string, callbacks: StreamCallbacks) => {
+          await callbacks.onComplete("AI response", { truncated: false });
+        });
 
       const mockClient: AIClient = {
         provider: "anthropic",
@@ -369,9 +379,11 @@ describe("Chat Service", () => {
         messages: [],
       };
 
-      const mockGenerateStream = vi.fn().mockImplementation(async (prompt, callbacks) => {
-        await callbacks.onError(new Error("AI service unavailable"));
-      });
+      const mockGenerateStream = vi
+        .fn()
+        .mockImplementation(async (_prompt: string, callbacks: StreamCallbacks) => {
+          await callbacks.onError(new Error("AI service unavailable"));
+        });
 
       const mockClient: AIClient = {
         provider: "anthropic",
@@ -464,13 +476,15 @@ describe("Chat Service", () => {
         ],
       };
 
-      const mockGenerateStream = vi.fn().mockImplementation(async (prompt, callbacks) => {
-        expect(prompt).toContain("Previous conversation:");
-        expect(prompt).toContain("USER: Previous question");
-        expect(prompt).toContain("ASSISTANT: Previous answer");
-        expect(prompt).toContain("USER: New question");
-        await callbacks.onComplete("Response", { truncated: false });
-      });
+      const mockGenerateStream = vi
+        .fn()
+        .mockImplementation(async (prompt: string, callbacks: StreamCallbacks) => {
+          expect(prompt).toContain("Previous conversation:");
+          expect(prompt).toContain("USER: Previous question");
+          expect(prompt).toContain("ASSISTANT: Previous answer");
+          expect(prompt).toContain("USER: New question");
+          await callbacks.onComplete("Response", { truncated: false });
+        });
 
       const mockClient: AIClient = {
         provider: "anthropic",
@@ -504,9 +518,11 @@ describe("Chat Service", () => {
         messages: [],
       };
 
-      const mockGenerateStream = vi.fn().mockImplementation(async (prompt, callbacks) => {
-        await callbacks.onComplete("Response", { truncated: false });
-      });
+      const mockGenerateStream = vi
+        .fn()
+        .mockImplementation(async (_prompt: string, callbacks: StreamCallbacks) => {
+          await callbacks.onComplete("Response", { truncated: false });
+        });
 
       const mockClient: AIClient = {
         provider: "anthropic",

@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import type { FileReviewResult } from "@repo/schemas/review";
+import { parseFileReviewResult } from "./review-orchestrator.js";
 
 describe("FileReviewResult with parseError", () => {
   describe("schema validation", () => {
@@ -24,7 +25,7 @@ describe("FileReviewResult with parseError", () => {
         parseErrorMessage: "Unexpected token at position 0",
       };
       expect(result.parseError).toBe(true);
-      expect(result.parseErrorMessage).toBeDefined();
+      expect(result.parseErrorMessage).toBe("Unexpected token at position 0");
     });
 
     it("accepts result without parseError field (backwards compatible)", () => {
@@ -49,7 +50,6 @@ describe("parseFileReviewResult behavior expectations", () => {
           issues: [{ severity: "warning", category: "style", file: "test.ts", line: 10, title: "Issue", description: "Desc", suggestion: null }],
           score: 8,
         }),
-        expectedParseError: false,
       },
       {
         name: "response with empty issues",
@@ -58,7 +58,6 @@ describe("parseFileReviewResult behavior expectations", () => {
           issues: [],
           score: 10,
         }),
-        expectedParseError: false,
       },
       {
         name: "response with null score",
@@ -67,12 +66,16 @@ describe("parseFileReviewResult behavior expectations", () => {
           issues: [],
           score: null,
         }),
-        expectedParseError: false,
       },
     ];
 
-    it.each(validResponses)("should parse $name without error", ({ expectedParseError }) => {
-      expect(expectedParseError).toBe(false);
+    it.each(validResponses)("should parse $name without error", ({ input }) => {
+      const result = parseFileReviewResult("test.ts", input);
+
+      expect(result.parseError).toBe(false);
+      expect(result.parseErrorMessage).toBeUndefined();
+      expect(result.summary).toEqual(expect.any(String));
+      expect(result.issues).toBeInstanceOf(Array);
     });
   });
 
@@ -81,63 +84,57 @@ describe("parseFileReviewResult behavior expectations", () => {
       {
         name: "plain text (not JSON)",
         input: "This is just some text, not JSON at all",
-        expectedError: "Unexpected token",
       },
       {
         name: "JSON array instead of object",
         input: JSON.stringify([{ summary: "test" }]),
-        expectedError: "not a JSON object",
       },
       {
         name: "JSON null",
         input: "null",
-        expectedError: "not a JSON object",
       },
       {
         name: "empty string",
         input: "",
-        expectedError: "Unexpected end",
       },
       {
         name: "truncated JSON",
         input: '{"summary": "test", "issues": [',
-        expectedError: "Unexpected end",
       },
       {
         name: "missing summary field",
         input: JSON.stringify({ issues: [], score: 8 }),
-        expectedError: "Invalid summary",
       },
       {
         name: "summary is number instead of string",
         input: JSON.stringify({ summary: 123, issues: [], score: 8 }),
-        expectedError: "Invalid summary",
       },
       {
         name: "issues is object instead of array",
         input: JSON.stringify({ summary: "test", issues: {}, score: 8 }),
-        expectedError: "Invalid issues",
       },
       {
         name: "score is string instead of number",
         input: JSON.stringify({ summary: "test", issues: [], score: "8" }),
-        expectedError: "Invalid score",
       },
       {
         name: "markdown wrapped JSON",
         input: "```json\n{\"summary\": \"test\", \"issues\": [], \"score\": 8}\n```",
-        expectedError: "Unexpected token",
       },
       {
         name: "AI explanation before JSON",
         input: "Here is my review:\n{\"summary\": \"test\", \"issues\": [], \"score\": 8}",
-        expectedError: "Unexpected token",
       },
     ];
 
-    it.each(invalidResponses)("should set parseError for $name", ({ input, expectedError }) => {
-      expect(expectedError).toBeDefined();
-      expect(input).toBeDefined();
+    it.each(invalidResponses)("should set parseError for $name", ({ input }) => {
+      const result = parseFileReviewResult("test.ts", input);
+
+      expect(result.parseError).toBe(true);
+      expect(result.parseErrorMessage).toMatch(/error|parse|invalid|unexpected|end/i);
+      expect(result.summary).toContain("[Parse Error]");
+      expect(result.issues).toEqual([]);
+      expect(result.score).toBeNull();
     });
   });
 });

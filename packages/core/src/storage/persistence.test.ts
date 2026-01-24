@@ -394,7 +394,8 @@ describe("persistence.ts", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.code).toBe("VALIDATION_ERROR");
-        expect(result.error.details).toBeDefined();
+        expect(result.error.details).toEqual(expect.any(String));
+        expect(result.error.details).toContain("uuid");
       }
     });
 
@@ -426,7 +427,8 @@ describe("persistence.ts", () => {
       expect(result.ok).toBe(false);
       if (!result.ok) {
         expect(result.error.code).toBe("VALIDATION_ERROR");
-        expect(result.error.details).toBeDefined();
+        expect(result.error.details).toEqual(expect.any(String));
+        expect(result.error.details).toContain("uuid");
       }
     });
   });
