@@ -1,16 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { createGitDiffError } from "./review.js";
-
-function createNodeError(code: string, message: string): NodeJS.ErrnoException {
-  const error = new Error(message) as NodeJS.ErrnoException;
-  error.code = code;
-  return error;
-}
+import { createErrnoException } from "@repo/core/testing";
 
 describe("createGitDiffError", () => {
   describe("ENOENT - git not installed", () => {
     it("returns actionable message when git is not found", () => {
-      const error = createNodeError("ENOENT", "spawn git ENOENT");
+      const error = createErrnoException("spawn git ENOENT", "ENOENT");
 
       const result = createGitDiffError(error);
 
@@ -22,7 +17,7 @@ describe("createGitDiffError", () => {
 
   describe("EACCES - permission denied", () => {
     it("returns actionable message for permission errors", () => {
-      const error = createNodeError("EACCES", "permission denied");
+      const error = createErrnoException("permission denied", "EACCES");
 
       const result = createGitDiffError(error);
 
@@ -34,7 +29,7 @@ describe("createGitDiffError", () => {
 
   describe("ETIMEDOUT - timeout errors", () => {
     it("handles ETIMEDOUT error code", () => {
-      const error = createNodeError("ETIMEDOUT", "operation timed out");
+      const error = createErrnoException("operation timed out", "ETIMEDOUT");
 
       const result = createGitDiffError(error);
 
@@ -122,8 +117,8 @@ describe("createGitDiffError", () => {
   describe("error message format", () => {
     it("always returns an Error instance", () => {
       const testCases = [
-        createNodeError("ENOENT", "test"),
-        createNodeError("EACCES", "test"),
+        createErrnoException("test", "ENOENT"),
+        createErrnoException("test", "EACCES"),
         new Error("fatal: test"),
         new Error("unknown"),
         "string",
@@ -137,7 +132,7 @@ describe("createGitDiffError", () => {
     });
 
     it("includes '(Original: ...)' suffix for specific errors", () => {
-      const error = createNodeError("ENOENT", "spawn git ENOENT");
+      const error = createErrnoException("spawn git ENOENT", "ENOENT");
 
       const result = createGitDiffError(error);
 

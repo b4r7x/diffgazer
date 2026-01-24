@@ -66,7 +66,7 @@ describe("safeParseJson", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.message).toBe("Invalid JSON");
-      expect(result.error.details).toBeDefined();
+      expect(result.error.details).toEqual(expect.any(String));
       expect(result.error.details).toContain("JSON");
     }
   });

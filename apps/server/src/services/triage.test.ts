@@ -316,7 +316,7 @@ describe("Triage Service", () => {
       const completeCall = mockStream.writeSSE.mock.calls.find(
         (call: [{ event: string; data: string }]) => call[0].event === "complete"
       );
-      expect(completeCall).toBeDefined();
+      expect(completeCall).toBeTruthy();
 
       const data = JSON.parse(completeCall![0].data);
       expect(data.result.issues).toHaveLength(2);
