@@ -5,7 +5,7 @@ import { realpath } from "node:fs/promises";
 import { ErrorCode } from "@repo/schemas/errors";
 import { getErrorMessage } from "@repo/core";
 import { createGitService } from "../../services/git.js";
-import { errorResponse, ok } from "../../lib/response.js";
+import { errorResponse, jsonOk } from "../../lib/response.js";
 import { isRelativePath } from "../../lib/validation.js";
 
 const git = new Hono();
@@ -48,7 +48,7 @@ git.get("/status", async (c) => {
     if (!status.isGitRepo) {
       return errorResponse(c, "Not a git repository", ErrorCode.NOT_GIT_REPO, 400);
     }
-    return ok(c, status);
+    return jsonOk(c, status);
   } catch (error) {
     console.error("Git status error:", getErrorMessage(error));
     return errorResponse(c, "Failed to retrieve git status", ErrorCode.COMMAND_FAILED, 500);
@@ -68,7 +68,7 @@ git.get("/diff", async (c) => {
     }
 
     const diff = await result.service.getDiff(staged);
-    return ok(c, { diff, staged });
+    return jsonOk(c, { diff, staged });
   } catch (error) {
     console.error("Git diff error:", getErrorMessage(error));
     return errorResponse(c, "Failed to retrieve git diff", ErrorCode.COMMAND_FAILED, 500);

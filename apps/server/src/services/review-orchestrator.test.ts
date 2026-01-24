@@ -141,17 +141,3 @@ describe("parseFileReviewResult behavior expectations", () => {
     });
   });
 });
-
-describe("user experience with parse errors", () => {
-  it("should show warning in summary when files have parse errors", () => {
-    expect(true).toBe(true);
-  });
-
-  it("should preserve raw AI output in summary for debugging", () => {
-    expect(true).toBe(true);
-  });
-
-  it("should log error with full context for debugging", () => {
-    expect(true).toBe(true);
-  });
-});

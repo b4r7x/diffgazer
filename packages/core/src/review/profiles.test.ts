@@ -6,7 +6,6 @@ describe("Review Profiles", () => {
   describe("PROFILES registry", () => {
     it("contains all defined profile IDs", () => {
       for (const id of PROFILE_IDS) {
-        expect(PROFILES[id]).toBeDefined();
         expect(PROFILES[id].id).toBe(id);
       }
     });
@@ -27,8 +26,8 @@ describe("Review Profiles", () => {
     it.each(PROFILE_IDS)("returns the %s profile", (id) => {
       const profile = getProfile(id);
       expect(profile.id).toBe(id);
-      expect(profile.name).toBeTruthy();
-      expect(profile.description).toBeTruthy();
+      expect(profile.name).not.toBe('');
+      expect(profile.description).not.toBe('');
       expect(profile.lenses.length).toBeGreaterThan(0);
     });
   });
