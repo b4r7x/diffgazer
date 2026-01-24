@@ -1,7 +1,7 @@
 import type { AIClient, StreamMetadata } from "@repo/core/ai";
 import type { ReviewResult, FileReviewResult } from "@repo/schemas/review";
 import { ReviewIssueSchema, ScoreSchema } from "@repo/schemas/review";
-import { getErrorMessage, safeParseJson, truncate, chunk, validateSchema } from "@repo/core";
+import { getErrorMessage, safeParseJson, truncate, chunk, validateSchema, escapeXml } from "@repo/core";
 import { z } from "zod";
 import { parseDiff, type FileDiff } from "@repo/core/diff";
 import { createGitService } from "./git.js";
@@ -62,17 +62,21 @@ async function reviewSingleFile(
 }
 
 function buildFilePrompt(file: FileDiff): string {
+  // CVE-2025-53773: Escape user content to prevent prompt injection
+  const escapedPath = escapeXml(file.filePath);
+  const escapedDiff = escapeXml(file.rawDiff);
+
   return `Review the following file changes and provide feedback.
-File: ${file.filePath}
+File: ${escapedPath}
 Operation: ${file.operation}
 Changes: +${file.stats.additions}/-${file.stats.deletions}
 
 \`\`\`diff
-${file.rawDiff}
+${escapedDiff}
 \`\`\`
 
 Respond with JSON only: { "summary": "...", "issues": [...], "score": 0-10 }
-Each issue: { "severity": "critical|warning|suggestion|nitpick", "category": "security|performance|style|logic|documentation|best-practice", "file": "${file.filePath}", "line": number or null, "title": "...", "description": "...", "suggestion": "fix or null" }`;
+Each issue: { "severity": "critical|warning|suggestion|nitpick", "category": "security|performance|style|logic|documentation|best-practice", "file": "${escapedPath}", "line": number or null, "title": "...", "description": "...", "suggestion": "fix or null" }`;
 }
 
 interface ParseError {

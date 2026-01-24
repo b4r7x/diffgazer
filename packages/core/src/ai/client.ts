@@ -1,1 +1,1 @@
-export { createGeminiClient as createAIClient } from "./providers/gemini.js";
+export { createAIClient } from "./sdk-client.js";

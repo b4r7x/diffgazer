@@ -6,17 +6,43 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./ai": { "types": "./dist/ai/index.d.ts", "import": "./dist/ai/index.js" },
-    "./diff": { "types": "./dist/diff/index.d.ts", "import": "./dist/diff/index.js" },
-    "./storage": { "types": "./dist/storage/index.d.ts", "import": "./dist/storage/index.js" },
-    "./secrets": { "types": "./dist/secrets/index.d.ts", "import": "./dist/secrets/index.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./ai": {
+      "types": "./dist/ai/index.d.ts",
+      "import": "./dist/ai/index.js"
+    },
+    "./diff": {
+      "types": "./dist/diff/index.d.ts",
+      "import": "./dist/diff/index.js"
+    },
+    "./storage": {
+      "types": "./dist/storage/index.d.ts",
+      "import": "./dist/storage/index.js"
+    },
+    "./secrets": {
+      "types": "./dist/secrets/index.d.ts",
+      "import": "./dist/secrets/index.js"
+    },
+    "./review": {
+      "types": "./dist/review/index.d.ts",
+      "import": "./dist/review/index.js"
+    }
   },
-  "scripts": { "build": "tsc", "type-check": "tsc --noEmit", "type-check-test": "tsc --noEmit --project tsconfig.test.json" },
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "type-check-test": "tsc --noEmit --project tsconfig.test.json"
+  },
   "sideEffects": false,
   "dependencies": {
-    "@google/genai": "^1.0.0",
+    "@ai-sdk/anthropic": "^3.0.23",
+    "@ai-sdk/google": "^3.0.13",
+    "@ai-sdk/openai": "^3.0.18",
     "@repo/schemas": "workspace:*",
+    "ai": "^6.0.49",
     "zod": "^3.23.0"
   },
   "devDependencies": {

@@ -6,6 +6,7 @@ export async function createStorageTestContext(prefix: string) {
   const testDir = await mkdtemp(join(tmpdir(), `stargazer-test-${prefix}-`));
   await mkdir(join(testDir, "sessions"), { recursive: true });
   await mkdir(join(testDir, "reviews"), { recursive: true });
+  await mkdir(join(testDir, "triage-reviews"), { recursive: true });
 
   const cleanup = async () => {
     await rm(testDir, { recursive: true, force: true });
@@ -17,9 +18,11 @@ export async function createStorageTestContext(prefix: string) {
 export function createPathsMock(testDirRef: { testDir: string }) {
   return {
     reviews: join(testDirRef.testDir, "reviews"),
+    triageReviews: join(testDirRef.testDir, "triage-reviews"),
     sessions: join(testDirRef.testDir, "sessions"),
     sessionFile: (id: string) => join(testDirRef.testDir, "sessions", `${id}.json`),
     reviewFile: (id: string) => join(testDirRef.testDir, "reviews", `${id}.json`),
+    triageReviewFile: (id: string) => join(testDirRef.testDir, "triage-reviews", `${id}.json`),
     config: testDirRef.testDir,
     configFile: join(testDirRef.testDir, "config.json"),
     secretsDir: join(testDirRef.testDir, "secrets"),

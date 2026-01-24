@@ -6,7 +6,7 @@ import {
   type SharedErrorCode,
 } from "./errors.js";
 
-export const AI_PROVIDERS = ["gemini"] as const;
+export const AI_PROVIDERS = ["gemini", "openai", "anthropic"] as const;
 export const AIProviderSchema = z.enum(AI_PROVIDERS);
 export type AIProvider = z.infer<typeof AIProviderSchema>;
 
@@ -64,6 +64,89 @@ export const GEMINI_MODEL_INFO: Record<GeminiModel, ModelInfo> = {
   },
 };
 
+export const OPENAI_MODELS = [
+  "gpt-4o",
+  "gpt-4o-mini",
+  "gpt-4-turbo",
+  "o1-preview",
+  "o1-mini",
+] as const;
+
+export const OpenAIModelSchema = z.enum(OPENAI_MODELS);
+export type OpenAIModel = z.infer<typeof OpenAIModelSchema>;
+
+export const OPENAI_MODEL_INFO: Record<OpenAIModel, ModelInfo> = {
+  "gpt-4o": {
+    id: "gpt-4o",
+    name: "GPT-4o",
+    description: "Most capable multimodal model",
+    tier: "paid",
+    recommended: true,
+  },
+  "gpt-4o-mini": {
+    id: "gpt-4o-mini",
+    name: "GPT-4o Mini",
+    description: "Fast and affordable for lighter tasks",
+    tier: "paid",
+  },
+  "gpt-4-turbo": {
+    id: "gpt-4-turbo",
+    name: "GPT-4 Turbo",
+    description: "High intelligence with vision capabilities",
+    tier: "paid",
+  },
+  "o1-preview": {
+    id: "o1-preview",
+    name: "o1 Preview",
+    description: "Advanced reasoning model",
+    tier: "paid",
+  },
+  "o1-mini": {
+    id: "o1-mini",
+    name: "o1 Mini",
+    description: "Fast reasoning model",
+    tier: "paid",
+  },
+};
+
+export const ANTHROPIC_MODELS = [
+  "claude-sonnet-4-20250514",
+  "claude-3-5-sonnet-20241022",
+  "claude-3-5-haiku-20241022",
+  "claude-3-opus-20240229",
+] as const;
+
+export const AnthropicModelSchema = z.enum(ANTHROPIC_MODELS);
+export type AnthropicModel = z.infer<typeof AnthropicModelSchema>;
+
+export const ANTHROPIC_MODEL_INFO: Record<AnthropicModel, ModelInfo> = {
+  "claude-sonnet-4-20250514": {
+    id: "claude-sonnet-4-20250514",
+    name: "Claude Sonnet 4",
+    description: "Latest Sonnet with improved reasoning",
+    tier: "paid",
+    recommended: true,
+  },
+  "claude-3-5-sonnet-20241022": {
+    id: "claude-3-5-sonnet-20241022",
+    name: "Claude 3.5 Sonnet",
+    description: "Excellent balance of intelligence and speed",
+    tier: "paid",
+  },
+  "claude-3-5-haiku-20241022": {
+    id: "claude-3-5-haiku-20241022",
+    name: "Claude 3.5 Haiku",
+    description: "Fast and efficient for simple tasks",
+    tier: "paid",
+  },
+  "claude-3-opus-20240229": {
+    id: "claude-3-opus-20240229",
+    name: "Claude 3 Opus",
+    description: "Most powerful for complex analysis",
+    tier: "paid",
+  },
+};
+
 export const ProviderInfoSchema = z.object({
   id: AIProviderSchema,
   name: z.string(),
@@ -79,13 +162,31 @@ export const AVAILABLE_PROVIDERS: ProviderInfo[] = [
     defaultModel: "gemini-2.5-flash",
     models: [...GEMINI_MODELS],
   },
+  {
+    id: "openai",
+    name: "OpenAI",
+    defaultModel: "gpt-4o",
+    models: [...OPENAI_MODELS],
+  },
+  {
+    id: "anthropic",
+    name: "Anthropic",
+    defaultModel: "claude-sonnet-4-20250514",
+    models: [...ANTHROPIC_MODELS],
+  },
 ];
 
 function isValidModelForProvider(provider: AIProvider, model: string): boolean {
-  if (provider === "gemini") {
-    return GEMINI_MODELS.includes(model as GeminiModel);
+  switch (provider) {
+    case "gemini":
+      return GEMINI_MODELS.includes(model as GeminiModel);
+    case "openai":
+      return OPENAI_MODELS.includes(model as OpenAIModel);
+    case "anthropic":
+      return ANTHROPIC_MODELS.includes(model as AnthropicModel);
+    default:
+      return true;
   }
-  return true;
 }
 
 export const UserConfigSchema = z

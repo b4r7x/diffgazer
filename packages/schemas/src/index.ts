@@ -6,3 +6,6 @@ export * from "./port.js";
 export * from "./review.js";
 export * from "./review-history.js";
 export * from "./session.js";
+export * from "./triage.js";
+export * from "./lens.js";
+export * from "./triage-storage.js";

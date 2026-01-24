@@ -1,7 +1,21 @@
 import type { ZodSchema } from "zod";
+import { UuidSchema } from "@repo/schemas/errors";
 import type { Result } from "../result.js";
 import { ok, err } from "../result.js";
 import { safeParseJson } from "../json.js";
+
+export { UuidSchema };
+
+export function isValidUuid(id: string): boolean {
+  return UuidSchema.safeParse(id).success;
+}
+
+export function assertValidUuid(id: string): string {
+  if (!UuidSchema.safeParse(id).success) {
+    throw new Error(`Invalid UUID format: ${id}`);
+  }
+  return id;
+}
 
 export function validateSchema<T, E>(
   value: unknown,
