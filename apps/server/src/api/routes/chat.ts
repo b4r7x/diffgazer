@@ -3,8 +3,10 @@ import { streamSSE } from "hono/streaming";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { ErrorCode } from "@repo/schemas/errors";
+import { getErrorMessage } from "@repo/core";
 import { zodErrorHandler, errorResponse } from "../../lib/response.js";
 import { requireUuidParam } from "../../lib/validation.js";
+import { writeSSEError } from "../../lib/sse-helpers.js";
 import { prepareChatContext, saveUserMessage, streamChatToSSE } from "../../services/chat.js";
 
 const ChatRequestSchema = z.object({
@@ -31,6 +33,16 @@ chat.post(
       return errorResponse(c, saveResult.error.message, saveResult.error.code, 500);
     }
 
-    return streamSSE(c, (stream) => streamChatToSSE(sessionId, message, contextResult.value, stream));
+    return streamSSE(c, async (stream) => {
+      try {
+        await streamChatToSSE(sessionId, message, contextResult.value, stream);
+      } catch (error) {
+        try {
+          await writeSSEError(stream, getErrorMessage(error), ErrorCode.INTERNAL_ERROR);
+        } catch {
+          // Stream already closed, cannot send error
+        }
+      }
+    });
   }
 );

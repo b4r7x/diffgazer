@@ -31,6 +31,7 @@ export async function initializeAIClient(): Promise<Result<AIClient, AIClientErr
 
   const clientResult = createAIClient({
     apiKey: apiKeyResult.value,
+    provider: configResult.value.provider,
     model: configResult.value.model,
   });
   if (!clientResult.ok) {

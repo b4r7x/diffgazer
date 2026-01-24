@@ -3,6 +3,7 @@
 import { Command } from "commander";
 import { runCommand } from "./commands/run.js";
 import { serveCommand } from "./commands/serve.js";
+import { reviewCommand } from "./commands/review.js";
 
 const DEFAULT_PORT = "3000";
 
@@ -28,5 +29,20 @@ program
   .option("-p, --port <port>", "Server port", DEFAULT_PORT)
   .option("-H, --hostname <hostname>", "Server hostname", "localhost")
   .action(serveCommand);
+
+program
+  .command("review")
+  .description("AI-powered code review")
+  .option("-p, --port <port>", "Server port", DEFAULT_PORT)
+  .option("-H, --hostname <hostname>", "Server hostname", "localhost")
+  .option("-s, --staged", "Review staged changes (default)")
+  .option("-u, --unstaged", "Review unstaged changes")
+  .option("-f, --files <files...>", "Review only specific files (comma-separated or multiple -f flags)")
+  .option("--lens <lenses>", "Comma-separated lens IDs (correctness,security,performance,simplicity,tests)")
+  .option("--profile <profile>", "Review profile (quick,strict,perf,security)")
+  .option("-l, --list", "List review history")
+  .option("-r, --resume <id>", "Resume a saved review by ID")
+  .option("--pick", "Pick files to review interactively")
+  .action(reviewCommand);
 
 await program.parseAsync();

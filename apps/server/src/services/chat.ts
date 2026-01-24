@@ -3,7 +3,7 @@ import type { Session } from "@repo/schemas/session";
 import { addMessage, sessionStore } from "@repo/core/storage";
 import { ErrorCode } from "@repo/schemas/errors";
 import type { Result } from "@repo/core";
-import { ok, err, getErrorMessage } from "@repo/core";
+import { ok, err, getErrorMessage, escapeXml, sanitizeUnicode } from "@repo/core";
 import { initializeAIClient, type SSEWriter } from "../lib/ai-client.js";
 import { writeSSEChunk, writeSSEComplete, writeSSEError } from "../lib/sse-helpers.js";
 import { type ChatError } from "@repo/schemas/chat";
@@ -54,8 +54,10 @@ export async function streamChatToSSE(
   context: ChatContext,
   stream: SSEWriter
 ): Promise<void> {
+  // CVE-2025-53773: Escape user content to prevent prompt injection
+  const sanitizedMessage = escapeXml(sanitizeUnicode(userMessage));
   const conversationHistory = context.session.messages
-    .map((msg) => `${msg.role.toUpperCase()}: ${msg.content}`)
+    .map((msg) => `${msg.role.toUpperCase()}: ${escapeXml(sanitizeUnicode(msg.content))}`)
     .join("\n\n");
 
   const prompt = `You are a helpful AI assistant for code review and development discussions.
@@ -63,7 +65,7 @@ export async function streamChatToSSE(
 Previous conversation:
 ${conversationHistory}
 
-USER: ${userMessage}
+USER: ${sanitizedMessage}
 
 Respond helpfully and concisely.`;
 
@@ -81,6 +83,11 @@ Respond helpfully and concisely.`;
       },
     });
   } catch (error) {
-    await writeSSEError(stream, getErrorMessage(error), ErrorCode.STREAM_ERROR);
+    try {
+      await writeSSEError(stream, getErrorMessage(error), ErrorCode.STREAM_ERROR);
+    } catch {
+      // Stream already closed, cannot send error - will be handled by route-level catch
+      throw error;
+    }
   }
 }

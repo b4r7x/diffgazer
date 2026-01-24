@@ -6,7 +6,13 @@ This directory contains prompts, workflows, and documentation for Claude Code.
 
 ```
 .claude/
+├── commands/          # Custom slash commands (use with /project:name)
+│   ├── project-context.md       # /project:project-context - Load project understanding
+│   ├── project-update.md        # /project:project-update - Update documentation
+│   └── project-debug-stream.md  # /project:project-debug-stream - Debug streaming error
 ├── prompts/           # Copy-paste prompts for common tasks
+│   ├── project-context.md      # Load project understanding (run first)
+│   ├── project-update.md       # Update docs after changes
 │   ├── code-review.md
 │   ├── code-simplification.md
 │   ├── run-reusability-audit.md
@@ -19,6 +25,8 @@ This directory contains prompts, workflows, and documentation for Claude Code.
 │   ├── 04-ai-sdk-migration.md
 │   ├── 05-review-flow-implementation.md
 │   ├── 06-documentation-generator.md
+│   ├── 07-gap-fixer.md
+│   ├── 08-stream-error-debug.md
 │   ├── code-review-workflow.md
 │   ├── code-simplification-workflow.md
 │   ├── codebase-reusability-audit.md
@@ -30,6 +38,18 @@ This directory contains prompts, workflows, and documentation for Claude Code.
 ```
 
 ## Quick Start
+
+### Project Context (Run First in New Session)
+```
+See .claude/prompts/project-context.md
+Loads full project understanding before starting work.
+```
+
+### Project Update (Run After Changes)
+```
+See .claude/prompts/project-update.md
+Updates documentation for future AI sessions.
+```
 
 ### Code Review
 ```
