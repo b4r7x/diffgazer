@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { assertValidUuid } from "../validation.js";
+import { assertValidUuid } from "../utils/validation.js";
 
 export const APP_NAME = "stargazer";
 
@@ -18,4 +18,7 @@ export const paths = {
   reviews: join(APP_HOME, "reviews"),
   reviewFile: (reviewId: string): string =>
     join(APP_HOME, "reviews", `${assertValidUuid(reviewId)}.json`),
+  triageReviews: join(APP_HOME, "triage-reviews"),
+  triageReviewFile: (reviewId: string): string =>
+    join(APP_HOME, "triage-reviews", `${assertValidUuid(reviewId)}.json`),
 } as const;

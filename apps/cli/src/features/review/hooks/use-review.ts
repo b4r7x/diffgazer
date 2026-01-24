@@ -5,11 +5,9 @@ import {
   type ReviewStreamEvent,
   ReviewStreamEventSchema,
 } from "@repo/schemas/review";
-import { getErrorMessage, isAbortError } from "@repo/core";
-import { api } from "../../../lib/api.js";
-import { createErrorState } from "../../../lib/state-helpers.js";
-import { truncateToDisplayLength } from "../../../lib/string-utils.js";
+import { getErrorMessage, isAbortError, createErrorState, truncateToDisplayLength } from "@repo/core";
 import { useSSEStream, type SSEStreamError } from "../../../hooks/use-sse-stream.js";
+import { streamReview } from "../api/index.js";
 
 const MAX_DISPLAY_LENGTH = 50_000;
 
@@ -60,10 +58,7 @@ export function useReview() {
     setState({ status: "loading", content: "" });
 
     try {
-      const res = await api().stream("/review/stream", {
-        params: { staged: String(staged) },
-        signal: controller.signal,
-      });
+      const res = await streamReview({ staged, signal: controller.signal });
 
       const reader = res.body?.getReader();
       if (!reader) {

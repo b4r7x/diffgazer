@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseDiff } from "./parser.js";
+import { parseDiff, filterDiffByFiles } from "./parser.js";
 
 describe("parseDiff", () => {
   describe("file operations", () => {
@@ -359,5 +359,81 @@ index abc..def 100644
       expect(result.totalStats.filesChanged).toBe(100);
       expect(duration).toBeLessThan(100);
     });
+  });
+});
+
+describe("filterDiffByFiles", () => {
+  const multiFileDiff = `diff --git a/src/index.ts b/src/index.ts
+index abc1234..def5678 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -1 +1 @@
+-old
++new
+diff --git a/src/utils/helper.ts b/src/utils/helper.ts
+index abc1234..def5678 100644
+--- a/src/utils/helper.ts
++++ b/src/utils/helper.ts
+@@ -1,2 +1,3 @@
+ const a = 1;
+-const b = 2;
++const b = 3;
++const c = 4;
+diff --git a/tests/test.ts b/tests/test.ts
+index abc1234..def5678 100644
+--- a/tests/test.ts
++++ b/tests/test.ts
+@@ -1 +1 @@
+-test old
++test new`;
+
+  it("filters to only specified files", () => {
+    const parsed = parseDiff(multiFileDiff);
+    const filtered = filterDiffByFiles(parsed, ["src/index.ts"]);
+
+    expect(filtered.files).toHaveLength(1);
+    expect(filtered.files[0]?.filePath).toBe("src/index.ts");
+  });
+
+  it("filters multiple files", () => {
+    const parsed = parseDiff(multiFileDiff);
+    const filtered = filterDiffByFiles(parsed, ["src/index.ts", "tests/test.ts"]);
+
+    expect(filtered.files).toHaveLength(2);
+    expect(filtered.files.map(f => f.filePath)).toEqual(["src/index.ts", "tests/test.ts"]);
+  });
+
+  it("handles ./ prefix in filter list", () => {
+    const parsed = parseDiff(multiFileDiff);
+    const filtered = filterDiffByFiles(parsed, ["./src/index.ts"]);
+
+    expect(filtered.files).toHaveLength(1);
+    expect(filtered.files[0]?.filePath).toBe("src/index.ts");
+  });
+
+  it("returns empty when no files match", () => {
+    const parsed = parseDiff(multiFileDiff);
+    const filtered = filterDiffByFiles(parsed, ["nonexistent.ts"]);
+
+    expect(filtered.files).toHaveLength(0);
+    expect(filtered.totalStats.filesChanged).toBe(0);
+    expect(filtered.totalStats.additions).toBe(0);
+    expect(filtered.totalStats.deletions).toBe(0);
+  });
+
+  it("returns all files when filter list is empty", () => {
+    const parsed = parseDiff(multiFileDiff);
+    const filtered = filterDiffByFiles(parsed, []);
+
+    expect(filtered.files).toHaveLength(3);
+  });
+
+  it("recalculates total stats for filtered files", () => {
+    const parsed = parseDiff(multiFileDiff);
+    const filtered = filterDiffByFiles(parsed, ["src/utils/helper.ts"]);
+
+    expect(filtered.totalStats.filesChanged).toBe(1);
+    expect(filtered.totalStats.additions).toBe(2);
+    expect(filtered.totalStats.deletions).toBe(1);
   });
 });

@@ -4,13 +4,18 @@ import type {
   SessionMessage,
   MessageRole,
 } from "@repo/schemas/session";
-import { api } from "../../../lib/api.js";
 import { getErrorMessage } from "@repo/core";
 import { type ApiError } from "@repo/api";
 import {
   useAsyncOperation,
   type AsyncError,
 } from "../../../hooks/use-async-operation.js";
+import {
+  createSession as createSessionApi,
+  getSession,
+  getLastSession,
+  addSessionMessage,
+} from "../api/index.js";
 
 export type SessionState = "idle" | "loading" | "active" | "error";
 
@@ -44,10 +49,7 @@ export function useActiveSession() {
   const createSession = useCallback(
     async (title?: string): Promise<Session | null> => {
       return execute(async () => {
-        const result = await api().post<{ session: Session }>("/sessions", {
-          projectPath,
-          title,
-        });
+        const result = await createSessionApi({ projectPath, title });
         return result.session;
       });
     },
@@ -57,9 +59,7 @@ export function useActiveSession() {
   const loadSession = useCallback(
     async (sessionId: string): Promise<Session | null> => {
       return execute(async () => {
-        const result = await api().get<{ session: Session }>(
-          `/sessions/${sessionId}`
-        );
+        const result = await getSession(sessionId);
         return result.session;
       });
     },
@@ -69,15 +69,11 @@ export function useActiveSession() {
   const continueLastSession = useCallback(async (): Promise<Session | null> => {
     return execute(async () => {
       try {
-        const result = await api().get<{ session: Session }>(
-          `/sessions/last?projectPath=${encodeURIComponent(projectPath)}`
-        );
+        const result = await getLastSession(projectPath);
         return result.session;
       } catch (e) {
         if (isNotFoundError(e)) {
-          const result = await api().post<{ session: Session }>("/sessions", {
-            projectPath,
-          });
+          const result = await createSessionApi({ projectPath });
           return result.session;
         }
         throw e;
@@ -92,10 +88,11 @@ export function useActiveSession() {
       setMessageError(null);
 
       try {
-        const result = await api().post<{ message: SessionMessage }>(
-          `/sessions/${currentSession.metadata.id}/messages`,
-          { role, content }
-        );
+        const result = await addSessionMessage({
+          sessionId: currentSession.metadata.id,
+          role,
+          content,
+        });
 
         setData({
           ...currentSession,

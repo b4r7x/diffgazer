@@ -1,9 +1,8 @@
 import { useState, useCallback, useRef } from "react";
-import { getErrorMessage, isAbortError } from "@repo/core";
-import { api } from "../../../lib/api.js";
+import { getErrorMessage, isAbortError, createErrorState } from "@repo/core";
 import { type ChatStreamEvent, type ChatError, ChatStreamEventSchema } from "@repo/schemas/chat";
 import { useSSEStream, type SSEStreamError } from "../../../hooks/use-sse-stream.js";
-import { createErrorState } from "../../../lib/state-helpers.js";
+import { sendChatMessage } from "../api/index.js";
 
 export type ChatState =
   | { status: "idle" }
@@ -58,8 +57,9 @@ export function useChat(): UseChatReturn {
     setChatState({ status: "loading", streamContent: "" });
 
     try {
-      const response = await api().request("POST", `/sessions/${sessionId}/chat`, {
-        body: { message },
+      const response = await sendChatMessage({
+        sessionId,
+        message,
         signal: controller.signal,
       });
 

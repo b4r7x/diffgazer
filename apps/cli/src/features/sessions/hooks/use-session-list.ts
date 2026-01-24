@@ -1,26 +1,24 @@
 import { useEntityList } from "../../../hooks/use-entity-list.js";
-import { api } from "../../../lib/api.js";
 import type { Session, SessionMetadata } from "@repo/schemas/session";
+import { getSessionList, getSession, deleteSession } from "../api/index.js";
 
 export function useSessionList() {
   const projectPath = process.cwd();
 
   const [state, actions] = useEntityList<Session, SessionMetadata>({
     fetchList: async (path) => {
-      const res = await api().get<{ sessions: SessionMetadata[]; warnings?: string[] }>(
-        `/sessions?projectPath=${encodeURIComponent(path)}`
-      );
+      const res = await getSessionList({ projectPath: path });
       return {
         items: res.sessions,
         warnings: res.warnings || [],
       };
     },
     fetchOne: async (id) => {
-      const res = await api().get<{ session: Session }>(`/sessions/${id}`);
+      const res = await getSession(id);
       return res.session;
     },
     deleteOne: async (id) => {
-      const res = await api().delete<{ existed: boolean }>(`/sessions/${id}`);
+      const res = await deleteSession(id);
       return { existed: res.existed };
     },
     getId: (item) => item.id,

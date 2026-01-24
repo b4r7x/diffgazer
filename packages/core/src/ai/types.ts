@@ -22,6 +22,7 @@ export interface GenerateStreamOptions {
 
 export interface AIClientConfig {
   apiKey: string;
+  provider: AIProvider;
   model?: string;
   temperature?: number;
   maxTokens?: number;

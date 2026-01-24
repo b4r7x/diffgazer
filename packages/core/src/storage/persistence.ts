@@ -7,7 +7,7 @@ import { ok, err } from "../result.js";
 import type { AppError } from "../errors.js";
 import { isNodeError, createError, getErrorMessage } from "../errors.js";
 import { safeParseJson } from "../json.js";
-import { isValidUuid } from "../validation.js";
+import { isValidUuid } from "../utils/validation.js";
 import {
   safeReadFile as genericSafeReadFile,
   atomicWriteFile as genericAtomicWriteFile,

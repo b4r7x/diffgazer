@@ -6,7 +6,7 @@ import { ListScreenWrapper } from "../../components/list-screen-wrapper.js";
 import { DeleteConfirmation } from "../../components/delete-confirmation.js";
 import { Separator } from "../../components/ui/separator.js";
 import { ReviewListItem, IssueItem } from "../../features/review/index.js";
-import { getScoreColor } from "../../lib/format.js";
+import { getScoreColor } from "@repo/core";
 
 interface ReviewHistoryScreenProps {
   reviews: ReviewHistoryMetadata[];

@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import type { SessionMetadata } from "@repo/schemas/session";
 import { SelectionIndicator } from "../../../components/selection-indicator.js";
-import { formatRelativeTime } from "../../../lib/format.js";
+import { formatRelativeTime } from "@repo/core";
 
 interface SessionListItemProps {
   session: SessionMetadata;

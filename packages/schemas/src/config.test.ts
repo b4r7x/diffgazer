@@ -16,7 +16,15 @@ import {
 } from "./config.js";
 
 describe("AIProviderSchema", () => {
-  it.each(["openai", "anthropic", "invalid", ""])(
+  it.each(["gemini", "openai", "anthropic"])(
+    "accepts valid provider: %s",
+    (provider) => {
+      const result = AIProviderSchema.safeParse(provider);
+      expect(result.success).toBe(true);
+    }
+  );
+
+  it.each(["invalid", "", "azure", "ollama"])(
     "rejects invalid provider: %s",
     (provider) => {
       const result = AIProviderSchema.safeParse(provider);
@@ -82,8 +90,28 @@ describe("ProviderInfoSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts valid openai provider info", () => {
+    const result = ProviderInfoSchema.safeParse({
+      id: "openai",
+      name: "OpenAI",
+      defaultModel: "gpt-4o",
+      models: ["gpt-4o", "gpt-4o-mini"],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid anthropic provider info", () => {
+    const result = ProviderInfoSchema.safeParse({
+      id: "anthropic",
+      name: "Anthropic",
+      defaultModel: "claude-sonnet-4-20250514",
+      models: ["claude-sonnet-4-20250514", "claude-3-5-sonnet-20241022"],
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("rejects provider info with invalid data", () => {
-    expect(ProviderInfoSchema.safeParse({ id: "openai", name: "OpenAI", defaultModel: "gpt-4", models: ["gpt-4"] }).success).toBe(false);
+    expect(ProviderInfoSchema.safeParse({ id: "invalid", name: "Invalid", defaultModel: "model", models: ["model"] }).success).toBe(false);
     expect(ProviderInfoSchema.safeParse({ id: "gemini", name: "Google Gemini" }).success).toBe(false);
     expect(ProviderInfoSchema.safeParse({ id: "gemini", name: "Google Gemini", defaultModel: "gemini-2.5-flash", models: "gemini-2.5-flash" }).success).toBe(false);
   });

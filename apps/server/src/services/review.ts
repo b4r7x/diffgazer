@@ -1,15 +1,14 @@
 import { createGitService } from "./git.js";
 import type { AIClient, StreamCallbacks } from "@repo/core/ai";
-import { createErrorClassifier, getErrorMessage, safeParseJson, validateSchema } from "@repo/core";
+import { createErrorClassifier, getErrorMessage, safeParseJson, validateSchema, sanitizeUnicode, escapeXml } from "@repo/core";
 import { parseDiff } from "@repo/core/diff";
 import { saveReview } from "@repo/core/storage";
 import { ReviewResultSchema, type ReviewResult } from "@repo/schemas/review";
 import { ErrorCode } from "@repo/schemas/errors";
-import { sanitizeUnicode, escapeXml } from "../lib/sanitization.js";
 import type { SSEWriter } from "../lib/ai-client.js";
 import { writeSSEChunk, writeSSEComplete, writeSSEError } from "../lib/sse-helpers.js";
 
-const MAX_DIFF_SIZE_BYTES = 102400;
+const MAX_DIFF_SIZE_BYTES = 524288; // 512KB
 
 const CREDENTIAL_PATTERNS = [
   /sk-ant-[a-zA-Z0-9-]+/,
@@ -184,6 +183,11 @@ export async function streamReviewToSSE(
     });
   } catch (error) {
     console.error("[Review] Unexpected error during review:", error);
-    await writeSSEError(stream, getErrorMessage(error), ErrorCode.INTERNAL_ERROR);
+    try {
+      await writeSSEError(stream, getErrorMessage(error), ErrorCode.INTERNAL_ERROR);
+    } catch {
+      // Stream already closed, cannot send error - will be handled by route-level catch
+      throw error;
+    }
   }
 }

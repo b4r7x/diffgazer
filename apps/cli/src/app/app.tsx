@@ -12,7 +12,7 @@ import {
   SessionsView,
   ReviewHistoryView,
 } from "./views/index.js";
-import type { SessionMode } from "./types.js";
+import type { SessionMode } from "../types/index.js";
 
 export type { SessionMode };
 

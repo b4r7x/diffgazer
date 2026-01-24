@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import type { SessionMode } from "../types.js";
+import type { SessionMode } from "../../types/index.js";
 import type { ConfigCheckState, SaveConfigState } from "../../hooks/index.js";
 import type { View } from "./use-navigation.js";
 

@@ -4,7 +4,7 @@
 
 Stargazer is a local-only CLI tool for AI-powered code review. Server binds to `127.0.0.1` only.
 
-**Tech Stack:** TypeScript, React 19, Hono, Zod, Vitest
+**Tech Stack:** TypeScript, React 19, Hono, Zod, Vitest, Vercel AI SDK
 
 **Monorepo Structure:**
 ```
@@ -70,12 +70,53 @@ Use these instead of inline implementations:
 | `safeParseJson` | `@repo/core/json` | Safe JSON parsing |
 | `createError` | `@repo/core/errors` | Error factory |
 | `ok`/`err` | `@repo/core/result` | Result type helpers |
+| `createErrorState` | `@repo/core/utils/state-helpers` | Error state factory |
+| `escapeXml` | `@repo/core/sanitization` | XML escape for prompts |
+| `truncate` | `@repo/core/string` | String truncation |
+| `chunk` | `@repo/core/array` | Array chunking |
+| `formatRelativeTime` | `@repo/core/format` | Time formatting |
+
+## Review System
+
+### Lenses
+
+Specialized review configurations for different aspects:
+
+| Lens | Focus |
+|------|-------|
+| `correctness` | Bugs, logic errors, edge cases |
+| `security` | Vulnerabilities, injection, auth issues |
+| `performance` | Efficiency, memory, algorithms |
+| `simplicity` | Complexity, maintainability |
+| `tests` | Test coverage and quality |
+
+### Profiles
+
+Preset lens combinations:
+
+| Profile | Lenses | Min Severity |
+|---------|--------|--------------|
+| `quick` | correctness | high |
+| `strict` | correctness, security, tests | all |
+| `perf` | correctness, performance | medium |
+| `security` | security, correctness | all |
+
+### Triage Flow
+
+1. Parse git diff
+2. Run selected lenses in parallel
+3. Aggregate and deduplicate issues
+4. Filter by severity
+5. Save to storage with metadata
 
 ## Type Locations
 
 - **Canonical types**: `packages/schemas/src/` (use `z.infer<typeof Schema>`)
 - **Error types**: `packages/core/src/errors.ts`
 - **AI types**: `packages/core/src/ai/types.ts`
+- **Lens types**: `packages/schemas/src/lens.ts`
+- **Triage types**: `packages/schemas/src/triage.ts`
+- **Storage types**: `packages/schemas/src/triage-storage.ts`
 
 ## Code Style
 
@@ -94,5 +135,5 @@ See `.claude/` folder:
 ## Testing Guidelines
 
 Test behavior, not implementation:
-- ✅ Business logic, edge cases, error handling
-- ❌ Trivial getters, CSS, framework behavior, implementation details
+- Business logic, edge cases, error handling
+- Trivial getters, CSS, framework behavior, implementation details (skip)

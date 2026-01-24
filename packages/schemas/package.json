@@ -14,7 +14,10 @@
     "./port": { "types": "./dist/port.d.ts", "import": "./dist/port.js" },
     "./review": { "types": "./dist/review.d.ts", "import": "./dist/review.js" },
     "./review-history": { "types": "./dist/review-history.d.ts", "import": "./dist/review-history.js" },
-    "./session": { "types": "./dist/session.d.ts", "import": "./dist/session.js" }
+    "./session": { "types": "./dist/session.d.ts", "import": "./dist/session.js" },
+    "./triage": { "types": "./dist/triage.d.ts", "import": "./dist/triage.js" },
+    "./lens": { "types": "./dist/lens.d.ts", "import": "./dist/lens.js" },
+    "./triage-storage": { "types": "./dist/triage-storage.d.ts", "import": "./dist/triage-storage.js" }
   },
   "scripts": { "build": "tsc", "type-check": "tsc --noEmit", "type-check-test": "tsc --noEmit --project tsconfig.test.json" },
   "dependencies": { "zod": "^3.23.0" },
