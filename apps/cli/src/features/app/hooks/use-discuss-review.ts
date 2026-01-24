@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 import { getErrorMessage } from "@repo/core";
-import { api } from "../../lib/api.js";
+import { api } from "../../../lib/api.js";
 
 interface ReviewData {
   metadata: {

@@ -6,13 +6,6 @@ import { isNodeError, getErrorMessage } from "../errors.js";
 
 export type FileIOErrorCode = "NOT_FOUND" | "PERMISSION_DENIED" | "READ_ERROR" | "WRITE_ERROR";
 
-export interface FileIOError {
-  code: FileIOErrorCode;
-  message: string;
-  path: string;
-  details?: string;
-}
-
 export type ErrorFactory<E> = (code: FileIOErrorCode, message: string, details?: string) => E;
 
 export function createMappedErrorFactory<DomainCode extends string>(

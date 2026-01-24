@@ -8,26 +8,12 @@ import type { TriageResult } from "@repo/schemas/triage";
 import type { LensId, ProfileId } from "@repo/schemas/lens";
 import { ErrorCode } from "@repo/schemas/errors";
 import type { SSEWriter } from "../lib/ai-client.js";
-import { writeSSEError } from "../lib/sse-helpers.js";
+import { writeSSEChunk, writeSSEError } from "../lib/sse-helpers.js";
 import { createGitDiffError } from "./review.js";
 
 const MAX_DIFF_SIZE_BYTES = 524288; // 512KB
 
 const gitService = createGitService();
-
-interface TriageSSEWriter extends SSEWriter {
-  writeTriageChunk: (content: string) => Promise<void>;
-  writeTriageLensStart: (lens: string, index: number, total: number) => Promise<void>;
-  writeTriageLensComplete: (lens: string) => Promise<void>;
-  writeTriageComplete: (result: TriageResult) => Promise<void>;
-}
-
-async function writeTriageChunk(stream: SSEWriter, content: string): Promise<void> {
-  await stream.writeSSE({
-    event: "chunk",
-    data: JSON.stringify({ type: "chunk", content }),
-  });
-}
 
 async function writeTriageLensStart(
   stream: SSEWriter,

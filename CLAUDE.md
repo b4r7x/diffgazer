@@ -125,6 +125,42 @@ Preset lens combinations:
 - Functions <20 lines, nesting <3 levels
 - Use existing utilities, don't reinvent patterns
 
+## Avoid Over-Engineering
+
+Reference: `.claude/workflows/audits/audit-overengineering.md`
+
+**YAGNI:** Build for current requirements, not hypothetical future needs.
+
+| Remove | When |
+|--------|------|
+| Interface | Single implementation |
+| Generic `<T>` | Used with only one type |
+| Factory | Creates only one type |
+| Wrapper | Just passes through to library |
+| Config option | Never changed |
+| Validation | Already validated upstream |
+
+**Rule of Three:** Don't abstract until you have 3 real use cases.
+
+## Project Structure
+
+**Follow structure rules (see `.claude/docs/structure-*.md`):**
+
+| Area | Naming | Reference |
+|------|--------|-----------|
+| `packages/*` | kebab-case (all files) | `structure-packages.md` |
+| `apps/cli/*` | kebab-case (all files) | `structure-apps.md` |
+| `apps/server/*` | kebab-case (all files) | `structure-server.md` |
+
+**Key Rules:**
+- Features cannot import from other features (compose in app layer)
+- Tests co-located with source files
+- Use absolute imports with `@/` prefix in apps
+- Package import direction: core → schemas (leaves: schemas, api)
+
+**Commands:**
+- `/project-structure` - Load structure context for implementation
+
 ## Workflows & Prompts
 
 See `.claude/` folder:
@@ -134,6 +170,35 @@ See `.claude/` folder:
 
 ## Testing Guidelines
 
-Test behavior, not implementation:
-- Business logic, edge cases, error handling
-- Trivial getters, CSS, framework behavior, implementation details (skip)
+Reference: `.claude/docs/testing.md`
+
+**Philosophy:** 100% use case coverage > 100% code coverage
+
+### What to Test
+
+| Test | Skip |
+|------|------|
+| Business logic | Constants |
+| Edge cases | Trivial getters/setters |
+| Error handling | Framework behavior |
+| User-visible behavior | CSS/styling |
+| Integration points | Implementation details |
+
+### Key Rules
+
+1. **Test behavior, not implementation** - Assert on outcomes, not internal state
+2. **Mock at boundaries** - Use MSW for network, not `vi.mock()` for modules
+3. **Accessible queries** - `getByRole` > `getByTestId`
+4. **userEvent > fireEvent** - Realistic user interactions
+5. **One test per behavior** - Don't test same case twice
+6. **Simple test data** - Avoid over-engineered factories
+
+### Anti-Patterns to Avoid
+
+- Spying on React hooks (useState, useEffect)
+- Testing internal state variables
+- Mocking modules you're testing
+- Using `fireEvent` when `userEvent` works
+- Using `getByTestId` as first choice
+- Complex test setup with factories
+- Chasing 100% code coverage

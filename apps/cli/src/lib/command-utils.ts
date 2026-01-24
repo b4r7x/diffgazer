@@ -1,6 +1,6 @@
+import chalk from "chalk";
 import { createServerManager } from "./server.js";
-import { parsePort } from "@repo/schemas/port";
-import { getErrorMessage } from "@repo/core";
+import { getErrorMessage, parsePort } from "@repo/core";
 import { DEFAULT_HOST } from "./constants.js";
 
 export { DEFAULT_HOST } from "./constants.js";
@@ -10,8 +10,10 @@ export interface CommandOptions {
   hostname?: string;
 }
 
+export type ServerManager = ReturnType<typeof createServerManager>;
+
 export interface InitializedServer {
-  manager: ReturnType<typeof createServerManager>;
+  manager: ServerManager;
   address: string;
 }
 
@@ -21,6 +23,21 @@ export async function initializeServer(options: CommandOptions): Promise<Initial
   const manager = createServerManager({ port, hostname });
   const serverAddress = await manager.start();
   return { manager, address: `http://${serverAddress.hostname}:${serverAddress.port}` };
+}
+
+export async function withServer<T>(
+  options: CommandOptions,
+  handler: (manager: ServerManager, address: string) => Promise<T>
+): Promise<T> {
+  let manager: ServerManager;
+  let address: string;
+  try {
+    ({ manager, address } = await initializeServer(options));
+  } catch (error) {
+    console.error(chalk.red(`Error: ${getErrorMessage(error)}`));
+    process.exit(1);
+  }
+  return handler(manager, address);
 }
 
 export function registerShutdownHandlers(shutdown: () => Promise<void>): void {

@@ -302,15 +302,3 @@ describe("useAsyncOperation - State Transitions", () => {
     });
   });
 });
-
-describe("AsyncStatus type", () => {
-  it("has correct possible values", () => {
-    const statuses: AsyncStatus[] = ["idle", "loading", "success", "error"];
-
-    expect(statuses).toContain("idle");
-    expect(statuses).toContain("loading");
-    expect(statuses).toContain("success");
-    expect(statuses).toContain("error");
-    expect(statuses).toHaveLength(4);
-  });
-});

@@ -1,9 +1,9 @@
 import { useCallback } from "react";
-import { useGitStatus } from "../../hooks/use-git-status.js";
-import { useGitDiff } from "../../hooks/use-git-diff.js";
-import { useConfig } from "../../hooks/use-config.js";
-import { useActiveSession, useSessionList } from "../../features/sessions/index.js";
-import { useReview, useReviewHistoryList } from "../../features/review/index.js";
+import { useGitStatus } from "../../../hooks/use-git-status.js";
+import { useGitDiff } from "../../../hooks/use-git-diff.js";
+import { useConfig } from "../../../hooks/use-config.js";
+import { useActiveSession, useSessionList } from "../../sessions/index.js";
+import { useReview, useReviewHistoryList } from "../../review/index.js";
 import type { View } from "./use-navigation.js";
 
 export function useAppState() {

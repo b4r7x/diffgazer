@@ -12,7 +12,6 @@ export {
   safeReadFile,
   atomicWriteFile,
   ensureDirectory,
-  type FileIOError,
   type FileIOErrorCode,
   type ErrorFactory,
 } from "./fs/index.js";
@@ -24,3 +23,4 @@ export {
 
 export { truncate, truncateToDisplayLength } from "./string.js";
 export { chunk } from "./array.js";
+export { parsePort, parsePortOrDefault } from "./port.js";

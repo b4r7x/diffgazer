@@ -36,7 +36,14 @@ apps/
 - Import flow: apps → packages, packages/core → schemas
 - schemas and api are leaf packages (no monorepo imports)
 - CLI: Bulletproof React (screens/, features/, components/, hooks/)
-- Server: Bulletproof Node.js (api/routes/, services/, loaders/)
+- Server: Hono patterns (api/routes/, services/, lib/)
+
+### Naming Conventions (from .claude/docs/structure-*.md)
+| Area | Convention | Example |
+|------|------------|---------|
+| packages/* | kebab-case | `error-classifier.ts` |
+| apps/* | kebab-case | `use-review.ts`, `review-display.tsx` |
+| Feature modules | api/, components/, hooks/, index.ts | `features/review/` |
 
 ### What We're Building (from requirements)
 1. **AI SDK Migration** - Switch to Vercel AI SDK for unified providers
@@ -63,95 +70,95 @@ Launch these 3 agents simultaneously using Task tool:
 ```
 subagent_type: "javascript-typescript:typescript-pro"
 
-Task: Analyze and improve packages/ structure.
+Task: Validate packages/ structure against .claude/docs/structure-packages.md
 
-Context:
-- packages/core/src/ - shared business logic
-- packages/schemas/src/ - Zod schemas (leaf package)
-- packages/api/src/ - API client (leaf package)
+Rules to enforce:
+- All files kebab-case (error-classifier.ts)
+- Single-word preferred (result.ts not result-type.ts)
+- packages/schemas/src/: Flat structure, one file per domain
+- packages/core/src/: Grouped by concern (ai/, storage/, review/, utils/)
+- packages/api/src/: Minimal (client.ts, types.ts, index.ts)
+- Tests co-located (parser.test.ts next to parser.ts)
+- Barrel exports in each folder (index.ts)
 
 Steps:
-1. Read all files in packages/core/src/, packages/schemas/src/, packages/api/src/
-2. Web search: "zustand file structure", "vercel ai sdk structure", "trpc monorepo structure"
-3. Compare current structure with OSS best practices
-4. Identify: misplaced files, missing organization, dead code
-5. Propose changes that respect import boundaries
-6. Apply refactoring using Edit tool
-7. Run: npm run type-check
+1. Read .claude/docs/structure-packages.md
+2. Read all files in packages/core/src/, packages/schemas/src/, packages/api/src/
+3. Compare against rules, identify violations
+4. Apply fixes using Edit tool
+5. Run: npm run type-check
 
-Output: List of changes made + any issues found
+Output: List of violations found + changes made
 ```
 
 ### Agent 2: CLI Bulletproof Verification
 ```
 subagent_type: "react-component-architect"
 
-Task: Verify apps/cli follows Bulletproof React structure.
+Task: Validate apps/cli against .claude/docs/structure-apps.md
+
+Rules to enforce:
+- ALL files kebab-case (use-review.ts, review-display.tsx)
+- Feature modules: features/[name]/api/, components/, hooks/, index.ts
+- Import hierarchy: shared → features → app (unidirectional)
+- No cross-feature imports
+- Tests co-located
 
 Expected structure:
 apps/cli/src/
-├── index.ts           # Entry
-├── app/screens/       # TUI screens
-├── commands/          # Commander handlers
-├── components/        # Shared Ink components
-├── features/          # Feature modules with api/, components/, hooks/, index.ts
-├── hooks/             # Shared hooks
-├── lib/               # Utilities
-├── stores/            # Zustand stores
+├── index.ts
+├── app/screens/       # kebab-case: review-screen.tsx
+├── commands/          # kebab-case: review.ts
+├── components/        # kebab-case: git-status-display.tsx
+├── features/          # api/, components/, hooks/, index.ts per feature
+├── hooks/             # kebab-case: use-review.ts
+├── lib/
+├── stores/
 └── types/
 
-Rules:
-- screens/ not pages/
-- Feature-specific code in features/[name]/
-- Shared code in root components/, hooks/
-- Tests grouped with source (.test.ts next to .ts)
-- Unidirectional: shared → features → app
-
 Steps:
-1. Read apps/cli/src/ structure
-2. Compare against expected structure
-3. Identify misplaced files
-4. Move files to correct locations using Write/Edit
-5. Update imports
-6. Run: npm run type-check
+1. Read .claude/docs/structure-apps.md
+2. Read apps/cli/src/ structure
+3. Check naming conventions (all kebab-case)
+4. Check feature completeness (api/, components/, hooks/, index.ts)
+5. Check import hierarchy (no cross-feature imports)
+6. Apply fixes
+7. Run: npm run type-check
 
-Output: Compliance report + changes made
+Output: Violations + changes made
 ```
 
-### Agent 3: Server Bulletproof Verification
+### Agent 3: Server Hono Verification
 ```
 subagent_type: "backend-development:backend-architect"
 
-Task: Verify apps/server follows Bulletproof Node.js + Hono patterns.
+Task: Validate apps/server against .claude/docs/structure-server.md
+
+Rules to enforce:
+- All files kebab-case (review-orchestrator.ts)
+- Routes: thin, HTTP only, call services
+- Services: business logic, return Result<T, E>
+- Use HTTPException for errors
 
 Expected structure:
 apps/server/src/
-├── index.ts           # Entry: export createServer
+├── index.ts           # Entry
 ├── app.ts             # Hono app factory
-├── api/routes/        # Route handlers (thin, HTTP only)
-├── api/middleware/    # Cross-cutting concerns
-├── config/            # Configuration
-├── loaders/           # Bootstrap functions
-├── services/          # Business logic (no HTTP knowledge)
-├── providers/         # AI provider adapters
-├── storage/           # File persistence
-└── secrets/           # Keyring + vault
-
-Rules:
-- Routes: HTTP only, call services, return responses
-- Services: Business logic, return Result<T, E>
-- No business logic in routes
-- Loaders initialize dependencies at startup
+├── api/routes/        # Route handlers (kebab-case: reviews.ts)
+├── services/          # Business logic (kebab-case: review-orchestrator.ts)
+├── lib/               # Utilities
+└── config/
 
 Steps:
-1. Read apps/server/src/ structure
-2. Web search: "Hono best practices 2025", "bulletproof nodejs structure"
-3. Compare current vs expected
-4. Extract any business logic from routes to services
-5. Apply changes using Edit tool
-6. Run: npm run type-check
+1. Read .claude/docs/structure-server.md
+2. Read apps/server/src/ structure
+3. Check naming (kebab-case)
+4. Check routes are thin (no business logic)
+5. Check services return Result<T, E>
+6. Apply fixes
+7. Run: npm run type-check
 
-Output: Compliance report + changes made
+Output: Violations + changes made
 ```
 
 Wait for all 3 agents to complete before Phase 2.
@@ -383,7 +390,13 @@ Steps:
    - Security issues
    - Pattern violations
    - Missing error handling
-4. Report any critical issues
+4. Review tests against .claude/docs/testing.md:
+   - Tests behavior, not implementation
+   - No spying on React hooks
+   - Uses userEvent, not fireEvent
+   - Uses accessible queries (getByRole)
+   - No over-mocking internal modules
+5. Report any critical issues
 
 Output: Validation report
 ```

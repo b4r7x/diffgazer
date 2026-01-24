@@ -28,6 +28,6 @@ export function errorResponse(
   return ctx.json({ error: { message, code } }, status);
 }
 
-export function ok<T>(ctx: Context, data: T) {
+export function jsonOk<T>(ctx: Context, data: T) {
   return ctx.json(data);
 }

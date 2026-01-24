@@ -10,6 +10,7 @@ import {
 } from "@repo/schemas/session";
 import type { Result } from "../result.js";
 import { ok } from "../result.js";
+import { truncate } from "../string.js";
 
 const AUTO_TITLE_MAX_LENGTH = 50;
 
@@ -59,7 +60,7 @@ export async function addMessage(
   session.metadata.updatedAt = now;
   session.metadata.messageCount = session.messages.length;
   if (!session.metadata.title && role === "user") {
-    session.metadata.title = content.slice(0, AUTO_TITLE_MAX_LENGTH) + (content.length > AUTO_TITLE_MAX_LENGTH ? "..." : "");
+    session.metadata.title = truncate(content, AUTO_TITLE_MAX_LENGTH);
   }
 
   const writeResult = await sessionStore.write(session);

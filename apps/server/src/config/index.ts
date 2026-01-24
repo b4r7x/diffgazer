@@ -1,4 +1,4 @@
-import { parsePortOrDefault } from "@repo/schemas/port";
+import { parsePortOrDefault } from "@repo/core";
 
 interface ServerConfig {
   host: string;

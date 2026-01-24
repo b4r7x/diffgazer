@@ -72,8 +72,9 @@ describe("Session Storage", () => {
       await addMessage(session.metadata.id, "user", longMessage);
 
       const read = unwrap(await sessionStore.read(session.metadata.id));
-      expect(read.metadata.title).toBe(longMessage.slice(0, 50) + "...");
-      expect(read.metadata.title?.length).toBe(53);
+      // truncate() includes suffix in maxLength, so 50 total (47 chars + "...")
+      expect(read.metadata.title).toBe(longMessage.slice(0, 47) + "...");
+      expect(read.metadata.title?.length).toBe(50);
     });
 
     it("does not override existing title", async () => {

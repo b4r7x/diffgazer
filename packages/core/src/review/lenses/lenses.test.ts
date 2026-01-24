@@ -6,7 +6,6 @@ describe("Lenses", () => {
   describe("LENSES registry", () => {
     it("contains all defined lens IDs", () => {
       for (const id of LENS_IDS) {
-        expect(LENSES[id]).toBeDefined();
         expect(LENSES[id].id).toBe(id);
       }
     });
@@ -27,9 +26,9 @@ describe("Lenses", () => {
     it.each(LENS_IDS)("returns the %s lens", (id) => {
       const lens = getLens(id);
       expect(lens.id).toBe(id);
-      expect(lens.name).toBeTruthy();
-      expect(lens.description).toBeTruthy();
-      expect(lens.systemPrompt).toBeTruthy();
+      expect(lens.name).not.toBe('');
+      expect(lens.description).not.toBe('');
+      expect(lens.systemPrompt).not.toBe('');
     });
   });
 
@@ -61,11 +60,11 @@ describe("Lenses", () => {
     });
 
     it.each(LENS_LIST)("$id lens has all severity rubric levels", (lens) => {
-      expect(lens.severityRubric.blocker).toBeTruthy();
-      expect(lens.severityRubric.high).toBeTruthy();
-      expect(lens.severityRubric.medium).toBeTruthy();
-      expect(lens.severityRubric.low).toBeTruthy();
-      expect(lens.severityRubric.nit).toBeTruthy();
+      expect(lens.severityRubric.blocker).not.toBe('');
+      expect(lens.severityRubric.high).not.toBe('');
+      expect(lens.severityRubric.medium).not.toBe('');
+      expect(lens.severityRubric.low).not.toBe('');
+      expect(lens.severityRubric.nit).not.toBe('');
     });
   });
 });

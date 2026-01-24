@@ -1,7 +1,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { OnboardingScreen } from "./screens/onboarding-screen.js";
-import { useNavigation, useAppInit, useScreenHandlers, useAppState } from "./hooks/index.js";
+import { useNavigation, useAppInit, useScreenHandlers, useAppState } from "../features/app/index.js";
 import {
   LoadingView,
   MainMenuView,

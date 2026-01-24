@@ -4,7 +4,7 @@ import { configStore } from "@repo/core/storage";
 import { getApiKey, setApiKey, deleteApiKey } from "@repo/core/secrets";
 import { AIProviderSchema, SaveConfigRequestSchema } from "@repo/schemas/config";
 import { ErrorCode } from "@repo/schemas/errors";
-import { errorResponse, ok, handleStoreError, zodErrorHandler } from "../../lib/response.js";
+import { errorResponse, jsonOk, handleStoreError, zodErrorHandler } from "../../lib/response.js";
 
 const config = new Hono();
 
@@ -12,17 +12,17 @@ config.get("/check", async (c) => {
   const configResult = await configStore.read();
 
   if (!configResult.ok) {
-    return ok(c, { configured: false });
+    return jsonOk(c, { configured: false });
   }
 
   const storedConfig = configResult.value;
   const apiKeyResult = await getApiKey(storedConfig.provider);
 
   if (!apiKeyResult.ok || !apiKeyResult.value) {
-    return ok(c, { configured: false });
+    return jsonOk(c, { configured: false });
   }
 
-  return ok(c, {
+  return jsonOk(c, {
     configured: true,
     config: {
       provider: storedConfig.provider,
@@ -38,7 +38,7 @@ config.get("/", async (c) => {
     return handleStoreError(c, configResult.error);
   }
 
-  return ok(c, {
+  return jsonOk(c, {
     provider: configResult.value.provider,
     model: configResult.value.model,
   });
@@ -76,7 +76,7 @@ config.post(
       return handleStoreError(c, writeResult.error);
     }
 
-    return ok(c, {
+    return jsonOk(c, {
       provider: body.provider,
       model: body.model,
     });
@@ -98,10 +98,10 @@ config.delete("/", async (c) => {
 
   const deleteKeyResult = await deleteApiKey(provider);
   if (!deleteKeyResult.ok) {
-    return ok(c, { deleted: true, warning: "Config removed but API key deletion failed" });
+    return jsonOk(c, { deleted: true, warning: "Config removed but API key deletion failed" });
   }
 
-  return ok(c, { deleted: true });
+  return jsonOk(c, { deleted: true });
 });
 
 export { config };
