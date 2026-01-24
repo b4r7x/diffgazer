@@ -6,13 +6,27 @@ Systematic code review using specialized agents in phases.
 
 ---
 
+## Structure Rules
+
+Before reviewing, load context from `.claude/docs/structure-*.md`:
+- `structure-packages.md` - packages/ naming (kebab-case)
+- `structure-apps.md` - apps/ naming (kebab-case for ALL files)
+- `structure-server.md` - Hono patterns (kebab-case)
+
+---
+
 ## Agent Categories
+
+### Structure & Architecture
+| Agent | Purpose | Reference |
+|-------|---------|-----------|
+| code-archaeologist | File placement, naming conventions | structure-*.md |
+| code-review-ai:architect-review | Over-abstraction, SRP violations, import hierarchy | structure-apps.md |
 
 ### Core Review
 | Agent | Purpose |
 |-------|---------|
 | code-reviewer | Bugs, security, quality issues |
-| code-review-ai:architect-review | Over-abstraction, SRP violations |
 | pr-review-toolkit:code-simplifier | Removes unnecessary complexity |
 
 ### Technology Stack
@@ -45,6 +59,15 @@ Systematic code review using specialized agents in phases.
 | pr-review-toolkit:comment-analyzer | Comment accuracy |
 | experienced-engineer:code-quality-reviewer | Clean code principles |
 
+**Test review checklist (see `.claude/docs/testing.md`):**
+- Tests behavior, not implementation details
+- No spying on React hooks or internal state
+- Uses `userEvent` not `fireEvent`
+- Uses accessible queries (`getByRole`) not `getByTestId`
+- Mocks at network boundary (MSW), not internal modules
+- No duplicate test cases
+- No trivial tests (constants, framework behavior)
+
 ### Understanding
 | Agent | Purpose |
 |-------|---------|
@@ -75,10 +98,17 @@ Run one agent, fix issues, commit, run next agent.
 - code-simplifier
 - architect-review
 
-### Over-Abstraction
+### Over-Abstraction (see `.claude/workflows/audits/audit-overengineering.md`)
 - architect-review (primary)
 - code-simplifier (fixes)
 - typescript-pro (type abstractions)
+
+**AI-specific patterns to catch:**
+- Single-impl interfaces → remove
+- Generics with one type → make specific
+- Factories for simple objects → direct construction
+- Pass-through wrappers → use library directly
+- Multiple validation layers → validate once at boundary
 
 ### YAGNI Violations
 - code-simplifier (primary)
@@ -106,10 +136,37 @@ Run one agent, fix issues, commit, run next agent.
 | Trigger | Agents |
 |---------|--------|
 | Pre-commit | code-reviewer, typescript-pro |
-| Pre-PR | Minimum 5 essential |
+| Pre-PR | Minimum 5 essential + structure check |
 | Major refactor | All agents |
 | Weekly quality | architect-review, code-simplifier, code-quality-reviewer |
 | Security audit | security-auditor, silent-failure-hunter, code-reviewer |
+| New files | code-archaeologist (structure validation) |
+
+---
+
+## Structure Checks
+
+Run on every review:
+
+```
+Verify against .claude/docs/structure-*.md:
+
+1. File naming:
+   - ALL files use kebab-case (error-classifier.ts, use-review.ts, review-display.tsx)
+
+2. Import hierarchy (apps/):
+   - shared → features → app (unidirectional)
+   - No cross-feature imports
+
+3. Feature completeness (apps/cli/):
+   - features/[name]/api/index.ts
+   - features/[name]/components/index.ts
+   - features/[name]/hooks/index.ts
+   - features/[name]/index.ts
+
+4. Test co-location:
+   - parser.ts → parser.test.ts (same folder)
+```
 
 ---
 
