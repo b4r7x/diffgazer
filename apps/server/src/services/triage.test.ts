@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import type { AIClient } from "@repo/core/ai";
-import type { ParsedDiff, DiffOperation } from "@repo/core/diff";
+import type { ParsedDiff } from "@repo/core/diff";
 import type { TriageResult } from "@repo/schemas/triage";
 import { ErrorCode } from "@repo/schemas/errors";
 
@@ -11,8 +11,7 @@ const mockGitService = vi.hoisted(() => ({
 
 const mockParseDiff = vi.hoisted(() => vi.fn());
 const mockFilterDiffByFiles = vi.hoisted(() => vi.fn());
-const mockTriageReview = vi.hoisted(() => vi.fn());
-const mockGetLenses = vi.hoisted(() => vi.fn());
+const mockTriageReviewStream = vi.hoisted(() => vi.fn());
 const mockGetProfile = vi.hoisted(() => vi.fn());
 const mockSaveTriageReview = vi.hoisted(() => vi.fn());
 
@@ -26,8 +25,7 @@ vi.mock("@repo/core/diff", () => ({
 }));
 
 vi.mock("@repo/core/review", () => ({
-  triageReview: mockTriageReview,
-  getLenses: mockGetLenses,
+  triageReviewStream: mockTriageReviewStream,
   getProfile: mockGetProfile,
 }));
 
@@ -85,6 +83,15 @@ describe("Triage Service", () => {
       },
     });
 
+    const setupSuccessfulTriage = () => {
+      mockTriageReviewStream.mockResolvedValue({
+        ok: true,
+        value: { summary: "Test summary", issues: [] },
+      });
+      mockGitService.getStatus.mockResolvedValue({ branch: "main" });
+      mockSaveTriageReview.mockResolvedValue({ ok: true, value: { id: "review-123" } });
+    };
+
     it("validates diff size limit", async () => {
       const largeDiff = "diff --git a/large.ts b/large.ts\n" + "x".repeat(600000);
       mockGitService.getDiff.mockResolvedValue(largeDiff);
@@ -128,13 +135,7 @@ describe("Triage Service", () => {
       mockGitService.getDiff.mockResolvedValue(diff);
       mockParseDiff.mockReturnValue(parsedDiff);
       mockFilterDiffByFiles.mockReturnValue(filteredDiff);
-      mockGetLenses.mockReturnValue([{ id: "correctness", name: "Correctness" }]);
-      mockTriageReview.mockResolvedValue({
-        ok: true,
-        value: { summary: "Test", issues: [] },
-      });
-      mockGitService.getStatus.mockResolvedValue({ branch: "main" });
-      mockSaveTriageReview.mockResolvedValue({ ok: true, value: { id: "review-123" } });
+      setupSuccessfulTriage();
 
       await streamTriageToSSE(
         mockAIClient,
@@ -169,61 +170,13 @@ describe("Triage Service", () => {
       });
     });
 
-    it("orchestrates multiple lenses", async () => {
+    it("calls triageReviewStream with correct parameters", async () => {
       const diff = "diff content";
       const parsedDiff = createMockParsedDiff();
 
       mockGitService.getDiff.mockResolvedValue(diff);
       mockParseDiff.mockReturnValue(parsedDiff);
-      mockGetLenses.mockReturnValue([
-        { id: "correctness", name: "Correctness" },
-        { id: "security", name: "Security" },
-        { id: "performance", name: "Performance" },
-      ]);
-      mockTriageReview.mockResolvedValue({
-        ok: true,
-        value: { summary: "Lens summary", issues: [] },
-      });
-      mockGitService.getStatus.mockResolvedValue({ branch: "main" });
-      mockSaveTriageReview.mockResolvedValue({ ok: true, value: { id: "review-123" } });
-
-      await streamTriageToSSE(
-        mockAIClient,
-        { staged: true, lenses: ["correctness", "security", "performance"] },
-        mockStream
-      );
-
-      expect(mockTriageReview).toHaveBeenCalledTimes(3);
-      expect(mockStream.writeSSE).toHaveBeenCalledWith({
-        event: "lens_start",
-        data: expect.stringContaining('"lens":"Correctness"'),
-      });
-      expect(mockStream.writeSSE).toHaveBeenCalledWith({
-        event: "lens_start",
-        data: expect.stringContaining('"lens":"Security"'),
-      });
-      expect(mockStream.writeSSE).toHaveBeenCalledWith({
-        event: "lens_start",
-        data: expect.stringContaining('"lens":"Performance"'),
-      });
-    });
-
-    it("emits lens_start events with correct indices", async () => {
-      const diff = "diff content";
-      const parsedDiff = createMockParsedDiff();
-
-      mockGitService.getDiff.mockResolvedValue(diff);
-      mockParseDiff.mockReturnValue(parsedDiff);
-      mockGetLenses.mockReturnValue([
-        { id: "correctness", name: "Correctness" },
-        { id: "security", name: "Security" },
-      ]);
-      mockTriageReview.mockResolvedValue({
-        ok: true,
-        value: { summary: "Test", issues: [] },
-      });
-      mockGitService.getStatus.mockResolvedValue({ branch: "main" });
-      mockSaveTriageReview.mockResolvedValue({ ok: true, value: { id: "review-123" } });
+      setupSuccessfulTriage();
 
       await streamTriageToSSE(
         mockAIClient,
@@ -231,97 +184,14 @@ describe("Triage Service", () => {
         mockStream
       );
 
-      expect(mockStream.writeSSE).toHaveBeenCalledWith({
-        event: "lens_start",
-        data: JSON.stringify({
-          type: "lens_start",
-          lens: "Correctness",
-          index: 0,
-          total: 2,
-        }),
-      });
-      expect(mockStream.writeSSE).toHaveBeenCalledWith({
-        event: "lens_start",
-        data: JSON.stringify({
-          type: "lens_start",
-          lens: "Security",
-          index: 1,
-          total: 2,
-        }),
-      });
-    });
-
-    it("emits lens_complete events", async () => {
-      const diff = "diff content";
-      const parsedDiff = createMockParsedDiff();
-
-      mockGitService.getDiff.mockResolvedValue(diff);
-      mockParseDiff.mockReturnValue(parsedDiff);
-      mockGetLenses.mockReturnValue([{ id: "correctness", name: "Correctness" }]);
-      mockTriageReview.mockResolvedValue({
-        ok: true,
-        value: { summary: "Test", issues: [] },
-      });
-      mockGitService.getStatus.mockResolvedValue({ branch: "main" });
-      mockSaveTriageReview.mockResolvedValue({ ok: true, value: { id: "review-123" } });
-
-      await streamTriageToSSE(mockAIClient, { staged: true }, mockStream);
-
-      expect(mockStream.writeSSE).toHaveBeenCalledWith({
-        event: "lens_complete",
-        data: JSON.stringify({ type: "lens_complete", lens: "Correctness" }),
-      });
-    });
-
-    it("aggregates issues from multiple lenses", async () => {
-      const diff = "diff content";
-      const parsedDiff = createMockParsedDiff();
-
-      mockGitService.getDiff.mockResolvedValue(diff);
-      mockParseDiff.mockReturnValue(parsedDiff);
-      mockGetLenses.mockReturnValue([
-        { id: "correctness", name: "Correctness" },
-        { id: "security", name: "Security" },
-      ]);
-
-      let callCount = 0;
-      mockTriageReview.mockImplementation(async () => {
-        callCount++;
-        return {
-          ok: true,
-          value: {
-            summary: `Lens ${callCount} summary`,
-            issues: [
-              {
-                severity: "high",
-                title: `Issue ${callCount}`,
-                description: "Description",
-                file: "test.ts",
-                line: callCount,
-              },
-            ],
-          },
-        };
-      });
-
-      mockGitService.getStatus.mockResolvedValue({ branch: "main" });
-      mockSaveTriageReview.mockResolvedValue({ ok: true, value: { id: "review-123" } });
-
-      await streamTriageToSSE(
+      expect(mockTriageReviewStream).toHaveBeenCalledWith(
         mockAIClient,
-        { staged: true, lenses: ["correctness", "security"] },
-        mockStream
+        parsedDiff,
+        expect.objectContaining({
+          lenses: ["correctness", "security"],
+        }),
+        expect.any(Function)
       );
-
-      const completeCall = mockStream.writeSSE.mock.calls.find(
-        (call: [{ event: string; data: string }]) => call[0].event === "complete"
-      );
-      expect(completeCall).toBeTruthy();
-
-      const data = JSON.parse(completeCall![0].data);
-      expect(data.result.issues).toHaveLength(2);
-      expect(data.result.summary).toContain("Lens 1 summary");
-      expect(data.result.summary).toContain("Lens 2 summary");
     });
 
     it("uses profile lenses when profile specified", async () => {
@@ -335,22 +205,19 @@ describe("Triage Service", () => {
         lenses: ["correctness", "security", "tests"],
         filter: { minSeverity: "all" },
       });
-      mockGetLenses.mockReturnValue([
-        { id: "correctness", name: "Correctness" },
-        { id: "security", name: "Security" },
-        { id: "tests", name: "Tests" },
-      ]);
-      mockTriageReview.mockResolvedValue({
-        ok: true,
-        value: { summary: "Test", issues: [] },
-      });
-      mockGitService.getStatus.mockResolvedValue({ branch: "main" });
-      mockSaveTriageReview.mockResolvedValue({ ok: true, value: { id: "review-123" } });
+      setupSuccessfulTriage();
 
       await streamTriageToSSE(mockAIClient, { staged: true, profile: "strict" }, mockStream);
 
       expect(mockGetProfile).toHaveBeenCalledWith("strict");
-      expect(mockGetLenses).toHaveBeenCalledWith(["correctness", "security", "tests"]);
+      expect(mockTriageReviewStream).toHaveBeenCalledWith(
+        mockAIClient,
+        parsedDiff,
+        expect.objectContaining({
+          lenses: ["correctness", "security", "tests"],
+        }),
+        expect.any(Function)
+      );
     });
 
     it("defaults to correctness lens when no lenses or profile", async () => {
@@ -359,17 +226,18 @@ describe("Triage Service", () => {
 
       mockGitService.getDiff.mockResolvedValue(diff);
       mockParseDiff.mockReturnValue(parsedDiff);
-      mockGetLenses.mockReturnValue([{ id: "correctness", name: "Correctness" }]);
-      mockTriageReview.mockResolvedValue({
-        ok: true,
-        value: { summary: "Test", issues: [] },
-      });
-      mockGitService.getStatus.mockResolvedValue({ branch: "main" });
-      mockSaveTriageReview.mockResolvedValue({ ok: true, value: { id: "review-123" } });
+      setupSuccessfulTriage();
 
       await streamTriageToSSE(mockAIClient, { staged: true }, mockStream);
 
-      expect(mockGetLenses).toHaveBeenCalledWith(["correctness"]);
+      expect(mockTriageReviewStream).toHaveBeenCalledWith(
+        mockAIClient,
+        parsedDiff,
+        expect.objectContaining({
+          lenses: ["correctness"],
+        }),
+        expect.any(Function)
+      );
     });
 
     it("saves review with metadata", async () => {
@@ -378,8 +246,7 @@ describe("Triage Service", () => {
 
       mockGitService.getDiff.mockResolvedValue(diff);
       mockParseDiff.mockReturnValue(parsedDiff);
-      mockGetLenses.mockReturnValue([{ id: "correctness", name: "Correctness" }]);
-      mockTriageReview.mockResolvedValue({
+      mockTriageReviewStream.mockResolvedValue({
         ok: true,
         value: { summary: "Test summary", issues: [] },
       });
@@ -410,8 +277,7 @@ describe("Triage Service", () => {
 
       mockGitService.getDiff.mockResolvedValue(diff);
       mockParseDiff.mockReturnValue(parsedDiff);
-      mockGetLenses.mockReturnValue([{ id: "correctness", name: "Correctness" }]);
-      mockTriageReview.mockResolvedValue({
+      mockTriageReviewStream.mockResolvedValue({
         ok: true,
         value: { summary: "Test", issues: [] },
       });
@@ -437,14 +303,13 @@ describe("Triage Service", () => {
       });
     });
 
-    it("handles lens review error", async () => {
+    it("handles triage review error", async () => {
       const diff = "diff content";
       const parsedDiff = createMockParsedDiff();
 
       mockGitService.getDiff.mockResolvedValue(diff);
       mockParseDiff.mockReturnValue(parsedDiff);
-      mockGetLenses.mockReturnValue([{ id: "correctness", name: "Correctness" }]);
-      mockTriageReview.mockResolvedValue({
+      mockTriageReviewStream.mockResolvedValue({
         ok: false,
         error: { message: "AI service error", code: "AI_ERROR" },
       });
@@ -463,8 +328,7 @@ describe("Triage Service", () => {
 
       mockGitService.getDiff.mockResolvedValue(diff);
       mockParseDiff.mockReturnValue(parsedDiff);
-      mockGetLenses.mockReturnValue([{ id: "correctness", name: "Correctness" }]);
-      mockTriageReview.mockResolvedValue({
+      mockTriageReviewStream.mockResolvedValue({
         ok: true,
         value: { summary: "Test", issues: [] },
       });
@@ -495,7 +359,7 @@ describe("Triage Service", () => {
       });
     });
 
-    it("applies profile filter to lens reviews", async () => {
+    it("applies profile filter to triage stream", async () => {
       const diff = "diff content";
       const parsedDiff = createMockParsedDiff();
 
@@ -506,22 +370,17 @@ describe("Triage Service", () => {
         lenses: ["correctness"],
         filter: { minSeverity: "high" },
       });
-      mockGetLenses.mockReturnValue([{ id: "correctness", name: "Correctness" }]);
-      mockTriageReview.mockResolvedValue({
-        ok: true,
-        value: { summary: "Test", issues: [] },
-      });
-      mockGitService.getStatus.mockResolvedValue({ branch: "main" });
-      mockSaveTriageReview.mockResolvedValue({ ok: true, value: { id: "review-123" } });
+      setupSuccessfulTriage();
 
       await streamTriageToSSE(mockAIClient, { staged: true, profile: "quick" }, mockStream);
 
-      expect(mockTriageReview).toHaveBeenCalledWith(
+      expect(mockTriageReviewStream).toHaveBeenCalledWith(
         mockAIClient,
         parsedDiff,
         expect.objectContaining({
           filter: { minSeverity: "high" },
-        })
+        }),
+        expect.any(Function)
       );
     });
 
@@ -531,8 +390,7 @@ describe("Triage Service", () => {
 
       mockGitService.getDiff.mockResolvedValue(diff);
       mockParseDiff.mockReturnValue(parsedDiff);
-      mockGetLenses.mockReturnValue([{ id: "correctness", name: "Correctness" }]);
-      mockTriageReview.mockResolvedValue({
+      mockTriageReviewStream.mockResolvedValue({
         ok: true,
         value: { summary: "Test", issues: [] },
       });
@@ -554,13 +412,7 @@ describe("Triage Service", () => {
 
       mockGitService.getDiff.mockResolvedValue(diff);
       mockParseDiff.mockReturnValue(parsedDiff);
-      mockGetLenses.mockReturnValue([{ id: "correctness", name: "Correctness" }]);
-      mockTriageReview.mockResolvedValue({
-        ok: true,
-        value: { summary: "Test", issues: [] },
-      });
-      mockGitService.getStatus.mockResolvedValue({ branch: "main" });
-      mockSaveTriageReview.mockResolvedValue({ ok: true, value: { id: "review-123" } });
+      setupSuccessfulTriage();
 
       await streamTriageToSSE(mockAIClient, { staged: false }, mockStream);
 
@@ -570,6 +422,32 @@ describe("Triage Service", () => {
           staged: false,
         })
       );
+    });
+
+    it("forwards agent events to SSE stream", async () => {
+      const diff = "diff content";
+      const parsedDiff = createMockParsedDiff();
+
+      mockGitService.getDiff.mockResolvedValue(diff);
+      mockParseDiff.mockReturnValue(parsedDiff);
+      mockTriageReviewStream.mockImplementation(async (_client, _diff, _options, onEvent) => {
+        onEvent({ type: "agent_start", agent: { id: "detective", name: "Detective" }, timestamp: "2024-01-01T00:00:00Z" });
+        onEvent({ type: "agent_complete", agent: "detective", issueCount: 0, timestamp: "2024-01-01T00:00:01Z" });
+        return { ok: true, value: { summary: "Test", issues: [] } };
+      });
+      mockGitService.getStatus.mockResolvedValue({ branch: "main" });
+      mockSaveTriageReview.mockResolvedValue({ ok: true, value: { id: "review-123" } });
+
+      await streamTriageToSSE(mockAIClient, { staged: true }, mockStream);
+
+      expect(mockStream.writeSSE).toHaveBeenCalledWith({
+        event: "agent_start",
+        data: expect.stringContaining('"type":"agent_start"'),
+      });
+      expect(mockStream.writeSSE).toHaveBeenCalledWith({
+        event: "agent_complete",
+        data: expect.stringContaining('"type":"agent_complete"'),
+      });
     });
   });
 });

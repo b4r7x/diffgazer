@@ -25,6 +25,14 @@ vi.mock("@ai-sdk/anthropic", () => ({
   createAnthropic: vi.fn(() => vi.fn(() => ({ modelId: "claude-sonnet-4-20250514" }))),
 }));
 
+vi.mock("zhipu-ai-provider", () => ({
+  createZhipu: vi.fn(() => vi.fn(() => ({ modelId: "glm-4.7" }))),
+}));
+
+vi.mock("@openrouter/ai-sdk-provider", () => ({
+  createOpenRouter: vi.fn(() => vi.fn(() => ({ modelId: "openai/gpt-4o" }))),
+}));
+
 const { generateObject, streamText } = await import("ai");
 const mockGenerateObject = generateObject as ReturnType<typeof vi.fn>;
 const mockStreamText = streamText as ReturnType<typeof vi.fn>;
@@ -72,6 +80,67 @@ describe("createAIClient", () => {
       if (result.ok) {
         expect(result.value.provider).toBe("anthropic");
       }
+    });
+
+    it("creates client successfully with valid API key for glm", () => {
+      const result = createAIClient({ apiKey: "valid-api-key", provider: "glm" });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.provider).toBe("glm");
+      }
+    });
+
+    it("creates client successfully with valid API key for openrouter", () => {
+      const result = createAIClient({ apiKey: "valid-api-key", provider: "openrouter", model: "openai/gpt-4o" });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.provider).toBe("openrouter");
+      }
+    });
+  });
+
+  describe("GLM provider configuration", () => {
+    it("creates client with coding endpoint by default", () => {
+      const result = createAIClient({ apiKey: "test-key", provider: "glm" });
+      expect(result.ok).toBe(true);
+    });
+
+    it("creates client with coding endpoint when specified", () => {
+      const result = createAIClient({ apiKey: "test-key", provider: "glm", glmEndpoint: "coding" });
+      expect(result.ok).toBe(true);
+    });
+
+    it("creates client with standard endpoint when specified", () => {
+      const result = createAIClient({ apiKey: "test-key", provider: "glm", glmEndpoint: "standard" });
+      expect(result.ok).toBe(true);
+    });
+
+    it("uses default glm model when model not specified", () => {
+      const result = createAIClient({ apiKey: "test-key", provider: "glm" });
+      expect(result.ok).toBe(true);
+    });
+
+    it("uses specified glm model when provided", () => {
+      const result = createAIClient({ apiKey: "test-key", provider: "glm", model: "glm-4.6" });
+      expect(result.ok).toBe(true);
+    });
+  });
+
+  describe("OpenRouter provider configuration", () => {
+    it("creates client with specified model", () => {
+      const result = createAIClient({
+        apiKey: "test-key",
+        provider: "openrouter",
+        model: "anthropic/claude-3-opus"
+      });
+      expect(result.ok).toBe(true);
+    });
+
+    it("uses empty string default when model not specified", () => {
+      const result = createAIClient({ apiKey: "test-key", provider: "openrouter" });
+      expect(result.ok).toBe(true);
     });
   });
 

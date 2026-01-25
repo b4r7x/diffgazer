@@ -1,8 +1,13 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { configStore } from "@repo/core/storage";
+import { configStore, getOpenRouterModels } from "@repo/core/storage";
 import { getApiKey, setApiKey, deleteApiKey } from "@repo/core/secrets";
-import { AIProviderSchema, SaveConfigRequestSchema } from "@repo/schemas/config";
+import {
+  AIProviderSchema,
+  SaveConfigRequestSchema,
+  AVAILABLE_PROVIDERS,
+  type ProviderStatus,
+} from "@repo/schemas/config";
 import { ErrorCode } from "@repo/schemas/errors";
 import { errorResponse, jsonOk, handleStoreError, zodErrorHandler } from "../../lib/response.js";
 
@@ -66,6 +71,7 @@ config.post(
     const configToSave = {
       provider: body.provider,
       model: body.model,
+      glmEndpoint: body.glmEndpoint,
       createdAt: existingConfig.ok ? existingConfig.value.createdAt : now,
       updatedAt: now,
     };
@@ -102,6 +108,63 @@ config.delete("/", async (c) => {
   }
 
   return jsonOk(c, { deleted: true });
+});
+
+config.delete("/provider/:providerId", async (c) => {
+  const providerId = c.req.param("providerId");
+
+  const parseResult = AIProviderSchema.safeParse(providerId);
+  if (!parseResult.success) {
+    return errorResponse(c, `Invalid provider: ${providerId}`, ErrorCode.VALIDATION_ERROR, 400);
+  }
+
+  const provider = parseResult.data;
+
+  const deleteKeyResult = await deleteApiKey(provider);
+  if (!deleteKeyResult.ok) {
+    return errorResponse(c, `Failed to delete API key for ${provider}`, ErrorCode.INTERNAL_ERROR, 500);
+  }
+
+  const configResult = await configStore.read();
+  if (configResult.ok && configResult.value.provider === provider) {
+    await configStore.remove();
+  }
+
+  return jsonOk(c, { deleted: true, provider });
+});
+
+config.get("/providers", async (c) => {
+  const configResult = await configStore.read();
+  const activeProvider = configResult.ok ? configResult.value.provider : undefined;
+  const activeModel = configResult.ok ? configResult.value.model : undefined;
+
+  const providers: ProviderStatus[] = await Promise.all(
+    AVAILABLE_PROVIDERS.map(async (p) => {
+      const keyResult = await getApiKey(p.id);
+      const hasApiKey = keyResult.ok && !!keyResult.value;
+      const isActive = p.id === activeProvider;
+
+      return {
+        provider: p.id,
+        hasApiKey,
+        model: isActive ? activeModel : undefined,
+        isActive,
+      };
+    })
+  );
+
+  return jsonOk(c, { providers, activeProvider });
+});
+
+config.get("/openrouter/models", async (c) => {
+  const forceRefresh = c.req.query("refresh") === "true";
+  const result = await getOpenRouterModels(forceRefresh);
+
+  if (!result.ok) {
+    return errorResponse(c, result.error.message, ErrorCode.INTERNAL_ERROR, 500);
+  }
+
+  return jsonOk(c, { models: result.value });
 });
 
 export { config };

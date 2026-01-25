@@ -5,8 +5,10 @@ import type { AIClient } from "../ai/types.js";
 import type { AIError } from "../ai/errors.js";
 import type { ParsedDiff, FileDiff } from "../diff/types.js";
 import type { Lens, LensId, ReviewProfile, SeverityFilter } from "@repo/schemas/lens";
-import type { TriageResult, TriageIssue, TriageSeverity } from "@repo/schemas/triage";
+import type { TriageResult, TriageIssue, TriageSeverity, EvidenceRef } from "@repo/schemas/triage";
 import { TriageResultSchema } from "@repo/schemas/triage";
+import type { AgentStreamEvent, AgentId } from "@repo/schemas/agent-event";
+import { AGENT_METADATA, LENS_TO_AGENT } from "@repo/schemas/agent-event";
 import { escapeXml } from "../sanitization.js";
 import { getLenses, LENSES } from "./lenses/index.js";
 import { getProfile } from "./profiles.js";
@@ -75,6 +77,18 @@ For each issue found, provide:
 - recommendation: specific action to fix the issue
 - suggested_patch: unified diff patch to fix (null if complex)
 - confidence: 0.0-1.0 confidence in the finding
+- symptom: what observable behavior or code pattern indicates the problem
+- whyItMatters: business/technical impact explaining why this needs attention
+- fixPlan: optional array of step-by-step fix instructions [{step: 1, action: "...", files: ["..."], risk: "low|medium|high"}]
+- betterOptions: optional array of alternative approaches to consider
+- testsToAdd: optional array of test cases that should be added
+- evidence: array of evidence references supporting the finding, each with:
+  - type: "code"|"doc"|"trace"|"external"
+  - title: brief description
+  - sourceId: unique identifier for the source
+  - file: file path (for code evidence)
+  - range: {start: line, end: line} (for code evidence)
+  - excerpt: relevant code snippet or quote
 
 Respond with JSON: { "summary": "...", "issues": [...] }`;
 }
@@ -102,10 +116,204 @@ function sortIssuesBySeverity(issues: TriageIssue[]): TriageIssue[] {
   });
 }
 
-export async function triageReview(
+function extractEvidenceFromDiff(file: FileDiff, lineStart: number | null, lineEnd: number | null): EvidenceRef[] {
+  if (lineStart === null) return [];
+
+  const matchingHunk = file.hunks.find((hunk) => {
+    const hunkEnd = hunk.newStart + hunk.newCount - 1;
+    return lineStart >= hunk.newStart && lineStart <= hunkEnd;
+  });
+
+  if (!matchingHunk) return [];
+
+  const lines = matchingHunk.content.split("\n");
+  const relativeStart = lineStart - matchingHunk.newStart;
+  const relativeEnd = lineEnd !== null ? lineEnd - matchingHunk.newStart : relativeStart;
+  const excerpt = lines.slice(relativeStart, relativeEnd + 1).join("\n");
+
+  return [
+    {
+      type: "code" as const,
+      title: `Code at ${file.filePath}:${lineStart}`,
+      sourceId: `${file.filePath}:${lineStart}-${lineEnd ?? lineStart}`,
+      file: file.filePath,
+      range: { start: lineStart, end: lineEnd ?? lineStart },
+      excerpt: excerpt || lines.slice(0, 5).join("\n"),
+    },
+  ];
+}
+
+function ensureIssueEvidence(issue: TriageIssue, diff: ParsedDiff): TriageIssue {
+  if (issue.evidence && issue.evidence.length > 0) {
+    return issue;
+  }
+
+  const file = diff.files.find((f) => f.filePath === issue.file);
+  if (!file) {
+    return {
+      ...issue,
+      evidence: [
+        {
+          type: "code" as const,
+          title: `Issue in ${issue.file}`,
+          sourceId: issue.file,
+          file: issue.file,
+          excerpt: issue.rationale,
+        },
+      ],
+    };
+  }
+
+  const extractedEvidence = extractEvidenceFromDiff(file, issue.line_start, issue.line_end);
+  return {
+    ...issue,
+    evidence:
+      extractedEvidence.length > 0
+        ? extractedEvidence
+        : [
+            {
+              type: "code" as const,
+              title: `Issue in ${issue.file}`,
+              sourceId: issue.file,
+              file: issue.file,
+              excerpt: issue.rationale,
+            },
+          ],
+  };
+}
+
+function validateIssueCompleteness(issue: TriageIssue): boolean {
+  return Boolean(
+    issue.id &&
+      issue.severity &&
+      issue.category &&
+      issue.title &&
+      issue.file &&
+      issue.rationale &&
+      issue.recommendation &&
+      issue.symptom &&
+      issue.whyItMatters &&
+      issue.evidence &&
+      issue.evidence.length > 0
+  );
+}
+
+function now(): string {
+  return new Date().toISOString();
+}
+
+function getThinkingMessage(lens: Lens): string {
+  switch (lens.id) {
+    case "correctness":
+      return "Analyzing diff for bugs and logic errors...";
+    case "security":
+      return "Analyzing diff for security vulnerabilities...";
+    case "performance":
+      return "Analyzing diff for performance issues...";
+    case "simplicity":
+      return "Analyzing diff for complexity and maintainability...";
+    case "tests":
+      return "Analyzing diff for test coverage and quality...";
+    default:
+      return `Analyzing diff with ${lens.name} lens...`;
+  }
+}
+
+interface LensResult {
+  lensName: string;
+  summary: string;
+  issues: TriageIssue[];
+}
+
+async function runLensAnalysis(
+  client: AIClient,
+  lens: Lens,
+  diff: ParsedDiff,
+  onEvent: (event: AgentStreamEvent) => void
+): Promise<Result<LensResult, TriageError>> {
+  const agentId = LENS_TO_AGENT[lens.id];
+  const agentMeta = AGENT_METADATA[agentId];
+
+  onEvent({
+    type: "agent_start",
+    agent: agentMeta,
+    timestamp: now(),
+  });
+
+  onEvent({
+    type: "agent_thinking",
+    agent: agentId,
+    thought: getThinkingMessage(lens),
+    timestamp: now(),
+  });
+
+  for (const file of diff.files) {
+    const lineCount = file.rawDiff.split("\n").length;
+    const startLine = file.hunks[0]?.newStart ?? 1;
+    const lastHunk = file.hunks[file.hunks.length - 1];
+    const endLine = lastHunk ? lastHunk.newStart + lastHunk.newCount - 1 : startLine;
+
+    onEvent({
+      type: "tool_call",
+      agent: agentId,
+      tool: "readFileContext",
+      input: `${file.filePath}:${startLine}-${endLine}`,
+      timestamp: now(),
+    });
+
+    onEvent({
+      type: "tool_result",
+      agent: agentId,
+      tool: "readFileContext",
+      summary: `Read ${lineCount} lines from ${file.filePath}`,
+      timestamp: now(),
+    });
+  }
+
+  onEvent({
+    type: "agent_thinking",
+    agent: agentId,
+    thought: `Analyzing ${diff.files.length} file${diff.files.length !== 1 ? "s" : ""} for ${lens.name.toLowerCase()} issues...`,
+    timestamp: now(),
+  });
+
+  const prompt = buildTriagePrompt(lens, diff);
+  const result = await client.generate(prompt, TriageResultSchema);
+
+  if (!result.ok) {
+    return result;
+  }
+
+  const issuesWithEvidence = result.value.issues.map((issue) => ensureIssueEvidence(issue, diff));
+
+  for (const issue of issuesWithEvidence) {
+    onEvent({
+      type: "issue_found",
+      agent: agentId,
+      issue,
+      timestamp: now(),
+    });
+  }
+
+  onEvent({
+    type: "agent_complete",
+    agent: agentId,
+    issueCount: issuesWithEvidence.length,
+    timestamp: now(),
+  });
+
+  return ok({
+    lensName: lens.name,
+    summary: result.value.summary,
+    issues: issuesWithEvidence,
+  });
+}
+
+export async function triageReviewStream(
   client: AIClient,
   diff: ParsedDiff,
-  options: TriageOptions = {}
+  options: TriageOptions = {},
+  onEvent: (event: AgentStreamEvent) => void
 ): Promise<Result<TriageResult, TriageError>> {
   if (diff.files.length === 0) {
     return err({ code: "NO_DIFF", message: "No files changed" });
@@ -115,29 +323,59 @@ export async function triageReview(
   const lenses = getLenses(lensIds);
   const filter = options.filter ?? options.profile?.filter;
 
+  const lensPromises = lenses.map((lens) => runLensAnalysis(client, lens, diff, onEvent));
+  const settledResults = await Promise.allSettled(lensPromises);
+
   const allIssues: TriageIssue[] = [];
   const summaries: string[] = [];
+  let lastError: TriageError | null = null;
 
-  for (const lens of lenses) {
-    const prompt = buildTriagePrompt(lens, diff);
-    const result = await client.generate(prompt, TriageResultSchema);
+  for (const settled of settledResults) {
+    if (settled.status === "rejected") {
+      lastError = { code: "NETWORK_ERROR" as const, message: String(settled.reason) };
+      continue;
+    }
 
+    const result = settled.value;
     if (!result.ok) {
-      return result;
+      lastError = result.error;
+      continue;
     }
 
     allIssues.push(...result.value.issues);
-    summaries.push(`[${lens.name}] ${result.value.summary}`);
+    summaries.push(`[${result.value.lensName}] ${result.value.summary}`);
+  }
+
+  if (allIssues.length === 0 && lastError !== null) {
+    return err(lastError);
   }
 
   const deduplicated = deduplicateIssues(allIssues);
   const filtered = filterIssuesBySeverity(deduplicated, filter);
-  const sorted = sortIssuesBySeverity(filtered);
+  const validated = filtered.filter(validateIssueCompleteness);
+  const sorted = sortIssuesBySeverity(validated);
+
+  const combinedSummary = summaries.join("\n\n");
+
+  onEvent({
+    type: "orchestrator_complete",
+    summary: combinedSummary,
+    totalIssues: sorted.length,
+    timestamp: now(),
+  });
 
   return ok({
-    summary: summaries.join("\n\n"),
+    summary: combinedSummary,
     issues: sorted,
   });
+}
+
+export async function triageReview(
+  client: AIClient,
+  diff: ParsedDiff,
+  options: TriageOptions = {}
+): Promise<Result<TriageResult, TriageError>> {
+  return triageReviewStream(client, diff, options, () => {});
 }
 
 export async function triageWithProfile(

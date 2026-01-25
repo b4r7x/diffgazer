@@ -1,11 +1,26 @@
 import type { View } from "./use-navigation.js";
 import type { AIProvider } from "@repo/schemas";
+import type { Theme, ControlsMode, TrustCapabilities, SettingsConfig, TrustConfig } from "@repo/schemas/settings";
+import type { MenuAction } from "../../../app/views/main-menu-view.js";
+import type { SessionEventType } from "@repo/schemas/session";
 
 interface UseScreenHandlersOptions {
   setView: (view: View) => void;
   config: {
     saveConfig: (provider: AIProvider, apiKey: string, model?: string) => Promise<unknown>;
     deleteConfig: () => Promise<unknown>;
+    deleteProviderCredentials: (provider: AIProvider) => Promise<unknown>;
+    loadSettings: () => Promise<unknown>;
+  };
+  settings: {
+    settings: SettingsConfig | null;
+    saveSettings: (config: SettingsConfig) => Promise<unknown>;
+  };
+  trust: {
+    projectId: string;
+    trustConfig: TrustConfig | null;
+    saveTrust: (config: TrustConfig) => Promise<unknown>;
+    repoRoot: string;
   };
   session: {
     loadSession: (id: string) => Promise<unknown>;
@@ -13,30 +28,136 @@ interface UseScreenHandlersOptions {
     createSession: (title?: string) => Promise<unknown>;
     currentSession: { metadata: { id: string } } | null;
   };
+  review: {
+    startReview: (staged?: boolean) => Promise<unknown>;
+    reset: () => void;
+  };
   reviewHistory: {
     loadReview: (id: string) => Promise<unknown>;
     deleteReview: (id: string) => Promise<unknown>;
+    listReviews: () => Promise<unknown>;
     reset: () => void;
     clearCurrentReview: () => void;
+    items: Array<{ id: string; createdAt?: string }>;
   };
   chat: {
     sendMessage: (sessionId: string, message: string) => Promise<unknown>;
   };
+  recordEvent?: (type: SessionEventType, payload: Record<string, unknown>) => void;
 }
 
 export function useScreenHandlers({
   setView,
   config,
+  settings,
+  trust,
   session,
+  review,
   reviewHistory,
   chat,
+  recordEvent,
 }: UseScreenHandlersOptions) {
+  const handleSaveTheme = (theme: Theme) => {
+    const currentSettings = settings.settings ?? {
+      theme: "auto" as const,
+      controlsMode: "menu" as const,
+      defaultLenses: ["correctness"] as const,
+      defaultProfile: null,
+      severityThreshold: "medium" as const,
+    };
+    void settings.saveSettings({ ...currentSettings, theme });
+    recordEvent?.("SETTINGS_CHANGED", { field: "theme", value: theme });
+  };
+
+  const handleSaveControls = (controlsMode: ControlsMode) => {
+    const currentSettings = settings.settings ?? {
+      theme: "auto" as const,
+      controlsMode: "menu" as const,
+      defaultLenses: ["correctness"] as const,
+      defaultProfile: null,
+      severityThreshold: "medium" as const,
+    };
+    void settings.saveSettings({ ...currentSettings, controlsMode });
+    recordEvent?.("SETTINGS_CHANGED", { field: "controlsMode", value: controlsMode });
+  };
+
+  const handleSaveTrust = (capabilities: TrustCapabilities) => {
+    void trust.saveTrust({
+      projectId: trust.projectId,
+      repoRoot: trust.repoRoot,
+      trustedAt: new Date().toISOString(),
+      capabilities,
+      trustMode: "persistent",
+    });
+    recordEvent?.("SETTINGS_CHANGED", { field: "trust", capabilities });
+  };
+
+  const handleSelectProvider = (_provider: AIProvider) => {
+    // Provider selection is handled in the credentials step
+  };
+
+  const handleSaveCredentials = (apiKey: string, provider: AIProvider, model?: string) => {
+    void config.saveConfig(provider, apiKey, model);
+  };
+
+  const handleMenuSelect = (action: MenuAction) => {
+    switch (action) {
+      case "review-unstaged":
+        setView("review");
+        void review.startReview(false);
+        break;
+      case "review-staged":
+        setView("review");
+        void review.startReview(true);
+        break;
+      case "review-files":
+        // File picker not yet implemented, fall back to unstaged review
+        setView("review");
+        void review.startReview(false);
+        break;
+      case "resume-review":
+        if (reviewHistory.items.length > 0) {
+          const lastReview = reviewHistory.items[0];
+          if (lastReview) {
+            void reviewHistory.loadReview(lastReview.id);
+            setView("review-history");
+          }
+        }
+        break;
+      case "history":
+        void reviewHistory.listReviews();
+        setView("review-history");
+        break;
+      case "settings":
+        void config.loadSettings();
+        setView("settings");
+        break;
+      case "help":
+        // Help view not yet implemented
+        break;
+      case "quit":
+        // Quit is handled in the view directly via useApp().exit()
+        break;
+    }
+  };
+
   return {
+    menu: {
+      onSelect: handleMenuSelect,
+    },
     config: {
       onSave: (provider: AIProvider, apiKey: string, model?: string) =>
         void config.saveConfig(provider, apiKey, model),
       onDelete: () => void config.deleteConfig(),
+      onDeleteProvider: (provider: AIProvider) => void config.deleteProviderCredentials(provider),
       onBack: () => setView("main"),
+    },
+    settings: {
+      onSaveTheme: handleSaveTheme,
+      onSaveControls: handleSaveControls,
+      onSaveTrust: handleSaveTrust,
+      onSelectProvider: handleSelectProvider,
+      onSaveCredentials: handleSaveCredentials,
     },
     sessions: {
       onSelect: (item: { id: string }) => {

@@ -26,6 +26,18 @@ function createBaseIssue(overrides: Record<string, unknown> = {}) {
     recommendation: "Add null check before accessing data properties",
     suggested_patch: "if (data !== null) { ... }",
     confidence: 0.85,
+    symptom: "Accessing potentially null variable",
+    whyItMatters: "Could cause runtime crash when data is undefined",
+    evidence: [
+      {
+        type: "code",
+        title: "Code at src/utils/parser.ts:42",
+        sourceId: "src/utils/parser.ts:42-45",
+        file: "src/utils/parser.ts",
+        range: { start: 42, end: 45 },
+        excerpt: "data.property",
+      },
+    ],
     ...overrides,
   };
 }
