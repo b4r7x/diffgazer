@@ -74,11 +74,13 @@ describe("buildFileReviewPrompt", () => {
     expect(result).toContain(largeDiff);
   });
 
-  it("should handle diff with XML-like content without escaping", () => {
+  it("should escape XML-like content in diff for security (CVE-2025-53773)", () => {
     const diff = "- const x = <Component />\n+ const x = <NewComponent />";
     const result = buildFileReviewPrompt("react.tsx", "modified", 1, 1, diff);
 
-    expect(result).toContain(diff);
+    // XML characters are escaped to prevent prompt injection
+    expect(result).toContain("&lt;Component /&gt;");
+    expect(result).toContain("&lt;NewComponent /&gt;");
   });
 
   it("should handle diff with prompt injection attempts", () => {
@@ -223,7 +225,7 @@ describe("buildBatchReviewPrompt", () => {
     expect(result).toContain('<code-diff file="src/utils/{test}.ts">');
   });
 
-  it("should handle diffs with nested XML-like tags", () => {
+  it("should escape nested XML-like tags in diffs for security (CVE-2025-53773)", () => {
     const result = buildBatchReviewPrompt([
       {
         filePath: "component.tsx",
@@ -234,8 +236,9 @@ describe("buildBatchReviewPrompt", () => {
       },
     ]);
 
-    expect(result).toContain("- <div><span>old</span></div>");
-    expect(result).toContain("+ <div><span>new</span></div>");
+    // XML characters are escaped to prevent prompt injection
+    expect(result).toContain("- &lt;div&gt;&lt;span&gt;old&lt;/span&gt;&lt;/div&gt;");
+    expect(result).toContain("+ &lt;div&gt;&lt;span&gt;new&lt;/span&gt;&lt;/div&gt;");
   });
 
   it("should maintain diff order matching file list order", () => {

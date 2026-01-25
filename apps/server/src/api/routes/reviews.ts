@@ -3,7 +3,7 @@ import {
   reviewStore,
   listReviews,
 } from "@repo/core/storage";
-import { handleStoreError, jsonOk } from "../../lib/response.js";
+import { handleStoreError } from "../../lib/response.js";
 import { requireUuidParam, validateProjectPath } from "../../lib/validation.js";
 
 export const reviews = new Hono();
@@ -14,7 +14,7 @@ reviews.get("/", async (c) => {
 
   if (!result.ok) return handleStoreError(c, result.error);
 
-  return jsonOk(c, {
+  return c.json({
     reviews: result.value.items,
     warnings: result.value.warnings.length > 0 ? result.value.warnings : undefined,
   });
@@ -26,7 +26,7 @@ reviews.get("/:id", async (c) => {
 
   if (!result.ok) return handleStoreError(c, result.error);
 
-  return jsonOk(c, { review: result.value });
+  return c.json({ review: result.value });
 });
 
 reviews.delete("/:id", async (c) => {
@@ -35,5 +35,5 @@ reviews.delete("/:id", async (c) => {
 
   if (!result.ok) return handleStoreError(c, result.error);
 
-  return jsonOk(c, { existed: result.value.existed });
+  return c.json({ existed: result.value.existed });
 });

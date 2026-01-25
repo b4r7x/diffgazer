@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text, useStdout } from "ink";
 import type { TriageIssue } from "@repo/schemas/triage";
@@ -57,11 +57,11 @@ export function ReviewSplitScreen({
       ? showAgentPanelProp
       : isReviewing && agents.length > 0;
 
-  const selectedIndex = useMemo(() => {
+  const selectedIndex = (() => {
     if (!selectedIssueId) return 0;
     const idx = issues.findIndex((issue) => issue.id === selectedIssueId);
     return idx >= 0 ? idx : 0;
-  }, [issues, selectedIssueId]);
+  })();
 
   const [activeTab, setActiveTab] = useState<IssueTab>("details");
   const [focus, setFocus] = useState<FocusArea>("list");
@@ -69,78 +69,72 @@ export function ReviewSplitScreen({
 
   const selectedIssue = issues[selectedIndex] ?? null;
 
-  const handleNavigate = useCallback(
-    (direction: "up" | "down") => {
-      const delta = direction === "down" ? 1 : -1;
-      const newIndex = Math.max(0, Math.min(selectedIndex + delta, issues.length - 1));
-      const issue = issues[newIndex];
-      if (issue) {
-        onSelectIssue(issue.id);
-      }
-    },
-    [selectedIndex, issues, onSelectIssue]
-  );
+  const handleNavigate = (direction: "up" | "down") => {
+    const delta = direction === "down" ? 1 : -1;
+    const newIndex = Math.max(0, Math.min(selectedIndex + delta, issues.length - 1));
+    const issue = issues[newIndex];
+    if (issue) {
+      onSelectIssue(issue.id);
+    }
+  };
 
-  const handleOpen = useCallback(() => {
+  const handleOpen = () => {
     setFocus("details");
-  }, []);
+  };
 
-  const handleApply = useCallback(() => {
+  const handleApply = () => {
     if (isApplying || !selectedIssue) return;
     setIsApplying(true);
     onApplyPatch(selectedIssue.id);
     setIsApplying(false);
-  }, [isApplying, selectedIssue, onApplyPatch]);
+  };
 
-  const handleApplyFromDetails = useCallback(
-    (issue: TriageIssue) => {
-      if (isApplying) return;
-      setIsApplying(true);
-      onApplyPatch(issue.id);
-      setIsApplying(false);
-    },
-    [isApplying, onApplyPatch]
-  );
+  const handleApplyFromDetails = (issue: TriageIssue) => {
+    if (isApplying) return;
+    setIsApplying(true);
+    onApplyPatch(issue.id);
+    setIsApplying(false);
+  };
 
-  const handleIgnore = useCallback(() => {
+  const handleIgnore = () => {
     if (selectedIssue) {
       onIgnoreIssue(selectedIssue.id);
     }
-  }, [selectedIssue, onIgnoreIssue]);
+  };
 
-  const handleExplain = useCallback(() => {
+  const handleExplain = () => {
     if (selectedIssue) {
       onDrilldown(selectedIssue.id);
     }
-  }, [selectedIssue, onDrilldown]);
+  };
 
-  const handleTrace = useCallback(() => {
+  const handleTrace = () => {
     setActiveTab("trace");
-  }, []);
+  };
 
-  const handleNextIssue = useCallback(() => {
+  const handleNextIssue = () => {
     handleNavigate("down");
-  }, [handleNavigate]);
+  };
 
-  const handlePrevIssue = useCallback(() => {
+  const handlePrevIssue = () => {
     handleNavigate("up");
-  }, [handleNavigate]);
+  };
 
-  const handleToggleFocus = useCallback(() => {
+  const handleToggleFocus = () => {
     setFocus((prev) => (prev === "list" ? "details" : "list"));
-  }, []);
+  };
 
-  const handleBack = useCallback(() => {
+  const handleBack = () => {
     if (focus === "details") {
       setFocus("list");
     } else {
       onBack();
     }
-  }, [focus, onBack]);
+  };
 
-  const handleTabChange = useCallback((tab: IssueTab) => {
+  const handleTabChange = (tab: IssueTab) => {
     setActiveTab(tab);
-  }, []);
+  };
 
   useReviewKeyboard({
     focus,
@@ -166,25 +160,20 @@ export function ReviewSplitScreen({
     disabled: false,
   });
 
-  const hasPatch = Boolean(selectedIssue?.suggested_patch);
-
-  const footerModeShortcuts: ModeShortcuts = useMemo(
-    () => ({
-      keys: [
-        { key: "j/k", label: "Move" },
-        { key: "e", label: "Explain" },
-        { key: "/", label: "Command" },
-        { key: "f", label: "Focus" },
-        { key: "?", label: "Help" },
-      ],
-      menu: [
-        { key: "Up/Down", label: "Move" },
-        { key: "Enter", label: "Select" },
-        { key: "Esc", label: "Back" },
-      ],
-    }),
-    [hasPatch]
-  );
+  const footerModeShortcuts: ModeShortcuts = {
+    keys: [
+      { key: "j/k", label: "Move" },
+      { key: "e", label: "Explain" },
+      { key: "/", label: "Command" },
+      { key: "f", label: "Focus" },
+      { key: "?", label: "Help" },
+    ],
+    menu: [
+      { key: "Up/Down", label: "Move" },
+      { key: "Enter", label: "Select" },
+      { key: "Esc", label: "Back" },
+    ],
+  };
 
   return (
     <Box flexDirection="column" padding={1}>
