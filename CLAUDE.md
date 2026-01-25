@@ -78,6 +78,11 @@ Use these instead of inline implementations:
 | `formatRelativeTime` | `@repo/core/format` | Time formatting |
 | `generateFingerprint` | `@repo/core/review` | Issue deduplication fingerprint |
 | `mergeIssues` | `@repo/core/review` | Deduplicate issues by fingerprint |
+| `normalizeTitle` | `@repo/core/review` | Normalize issue title for comparison |
+| `getHunkDigest` | `@repo/core/review` | Generate diff hunk hash |
+| `shouldSuggestDrilldown` | `@repo/core/review` | Check if issue needs deeper analysis |
+| `getSuggestionReason` | `@repo/core/review` | Get drilldown suggestion message |
+| `TraceRecorder` | `@repo/core/review` | Record AI interaction traces |
 
 ## Review System
 
@@ -104,6 +109,18 @@ Preset lens combinations:
 | `perf` | correctness, performance | medium |
 | `security` | security, correctness | all |
 
+### Agent System
+
+Each lens maps to a named agent for UI display:
+
+| Agent | Lens | Description |
+|-------|------|-------------|
+| `detective` | correctness | Finds bugs and logic errors |
+| `guardian` | security | Identifies security vulnerabilities |
+| `optimizer` | performance | Spots performance bottlenecks |
+| `simplifier` | simplicity | Reduces complexity |
+| `tester` | tests | Evaluates test coverage |
+
 ### Triage Flow
 
 1. Parse git diff
@@ -122,6 +139,11 @@ Preset lens combinations:
 - **Storage types**: `packages/schemas/src/triage-storage.ts`
 - **Settings types**: `packages/schemas/src/settings.ts`
 - **Session types**: `packages/schemas/src/session.ts`
+- **Agent event types**: `packages/schemas/src/agent-event.ts`
+- **Chat types**: `packages/schemas/src/chat.ts`
+- **Feedback types**: `packages/schemas/src/feedback.ts`
+- **Stream event types**: `packages/schemas/src/stream-events.ts`
+- **Review history types**: `packages/schemas/src/review-history.ts`
 
 ## Settings System
 
@@ -181,8 +203,10 @@ Session activity tracking with JSONL storage:
 | `/config` | AI provider configuration |
 | `/settings` | User settings and trust |
 | `/sessions` | Session management |
+| `/sessions/:id/chat` | Chat streaming (SSE) |
 | `/reviews` | Review history |
 | `/triage` | Triage operations (stream, reviews) |
+| `/pr-review` | PR review for CI integration |
 | `/review` | Legacy review endpoint |
 
 ## Code Style

@@ -459,8 +459,14 @@ function drilldownIssue(
   client: AIClient,
   issue: TriageIssue,
   diff: ParsedDiff,
-  allIssues?: TriageIssue[]
+  allIssues?: TriageIssue[],
+  options?: DrilldownOptions
 ): Promise<Result<DrilldownResult, DrilldownError>>;
+
+interface DrilldownOptions {
+  traceRecorder?: TraceRecorder;
+  onEvent?: (event: AgentStreamEvent) => void;
+}
 ```
 
 ### drilldownIssueById
@@ -472,8 +478,23 @@ function drilldownIssueById(
   client: AIClient,
   issueId: string,
   triageResult: TriageResult,
-  diff: ParsedDiff
+  diff: ParsedDiff,
+  options?: DrilldownOptions
 ): Promise<Result<DrilldownResult, DrilldownError>>;
+```
+
+### drilldownMultiple
+
+Run drilldown on multiple issues sequentially.
+
+```typescript
+function drilldownMultiple(
+  client: AIClient,
+  issues: TriageIssue[],
+  diff: ParsedDiff,
+  allIssues?: TriageIssue[],
+  options?: DrilldownOptions
+): Promise<Result<DrilldownResult[], DrilldownError>>;
 ```
 
 ### getLens / getLenses
@@ -498,6 +519,104 @@ function getProfile(id: ProfileId): ReviewProfile;
 
 // Example
 const profile = getProfile("strict");
+```
+
+### generateFingerprint
+
+Generate a unique fingerprint for an issue for deduplication.
+
+```typescript
+function generateFingerprint(issue: TriageIssue, diffHunk?: string): string;
+
+// Example
+const fingerprint = generateFingerprint(issue);
+// "a1b2c3d4e5f6..." (SHA-256 hash)
+```
+
+### mergeIssues
+
+Deduplicate issues by fingerprint, keeping highest severity.
+
+```typescript
+function mergeIssues(issues: TriageIssue[]): TriageIssue[];
+
+// Example
+const deduplicated = mergeIssues(allIssues);
+```
+
+### normalizeTitle
+
+Normalize issue title for comparison (lowercase, remove stop words).
+
+```typescript
+function normalizeTitle(title: string): string;
+
+// Example
+normalizeTitle("The missing validation in handler");
+// "missing validation handler"
+```
+
+### getHunkDigest
+
+Generate SHA-1 hash of normalized diff hunk.
+
+```typescript
+function getHunkDigest(diffHunk: string): string;
+
+// Example
+const digest = getHunkDigest(hunk);
+// "abc123..." (SHA-1 hash)
+```
+
+### shouldSuggestDrilldown
+
+Check if an issue should be suggested for deeper analysis.
+
+```typescript
+function shouldSuggestDrilldown(issue: TriageIssue): boolean;
+
+// Returns true if:
+// - Severity is blocker or high
+// - Confidence < 0.8
+// - Category is security
+// - Rationale contains uncertainty words
+```
+
+### getSuggestionReason
+
+Get human-readable reason for drilldown suggestion.
+
+```typescript
+function getSuggestionReason(issue: TriageIssue): string;
+
+// Example
+getSuggestionReason(blockerIssue);
+// "This BLOCKER severity issue could benefit from deeper analysis."
+```
+
+### TraceRecorder
+
+Record AI interaction traces for debugging.
+
+```typescript
+class TraceRecorder {
+  wrap<T>(
+    operation: string,
+    description: string,
+    fn: () => Promise<T>
+  ): Promise<T>;
+
+  getTrace(): TraceEntry[];
+}
+
+// Example
+const recorder = new TraceRecorder();
+const result = await recorder.wrap(
+  "generateAnalysis",
+  "analyzing issue",
+  () => client.generate(prompt, schema)
+);
+const trace = recorder.getTrace();
 ```
 
 ### Constants
