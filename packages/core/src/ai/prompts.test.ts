@@ -31,6 +31,8 @@ describe("buildFileReviewPrompt", () => {
     const result = buildFileReviewPrompt("test.ts", "modified", 1, 1, "diff");
 
     expect(result).toContain('Respond with JSON: { "summary": "...", "issues": [...], "score": 0-10 or null }');
+    expect(result).toContain('Return ONLY raw JSON');
+    expect(result).toContain('Do NOT wrap in markdown code blocks');
   });
 
   it("should handle file paths with special characters", () => {

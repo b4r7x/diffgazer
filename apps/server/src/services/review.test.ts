@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createGitDiffError } from "./review.js";
+import { createGitDiffError, normalizeIssue, normalizeReviewResponse } from "./review.js";
 import { createErrnoException } from "@repo/core/testing";
 
 describe("createGitDiffError", () => {
@@ -138,5 +138,161 @@ describe("createGitDiffError", () => {
 
       expect(result.message).toMatch(/\(Original: .+\)$/);
     });
+  });
+});
+
+describe("normalizeIssue", () => {
+  it("adds null for missing file, line, and suggestion fields", () => {
+    const issue = {
+      severity: "warning",
+      category: "logic",
+      title: "Test issue",
+      description: "Test description",
+    };
+
+    const result = normalizeIssue(issue);
+
+    expect(result).toEqual({
+      severity: "warning",
+      category: "logic",
+      title: "Test issue",
+      description: "Test description",
+      file: null,
+      line: null,
+      suggestion: null,
+    });
+  });
+
+  it("preserves existing values for optional fields", () => {
+    const issue = {
+      severity: "critical",
+      category: "security",
+      title: "SQL Injection",
+      description: "Possible SQL injection",
+      file: "src/db.ts",
+      line: 42,
+      suggestion: "Use parameterized queries",
+    };
+
+    const result = normalizeIssue(issue);
+
+    expect(result).toEqual(issue);
+  });
+
+  it("converts non-number line values to null", () => {
+    const issue = {
+      severity: "warning",
+      category: "logic",
+      title: "Test",
+      description: "Test",
+      line: "42",
+    };
+
+    const result = normalizeIssue(issue) as Record<string, unknown>;
+
+    expect(result.line).toBe(null);
+  });
+
+  it("returns non-objects unchanged", () => {
+    expect(normalizeIssue(null)).toBe(null);
+    expect(normalizeIssue("string")).toBe("string");
+    expect(normalizeIssue(42)).toBe(42);
+  });
+});
+
+describe("normalizeReviewResponse", () => {
+  it("adds defaults for missing optional fields", () => {
+    const response = {
+      summary: "Code looks good",
+      issues: [],
+    };
+
+    const result = normalizeReviewResponse(response);
+
+    expect(result).toEqual({
+      summary: "Code looks good",
+      issues: [],
+      overallScore: null,
+    });
+  });
+
+  it("normalizes valid overallScore", () => {
+    const response = {
+      summary: "Good code",
+      issues: [],
+      overallScore: 8,
+    };
+
+    const result = normalizeReviewResponse(response);
+
+    expect(result).toEqual({
+      summary: "Good code",
+      issues: [],
+      overallScore: 8,
+    });
+  });
+
+  it("sets overallScore to null when out of range", () => {
+    const responseHigh = { summary: "Test", issues: [], overallScore: 15 };
+    const responseLow = { summary: "Test", issues: [], overallScore: -1 };
+    const responseString = { summary: "Test", issues: [], overallScore: "8" };
+
+    expect((normalizeReviewResponse(responseHigh) as Record<string, unknown>).overallScore).toBe(null);
+    expect((normalizeReviewResponse(responseLow) as Record<string, unknown>).overallScore).toBe(null);
+    expect((normalizeReviewResponse(responseString) as Record<string, unknown>).overallScore).toBe(null);
+  });
+
+  it("normalizes issues array items", () => {
+    const response = {
+      summary: "Test",
+      issues: [
+        { severity: "warning", category: "logic", title: "Issue 1", description: "Desc 1" },
+        { severity: "critical", category: "security", title: "Issue 2", description: "Desc 2", file: "test.ts", line: 10, suggestion: "Fix it" },
+      ],
+      overallScore: 7,
+    };
+
+    const result = normalizeReviewResponse(response) as Record<string, unknown>;
+    const issues = result.issues as Array<Record<string, unknown>>;
+
+    expect(issues[0]).toEqual({
+      severity: "warning",
+      category: "logic",
+      title: "Issue 1",
+      description: "Desc 1",
+      file: null,
+      line: null,
+      suggestion: null,
+    });
+    expect(issues[1]).toEqual({
+      severity: "critical",
+      category: "security",
+      title: "Issue 2",
+      description: "Desc 2",
+      file: "test.ts",
+      line: 10,
+      suggestion: "Fix it",
+    });
+  });
+
+  it("handles missing issues array", () => {
+    const response = { summary: "Test" };
+
+    const result = normalizeReviewResponse(response) as Record<string, unknown>;
+
+    expect(result.issues).toEqual([]);
+  });
+
+  it("handles missing summary", () => {
+    const response = { issues: [], overallScore: 5 };
+
+    const result = normalizeReviewResponse(response) as Record<string, unknown>;
+
+    expect(result.summary).toBe("");
+  });
+
+  it("returns non-objects unchanged", () => {
+    expect(normalizeReviewResponse(null)).toBe(null);
+    expect(normalizeReviewResponse("string")).toBe("string");
   });
 });

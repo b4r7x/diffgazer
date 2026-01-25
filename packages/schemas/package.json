@@ -7,9 +7,11 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./agent-event": { "types": "./dist/agent-event.d.ts", "import": "./dist/agent-event.js" },
     "./chat": { "types": "./dist/chat.d.ts", "import": "./dist/chat.js" },
     "./config": { "types": "./dist/config.d.ts", "import": "./dist/config.js" },
     "./errors": { "types": "./dist/errors.d.ts", "import": "./dist/errors.js" },
+    "./feedback": { "types": "./dist/feedback.d.ts", "import": "./dist/feedback.js" },
     "./git": { "types": "./dist/git.d.ts", "import": "./dist/git.js" },
     "./port": { "types": "./dist/port.d.ts", "import": "./dist/port.js" },
     "./review": { "types": "./dist/review.d.ts", "import": "./dist/review.js" },
@@ -17,7 +19,9 @@
     "./session": { "types": "./dist/session.d.ts", "import": "./dist/session.js" },
     "./triage": { "types": "./dist/triage.d.ts", "import": "./dist/triage.js" },
     "./lens": { "types": "./dist/lens.d.ts", "import": "./dist/lens.js" },
-    "./triage-storage": { "types": "./dist/triage-storage.d.ts", "import": "./dist/triage-storage.js" }
+    "./triage-storage": { "types": "./dist/triage-storage.d.ts", "import": "./dist/triage-storage.js" },
+    "./settings": { "types": "./dist/settings.d.ts", "import": "./dist/settings.js" },
+    "./stream-events": { "types": "./dist/stream-events.d.ts", "import": "./dist/stream-events.js" }
   },
   "scripts": { "build": "tsc", "type-check": "tsc --noEmit", "type-check-test": "tsc --noEmit --project tsconfig.test.json" },
   "dependencies": { "zod": "^3.23.0" },

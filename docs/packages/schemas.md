@@ -7,6 +7,7 @@ Canonical type definitions using Zod. All shared types should be defined here us
 ```typescript
 import { ReviewResultSchema, type ReviewResult } from "@repo/schemas/review";
 import { UserConfigSchema, type UserConfig } from "@repo/schemas/config";
+import { SettingsConfigSchema, type SettingsConfig } from "@repo/schemas/settings";
 ```
 
 ## Design Principles
@@ -35,81 +36,241 @@ if (result.success) {
 
 ## Schema Categories
 
-### Review Schemas
+### Lens Schemas
 
 ```typescript
 import {
-  ReviewSeveritySchema,
-  ReviewCategorySchema,
-  ReviewIssueSchema,
-  ReviewResultSchema,
-  ReviewStreamEventSchema,
-  type ReviewSeverity,
-  type ReviewCategory,
-  type ReviewIssue,
-  type ReviewResult,
-  type ReviewStreamEvent,
-} from "@repo/schemas/review";
+  LensIdSchema,
+  LensSchema,
+  ProfileIdSchema,
+  ReviewProfileSchema,
+  DrilldownResultSchema,
+  LENS_IDS,
+  PROFILE_IDS,
+  type LensId,
+  type Lens,
+  type ProfileId,
+  type ReviewProfile,
+  type DrilldownResult,
+} from "@repo/schemas/lens";
+```
+
+#### Lens IDs
+
+```typescript
+export const LENS_IDS = [
+  "correctness",
+  "security",
+  "performance",
+  "simplicity",
+  "tests",
+] as const;
+```
+
+| Lens | Focus |
+|------|-------|
+| `correctness` | Bugs, logic errors, edge cases |
+| `security` | Vulnerabilities, injection, auth |
+| `performance` | Efficiency, memory, algorithms |
+| `simplicity` | Complexity, maintainability |
+| `tests` | Test coverage, quality |
+
+#### Profile IDs
+
+```typescript
+export const PROFILE_IDS = ["quick", "strict", "perf", "security"] as const;
+```
+
+| Profile | Lenses | Min Severity |
+|---------|--------|--------------|
+| `quick` | correctness | high |
+| `strict` | correctness, security, tests | all |
+| `perf` | correctness, performance | medium |
+| `security` | security, correctness | all |
+
+#### DrilldownResult
+
+```typescript
+const DrilldownResultSchema = z.object({
+  issueId: z.string(),
+  issue: TriageIssueSchema,
+  detailedAnalysis: z.string(),
+  rootCause: z.string(),
+  impact: z.string(),
+  suggestedFix: z.string(),
+  patch: z.string().nullable(),
+  relatedIssues: z.array(z.string()),
+  references: z.array(z.string()),
+  trace: z.array(TraceRefSchema).optional(),
+});
+```
+
+### Triage Schemas
+
+```typescript
+import {
+  TriageSeveritySchema,
+  TriageCategorySchema,
+  TriageIssueSchema,
+  TriageResultSchema,
+  TraceRefSchema,
+  TRIAGE_SEVERITIES,
+  TRIAGE_CATEGORIES,
+  type TriageSeverity,
+  type TriageCategory,
+  type TriageIssue,
+  type TriageResult,
+} from "@repo/schemas/triage";
 ```
 
 #### Severity Levels
 
 ```typescript
-export const REVIEW_SEVERITY = ["critical", "warning", "suggestion", "nitpick"] as const;
+export const TRIAGE_SEVERITIES = ["blocker", "high", "medium", "low", "nit"] as const;
 ```
 
 | Severity | Description | Action |
 |----------|-------------|--------|
-| `critical` | Must fix before merge | Block PR |
-| `warning` | Should address | Review required |
-| `suggestion` | Nice to have | Optional |
-| `nitpick` | Minor style | Informational |
+| `blocker` | Critical issue, must fix | Block merge |
+| `high` | Important issue | Review required |
+| `medium` | Should address | Recommended |
+| `low` | Minor issue | Optional |
+| `nit` | Style/nitpick | Informational |
 
-#### Categories
-
-```typescript
-export const REVIEW_CATEGORY = [
-  "security",
-  "performance",
-  "style",
-  "logic",
-  "documentation",
-  "best-practice"
-] as const;
-```
-
-#### ReviewIssue
+#### TriageIssue
 
 ```typescript
-const ReviewIssueSchema = z.object({
-  severity: ReviewSeveritySchema,
-  category: ReviewCategorySchema,
-  file: z.string().nullable(),
+const TriageIssueSchema = z.object({
+  id: z.string(),
+  severity: TriageSeveritySchema,
+  category: TriageCategorySchema,
+  file: z.string(),
   line: z.number().nullable(),
+  endLine: z.number().nullable(),
   title: z.string(),
   description: z.string(),
   suggestion: z.string().nullable(),
+  confidence: z.number().min(0).max(1),
 });
 ```
 
-#### ReviewResult
+### Settings Schemas
 
 ```typescript
-const ReviewResultSchema = z.object({
-  summary: z.string(),
-  issues: z.array(ReviewIssueSchema),
-  overallScore: z.number().min(0).max(10).nullable(),
+import {
+  SettingsConfigSchema,
+  TrustConfigSchema,
+  TrustCapabilitiesSchema,
+  ThemeSchema,
+  ControlsModeSchema,
+  TrustModeSchema,
+  THEMES,
+  CONTROLS_MODES,
+  TRUST_MODES,
+  type SettingsConfig,
+  type TrustConfig,
+  type TrustCapabilities,
+  type Theme,
+  type ControlsMode,
+  type TrustMode,
+} from "@repo/schemas/settings";
+```
+
+#### SettingsConfig
+
+```typescript
+const SettingsConfigSchema = z.object({
+  theme: ThemeSchema,
+  controlsMode: ControlsModeSchema,
+  defaultLenses: z.array(LensIdSchema),
+  defaultProfile: ProfileIdSchema.nullable(),
+  severityThreshold: TriageSeveritySchema,
 });
 ```
 
-#### Stream Events
+| Field | Type | Description |
+|-------|------|-------------|
+| `theme` | `"auto" \| "dark" \| "light" \| "terminal"` | UI color theme |
+| `controlsMode` | `"menu" \| "keys"` | Show menu or keyboard shortcuts |
+| `defaultLenses` | `LensId[]` | Default lenses for reviews |
+| `defaultProfile` | `ProfileId \| null` | Default review profile |
+| `severityThreshold` | `TriageSeverity` | Minimum severity to show |
+
+#### TrustConfig
 
 ```typescript
-const ReviewStreamEventSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("chunk"), content: z.string() }),
-  z.object({ type: z.literal("complete"), result: ReviewResultSchema }),
-  z.object({ type: z.literal("error"), error: ReviewErrorSchema }),
-]);
+const TrustConfigSchema = z.object({
+  projectId: z.string(),
+  repoRoot: z.string(),
+  trustedAt: z.string().datetime(),
+  capabilities: TrustCapabilitiesSchema,
+  trustMode: TrustModeSchema,
+});
+
+const TrustCapabilitiesSchema = z.object({
+  readFiles: z.boolean(),
+  readGit: z.boolean(),
+  runCommands: z.boolean(),
+});
+```
+
+### Session Schemas
+
+```typescript
+import {
+  SessionSchema,
+  SessionMetadataSchema,
+  SessionMessageSchema,
+  SessionEventSchema,
+  SessionEventTypeSchema,
+  MessageRoleSchema,
+  SESSION_EVENT_TYPES,
+  MESSAGE_ROLES,
+  type Session,
+  type SessionMetadata,
+  type SessionMessage,
+  type SessionEvent,
+  type SessionEventType,
+  type MessageRole,
+} from "@repo/schemas/session";
+```
+
+#### Session Event Types
+
+```typescript
+export const SESSION_EVENT_TYPES = [
+  "NAVIGATE",
+  "OPEN_ISSUE",
+  "TOGGLE_VIEW",
+  "APPLY_PATCH",
+  "IGNORE_ISSUE",
+  "FILTER_CHANGED",
+  "RUN_CREATED",
+  "RUN_RESUMED",
+  "SETTINGS_CHANGED",
+] as const;
+```
+
+| Event Type | Trigger |
+|------------|---------|
+| `NAVIGATE` | Screen change |
+| `OPEN_ISSUE` | Issue drilldown |
+| `TOGGLE_VIEW` | View mode change |
+| `APPLY_PATCH` | Patch applied |
+| `IGNORE_ISSUE` | Issue dismissed |
+| `FILTER_CHANGED` | Filter update |
+| `RUN_CREATED` | New review |
+| `RUN_RESUMED` | Resume review |
+| `SETTINGS_CHANGED` | Settings update |
+
+#### SessionEvent
+
+```typescript
+const SessionEventSchema = z.object({
+  ts: z.number(),
+  type: SessionEventTypeSchema,
+  payload: z.unknown(),
+});
 ```
 
 ### Config Schemas
@@ -122,9 +283,11 @@ import {
   GEMINI_MODELS,
   OPENAI_MODELS,
   ANTHROPIC_MODELS,
+  AVAILABLE_PROVIDERS,
   type AIProvider,
   type UserConfig,
   type GeminiModel,
+  type ProviderStatus,
 } from "@repo/schemas/config";
 ```
 
@@ -164,27 +327,6 @@ export const ANTHROPIC_MODELS = [
 ] as const;
 ```
 
-#### UserConfig
-
-```typescript
-const UserConfigSchema = z.object({
-  provider: AIProviderSchema,
-  model: z.string().optional(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-});
-```
-
-### Session Schemas
-
-```typescript
-import {
-  SessionSchema,
-  CreateSessionRequestSchema,
-  type Session,
-} from "@repo/schemas/session";
-```
-
 ### Error Schemas
 
 ```typescript
@@ -214,9 +356,9 @@ export const SHARED_ERROR_CODES = [
 Use `createDomainErrorCodes` to combine shared codes with domain-specific ones:
 
 ```typescript
-export const REVIEW_SPECIFIC_CODES = ["NO_DIFF", "AI_ERROR"] as const;
-export const REVIEW_ERROR_CODES = createDomainErrorCodes(REVIEW_SPECIFIC_CODES);
-// ["VALIDATION_ERROR", "NOT_FOUND", "INTERNAL_ERROR", "RATE_LIMITED", "API_KEY_MISSING", "NO_DIFF", "AI_ERROR"]
+export const LENS_SPECIFIC_CODES = ["NO_DIFF", "AI_ERROR", "LENS_NOT_FOUND", "PROFILE_NOT_FOUND"] as const;
+export const LENS_ERROR_CODES = createDomainErrorCodes(LENS_SPECIFIC_CODES);
+// ["VALIDATION_ERROR", "NOT_FOUND", ..., "NO_DIFF", "AI_ERROR", ...]
 ```
 
 ## Common Patterns
@@ -230,18 +372,6 @@ const MySchema = z.object({
   id: z.string(),
   ...timestampFields, // adds createdAt, updatedAt
 });
-```
-
-### Stream Event Schema Factory
-
-```typescript
-import { createStreamEventSchema } from "@repo/schemas/errors";
-
-const MyStreamEventSchema = createStreamEventSchema(
-  { result: MyResultSchema },  // complete event payload
-  MyErrorSchema                 // error schema
-);
-// Creates: chunk | complete | error discriminated union
 ```
 
 ### Refinements
@@ -261,4 +391,5 @@ const ReviewIssueSchema = z.object({
 
 - [Packages: Core](./core.md) - Uses these schemas
 - [Features: Review Flow](../features/review-flow.md) - Review schema usage
+- [Features: Settings](../features/settings.md) - Settings schema usage
 - [Reference: Utilities](../reference/utilities.md) - Validation utilities

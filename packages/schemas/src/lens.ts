@@ -4,7 +4,7 @@ import {
   createDomainErrorSchema,
   type SharedErrorCode,
 } from "./errors.js";
-import { TriageIssueSchema, TriageSeveritySchema } from "./triage.js";
+import { TriageIssueSchema, TriageSeveritySchema, TraceRefSchema } from "./triage.js";
 
 export const LENS_IDS = [
   "correctness",
@@ -63,6 +63,7 @@ export const DrilldownResultSchema = z.object({
   patch: z.string().nullable(),
   relatedIssues: z.array(z.string()),
   references: z.array(z.string()),
+  trace: z.array(TraceRefSchema).optional(),
 });
 export type DrilldownResult = z.infer<typeof DrilldownResultSchema>;
 

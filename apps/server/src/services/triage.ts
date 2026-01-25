@@ -2,35 +2,24 @@ import { createGitService } from "./git.js";
 import type { AIClient } from "@repo/core/ai";
 import { getErrorMessage } from "@repo/core";
 import { parseDiff, filterDiffByFiles } from "@repo/core/diff";
-import { triageReview, getLenses, getProfile } from "@repo/core/review";
+import { triageReviewStream, getProfile } from "@repo/core/review";
 import { saveTriageReview } from "@repo/core/storage";
 import type { TriageResult } from "@repo/schemas/triage";
 import type { LensId, ProfileId } from "@repo/schemas/lens";
 import { ErrorCode } from "@repo/schemas/errors";
 import type { SSEWriter } from "../lib/ai-client.js";
-import { writeSSEChunk, writeSSEError } from "../lib/sse-helpers.js";
+import { writeSSEError } from "../lib/sse-helpers.js";
 import { createGitDiffError } from "./review.js";
+import type { AgentStreamEvent } from "@repo/schemas/agent-event";
 
 const MAX_DIFF_SIZE_BYTES = 524288; // 512KB
 
 const gitService = createGitService();
 
-async function writeTriageLensStart(
-  stream: SSEWriter,
-  lens: string,
-  index: number,
-  total: number
-): Promise<void> {
+async function writeAgentEvent(stream: SSEWriter, event: AgentStreamEvent): Promise<void> {
   await stream.writeSSE({
-    event: "lens_start",
-    data: JSON.stringify({ type: "lens_start", lens, index, total }),
-  });
-}
-
-async function writeTriageLensComplete(stream: SSEWriter, lens: string): Promise<void> {
-  await stream.writeSSE({
-    event: "lens_complete",
-    data: JSON.stringify({ type: "lens_complete", lens }),
+    event: event.type,
+    data: JSON.stringify(event),
   });
 }
 
@@ -98,37 +87,25 @@ export async function streamTriageToSSE(
 
     const profile = profileId ? getProfile(profileId) : undefined;
     const activeLenses = lensIds ?? profile?.lenses ?? ["correctness"];
-    const lenses = getLenses(activeLenses as LensId[]);
 
-    const allIssues: TriageResult["issues"] = [];
-    const summaries: string[] = [];
-
-    for (let i = 0; i < lenses.length; i++) {
-      const lens = lenses[i];
-      if (!lens) continue;
-
-      await writeTriageLensStart(stream, lens.name, i, lenses.length);
-
-      const result = await triageReview(aiClient, parsed, {
-        lenses: [lens.id],
+    const result = await triageReviewStream(
+      aiClient,
+      parsed,
+      {
+        lenses: activeLenses as LensId[],
         filter: profile?.filter,
-      });
-
-      if (!result.ok) {
-        await writeSSEError(stream, result.error.message, "AI_ERROR");
-        return;
+      },
+      async (event: AgentStreamEvent) => {
+        await writeAgentEvent(stream, event);
       }
+    );
 
-      allIssues.push(...result.value.issues);
-      summaries.push(result.value.summary);
-      await writeTriageLensComplete(stream, lens.name);
+    if (!result.ok) {
+      await writeSSEError(stream, result.error.message, "AI_ERROR");
+      return;
     }
 
-    const finalResult: TriageResult = {
-      summary: summaries.join("\n\n"),
-      issues: allIssues,
-    };
-
+    const finalResult = result.value;
     const status = await gitService.getStatus().catch(() => null);
 
     const saveResult = await saveTriageReview({
@@ -149,11 +126,9 @@ export async function streamTriageToSSE(
 
     await writeTriageComplete(stream, finalResult, saveResult.value.id);
   } catch (error) {
-    console.error("[Triage] Unexpected error during triage:", error);
     try {
       await writeSSEError(stream, getErrorMessage(error), ErrorCode.INTERNAL_ERROR);
     } catch {
-      // Stream already closed, cannot send error - will be handled by route-level catch
       throw error;
     }
   }

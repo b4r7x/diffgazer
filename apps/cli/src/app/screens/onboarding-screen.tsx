@@ -1,93 +1,248 @@
 import React, { useState } from "react";
-import { Box, Text, useInput } from "ink";
-import TextInput from "ink-text-input";
+import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
+import type { AIProvider, GLMEndpoint, OpenRouterModel } from "@repo/schemas/config";
+import { AVAILABLE_PROVIDERS } from "@repo/schemas/config";
+import type { Theme, ControlsMode, TrustConfig } from "@repo/schemas/settings";
 import type { SaveConfigState } from "../../hooks/use-config.js";
-import { SelectionIndicator } from "../../components/selection-indicator.js";
-import type { AIProvider } from "@repo/schemas/config";
-import { GEMINI_MODEL_INFO } from "@repo/schemas/config";
+import { TrustStep } from "../../components/wizard/trust-step.js";
+import { ThemeStep } from "../../components/wizard/theme-step.js";
+import { ProviderStep } from "../../components/wizard/provider-step.js";
+import { GLMEndpointStep } from "../../components/wizard/glm-endpoint-step.js";
+import { ModelStep } from "../../components/wizard/model-step.js";
+import { CredentialsStep } from "../../components/wizard/credentials-step.js";
+import { ControlsStep } from "../../components/wizard/controls-step.js";
+import { SummaryStep } from "../../components/wizard/summary-step.js";
 
-type Step = "provider" | "model" | "apiKey";
+type WizardState =
+  | { step: "trust" }
+  | { step: "theme" }
+  | { step: "provider" }
+  | { step: "glm-endpoint"; provider: AIProvider }
+  | { step: "model"; provider: AIProvider }
+  | { step: "credentials"; provider: AIProvider }
+  | { step: "controls" }
+  | { step: "summary" }
+  | { step: "complete" };
+
+const TOTAL_STEPS = 7;
+
+const PROVIDER_ENV_VARS: Record<AIProvider, string> = {
+  gemini: "GEMINI_API_KEY",
+  openai: "OPENAI_API_KEY",
+  anthropic: "ANTHROPIC_API_KEY",
+  glm: "GLM_API_KEY",
+  openrouter: "OPENROUTER_API_KEY",
+};
+
+function getEnvVarForProvider(provider: AIProvider): { name: string; value: string | undefined } {
+  const primaryName = PROVIDER_ENV_VARS[provider];
+  const primaryValue = process.env[primaryName];
+
+  // GLM supports ZHIPU_API_KEY as fallback
+  if (provider === "glm" && !primaryValue) {
+    const fallbackValue = process.env["ZHIPU_API_KEY"];
+    if (fallbackValue) {
+      return { name: "ZHIPU_API_KEY", value: fallbackValue };
+    }
+  }
+
+  return { name: primaryName, value: primaryValue };
+}
+
+const DEFAULT_THEME: Theme = "auto";
+const DEFAULT_CONTROLS_MODE: ControlsMode = "menu";
+
+interface OnboardingData {
+  trustConfig: TrustConfig | null;
+  theme: Theme;
+  provider: AIProvider;
+  model: string;
+  glmEndpoint: GLMEndpoint;
+  apiKey: string;
+  controlsMode: ControlsMode;
+}
+
+interface ProviderConfig {
+  provider: AIProvider;
+  model?: string;
+  hasApiKey: boolean;
+}
 
 interface OnboardingScreenProps {
   saveState: SaveConfigState;
   error?: { message: string } | null;
-  onSave: (provider: AIProvider, apiKey: string, model: string) => void;
+  configuredProviders?: ProviderConfig[];
+  repoRoot?: string;
+  projectId?: string;
+  onSave: (provider: AIProvider, apiKey: string, model: string, glmEndpoint?: GLMEndpoint) => void;
+  onSaveSettings?: (settings: {
+    theme: Theme;
+    controlsMode: ControlsMode;
+  }) => void;
+  onSaveTrust?: (trust: TrustConfig) => void;
+  onTestConnection?: () => Promise<boolean>;
+  fetchOpenRouterModels?: () => Promise<OpenRouterModel[]>;
 }
 
-const PROVIDERS = [
-  { id: "gemini", name: "Google Gemini" },
-] as const;
+function getStepNumber(state: WizardState): number {
+  switch (state.step) {
+    case "trust":
+      return 1;
+    case "theme":
+      return 2;
+    case "provider":
+      return 3;
+    case "glm-endpoint":
+      return 4;
+    case "model":
+      return 4;
+    case "credentials":
+      return 5;
+    case "controls":
+      return 6;
+    case "summary":
+      return 7;
+    case "complete":
+      return 7;
+  }
+}
 
-const getProvider = (index: number) => PROVIDERS[index] ?? PROVIDERS[0];
-const DEFAULT_MODEL_ID = "gemini-2.5-flash";
-
-const MODELS = Object.values(GEMINI_MODEL_INFO);
+function getProviderInfo(providerId: AIProvider) {
+  return AVAILABLE_PROVIDERS.find((p) => p.id === providerId) ?? AVAILABLE_PROVIDERS[0]!;
+}
 
 export function OnboardingScreen({
   saveState,
   error,
+  configuredProviders = [],
+  repoRoot = process.cwd(),
+  projectId = "default",
   onSave,
+  onSaveSettings,
+  onSaveTrust,
+  onTestConnection,
+  fetchOpenRouterModels,
 }: OnboardingScreenProps): React.ReactElement {
-  const [step, setStep] = useState<Step>("provider");
-  const [selectedProvider, setSelectedProvider] = useState(0);
-  const [selectedModel, setSelectedModel] = useState(
-    Math.max(0, MODELS.findIndex((m) => m.recommended))
-  );
-  const [apiKey, setApiKey] = useState("");
-
-  useInput((input, key) => {
-    if (saveState === "saving") return;
-
-    if (step === "provider") {
-      if (key.upArrow && selectedProvider > 0) {
-        setSelectedProvider(selectedProvider - 1);
-      }
-      if (key.downArrow && selectedProvider < PROVIDERS.length - 1) {
-        setSelectedProvider(selectedProvider + 1);
-      }
-      if (key.return) {
-        setStep("model");
-      }
-    }
-
-    if (step === "model") {
-      if (key.upArrow && selectedModel > 0) {
-        setSelectedModel(selectedModel - 1);
-      }
-      if (key.downArrow && selectedModel < MODELS.length - 1) {
-        setSelectedModel(selectedModel + 1);
-      }
-      if (key.return) {
-        setStep("apiKey");
-      }
-      if (input === "b") {
-        setStep("provider");
-      }
-    }
-
-    if (step === "apiKey" && saveState === "error") {
-      if (input === "r") {
-        const model = MODELS[selectedModel];
-        onSave(getProvider(selectedProvider).id, apiKey, model?.id ?? DEFAULT_MODEL_ID);
-      }
-      if (input === "b") {
-        setStep("model");
-      }
-    }
+  const [state, setState] = useState<WizardState>({ step: "trust" });
+  const [data, setData] = useState<OnboardingData>({
+    trustConfig: null,
+    theme: DEFAULT_THEME,
+    provider: "gemini",
+    model: "",
+    glmEndpoint: "coding",
+    apiKey: "",
+    controlsMode: DEFAULT_CONTROLS_MODE,
   });
 
-  const handleApiKeySubmit = (value: string) => {
-    if (value.trim()) {
-      const model = MODELS[selectedModel];
-      onSave(getProvider(selectedProvider).id, value.trim(), model?.id ?? DEFAULT_MODEL_ID);
+  const currentProvider = getProviderInfo(data.provider);
+  const { name: envVarName, value: envVarValue } = getEnvVarForProvider(data.provider);
+
+  const goBack = () => {
+    switch (state.step) {
+      case "theme":
+        setState({ step: "trust" });
+        break;
+      case "provider":
+        setState({ step: "theme" });
+        break;
+      case "glm-endpoint":
+        setState({ step: "provider" });
+        break;
+      case "model":
+        if (data.provider === "glm") {
+          setState({ step: "glm-endpoint", provider: data.provider });
+        } else {
+          setState({ step: "provider" });
+        }
+        break;
+      case "credentials":
+        setState({ step: "model", provider: data.provider });
+        break;
+      case "controls":
+        setState({ step: "credentials", provider: data.provider });
+        break;
+      case "summary":
+        setState({ step: "controls" });
+        break;
     }
+  };
+
+  const handleTrustComplete = (trust: TrustConfig) => {
+    setData((prev) => ({ ...prev, trustConfig: trust }));
+    if (onSaveTrust) {
+      onSaveTrust(trust);
+    }
+    setState({ step: "theme" });
+  };
+
+  const handleTrustSkip = () => {
+    setState({ step: "theme" });
+  };
+
+  const handleThemeSubmit = (theme: Theme) => {
+    setData((prev) => ({ ...prev, theme }));
+    setState({ step: "provider" });
+  };
+
+  const handleProviderSelect = (provider: AIProvider) => {
+    const providerInfo = getProviderInfo(provider);
+    setData((prev) => ({ ...prev, provider, model: providerInfo.defaultModel }));
+
+    if (provider === "glm") {
+      setState({ step: "glm-endpoint", provider });
+    } else {
+      setState({ step: "model", provider });
+    }
+  };
+
+  const handleGLMEndpointSelect = (endpoint: GLMEndpoint) => {
+    setData((prev) => ({ ...prev, glmEndpoint: endpoint }));
+    setState({ step: "model", provider: data.provider });
+  };
+
+  const handleModelSelect = (model: string) => {
+    setData((prev) => ({ ...prev, model }));
+    setState({ step: "credentials", provider: data.provider });
+  };
+
+  const handleCredentialsSubmit = (apiKey: string, _method: "existing" | "env" | "manual") => {
+    setData((prev) => ({ ...prev, apiKey }));
+    setState({ step: "controls" });
+  };
+
+  const handleControlsSubmit = (controlsMode: ControlsMode) => {
+    setData((prev) => ({ ...prev, controlsMode }));
+    setState({ step: "summary" });
+  };
+
+  const handleTestConnection = async (): Promise<boolean> => {
+    if (onTestConnection) {
+      return onTestConnection();
+    }
+    return true;
+  };
+
+  const handleComplete = () => {
+    setState({ step: "complete" });
+    if (onSaveSettings) {
+      onSaveSettings({
+        theme: data.theme,
+        controlsMode: data.controlsMode,
+      });
+    }
+    onSave(
+      data.provider,
+      data.apiKey,
+      data.model,
+      data.provider === "glm" ? data.glmEndpoint : undefined
+    );
   };
 
   if (saveState === "saving") {
     return (
       <Box flexDirection="column" padding={1}>
-        <Text bold color="cyan">Stargazer Setup</Text>
+        <Text bold color="cyan">Setup</Text>
         <Box marginTop={1}>
           <Spinner type="dots" />
           <Text> Saving configuration...</Text>
@@ -99,84 +254,143 @@ export function OnboardingScreen({
   if (saveState === "error") {
     return (
       <Box flexDirection="column" padding={1}>
-        <Text bold color="cyan">Stargazer Setup</Text>
+        <Text bold color="cyan">Setup</Text>
         <Box marginTop={1} flexDirection="column">
           <Text color="red">Error: {error?.message ?? "Failed to save configuration"}</Text>
           <Box marginTop={1}>
-            <Text dimColor>[r] Retry  [b] Back</Text>
+            <Text dimColor>Press any key to go back and try again.</Text>
           </Box>
         </Box>
       </Box>
     );
   }
 
+  if (state.step === "trust") {
+    return (
+      <TrustStep
+        mode="onboarding"
+        currentStep={getStepNumber(state)}
+        totalSteps={TOTAL_STEPS}
+        repoRoot={repoRoot}
+        projectId={projectId}
+        initialCapabilities={data.trustConfig?.capabilities}
+        onComplete={handleTrustComplete}
+        onSkip={handleTrustSkip}
+        isActive
+      />
+    );
+  }
+
+  if (state.step === "theme") {
+    return (
+      <ThemeStep
+        mode="onboarding"
+        currentStep={getStepNumber(state)}
+        totalSteps={TOTAL_STEPS}
+        initialTheme={data.theme}
+        onSubmit={handleThemeSubmit}
+        onBack={goBack}
+        isActive
+      />
+    );
+  }
+
+  if (state.step === "provider") {
+    return (
+      <ProviderStep
+        mode="onboarding"
+        currentStep={getStepNumber(state)}
+        totalSteps={TOTAL_STEPS}
+        configuredProviders={[]}
+        onSelect={handleProviderSelect}
+        onBack={goBack}
+        isActive
+      />
+    );
+  }
+
+  if (state.step === "glm-endpoint") {
+    return (
+      <GLMEndpointStep
+        mode="onboarding"
+        currentStep={getStepNumber(state)}
+        totalSteps={TOTAL_STEPS}
+        initialEndpoint={data.glmEndpoint}
+        onSelect={handleGLMEndpointSelect}
+        onBack={goBack}
+        isActive
+      />
+    );
+  }
+
+  if (state.step === "model") {
+    return (
+      <ModelStep
+        mode="onboarding"
+        currentStep={getStepNumber(state)}
+        totalSteps={TOTAL_STEPS}
+        provider={data.provider}
+        providerName={currentProvider.name}
+        initialModel={data.model}
+        onSelect={handleModelSelect}
+        onBack={goBack}
+        isActive
+        fetchOpenRouterModels={fetchOpenRouterModels}
+      />
+    );
+  }
+
+  if (state.step === "credentials") {
+    const providerConfig = configuredProviders.find((p) => p.provider === state.provider);
+    const hasKeyringKey = providerConfig?.hasApiKey ?? false;
+
+    return (
+      <CredentialsStep
+        mode="onboarding"
+        currentStep={getStepNumber(state)}
+        totalSteps={TOTAL_STEPS}
+        provider={state.provider}
+        providerName={currentProvider.name}
+        envVarName={envVarName}
+        envVarValue={envVarValue}
+        hasKeyringKey={hasKeyringKey}
+        onSubmit={handleCredentialsSubmit}
+        onBack={goBack}
+        isActive
+      />
+    );
+  }
+
+  if (state.step === "controls") {
+    return (
+      <ControlsStep
+        mode="onboarding"
+        currentStep={getStepNumber(state)}
+        totalSteps={TOTAL_STEPS}
+        initialControlsMode={data.controlsMode}
+        onSubmit={handleControlsSubmit}
+        onBack={goBack}
+        isActive
+      />
+    );
+  }
+
   return (
-    <Box flexDirection="column" padding={1}>
-      <Text bold color="cyan">Stargazer Setup</Text>
-      <Text dimColor>Configure your AI provider to get started.</Text>
-
-      {step === "provider" && (
-        <Box flexDirection="column" marginTop={1}>
-          <Text bold>Step 1: Select AI Provider</Text>
-          <Box flexDirection="column" marginTop={1}>
-            {PROVIDERS.map((provider, index) => (
-              <Box key={provider.id}>
-                <SelectionIndicator isSelected={selectedProvider === index} />
-                <Text>{provider.name}</Text>
-              </Box>
-            ))}
-          </Box>
-          <Box marginTop={1}>
-            <Text dimColor>Use arrow keys to select, Enter to continue</Text>
-          </Box>
-        </Box>
-      )}
-
-      {step === "model" && (
-        <Box flexDirection="column" marginTop={1}>
-          <Text bold>Step 2: Select Model</Text>
-          <Text dimColor>Provider: {getProvider(selectedProvider).name}</Text>
-          <Box flexDirection="column" marginTop={1}>
-            {MODELS.map((model, index) => (
-              <Box key={model.id} flexDirection="column">
-                <Box>
-                  <SelectionIndicator isSelected={selectedModel === index} />
-                  <Text bold={model.recommended}>{model.name}</Text>
-                  {model.recommended && <Text color="yellow"> (Recommended)</Text>}
-                  {model.tier === "paid" && <Text color="red"> [Paid]</Text>}
-                  {model.tier === "free" && <Text color="green"> [Free]</Text>}
-                </Box>
-                {selectedModel === index && (
-                  <Text dimColor>    {model.description}</Text>
-                )}
-              </Box>
-            ))}
-          </Box>
-          <Box marginTop={1}>
-            <Text dimColor>Use arrow keys to select, Enter to continue, [b] Back</Text>
-          </Box>
-        </Box>
-      )}
-
-      {step === "apiKey" && (
-        <Box flexDirection="column" marginTop={1}>
-          <Text bold>Step 3: Enter API Key</Text>
-          <Text dimColor>Provider: {getProvider(selectedProvider).name}</Text>
-          <Text dimColor>Model: {MODELS[selectedModel]?.name ?? "Unknown"}</Text>
-          <Box marginTop={1}>
-            <Text>API Key: </Text>
-            <TextInput
-              value={apiKey}
-              onChange={setApiKey}
-              onSubmit={handleApiKeySubmit}
-              mask="*"
-            />
-          </Box>
-          <Box marginTop={1}>
-            <Text dimColor>Press Enter to save, [b] Back</Text>
-          </Box>
-        </Box>
-      )}
-    </Box>
+    <SummaryStep
+      mode="onboarding"
+      currentStep={getStepNumber(state)}
+      totalSteps={TOTAL_STEPS}
+      provider={data.provider}
+      providerName={currentProvider.name}
+      model={data.model}
+      theme={data.theme}
+      controlsMode={data.controlsMode}
+      capabilities={data.trustConfig?.capabilities}
+      directoryPath={repoRoot}
+      onTestConnection={handleTestConnection}
+      onComplete={handleComplete}
+      onBack={goBack}
+      isActive
+    />
   );
 }

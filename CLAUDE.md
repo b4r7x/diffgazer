@@ -20,10 +20,11 @@ apps/
 ## Essential Commands
 
 ```bash
-npm run type-check    # TypeScript validation
-npm run build         # Build all packages
-npx vitest run        # Run tests
-npx vitest run <file> # Run specific test file
+npm run type-check           # TypeScript validation
+npm run build                # Build all packages
+npx vitest run               # Run unit tests
+npx vitest run <file>        # Run specific test file
+./scripts/test-integration.sh # Run integration tests (full flow)
 ```
 
 ## Architecture Decisions (ADRs)
@@ -75,6 +76,8 @@ Use these instead of inline implementations:
 | `truncate` | `@repo/core/string` | String truncation |
 | `chunk` | `@repo/core/array` | Array chunking |
 | `formatRelativeTime` | `@repo/core/format` | Time formatting |
+| `generateFingerprint` | `@repo/core/review` | Issue deduplication fingerprint |
+| `mergeIssues` | `@repo/core/review` | Deduplicate issues by fingerprint |
 
 ## Review System
 
@@ -105,7 +108,7 @@ Preset lens combinations:
 
 1. Parse git diff
 2. Run selected lenses in parallel
-3. Aggregate and deduplicate issues
+3. Aggregate and deduplicate issues (fingerprinting)
 4. Filter by severity
 5. Save to storage with metadata
 
@@ -117,6 +120,70 @@ Preset lens combinations:
 - **Lens types**: `packages/schemas/src/lens.ts`
 - **Triage types**: `packages/schemas/src/triage.ts`
 - **Storage types**: `packages/schemas/src/triage-storage.ts`
+- **Settings types**: `packages/schemas/src/settings.ts`
+- **Session types**: `packages/schemas/src/session.ts`
+
+## Settings System
+
+### Settings Storage
+
+User settings stored in `~/.config/stargazer/`:
+
+| File | Content |
+|------|---------|
+| `config.json` | AI provider configuration |
+| `trusted.json` | Project trust configurations |
+
+### Settings Schema
+
+```typescript
+interface SettingsConfig {
+  theme: "auto" | "dark" | "light" | "terminal";
+  controlsMode: "menu" | "keys";
+  defaultLenses: LensId[];
+  defaultProfile: ProfileId | null;
+  severityThreshold: TriageSeverity;
+}
+
+interface TrustConfig {
+  projectId: string;
+  repoRoot: string;
+  trustedAt: string;
+  capabilities: TrustCapabilities;
+  trustMode: "persistent" | "session";
+}
+```
+
+## Session Events
+
+Session activity tracking with JSONL storage:
+
+| Event Type | Purpose |
+|------------|---------|
+| `NAVIGATE` | Screen navigation |
+| `OPEN_ISSUE` | Issue drilldown |
+| `TOGGLE_VIEW` | View mode change |
+| `APPLY_PATCH` | Patch application |
+| `IGNORE_ISSUE` | Issue dismissal |
+| `FILTER_CHANGED` | Filter modification |
+| `RUN_CREATED` | New review run |
+| `RUN_RESUMED` | Resume existing run |
+| `SETTINGS_CHANGED` | Settings update |
+
+## API Routes
+
+### Server Endpoints
+
+| Route | Purpose |
+|-------|---------|
+| `/health` | Health check |
+| `/git` | Git operations (status, diff) |
+| `/config` | AI provider configuration |
+| `/settings` | User settings and trust |
+| `/sessions` | Session management |
+| `/reviews` | Review history |
+| `/triage` | Triage operations (stream, reviews) |
+| `/review` | Legacy review endpoint |
 
 ## Code Style
 
@@ -156,7 +223,7 @@ Reference: `.claude/workflows/audits/audit-overengineering.md`
 - Features cannot import from other features (compose in app layer)
 - Tests co-located with source files
 - Use absolute imports with `@/` prefix in apps
-- Package import direction: core → schemas (leaves: schemas, api)
+- Package import direction: core -> schemas (leaves: schemas, api)
 
 **Commands:**
 - `/project-structure` - Load structure context for implementation

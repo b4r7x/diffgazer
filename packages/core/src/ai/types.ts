@@ -26,6 +26,7 @@ export interface AIClientConfig {
   model?: string;
   temperature?: number;
   maxTokens?: number;
+  glmEndpoint?: "coding" | "standard";
 }
 
 export interface AIClient {

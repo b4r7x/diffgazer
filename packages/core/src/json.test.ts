@@ -70,4 +70,70 @@ describe("safeParseJson", () => {
       expect(result.error.details).toContain("JSON");
     }
   });
+
+  it("strips markdown code block with json language tag", () => {
+    const jsonWithCodeBlock = '```json\n{"name":"Alice","age":30}\n```';
+    const result = safeParseJson(jsonWithCodeBlock, errorFactory);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toEqual({ name: "Alice", age: 30 });
+    }
+  });
+
+  it("strips markdown code block without language tag", () => {
+    const jsonWithCodeBlock = '```\n{"name":"Bob","age":25}\n```';
+    const result = safeParseJson(jsonWithCodeBlock, errorFactory);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toEqual({ name: "Bob", age: 25 });
+    }
+  });
+
+  it("strips markdown code block with extra whitespace", () => {
+    const jsonWithCodeBlock = '  ```json  \n  {"name":"Charlie","age":35}  \n  ```  ';
+    const result = safeParseJson(jsonWithCodeBlock, errorFactory);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toEqual({ name: "Charlie", age: 35 });
+    }
+  });
+
+  it("handles JSON without markdown code blocks", () => {
+    const plainJson = '{"name":"Dave","age":40}';
+    const result = safeParseJson(plainJson, errorFactory);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toEqual({ name: "Dave", age: 40 });
+    }
+  });
+
+  it("strips code block from complex nested JSON", () => {
+    const complexJson = `\`\`\`json
+{
+  "summary": "Review complete",
+  "issues": [
+    {"severity": "high", "title": "Security issue"},
+    {"severity": "low", "title": "Style issue"}
+  ],
+  "overallScore": 8
+}
+\`\`\``;
+    const result = safeParseJson(complexJson, errorFactory);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toEqual({
+        summary: "Review complete",
+        issues: [
+          { severity: "high", title: "Security issue" },
+          { severity: "low", title: "Style issue" },
+        ],
+        overallScore: 8,
+      });
+    }
+  });
 });

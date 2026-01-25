@@ -3,8 +3,11 @@ import { Box, Text, useInput, useApp } from "ink";
 import Spinner from "ink-spinner";
 import type { TriageIssue, TriageResult } from "@repo/schemas/triage";
 import type { SavedTriageReview } from "@repo/schemas/triage-storage";
+import type { AgentStreamEvent } from "@repo/schemas/agent-event";
 import { TRIAGE_SEVERITY_COLORS } from "../constants.js";
 import { Separator } from "../../../components/ui/separator.js";
+import { AgentActivityPanel } from "./agent-activity-panel.js";
+import { useAgentActivity } from "../hooks/use-agent-activity.js";
 
 interface IssueStatus {
   ignored: boolean;
@@ -29,6 +32,8 @@ export interface ReviewScreenProps {
   onSelectIssue: (issue: TriageIssue) => void;
   onBack: () => void;
   onApplyFix?: (issue: TriageIssue) => Promise<ApplyFixResult>;
+  agentEvents?: AgentStreamEvent[];
+  isReviewing?: boolean;
 }
 
 function IssueListItem({
@@ -117,6 +122,8 @@ export function ReviewScreen({
   onSelectIssue,
   onBack,
   onApplyFix,
+  agentEvents = [],
+  isReviewing = false,
 }: ReviewScreenProps): React.ReactElement {
   const { exit } = useApp();
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -125,6 +132,9 @@ export function ReviewScreen({
   );
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [isApplying, setIsApplying] = useState(false);
+
+  const { agents, currentAction } = useAgentActivity(agentEvents);
+  const showAgentPanel = isReviewing && agents.length > 0;
 
   const issues = result?.issues ?? [];
 
@@ -216,18 +226,31 @@ export function ReviewScreen({
           AI Code Review
         </Text>
         <Separator />
-        <Box marginTop={1}>
-          <Spinner type="dots" />
-          <Text> {loadingMessage ?? "Analyzing code..."}</Text>
-        </Box>
-        {lensProgress && lensProgress.totalLenses > 0 && (
-          <Box marginTop={1}>
-            <Text dimColor>
-              Lens {lensProgress.currentIndex + 1}/{lensProgress.totalLenses}
-              {lensProgress.currentLens && `: ${lensProgress.currentLens}`}
-            </Text>
+        <Box marginTop={1} flexDirection="row" gap={2}>
+          <Box flexDirection="column">
+            <Box>
+              <Spinner type="dots" />
+              <Text> {loadingMessage ?? "Analyzing code..."}</Text>
+            </Box>
+            {lensProgress && lensProgress.totalLenses > 0 && (
+              <Box marginTop={1}>
+                <Text dimColor>
+                  Lens {lensProgress.currentIndex + 1}/{lensProgress.totalLenses}
+                  {lensProgress.currentLens && `: ${lensProgress.currentLens}`}
+                </Text>
+              </Box>
+            )}
           </Box>
-        )}
+          {showAgentPanel && (
+            <Box flexShrink={0} width={28}>
+              <AgentActivityPanel
+                agents={agents}
+                currentAction={currentAction}
+                height={10}
+              />
+            </Box>
+          )}
+        </Box>
       </Box>
     );
   }

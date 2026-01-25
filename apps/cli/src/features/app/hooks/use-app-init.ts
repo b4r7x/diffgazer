@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import type { SessionMode } from "../../../types/index.js";
-import type { ConfigCheckState, SaveConfigState } from "../../../hooks/index.js";
+import type { ConfigCheckState, SaveConfigState, TrustLoadState, TrustSaveState } from "../../../hooks/index.js";
 import type { View } from "./use-navigation.js";
 
 interface SessionActions {
@@ -16,34 +16,85 @@ interface ConfigActions {
   saveState: SaveConfigState;
 }
 
+interface TrustActions {
+  checkTrust: (projectId: string) => Promise<boolean>;
+  loadState: TrustLoadState;
+  saveState: TrustSaveState;
+}
+
 interface UseAppInitOptions {
   config: ConfigActions;
+  trust: TrustActions;
+  projectId: string;
   sessionMode: SessionMode;
   sessionId?: string;
   sessionActions: SessionActions;
   setView: (view: View) => void;
 }
 
+type InitPhase = "checking-trust" | "checking-config" | "ready";
+
 export function useAppInit({
   config,
+  trust,
+  projectId,
   sessionMode,
   sessionId,
   sessionActions,
   setView,
 }: UseAppInitOptions): void {
   const [sessionInitialized, setSessionInitialized] = useState(false);
+  const [initPhase, setInitPhase] = useState<InitPhase>("checking-trust");
+  const [isTrusted, setIsTrusted] = useState<boolean | null>(null);
+  const [configCheckTriggered, setConfigCheckTriggered] = useState(false);
 
   useEffect(() => {
+    if (initPhase !== "checking-trust") return;
+
+    void trust.checkTrust(projectId).then((trusted) => {
+      setIsTrusted(trusted);
+      if (!trusted) {
+        setView("trust-wizard");
+        setInitPhase("ready");
+      } else {
+        setInitPhase("checking-config");
+      }
+    });
+  }, [initPhase, projectId, trust.checkTrust, setView]);
+
+  useEffect(() => {
+    if (initPhase !== "checking-config") return;
+    if (configCheckTriggered) return;
+
+    setConfigCheckTriggered(true);
     void config.checkConfig();
-  }, []);
+  }, [initPhase, config.checkConfig, configCheckTriggered]);
 
   useEffect(() => {
-    if (config.checkState === "configured" || config.saveState === "success") {
+    if (initPhase !== "checking-config") return;
+
+    if (config.checkState === "configured") {
       setView("main");
+      setInitPhase("ready");
     } else if (config.checkState === "unconfigured" || config.checkState === "error") {
       setView("onboarding");
+      setInitPhase("ready");
     }
-  }, [config.checkState, config.saveState, setView]);
+  }, [initPhase, config.checkState, setView]);
+
+  useEffect(() => {
+    if (config.saveState === "success") {
+      setView("main");
+    }
+  }, [config.saveState, setView]);
+
+  useEffect(() => {
+    if (trust.saveState === "success" && isTrusted === false) {
+      setIsTrusted(true);
+      setConfigCheckTriggered(false);
+      setInitPhase("checking-config");
+    }
+  }, [trust.saveState, isTrusted]);
 
   useEffect(() => {
     if (config.checkState !== "configured" || sessionInitialized) return;

@@ -19,6 +19,8 @@ interface ReviewCommandOptions extends CommandOptions {
   list?: boolean;
   resume?: string;
   pick?: boolean;
+  pr?: boolean;
+  output?: string;
 }
 
 function parseFilesOption(files?: string[]): string[] | undefined {
@@ -37,6 +39,48 @@ async function renderWithCleanup(
   registerShutdownHandlers(shutdown);
   await waitUntilExit();
   await manager.stop().catch((err) => console.error("Cleanup error:", err));
+}
+
+interface PrReviewOptions {
+  manager: ServerManager;
+  staged: boolean;
+  files?: string[];
+  lenses?: LensId[];
+  profile?: ProfileId;
+  outputPath: string;
+}
+
+async function runPrReview({
+  manager,
+  staged,
+  files,
+  lenses,
+  profile,
+  outputPath,
+}: PrReviewOptions): Promise<void> {
+  const { PrReviewApp } = await import("../features/review/apps/pr-review-app.js");
+  const shutdown = createShutdownHandler(() => manager.stop());
+  registerShutdownHandlers(shutdown);
+
+  let exitCode = 0;
+  const onComplete = (code: number): void => {
+    exitCode = code;
+  };
+
+  const { waitUntilExit } = render(
+    React.createElement(PrReviewApp, {
+      staged,
+      files,
+      lenses,
+      profile,
+      outputPath,
+      onComplete,
+    })
+  );
+
+  await waitUntilExit();
+  await manager.stop().catch((err) => console.error("Cleanup error:", err));
+  process.exit(exitCode);
 }
 
 export async function reviewCommand(options: ReviewCommandOptions): Promise<void> {
@@ -71,6 +115,12 @@ export async function reviewCommand(options: ReviewCommandOptions): Promise<void
         React.createElement(FilePickerApp, { staged, lenses, profile }),
         manager
       );
+      return;
+    }
+
+    if (options.pr) {
+      const outputPath = options.output ?? "annotations.json";
+      await runPrReview({ manager, staged, files, lenses, profile, outputPath });
       return;
     }
 

@@ -161,7 +161,7 @@ stargazer review --resume <uuid>
 | Key | Action |
 |-----|--------|
 | `r` | Start AI review |
-| `s` | Toggle staged/unstaged |
+| `s` | Settings |
 | `h` | View review history |
 | `d` | View git diff |
 | `g` | View git status |
@@ -172,11 +172,11 @@ stargazer review --resume <uuid>
 |-----|--------|
 | `j` or `Down` | Next issue |
 | `k` or `Up` | Previous issue |
+| `Tab` | Switch tabs |
 | `Enter` | View issue details / drilldown |
 | `a` | Apply suggested patch |
 | `i` | Ignore issue |
 | `r` | Refresh review |
-| `s` | Toggle staged/unstaged |
 | `b` or `Esc` | Back to main |
 
 ### Session View
@@ -198,6 +198,16 @@ stargazer review --resume <uuid>
 | `k` or `Up` | Scroll up |
 | `s` | Toggle staged/unstaged |
 | `b` or `Esc` | Back |
+
+### Settings View
+
+| Key | Action |
+|-----|--------|
+| `j` or `Down` | Next option |
+| `k` or `Up` | Previous option |
+| `Enter` | Edit option |
+| `s` | Save changes |
+| `Esc` | Cancel / Back |
 
 ## Environment Variables
 
@@ -222,7 +232,7 @@ stargazer review --resume <uuid>
 
 ## Configuration Files
 
-### User Config
+### AI Provider Config
 
 Location: `~/.config/stargazer/config.json`
 
@@ -235,69 +245,60 @@ Location: `~/.config/stargazer/config.json`
 }
 ```
 
-## API Endpoints
+### User Settings
 
-When the server is running, these endpoints are available:
+Location: `~/.config/stargazer/config.json` (settings field)
 
-### Health
+```json
+{
+  "theme": "auto",
+  "controlsMode": "keys",
+  "defaultLenses": ["correctness"],
+  "defaultProfile": null,
+  "severityThreshold": "medium"
+}
+```
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Health check |
+### Trusted Projects
 
-### Git
+Location: `~/.config/stargazer/trusted.json`
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/git/status` | GET | Git repository status |
-| `/git/diff` | GET | Git diff content |
+```json
+{
+  "projects": {
+    "project-id": {
+      "projectId": "project-id",
+      "repoRoot": "/path/to/repo",
+      "trustedAt": "2024-01-24T10:00:00.000Z",
+      "capabilities": {
+        "readFiles": true,
+        "readGit": true,
+        "runCommands": false
+      },
+      "trustMode": "persistent"
+    }
+  }
+}
+```
 
-### Triage
+## API Endpoints Summary
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/triage/stream` | GET | SSE triage stream |
-| `/triage/reviews` | GET | List triage reviews |
-| `/triage/reviews/:id` | GET | Get triage review |
-| `/triage/reviews/:id` | DELETE | Delete triage review |
-| `/triage/reviews/:id/drilldown` | POST | Deep analysis of issue |
+When the server is running, these endpoints are available. See [API Endpoints Reference](./api-endpoints.md) for full documentation.
 
-#### Triage Stream Query Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `staged` | boolean | Review staged changes (default: true) |
-| `lenses` | string | Comma-separated lens IDs |
-| `profile` | string | Profile ID |
-| `files` | string | Comma-separated file paths |
-
-### Review (Legacy)
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/review/stream` | GET | SSE review stream |
-| `/reviews` | GET | List review history |
-| `/reviews/:id` | GET | Get review details |
-
-### Sessions
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/sessions` | GET | List sessions |
-| `/sessions` | POST | Create session |
-| `/sessions/:id` | GET | Get session |
-| `/sessions/:id` | DELETE | Delete session |
-
-### Config
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/config` | GET | Get current config |
-| `/config` | POST | Save config |
-| `/config/check` | GET | Check if configured |
+| Route | Purpose |
+|-------|---------|
+| `/health` | Health check |
+| `/git` | Git operations (status, diff) |
+| `/config` | AI provider configuration |
+| `/settings` | User settings and trust |
+| `/sessions` | Session management |
+| `/reviews` | Review history (legacy) |
+| `/triage` | Triage operations |
+| `/review` | Review streaming (legacy) |
 
 ## Cross-References
 
 - [Apps: CLI](../apps/cli.md) - CLI implementation details
 - [Apps: Server](../apps/server.md) - Server API details
+- [Reference: API Endpoints](./api-endpoints.md) - Full API documentation
 - [Guides: Getting Started](../guides/getting-started.md) - Usage tutorial

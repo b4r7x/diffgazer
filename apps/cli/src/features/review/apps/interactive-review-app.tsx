@@ -123,10 +123,14 @@ export function InteractiveReviewApp({
   }, []);
 
   const isLoading = state.status === "loading";
+  const isReviewing = state.status === "loading";
   const result = state.status === "success" ? state.data : null;
   const lensProgress = state.status === "loading" || state.status === "success"
     ? state.lensProgress
     : undefined;
+  const agentEvents = state.status === "loading" || state.status === "success"
+    ? state.agentEvents
+    : [];
 
   if (screen === "detail" && selectedIssue) {
     return (
@@ -155,6 +159,8 @@ export function InteractiveReviewApp({
       onSelectIssue={handleSelectIssue}
       onBack={handleBack}
       onApplyFix={handleApplyFix}
+      agentEvents={agentEvents}
+      isReviewing={isReviewing}
     />
   );
 }

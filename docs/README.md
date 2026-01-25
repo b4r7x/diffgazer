@@ -29,8 +29,9 @@ stargazer review --profile strict
 | [Packages](./packages/) | Shared library documentation |
 | [Apps](./apps/) | CLI and server documentation |
 | [Features](./features/) | Feature implementation details |
+| [UI](./ui/) | CLI component library and screens |
 | [Guides](./guides/) | Tutorials and how-to guides |
-| [Reference](./reference/) | CLI commands, utilities API |
+| [Reference](./reference/) | CLI commands, API, utilities |
 
 ## Architecture Overview
 
@@ -44,15 +45,15 @@ stargazer/
 │   ├── schemas/        # Zod schemas (canonical types)
 │   │   ├── lens.ts     # Lens & profile schemas
 │   │   ├── triage.ts   # Triage result schemas
-│   │   └── ...
+│   │   ├── settings.ts # Settings & trust schemas
+│   │   └── session.ts  # Session event schemas
 │   └── api/            # API client for CLI-server communication
 └── apps/
     ├── cli/            # React Ink terminal UI
-    │   └── features/
-    │       └── review/ # Review feature (triage, drilldown)
+    │   ├── features/   # Feature modules
+    │   └── components/ # UI component library
     └── server/         # Hono HTTP server (localhost only)
-        └── services/
-            └── triage.ts # Triage service
+        └── api/routes/ # REST API endpoints
 ```
 
 ## Key Features
@@ -129,9 +130,10 @@ See [Features: AI Integration](./features/ai-integration.md) for details.
 ## Essential Commands
 
 ```bash
-npm run type-check    # TypeScript validation
-npm run build         # Build all packages
-npx vitest run        # Run tests
+npm run type-check           # TypeScript validation
+npm run build                # Build all packages
+npx vitest run               # Run unit tests
+./scripts/test-integration.sh # Run integration tests (requires chmod +x)
 ```
 
 ## CLI Commands
@@ -149,6 +151,33 @@ stargazer review --pick          # Interactive file picker
 ```
 
 See [Reference: CLI Commands](./reference/cli-commands.md) for full documentation.
+
+## Feature Documentation
+
+| Feature | Documentation |
+|---------|---------------|
+| Review Flow | [features/review-flow.md](./features/review-flow.md) |
+| Lenses | [features/lenses.md](./features/lenses.md) |
+| AI Integration | [features/ai-integration.md](./features/ai-integration.md) |
+| Settings | [features/settings.md](./features/settings.md) |
+| Sessions | [features/sessions.md](./features/sessions.md) |
+
+## UI Documentation
+
+| Topic | Documentation |
+|-------|---------------|
+| Components | [ui/components.md](./ui/components.md) |
+| Screens | [ui/screens.md](./ui/screens.md) |
+| Navigation | [ui/navigation.md](./ui/navigation.md) |
+
+## Reference Documentation
+
+| Topic | Documentation |
+|-------|---------------|
+| CLI Commands | [reference/cli-commands.md](./reference/cli-commands.md) |
+| API Endpoints | [reference/api-endpoints.md](./reference/api-endpoints.md) |
+| Testing | [reference/testing.md](./reference/testing.md) |
+| Utilities | [reference/utilities.md](./reference/utilities.md) |
 
 ## Related Documentation
 

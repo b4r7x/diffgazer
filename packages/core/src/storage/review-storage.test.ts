@@ -56,6 +56,18 @@ function createMockTriageResult(): TriageResult {
         recommendation: "Use prepared statements",
         suggested_patch: null,
         confidence: 0.95,
+        symptom: "User input concatenated into SQL query",
+        whyItMatters: "Could allow attackers to execute arbitrary SQL commands",
+        evidence: [
+          {
+            type: "code",
+            title: "Code at src/index.ts:10",
+            sourceId: "src/index.ts:10-10",
+            file: "src/index.ts",
+            range: { start: 10, end: 10 },
+            excerpt: "db.query('SELECT * FROM users WHERE id = ' + userId)",
+          },
+        ],
       },
       {
         id: "issue_2",
@@ -69,6 +81,18 @@ function createMockTriageResult(): TriageResult {
         recommendation: "Add validation",
         suggested_patch: null,
         confidence: 0.9,
+        symptom: "Variable accessed without null check",
+        whyItMatters: "Could cause runtime crash when value is undefined",
+        evidence: [
+          {
+            type: "code",
+            title: "Code at src/index.ts:20",
+            sourceId: "src/index.ts:20-20",
+            file: "src/index.ts",
+            range: { start: 20, end: 20 },
+            excerpt: "data.value.toString()",
+          },
+        ],
       },
     ],
   };

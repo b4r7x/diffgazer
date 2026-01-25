@@ -17,6 +17,9 @@ Lines Removed: {deletions}
 </code-diff>
 
 Provide a focused review for THIS FILE ONLY.
+
+IMPORTANT: Return ONLY raw JSON. Do NOT wrap in markdown code blocks. Do NOT include \`\`\`json or \`\`\` markers.
+
 Respond with JSON: { "summary": "...", "issues": [...], "score": 0-10 or null }
 Each issue: { "severity": "critical|warning|suggestion|nitpick", "category": "security|performance|style|logic|documentation|best-practice", "file": "{filePath}", "line": number or null, "title": "...", "description": "...", "suggestion": "fix or null" }`;
 
@@ -37,6 +40,9 @@ For EVERY file listed above, you MUST provide either:
 2. An explicit statement that no issues were found
 
 DO NOT skip any files. Consider cross-file implications.
+
+IMPORTANT: Return ONLY raw JSON. Do NOT wrap in markdown code blocks. Do NOT include \`\`\`json or \`\`\` markers.
+
 Respond with JSON: { "summary": "...", "issues": [...], "score": 0-10 or null }
 Issues MUST include the correct "file" path for each finding.
 Each issue: { "severity": "critical|warning|suggestion|nitpick", "category": "security|performance|style|logic|documentation|best-practice", "file": "path", "line": number or null, "title": "...", "description": "...", "suggestion": "fix or null" }`;

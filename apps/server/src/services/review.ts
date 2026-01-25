@@ -39,7 +39,10 @@ IMPORTANT SECURITY INSTRUCTIONS:
 </code-diff>
 
 Based on the code changes above, provide a structured code review.
-Respond with JSON only: { "summary": "...", "issues": [...], "overallScore": 0-10 }
+
+IMPORTANT: Respond with ONLY raw JSON. Do NOT wrap in markdown code blocks. Do NOT include \`\`\`json or \`\`\` markers.
+
+Return JSON: { "summary": "...", "issues": [...], "overallScore": 0-10 }
 Each issue: { "severity": "critical|warning|suggestion|nitpick", "category": "security|performance|style|logic|documentation|best-practice", "file": "path or null", "line": number or null, "title": "...", "description": "...", "suggestion": "fix or null" }`;
 
 const gitService = createGitService();
@@ -134,6 +137,40 @@ export async function reviewDiff(
   await aiClient.generateStream(prompt, wrappedCallbacks);
 }
 
+export function normalizeIssue(issue: unknown): unknown {
+  if (typeof issue !== "object" || issue === null) {
+    return issue;
+  }
+  const obj = issue as Record<string, unknown>;
+  return {
+    ...obj,
+    file: obj.file ?? null,
+    line: typeof obj.line === "number" ? obj.line : null,
+    suggestion: obj.suggestion ?? null,
+  };
+}
+
+export function normalizeReviewResponse(data: unknown): unknown {
+  if (typeof data !== "object" || data === null) {
+    return data;
+  }
+  const obj = data as Record<string, unknown>;
+
+  const overallScore = obj.overallScore;
+  let normalizedScore: number | null = null;
+  if (typeof overallScore === "number" && overallScore >= 0 && overallScore <= 10) {
+    normalizedScore = overallScore;
+  }
+
+  const issues = Array.isArray(obj.issues) ? obj.issues.map(normalizeIssue) : [];
+
+  return {
+    summary: typeof obj.summary === "string" ? obj.summary : "",
+    issues,
+    overallScore: normalizedScore,
+  };
+}
+
 function parseReviewContent(content: string): ReviewResult {
   const parseResult = safeParseJson(content, () => "invalid_json" as const);
 
@@ -142,7 +179,8 @@ function parseReviewContent(content: string): ReviewResult {
     return { summary: content, issues: [], overallScore: null };
   }
 
-  const validated = validateSchema(parseResult.value, ReviewResultSchema, (msg) => msg);
+  const normalized = normalizeReviewResponse(parseResult.value);
+  const validated = validateSchema(normalized, ReviewResultSchema, (msg) => msg);
   if (!validated.ok) {
     console.warn("AI response failed schema validation, using raw content as summary");
     return { summary: content, issues: [], overallScore: null };
