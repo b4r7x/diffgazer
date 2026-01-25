@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { initializeAIClient } from "../../lib/ai-client.js";
-import { errorResponse, jsonOk, zodErrorHandler } from "../../lib/response.js";
+import { errorResponse, zodErrorHandler } from "../../lib/response.js";
 import { parseDiff } from "@repo/core/diff";
 import { triageReview, getLenses, getProfile } from "@repo/core/review";
 import type { LensId, ProfileId } from "@repo/schemas/lens";
@@ -176,7 +176,7 @@ prReview.post("/", async (c) => {
     inlineComments,
   };
 
-  return jsonOk(c, response);
+  return c.json(response);
 });
 
 export { prReview };

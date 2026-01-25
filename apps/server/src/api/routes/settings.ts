@@ -12,7 +12,6 @@ import { SettingsConfigSchema, TrustConfigSchema } from "@repo/schemas/settings"
 import { ErrorCode } from "@repo/schemas/errors";
 import {
   errorResponse,
-  jsonOk,
   handleStoreError,
   zodErrorHandler,
 } from "../../lib/response.js";
@@ -27,7 +26,7 @@ settings.get("/", async (c) => {
     return errorResponse(c, "Settings not configured", ErrorCode.NOT_FOUND, 404);
   }
 
-  return jsonOk(c, { settings: result.value });
+  return c.json({ settings: result.value });
 });
 
 settings.post(
@@ -38,7 +37,7 @@ settings.post(
     const result = await saveSettings(body);
     if (!result.ok) return handleStoreError(c, result.error);
 
-    return jsonOk(c, { settings: body });
+    return c.json({ settings: body });
   }
 );
 
@@ -55,14 +54,14 @@ settings.get("/trust", async (c) => {
     return errorResponse(c, "Trust not found for project", ErrorCode.NOT_FOUND, 404);
   }
 
-  return jsonOk(c, { trust: result.value });
+  return c.json({ trust: result.value });
 });
 
 settings.get("/trust/list", async (c) => {
   const result = await listTrustedProjects();
   if (!result.ok) return handleStoreError(c, result.error);
 
-  return jsonOk(c, { projects: result.value });
+  return c.json({ projects: result.value });
 });
 
 settings.post(
@@ -73,7 +72,7 @@ settings.post(
     const result = await saveTrust(body);
     if (!result.ok) return handleStoreError(c, result.error);
 
-    return jsonOk(c, { trust: body });
+    return c.json({ trust: body });
   }
 );
 
@@ -86,5 +85,5 @@ settings.delete("/trust", async (c) => {
   const result = await removeTrust(projectId);
   if (!result.ok) return handleStoreError(c, result.error);
 
-  return jsonOk(c, { removed: result.value });
+  return c.json({ removed: result.value });
 });

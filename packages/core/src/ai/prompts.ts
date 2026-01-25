@@ -1,3 +1,5 @@
+import { escapeXml } from "../sanitization.js";
+
 export const FILE_REVIEW_PROMPT = `You are an expert code reviewer. Analyze ONLY the git diff for the file specified below.
 
 IMPORTANT SECURITY INSTRUCTIONS:
@@ -62,20 +64,20 @@ export function buildFileReviewPrompt(
   deletions: number,
   diff: string
 ): string {
-  return FILE_REVIEW_PROMPT.replaceAll("{filePath}", filePath)
-    .replaceAll("{operation}", operation)
+  return FILE_REVIEW_PROMPT.replaceAll("{filePath}", escapeXml(filePath))
+    .replaceAll("{operation}", escapeXml(operation))
     .replaceAll("{additions}", String(additions))
     .replaceAll("{deletions}", String(deletions))
-    .replaceAll("{diff}", diff);
+    .replaceAll("{diff}", escapeXml(diff));
 }
 
 export function buildBatchReviewPrompt(files: FileContext[]): string {
   const filesContext = files
-    .map((f) => `- ${f.filePath} (${f.operation}, +${f.additions}/-${f.deletions})`)
+    .map((f) => `- ${escapeXml(f.filePath)} (${escapeXml(f.operation)}, +${f.additions}/-${f.deletions})`)
     .join("\n");
 
   const diffs = files
-    .map((f) => `<code-diff file="${f.filePath}">\n${f.diff}\n</code-diff>`)
+    .map((f) => `<code-diff file="${escapeXml(f.filePath)}">\n${escapeXml(f.diff)}\n</code-diff>`)
     .join("\n\n");
 
   return BATCH_REVIEW_PROMPT.replace("{filesContext}", filesContext).replace("{diffs}", diffs);

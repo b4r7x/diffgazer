@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, type Mock } from "vitest";
 import type { Context } from "hono";
-import { handleStoreError, zodErrorHandler, errorResponse, jsonOk } from "./response.js";
+import { handleStoreError, zodErrorHandler, errorResponse } from "./response.js";
 import type { StoreError } from "@repo/core/storage";
 import { ErrorCode } from "@repo/schemas/errors";
 
@@ -234,56 +234,5 @@ describe("errorResponse", () => {
       },
       500
     );
-  });
-});
-
-describe("jsonOk", () => {
-  it("returns JSON response with data", () => {
-    const ctx = createMockContext();
-    const data = { id: "123", name: "Alice" };
-
-    jsonOk(ctx, data);
-
-    expect(ctx.json).toHaveBeenCalledWith(data);
-  });
-
-  it("handles array data", () => {
-    const ctx = createMockContext();
-    const data = [
-      { id: "1", name: "Alice" },
-      { id: "2", name: "Bob" },
-    ];
-
-    jsonOk(ctx, data);
-
-    expect(ctx.json).toHaveBeenCalledWith(data);
-  });
-
-  it("handles primitive data", () => {
-    const ctx = createMockContext();
-
-    jsonOk(ctx, "success");
-
-    expect(ctx.json).toHaveBeenCalledWith("success");
-  });
-
-  it("handles null data", () => {
-    const ctx = createMockContext();
-
-    jsonOk(ctx, null);
-
-    expect(ctx.json).toHaveBeenCalledWith(null);
-  });
-
-  it("handles nested objects", () => {
-    const ctx = createMockContext();
-    const data = {
-      user: { name: "Alice", metadata: { role: "admin" } },
-      sessions: [{ id: "1" }, { id: "2" }],
-    };
-
-    jsonOk(ctx, data);
-
-    expect(ctx.json).toHaveBeenCalledWith(data);
   });
 });

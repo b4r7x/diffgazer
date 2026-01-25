@@ -5,6 +5,7 @@ import Spinner from "ink-spinner";
 import type { AIProvider, GLMEndpoint, OpenRouterModel } from "@repo/schemas/config";
 import { AVAILABLE_PROVIDERS } from "@repo/schemas/config";
 import type { Theme, ControlsMode, TrustCapabilities, TrustConfig, SettingsConfig } from "@repo/schemas/settings";
+import { getEnvVarForProvider } from "@repo/core/ai";
 import { Card, SelectList, type SelectOption } from "../../components/ui/index.js";
 import { TrustStep } from "../../components/wizard/trust-step.js";
 import { ThemeStep } from "../../components/wizard/theme-step.js";
@@ -90,29 +91,6 @@ const SECTION_OPTIONS: SelectOption<SectionId>[] = [
     description: "Run system health checks",
   },
 ];
-
-const PROVIDER_ENV_VARS: Record<AIProvider, string> = {
-  gemini: "GEMINI_API_KEY",
-  openai: "OPENAI_API_KEY",
-  anthropic: "ANTHROPIC_API_KEY",
-  glm: "GLM_API_KEY",
-  openrouter: "OPENROUTER_API_KEY",
-};
-
-function getEnvVarForProvider(provider: AIProvider): { name: string; value: string | undefined } {
-  const primaryName = PROVIDER_ENV_VARS[provider];
-  const primaryValue = process.env[primaryName];
-
-  // GLM supports ZHIPU_API_KEY as fallback
-  if (provider === "glm" && !primaryValue) {
-    const fallbackValue = process.env["ZHIPU_API_KEY"];
-    if (fallbackValue) {
-      return { name: "ZHIPU_API_KEY", value: fallbackValue };
-    }
-  }
-
-  return { name: primaryName, value: primaryValue };
-}
 
 const DEFAULT_CAPABILITIES: TrustCapabilities = {
   readFiles: true,

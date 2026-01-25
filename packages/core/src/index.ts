@@ -2,10 +2,19 @@ export type { Result } from "./result.js";
 export { ok, err } from "./result.js";
 export type { AppError } from "./errors.js";
 export { createError, getErrorMessage, isNodeError, toError, isAbortError } from "./errors.js";
-export { createErrorClassifier } from "./utils/error-classifier.js";
+export {
+  createErrorClassifier,
+  createLazyLoader,
+  createErrorState,
+  UuidSchema,
+  isValidUuid,
+  assertValidUuid,
+  validateSchema,
+  parseAndValidate,
+  isRelativePath,
+  isValidProjectPath,
+} from "./utils/index.js";
 export { safeParseJson } from "./json.js";
-export { UuidSchema, isValidUuid, assertValidUuid, validateSchema, parseAndValidate, isRelativePath, isValidProjectPath } from "./utils/validation.js";
-export { createErrorState } from "./utils/state-helpers.js";
 export { sanitizeUnicode, escapeXml } from "./sanitization.js";
 export { formatRelativeTime, getScoreColor } from "./format.js";
 export {

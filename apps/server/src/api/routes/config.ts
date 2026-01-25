@@ -9,7 +9,7 @@ import {
   type ProviderStatus,
 } from "@repo/schemas/config";
 import { ErrorCode } from "@repo/schemas/errors";
-import { errorResponse, jsonOk, handleStoreError, zodErrorHandler } from "../../lib/response.js";
+import { errorResponse, handleStoreError, zodErrorHandler } from "../../lib/response.js";
 
 const config = new Hono();
 
@@ -17,17 +17,17 @@ config.get("/check", async (c) => {
   const configResult = await configStore.read();
 
   if (!configResult.ok) {
-    return jsonOk(c, { configured: false });
+    return c.json({ configured: false });
   }
 
   const storedConfig = configResult.value;
   const apiKeyResult = await getApiKey(storedConfig.provider);
 
   if (!apiKeyResult.ok || !apiKeyResult.value) {
-    return jsonOk(c, { configured: false });
+    return c.json({ configured: false });
   }
 
-  return jsonOk(c, {
+  return c.json({
     configured: true,
     config: {
       provider: storedConfig.provider,
@@ -43,7 +43,7 @@ config.get("/", async (c) => {
     return handleStoreError(c, configResult.error);
   }
 
-  return jsonOk(c, {
+  return c.json({
     provider: configResult.value.provider,
     model: configResult.value.model,
   });
@@ -82,7 +82,7 @@ config.post(
       return handleStoreError(c, writeResult.error);
     }
 
-    return jsonOk(c, {
+    return c.json({
       provider: body.provider,
       model: body.model,
     });
@@ -104,10 +104,10 @@ config.delete("/", async (c) => {
 
   const deleteKeyResult = await deleteApiKey(provider);
   if (!deleteKeyResult.ok) {
-    return jsonOk(c, { deleted: true, warning: "Config removed but API key deletion failed" });
+    return c.json({ deleted: true, warning: "Config removed but API key deletion failed" });
   }
 
-  return jsonOk(c, { deleted: true });
+  return c.json({ deleted: true });
 });
 
 config.delete("/provider/:providerId", async (c) => {
@@ -130,7 +130,7 @@ config.delete("/provider/:providerId", async (c) => {
     await configStore.remove();
   }
 
-  return jsonOk(c, { deleted: true, provider });
+  return c.json({ deleted: true, provider });
 });
 
 config.get("/providers", async (c) => {
@@ -153,7 +153,7 @@ config.get("/providers", async (c) => {
     })
   );
 
-  return jsonOk(c, { providers, activeProvider });
+  return c.json({ providers, activeProvider });
 });
 
 config.get("/openrouter/models", async (c) => {
@@ -164,7 +164,7 @@ config.get("/openrouter/models", async (c) => {
     return errorResponse(c, result.error.message, ErrorCode.INTERNAL_ERROR, 500);
   }
 
-  return jsonOk(c, { models: result.value });
+  return c.json({ models: result.value });
 });
 
 export { config };

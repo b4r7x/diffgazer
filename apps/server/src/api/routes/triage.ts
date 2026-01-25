@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { streamTriageToSSE } from "../../services/triage.js";
 import { initializeAIClient } from "../../lib/ai-client.js";
-import { errorResponse, jsonOk, handleStoreError } from "../../lib/response.js";
+import { errorResponse, handleStoreError } from "../../lib/response.js";
 import { requireUuidParam, validateProjectPath } from "../../lib/validation.js";
 import { writeSSEError } from "../../lib/sse-helpers.js";
 import {
@@ -60,7 +60,7 @@ triage.get("/reviews", async (c) => {
     return errorResponse(c, result.error.message, result.error.code, 500);
   }
 
-  return jsonOk(c, {
+  return c.json({
     reviews: result.value.items,
     warnings: result.value.warnings.length > 0 ? result.value.warnings : undefined,
   });
@@ -74,7 +74,7 @@ triage.get("/reviews/:id", async (c) => {
     return errorResponse(c, result.error.message, result.error.code, 404);
   }
 
-  return jsonOk(c, { review: result.value });
+  return c.json({ review: result.value });
 });
 
 triage.delete("/reviews/:id", async (c) => {
@@ -85,7 +85,7 @@ triage.delete("/reviews/:id", async (c) => {
     return errorResponse(c, result.error.message, result.error.code, 500);
   }
 
-  return jsonOk(c, { existed: result.value.existed });
+  return c.json({ existed: result.value.existed });
 });
 
 triage.post("/reviews/:id/drilldown", async (c) => {
@@ -124,7 +124,7 @@ triage.post("/reviews/:id/drilldown", async (c) => {
 
   await addDrilldownToReview(reviewId, drilldownResult.value);
 
-  return jsonOk(c, { drilldown: drilldownResult.value });
+  return c.json({ drilldown: drilldownResult.value });
 });
 
 export { triage };
