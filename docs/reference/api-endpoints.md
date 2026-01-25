@@ -19,8 +19,10 @@ Server binds to `127.0.0.1` only for security.
 | `/config` | AI provider configuration |
 | `/settings` | User settings and trust |
 | `/sessions` | Session management |
+| `/sessions/:id/chat` | Chat streaming |
 | `/reviews` | Review history (legacy) |
 | `/triage` | Triage operations |
+| `/pr-review` | PR review for CI integration |
 | `/review` | Review streaming (legacy) |
 
 ## Health
@@ -381,6 +383,31 @@ Delete session.
 }
 ```
 
+### POST /sessions/:id/chat
+
+Stream chat response for a session (SSE).
+
+**Request:**
+```json
+{
+  "message": "Why is this code vulnerable?"
+}
+```
+
+**Response:** Server-Sent Events
+
+Event types:
+```
+event: chunk
+data: {"content": "The code is vulnerable because..."}
+
+event: complete
+data: {"content": "...", "truncated": false}
+
+event: error
+data: {"code": "AI_ERROR", "message": "..."}
+```
+
 ## Triage
 
 ### GET /triage/stream
@@ -399,6 +426,27 @@ Stream a triage review (SSE).
 
 Event types:
 ```
+event: agent_start
+data: {"type": "agent_start", "agent": {...}, "timestamp": "..."}
+
+event: agent_thinking
+data: {"type": "agent_thinking", "agent": "detective", "thought": "...", "timestamp": "..."}
+
+event: tool_call
+data: {"type": "tool_call", "agent": "detective", "tool": "readFile", "input": "...", "timestamp": "..."}
+
+event: tool_result
+data: {"type": "tool_result", "agent": "detective", "tool": "readFile", "summary": "...", "timestamp": "..."}
+
+event: issue_found
+data: {"type": "issue_found", "agent": "detective", "issue": {...}, "timestamp": "..."}
+
+event: agent_complete
+data: {"type": "agent_complete", "agent": "detective", "issueCount": 3, "timestamp": "..."}
+
+event: orchestrator_complete
+data: {"type": "orchestrator_complete", "summary": "...", "totalIssues": 5, "timestamp": "..."}
+
 event: chunk
 data: {"content": "Analyzing..."}
 
@@ -483,6 +531,12 @@ Run drilldown analysis on an issue.
 **Response:** Server-Sent Events
 
 ```
+event: tool_call
+data: {"type": "tool_call", "agent": "detective", "tool": "readFileContext", "input": "...", "timestamp": "..."}
+
+event: tool_result
+data: {"type": "tool_result", "agent": "detective", "tool": "readFileContext", "summary": "...", "timestamp": "..."}
+
 event: chunk
 data: {"content": "Analyzing root cause..."}
 
@@ -492,6 +546,65 @@ data: {"result": {...}}
 event: error
 data: {"error": {...}}
 ```
+
+## PR Review
+
+### POST /pr-review
+
+Run a review on a PR diff for CI integration. Returns structured output suitable for GitHub annotations and inline comments.
+
+**Request:**
+```json
+{
+  "diff": "diff --git a/src/app.ts...",
+  "lenses": ["correctness", "security"],
+  "profile": "strict",
+  "baseRef": "main",
+  "headRef": "feature/new-feature"
+}
+```
+
+**Response:**
+```json
+{
+  "summary": "Found 3 issues: 1 high, 2 medium...",
+  "issues": [
+    {
+      "severity": "high",
+      "title": "SQL injection vulnerability",
+      "file": "src/db.ts",
+      "line": 42,
+      "message": "User input is not sanitized...",
+      "suggestion": "Use parameterized queries..."
+    }
+  ],
+  "annotations": [
+    {
+      "path": "src/db.ts",
+      "start_line": 42,
+      "end_line": 42,
+      "annotation_level": "failure",
+      "message": "User input is not sanitized...\n\nRecommendation: Use parameterized queries...",
+      "title": "[HIGH] SQL injection vulnerability"
+    }
+  ],
+  "inlineComments": [
+    {
+      "path": "src/db.ts",
+      "line": 42,
+      "side": "RIGHT",
+      "body": "**HIGH**: SQL injection vulnerability\n\n..."
+    }
+  ]
+}
+```
+
+**Annotation Levels:**
+| Severity | Annotation Level |
+|----------|------------------|
+| blocker, high | failure |
+| medium | warning |
+| low, nit | notice |
 
 ## Error Responses
 
@@ -512,11 +625,13 @@ All endpoints return errors in consistent format:
 |------|-------------|-------------|
 | `VALIDATION_ERROR` | 400 | Invalid request data |
 | `NOT_FOUND` | 404 | Resource not found |
+| `SESSION_NOT_FOUND` | 404 | Session does not exist |
 | `INTERNAL_ERROR` | 500 | Server error |
 | `RATE_LIMITED` | 429 | Too many requests |
 | `API_KEY_MISSING` | 401 | AI provider not configured |
 | `NO_DIFF` | 400 | No changes to review |
 | `AI_ERROR` | 500 | AI provider error |
+| `STREAM_ERROR` | 500 | SSE streaming error |
 
 ## CORS
 
