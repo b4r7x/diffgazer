@@ -14,3 +14,4 @@ export {
   buildFileReviewPrompt,
   buildBatchReviewPrompt,
 } from "./prompts.js";
+export { PROVIDER_ENV_VARS, getEnvVarForProvider } from "./provider-config.js";

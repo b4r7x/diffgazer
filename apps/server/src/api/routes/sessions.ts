@@ -14,7 +14,6 @@ import {
 import { ErrorCode } from "@repo/schemas/errors";
 import {
   errorResponse,
-  jsonOk,
   handleStoreError,
   zodErrorHandler,
 } from "../../lib/response.js";
@@ -27,7 +26,7 @@ sessions.get("/", async (c) => {
   const result = await listSessions(projectPath);
   if (!result.ok) return handleStoreError(c, result.error);
 
-  return jsonOk(c, {
+  return c.json({
     sessions: result.value.items,
     warnings: result.value.warnings.length > 0 ? result.value.warnings : undefined,
   });
@@ -41,7 +40,7 @@ sessions.get("/last", async (c) => {
   if (!result.ok) return handleStoreError(c, result.error);
   if (!result.value) return errorResponse(c, "No sessions found", ErrorCode.NOT_FOUND, 404);
 
-  return jsonOk(c, { session: result.value });
+  return c.json({ session: result.value });
 });
 
 sessions.get("/:id", async (c) => {
@@ -49,7 +48,7 @@ sessions.get("/:id", async (c) => {
   const result = await sessionStore.read(sessionId);
   if (!result.ok) return handleStoreError(c, result.error);
 
-  return jsonOk(c, { session: result.value });
+  return c.json({ session: result.value });
 });
 
 sessions.post(
@@ -60,7 +59,7 @@ sessions.post(
     const result = await createSession(body.projectPath, body.title);
     if (!result.ok) return handleStoreError(c, result.error);
 
-    return jsonOk(c, { session: result.value });
+    return c.json({ session: result.value });
   }
 );
 
@@ -73,7 +72,7 @@ sessions.post(
     const result = await addMessage(sessionId, body.role, body.content);
     if (!result.ok) return handleStoreError(c, result.error);
 
-    return jsonOk(c, { message: result.value });
+    return c.json({ message: result.value });
   }
 );
 
@@ -82,5 +81,5 @@ sessions.delete("/:id", async (c) => {
   const result = await sessionStore.remove(sessionId);
   if (!result.ok) return handleStoreError(c, result.error);
 
-  return jsonOk(c, { existed: result.value.existed });
+  return c.json({ existed: result.value.existed });
 });
