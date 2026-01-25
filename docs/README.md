@@ -46,7 +46,10 @@ stargazer/
 │   │   ├── lens.ts     # Lens & profile schemas
 │   │   ├── triage.ts   # Triage result schemas
 │   │   ├── settings.ts # Settings & trust schemas
-│   │   └── session.ts  # Session event schemas
+│   │   ├── session.ts  # Session event schemas
+│   │   ├── agent-event.ts # Agent streaming events
+│   │   ├── chat.ts     # Chat streaming schemas
+│   │   └── feedback.ts # Feedback command schemas
 │   └── api/            # API client for CLI-server communication
 └── apps/
     ├── cli/            # React Ink terminal UI
@@ -81,6 +84,18 @@ Preset lens combinations:
 | `perf` | correctness, performance | Performance-sensitive code |
 | `security` | security, correctness | Security-sensitive code |
 
+### Agent System
+
+Each lens maps to a named agent for UI display:
+
+| Agent | Lens | Description |
+|-------|------|-------------|
+| Detective | correctness | Finds bugs and logic errors |
+| Guardian | security | Identifies security vulnerabilities |
+| Optimizer | performance | Spots performance bottlenecks |
+| Simplifier | simplicity | Reduces complexity |
+| Tester | tests | Evaluates test coverage |
+
 ### Drilldown
 
 Deep analysis of specific issues with:
@@ -88,6 +103,20 @@ Deep analysis of specific issues with:
 - Impact assessment
 - Step-by-step fix guidance
 - Suggested patches
+
+### Chat
+
+Discuss review findings with AI:
+- Ask clarifying questions
+- Get implementation guidance
+- Explore alternative solutions
+
+### PR Review (CI Integration)
+
+Headless review endpoint for CI pipelines:
+- GitHub annotations output
+- Inline comment format
+- Severity-mapped annotation levels
 
 ## Key Concepts
 
