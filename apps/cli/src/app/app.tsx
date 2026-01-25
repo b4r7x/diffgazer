@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { createHash } from "node:crypto";
 import { Box, Text } from "ink";
 import { OnboardingScreen } from "./screens/onboarding-screen.js";
+import { TrustWizardScreen } from "./screens/trust-wizard-screen.js";
 import { useNavigation, useAppInit, useScreenHandlers, useAppState } from "../features/app/index.js";
 import {
   LoadingView,
@@ -12,9 +14,14 @@ import {
   SessionsView,
   ReviewHistoryView,
 } from "./views/index.js";
+import { ThemeProvider, useSettings, SessionRecorderProvider, useSessionRecorderContext, KeyModeProvider } from "../hooks/index.js";
 import type { SessionMode } from "../types/index.js";
 
 export type { SessionMode };
+
+function createProjectId(path: string): string {
+  return createHash("sha256").update(path).digest("hex").slice(0, 16);
+}
 
 interface AppProps {
   address: string;
@@ -22,69 +29,162 @@ interface AppProps {
   sessionId?: string;
 }
 
-export function App({ address, sessionMode = "new", sessionId }: AppProps): React.ReactElement {
+interface AppContentProps {
+  address: string;
+  sessionMode: SessionMode;
+  sessionId?: string;
+  projectId: string;
+  repoRoot: string;
+}
+
+function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: AppContentProps): React.ReactElement {
   const state = useAppState();
   const { view, setView, diffState, reviewState } = useNavigation(state.navigationActions);
+  const localSettings = useSettings();
+  const { recordEvent } = useSessionRecorderContext();
+
+  useEffect(() => {
+    localSettings.loadSettings();
+  }, []);
+
+  useEffect(() => {
+    if (view === "main") {
+      void state.config.loadSettings();
+      void state.trust.loadTrust(projectId);
+      void state.reviewHistory.loadList();
+    }
+  }, [view, projectId]);
 
   useAppInit({
     config: state.initConfig,
+    trust: {
+      checkTrust: state.trust.checkTrust,
+      loadState: state.trust.loadState,
+      saveState: state.trust.saveState,
+    },
+    projectId,
     sessionMode,
     sessionId,
     sessionActions: state.sessionActions,
     setView,
   });
 
-  const handlers = useScreenHandlers(state.screenHandlerConfig(setView));
+  const handlers = useScreenHandlers({
+    ...state.screenHandlerConfig(setView, projectId, repoRoot, localSettings),
+    recordEvent,
+  });
 
-  if (view === "loading") return <LoadingView />;
+  const theme = localSettings.settings?.theme ?? "auto";
+
+  if (view === "loading") {
+    return (
+      <ThemeProvider theme={theme}>
+        <LoadingView />
+      </ThemeProvider>
+    );
+  }
+
+  if (view === "trust-wizard") {
+    return (
+      <ThemeProvider theme={theme}>
+        <TrustWizardScreen
+          projectId={projectId}
+          repoRoot={repoRoot}
+          onComplete={(trustConfig) => {
+            void state.trust.saveTrust(trustConfig);
+          }}
+        />
+      </ThemeProvider>
+    );
+  }
+
   if (view === "onboarding") {
-    return <OnboardingScreen saveState={state.config.saveState} error={state.config.error} onSave={handlers.config.onSave} />;
+    return (
+      <ThemeProvider theme={theme}>
+        <OnboardingScreen
+          saveState={state.config.saveState}
+          error={state.config.error}
+          onSave={handlers.config.onSave}
+        />
+      </ThemeProvider>
+    );
   }
 
   return (
-    <Box flexDirection="column" padding={1}>
-      <Text bold color="cyan">Stargazer</Text>
-      <Text>Server: <Text color="blue">{address}</Text></Text>
-      <Text color="green">Running</Text>
+    <ThemeProvider theme={theme}>
+      <Box flexDirection="column" padding={1}>
+        {view !== "main" && (
+          <>
+            <Text bold color="cyan">Stargazer</Text>
+            <Text>Server: <Text color="blue">{address}</Text></Text>
+            <Text color="green">Running</Text>
+          </>
+        )}
 
-      {view === "main" && <MainMenuView />}
-      {view === "git-status" && <GitStatusView state={state.gitStatus.state} />}
-      {view === "git-diff" && <GitDiffView state={state.gitDiff.state} staged={diffState.staged} />}
-      {view === "review" && <ReviewView state={state.review.state} staged={reviewState.staged} />}
-      {view === "settings" && (
-        <SettingsView
-          provider={state.config.currentConfig?.provider ?? "Unknown"}
-          model={state.config.currentConfig?.model}
-          settingsState={state.config.settingsState}
-          deleteState={state.config.deleteState}
-          error={state.config.error}
-          onDelete={handlers.config.onDelete}
-          onBack={handlers.config.onBack}
+        {view === "main" && (
+          <MainMenuView
+            provider={state.config.currentConfig?.provider ?? "Not configured"}
+            model={state.config.currentConfig?.model}
+            isTrusted={Boolean(state.trust.trustConfig)}
+            lastReviewAt={state.reviewHistory.items[0]?.createdAt ?? null}
+            hasLastReview={state.reviewHistory.items.length > 0}
+            onSelect={handlers.menu.onSelect}
+          />
+        )}
+        {view === "git-status" && <GitStatusView state={state.gitStatus.state} />}
+        {view === "git-diff" && <GitDiffView state={state.gitDiff.state} staged={diffState.staged} />}
+        {view === "review" && <ReviewView state={state.review.state} staged={reviewState.staged} agentEvents={state.review.agentEvents} />}
+        {view === "settings" && (
+          <SettingsView
+            projectId={projectId}
+            repoRoot={repoRoot}
+            onBack={handlers.config.onBack}
+            onDeleteProvider={handlers.config.onDeleteProvider}
+          />
+        )}
+        {view === "sessions" && (
+          <SessionsView
+            sessions={state.sessionList.items}
+            listState={state.sessionList.listState}
+            error={state.activeSession.error || state.sessionList.error}
+            onSelect={handlers.sessions.onSelect}
+            onDelete={handlers.sessions.onDelete}
+            onBack={handlers.sessions.onBack}
+            onNewSession={handlers.sessions.onNewSession}
+          />
+        )}
+        {view === "review-history" && (
+          <ReviewHistoryView
+            reviews={state.reviewHistory.items}
+            currentReview={state.reviewHistory.current}
+            listState={state.reviewHistory.listState}
+            error={state.reviewHistory.error}
+            onSelect={handlers.reviewHistory.onSelect}
+            onDelete={handlers.reviewHistory.onDelete}
+            onBack={handlers.reviewHistory.onBack}
+            onClearCurrent={handlers.reviewHistory.onClearCurrent}
+          />
+        )}
+      </Box>
+    </ThemeProvider>
+  );
+}
+
+export function App({ address, sessionMode = "new", sessionId }: AppProps): React.ReactElement {
+  const repoRoot = process.cwd();
+  const projectId = createProjectId(repoRoot);
+
+  return (
+    <SessionRecorderProvider projectId={projectId}>
+      <KeyModeProvider>
+        <AppContent
+          address={address}
+          sessionMode={sessionMode}
+          sessionId={sessionId}
+          projectId={projectId}
+          repoRoot={repoRoot}
         />
-      )}
-      {view === "sessions" && (
-        <SessionsView
-          sessions={state.sessionList.items}
-          listState={state.sessionList.listState}
-          error={state.activeSession.error || state.sessionList.error}
-          onSelect={handlers.sessions.onSelect}
-          onDelete={handlers.sessions.onDelete}
-          onBack={handlers.sessions.onBack}
-          onNewSession={handlers.sessions.onNewSession}
-        />
-      )}
-      {view === "review-history" && (
-        <ReviewHistoryView
-          reviews={state.reviewHistory.items}
-          currentReview={state.reviewHistory.current}
-          listState={state.reviewHistory.listState}
-          error={state.reviewHistory.error}
-          onSelect={handlers.reviewHistory.onSelect}
-          onDelete={handlers.reviewHistory.onDelete}
-          onBack={handlers.reviewHistory.onBack}
-          onClearCurrent={handlers.reviewHistory.onClearCurrent}
-        />
-      )}
-    </Box>
+      </KeyModeProvider>
+    </SessionRecorderProvider>
   );
 }

@@ -226,25 +226,119 @@ for (const file of parsed.files) {
 
 ### @repo/core/storage
 
-Persistence layer for sessions, reviews, and config.
+Persistence layer for sessions, reviews, settings, and config.
 
 ```typescript
 import {
+  // Sessions
   createSession,
   loadSession,
   listSessions,
-  saveReview,
-  loadReviewHistory,
+  // Triage reviews
+  saveTriageReview,
+  listTriageReviews,
+  getTriageReview,
+  deleteTriageReview,
+  addDrilldownToReview,
+  // Settings
+  saveSettings,
+  loadSettings,
+  // Trust
+  saveTrust,
+  loadTrust,
+  listTrustedProjects,
+  removeTrust,
+  // Session events
+  createEventSession,
+  appendEvent,
+  loadEvents,
+  listEventSessions,
+  // Config
+  configStore,
 } from "@repo/core/storage";
+```
 
-// Session operations
+#### Session Operations
+
+```typescript
+// Create session
 const session = createSession(projectPath);
 const sessions = await listSessions();
 const loaded = await loadSession(sessionId);
+```
 
-// Review history (project-local in .stargazer/)
-await saveReview(projectPath, staged, reviewResult, { branch, fileCount });
-const history = await loadReviewHistory(projectPath);
+#### Triage Review Operations
+
+```typescript
+// Save triage review
+await saveTriageReview({
+  projectPath,
+  staged: true,
+  result: triageResult,
+  diff: parsedDiff,
+  branch: "feature/review",
+  commit: "abc123",
+  lenses: ["correctness", "security"],
+});
+
+// List reviews
+const { items, warnings } = await listTriageReviews(projectPath);
+
+// Get specific review
+const review = await getTriageReview(reviewId);
+
+// Delete review
+await deleteTriageReview(reviewId);
+
+// Add drilldown
+await addDrilldownToReview(reviewId, drilldownResult);
+```
+
+#### Settings Operations
+
+```typescript
+// Load/save settings
+const settings = await loadSettings();
+await saveSettings({
+  theme: "dark",
+  controlsMode: "keys",
+  defaultLenses: ["correctness"],
+  defaultProfile: null,
+  severityThreshold: "medium",
+});
+```
+
+#### Trust Operations
+
+```typescript
+// Manage project trust
+await saveTrust({
+  projectId: "abc123",
+  repoRoot: "/path/to/repo",
+  trustedAt: new Date().toISOString(),
+  capabilities: { readFiles: true, readGit: true, runCommands: false },
+  trustMode: "persistent",
+});
+
+const trust = await loadTrust(projectId);
+const allTrusted = await listTrustedProjects();
+await removeTrust(projectId);
+```
+
+#### Session Events
+
+```typescript
+// Create session and track events
+const sessionId = await createEventSession(projectId);
+
+await appendEvent(projectId, sessionId, {
+  ts: Date.now(),
+  type: "NAVIGATE",
+  payload: { from: "main", to: "review" },
+});
+
+const events = await loadEvents(projectId, sessionId);
+const sessions = await listEventSessions(projectId);
 ```
 
 ### @repo/core/secrets
@@ -252,13 +346,53 @@ const history = await loadReviewHistory(projectPath);
 Keyring integration for API keys.
 
 ```typescript
-import { getSecret, setSecret, deleteSecret } from "@repo/core/secrets";
+import { getApiKey, setApiKey, deleteApiKey } from "@repo/core/secrets";
 
 // Get API key from keyring (or encrypted file fallback)
-const apiKey = await getSecret("gemini-api-key");
+const apiKey = await getApiKey("gemini");
 
 // Store API key
-await setSecret("gemini-api-key", "sk-...");
+await setApiKey("gemini", "sk-...");
+
+// Delete API key
+await deleteApiKey("gemini");
+```
+
+### @repo/core/review
+
+Review logic including lenses, profiles, and fingerprinting.
+
+```typescript
+import {
+  // Triage
+  triageReview,
+  triageWithProfile,
+  // Drilldown
+  drilldownIssue,
+  drilldownIssueById,
+  // Lenses & profiles
+  getLens,
+  getLenses,
+  getProfile,
+  LENSES,
+  PROFILES,
+  // Fingerprinting
+  generateFingerprint,
+  mergeIssues,
+  normalizeTitle,
+} from "@repo/core/review";
+```
+
+#### Fingerprinting
+
+Deduplicate issues across multiple lens runs:
+
+```typescript
+// Generate fingerprint for an issue
+const fingerprint = generateFingerprint(issue, diffHunk);
+
+// Merge issues (keeps highest severity/confidence)
+const deduplicated = mergeIssues([...issuesFromLens1, ...issuesFromLens2]);
 ```
 
 ## Type Locations
@@ -270,9 +404,13 @@ await setSecret("gemini-api-key", "sk-...");
 | `AIClient` | `@repo/core/ai/types` |
 | `AIError` | `@repo/core/ai/errors` |
 | `FileDiff` | `@repo/core/diff/types` |
+| `StoreError` | `@repo/core/storage` |
+| `SessionEventError` | `@repo/core/storage` |
 
 ## Cross-References
 
 - [Packages: Schemas](./schemas.md) - Zod schemas used by core
 - [Architecture: Data Flow](../architecture/data-flow.md) - How data flows
 - [Features: AI Integration](../features/ai-integration.md) - AI client usage
+- [Features: Settings](../features/settings.md) - Settings storage
+- [Features: Sessions](../features/sessions.md) - Session events

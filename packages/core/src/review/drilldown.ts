@@ -6,8 +6,13 @@ import type { AIError } from "../ai/errors.js";
 import type { ParsedDiff } from "../diff/types.js";
 import type { TriageIssue, TriageResult } from "@repo/schemas/triage";
 import type { DrilldownResult } from "@repo/schemas/lens";
-import { DrilldownResultSchema } from "@repo/schemas/lens";
+import type { AgentStreamEvent } from "@repo/schemas/agent-event";
 import { escapeXml } from "../sanitization.js";
+import { TraceRecorder } from "./trace-recorder.js";
+
+function now(): string {
+  return new Date().toISOString();
+}
 
 export type DrilldownError = AIError | { code: "ISSUE_NOT_FOUND"; message: string };
 
@@ -86,23 +91,62 @@ Provide a deep analysis of this issue:
 Respond with JSON matching this schema.`;
 }
 
+export interface DrilldownOptions {
+  traceRecorder?: TraceRecorder;
+  onEvent?: (event: AgentStreamEvent) => void;
+}
+
 export async function drilldownIssue(
   client: AIClient,
   issue: TriageIssue,
   diff: ParsedDiff,
-  allIssues: TriageIssue[] = []
+  allIssues: TriageIssue[] = [],
+  options?: DrilldownOptions
 ): Promise<Result<DrilldownResult, DrilldownError>> {
+  const recorder = options?.traceRecorder ?? new TraceRecorder();
+  const onEvent = options?.onEvent ?? (() => {});
+
+  const targetFile = diff.files.find((f) => f.filePath === issue.file);
+  if (targetFile) {
+    const lineCount = targetFile.rawDiff.split("\n").length;
+    const startLine = issue.line_start ?? targetFile.hunks[0]?.newStart ?? 1;
+    const endLine = issue.line_end ?? startLine;
+
+    onEvent({
+      type: "tool_call",
+      agent: "detective",
+      tool: "readFileContext",
+      input: `${targetFile.filePath}:${startLine}-${endLine}`,
+      timestamp: now(),
+    });
+
+    onEvent({
+      type: "tool_result",
+      agent: "detective",
+      tool: "readFileContext",
+      summary: `Read ${lineCount} lines from ${targetFile.filePath}`,
+      timestamp: now(),
+    });
+  }
+
   const prompt = buildDrilldownPrompt(issue, diff, allIssues);
-  const result = await client.generate(prompt, DrilldownResponseSchema);
+
+  const result = await recorder.wrap(
+    "generateAnalysis",
+    `issue analysis: ${issue.id} - ${issue.title}`,
+    () => client.generate(prompt, DrilldownResponseSchema)
+  );
 
   if (!result.ok) {
     return result;
   }
 
+  const trace = recorder.getTrace();
   const drilldownResult: DrilldownResult = {
     issueId: issue.id,
     issue,
     ...result.value,
+    ...(trace.length > 0 ? { trace } : {}),
   };
 
   return ok(drilldownResult);
@@ -112,7 +156,8 @@ export async function drilldownIssueById(
   client: AIClient,
   issueId: string,
   triageResult: TriageResult,
-  diff: ParsedDiff
+  diff: ParsedDiff,
+  options?: DrilldownOptions
 ): Promise<Result<DrilldownResult, DrilldownError>> {
   const issue = triageResult.issues.find((i) => i.id === issueId);
 
@@ -120,19 +165,20 @@ export async function drilldownIssueById(
     return err({ code: "ISSUE_NOT_FOUND", message: `Issue with ID "${issueId}" not found` });
   }
 
-  return drilldownIssue(client, issue, diff, triageResult.issues);
+  return drilldownIssue(client, issue, diff, triageResult.issues, options);
 }
 
 export async function drilldownMultiple(
   client: AIClient,
   issues: TriageIssue[],
   diff: ParsedDiff,
-  allIssues: TriageIssue[] = []
+  allIssues: TriageIssue[] = [],
+  options?: DrilldownOptions
 ): Promise<Result<DrilldownResult[], DrilldownError>> {
   const results: DrilldownResult[] = [];
 
   for (const issue of issues) {
-    const result = await drilldownIssue(client, issue, diff, allIssues);
+    const result = await drilldownIssue(client, issue, diff, allIssues, options);
     if (!result.ok) {
       return result;
     }

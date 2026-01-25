@@ -6,7 +6,7 @@ import {
   type SharedErrorCode,
 } from "./errors.js";
 
-export const AI_PROVIDERS = ["gemini", "openai", "anthropic"] as const;
+export const AI_PROVIDERS = ["gemini", "openai", "anthropic", "glm", "openrouter"] as const;
 export const AIProviderSchema = z.enum(AI_PROVIDERS);
 export type AIProvider = z.infer<typeof AIProviderSchema>;
 
@@ -147,6 +147,50 @@ export const ANTHROPIC_MODEL_INFO: Record<AnthropicModel, ModelInfo> = {
   },
 };
 
+export const GLM_MODELS = ["glm-4.7", "glm-4.6"] as const;
+export type GLMModel = (typeof GLM_MODELS)[number];
+
+export const GLM_MODEL_INFO: Record<GLMModel, ModelInfo> = {
+  "glm-4.7": {
+    id: "glm-4.7",
+    name: "GLM-4.7",
+    description: "Latest GLM with 200K context, excellent for coding",
+    tier: "paid",
+    recommended: true,
+  },
+  "glm-4.6": {
+    id: "glm-4.6",
+    name: "GLM-4.6",
+    description: "Previous generation GLM model",
+    tier: "paid",
+    recommended: false,
+  },
+};
+
+export const GLM_ENDPOINTS = ["coding", "standard"] as const;
+export type GLMEndpoint = (typeof GLM_ENDPOINTS)[number];
+
+export const OpenRouterModelSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  contextLength: z.number(),
+  pricing: z.object({
+    prompt: z.string(),
+    completion: z.string(),
+  }),
+  isFree: z.boolean(),
+});
+
+export type OpenRouterModel = z.infer<typeof OpenRouterModelSchema>;
+
+export const OpenRouterModelCacheSchema = z.object({
+  models: z.array(OpenRouterModelSchema),
+  fetchedAt: z.string().datetime(),
+});
+
+export type OpenRouterModelCache = z.infer<typeof OpenRouterModelCacheSchema>;
+
 export const ProviderInfoSchema = z.object({
   id: AIProviderSchema,
   name: z.string(),
@@ -174,6 +218,18 @@ export const AVAILABLE_PROVIDERS: ProviderInfo[] = [
     defaultModel: "claude-sonnet-4-20250514",
     models: [...ANTHROPIC_MODELS],
   },
+  {
+    id: "glm",
+    name: "GLM (Z.ai)",
+    defaultModel: "glm-4.7",
+    models: [...GLM_MODELS],
+  },
+  {
+    id: "openrouter",
+    name: "OpenRouter",
+    defaultModel: "",
+    models: [],
+  },
 ];
 
 function isValidModelForProvider(provider: AIProvider, model: string): boolean {
@@ -184,6 +240,10 @@ function isValidModelForProvider(provider: AIProvider, model: string): boolean {
       return OPENAI_MODELS.includes(model as OpenAIModel);
     case "anthropic":
       return ANTHROPIC_MODELS.includes(model as AnthropicModel);
+    case "glm":
+      return GLM_MODELS.includes(model as GLMModel);
+    case "openrouter":
+      return true; // Dynamic models, validated elsewhere
     default:
       return true;
   }
@@ -193,6 +253,7 @@ export const UserConfigSchema = z
   .object({
     provider: AIProviderSchema,
     model: z.string().optional(),
+    glmEndpoint: z.enum(GLM_ENDPOINTS).optional(),
     ...timestampFields,
   })
   .refine((data) => !data.model || isValidModelForProvider(data.provider, data.model), {
@@ -223,6 +284,7 @@ export const SaveConfigRequestSchema = z.object({
   provider: AIProviderSchema,
   apiKey: z.string().min(1),
   model: z.string().optional(),
+  glmEndpoint: z.enum(GLM_ENDPOINTS).optional(),
 });
 export type SaveConfigRequest = z.infer<typeof SaveConfigRequestSchema>;
 
@@ -246,5 +308,26 @@ export type CurrentConfigResponse = z.infer<typeof CurrentConfigResponseSchema>;
 
 export const DeleteConfigResponseSchema = z.object({
   deleted: z.boolean(),
+  warning: z.string().optional(),
 });
 export type DeleteConfigResponse = z.infer<typeof DeleteConfigResponseSchema>;
+
+export const DeleteProviderCredentialsResponseSchema = z.object({
+  deleted: z.boolean(),
+  provider: AIProviderSchema,
+});
+export type DeleteProviderCredentialsResponse = z.infer<typeof DeleteProviderCredentialsResponseSchema>;
+
+export const ProviderStatusSchema = z.object({
+  provider: AIProviderSchema,
+  hasApiKey: z.boolean(),
+  model: z.string().optional(),
+  isActive: z.boolean(),
+});
+export type ProviderStatus = z.infer<typeof ProviderStatusSchema>;
+
+export const ProvidersStatusResponseSchema = z.object({
+  providers: z.array(ProviderStatusSchema),
+  activeProvider: AIProviderSchema.optional(),
+});
+export type ProvidersStatusResponse = z.infer<typeof ProvidersStatusResponseSchema>;

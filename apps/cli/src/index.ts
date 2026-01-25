@@ -43,6 +43,8 @@ program
   .option("-l, --list", "List review history")
   .option("-r, --resume <id>", "Resume a saved review by ID")
   .option("--pick", "Pick files to review interactively")
+  .option("--pr", "PR review mode (non-interactive, for CI)")
+  .option("-o, --output <file>", "Output file for annotations (default: annotations.json)")
   .action(reviewCommand);
 
 await program.parseAsync();

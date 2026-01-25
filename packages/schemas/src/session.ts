@@ -44,3 +44,24 @@ export const AddMessageRequestSchema = z.object({
   content: z.string(),
 });
 export type AddMessageRequest = z.infer<typeof AddMessageRequestSchema>;
+
+export const SESSION_EVENT_TYPES = [
+  "NAVIGATE",
+  "OPEN_ISSUE",
+  "TOGGLE_VIEW",
+  "APPLY_PATCH",
+  "IGNORE_ISSUE",
+  "FILTER_CHANGED",
+  "RUN_CREATED",
+  "RUN_RESUMED",
+  "SETTINGS_CHANGED",
+] as const;
+export const SessionEventTypeSchema = z.enum(SESSION_EVENT_TYPES);
+export type SessionEventType = z.infer<typeof SessionEventTypeSchema>;
+
+export const SessionEventSchema = z.object({
+  ts: z.number(),
+  type: SessionEventTypeSchema,
+  payload: z.unknown(),
+});
+export type SessionEvent = z.infer<typeof SessionEventSchema>;

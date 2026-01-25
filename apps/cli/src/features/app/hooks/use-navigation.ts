@@ -1,8 +1,10 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useInput, useApp } from "ink";
+import { useSessionRecorderContext } from "../../../hooks/index.js";
 
 export type View =
   | "loading"
+  | "trust-wizard"
   | "onboarding"
   | "main"
   | "git-status"
@@ -67,7 +69,7 @@ type InputKey = { escape: boolean };
 type InputHandler = (input: string, key: InputKey) => void;
 type KeyActionMap = Record<string, () => void>;
 
-const PASSIVE_VIEWS: ReadonlySet<View> = new Set<View>(["loading", "onboarding", "sessions"]);
+const PASSIVE_VIEWS: ReadonlySet<View> = new Set<View>(["loading", "trust-wizard", "onboarding", "sessions", "main"]);
 
 function createKeyHandler(keyActions: KeyActionMap): InputHandler {
   return (input: string) => {
@@ -96,6 +98,19 @@ export function useNavigation(actions: ViewActions): UseNavigationResult {
   const [diffStaged, setDiffStaged] = useState(false);
   const [reviewStaged, setReviewStaged] = useState(true);
 
+  const recorderContext = useSessionRecorderContext();
+  const prevViewRef = useRef<View>(view);
+
+  useEffect(() => {
+    if (prevViewRef.current !== view && view !== "loading") {
+      recorderContext.recordEvent("NAVIGATE", {
+        from: prevViewRef.current,
+        to: view,
+      });
+    }
+    prevViewRef.current = view;
+  }, [view, recorderContext]);
+
   const handleMainInput = useCallback<InputHandler>(
     (input) => {
       const mainKeyActions: KeyActionMap = {
@@ -111,6 +126,10 @@ export function useNavigation(actions: ViewActions): UseNavigationResult {
         r: () => {
           setView("review");
           setReviewStaged(true);
+          recorderContext.recordEvent("RUN_CREATED", {
+            staged: true,
+            startedAt: new Date().toISOString(),
+          });
           void actions.review.startReview(true);
         },
         S: () => {
@@ -240,7 +259,7 @@ export function useNavigation(actions: ViewActions): UseNavigationResult {
   );
 
   useInput((input, key) => {
-    if (input === "q" && view !== "loading") {
+    if (input === "q" && view !== "loading" && view !== "main") {
       exit();
       return;
     }

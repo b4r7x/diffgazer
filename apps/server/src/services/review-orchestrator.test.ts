@@ -67,6 +67,14 @@ describe("parseFileReviewResult behavior expectations", () => {
           score: null,
         }),
       },
+      {
+        name: "markdown wrapped JSON with json tag",
+        input: "```json\n{\"summary\": \"test\", \"issues\": [], \"score\": 8}\n```",
+      },
+      {
+        name: "markdown wrapped JSON without language tag",
+        input: "```\n{\"summary\": \"test\", \"issues\": [], \"score\": 8}\n```",
+      },
     ];
 
     it.each(validResponses)("should parse $name without error", ({ input }) => {
@@ -116,10 +124,6 @@ describe("parseFileReviewResult behavior expectations", () => {
       {
         name: "score is string instead of number",
         input: JSON.stringify({ summary: "test", issues: [], score: "8" }),
-      },
-      {
-        name: "markdown wrapped JSON",
-        input: "```json\n{\"summary\": \"test\", \"issues\": [], \"score\": 8}\n```",
       },
       {
         name: "AI explanation before JSON",

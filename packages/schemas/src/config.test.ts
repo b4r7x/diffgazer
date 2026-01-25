@@ -2,6 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   GEMINI_MODELS,
   GeminiModelSchema,
+  GLM_MODELS,
+  GLM_ENDPOINTS,
+  OpenRouterModelSchema,
+  OpenRouterModelCacheSchema,
   AIProviderSchema,
   ModelInfoSchema,
   ProviderInfoSchema,
@@ -15,7 +19,7 @@ import {
 } from "./config.js";
 
 describe("AIProviderSchema", () => {
-  it.each(["gemini", "openai", "anthropic"])(
+  it.each(["gemini", "openai", "anthropic", "glm", "openrouter"])(
     "accepts valid provider: %s",
     (provider) => {
       const result = AIProviderSchema.safeParse(provider);
@@ -50,6 +54,30 @@ describe("GeminiModelSchema", () => {
   );
 });
 
+describe("GLM_MODELS and GLM_ENDPOINTS", () => {
+  it.each([...GLM_MODELS])(
+    "GLM_MODELS contains valid model: %s",
+    (model) => {
+      expect(GLM_MODELS).toContain(model);
+    }
+  );
+
+  it("GLM_MODELS has expected models", () => {
+    expect(GLM_MODELS).toEqual(["glm-4.7", "glm-4.6"]);
+  });
+
+  it.each([...GLM_ENDPOINTS])(
+    "GLM_ENDPOINTS contains valid endpoint: %s",
+    (endpoint) => {
+      expect(GLM_ENDPOINTS).toContain(endpoint);
+    }
+  );
+
+  it("GLM_ENDPOINTS has expected endpoints", () => {
+    expect(GLM_ENDPOINTS).toEqual(["coding", "standard"]);
+  });
+});
+
 describe("ModelInfoSchema", () => {
   it("accepts valid model info with all fields", () => {
     const result = ModelInfoSchema.safeParse({
@@ -75,6 +103,84 @@ describe("ModelInfoSchema", () => {
   it("rejects model info with invalid data", () => {
     expect(ModelInfoSchema.safeParse({ id: "test-model", name: "Test Model" }).success).toBe(false);
     expect(ModelInfoSchema.safeParse({ id: "test-model", name: "Test Model", description: "A test model", tier: "premium" }).success).toBe(false);
+  });
+});
+
+describe("OpenRouterModelSchema", () => {
+  it("accepts valid OpenRouter model", () => {
+    const result = OpenRouterModelSchema.safeParse({
+      id: "openai/gpt-4o",
+      name: "GPT-4o",
+      description: "OpenAI's GPT-4o via OpenRouter",
+      contextLength: 128000,
+      pricing: {
+        prompt: "0.000005",
+        completion: "0.000015",
+      },
+      isFree: false,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts model without optional description", () => {
+    const result = OpenRouterModelSchema.safeParse({
+      id: "meta-llama/llama-3.1-8b-instruct:free",
+      name: "Llama 3.1 8B Instruct (free)",
+      contextLength: 128000,
+      pricing: {
+        prompt: "0",
+        completion: "0",
+      },
+      isFree: true,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects model with missing required fields", () => {
+    expect(OpenRouterModelSchema.safeParse({ id: "test-model" }).success).toBe(false);
+    expect(OpenRouterModelSchema.safeParse({ id: "test", name: "Test" }).success).toBe(false);
+    expect(OpenRouterModelSchema.safeParse({ id: "test", name: "Test", contextLength: 1000 }).success).toBe(false);
+  });
+});
+
+describe("OpenRouterModelCacheSchema", () => {
+  it("accepts valid cache with models and timestamp", () => {
+    const result = OpenRouterModelCacheSchema.safeParse({
+      models: [
+        {
+          id: "openai/gpt-4o",
+          name: "GPT-4o",
+          contextLength: 128000,
+          pricing: { prompt: "0.000005", completion: "0.000015" },
+          isFree: false,
+        },
+      ],
+      fetchedAt: "2024-01-01T00:00:00.000Z",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts empty models array", () => {
+    const result = OpenRouterModelCacheSchema.safeParse({
+      models: [],
+      fetchedAt: "2024-01-01T00:00:00.000Z",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects cache with invalid timestamp", () => {
+    const result = OpenRouterModelCacheSchema.safeParse({
+      models: [],
+      fetchedAt: "not-a-date",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects cache without fetchedAt", () => {
+    const result = OpenRouterModelCacheSchema.safeParse({
+      models: [],
+    });
+    expect(result.success).toBe(false);
   });
 });
 
@@ -109,6 +215,26 @@ describe("ProviderInfoSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts valid glm provider info", () => {
+    const result = ProviderInfoSchema.safeParse({
+      id: "glm",
+      name: "GLM (Z.ai)",
+      defaultModel: "glm-4.7",
+      models: ["glm-4.7", "glm-4.6"],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid openrouter provider info with empty models", () => {
+    const result = ProviderInfoSchema.safeParse({
+      id: "openrouter",
+      name: "OpenRouter",
+      defaultModel: "",
+      models: [],
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("rejects provider info with invalid data", () => {
     expect(ProviderInfoSchema.safeParse({ id: "invalid", name: "Invalid", defaultModel: "model", models: ["model"] }).success).toBe(false);
     expect(ProviderInfoSchema.safeParse({ id: "gemini", name: "Google Gemini" }).success).toBe(false);
@@ -138,6 +264,27 @@ function createBaseSaveConfigRequest(overrides = {}) {
 describe("UserConfigSchema", () => {
   it("accepts valid config without model", () => {
     const result = UserConfigSchema.safeParse(createBaseUserConfig());
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid glm config with endpoint", () => {
+    const result = UserConfigSchema.safeParse(
+      createBaseUserConfig({ provider: "glm", model: "glm-4.7", glmEndpoint: "coding" })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid glm config with standard endpoint", () => {
+    const result = UserConfigSchema.safeParse(
+      createBaseUserConfig({ provider: "glm", model: "glm-4.6", glmEndpoint: "standard" })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid openrouter config", () => {
+    const result = UserConfigSchema.safeParse(
+      createBaseUserConfig({ provider: "openrouter", model: "openai/gpt-4o" })
+    );
     expect(result.success).toBe(true);
   });
 
@@ -180,6 +327,42 @@ describe("UserConfigSchema", () => {
         }
       }
     );
+
+    it.each([...GLM_MODELS])(
+      "accepts valid glm model: %s",
+      (model) => {
+        const result = UserConfigSchema.safeParse(
+          createBaseUserConfig({ provider: "glm", model })
+        );
+        expect(result.success).toBe(true);
+      }
+    );
+
+    it.each(["gpt-4", "gemini-2.5-flash", "claude-3-opus", "invalid-model"])(
+      "rejects invalid model for glm provider: %s",
+      (model) => {
+        const result = UserConfigSchema.safeParse(
+          createBaseUserConfig({ provider: "glm", model })
+        );
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.error.issues[0]?.path).toContain("model");
+          expect(result.error.issues[0]?.message).toBe(
+            "Model is not valid for the selected provider"
+          );
+        }
+      }
+    );
+
+    it.each(["openai/gpt-4o", "anthropic/claude-3-opus", "meta-llama/llama-3.1-8b-instruct:free"])(
+      "accepts any model for openrouter provider: %s",
+      (model) => {
+        const result = UserConfigSchema.safeParse(
+          createBaseUserConfig({ provider: "openrouter", model })
+        );
+        expect(result.success).toBe(true);
+      }
+    );
   });
 });
 
@@ -194,6 +377,27 @@ describe("SaveConfigRequestSchema", () => {
   it("accepts valid request with model", () => {
     const result = SaveConfigRequestSchema.safeParse(
       createBaseSaveConfigRequest({ model: "gemini-2.5-flash" })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid glm request with endpoint", () => {
+    const result = SaveConfigRequestSchema.safeParse(
+      createBaseSaveConfigRequest({ provider: "glm", model: "glm-4.7", glmEndpoint: "coding" })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid glm request with standard endpoint", () => {
+    const result = SaveConfigRequestSchema.safeParse(
+      createBaseSaveConfigRequest({ provider: "glm", glmEndpoint: "standard" })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid openrouter request", () => {
+    const result = SaveConfigRequestSchema.safeParse(
+      createBaseSaveConfigRequest({ provider: "openrouter", model: "openai/gpt-4o" })
     );
     expect(result.success).toBe(true);
   });

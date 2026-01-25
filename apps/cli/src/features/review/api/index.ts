@@ -10,11 +10,15 @@ export {
 
 export {
   streamTriage,
+  streamTriageWithEvents,
   getTriageReviews,
   getTriageReview,
   deleteTriageReview,
   triggerDrilldown,
   type StreamTriageRequest,
+  type StreamTriageOptions,
+  type StreamTriageResult,
+  type StreamTriageError,
   type GetTriageReviewsRequest,
   type TriageReviewListResponse,
   type TriggerDrilldownRequest,
