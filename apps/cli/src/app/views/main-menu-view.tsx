@@ -12,6 +12,7 @@ export type MenuAction =
   | "review-files"
   | "resume-review"
   | "history"
+  | "open-web"
   | "settings"
   | "help"
   | "quit";
@@ -29,6 +30,7 @@ const MENU_ITEMS: MenuItem[] = [
   { key: "f", label: "Review specific files...", action: "review-files" },
   { key: "l", label: "Resume last review", action: "resume-review" },
   { key: "h", label: "History", action: "history" },
+  { key: "w", label: "Open Web UI", action: "open-web" },
   { key: "s", label: "Settings", action: "settings" },
   { key: "?", label: "Help", action: "help" },
   { key: "q", label: "Quit", action: "quit" },

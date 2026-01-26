@@ -29,10 +29,15 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       if (queryString) url += `?${queryString}`;
     }
 
+    const headers: Record<string, string> = { Accept: "application/json" };
+    if (options?.body !== undefined) {
+      headers["Content-Type"] = "application/json";
+    }
+
     const response = await fetch(url, {
       method,
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: options?.body ? JSON.stringify(options.body) : undefined,
+      headers,
+      body: options?.body !== undefined ? JSON.stringify(options.body) : undefined,
       signal: options?.signal,
     });
 
