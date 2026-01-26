@@ -3,6 +3,7 @@ import type { AIProvider } from "@repo/schemas";
 import type { Theme, ControlsMode, TrustCapabilities, SettingsConfig, TrustConfig } from "@repo/schemas/settings";
 import type { MenuAction } from "../../../app/views/main-menu-view.js";
 import type { SessionEventType } from "@repo/schemas/session";
+import { openWebUi } from "../../../lib/web-ui.js";
 
 interface UseScreenHandlersOptions {
   setView: (view: View) => void;
@@ -43,6 +44,10 @@ interface UseScreenHandlersOptions {
   chat: {
     sendMessage: (sessionId: string, message: string) => Promise<unknown>;
   };
+  web: {
+    apiUrl: string;
+    webPort?: number | string;
+  };
   recordEvent?: (type: SessionEventType, payload: Record<string, unknown>) => void;
 }
 
@@ -55,6 +60,7 @@ export function useScreenHandlers({
   review,
   reviewHistory,
   chat,
+  web,
   recordEvent,
 }: UseScreenHandlersOptions) {
   const handleSaveTheme = (theme: Theme) => {
@@ -127,6 +133,9 @@ export function useScreenHandlers({
       case "history":
         void reviewHistory.listReviews();
         setView("review-history");
+        break;
+      case "open-web":
+        void openWebUi({ apiUrl: web.apiUrl, webPort: web.webPort });
         break;
       case "settings":
         void config.loadSettings();
