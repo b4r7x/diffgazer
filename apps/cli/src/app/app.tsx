@@ -70,7 +70,7 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
   });
 
   const handlers = useScreenHandlers({
-    ...state.screenHandlerConfig(setView, projectId, repoRoot, localSettings),
+    ...state.screenHandlerConfig(setView, projectId, repoRoot, localSettings, address),
     recordEvent,
   });
 

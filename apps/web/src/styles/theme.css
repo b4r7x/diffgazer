@@ -1,0 +1,80 @@
+/* WebTUI - must define layers first */
+@layer base, utils, components;
+
+/* WebTUI CSS library */
+@import '@webtui/css';
+@import '@webtui/theme-catppuccin';
+
+/* Stargazer Theme Overrides (Catppuccin Mocha base with cyan accent) */
+:root {
+  /* Override WebTUI variables with Stargazer theme */
+  --background0: #1e1e2e;
+  --background1: #181825;
+  --background2: #313244;
+  --background3: #45475a;
+
+  --foreground0: #cdd6f4;
+  --foreground1: #bac2de;
+  --foreground2: #a6adc8;
+
+  --box-border-color: #45475a;
+  --separator-color: #45475a;
+
+  /* Legacy variable names for compatibility */
+  --background: #1e1e2e;
+  --foreground: #cdd6f4;
+
+  /* Primary / Accent - Cyan */
+  --primary: #89dceb;
+  --primary-foreground: #1e1e2e;
+
+  /* Secondary / Surface */
+  --secondary: #313244;
+  --secondary-foreground: #cdd6f4;
+
+  /* Muted */
+  --muted: #45475a;
+  --muted-foreground: #a6adc8;
+
+  /* Borders */
+  --border: #45475a;
+  --input: #313244;
+
+  /* Destructive - Red */
+  --destructive: #f38ba8;
+  --destructive-foreground: #1e1e2e;
+
+  /* Severity Colors */
+  --severity-blocker: #f38ba8; /* Red */
+  --severity-high: #fab387;    /* Peach */
+  --severity-medium: #f9e2af;  /* Yellow */
+  --severity-low: #89b4fa;     /* Blue */
+
+  /* Status Colors */
+  --status-running: #89dceb;   /* Cyan */
+  --status-complete: #a6e3a1;  /* Green */
+  --status-pending: #6c7086;   /* Gray/Overlay2 */
+
+  /* Animations */
+  --trans-fast: 0.15s ease;
+  --radius: 0.25rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  .animate-slide-in {
+    animation: slideIn 0.3s ease-in-out;
+  }
+}

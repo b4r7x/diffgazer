@@ -39,6 +39,25 @@ Run audit from .claude/workflows/audits/audit-react.md
 | `audit-tests.md` | Practical tests, behavior over implementation |
 | `audit-overengineering.md` | YAGNI, unnecessary abstractions, AI patterns |
 
+### Web UI Workflows (NEW)
+
+| Workflow | Model | Purpose |
+|----------|-------|---------|
+| `web-ui-creation/` | Gemini 3 Pro | Create web UI with Bulletproof React |
+| `web-backend-integration/` | Opus 4.5 | Connect web to backend, extract shared code |
+
+Run the master orchestrator:
+```
+Run workflow at .claude/workflows/web-ui-creation/master-orchestrator.md
+```
+
+Or run individual phases:
+```
+Run .claude/workflows/web-ui-creation/01-project-setup.md
+Run .claude/workflows/web-ui-creation/02-ui-components.md
+Run .claude/workflows/web-ui-creation/03-review-feature.md
+```
+
 ### When to Use What
 
 | Situation | Command/Workflow |
@@ -49,6 +68,8 @@ Run audit from .claude/workflows/audits/audit-react.md
 | Weekly maintenance | `codebase-reusability-audit.md` |
 | Major refactor | `master-orchestrator.md` |
 | New feature | `master-orchestrator.md` |
+| Create web UI | `web-ui-creation/master-orchestrator.md` |
+| Wire web backend | `web-backend-integration/master-orchestrator.md` |
 
 ### Structure Rules Quick Reference
 

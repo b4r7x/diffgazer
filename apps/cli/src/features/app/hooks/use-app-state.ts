@@ -60,7 +60,7 @@ export function useAppState() {
       listSessions: sessionList.loadList,
       createSession: activeSession.createSession,
     },
-    screenHandlerConfig: (setView: (view: View) => void, projectId: string, repoRoot: string, localSettings: Pick<UseSettingsResult, "settings" | "saveSettings">) => ({
+    screenHandlerConfig: (setView: (view: View) => void, projectId: string, repoRoot: string, localSettings: Pick<UseSettingsResult, "settings" | "saveSettings">, address: string) => ({
       setView,
       config: { saveConfig: config.saveConfig, deleteConfig: config.deleteConfig, deleteProviderCredentials: config.deleteProviderCredentials, loadSettings: config.loadSettings },
       settings: { settings: localSettings.settings, saveSettings: localSettings.saveSettings },
@@ -76,6 +76,7 @@ export function useAppState() {
         items: reviewHistory.items,
       },
       chat: { sendMessage: async () => {} },
+      web: { apiUrl: address },
     }),
   };
 }
