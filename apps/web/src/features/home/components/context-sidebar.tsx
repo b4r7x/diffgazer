@@ -14,7 +14,7 @@ interface ContextSidebarProps {
 
 export function ContextSidebar({ context }: ContextSidebarProps) {
   return (
-    <Panel className="w-80 h-fit shrink-0">
+    <Panel className="w-full max-w-md lg:w-80 h-fit shrink-0">
       <Panel.Header>Context</Panel.Header>
       <Panel.Content>
         {context.trustedDir && (

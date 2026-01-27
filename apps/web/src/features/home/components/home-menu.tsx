@@ -8,7 +8,7 @@ interface HomeMenuProps {
 
 export function HomeMenu({ selectedIndex, onSelect, onActivate }: HomeMenuProps) {
   return (
-    <Panel className="w-1/2 max-w-lg h-fit flex flex-col">
+    <Panel className="w-full max-w-md lg:w-1/2 lg:max-w-lg h-fit flex flex-col">
       <Panel.Header variant="subtle">Main Menu</Panel.Header>
       <div className="flex flex-col py-2">
         <Menu
