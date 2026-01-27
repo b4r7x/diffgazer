@@ -1,0 +1,67 @@
+@import "tailwindcss";
+@import "./theme.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+html, body {
+  font-family: 'JetBrains Mono', monospace;
+  background-color: #0D1117;
+  color: #C9D1D9;
+}
+
+@theme {
+  --color-tui-bg: var(--tui-bg);
+  --color-tui-fg: var(--tui-fg);
+  --color-tui-blue: var(--tui-blue);
+  --color-tui-violet: var(--tui-violet);
+  --color-tui-green: var(--tui-green);
+  --color-tui-red: var(--tui-red);
+  --color-tui-yellow: var(--tui-yellow);
+  --color-tui-border: var(--tui-border);
+  --color-tui-selection: var(--tui-selection);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--secondary);
+  --color-card-foreground: var(--secondary-foreground);
+  --color-popover: var(--secondary);
+  --color-popover-foreground: var(--secondary-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--tui-blue);
+  --color-accent-foreground: var(--primary-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--tui-blue);
+
+  --color-severity-blocker: var(--severity-blocker);
+  --color-severity-high: var(--severity-high);
+  --color-severity-medium: var(--severity-medium);
+  --color-severity-low: var(--severity-low);
+
+  --color-status-running: var(--status-running);
+  --color-status-complete: var(--status-complete);
+  --color-status-pending: var(--status-pending);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-slide-in: slide-in 0.2s ease-out;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slide-in {
+    from { transform: translateY(10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+}

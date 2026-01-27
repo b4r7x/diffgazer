@@ -1,0 +1,310 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║            STARGAZER COMPONENT LIBRARY - QUICK REFERENCE                 ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+DESIGN TOKENS
+─────────────────────────────────────────────────────────────────────────────
+
+Colors (GitHub Dark Theme):
+  Primary Blue      #58A6FF    Buttons, highlights, active state
+  Secondary Violet  #BC8CFF    Secondary actions
+  Success Green     #3FB950    Passed, checkmarks, success
+  Error Red         #FF7B72    Blocker severity, errors, destructive
+  Warning Yellow    #D29922    Medium severity, warnings
+  Border Gray       #30363D    Borders, dividers
+  Muted Gray        #6E7681    Secondary text, disabled state
+  Background        #0D1117    All backgrounds
+  Foreground        #C9D1D9    Default text
+
+Severity Colors:
+  [BLOCKER]  #FF7B72  Red    - Critical issues
+  [HIGH]     #F0883E  Orange - High severity
+  [MEDIUM]   #D29922  Yellow - Medium severity
+  [LOW]      #3FB950  Green  - Low severity
+  [NIT]      #58A6FF  Blue   - Nitpick/suggestion
+
+Typography:
+  Font: JetBrains Mono (all sizes)
+  Sizes: 10px (label) | 11px (small) | 13px (body) | 14px (heading) | 20px+ (title)
+
+Spacing Grid (4px base):
+  Tight:    4px  (0.25rem)
+  Compact:  8px  (0.5rem)   ← STANDARD
+  Standard: 16px (1rem)
+  Large:    24px (1.5rem)
+  X-Large:  32px (2rem)
+
+Borders:
+  Modal:    Double-line ASCII box (╔═╗║╚═╝)
+  Panel:    Single-line ASCII box (┌─┐│└─┘)
+  Web:      1px solid, radius 8-16px
+
+
+LAYOUT COMPONENTS (4)
+─────────────────────────────────────────────────────────────────────────────
+
+1. Header
+   └─ Variants: default | wizard | minimal
+   └─ Contains: logo, title, breadcrumb, status
+   └─ CSS: bg-[#0D1117] border-b border-[#30363D] p-2
+
+2. Footer
+   └─ Variants: default | minimal
+   └─ Contains: shortcuts, status indicators
+   └─ CSS: bg-[#30363D] fixed bottom-0 w-full text-xs
+
+3. SplitPane
+   └─ Variants: context_left (20/80) | equal (50/50) | list_detail (30/70)
+   └─ Contains: left panel, divider, right panel
+   └─ CSS: flex flex-row border-r border-[#30363D]
+
+4. Modal
+   └─ Variants: dialog | form | warning
+   └─ Contains: title, content, footer buttons
+   └─ CSS: fixed inset-0 z-50 border-2 rounded-lg p-4
+
+
+NAVIGATION COMPONENTS (4)
+─────────────────────────────────────────────────────────────────────────────
+
+5. Menu
+   └─ Display: Vertical list with [1] [2] [3] shortcuts
+   └─ Selected: Blue background, bold text
+   └─ Props: items[], selectedIndex, onSelect()
+
+6. MenuItem
+   └─ States: default | selected | disabled
+   └─ Selected: bg-[#58A6FF] text-black bold
+   └─ Props: label, selected, disabled, shortcut
+
+7. TabNav
+   └─ Display: Horizontal tabs with underline indicator
+   └─ Variants: horizontal | text_based
+   └─ Active: colored text with underline
+
+8. TabItem
+   └─ States: active | inactive
+   └─ Active: border-b-2 border-[#58A6FF]
+   └─ Props: label, active, onClick
+
+
+DATA DISPLAY COMPONENTS (6)
+─────────────────────────────────────────────────────────────────────────────
+
+9. Table
+   └─ Use: Review history, results list, sessions
+   └─ Columns: Fixed-width monospace
+   └─ Rows: Selectable with highlight
+   └─ CSS: font-mono text-xs border border-[#30363D]
+
+10. IssueCard
+    └─ Variants: compact | expanded | inline
+    └─ Contains: severity, title, file:line, description
+    └─ CSS: border border-[#30363D] p-3 mb-2
+
+11. CodeBlock
+    └─ Variants: diff | snippet | trace
+    └─ Features: Line numbers, syntax highlight, diff coloring
+    └─ CSS: bg-[#0D1117] border font-mono overflow-x-auto
+
+12. Badge
+    └─ Variants: severity (blocker/high/medium/low/nit) | status | outline
+    └─ CSS: inline-flex rounded px-2 py-0.5 text-xs font-semibold
+
+13. StatusDot
+    └─ Colors: passed (#3FB950) | warning (#D29922) | error (#FF7B72) | pending (#58A6FF)
+    └─ Display: w-2 h-2 rounded-full inline-block
+
+14. Breadcrumb
+    └─ Display: Path separated by "/"
+    └─ CSS: text-xs text-[#6E7681]
+
+
+FORM COMPONENTS (6)
+─────────────────────────────────────────────────────────────────────────────
+
+15. Input
+    └─ Variants: text | password | search | env_var
+    └─ Features: Cursor blink, masking, placeholder
+    └─ CSS: border border-[#30363D] bg-[#161B22] px-2 py-1
+
+16. Checkbox
+    └─ Display: [x] or [ ] followed by label
+    └─ Props: checked, onChange, label, disabled
+
+17. RadioGroup
+    └─ Variants: vertical | horizontal
+    └─ Display: ( ) or (x) followed by label
+    └─ Props: options[], selected, onChange
+
+18. Button
+    └─ Variants: primary | secondary | destructive | success | ghost
+    └─ Display: [ Label ] with keyboard shortcut
+    └─ Primary: bg-[#58A6FF] text-black
+    └─ Destructive: border-[#FF7B72] text-[#FF7B72]
+
+19. Select
+    └─ Display: Dropdown menu with selection indicator
+    └─ Props: options[], value, onChange
+
+20. [Reserved for additional form components]
+
+
+FEEDBACK COMPONENTS (5)
+─────────────────────────────────────────────────────────────────────────────
+
+21. Alert
+    └─ Variants: warning | error | info | success
+    └─ Colors: yellow | red | blue | green borders
+    └─ Contains: icon, title, message, optional close
+
+22. Spinner
+    └─ Styles: default (/ | \ -) | dots (. .. ...) | bars (▁▂▃▄▅▆▇█)
+    └─ Display: Animated character rotation
+
+23. Progress
+    └─ Variants: bar | dots
+    └─ Display: Visual progress 0-100%
+    └─ CSS: bg-[#161B22] rounded h-2
+
+24. Toast (Web only)
+    └─ Variants: success (3s) | error (5s) | info (4s)
+    └─ Position: bottom-4 right-4
+    └─ Animation: Fade in, slide in
+
+25. Tooltip (Web only)
+    └─ Display: Hover contextual help
+    └─ Position: top | right | bottom | left
+    └─ CSS: bg-[#161B22] text-xs whitespace-nowrap
+
+
+SCREEN PATTERNS
+─────────────────────────────────────────────────────────────────────────────
+
+Welcome Screen:
+  ├─ Header (minimal)
+  ├─ ASCII art logo
+  ├─ Tagline + feature list
+  ├─ Code snippet
+  └─ Button group
+
+Menu Screen:
+  ├─ Header
+  ├─ SplitPane:
+  │  ├─ Left: Context panel (Trusted, Provider, Last run)
+  │  └─ Right: Main menu (1-5 options)
+  └─ Footer
+
+Trust Wizard:
+  ├─ Modal (centered)
+  ├─ Checkboxes (permissions)
+  ├─ Current directory
+  ├─ Warning alert
+  └─ Action buttons
+
+Settings:
+  ├─ Header
+  ├─ TabNav or SplitPane
+  ├─ Form fields
+  ├─ Option toggles
+  └─ Save/Cancel buttons
+
+Review History:
+  ├─ Header
+  ├─ TabNav (Review Runs | Sessions)
+  ├─ Table with rows
+  └─ Footer with shortcuts
+
+Issue Details:
+  ├─ Header
+  ├─ SplitPane:
+  │  ├─ Left: Issue list with badges
+  │  └─ Right: Issue detail + CodeBlock
+  ├─ TabNav (Summary | Evidence | Trace)
+  └─ Action buttons
+
+
+IMPLEMENTATION CHECKLIST
+─────────────────────────────────────────────────────────────────────────────
+
+For each component:
+  ☐ Define props interface (TypeScript)
+  ☐ Create all variants
+  ☐ Add color/styling from tokens (no hardcoding)
+  ☐ Implement keyboard navigation (CLI)
+  ☐ Handle disabled state
+  ☐ Handle error state
+  ☐ Handle loading state
+  ☐ Add empty state
+  ☐ Test with long text (text overflow)
+  ☐ Test with multiple items (scrolling)
+  ☐ Add accessibility attributes (web)
+  ☐ Add responsive behavior (web)
+  ☐ Document usage examples
+
+
+KEY FILES
+─────────────────────────────────────────────────────────────────────────────
+
+📄 COMPONENT_LIBRARY.json     (32 KB) - Full specification (JSON)
+📄 COMPONENT_LIBRARY.md       (15 KB) - User guide with examples
+📄 COMPONENT_EXTRACTION_SUMMARY.md    - Analysis report
+📄 COMPONENT_QUICK_REFERENCE.txt      - This file
+
+
+DEVELOPER COMMANDS
+─────────────────────────────────────────────────────────────────────────────
+
+# View full JSON specification
+cat COMPONENT_LIBRARY.json | jq .
+
+# Count components by category
+cat COMPONENT_LIBRARY.json | jq '.components | keys'
+
+# List all component variants
+cat COMPONENT_LIBRARY.json | jq '.components[] | map(.name) | .[]' | sort
+
+
+DESIGN PRINCIPLES
+─────────────────────────────────────────────────────────────────────────────
+
+1. Monospace Typography
+   └─ JetBrains Mono for all text (CLI + Web)
+
+2. Color-Coded Information
+   └─ Severity, status, and state conveyed through color + text
+
+3. Keyboard-First (CLI)
+   └─ All actions accessible via numbered keys + arrow keys
+
+4. Double-Line Modals
+   └─ Visually distinct from regular content
+
+5. Consistent Spacing
+   └─ 8px grid system throughout
+
+6. Dark Theme Only
+   └─ GitHub Dark palette (#0D1117 background)
+
+7. No Icon-Only Buttons
+   └─ All buttons have text labels + optional icons
+
+8. Predictable State Changes
+   └─ Hover, selected, disabled, error states consistent
+
+
+VERSION INFORMATION
+─────────────────────────────────────────────────────────────────────────────
+
+Specification Version:  1.0
+Analysis Date:          January 27, 2026
+Screens Analyzed:       26 mockups
+Components Identified:  32 total
+Categories:             6 (layout, nav, data, form, feedback)
+CLI Framework:          React Ink
+Web Framework:          React 19 + Tailwind CSS
+
+
+═══════════════════════════════════════════════════════════════════════════════
+For detailed specifications, see COMPONENT_LIBRARY.json and COMPONENT_LIBRARY.md
+═══════════════════════════════════════════════════════════════════════════════

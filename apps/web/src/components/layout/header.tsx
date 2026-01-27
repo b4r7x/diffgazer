@@ -1,57 +1,49 @@
-import { Link, useLocation } from '@tanstack/react-router';
-import { cn } from '../../lib/utils';
-import { Badge } from '../ui/badge';
-// Remove React import
+import { cn } from "../../lib/utils";
+import { AsciiLogo } from "../ui/ascii-logo";
 
-export function Header() {
-    const location = useLocation();
-    const currentPath = location.pathname;
+type ProviderStatus = "active" | "idle" | "error";
 
-    const isActive = (path: string) => {
-        if (path === '/' && currentPath === '/') return true;
-        if (path !== '/' && currentPath.startsWith(path)) return true;
-        return false;
-    };
+interface HeaderProps {
+  providerName?: string;
+  providerStatus?: ProviderStatus;
+  subtitle?: string;
+}
 
-    const navItems = [
-        { label: 'Menu', path: '/' },
-        { label: 'Review', path: '/review' },
-        { label: 'History', path: '/history' },
-        { label: 'Settings', path: '/settings' },
-    ];
+export function Header({
+  providerName = "Not configured",
+  providerStatus = "idle",
+  subtitle,
+}: HeaderProps) {
+  return (
+    <header className="relative p-4 pb-2 shrink-0">
+      {/* Provider status - top right */}
+      <div className="absolute top-4 right-4 text-xs">
+        <span className="text-gray-500">●</span> {providerName}{" "}
+        <span className="text-gray-500">•</span>{" "}
+        <span className="text-gray-500 capitalize">{providerStatus}</span>
+      </div>
 
-    return (
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-background px-4">
-            <div className="flex items-center space-x-8">
-                <div className="flex items-center space-x-2 font-semibold tracking-tight">
-                    <span>⭐</span>
-                    <span className="text-primary">stargazer</span>
-                </div>
+      {/* Centered content */}
+      <div className="flex flex-col items-center pt-6">
+        <AsciiLogo
+          scale={1.5}
+          text="stargazer"
+          className={cn(
+            "text-tui-blue font-bold whitespace-pre leading-none select-none",
+            "text-[10px] sm:text-xs md:text-sm",
+          )}
+        />
 
-                <nav className="flex items-center space-x-6 text-sm font-medium">
-                    {navItems.map((item) => (
-                        <Link
-                            key={item.path}
-                            to={item.path}
-                            className={cn(
-                                'transition-colors hover:text-foreground/80',
-                                isActive(item.path) ? 'text-foreground' : 'text-foreground/60'
-                            )}
-                        >
-                            {item.label}
-                        </Link>
-                    ))}
-                </nav>
-            </div>
+        {subtitle && (
+          <div className="mt-2 text-center text-gray-500 text-xs">
+            {subtitle}
+          </div>
+        )}
 
-            <div className="flex items-center space-x-4">
-                <span className="text-xs text-muted-foreground mr-2 hidden md:inline-block">
-                    Gemini 3 Pro
-                </span>
-                <Badge variant="outline" className="text-xs font-normal">
-                    anthropic / sonnet
-                </Badge>
-            </div>
-        </header>
-    );
+        <div className="text-center text-gray-600 text-sm select-none">
+          ─ ✦ ─ ✧ ─
+        </div>
+      </div>
+    </header>
+  );
 }

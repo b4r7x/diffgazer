@@ -1,65 +1,369 @@
-/* WebTUI - must define layers first */
-@layer base, utils, components;
+/* Stargazer TUI Theme - GitHub Dark inspired terminal colors */
 
-/* WebTUI CSS library */
-@import '@webtui/css';
-@import '@webtui/theme-catppuccin';
-
-/* Stargazer Theme Overrides (Catppuccin Mocha base with cyan accent) */
+/* TUI Color Tokens */
 :root {
-  /* Override WebTUI variables with Stargazer theme */
-  --background0: #1e1e2e;
-  --background1: #181825;
-  --background2: #313244;
-  --background3: #45475a;
+  /* Primary palette - GitHub Dark */
+  --tui-bg: #0D1117;
+  --tui-fg: #C9D1D9;
+  --tui-blue: #58A6FF;
+  --tui-violet: #BC8CFF;
+  --tui-green: #3FB950;
+  --tui-red: #FF7B72;
+  --tui-yellow: #D29922;
+  --tui-border: #30363D;
+  --tui-selection: #1F2428;
 
-  --foreground0: #cdd6f4;
-  --foreground1: #bac2de;
-  --foreground2: #a6adc8;
+  /* Severity variants */
+  --tui-severity-blocker: var(--tui-red);
+  --tui-severity-high: var(--tui-yellow);
+  --tui-severity-medium: #6E7681;
+  --tui-severity-low: #484F58;
 
-  --box-border-color: #45475a;
-  --separator-color: #45475a;
+  /* Font */
+  --tui-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 
   /* Legacy variable names for compatibility */
-  --background: #1e1e2e;
-  --foreground: #cdd6f4;
-
-  /* Primary / Accent - Cyan */
-  --primary: #89dceb;
-  --primary-foreground: #1e1e2e;
-
-  /* Secondary / Surface */
-  --secondary: #313244;
-  --secondary-foreground: #cdd6f4;
-
-  /* Muted */
-  --muted: #45475a;
-  --muted-foreground: #a6adc8;
-
-  /* Borders */
-  --border: #45475a;
-  --input: #313244;
-
-  /* Destructive - Red */
-  --destructive: #f38ba8;
-  --destructive-foreground: #1e1e2e;
+  --background: var(--tui-bg);
+  --foreground: var(--tui-fg);
+  --background0: var(--tui-bg);
+  --foreground0: var(--tui-fg);
+  --primary: var(--tui-blue);
+  --primary-foreground: var(--tui-bg);
+  --secondary: var(--tui-selection);
+  --secondary-foreground: var(--tui-fg);
+  --muted: #6E7681;
+  --muted-foreground: #484F58;
+  --border: var(--tui-border);
+  --input: var(--tui-selection);
+  --destructive: var(--tui-red);
+  --destructive-foreground: var(--tui-bg);
 
   /* Severity Colors */
-  --severity-blocker: #f38ba8; /* Red */
-  --severity-high: #fab387;    /* Peach */
-  --severity-medium: #f9e2af;  /* Yellow */
-  --severity-low: #89b4fa;     /* Blue */
+  --severity-blocker: var(--tui-red);
+  --severity-high: var(--tui-yellow);
+  --severity-medium: #6E7681;
+  --severity-low: var(--tui-blue);
 
   /* Status Colors */
-  --status-running: #89dceb;   /* Cyan */
-  --status-complete: #a6e3a1;  /* Green */
-  --status-pending: #6c7086;   /* Gray/Overlay2 */
+  --status-running: var(--tui-blue);
+  --status-complete: var(--tui-green);
+  --status-pending: #6E7681;
 
   /* Animations */
   --trans-fast: 0.15s ease;
   --radius: 0.25rem;
 }
 
+/* Font setup */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/jetbrainsmono/v18/tDbY2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKxjPVmUsaaDhw.woff2') format('woff2');
+}
+
+/* Base TUI styles */
+.tui-base {
+  font-family: var(--tui-font-mono);
+  background-color: var(--tui-bg);
+  color: var(--tui-fg);
+}
+
+/* Scrollbar styles - hidden */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Scrollbar styles - thin */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: var(--tui-bg);
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--tui-border);
+  border-radius: 2px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--tui-fg);
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--tui-border) var(--tui-bg);
+}
+
+/* Cursor blink animation */
+@keyframes tui-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.cursor-blink {
+  animation: tui-blink 1s step-end infinite;
+}
+
+/* Selection highlight */
+.tui-selection-highlight {
+  background-color: var(--tui-blue);
+  color: black;
+}
+
+/* Custom selection colors */
+::selection {
+  background-color: var(--tui-blue);
+  color: black;
+}
+
+/* Text color utilities */
+.tui-text-primary {
+  color: var(--tui-fg);
+}
+
+.tui-text-muted {
+  color: #6E7681;
+}
+
+.tui-text-blue {
+  color: var(--tui-blue);
+}
+
+.tui-text-violet {
+  color: var(--tui-violet);
+}
+
+.tui-text-green {
+  color: var(--tui-green);
+}
+
+.tui-text-red {
+  color: var(--tui-red);
+}
+
+.tui-text-yellow {
+  color: var(--tui-yellow);
+}
+
+/* Background utilities */
+.tui-bg-base {
+  background-color: var(--tui-bg);
+}
+
+.tui-bg-selection {
+  background-color: var(--tui-selection);
+}
+
+.tui-bg-blue {
+  background-color: var(--tui-blue);
+}
+
+.tui-bg-violet {
+  background-color: var(--tui-violet);
+}
+
+.tui-bg-green {
+  background-color: var(--tui-green);
+}
+
+.tui-bg-red {
+  background-color: var(--tui-red);
+}
+
+.tui-bg-yellow {
+  background-color: var(--tui-yellow);
+}
+
+/* Border utilities */
+.tui-border {
+  border-color: var(--tui-border);
+}
+
+.tui-border-blue {
+  border-color: var(--tui-blue);
+}
+
+.tui-border-violet {
+  border-color: var(--tui-violet);
+}
+
+.tui-border-red {
+  border-color: var(--tui-red);
+}
+
+.tui-border-yellow {
+  border-color: var(--tui-yellow);
+}
+
+/* Severity badge styles */
+.tui-severity-blocker {
+  background-color: var(--tui-red);
+  color: black;
+}
+
+.tui-severity-high {
+  color: var(--tui-yellow);
+}
+
+.tui-severity-medium {
+  color: #6E7681;
+}
+
+.tui-severity-low {
+  color: #484F58;
+}
+
+/* Severity badge with background */
+.tui-badge-blocker {
+  background-color: var(--tui-red);
+  color: black;
+  padding: 0 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.tui-badge-high {
+  color: var(--tui-yellow);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.tui-badge-medium {
+  color: #6E7681;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.tui-badge-low {
+  color: #484F58;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Tag styles (bordered) */
+.tui-tag {
+  display: inline-block;
+  border: 1px solid currentColor;
+  padding: 0 0.25rem;
+  font-size: 0.625rem;
+}
+
+.tui-tag-red {
+  color: var(--tui-red);
+  border-color: var(--tui-red);
+}
+
+.tui-tag-yellow {
+  color: var(--tui-yellow);
+  border-color: var(--tui-yellow);
+}
+
+.tui-tag-blue {
+  color: var(--tui-blue);
+  border-color: var(--tui-blue);
+}
+
+/* Code block style */
+.tui-code-block {
+  background-color: black;
+  border: 1px solid var(--tui-border);
+  font-family: var(--tui-font-mono);
+  font-size: 0.75rem;
+  color: #6E7681;
+}
+
+/* Inline code highlight */
+.tui-code-inline {
+  background-color: var(--tui-selection);
+  padding: 0 0.25rem;
+  color: var(--tui-yellow);
+}
+
+/* Status bar (footer) */
+.tui-status-bar {
+  background-color: var(--tui-fg);
+  color: black;
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+/* Active list item */
+.tui-list-item-active {
+  background-color: var(--tui-blue);
+  color: black;
+  font-weight: 700;
+}
+
+/* Hover list item */
+.tui-list-item-hover {
+  background-color: var(--tui-selection);
+}
+
+/* Tab styles */
+.tui-tab-active {
+  color: var(--tui-violet);
+  font-weight: 700;
+  border-bottom: 2px solid var(--tui-violet);
+}
+
+.tui-tab-inactive {
+  color: #6E7681;
+}
+
+.tui-tab-inactive:hover {
+  color: var(--tui-fg);
+}
+
+/* Section heading */
+.tui-section-heading {
+  color: var(--tui-blue);
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Line number gutter */
+.tui-line-number {
+  color: #6E7681;
+  border-right: 1px solid #30363D;
+  margin-right: 0.5rem;
+  padding-right: 0.5rem;
+  min-width: 1.5rem;
+  text-align: right;
+}
+
+/* Provider status indicator */
+.tui-status-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+}
+
+.tui-status-dot-active {
+  background-color: var(--tui-green);
+}
+
+.tui-status-dot-inactive {
+  background-color: #6E7681;
+}
+
+.tui-status-dot-error {
+  background-color: var(--tui-red);
+}
+
+/* Animations */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }

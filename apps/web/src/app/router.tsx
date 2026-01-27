@@ -1,11 +1,6 @@
 import { createRouter, createRootRoute, createRoute } from '@tanstack/react-router'
 import { RootLayout } from './routes/__root'
-import StartReviewPage from './routes/review/index'
-import ReviewDetailPage from './routes/review/$reviewId'
-import SettingsPage from './routes/settings'
-import DashboardPage from './routes/index'
-import HistoryPage from './routes/history'
-import SessionsPage from './routes/sessions'
+import { HomePage, ReviewPage, SettingsPage, HistoryPage } from './pages'
 
 // Create root route
 const rootRoute = createRootRoute({
@@ -16,19 +11,19 @@ const rootRoute = createRootRoute({
 const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    component: DashboardPage,
+    component: HomePage,
 })
 
 const reviewRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/review',
-    component: StartReviewPage,
+    component: ReviewPage,
 })
 
 const reviewDetailRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/review/$reviewId',
-    component: ReviewDetailPage,
+    component: ReviewPage,
 })
 
 const settingsRoute = createRoute({
@@ -43,12 +38,6 @@ const historyRoute = createRoute({
     component: HistoryPage,
 })
 
-const sessionsRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/sessions',
-    component: SessionsPage,
-})
-
 // Create route tree
 const routeTree = rootRoute.addChildren([
     indexRoute,
@@ -56,7 +45,6 @@ const routeTree = rootRoute.addChildren([
     reviewDetailRoute,
     settingsRoute,
     historyRoute,
-    sessionsRoute,
 ])
 
 // Create router
