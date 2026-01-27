@@ -63,7 +63,7 @@ export function HomePage({ context = DEMO_CONTEXT }: HomePageProps) {
       <Hotkey keys="h" onPress={() => handleActivate('help')} />
       <div className="bg-tui-bg text-tui-fg h-screen flex flex-col overflow-hidden selection:bg-tui-blue selection:text-black">
         <Header providerName={context?.providerName} providerStatus="idle" />
-        <div className="flex flex-1 items-start justify-center p-8 gap-8 overflow-hidden">
+        <div className="flex flex-1 flex-col lg:flex-row items-center lg:items-start justify-start lg:justify-center p-4 md:p-6 lg:p-8 gap-4 md:gap-6 lg:gap-8 overflow-auto">
           <ContextSidebar context={context} />
           <HomeMenu
             selectedIndex={selectedIndex}
