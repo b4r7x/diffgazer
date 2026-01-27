@@ -11,17 +11,15 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@base-ui/react": "^1.1.0",
     "@repo/api": "workspace:*",
     "@repo/core": "workspace:*",
     "@repo/schemas": "workspace:*",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-router": "^1.157.12",
-    "@webtui/css": "^0.1.6",
-    "@webtui/theme-catppuccin": "^0.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
+    "figlet": "^1.10.0",
     "lucide-react": "^0.563.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
@@ -31,6 +29,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@repo/tsconfig": "workspace:*",
+    "@types/figlet": "^1.7.0",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
