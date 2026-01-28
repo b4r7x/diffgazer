@@ -1,7 +1,4 @@
-interface Shortcut {
-  key: string;
-  label: string;
-}
+import type { Shortcut } from "./footer-context";
 
 interface FooterProps {
   shortcuts: Shortcut[];

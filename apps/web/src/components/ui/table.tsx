@@ -11,6 +11,7 @@ export interface TableColumn {
 export interface TableProps<T extends Record<string, React.ReactNode>> {
     columns: TableColumn[];
     data: T[];
+    getRowKey?: (row: T, index: number) => string;
     selectedRowIndex?: number;
     onRowSelect?: (index: number) => void;
     onRowClick?: (row: T, index: number) => void;
@@ -20,6 +21,7 @@ export interface TableProps<T extends Record<string, React.ReactNode>> {
 export function Table<T extends Record<string, React.ReactNode>>({
     columns,
     data,
+    getRowKey,
     selectedRowIndex,
     onRowSelect,
     onRowClick,
@@ -73,7 +75,7 @@ export function Table<T extends Record<string, React.ReactNode>>({
                         const isSelected = selectedRowIndex === rowIndex;
                         return (
                             <tr
-                                key={rowIndex}
+                                key={getRowKey ? getRowKey(row, rowIndex) : rowIndex}
                                 className={cn(
                                     'cursor-pointer transition-colors',
                                     isSelected
