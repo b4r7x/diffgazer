@@ -7,7 +7,6 @@ import {
     HistoryPage,
     TrustPermissionsPage,
     SettingsThemePage,
-    SettingsProviderPage,
     ProviderSelectorPage,
     SettingsCredentialsPage,
     SettingsControlsPage,
@@ -62,12 +61,6 @@ const themeRoute = createRoute({
     component: SettingsThemePage,
 })
 
-const providerRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/settings/provider',
-    component: SettingsProviderPage,
-})
-
 const providerSelectorRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/settings/providers',
@@ -101,7 +94,6 @@ const routeTree = rootRoute.addChildren([
     historyRoute,
     trustPermissionsRoute,
     themeRoute,
-    providerRoute,
     providerSelectorRoute,
     credentialsRoute,
     controlsRoute,

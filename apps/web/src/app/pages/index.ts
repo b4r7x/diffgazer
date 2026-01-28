@@ -5,7 +5,6 @@ export { SettingsPage } from './settings';
 export { SettingsHubPage } from './settings-hub';
 export { TrustPermissionsPage } from './trust-permissions';
 export { SettingsThemePage } from './settings-theme';
-export { SettingsProviderPage } from './settings-provider';
 export { ProviderSelectorPage } from './provider-selector';
 export { SettingsCredentialsPage } from './settings-credentials';
 export { SettingsControlsPage } from './settings-controls';
