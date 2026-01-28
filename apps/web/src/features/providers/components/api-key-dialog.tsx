@@ -1,7 +1,18 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Dialog, DialogContent, Badge, Button } from "@/components/ui";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogBody,
+  DialogFooter,
+  Badge,
+  Input,
+  RadioGroup,
+  RadioGroupItem,
+} from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { useKey } from "@/hooks/keyboard";
 
@@ -29,20 +40,24 @@ export function ApiKeyDialog({
   const [method, setMethod] = useState<InputMethod>("paste");
   const [keyValue, setKeyValue] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [inFooter, setInFooter] = useState(false);
+  const [footerButtonIndex, setFooterButtonIndex] = useState(0);
 
-  type FocusZone = "options" | "input" | "footer";
-  const [focusZone, setFocusZone] = useState<FocusZone>("options");
-  const [optionIndex, setOptionIndex] = useState(0); // 0=paste, 1=env
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Reset dialog state when opened
   useEffect(() => {
     if (open) {
       setKeyValue("");
-      setFocusZone("options");
-      setOptionIndex(0);
+      setInFooter(false);
+      setMethod("paste");
+      setFooterButtonIndex(hasExistingKey && onRemoveKey ? 1 : 0);
     }
-  }, [open]);
+  }, [open, hasExistingKey, onRemoveKey]);
+
+  const handleCancel = () => {
+    onOpenChange(false);
+  };
 
   const handleSubmit = async () => {
     if (isSubmitting) return;
@@ -70,176 +85,207 @@ export function ApiKeyDialog({
     }
   };
 
-  // Enter to submit (only in input zone), Escape to cancel
-  useKey("Enter", handleSubmit, { enabled: open && !isSubmitting && focusZone === "input" });
-  useKey("Escape", () => onOpenChange(false), { enabled: open && !isSubmitting });
-
-  // Options zone navigation
-  useKey("ArrowUp", () => {
-    setOptionIndex(prev => Math.max(0, prev - 1));
-  }, { enabled: open && focusZone === "options" });
-
-  useKey("ArrowDown", () => {
-    if (optionIndex < 1) {
-      setOptionIndex(prev => prev + 1);
-    } else if (hasExistingKey && onRemoveKey) {
-      setFocusZone("footer");
-    }
-  }, { enabled: open && focusZone === "options" });
-
-  useKey("Enter", () => {
-    const newMethod = optionIndex === 0 ? "paste" : "env";
+  // Handle radio selection - focus input when paste selected
+  const handleMethodChange = (value: string) => {
+    const newMethod = value as InputMethod;
     setMethod(newMethod);
     if (newMethod === "paste") {
-      setFocusZone("input");
+      // Focus input after state updates
       setTimeout(() => inputRef.current?.focus(), 0);
-    } else {
+    }
+  };
+
+  // Handle boundary reached from radio group - go to footer on down
+  const handleBoundaryReached = (direction: "up" | "down") => {
+    if (direction === "down") {
+      setInFooter(true);
+      setFooterButtonIndex(hasExistingKey && onRemoveKey ? 1 : 0);
+    }
+  };
+
+  // Footer zone: ArrowUp returns to options
+  useKey(
+    "ArrowUp",
+    () => {
+      setInFooter(false);
+    },
+    { enabled: open && inFooter }
+  );
+
+  // Footer zone: ArrowLeft/Right to navigate between buttons
+  useKey(
+    "ArrowLeft",
+    () => {
+      if (hasExistingKey && onRemoveKey) {
+        setFooterButtonIndex((prev) => (prev > 0 ? prev - 1 : 2));
+      } else {
+        setFooterButtonIndex((prev) => (prev > 0 ? prev - 1 : 1));
+      }
+    },
+    { enabled: open && inFooter }
+  );
+
+  useKey(
+    "ArrowRight",
+    () => {
+      const maxIndex = hasExistingKey && onRemoveKey ? 2 : 1;
+      setFooterButtonIndex((prev) => (prev < maxIndex ? prev + 1 : 0));
+    },
+    { enabled: open && inFooter }
+  );
+
+  // Footer zone: Enter/Space triggers focused button
+  const handleFooterAction = () => {
+    if (footerButtonIndex === 0) {
+      handleCancel();
+    } else if (footerButtonIndex === 1) {
       handleSubmit();
+    } else if (footerButtonIndex === 2 && hasExistingKey && onRemoveKey) {
+      handleRemove();
     }
-  }, { enabled: open && focusZone === "options" });
+  };
 
-  // Input zone navigation
-  useKey("ArrowUp", () => {
-    inputRef.current?.blur();
-    setFocusZone("options");
-  }, { enabled: open && focusZone === "input" });
+  useKey("Enter", handleFooterAction, {
+    enabled: open && inFooter && !isSubmitting,
+  });
 
-  useKey("ArrowDown", () => {
-    if (hasExistingKey && onRemoveKey) {
-      inputRef.current?.blur();
-      setFocusZone("footer");
-    }
-  }, { enabled: open && focusZone === "input" });
-
-  // Footer zone navigation
-  useKey("ArrowUp", () => {
-    setFocusZone(method === "paste" ? "input" : "options");
-    if (method === "paste") {
-      setTimeout(() => inputRef.current?.focus(), 0);
-    }
-  }, { enabled: open && focusZone === "footer" });
-
-  useKey("Enter", () => {
-    handleRemove();
-  }, { enabled: open && focusZone === "footer" && hasExistingKey && !!onRemoveKey });
+  useKey(" ", handleFooterAction, {
+    enabled: open && inFooter && !isSubmitting,
+  });
 
   const canSubmit = method === "env" || keyValue.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg border border-tui-border shadow-2xl">
-        {/* Header */}
-        <div className="border-b border-tui-border px-5 py-3 flex justify-between items-center bg-tui-selection/50">
-          <span className="font-bold text-tui-blue tracking-wide">{providerName} API Key</span>
-          <Badge variant="success" size="xs" className="uppercase tracking-wider border border-tui-green/30 px-1.5 py-0.5">
+        <DialogHeader className="bg-tui-selection/50">
+          <DialogTitle className="text-tui-blue tracking-wide">
+            {providerName} API Key
+          </DialogTitle>
+          <Badge
+            variant="success"
+            size="xs"
+            className="uppercase tracking-wider border border-tui-green/30 px-1.5 py-0.5"
+            aria-label="Keys are stored securely"
+          >
             Secure
           </Badge>
-        </div>
+        </DialogHeader>
 
-        {/* Body */}
-        <div className="p-6 space-y-6">
-          {/* Paste Key Option */}
-          <div className="space-y-2">
-            <button
-              type="button"
-              onClick={() => {
-                setMethod("paste");
-                setOptionIndex(0);
-              }}
-              role="radio"
-              aria-checked={method === "paste"}
-              data-value="paste"
+        <DialogBody className="p-6 space-y-6">
+          <RadioGroup
+            value={method}
+            onValueChange={handleMethodChange}
+            wrap={false}
+            onBoundaryReached={handleBoundaryReached}
+            aria-label="API key input method"
+          >
+            <div className="space-y-2 mb-4">
+              <RadioGroupItem value="paste" label="Paste Key Now" />
+              {method === "paste" && (
+                <div className="pl-9">
+                  <div className="flex items-center bg-tui-input-bg border border-tui-blue px-3 py-2 w-full">
+                    <span className="text-gray-500 mr-1 select-none">KEY:</span>
+                    <Input
+                      ref={inputRef}
+                      type="password"
+                      value={keyValue}
+                      onChange={(e) => setKeyValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleSubmit();
+                        }
+                      }}
+                      aria-label={`${providerName} API Key`}
+                      className="flex-1 bg-transparent text-white tracking-widest border-0 focus:ring-0 h-auto p-0"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+            <div
               className={cn(
-                "flex items-center gap-3 w-full text-left group rounded",
-                method === "paste" ? "text-tui-fg" : "text-gray-400 hover:text-tui-fg",
-                focusZone === "options" && optionIndex === 0 && "ring-2 ring-tui-blue ring-offset-2 ring-offset-tui-bg"
+                "space-y-2 transition-opacity",
+                method === "env" ? "opacity-100" : "opacity-60 hover:opacity-100"
               )}
             >
-              <span className={cn("font-bold", method === "paste" ? "text-tui-blue" : "text-gray-600")}>
-                {method === "paste" ? "[ ● ]" : "[   ]"}
-              </span>
-              <span className="font-bold group-hover:underline decoration-tui-border underline-offset-4">
-                Paste Key Now
-              </span>
-            </button>
-            {method === "paste" && (
+              <RadioGroupItem value="env" label="Import from Env" />
               <div className="pl-9">
-                <div className="flex items-center bg-tui-input-bg border border-tui-blue px-3 py-2 w-full">
-                  <span className="text-gray-500 mr-1 select-none">KEY:</span>
-                  <input
-                    ref={inputRef}
-                    type="password"
-                    value={keyValue}
-                    onChange={(e) => setKeyValue(e.target.value)}
-                    className="flex-1 bg-transparent text-white tracking-widest focus:outline-none"
-                    autoFocus
-                  />
-                  <span className="cursor-block ml-0.5" />
+                <div className="flex items-center bg-tui-bg border border-tui-border px-3 py-2 w-full text-gray-500">
+                  <span className="mr-2 select-none text-gray-600">$</span>
+                  <span>{envVarName}</span>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          </RadioGroup>
 
-          {/* Env Option */}
-          <div
-            className={cn(
-              "space-y-2 transition-opacity",
-              method === "env" ? "opacity-100" : "opacity-60 hover:opacity-100"
-            )}
-          >
+          <div className="text-[11px] text-gray-600 border-t border-tui-border/40 pt-3 leading-relaxed">
+            Note: Keys are encrypted in your OS keychain. Context is only sent to{" "}
+            {providerName}.
+          </div>
+        </DialogBody>
+
+        <DialogFooter className="justify-between">
+          <div className="flex gap-3 text-[10px] text-gray-500">
+            <span>↑↓ navigate</span>
+            <span>Enter select</span>
+          </div>
+          <div className="flex gap-3 items-center">
             <button
               type="button"
               onClick={() => {
-                setMethod("env");
-                setOptionIndex(1);
+                setInFooter(true);
+                setFooterButtonIndex(0);
+                handleCancel();
               }}
-              role="radio"
-              aria-checked={method === "env"}
-              data-value="env"
               className={cn(
-                "flex items-center gap-3 w-full text-left group rounded",
-                method === "env" ? "text-tui-fg" : "text-gray-400 hover:text-tui-fg",
-                focusZone === "options" && optionIndex === 1 && "ring-2 ring-tui-blue ring-offset-2 ring-offset-tui-bg"
+                "text-xs text-gray-500 hover:text-tui-fg transition-colors",
+                inFooter &&
+                  footerButtonIndex === 0 &&
+                  "ring-2 ring-tui-blue rounded px-1"
               )}
             >
-              <span className={cn("font-bold", method === "env" ? "text-tui-blue" : "text-gray-600")}>
-                {method === "env" ? "[ ● ]" : "[   ]"}
-              </span>
-              <span className="group-hover:underline decoration-tui-border underline-offset-4">
-                Import from Env
-              </span>
+              [Esc] Cancel
             </button>
-            <div className="pl-9">
-              <div className="flex items-center bg-tui-bg border border-tui-border px-3 py-2 w-full text-gray-500">
-                <span className="mr-2 select-none text-gray-600">$</span>
-                <span>{envVarName}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="px-6 pb-6 pt-2">
-          <div className="text-[11px] text-gray-600 border-t border-tui-border/40 pt-3 mb-6 leading-relaxed">
-            Note: Keys are encrypted in your OS keychain. Context is only sent to {providerName}.
-          </div>
-          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                setInFooter(true);
+                setFooterButtonIndex(1);
+                handleSubmit();
+              }}
+              disabled={!canSubmit || isSubmitting}
+              className={cn(
+                "bg-tui-blue text-black px-4 py-1.5 text-xs font-bold hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all",
+                inFooter &&
+                  footerButtonIndex === 1 &&
+                  "ring-2 ring-tui-blue ring-offset-2 ring-offset-tui-bg"
+              )}
+            >
+              [Enter] Confirm
+            </button>
             {hasExistingKey && onRemoveKey && (
-              <Button
-                variant="destructive"
-                bracket
-                onClick={handleRemove}
+              <button
+                type="button"
+                onClick={() => {
+                  setInFooter(true);
+                  setFooterButtonIndex(2);
+                  handleRemove();
+                }}
                 disabled={isSubmitting}
                 className={cn(
-                  "text-tui-red hover:bg-tui-red hover:text-black px-3 py-1.5 transition-colors text-xs font-bold border border-tui-border hover:border-tui-red disabled:opacity-50",
-                  focusZone === "footer" && "ring-2 ring-tui-blue ring-offset-2 ring-offset-tui-bg"
+                  "text-tui-red hover:bg-tui-red hover:text-black px-3 py-1.5 text-xs font-bold border border-tui-border hover:border-tui-red disabled:opacity-50 transition-colors",
+                  inFooter &&
+                    footerButtonIndex === 2 &&
+                    "ring-2 ring-tui-blue ring-offset-2 ring-offset-tui-bg"
                 )}
               >
                 Remove Key
-              </Button>
+              </button>
             )}
           </div>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

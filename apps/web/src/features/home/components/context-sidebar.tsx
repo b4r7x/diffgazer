@@ -1,4 +1,4 @@
-import { Panel, InfoField } from '@/components/ui';
+import { Panel, PanelHeader, PanelContent, InfoField } from '@/components/ui';
 
 export interface ContextInfo {
   trustedDir?: string;
@@ -15,8 +15,8 @@ interface ContextSidebarProps {
 export function ContextSidebar({ context }: ContextSidebarProps) {
   return (
     <Panel className="w-full max-w-md lg:w-80 h-fit shrink-0">
-      <Panel.Header>Context</Panel.Header>
-      <Panel.Content>
+      <PanelHeader>Context</PanelHeader>
+      <PanelContent>
         {context.trustedDir && (
           <InfoField label="Trusted" color="blue">
             <span className="break-all font-mono opacity-90">{context.trustedDir}</span>
@@ -42,7 +42,7 @@ export function ContextSidebar({ context }: ContextSidebarProps) {
             </div>
           </InfoField>
         )}
-      </Panel.Content>
+      </PanelContent>
     </Panel>
   );
 }

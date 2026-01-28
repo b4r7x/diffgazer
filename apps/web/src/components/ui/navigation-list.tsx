@@ -202,9 +202,8 @@ function NavigationListRoot({
   );
 }
 
-export const NavigationList = Object.assign(NavigationListRoot, {
-  Item: NavigationListItem,
-});
+export const NavigationList = NavigationListRoot;
+export { NavigationListItem };
 
 export type {
   NavigationListRootProps,

@@ -1,7 +1,7 @@
 "use client";
 
-import { Panel } from "@/components/ui/panel";
-import { Menu } from "@/components/ui/menu";
+import { Panel, PanelHeader, PanelContent } from "@/components/ui/panel";
+import { Menu, MenuItem } from "@/components/ui/menu";
 import { Badge } from "@/components/ui/badge";
 import type { ResolvedTheme } from "@/types/theme";
 
@@ -18,17 +18,17 @@ export function ThemePreviewCard({ previewTheme }: ThemePreviewCardProps) {
     >
       <div className="w-full max-w-sm font-mono text-xs isolate">
         <Panel className="bg-tui-bg border-tui-border">
-          <Panel.Header variant="default" value="RO">
+          <PanelHeader variant="default" value="RO">
             PREVIEW.tsx
-          </Panel.Header>
-          <Panel.Content spacing="none">
+          </PanelHeader>
+          <PanelContent spacing="none">
             {/* Menu with selection states */}
             <Menu selectedIndex={1} onSelect={() => {}} keyboardEnabled={false}>
-              <Menu.Item id="normal">Normal Item</Menu.Item>
-              <Menu.Item id="selected">Selected Item</Menu.Item>
-              <Menu.Item id="disabled" disabled>
+              <MenuItem id="normal">Normal Item</MenuItem>
+              <MenuItem id="selected">Selected Item</MenuItem>
+              <MenuItem id="disabled" disabled>
                 Disabled Item
-              </Menu.Item>
+              </MenuItem>
             </Menu>
 
             {/* Divider */}
@@ -52,7 +52,7 @@ export function ThemePreviewCard({ previewTheme }: ThemePreviewCardProps) {
               <Badge variant="success">Success</Badge>
               <Badge variant="info">Info</Badge>
             </div>
-          </Panel.Content>
+          </PanelContent>
           <div className="px-3 py-1 text-center text-[10px] text-tui-muted border-t border-tui-border">
             Stargazer v2.0
           </div>

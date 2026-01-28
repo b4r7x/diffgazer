@@ -5,7 +5,7 @@ import type { WebTheme, ResolvedTheme } from "@/types/theme";
 import { useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useTheme } from "@/hooks/use-theme";
-import { Panel } from "@/components/ui/panel";
+import { Panel, PanelHeader, PanelContent } from "@/components/ui/panel";
 import { Callout } from "@/components/ui/callout";
 import { ThemeSelectorContent } from "@/components/settings/theme-selector-content";
 import { ThemePreviewCard } from "@/components/theme";
@@ -43,10 +43,10 @@ export function SettingsThemePage() {
       <div className="grid grid-cols-[2fr_3fr] gap-6 w-full h-full min-h-0">
         {/* Left Panel - Theme Settings */}
         <Panel className="relative pt-4 flex flex-col h-full">
-          <Panel.Header variant="floating" className="text-tui-violet">
+          <PanelHeader variant="floating" className="text-tui-violet">
             Theme Settings
-          </Panel.Header>
-          <Panel.Content className="flex-1 flex flex-col">
+          </PanelHeader>
+          <PanelContent className="flex-1 flex flex-col">
             <ThemeSelectorContent
               value={theme as Theme}
               onChange={(v) => {
@@ -59,17 +59,17 @@ export function SettingsThemePage() {
                 Hover to preview. Press Space to apply theme instantly.
               </Callout>
             </div>
-          </Panel.Content>
+          </PanelContent>
         </Panel>
 
         {/* Right Panel - Live Preview */}
         <Panel className="relative pt-4 flex flex-col h-full overflow-hidden">
-          <Panel.Header variant="floating" className="text-tui-blue">
+          <PanelHeader variant="floating" className="text-tui-blue">
             Live Preview
-          </Panel.Header>
-          <Panel.Content className="flex-1 flex items-center justify-center p-0">
+          </PanelHeader>
+          <PanelContent className="flex-1 flex items-center justify-center p-0">
             <ThemePreviewCard previewTheme={previewResolved} />
-          </Panel.Content>
+          </PanelContent>
         </Panel>
       </div>
     </div>
