@@ -61,17 +61,15 @@ export function SettingsCredentialsPage() {
 
   useKey("Escape", () => navigate({ to: "/settings" }));
 
-  const footerShortcuts = useMemo(() => FOOTER_SHORTCUTS, []);
-
   const rightShortcuts = useMemo(
     () => [{ key: "", label: `${credentials.length} Active` }],
     [credentials.length]
   );
 
   useEffect(() => {
-    setShortcuts(footerShortcuts);
+    setShortcuts(FOOTER_SHORTCUTS);
     setRightShortcuts(rightShortcuts);
-  }, [footerShortcuts, rightShortcuts, setShortcuts, setRightShortcuts]);
+  }, [rightShortcuts, setShortcuts, setRightShortcuts]);
 
   return (
     <div className="flex-1 flex overflow-hidden">

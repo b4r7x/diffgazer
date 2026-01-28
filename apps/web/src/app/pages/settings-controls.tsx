@@ -25,17 +25,15 @@ export function SettingsControlsPage() {
     navigate({ to: "/settings" });
   };
 
-  const footerShortcuts = useMemo(() => FOOTER_SHORTCUTS, []);
-
   const rightShortcuts = useMemo(
     () => [{ key: "MODE:", label: controlsMode === "menu" ? "Menu" : "Keys" }],
     [controlsMode]
   );
 
   useEffect(() => {
-    setShortcuts(footerShortcuts);
+    setShortcuts(FOOTER_SHORTCUTS);
     setRightShortcuts(rightShortcuts);
-  }, [footerShortcuts, rightShortcuts, setShortcuts, setRightShortcuts]);
+  }, [rightShortcuts, setShortcuts, setRightShortcuts]);
 
   return (
     <div className="flex-1 flex items-center justify-center p-6">

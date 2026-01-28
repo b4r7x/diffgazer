@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { TrustCapabilities } from "@repo/schemas";
 import { Badge, Callout, Button } from "../ui";
 import { CheckboxGroup, CheckboxItem } from "../ui/checkbox";
-import { useKey } from "@/hooks/keyboard";
+import { useTrustFormKeyboard } from "@/hooks/keyboard";
 import { cn } from "@/lib/utils";
 
 export interface TrustPermissionsContentProps {
@@ -30,31 +30,20 @@ export function TrustPermissionsContent({
   onRevoke,
   isTrusted = false,
 }: TrustPermissionsContentProps) {
-  type FocusZone = 'list' | 'buttons';
-  const [focusZone, setFocusZone] = useState<FocusZone>('list');
+  type FocusZone = "list" | "buttons";
+  const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [buttonIndex, setButtonIndex] = useState(0);
-  const BUTTONS = ['save', 'revoke'] as const;
+  const BUTTONS_COUNT = 2;
 
-  useKey('ArrowLeft', () => setButtonIndex(i => Math.max(0, i - 1)),
-    { enabled: focusZone === 'buttons' });
-
-  useKey('ArrowRight', () => setButtonIndex(i => Math.min(BUTTONS.length - 1, i + 1)),
-    { enabled: focusZone === 'buttons' });
-
-  useKey('ArrowUp', () => {
-    setFocusZone('list');
-    setButtonIndex(0);
-  }, { enabled: focusZone === 'buttons' });
-
-  useKey('Enter', () => {
-    if (buttonIndex === 0 && onSave) onSave();
-    else if (buttonIndex === 1 && onRevoke) onRevoke();
-  }, { enabled: focusZone === 'buttons' });
-
-  useKey(' ', () => {
-    if (buttonIndex === 0 && onSave) onSave();
-    else if (buttonIndex === 1 && onRevoke) onRevoke();
-  }, { enabled: focusZone === 'buttons' });
+  useTrustFormKeyboard({
+    focusZone,
+    buttonIndex,
+    buttonsCount: BUTTONS_COUNT,
+    onButtonIndexChange: setButtonIndex,
+    onFocusZoneChange: setFocusZone,
+    onSave,
+    onRevoke,
+  });
 
   const selectedCapabilities = Object.entries(value)
     .filter(([_, v]) => v)

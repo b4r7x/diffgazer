@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { Theme } from "@repo/schemas";
 import type { WebTheme, ResolvedTheme } from "@/types/theme";
@@ -29,8 +29,7 @@ export function SettingsThemePage() {
   const previewResolved: ResolvedTheme =
     previewTheme === "auto" ? resolved : previewTheme;
 
-  const footerShortcuts = useMemo(() => FOOTER_SHORTCUTS, []);
-  usePageFooter({ shortcuts: footerShortcuts });
+  usePageFooter({ shortcuts: FOOTER_SHORTCUTS });
 
   useKey("Escape", () => navigate({ to: "/settings" }));
   useKey("Enter", () => {
