@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { cn } from '../../lib/utils';
+import { useScope, useKey } from '@/hooks/keyboard';
 
 export interface ModalProps {
     isOpen: boolean;
@@ -12,18 +13,8 @@ export interface ModalProps {
 }
 
 export function Modal({ isOpen, onClose, title, children, className }: ModalProps) {
-    React.useEffect(() => {
-        if (!isOpen) return;
-
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                onClose();
-            }
-        };
-
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, onClose]);
+    useScope('modal');
+    useKey('Escape', onClose, { enabled: isOpen });
 
     if (!isOpen) return null;
 

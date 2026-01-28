@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { Modal } from '@/components/ui/modal';
 import { cn } from '@/lib/utils';
+import { useScope, useKey } from '@/hooks/keyboard';
 
 type TabId = 'summary' | 'evidence' | 'trace';
 
@@ -40,23 +41,14 @@ export function AgentInspectorModal({ isOpen, issue, onClose }: AgentInspectorMo
     }
   }, [isOpen, issue.evidence]);
 
-  React.useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
-        e.preventDefault();
-        setActiveTab((prev) => {
-          if (prev === 'summary') return 'evidence';
-          if (prev === 'evidence') return 'trace';
-          return 'summary';
-        });
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen]);
+  useScope('agent-inspector');
+  useKey('Tab', () => {
+    setActiveTab((prev) => {
+      if (prev === 'summary') return 'evidence';
+      if (prev === 'evidence') return 'trace';
+      return 'summary';
+    });
+  }, { enabled: isOpen });
 
   const toggleFile = (file: string) => {
     setExpandedFiles((prev) => {

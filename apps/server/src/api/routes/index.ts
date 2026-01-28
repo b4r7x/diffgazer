@@ -8,6 +8,7 @@ import { reviews } from "./reviews.js";
 import { triage } from "./triage.js";
 import { settings } from "./settings.js";
 import { prReview } from "./pr-review.js";
+import { shutdown } from "./shutdown.js";
 
 const routes = new Hono();
 
@@ -20,5 +21,6 @@ routes.route("/reviews", reviews);
 routes.route("/triage", triage);
 routes.route("/settings", settings);
 routes.route("/pr-review", prReview);
+routes.route("/shutdown", shutdown);
 
 export { routes };

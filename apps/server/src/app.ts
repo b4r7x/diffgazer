@@ -19,8 +19,6 @@ export function createServer(): Hono {
     await next();
   });
 
-  app.use(csrf());
-
   app.use(
     "*",
     cors({
@@ -43,6 +41,8 @@ export function createServer(): Hono {
       credentials: true,
     }),
   );
+
+  app.use(csrf());
 
   app.use("*", async (c, next) => {
     await next();
