@@ -1,34 +1,107 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useState,
-  Children,
-  isValidElement,
-  Fragment,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useState, useRef, type ReactNode } from "react";
 import { cn } from "../../lib/utils";
-import { useKey, useSelectableList } from "@/hooks/keyboard";
+import { useGroupNavigation } from "@/hooks/keyboard";
 
-interface RadioItemData {
-  value: string;
-  disabled: boolean;
-  index: number;
+const radioVariants = {
+  base: "flex cursor-pointer select-none font-mono relative",
+  container: "flex items-center gap-3 px-3 py-2",
+  indicator: "font-bold min-w-5",
+  label: "text-base",
+  states: {
+    focused: "bg-tui-selection text-white font-bold",
+    focusedAccent:
+      "before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-tui-blue",
+    unfocused: "text-tui-fg hover:bg-tui-selection/50",
+    disabled: "opacity-50 cursor-not-allowed",
+    checkedIndicator: "text-tui-green",
+  },
+};
+
+export interface RadioProps {
+  checked?: boolean;
+  onCheckedChange?: (checked: boolean) => void;
+  label?: ReactNode;
+  description?: ReactNode;
+  disabled?: boolean;
+  focused?: boolean;
+  className?: string;
+  "data-value"?: string;
+}
+
+export function Radio({
+  checked = false,
+  onCheckedChange,
+  label,
+  description,
+  disabled = false,
+  focused = false,
+  className,
+  "data-value": dataValue,
+}: RadioProps) {
+  const handleClick = () => {
+    if (!disabled) {
+      onCheckedChange?.(!checked);
+    }
+  };
+
+  return (
+    <div
+      role="radio"
+      data-value={dataValue}
+      aria-checked={checked}
+      aria-disabled={disabled}
+      onClick={handleClick}
+      className={cn(
+        radioVariants.base,
+        radioVariants.container,
+        description && "items-start",
+        focused
+          ? radioVariants.states.focused
+          : radioVariants.states.unfocused,
+        focused && radioVariants.states.focusedAccent,
+        disabled && radioVariants.states.disabled,
+        className
+      )}
+    >
+      <span
+        className={cn(
+          radioVariants.indicator,
+          checked && !focused && radioVariants.states.checkedIndicator
+        )}
+      >
+        {checked ? "(x)" : "( )"}
+      </span>
+      {label && !description && (
+        <span className={radioVariants.label}>{label}</span>
+      )}
+      {label && description && (
+        <div className="flex flex-col min-w-0">
+          <span className={radioVariants.label}>{label}</span>
+          <span
+            className={cn(
+              "text-sm mt-0.5",
+              focused ? "text-white/70" : "text-tui-muted"
+            )}
+          >
+            {description}
+          </span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 interface RadioGroupContextType {
   value?: string;
-  onValueChange?: (value: string) => void;
-  disabled?: boolean;
-  focusedIndex: number;
-  items: RadioItemData[];
-  setFocusedIndex: (index: number) => void;
+  onValueChange: (value: string) => void;
+  disabled: boolean;
+  isFocused: (value: string) => boolean;
 }
 
 const RadioGroupContext = createContext<RadioGroupContextType | undefined>(
-  undefined,
+  undefined
 );
 
 function useRadioGroupContext() {
@@ -64,47 +137,10 @@ function RadioGroupRoot({
   wrap = true,
   onBoundaryReached,
 }: RadioGroupProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
   const isControlled = controlledValue !== undefined;
   const value = isControlled ? controlledValue : uncontrolledValue;
-
-  // Extract items from children
-  const items: RadioItemData[] = [];
-  let itemIndex = 0;
-
-  function extractItems(node: ReactNode) {
-    Children.forEach(node, (child) => {
-      if (!isValidElement(child)) return;
-      if (child.type === Fragment) {
-        extractItems((child.props as { children?: ReactNode }).children);
-      } else if (child.type === RadioGroupItem) {
-        const childProps = child.props as RadioGroupItemProps;
-        items.push({
-          value: childProps.value,
-          disabled: childProps.disabled ?? false,
-          index: itemIndex++,
-        });
-      }
-    });
-  }
-
-  extractItems(children);
-
-  // Find initial index based on current value
-  const initialIndex = Math.max(
-    0,
-    value ? items.findIndex((item) => item.value === value) : 0
-  );
-
-  const { focusedIndex, setFocusedIndex } = useSelectableList({
-    itemCount: items.length,
-    getDisabled: (index) => items[index]?.disabled ?? false,
-    wrap,
-    onBoundaryReached,
-    onFocus: onFocus ? (i) => onFocus(items[i]?.value) : undefined,
-    enabled: !disabled && items.length > 0,
-    initialIndex,
-  });
 
   const handleValueChange = (newValue: string) => {
     if (disabled) return;
@@ -114,15 +150,16 @@ function RadioGroupRoot({
     }
   };
 
-  // Handle Enter/Space to select focused item
-  const handleSelect = () => {
-    const item = items[focusedIndex];
-    if (!item || item.disabled || disabled) return;
-    handleValueChange(item.value);
-  };
-
-  useKey("Enter", handleSelect, { enabled: !disabled && items.length > 0 });
-  useKey(" ", handleSelect, { enabled: !disabled && items.length > 0 });
+  const { isFocused } = useGroupNavigation({
+    containerRef,
+    role: "radio",
+    onSelect: handleValueChange,
+    onFocusChange: onFocus,
+    wrap,
+    onBoundaryReached,
+    enabled: !disabled,
+    initialValue: value ?? null,
+  });
 
   return (
     <RadioGroupContext.Provider
@@ -130,18 +167,17 @@ function RadioGroupRoot({
         value,
         onValueChange: handleValueChange,
         disabled,
-        focusedIndex,
-        items,
-        setFocusedIndex,
+        isFocused,
       }}
     >
       <div
+        ref={containerRef}
         role="radiogroup"
         aria-orientation={orientation}
         className={cn(
           "flex font-mono",
           orientation === "vertical" ? "flex-col gap-1" : "flex-row gap-4",
-          className,
+          className
         )}
       >
         {children}
@@ -152,8 +188,8 @@ function RadioGroupRoot({
 
 export interface RadioGroupItemProps {
   value: string;
-  label: string;
-  description?: string;
+  label: ReactNode;
+  description?: ReactNode;
   disabled?: boolean;
   className?: string;
 }
@@ -167,54 +203,25 @@ function RadioGroupItem({
 }: RadioGroupItemProps) {
   const context = useRadioGroupContext();
   const isSelected = context.value === value;
-  const disabled = context.disabled || itemDisabled;
-
-  const itemData = context.items.find((item) => item.value === value);
-  const isFocused = itemData ? itemData.index === context.focusedIndex : false;
-
-  const handleClick = () => {
-    if (!disabled && itemData) {
-      context.setFocusedIndex(itemData.index);
-      context.onValueChange?.(value);
-    }
-  };
+  const isDisabled = context.disabled || itemDisabled;
+  const isFocused = context.isFocused(value);
 
   return (
-    <div
-      role="radio"
-      aria-checked={isSelected}
-      aria-disabled={disabled}
-      onClick={handleClick}
-      className={cn(
-        "flex items-start gap-3 px-3 py-2 text-left cursor-pointer w-full",
-        "font-mono text-sm leading-relaxed",
-        "text-tui-fg transition-colors duration-75",
-        !isFocused && "hover:bg-tui-selection",
-        isFocused && "bg-tui-blue text-black font-bold hover:bg-tui-blue",
-        disabled && "opacity-50 cursor-not-allowed",
-        className,
-      )}
-    >
-      <span className="mt-0.5 shrink-0 select-none">
-        {isSelected ? "(x)" : "( )"}
-      </span>
-      <div className="flex-1 min-w-0">
-        <span>{label}</span>
-        {description && (
-          <div
-            className={cn(
-              "text-xs mt-1",
-              isFocused ? "text-black/70" : "opacity-60",
-            )}
-          >
-            {description}
-          </div>
-        )}
-      </div>
-    </div>
+    <Radio
+      data-value={value}
+      checked={isSelected}
+      onCheckedChange={() => context.onValueChange(value)}
+      label={label}
+      description={description}
+      disabled={isDisabled}
+      focused={isFocused}
+      className={className}
+    />
   );
 }
 
 export const RadioGroup = Object.assign(RadioGroupRoot, {
   Item: RadioGroupItem,
 });
+
+export { radioVariants };
