@@ -2,7 +2,7 @@ export { Badge, badgeVariants, type BadgeProps } from './badge';
 export { Callout, type CalloutProps } from './callout';
 export { Button, buttonVariants, type ButtonProps } from './button';
 export { Card, type CardProps, type CardSectionProps } from './card';
-export { Checkbox, CheckboxGroup, CheckboxItem, type CheckboxProps, type CheckboxGroupProps, type CheckboxItemProps } from './checkbox';
+export { Checkbox, CheckboxGroup, CheckboxItem, type CheckboxProps, type CheckboxGroupProps, type CheckboxItemProps, type CheckboxVariant } from './checkbox';
 export { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogClose } from './dialog';
 export { InfoField, type InfoFieldProps, type InfoFieldColor } from './info-field';
 export { Input, inputVariants, type InputProps } from './input';
@@ -13,3 +13,6 @@ export { RadioGroup, type RadioGroupProps, type RadioGroupItemProps } from './ra
 export { Table, type TableColumn, type TableProps } from './table';
 export { Tabs, TabsList, TabsTrigger, TabsContent, type TabsProps, type TabsListProps, type TabsTriggerProps, type TabsContentProps } from './tabs';
 export { Toast } from "./toast";
+export { CapabilityCard, type CapabilityCardProps } from './capability-card';
+export { StatusRow, type StatusRowProps } from './status-row';
+export { NavigationList, type NavigationListRootProps, type NavigationListItemProps, type NavigationListItemData } from './navigation-list';

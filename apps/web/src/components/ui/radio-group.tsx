@@ -56,7 +56,7 @@ export function Radio({
       )}
     >
       <span className={selectableItemIndicatorVariants({ size, checked, focused })}>
-        {checked ? "(x)" : "( )"}
+        {checked ? "[ ● ]" : "[   ]"}
       </span>
       {label && !description && (
         <span className={selectableItemLabelVariants({ size })}>{label}</span>

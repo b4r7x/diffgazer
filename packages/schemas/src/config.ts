@@ -331,3 +331,73 @@ export const ProvidersStatusResponseSchema = z.object({
   activeProvider: AIProviderSchema.optional(),
 });
 export type ProvidersStatusResponse = z.infer<typeof ProvidersStatusResponseSchema>;
+
+export const PROVIDER_ENV_VARS: Record<AIProvider, string> = {
+  gemini: 'GOOGLE_API_KEY',
+  openai: 'OPENAI_API_KEY',
+  anthropic: 'ANTHROPIC_API_KEY',
+  glm: 'GLM_API_KEY',
+  openrouter: 'OPENROUTER_API_KEY',
+};
+
+export const PROVIDER_CAPABILITIES: Record<AIProvider, {
+  toolCalling: string;
+  jsonMode: string;
+  streaming: string;
+  contextWindow: string;
+  tier: 'free' | 'paid' | 'mixed';
+  tierBadge: 'FREE' | 'PAID';
+  capabilities: string[];
+  costDescription: string;
+}> = {
+  gemini: {
+    toolCalling: 'Supported (Native)',
+    jsonMode: 'Supported (Schema constraints)',
+    streaming: 'Native Server-Sent Events',
+    contextWindow: '1M - 2M Tokens',
+    tier: 'mixed',
+    tierBadge: 'FREE',
+    capabilities: ['TOOLS', 'JSON', 'FAST'],
+    costDescription: 'Free tier available for Gemini 1.5 Flash and Pro within rate limits. Paid tier offers higher throughput and per-token billing for commercial use.',
+  },
+  openai: {
+    toolCalling: 'Supported (Native)',
+    jsonMode: 'Supported (JSON mode)',
+    streaming: 'Server-Sent Events',
+    contextWindow: '128K Tokens',
+    tier: 'paid',
+    tierBadge: 'PAID',
+    capabilities: ['TOOLS', 'JSON', 'VISION'],
+    costDescription: 'Pay-per-token pricing. GPT-4o offers best value for code review tasks.',
+  },
+  anthropic: {
+    toolCalling: 'Supported (Native)',
+    jsonMode: 'Supported (JSON mode)',
+    streaming: 'Server-Sent Events',
+    contextWindow: '200K Tokens',
+    tier: 'paid',
+    tierBadge: 'PAID',
+    capabilities: ['TOOLS', 'VISION', 'LONG-CTX'],
+    costDescription: 'Pay-per-token pricing. Claude excels at nuanced code analysis.',
+  },
+  glm: {
+    toolCalling: 'Supported (Native)',
+    jsonMode: 'Supported',
+    streaming: 'Server-Sent Events',
+    contextWindow: '200K Tokens',
+    tier: 'paid',
+    tierBadge: 'PAID',
+    capabilities: ['FAST', 'TOOLS'],
+    costDescription: 'Competitive pricing for GLM-4.7 with excellent code understanding.',
+  },
+  openrouter: {
+    toolCalling: 'Varies by model',
+    jsonMode: 'Varies by model',
+    streaming: 'Supported',
+    contextWindow: 'Varies by model',
+    tier: 'mixed',
+    tierBadge: 'PAID',
+    capabilities: ['MULTI-PROVIDER'],
+    costDescription: 'Access multiple providers through single API. Pricing varies by model.',
+  },
+};
