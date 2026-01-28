@@ -86,8 +86,5 @@ function PanelRoot({ children, className }: PanelProps) {
   );
 }
 
-export const Panel = Object.assign(PanelRoot, {
-  Header: PanelHeader,
-  Content: PanelContent,
-  Divider: PanelDivider,
-});
+export const Panel = PanelRoot;
+export { PanelHeader, PanelContent, PanelDivider };

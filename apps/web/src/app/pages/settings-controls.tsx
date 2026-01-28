@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useKey } from "@/hooks/keyboard";
 import { useFooter } from "@/components/layout";
-import { Panel } from "@/components/ui/panel";
+import { Panel, PanelHeader, PanelContent } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -41,8 +41,8 @@ export function SettingsControlsPage() {
     <div className="flex-1 flex items-center justify-center p-6">
       <div className="w-full max-w-2xl">
         <Panel>
-          <Panel.Header>NAVIGATION MODE</Panel.Header>
-          <Panel.Content className="space-y-6">
+          <PanelHeader>NAVIGATION MODE</PanelHeader>
+          <PanelContent className="space-y-6">
             <div className="space-y-4">
               <button
                 type="button"
@@ -126,7 +126,7 @@ export function SettingsControlsPage() {
                 Cancel
               </Button>
             </div>
-          </Panel.Content>
+          </PanelContent>
         </Panel>
       </div>
     </div>

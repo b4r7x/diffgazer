@@ -285,10 +285,7 @@ function MenuRoot({
   );
 }
 
-export const Menu = Object.assign(MenuRoot, {
-  Item: MenuItem,
-  Divider: MenuDivider,
-  Header: MenuHeader,
-});
+export const Menu = MenuRoot;
+export { MenuItem, MenuDivider, MenuHeader };
 
 export type { MenuRootProps, MenuItemProps, MenuDividerProps, MenuHeaderProps, MenuItemData };

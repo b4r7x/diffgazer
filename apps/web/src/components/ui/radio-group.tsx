@@ -79,6 +79,7 @@ interface RadioGroupContextType {
   disabled: boolean;
   size: SelectableItemSize;
   isFocused: (value: string) => boolean;
+  onFocusZoneEnter?: () => void;
 }
 
 const RadioGroupContext = createContext<RadioGroupContextType | undefined>(
@@ -98,6 +99,7 @@ export interface RadioGroupProps {
   defaultValue?: string;
   onValueChange?: (value: string) => void;
   onFocus?: (value: string) => void;
+  onFocusZoneEnter?: () => void;
   orientation?: "vertical" | "horizontal";
   disabled?: boolean;
   size?: SelectableItemSize;
@@ -112,6 +114,7 @@ function RadioGroupRoot({
   defaultValue,
   onValueChange,
   onFocus,
+  onFocusZoneEnter,
   orientation = "vertical",
   disabled = false,
   size = "md",
@@ -152,6 +155,7 @@ function RadioGroupRoot({
         disabled,
         size,
         isFocused,
+        onFocusZoneEnter,
       }}
     >
       <div
@@ -190,11 +194,16 @@ function RadioGroupItem({
   const isDisabled = context.disabled || itemDisabled;
   const isFocused = context.isFocused(value);
 
+  const handleCheckedChange = () => {
+    context.onFocusZoneEnter?.();
+    context.onValueChange(value);
+  };
+
   return (
     <Radio
       data-value={value}
       checked={isSelected}
-      onCheckedChange={() => context.onValueChange(value)}
+      onCheckedChange={handleCheckedChange}
       label={label}
       description={description}
       disabled={isDisabled}
@@ -205,6 +214,5 @@ function RadioGroupItem({
   );
 }
 
-export const RadioGroup = Object.assign(RadioGroupRoot, {
-  Item: RadioGroupItem,
-});
+export const RadioGroup = RadioGroupRoot;
+export { RadioGroupItem };

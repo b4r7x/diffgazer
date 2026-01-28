@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useKey } from "@/hooks/keyboard";
 import { useRouteState } from "@/hooks/use-route-state";
 import { useFooter } from "@/components/layout";
-import { Panel } from "@/components/ui/panel";
+import { Panel, PanelHeader, PanelContent } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -113,8 +113,8 @@ export function SettingsCredentialsPage() {
 
       <div className="w-2/3 flex flex-col">
         <Panel className="flex-1">
-          <Panel.Header>KEY DETAILS</Panel.Header>
-          <Panel.Content className="space-y-6">
+          <PanelHeader>KEY DETAILS</PanelHeader>
+          <PanelContent className="space-y-6">
             {credentials[selectedIndex] && (
               <>
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -162,7 +162,7 @@ export function SettingsCredentialsPage() {
                 </div>
               </>
             )}
-          </Panel.Content>
+          </PanelContent>
         </Panel>
       </div>
     </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { RadioGroup } from '../ui/radio-group';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Input } from '../ui/input';
 
 const PROVIDERS = [
@@ -33,7 +33,7 @@ export function ProviderSelectorContent({
         </div>
         <RadioGroup value={provider} onValueChange={onProviderChange}>
           {PROVIDERS.map((p) => (
-            <RadioGroup.Item key={p.value} value={p.value} label={p.label} />
+            <RadioGroupItem key={p.value} value={p.value} label={p.label} />
           ))}
         </RadioGroup>
       </div>

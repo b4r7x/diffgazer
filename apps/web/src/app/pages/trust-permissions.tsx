@@ -4,7 +4,7 @@ import type { TrustCapabilities } from "@repo/schemas";
 import { useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useToast } from "@/components/layout";
-import { Panel } from "@/components/ui/panel";
+import { Panel, PanelHeader, PanelContent } from "@/components/ui/panel";
 import { TrustPermissionsContent } from "@/components/settings/trust-permissions-content";
 
 const FOOTER_SHORTCUTS = [
@@ -50,8 +50,8 @@ export function TrustPermissionsPage() {
   return (
     <div className="flex-1 flex items-center justify-center p-4">
       <Panel className="w-full max-w-2xl">
-        <Panel.Header>TRUST & PERMISSIONS</Panel.Header>
-        <Panel.Content>
+        <PanelHeader>TRUST & PERMISSIONS</PanelHeader>
+        <PanelContent>
           <TrustPermissionsContent
             directory="~/dev/projects/stargazer"
             value={capabilities}
@@ -61,7 +61,7 @@ export function TrustPermissionsPage() {
             onSave={handleSave}
             onRevoke={handleRevoke}
           />
-        </Panel.Content>
+        </PanelContent>
       </Panel>
     </div>
   );

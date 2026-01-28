@@ -47,6 +47,5 @@ function CardRoot({ title, badge, children, className }: CardProps) {
   );
 }
 
-export const Card = Object.assign(CardRoot, {
-  Section: CardSection,
-});
+export const Card = CardRoot;
+export { CardSection };

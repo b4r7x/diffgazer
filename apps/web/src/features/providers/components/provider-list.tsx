@@ -1,6 +1,6 @@
 'use client';
 
-import { NavigationList } from '@/components/ui';
+import { NavigationList, NavigationListItem } from '@/components/ui';
 import { Badge } from '@/components/ui';
 import { Input } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -110,7 +110,7 @@ export function ProviderList({
             const tierBadge = capabilities?.tierBadge ?? 'PAID';
 
             return (
-              <NavigationList.Item
+              <NavigationListItem
                 key={provider.id}
                 id={provider.id}
                 statusIndicator={getStatusIndicator(provider.displayStatus)}
@@ -126,7 +126,7 @@ export function ProviderList({
                 subtitle={provider.model ?? provider.defaultModel}
               >
                 {provider.name}
-              </NavigationList.Item>
+              </NavigationListItem>
             );
           })}
         </NavigationList>
