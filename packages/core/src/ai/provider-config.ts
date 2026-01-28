@@ -1,4 +1,4 @@
-import type { AIProvider } from "@repo/schemas/config";
+import type { AIProvider } from "@repo/schemas";
 
 export const PROVIDER_ENV_VARS: Record<AIProvider, string> = {
   gemini: "GEMINI_API_KEY",

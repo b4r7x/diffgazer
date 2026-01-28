@@ -1,23 +1,24 @@
-import { z } from "zod";
 import type { Result } from "../result.js";
 import { ok, err } from "../result.js";
 import type { AIClient } from "../ai/types.js";
 import type { AIError } from "../ai/errors.js";
 import type { ParsedDiff, FileDiff } from "../diff/types.js";
-import type { Lens, LensId, ReviewProfile, SeverityFilter } from "@repo/schemas/lens";
-import type { TriageResult, TriageIssue, TriageSeverity, EvidenceRef } from "@repo/schemas/triage";
+import type { Lens, SeverityFilter } from "@repo/schemas/lens";
+import type {
+  TriageResult,
+  TriageIssue,
+  TriageSeverity,
+  EvidenceRef,
+  TriageOptions,
+} from "@repo/schemas/triage";
 import { TriageResultSchema } from "@repo/schemas/triage";
-import type { AgentStreamEvent, AgentId } from "@repo/schemas/agent-event";
+import type { AgentStreamEvent } from "@repo/schemas/agent-event";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@repo/schemas/agent-event";
 import { escapeXml } from "../sanitization.js";
-import { getLenses, LENSES } from "./lenses/index.js";
+import { getLenses } from "./lenses/index.js";
 import { getProfile } from "./profiles.js";
 
-export interface TriageOptions {
-  profile?: ReviewProfile;
-  lenses?: LensId[];
-  filter?: SeverityFilter;
-}
+export type { TriageOptions };
 
 export type TriageError = AIError | { code: "NO_DIFF"; message: string };
 

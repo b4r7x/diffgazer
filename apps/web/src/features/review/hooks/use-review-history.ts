@@ -25,8 +25,8 @@ export function useReviewHistory() {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await getReview(id);
-      setCurrentReview(data);
+      const { review } = await getReview(id);
+      setCurrentReview(review);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load review");
     } finally {

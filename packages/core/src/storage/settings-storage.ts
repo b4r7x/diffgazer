@@ -6,7 +6,7 @@ import {
   SettingsConfigSchema,
   type TrustConfig,
   type SettingsConfig,
-} from "@repo/schemas/settings";
+} from "@repo/schemas";
 import { createDocument, type StoreError } from "./persistence.js";
 import type { Result } from "../result.js";
 import { ok, err } from "../result.js";

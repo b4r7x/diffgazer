@@ -1,6 +1,5 @@
 import { ok, err, type Result } from "../result.js";
-import type { OpenRouterModel, OpenRouterModelCache } from "@repo/schemas/config";
-import { OpenRouterModelCacheSchema } from "@repo/schemas/config";
+import { OpenRouterModelCacheSchema, type OpenRouterModel, type OpenRouterModelCache } from "@repo/schemas";
 import { paths } from "./paths.js";
 import fs from "node:fs/promises";
 import path from "node:path";

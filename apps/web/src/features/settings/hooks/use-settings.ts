@@ -8,10 +8,17 @@ export function useSettings() {
     const [error, setError] = useState<Error | null>(null);
 
     useEffect(() => {
-        getSettings()
-            .then(setSettings)
-            .catch(setError)
-            .finally(() => setIsLoading(false));
+        async function load() {
+            try {
+                const data = await getSettings();
+                setSettings(data);
+            } catch (e) {
+                setError(e instanceof Error ? e : new Error(String(e)));
+            } finally {
+                setIsLoading(false);
+            }
+        }
+        load();
     }, []);
 
     const update = useCallback(async (updates: Partial<SettingsConfig>) => {

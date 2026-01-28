@@ -5,7 +5,7 @@ import type { Result } from "../result.js";
 import { ok, err } from "../result.js";
 import type { AppError } from "../errors.js";
 import { createError, isNodeError, getErrorMessage } from "../errors.js";
-import { SessionEventSchema, type SessionEvent } from "@repo/schemas/session";
+import { SessionEventSchema, type SessionEvent } from "@repo/schemas";
 import {
   ensureDirectory as genericEnsureDirectory,
   createMappedErrorFactory,

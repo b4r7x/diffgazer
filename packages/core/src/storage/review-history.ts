@@ -6,8 +6,8 @@ import {
   type SavedReview,
   type ReviewHistoryMetadata,
   type ReviewGitContext,
-} from "@repo/schemas/review-history";
-import type { ReviewResult } from "@repo/schemas/review";
+  type ReviewResult,
+} from "@repo/schemas";
 import type { Result } from "../result.js";
 import { ok } from "../result.js";
 

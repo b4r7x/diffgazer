@@ -5,3 +5,13 @@ export { PROFILES, PROFILE_LIST, getProfile } from "./profiles.js";
 export { generateFingerprint, mergeIssues, normalizeTitle, getHunkDigest } from "./fingerprint.js";
 export { TraceRecorder } from "./trace-recorder.js";
 export { shouldSuggestDrilldown, getSuggestionReason } from "./drilldown-suggester.js";
+export { calculateAgentActivity, createInitialAgentActivityState, type AgentActivityState } from "./agent-activity.js";
+export {
+  buildTriageQueryParams,
+  processTriageStream,
+  type StreamTriageRequest,
+  type StreamTriageOptions,
+  type StreamTriageResult,
+  type StreamTriageError,
+  type TriageStreamController,
+} from "./stream-triage.js";

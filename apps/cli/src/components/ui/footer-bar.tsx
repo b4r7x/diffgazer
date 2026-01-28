@@ -3,17 +3,9 @@ import { Box, Text } from "ink";
 import { useTheme } from "../../hooks/use-theme.js";
 import { useKeyboardMode } from "../../hooks/use-keyboard-mode.js";
 import type { ControlsMode } from "@repo/schemas/settings";
+import type { Shortcut, ModeShortcuts } from "@repo/schemas/ui";
 
-export interface Shortcut {
-  key: string;
-  label: string;
-  disabled?: boolean;
-}
-
-export interface ModeShortcuts {
-  keys: Shortcut[];
-  menu: Shortcut[];
-}
+export type { Shortcut, ModeShortcuts };
 
 interface FooterBarProps {
   shortcuts?: Shortcut[];

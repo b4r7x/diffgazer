@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import type { TrustCapabilities } from '@repo/schemas';
 import {
   Dialog,
@@ -13,6 +12,7 @@ import {
 } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { TrustPermissionsContent } from '../settings/trust-permissions-content';
+import { useTrustDialogForm } from './use-trust-dialog-form';
 
 interface TrustDialogProps {
   open: boolean;
@@ -21,24 +21,16 @@ interface TrustDialogProps {
   onTrust: (capabilities: TrustCapabilities) => void;
 }
 
-const DEFAULT_CAPABILITIES: TrustCapabilities = {
-  readFiles: true,
-  readGit: true,
-  runCommands: false,
-};
-
 export function TrustDialog({
   open,
   onOpenChange,
   directory,
   onTrust,
 }: TrustDialogProps) {
-  const [capabilities, setCapabilities] = useState<TrustCapabilities>(DEFAULT_CAPABILITIES);
-
-  const handleTrust = () => {
-    onTrust(capabilities);
-    onOpenChange(false);
-  };
+  const { capabilities, setCapabilities, handleSubmit } = useTrustDialogForm({
+    onTrust,
+    onClose: () => onOpenChange(false),
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -58,7 +50,7 @@ export function TrustDialog({
           <DialogClose asChild>
             <Button variant="secondary">Cancel</Button>
           </DialogClose>
-          <Button variant="primary" onClick={handleTrust}>
+          <Button variant="primary" onClick={handleSubmit}>
             Trust Project
           </Button>
         </DialogFooter>

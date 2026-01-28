@@ -12,13 +12,8 @@ export async function getProviderStatus(): Promise<ProviderStatus[]> {
     return response.providers;
 }
 
-export async function getConfig(): Promise<UserConfig | null> {
-    try {
-        return await api.get<UserConfig>('/config');
-    } catch (e) {
-        // Config may not exist yet
-        return null;
-    }
+export async function getConfig(): Promise<UserConfig> {
+    return api.get<UserConfig>('/config');
 }
 
 export async function saveConfig(config: SaveConfigRequest): Promise<void> {
