@@ -26,5 +26,5 @@ export function useKeys(
       register(activeScope, key, () => stableHandler(key, i)),
     );
     return () => cleanups.forEach((cleanup) => cleanup());
-  }, [keys, register, activeScope, keysKey, options?.enabled]);
+  }, [register, activeScope, keysKey, options?.enabled]);
 }

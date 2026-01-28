@@ -92,98 +92,58 @@ function MenuItem({
     }
   };
 
-  const disabledClasses = disabled && 'opacity-50 cursor-not-allowed';
+  const selectedBg = isDanger ? 'bg-tui-red' : 'bg-tui-blue';
 
-  // Hub variant (settings hub style)
-  if (isHub) {
-    const baseClasses = 'px-4 py-4 flex justify-between items-center cursor-pointer text-sm w-full border-b border-tui-border last:border-b-0';
+  const baseClasses = isHub
+    ? 'px-4 py-4 flex justify-between items-center cursor-pointer text-sm w-full border-b border-tui-border last:border-b-0'
+    : 'px-4 py-3 flex items-center cursor-pointer font-mono w-full';
 
-    const getValueClasses = (selected: boolean) => {
-      if (selected) return 'font-mono text-xs uppercase tracking-wide';
-      switch (valueVariant) {
-        case 'success-badge':
-          return 'text-tui-green font-mono text-xs border border-tui-green/30 bg-tui-green/10 px-2 py-0.5 rounded';
-        case 'success':
-          return 'text-tui-violet font-mono text-xs';
-        case 'muted':
-          return 'text-gray-500 font-mono text-xs';
-        default:
-          return 'text-gray-500 font-mono text-xs';
-      }
-    };
-
-    if (isSelected) {
-      const selectedBg = isDanger ? 'bg-tui-red' : 'bg-tui-blue';
-      return (
-        <div
-          role="option"
-          aria-selected={true}
-          aria-disabled={disabled}
-          onClick={handleClick}
-          className={cn(baseClasses, selectedBg, 'text-black font-bold shadow-[inset_0_0_15px_rgba(0,0,0,0.1)]', disabledClasses, className)}
-        >
-          <div className="flex items-center">
-            <span className="w-6 text-black">▌</span>
-            <span>{children}</span>
-          </div>
-          {value && <div className={getValueClasses(true)}>{value}</div>}
-        </div>
+  const stateClasses = isSelected
+    ? cn(selectedBg, 'text-black font-bold', isHub && 'shadow-[inset_0_0_15px_rgba(0,0,0,0.1)]')
+    : cn(
+        isHub ? 'text-tui-fg' : (isDanger ? 'text-tui-red' : 'text-tui-fg'),
+        'hover:bg-tui-selection group transition-colors',
+        !isHub && 'duration-75'
       );
+
+  const getValueClasses = () => {
+    if (isSelected) return 'font-mono text-xs uppercase tracking-wide';
+    if (valueVariant === 'success-badge') {
+      return 'text-tui-green font-mono text-xs border border-tui-green/30 bg-tui-green/10 px-2 py-0.5 rounded';
     }
+    if (valueVariant === 'success') return 'text-tui-violet font-mono text-xs';
+    return 'text-gray-500 font-mono text-xs';
+  };
 
-    return (
-      <div
-        role="option"
-        aria-selected={false}
-        aria-disabled={disabled}
-        onClick={handleClick}
-        className={cn(baseClasses, 'text-tui-fg hover:bg-tui-selection group transition-colors', disabledClasses, className)}
-      >
-        <div className="flex items-center">
-          <span className="w-6 text-tui-blue opacity-0 group-hover:opacity-100 transition-opacity">❯</span>
-          <span className="font-medium group-hover:text-white">{children}</span>
-        </div>
-        {value && <div className={getValueClasses(false)}>{value}</div>}
-      </div>
-    );
-  }
-
-  // Default variant (original style)
-  const baseClasses = 'px-4 py-3 flex items-center cursor-pointer font-mono w-full';
-
-  if (isSelected) {
-    const selectedBg = isDanger ? 'bg-tui-red' : 'bg-tui-blue';
-    return (
-      <div
-        role="option"
-        aria-selected={true}
-        aria-disabled={disabled}
-        onClick={handleClick}
-        className={cn(baseClasses, selectedBg, 'text-black font-bold', disabledClasses, className)}
-      >
-        <span className="mr-3 shrink-0">▌</span>
-        {hotkey !== undefined && <span className="mr-4 shrink-0">[{hotkey}]</span>}
-        <span>{children}</span>
-      </div>
-    );
-  }
-
-  const textColor = isDanger ? 'text-tui-red' : 'text-tui-fg';
   const indicatorColor = isDanger ? 'text-tui-red' : 'text-tui-blue';
 
   return (
     <div
       role="option"
-      aria-selected={false}
+      aria-selected={isSelected}
       aria-disabled={disabled}
       onClick={handleClick}
-      className={cn(baseClasses, textColor, 'hover:bg-tui-selection group transition-colors duration-75', disabledClasses, className)}
+      className={cn(baseClasses, stateClasses, disabled && 'opacity-50 cursor-not-allowed', className)}
     >
-      <span className={cn('mr-3 shrink-0 opacity-0 group-hover:opacity-100', indicatorColor)}>▌</span>
-      {hotkey !== undefined && (
-        <span className={cn('mr-4 shrink-0 group-hover:text-tui-fg', indicatorColor)}>[{hotkey}]</span>
+      {isHub ? (
+        <>
+          <div className="flex items-center">
+            <span className={cn('w-6', isSelected ? 'text-black' : 'text-tui-blue opacity-0 group-hover:opacity-100 transition-opacity')}>
+              {isSelected ? '▌' : '❯'}
+            </span>
+            <span className={cn(isSelected ? '' : 'font-medium group-hover:text-white')}>{children}</span>
+          </div>
+          {value && <div className={getValueClasses()}>{value}</div>}
+        </>
+      ) : (
+        <>
+          <span className={cn('mr-3 shrink-0', !isSelected && cn('opacity-0 group-hover:opacity-100', indicatorColor))}>▌</span>
+          {hotkey !== undefined && (
+            <span className={cn('mr-4 shrink-0', !isSelected && cn('group-hover:text-tui-fg', indicatorColor))}>[{hotkey}]</span>
+          )}
+          <span className={cn(!isHub && 'tracking-wide', !isSelected && !isDanger && 'group-hover:text-white')}>{children}</span>
+        </>
       )}
-      <span className={cn('tracking-wide', !isDanger && 'group-hover:text-white')}>{children}</span>
     </div>
   );
 }

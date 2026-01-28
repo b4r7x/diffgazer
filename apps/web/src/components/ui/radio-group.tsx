@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useRef, type ReactNode } from "react";
+import { createContext, useContext, useState, useRef, useMemo, type ReactNode } from "react";
 import { cn } from "../../lib/utils";
 import { useGroupNavigation } from "@/hooks/keyboard";
 import {
@@ -147,17 +147,20 @@ function RadioGroupRoot({
     initialValue: value ?? null,
   });
 
+  const contextValue = useMemo(
+    () => ({
+      value,
+      onValueChange: handleValueChange,
+      disabled,
+      size,
+      isFocused,
+      onFocusZoneEnter,
+    }),
+    [value, handleValueChange, disabled, size, isFocused, onFocusZoneEnter]
+  );
+
   return (
-    <RadioGroupContext.Provider
-      value={{
-        value,
-        onValueChange: handleValueChange,
-        disabled,
-        size,
-        isFocused,
-        onFocusZoneEnter,
-      }}
-    >
+    <RadioGroupContext.Provider value={contextValue}>
       <div
         ref={containerRef}
         role="radiogroup"

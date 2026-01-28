@@ -36,15 +36,18 @@ export function Dialog({ open: controlledOpen, onOpenChange, children }: DialogP
   useScope('dialog', { enabled: isOpen });
   useKey('Escape', () => handleOpenChange(false), { enabled: isOpen });
 
+  const contextValue = React.useMemo(
+    () => ({
+      open: isOpen,
+      onOpenChange: handleOpenChange,
+      titleId: `${dialogId}-title`,
+      descriptionId: `${dialogId}-description`,
+    }),
+    [isOpen, handleOpenChange, dialogId]
+  );
+
   return (
-    <DialogContext.Provider
-      value={{
-        open: isOpen,
-        onOpenChange: handleOpenChange,
-        titleId: `${dialogId}-title`,
-        descriptionId: `${dialogId}-description`,
-      }}
-    >
+    <DialogContext.Provider value={contextValue}>
       {children}
     </DialogContext.Provider>
   );
@@ -55,27 +58,29 @@ interface DialogTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   asChild?: boolean;
 }
 
+function createClickHandler(
+  action: () => void,
+  existingHandler?: React.MouseEventHandler<HTMLElement>
+): React.MouseEventHandler<HTMLElement> {
+  return (e) => {
+    action();
+    existingHandler?.(e);
+  };
+}
+
 export function DialogTrigger({ children, asChild, ...props }: DialogTriggerProps) {
   const { onOpenChange } = useDialogContext();
+  const handleClick = createClickHandler(() => onOpenChange(true), props.onClick);
 
   if (asChild && React.isValidElement(children)) {
     return React.cloneElement(children, {
       ...props,
-      onClick: (e: React.MouseEvent<HTMLElement>) => {
-        onOpenChange(true);
-        children.props.onClick?.(e);
-      },
+      onClick: createClickHandler(() => onOpenChange(true), children.props.onClick),
     } as React.HTMLAttributes<HTMLElement>);
   }
 
   return (
-    <button
-      {...props}
-      onClick={(e) => {
-        onOpenChange(true);
-        props.onClick?.(e);
-      }}
-    >
+    <button {...props} onClick={handleClick}>
       {children}
     </button>
   );
@@ -207,25 +212,17 @@ interface DialogCloseProps extends React.ButtonHTMLAttributes<HTMLButtonElement>
 
 export function DialogClose({ children, asChild, ...props }: DialogCloseProps) {
   const { onOpenChange } = useDialogContext();
+  const handleClick = createClickHandler(() => onOpenChange(false), props.onClick);
 
   if (asChild && React.isValidElement(children)) {
     return React.cloneElement(children, {
       ...props,
-      onClick: (e: React.MouseEvent<HTMLElement>) => {
-        onOpenChange(false);
-        children.props.onClick?.(e);
-      },
+      onClick: createClickHandler(() => onOpenChange(false), children.props.onClick),
     } as React.HTMLAttributes<HTMLElement>);
   }
 
   return (
-    <button
-      {...props}
-      onClick={(e) => {
-        onOpenChange(false);
-        props.onClick?.(e);
-      }}
-    >
+    <button {...props} onClick={handleClick}>
       {children || '[x]'}
     </button>
   );

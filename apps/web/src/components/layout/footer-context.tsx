@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useMemo, useCallback, type ReactNode } from "react";
 
 export interface Shortcut {
   key: string;
@@ -23,10 +23,26 @@ export function FooterProvider({ children }: { children: ReactNode }) {
   const [shortcuts, setShortcuts] = useState<Shortcut[]>(DEFAULT_SHORTCUTS);
   const [rightShortcuts, setRightShortcuts] = useState<Shortcut[]>([]);
 
+  const setShortcutsCallback = useCallback((newShortcuts: Shortcut[]) => {
+    setShortcuts(newShortcuts);
+  }, []);
+
+  const setRightShortcutsCallback = useCallback((newShortcuts: Shortcut[]) => {
+    setRightShortcuts(newShortcuts);
+  }, []);
+
+  const contextValue = useMemo(
+    () => ({
+      shortcuts,
+      rightShortcuts,
+      setShortcuts: setShortcutsCallback,
+      setRightShortcuts: setRightShortcutsCallback,
+    }),
+    [shortcuts, rightShortcuts, setShortcutsCallback, setRightShortcutsCallback]
+  );
+
   return (
-    <FooterContext.Provider
-      value={{ shortcuts, rightShortcuts, setShortcuts, setRightShortcuts }}
-    >
+    <FooterContext.Provider value={contextValue}>
       {children}
     </FooterContext.Provider>
   );

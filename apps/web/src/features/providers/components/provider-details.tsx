@@ -13,6 +13,8 @@ export interface ProviderDetailsProps {
   onSelectModel: () => void;
   onRemoveKey: () => void;
   onSelectProvider: () => void;
+  focusedButtonIndex?: number;
+  isFocused?: boolean;
 }
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
@@ -29,6 +31,8 @@ export function ProviderDetails({
   onSelectModel,
   onRemoveKey,
   onSelectProvider,
+  focusedButtonIndex,
+  isFocused = false,
 }: ProviderDetailsProps) {
   if (!provider) {
     return (
@@ -39,7 +43,13 @@ export function ProviderDetails({
   }
 
   const capabilities = PROVIDER_CAPABILITIES[provider.id];
-  const hasApiKey = provider.displayStatus === 'configured' || provider.displayStatus === 'active';
+  if (!capabilities) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-gray-500 text-sm">
+        Unknown provider: {provider.id}
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col overflow-y-auto">
@@ -84,7 +94,7 @@ export function ProviderDetails({
         <StatusRow
           label="API Key Status"
           value={
-            hasApiKey ? (
+            provider.hasApiKey ? (
               <Badge variant="stored">[ STORED ]</Badge>
             ) : (
               <span className="text-gray-500">Not configured</span>
@@ -106,18 +116,23 @@ export function ProviderDetails({
       {/* Action Buttons */}
       <section className="mt-auto">
         <div className="flex flex-wrap gap-3 pt-4">
-          <Button variant="primary" bracket onClick={onSelectProvider}>
-            Select Provider
-          </Button>
-          <Button variant="secondary" bracket onClick={onSetApiKey}>
-            Set API Key
-          </Button>
-          <Button variant="destructive" bracket onClick={onRemoveKey} disabled={!hasApiKey}>
-            Remove Key
-          </Button>
-          <Button variant="link" bracket onClick={onSelectModel}>
-            Select Model...
-          </Button>
+          {[
+            { action: onSelectProvider, label: 'Select Provider', variant: 'primary' as const },
+            { action: onSetApiKey, label: 'Set API Key', variant: 'secondary' as const },
+            { action: onRemoveKey, label: 'Remove Key', variant: 'destructive' as const, disabled: !provider.hasApiKey },
+            { action: onSelectModel, label: 'Select Model...', variant: 'link' as const },
+          ].map((btn, index) => (
+            <Button
+              key={btn.label}
+              variant={btn.variant}
+              bracket
+              onClick={btn.action}
+              disabled={btn.disabled}
+              className={isFocused && focusedButtonIndex === index ? 'ring-2 ring-tui-blue ring-offset-1 ring-offset-tui-bg' : ''}
+            >
+              {btn.label}
+            </Button>
+          ))}
         </div>
       </section>
       </div>{/* Close content wrapper */}

@@ -88,15 +88,14 @@ export function Checkbox({
           : (checked ? "[ ● ]" : "[   ]")
         }
       </span>
-      {label && !description && (
-        <span className={selectableItemLabelVariants({ size })}>{label}</span>
-      )}
-      {label && description && (
-        <div className="flex flex-col min-w-0">
+      {label && (
+        <div className={cn("flex flex-col min-w-0", !description && "justify-center")}>
           <span className={selectableItemLabelVariants({ size })}>{label}</span>
-          <span className={selectableItemDescriptionVariants({ focused })}>
-            {description}
-          </span>
+          {description && (
+            <span className={selectableItemDescriptionVariants({ focused })}>
+              {description}
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -195,17 +194,13 @@ export function CheckboxGroup({
     initialValue: value[0] ?? null,
   });
 
+  const contextValue = React.useMemo(
+    () => ({ value, toggle, disabled, size, variant, isFocused }),
+    [value, toggle, disabled, size, variant, isFocused]
+  );
+
   return (
-    <CheckboxGroupContext.Provider
-      value={{
-        value,
-        toggle,
-        disabled,
-        size,
-        variant,
-        isFocused,
-      }}
-    >
+    <CheckboxGroupContext.Provider value={contextValue}>
       <div
         ref={containerRef}
         role="group"

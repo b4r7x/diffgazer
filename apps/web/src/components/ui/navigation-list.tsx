@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { cn } from '../../lib/utils';
-import { useKey } from '@/hooks/keyboard';
+import { useKey, useKeys } from '@/hooks/keyboard';
 
 interface NavigationListItemData {
   id: string;
@@ -161,22 +161,12 @@ function NavigationListRoot({
     return start;
   };
 
-  useKey('ArrowUp', () => {
+  useKeys(['ArrowUp', 'k'], () => {
     const newIndex = findNextIndex(selectedIndex, -1);
     if (newIndex !== selectedIndex) onSelect(newIndex);
   }, { enabled: keyboardEnabled && items.length > 0 });
 
-  useKey('ArrowDown', () => {
-    const newIndex = findNextIndex(selectedIndex, 1);
-    if (newIndex !== selectedIndex) onSelect(newIndex);
-  }, { enabled: keyboardEnabled && items.length > 0 });
-
-  useKey('k', () => {
-    const newIndex = findNextIndex(selectedIndex, -1);
-    if (newIndex !== selectedIndex) onSelect(newIndex);
-  }, { enabled: keyboardEnabled && items.length > 0 });
-
-  useKey('j', () => {
+  useKeys(['ArrowDown', 'j'], () => {
     const newIndex = findNextIndex(selectedIndex, 1);
     if (newIndex !== selectedIndex) onSelect(newIndex);
   }, { enabled: keyboardEnabled && items.length > 0 });
