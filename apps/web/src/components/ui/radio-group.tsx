@@ -3,21 +3,14 @@
 import { createContext, useContext, useState, useRef, type ReactNode } from "react";
 import { cn } from "../../lib/utils";
 import { useGroupNavigation } from "@/hooks/keyboard";
-
-const radioVariants = {
-  base: "flex cursor-pointer select-none font-mono relative",
-  container: "flex items-center gap-3 px-3 py-2",
-  indicator: "font-bold min-w-5",
-  label: "text-base",
-  states: {
-    focused: "bg-tui-selection text-white font-bold",
-    focusedAccent:
-      "before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-tui-blue",
-    unfocused: "text-tui-fg hover:bg-tui-selection/50",
-    disabled: "opacity-50 cursor-not-allowed",
-    checkedIndicator: "text-tui-green",
-  },
-};
+import {
+  selectableItemVariants,
+  selectableItemContainerVariants,
+  selectableItemIndicatorVariants,
+  selectableItemLabelVariants,
+  selectableItemDescriptionVariants,
+  type SelectableItemSize,
+} from "./selectable-item";
 
 export interface RadioProps {
   checked?: boolean;
@@ -26,6 +19,7 @@ export interface RadioProps {
   description?: ReactNode;
   disabled?: boolean;
   focused?: boolean;
+  size?: SelectableItemSize;
   className?: string;
   "data-value"?: string;
 }
@@ -37,6 +31,7 @@ export function Radio({
   description,
   disabled = false,
   focused = false,
+  size = "md",
   className,
   "data-value": dataValue,
 }: RadioProps) {
@@ -54,37 +49,22 @@ export function Radio({
       aria-disabled={disabled}
       onClick={handleClick}
       className={cn(
-        radioVariants.base,
-        radioVariants.container,
+        selectableItemVariants({ focused, disabled }),
+        selectableItemContainerVariants(),
         description && "items-start",
-        focused
-          ? radioVariants.states.focused
-          : radioVariants.states.unfocused,
-        focused && radioVariants.states.focusedAccent,
-        disabled && radioVariants.states.disabled,
         className
       )}
     >
-      <span
-        className={cn(
-          radioVariants.indicator,
-          checked && !focused && radioVariants.states.checkedIndicator
-        )}
-      >
+      <span className={selectableItemIndicatorVariants({ size, checked, focused })}>
         {checked ? "(x)" : "( )"}
       </span>
       {label && !description && (
-        <span className={radioVariants.label}>{label}</span>
+        <span className={selectableItemLabelVariants({ size })}>{label}</span>
       )}
       {label && description && (
         <div className="flex flex-col min-w-0">
-          <span className={radioVariants.label}>{label}</span>
-          <span
-            className={cn(
-              "text-sm mt-0.5",
-              focused ? "text-white/70" : "text-tui-muted"
-            )}
-          >
+          <span className={selectableItemLabelVariants({ size })}>{label}</span>
+          <span className={selectableItemDescriptionVariants({ focused })}>
             {description}
           </span>
         </div>
@@ -97,6 +77,7 @@ interface RadioGroupContextType {
   value?: string;
   onValueChange: (value: string) => void;
   disabled: boolean;
+  size: SelectableItemSize;
   isFocused: (value: string) => boolean;
 }
 
@@ -119,6 +100,7 @@ export interface RadioGroupProps {
   onFocus?: (value: string) => void;
   orientation?: "vertical" | "horizontal";
   disabled?: boolean;
+  size?: SelectableItemSize;
   className?: string;
   children: ReactNode;
   wrap?: boolean;
@@ -132,6 +114,7 @@ function RadioGroupRoot({
   onFocus,
   orientation = "vertical",
   disabled = false,
+  size = "md",
   className,
   children,
   wrap = true,
@@ -167,6 +150,7 @@ function RadioGroupRoot({
         value,
         onValueChange: handleValueChange,
         disabled,
+        size,
         isFocused,
       }}
     >
@@ -215,6 +199,7 @@ function RadioGroupItem({
       description={description}
       disabled={isDisabled}
       focused={isFocused}
+      size={context.size}
       className={className}
     />
   );
@@ -223,5 +208,3 @@ function RadioGroupItem({
 export const RadioGroup = Object.assign(RadioGroupRoot, {
   Item: RadioGroupItem,
 });
-
-export { radioVariants };

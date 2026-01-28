@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { matchesHotkey, isInputElement } from '@/lib/keyboard';
 
 type Handler = () => void;
@@ -20,13 +20,13 @@ export function KeyboardProvider({ children }: { children: React.ReactNode }) {
 
   const activeScope = scopeStack[scopeStack.length - 1] ?? null;
 
-  const pushScope = useCallback((scope: string) => {
+  const pushScope = (scope: string) => {
     setScopeStack(prev => [...prev, scope]);
     return () => setScopeStack(prev => {
       const idx = prev.lastIndexOf(scope);
       return idx >= 0 ? [...prev.slice(0, idx), ...prev.slice(idx + 1)] : prev;
     });
-  }, []);
+  };
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -49,11 +49,11 @@ export function KeyboardProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [activeScope, handlers]);
 
-  const register = useCallback((scope: string, hotkey: string, handler: Handler) => {
+  const register = (scope: string, hotkey: string, handler: Handler) => {
     if (!handlers.has(scope)) handlers.set(scope, new Map());
     handlers.get(scope)!.set(hotkey, handler);
     return () => handlers.get(scope)?.delete(hotkey);
-  }, [handlers]);
+  };
 
   return (
     <KeyboardContext.Provider value={{ activeScope, pushScope, register }}>
