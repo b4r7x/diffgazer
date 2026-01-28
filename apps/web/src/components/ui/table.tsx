@@ -1,4 +1,5 @@
-import * as React from 'react';
+import { useRef, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import { cn } from '../../lib/utils';
 import { useKey, useKeys } from '@/hooks/keyboard';
 
@@ -8,7 +9,7 @@ export interface TableColumn {
     width?: string;
 }
 
-export interface TableProps<T extends Record<string, React.ReactNode>> {
+export interface TableProps<T extends Record<string, ReactNode>> {
     columns: TableColumn[];
     data: T[];
     getRowKey?: (row: T, index: number) => string;
@@ -18,7 +19,7 @@ export interface TableProps<T extends Record<string, React.ReactNode>> {
     className?: string;
 }
 
-export function Table<T extends Record<string, React.ReactNode>>({
+export function Table<T extends Record<string, ReactNode>>({
     columns,
     data,
     getRowKey,
@@ -27,8 +28,13 @@ export function Table<T extends Record<string, React.ReactNode>>({
     onRowClick,
     className,
 }: TableProps<T>) {
-    const tableRef = React.useRef<HTMLTableElement>(null);
+    const tableRef = useRef<HTMLTableElement>(null);
     const enabled = selectedRowIndex !== undefined && !!onRowSelect;
+
+    const handleRowClick = useCallback((row: T, rowIndex: number) => {
+        onRowSelect?.(rowIndex);
+        onRowClick?.(row, rowIndex);
+    }, [onRowSelect, onRowClick]);
 
     useKeys(['j', 'ArrowDown'], () => {
         if (selectedRowIndex !== undefined && onRowSelect) {
@@ -75,6 +81,7 @@ export function Table<T extends Record<string, React.ReactNode>>({
                         const isSelected = selectedRowIndex === rowIndex;
                         return (
                             <tr
+                                // Using index as fallback is acceptable since getRowKey is the expected pattern for stable keys
                                 key={getRowKey ? getRowKey(row, rowIndex) : rowIndex}
                                 className={cn(
                                     'cursor-pointer transition-colors',
@@ -82,10 +89,7 @@ export function Table<T extends Record<string, React.ReactNode>>({
                                         ? 'bg-[--tui-fg] text-[--tui-bg] font-medium'
                                         : 'hover:bg-[--tui-selection]'
                                 )}
-                                onClick={() => {
-                                    onRowSelect?.(rowIndex);
-                                    onRowClick?.(row, rowIndex);
-                                }}
+                                onClick={() => handleRowClick(row, rowIndex)}
                             >
                                 {columns.map((column, colIndex) => (
                                     <td

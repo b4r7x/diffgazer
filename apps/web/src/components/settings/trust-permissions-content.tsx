@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import type { TrustCapabilities } from "@repo/schemas";
 import { Badge, Callout, Button } from "../ui";
 import { CheckboxGroup, CheckboxItem } from "../ui/checkbox";
@@ -45,9 +45,16 @@ export function TrustPermissionsContent({
     onRevoke,
   });
 
-  const selectedCapabilities = Object.entries(value)
-    .filter(([_, v]) => v)
-    .map(([k]) => k);
+  const selectedCapabilities = useMemo(
+    () => Object.entries(value).filter(([_, v]) => v).map(([k]) => k),
+    [value]
+  );
+
+  const handleBoundaryReached = useCallback((dir: 'up' | 'down') => {
+    if (dir === 'down' && showActions) {
+      setFocusZone('buttons');
+    }
+  }, [showActions]);
 
   const handleValueChange = (selected: string[]) => {
     onChange({
@@ -79,11 +86,7 @@ export function TrustPermissionsContent({
         value={selectedCapabilities}
         onValueChange={handleValueChange}
         wrap={false}
-        onBoundaryReached={(dir) => {
-          if (dir === 'down' && showActions) {
-            setFocusZone('buttons');
-          }
-        }}
+        onBoundaryReached={handleBoundaryReached}
         disabled={focusZone !== 'list'}
       >
         {CAPABILITIES.map(({ id, label, description }) => (
