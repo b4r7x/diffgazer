@@ -20,13 +20,15 @@ export function SettingsThemePage() {
   const navigate = useNavigate();
   const { theme, resolved, setTheme } = useTheme();
   const [localTheme, setLocalTheme] = useState<WebTheme>(theme);
+  const [previewTheme, setPreviewTheme] = useState<WebTheme>(theme);
 
   useEffect(() => {
     setLocalTheme(theme);
+    setPreviewTheme(theme);
   }, [theme]);
 
   const previewResolved: ResolvedTheme =
-    localTheme === "auto" ? resolved : localTheme;
+    previewTheme === "auto" ? resolved : previewTheme;
 
   const footerShortcuts = useMemo(() => FOOTER_SHORTCUTS, []);
   usePageFooter({ shortcuts: footerShortcuts });
@@ -38,17 +40,21 @@ export function SettingsThemePage() {
   });
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-6 min-h-0">
-      <div className="grid grid-cols-[2fr_3fr] gap-6 w-full max-w-5xl min-h-0 h-full">
+    <div className="flex-1 flex flex-col p-6 min-h-0">
+      <div className="grid grid-cols-[2fr_3fr] gap-6 w-full h-full min-h-0">
         {/* Left Panel - Theme Settings */}
-        <Panel className="relative pt-4 flex flex-col">
+        <Panel className="relative pt-4 flex flex-col h-full">
           <Panel.Header variant="floating" className="text-tui-violet">
             Theme Settings
           </Panel.Header>
           <Panel.Content className="flex-1 flex flex-col">
             <ThemeSelectorContent
               value={localTheme as Theme}
-              onChange={(v) => setLocalTheme(v as WebTheme)}
+              onChange={(v) => {
+                setLocalTheme(v as WebTheme);
+                setPreviewTheme(v as WebTheme);
+              }}
+              onFocus={(v) => setPreviewTheme(v as WebTheme)}
             />
             <div className="mt-auto pt-6">
               <Callout variant="info">
@@ -60,7 +66,7 @@ export function SettingsThemePage() {
         </Panel>
 
         {/* Right Panel - Live Preview */}
-        <Panel className="relative pt-4 flex flex-col bg-black/20">
+        <Panel className="relative pt-4 flex flex-col h-full bg-black/20">
           <Panel.Header variant="floating" className="text-tui-blue">
             Live Preview
           </Panel.Header>

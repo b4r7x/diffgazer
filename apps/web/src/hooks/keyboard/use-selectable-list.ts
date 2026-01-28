@@ -8,6 +8,7 @@ interface UseSelectableListOptions {
   getDisabled?: (index: number) => boolean;
   wrap?: boolean;
   onBoundaryReached?: (direction: "up" | "down") => void;
+  onFocus?: (index: number) => void;
   enabled?: boolean;
   initialIndex?: number;
   upKeys?: readonly string[];
@@ -27,6 +28,7 @@ export function useSelectableList({
   getDisabled = () => false,
   wrap = true,
   onBoundaryReached,
+  onFocus,
   enabled = true,
   initialIndex = 0,
   upKeys = DEFAULT_UP_KEYS,
@@ -50,12 +52,15 @@ export function useSelectableList({
         let lastIndex = itemCount - 1;
         while (lastIndex > 0 && getDisabled(lastIndex)) lastIndex--;
         setFocusedIndex(lastIndex);
+        onFocus?.(lastIndex);
       } else {
         onBoundaryReached?.("up");
       }
       return;
     }
-    setFocusedIndex(findNextIndex(focusedIndex, -1));
+    const newIndex = findNextIndex(focusedIndex, -1);
+    setFocusedIndex(newIndex);
+    onFocus?.(newIndex);
   };
 
   const moveDown = () => {
@@ -65,12 +70,15 @@ export function useSelectableList({
         let firstIndex = 0;
         while (firstIndex < itemCount - 1 && getDisabled(firstIndex)) firstIndex++;
         setFocusedIndex(firstIndex);
+        onFocus?.(firstIndex);
       } else {
         onBoundaryReached?.("down");
       }
       return;
     }
-    setFocusedIndex(findNextIndex(focusedIndex, 1));
+    const newIndex = findNextIndex(focusedIndex, 1);
+    setFocusedIndex(newIndex);
+    onFocus?.(newIndex);
   };
 
   useKeys(upKeys, moveUp, { enabled: enabled && itemCount > 0 });

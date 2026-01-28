@@ -6,11 +6,14 @@ interface PageFooterOptions {
   rightShortcuts?: Shortcut[];
 }
 
-export function usePageFooter({ shortcuts, rightShortcuts = [] }: PageFooterOptions) {
+const EMPTY_SHORTCUTS: Shortcut[] = [];
+
+export function usePageFooter({ shortcuts, rightShortcuts }: PageFooterOptions) {
   const { setShortcuts, setRightShortcuts } = useFooter();
+  const right = rightShortcuts ?? EMPTY_SHORTCUTS;
 
   useEffect(() => {
     setShortcuts(shortcuts);
-    setRightShortcuts(rightShortcuts);
-  }, [shortcuts, rightShortcuts, setShortcuts, setRightShortcuts]);
+    setRightShortcuts(right);
+  }, [shortcuts, right, setShortcuts, setRightShortcuts]);
 }
