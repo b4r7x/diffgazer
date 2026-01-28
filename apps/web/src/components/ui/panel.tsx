@@ -32,7 +32,7 @@ const spacingClasses: Record<NonNullable<PanelContentProps['spacing']>, string> 
 const headerVariants = {
   default: 'bg-tui-selection text-gray-400 text-xs px-3 py-1 border-b border-tui-border font-bold uppercase tracking-wider',
   subtle: 'bg-tui-selection/30 text-gray-500 text-xs p-2 border-b border-tui-border uppercase tracking-widest text-center',
-  floating: 'absolute -top-3 left-4 bg-tui-bg px-2 text-xs text-tui-blue font-bold border border-tui-border',
+  floating: 'absolute -top-3 left-4 bg-tui-bg px-2 text-xs text-tui-blue font-bold',
   badge: 'absolute -top-3 left-4 bg-tui-bg px-2 py-0.5 text-xs font-bold',
 };
 
