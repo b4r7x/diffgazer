@@ -1,7 +1,7 @@
 'use client';
 
 import type { Theme } from '@repo/schemas/settings';
-import { RadioGroup } from '../ui/radio-group';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 export interface ThemeSelectorContentProps {
   value: Theme;
@@ -36,7 +36,7 @@ export function ThemeSelectorContent({
         onFocus={onFocus ? (v) => onFocus(v as Theme) : undefined}
       >
         {options.map((option) => (
-          <RadioGroup.Item
+          <RadioGroupItem
             key={option.value}
             value={option.value}
             label={option.label}

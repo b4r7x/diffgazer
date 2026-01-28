@@ -2,8 +2,8 @@
 
 import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Menu } from "@/components/ui/menu";
-import { Panel } from "@/components/ui/panel";
+import { Menu, MenuItem } from "@/components/ui/menu";
+import { Panel, PanelHeader } from "@/components/ui/panel";
 import { useScope, useKey } from "@/hooks/keyboard";
 import { useRouteState } from "@/hooks/use-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
@@ -96,7 +96,7 @@ export function SettingsHubPage() {
     <div className="flex-1 flex flex-col items-center justify-center px-4 pb-12">
       <div className="w-full max-w-3xl">
         <Panel className="bg-tui-bg shadow-2xl">
-          <Panel.Header variant="floating">SETTINGS HUB</Panel.Header>
+          <PanelHeader variant="floating">SETTINGS HUB</PanelHeader>
           <Menu
             selectedIndex={selectedIndex}
             onSelect={setSelectedIndex}
@@ -106,14 +106,14 @@ export function SettingsHubPage() {
             className="flex flex-col text-sm pt-2"
           >
             {MENU_ITEMS.map((item) => (
-              <Menu.Item
+              <MenuItem
                 key={item.id}
                 id={item.id}
                 value={item.value}
                 valueVariant={item.valueVariant}
               >
                 {item.label}
-              </Menu.Item>
+              </MenuItem>
             ))}
           </Menu>
         </Panel>

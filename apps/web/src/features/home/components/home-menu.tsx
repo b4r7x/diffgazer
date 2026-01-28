@@ -1,4 +1,4 @@
-import { Menu, Panel } from '@/components/ui';
+import { Menu, MenuItem, MenuDivider, Panel, PanelHeader } from '@/components/ui';
 
 interface HomeMenuProps {
   selectedIndex: number;
@@ -9,7 +9,7 @@ interface HomeMenuProps {
 export function HomeMenu({ selectedIndex, onSelect, onActivate }: HomeMenuProps) {
   return (
     <Panel className="w-full max-w-md lg:w-1/2 lg:max-w-lg h-fit flex flex-col">
-      <Panel.Header variant="subtle">Main Menu</Panel.Header>
+      <PanelHeader variant="subtle">Main Menu</PanelHeader>
       <div className="flex flex-col py-2">
         <Menu
           selectedIndex={selectedIndex}
@@ -17,16 +17,16 @@ export function HomeMenu({ selectedIndex, onSelect, onActivate }: HomeMenuProps)
           onActivate={(item) => onActivate(item.id)}
           enableNumberJump
         >
-          <Menu.Item id="review-unstaged">Review Unstaged</Menu.Item>
-          <Menu.Item id="review-staged">Review Staged</Menu.Item>
-          <Menu.Item id="review-files">Review Files...</Menu.Item>
-          <Menu.Divider />
-          <Menu.Item id="resume">Resume Last Review</Menu.Item>
-          <Menu.Item id="history">History</Menu.Item>
-          <Menu.Item id="settings">Settings</Menu.Item>
-          <Menu.Divider />
-          <Menu.Item id="help">Help</Menu.Item>
-          <Menu.Item id="quit" variant="danger">Quit</Menu.Item>
+          <MenuItem id="review-unstaged">Review Unstaged</MenuItem>
+          <MenuItem id="review-staged">Review Staged</MenuItem>
+          <MenuItem id="review-files">Review Files...</MenuItem>
+          <MenuDivider />
+          <MenuItem id="resume">Resume Last Review</MenuItem>
+          <MenuItem id="history">History</MenuItem>
+          <MenuItem id="settings">Settings</MenuItem>
+          <MenuDivider />
+          <MenuItem id="help">Help</MenuItem>
+          <MenuItem id="quit" variant="danger">Quit</MenuItem>
         </Menu>
       </div>
     </Panel>

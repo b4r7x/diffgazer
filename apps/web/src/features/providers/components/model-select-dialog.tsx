@@ -1,7 +1,16 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Dialog, DialogContent, Badge } from "@/components/ui";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogBody,
+  DialogFooter,
+  DialogClose,
+  Badge,
+} from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { useKey } from "@/hooks/keyboard";
 import {
@@ -80,7 +89,15 @@ export function ModelSelectDialog({
     const item = items[itemIndex] as HTMLElement | undefined;
     if (!item) return;
 
-    item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const containerRect = container.getBoundingClientRect();
+    const itemRect = item.getBoundingClientRect();
+    const padding = 8;
+
+    if (itemRect.top < containerRect.top + padding) {
+      container.scrollTop -= (containerRect.top + padding - itemRect.top);
+    } else if (itemRect.bottom > containerRect.bottom - padding) {
+      container.scrollTop += (itemRect.bottom - containerRect.bottom + padding);
+    }
   };
 
   // Derive filtered models inline - React 19 Compiler optimizes this
@@ -240,20 +257,14 @@ export function ModelSelectDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg border border-tui-border shadow-2xl">
-        {/* Header */}
-        <div className="border-b border-tui-border px-5 py-3 flex justify-between items-center bg-tui-selection/50">
-          <span className="font-bold text-tui-blue tracking-wide">Select Model</span>
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="text-gray-500 hover:text-tui-fg font-bold"
-          >
-            [x]
-          </button>
-        </div>
+        <DialogHeader className="bg-tui-selection/50">
+          <DialogTitle className="text-tui-blue tracking-wide">Select Model</DialogTitle>
+          <DialogClose className="text-gray-500 hover:text-tui-fg font-bold" />
+        </DialogHeader>
 
-        {/* Search Input */}
-        <div className="px-4 pt-3 pb-2">
+        <DialogBody className="p-0 flex flex-col">
+          {/* Search Input */}
+          <div className="px-4 pt-3 pb-2">
           <div className="relative">
             <span className="absolute left-2 top-1/2 -translate-y-1/2 text-tui-muted text-xs">
               /
@@ -293,6 +304,7 @@ export function ModelSelectDialog({
               key={filter}
               type="button"
               onClick={() => {
+                setFocusZone("filters");
                 setTierFilter(filter);
                 setFilterIndex(idx);
               }}
@@ -314,7 +326,7 @@ export function ModelSelectDialog({
           ref={listContainerRef}
           role="listbox"
           aria-label="Available models"
-          className="px-4 space-y-1 max-h-60 overflow-y-auto scrollbar-thin"
+          className="px-4 py-2 space-y-1 max-h-60 overflow-y-auto scrollbar-thin"
         >
           {filteredModels.length === 0 ? (
             <div className="text-center text-gray-500 py-8 text-sm">
@@ -330,6 +342,7 @@ export function ModelSelectDialog({
                 aria-selected={isSelected}
                 type="button"
                 onClick={() => {
+                  setFocusZone("list");
                   setSelectedIndex(index);
                 }}
                 onDoubleClick={handleConfirm}
@@ -368,10 +381,10 @@ export function ModelSelectDialog({
             );
             })
           )}
-        </div>
+          </div>
+        </DialogBody>
 
-        {/* Footer */}
-        <div className="border-t border-tui-border px-4 py-2.5 flex justify-between items-center bg-tui-bg">
+        <DialogFooter className="justify-between">
           <div className="flex gap-3 text-[10px] text-gray-500">
             <span>↑↓/jk navigate</span>
             <span>/ search</span>
@@ -380,7 +393,11 @@ export function ModelSelectDialog({
           <div className="flex gap-3 items-center">
             <button
               type="button"
-              onClick={handleCancel}
+              onClick={() => {
+                setFocusZone("footer");
+                setFooterButtonIndex(0);
+                handleCancel();
+              }}
               className={cn(
                 "text-xs text-gray-500 hover:text-tui-fg transition-colors",
                 focusZone === "footer" && footerButtonIndex === 0 && "ring-2 ring-tui-blue rounded px-1"
@@ -390,7 +407,11 @@ export function ModelSelectDialog({
             </button>
             <button
               type="button"
-              onClick={handleConfirm}
+              onClick={() => {
+                setFocusZone("footer");
+                setFooterButtonIndex(1);
+                handleConfirm();
+              }}
               disabled={filteredModels.length === 0}
               className={cn(
                 "bg-tui-blue text-black px-4 py-1.5 text-xs font-bold hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all",
@@ -400,7 +421,7 @@ export function ModelSelectDialog({
               [Enter] Confirm
             </button>
           </div>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

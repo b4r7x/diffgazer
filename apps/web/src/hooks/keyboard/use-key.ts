@@ -5,6 +5,7 @@ import { useKeyboardContext } from "./use-keyboard-context";
 
 interface UseKeyOptions {
   enabled?: boolean;
+  allowInInput?: boolean;
 }
 
 export function useKey(hotkey: string, handler: () => void, options?: UseKeyOptions) {
@@ -15,6 +16,6 @@ export function useKey(hotkey: string, handler: () => void, options?: UseKeyOpti
   useEffect(() => {
     if (options?.enabled === false) return;
     if (!activeScope) return;
-    return register(activeScope, hotkey, stableHandler);
-  }, [register, activeScope, hotkey, options?.enabled]);
+    return register(activeScope, hotkey, stableHandler, options);
+  }, [register, activeScope, hotkey, options?.enabled, options?.allowInInput]);
 }
