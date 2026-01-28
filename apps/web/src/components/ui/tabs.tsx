@@ -41,18 +41,15 @@ function Tabs({
   const value = controlledValue !== undefined ? controlledValue : uncontrolledValue;
   const handleValueChange = onValueChange || setUncontrolledValue;
 
-  const registerTrigger = React.useCallback(
-    (triggerValue: string, element: HTMLButtonElement | null) => {
-      if (element) {
-        triggersRef.current.set(triggerValue, element);
-      } else {
-        triggersRef.current.delete(triggerValue);
-      }
-    },
-    []
-  );
+  const registerTrigger = (triggerValue: string, element: HTMLButtonElement | null) => {
+    if (element) {
+      triggersRef.current.set(triggerValue, element);
+    } else {
+      triggersRef.current.delete(triggerValue);
+    }
+  };
 
-  const getTriggers = React.useCallback(() => triggersRef.current, []);
+  const getTriggers = () => triggersRef.current;
 
   return (
     <TabsContext.Provider
@@ -71,35 +68,30 @@ interface TabsListProps {
 function TabsList({ children, className }: TabsListProps) {
   const { value, onValueChange, getTriggers } = useTabsContext();
 
-  const handleKeyDown = React.useCallback(
-    (event: React.KeyboardEvent) => {
-      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
-        return;
-      }
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+      return;
+    }
 
-      event.preventDefault();
+    event.preventDefault();
 
-      const triggers = getTriggers();
-      const items = Array.from(triggers.entries());
-      const currentIndex = items.findIndex(([itemValue]) => itemValue === value);
+    const triggers = getTriggers();
+    const items = Array.from(triggers.entries());
+    const currentIndex = items.findIndex(([itemValue]) => itemValue === value);
 
-      const nextIndex =
-        event.key === 'ArrowLeft'
-          ? currentIndex <= 0
-            ? items.length - 1
-            : currentIndex - 1
-          : currentIndex >= items.length - 1
-            ? 0
-            : currentIndex + 1;
+    let nextIndex: number;
+    if (event.key === 'ArrowLeft') {
+      nextIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
+    } else {
+      nextIndex = currentIndex >= items.length - 1 ? 0 : currentIndex + 1;
+    }
 
-      const nextItem = items[nextIndex];
-      if (nextItem) {
-        onValueChange(nextItem[0]);
-        nextItem[1]?.focus();
-      }
-    },
-    [value, onValueChange, getTriggers]
-  );
+    const nextItem = items[nextIndex];
+    if (nextItem) {
+      onValueChange(nextItem[0]);
+      nextItem[1]?.focus();
+    }
+  };
 
   return (
     <div

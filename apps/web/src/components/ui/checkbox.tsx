@@ -3,31 +3,14 @@
 import * as React from "react";
 import { cn } from "../../lib/utils";
 import { useGroupNavigation } from "@/hooks/keyboard";
-
-type CheckboxSize = "sm" | "md" | "lg";
-
-const checkboxVariants = {
-  base: "flex items-center cursor-pointer select-none font-mono relative",
-  container: "flex items-center gap-3 px-3 py-2",
-  indicator: {
-    sm: "text-sm font-bold min-w-4",
-    md: "font-bold min-w-5",
-    lg: "text-lg font-bold min-w-6",
-  },
-  label: {
-    sm: "text-sm",
-    md: "text-base",
-    lg: "text-lg",
-  },
-  states: {
-    focused: "bg-tui-selection text-white font-bold",
-    focusedAccent:
-      "before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-tui-blue",
-    unfocused: "text-tui-fg hover:bg-tui-selection/50",
-    disabled: "opacity-50 cursor-not-allowed",
-    checkedIndicator: "text-tui-green",
-  },
-};
+import {
+  selectableItemVariants,
+  selectableItemContainerVariants,
+  selectableItemIndicatorVariants,
+  selectableItemLabelVariants,
+  selectableItemDescriptionVariants,
+  type SelectableItemSize,
+} from "./selectable-item";
 
 export interface CheckboxProps {
   checked?: boolean;
@@ -37,7 +20,7 @@ export interface CheckboxProps {
   description?: React.ReactNode;
   disabled?: boolean;
   focused?: boolean;
-  size?: CheckboxSize;
+  size?: SelectableItemSize;
   className?: string;
   "data-value"?: string;
 }
@@ -89,37 +72,22 @@ export function Checkbox({
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        checkboxVariants.base,
-        checkboxVariants.container,
+        selectableItemVariants({ focused, disabled }),
+        selectableItemContainerVariants(),
         description && "items-start",
-        focused
-          ? checkboxVariants.states.focused
-          : checkboxVariants.states.unfocused,
-        focused && checkboxVariants.states.focusedAccent,
-        disabled && checkboxVariants.states.disabled,
         className
       )}
     >
-      <span
-        className={cn(
-          checkboxVariants.indicator[size],
-          checked && !focused && checkboxVariants.states.checkedIndicator
-        )}
-      >
+      <span className={selectableItemIndicatorVariants({ size, checked, focused })}>
         {checked ? "[x]" : "[ ]"}
       </span>
       {label && !description && (
-        <span className={checkboxVariants.label[size]}>{label}</span>
+        <span className={selectableItemLabelVariants({ size })}>{label}</span>
       )}
       {label && description && (
         <div className="flex flex-col min-w-0">
-          <span className={checkboxVariants.label[size]}>{label}</span>
-          <span
-            className={cn(
-              "text-sm mt-0.5",
-              focused ? "text-white/70" : "text-tui-muted"
-            )}
-          >
+          <span className={selectableItemLabelVariants({ size })}>{label}</span>
+          <span className={selectableItemDescriptionVariants({ focused })}>
             {description}
           </span>
         </div>
@@ -132,7 +100,7 @@ interface CheckboxGroupContextType {
   value: string[];
   toggle: (itemValue: string) => void;
   disabled: boolean;
-  size: CheckboxSize;
+  size: SelectableItemSize;
   isFocused: (value: string) => boolean;
 }
 
@@ -153,7 +121,7 @@ export interface CheckboxGroupProps {
   defaultValue?: string[];
   onValueChange?: (value: string[]) => void;
   disabled?: boolean;
-  size?: CheckboxSize;
+  size?: SelectableItemSize;
   className?: string;
   children: React.ReactNode;
   wrap?: boolean;
@@ -257,5 +225,3 @@ export function CheckboxItem({
     />
   );
 }
-
-export { checkboxVariants };
