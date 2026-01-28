@@ -9,6 +9,7 @@ interface UseGroupNavigationOptions {
   containerRef: React.RefObject<HTMLElement | null>;
   role: NavigationRole;
   onSelect?: (value: string) => void;
+  onEnter?: (value: string) => void;
   onFocusChange?: (value: string) => void;
   wrap?: boolean;
   enabled?: boolean;
@@ -36,6 +37,7 @@ export function useGroupNavigation({
   containerRef,
   role,
   onSelect,
+  onEnter,
   onFocusChange,
   wrap = true,
   enabled = true,
@@ -109,7 +111,11 @@ export function useGroupNavigation({
 
   useKey("ArrowUp", () => move(-1), { enabled });
   useKey("ArrowDown", () => move(1), { enabled });
-  useKey("Enter", handleSelect, { enabled });
+  useKey("Enter", () => {
+    if (focusedValue) {
+      onEnter ? onEnter(focusedValue) : onSelect?.(focusedValue);
+    }
+  }, { enabled });
   useKey(" ", handleSelect, { enabled });
 
   const isFocused = useCallback(

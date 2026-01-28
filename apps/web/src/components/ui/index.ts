@@ -16,3 +16,4 @@ export { Toast } from "./toast";
 export { CapabilityCard, type CapabilityCardProps } from './capability-card';
 export { StatusRow, type StatusRowProps } from './status-row';
 export { NavigationList, type NavigationListRootProps, type NavigationListItemProps, type NavigationListItemData } from './navigation-list';
+export { ScrollArea, type ScrollAreaProps } from './scroll-area';

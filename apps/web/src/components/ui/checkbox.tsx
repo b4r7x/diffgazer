@@ -128,6 +128,7 @@ export interface CheckboxGroupProps {
   value?: string[];
   defaultValue?: string[];
   onValueChange?: (value: string[]) => void;
+  onEnter?: (itemValue: string, newValues: string[]) => void;
   disabled?: boolean;
   size?: SelectableItemSize;
   variant?: CheckboxVariant;
@@ -141,6 +142,7 @@ export function CheckboxGroup({
   value: controlledValue,
   defaultValue = [],
   onValueChange,
+  onEnter,
   disabled = false,
   size = "md",
   variant = "x",
@@ -170,10 +172,23 @@ export function CheckboxGroup({
     handleValueChange(newValue);
   };
 
+  const handleEnterKey = (itemValue: string) => {
+    if (disabled) return;
+    const newValue = value.includes(itemValue)
+      ? value.filter((v) => v !== itemValue)
+      : [...value, itemValue];
+    handleValueChange(newValue);
+
+    if (onEnter) {
+      onEnter(itemValue, newValue);
+    }
+  };
+
   const { isFocused } = useGroupNavigation({
     containerRef,
     role: "checkbox",
     onSelect: toggle,
+    onEnter: onEnter ? handleEnterKey : undefined,
     wrap,
     onBoundaryReached,
     enabled: !disabled,

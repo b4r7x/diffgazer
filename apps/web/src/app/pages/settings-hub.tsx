@@ -78,7 +78,7 @@ export function SettingsHubPage() {
         navigate({ to: "/settings/theme" });
         break;
       case "provider":
-        navigate({ to: "/settings/provider" });
+        navigate({ to: "/settings/providers" });
         break;
       case "credentials":
         navigate({ to: "/settings/credentials" });
