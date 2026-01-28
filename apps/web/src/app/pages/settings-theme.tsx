@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { Theme } from "@repo/schemas";
 import type { WebTheme, ResolvedTheme } from "@/types/theme";
@@ -12,18 +12,17 @@ import { ThemePreviewCard } from "@/components/theme";
 
 const FOOTER_SHORTCUTS = [
   { key: "↑/↓", label: "Select" },
-  { key: "Enter", label: "Save" },
-  { key: "Esc", label: "Cancel" },
+  { key: "Space", label: "Apply" },
+  { key: "Enter", label: "Apply & Exit" },
+  { key: "Esc", label: "Back" },
 ];
 
 export function SettingsThemePage() {
   const navigate = useNavigate();
   const { theme, resolved, setTheme } = useTheme();
-  const [localTheme, setLocalTheme] = useState<WebTheme>(theme);
   const [previewTheme, setPreviewTheme] = useState<WebTheme>(theme);
 
   useEffect(() => {
-    setLocalTheme(theme);
     setPreviewTheme(theme);
   }, [theme]);
 
@@ -35,7 +34,7 @@ export function SettingsThemePage() {
 
   useKey("Escape", () => navigate({ to: "/settings" }));
   useKey("Enter", () => {
-    setTheme(localTheme);
+    setTheme(previewTheme);
     navigate({ to: "/settings" });
   });
 
@@ -49,28 +48,26 @@ export function SettingsThemePage() {
           </Panel.Header>
           <Panel.Content className="flex-1 flex flex-col">
             <ThemeSelectorContent
-              value={localTheme as Theme}
+              value={theme as Theme}
               onChange={(v) => {
-                setLocalTheme(v as WebTheme);
-                setPreviewTheme(v as WebTheme);
+                setTheme(v as WebTheme);
               }}
               onFocus={(v) => setPreviewTheme(v as WebTheme)}
             />
             <div className="mt-auto pt-6">
               <Callout variant="info">
-                Changes are previewed instantly. Press Enter to persist
-                configuration.
+                Hover to preview. Press Space to apply theme instantly.
               </Callout>
             </div>
           </Panel.Content>
         </Panel>
 
         {/* Right Panel - Live Preview */}
-        <Panel className="relative pt-4 flex flex-col h-full bg-black/20">
+        <Panel className="relative pt-4 flex flex-col h-full overflow-hidden">
           <Panel.Header variant="floating" className="text-tui-blue">
             Live Preview
           </Panel.Header>
-          <Panel.Content className="flex-1 flex items-center justify-center">
+          <Panel.Content className="flex-1 flex items-center justify-center p-0">
             <ThemePreviewCard previewTheme={previewResolved} />
           </Panel.Content>
         </Panel>
