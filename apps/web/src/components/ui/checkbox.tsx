@@ -12,6 +12,8 @@ import {
   type SelectableItemSize,
 } from "./selectable-item";
 
+export type CheckboxVariant = 'x' | 'bullet';
+
 export interface CheckboxProps {
   checked?: boolean;
   defaultChecked?: boolean;
@@ -21,6 +23,7 @@ export interface CheckboxProps {
   disabled?: boolean;
   focused?: boolean;
   size?: SelectableItemSize;
+  variant?: CheckboxVariant;
   className?: string;
   "data-value"?: string;
 }
@@ -34,6 +37,7 @@ export function Checkbox({
   disabled = false,
   focused = false,
   size = "md",
+  variant = "x",
   className,
   "data-value": dataValue,
 }: CheckboxProps) {
@@ -79,7 +83,10 @@ export function Checkbox({
       )}
     >
       <span className={selectableItemIndicatorVariants({ size, checked, focused })}>
-        {checked ? "[x]" : "[ ]"}
+        {variant === 'x'
+          ? (checked ? "[x]" : "[ ]")
+          : (checked ? "[ ● ]" : "[   ]")
+        }
       </span>
       {label && !description && (
         <span className={selectableItemLabelVariants({ size })}>{label}</span>
@@ -101,6 +108,7 @@ interface CheckboxGroupContextType {
   toggle: (itemValue: string) => void;
   disabled: boolean;
   size: SelectableItemSize;
+  variant: CheckboxVariant;
   isFocused: (value: string) => boolean;
 }
 
@@ -122,6 +130,7 @@ export interface CheckboxGroupProps {
   onValueChange?: (value: string[]) => void;
   disabled?: boolean;
   size?: SelectableItemSize;
+  variant?: CheckboxVariant;
   className?: string;
   children: React.ReactNode;
   wrap?: boolean;
@@ -134,6 +143,7 @@ export function CheckboxGroup({
   onValueChange,
   disabled = false,
   size = "md",
+  variant = "x",
   className,
   children,
   wrap = true,
@@ -177,6 +187,7 @@ export function CheckboxGroup({
         toggle,
         disabled,
         size,
+        variant,
         isFocused,
       }}
     >
@@ -221,6 +232,7 @@ export function CheckboxItem({
       disabled={isDisabled}
       focused={isFocused}
       size={context.size}
+      variant={context.variant}
       className={className}
     />
   );

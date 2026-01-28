@@ -13,6 +13,7 @@ export const badgeVariants = cva(
         error: 'bg-tui-red/10 text-tui-red border-tui-red',
         info: 'bg-tui-blue/10 text-tui-blue border-tui-blue',
         neutral: 'bg-tui-muted/10 text-tui-muted border-tui-border',
+        stored: 'bg-transparent text-tui-green border-transparent',
       },
       size: {
         sm: 'px-2 py-0.5 text-xs',

@@ -100,9 +100,9 @@ export function DialogContent({ children, className, ...props }: DialogContentPr
       <div
         className={cn(
           'relative w-full max-w-2xl max-h-[90vh] flex flex-col',
-          'bg-[--tui-bg] text-[--tui-fg]',
-          'border-[6px] border-double border-[--tui-fg]',
-          'shadow-[0_0_0_1px_var(--tui-border),0_30px_60px_-12px_rgba(0,0,0,0.9)]',
+          'bg-tui-bg text-tui-fg',
+          'border-[6px] border-double border-tui-fg',
+          'shadow-[0_0_0_1px_rgb(48_54_61),0_30px_60px_-12px_rgba(0,0,0,0.9)]',
           className
         )}
         role="dialog"
@@ -125,7 +125,7 @@ export function DialogHeader({ children, className, ...props }: DialogHeaderProp
   return (
     <div
       className={cn(
-        'flex justify-between items-center py-2 px-4 border-b-2 border-[--tui-border] bg-[--tui-bg] shrink-0',
+        'flex justify-between items-center py-2 px-4 border-b-2 border-tui-border bg-tui-bg shrink-0',
         className
       )}
       {...props}
@@ -159,7 +159,7 @@ export function DialogDescription({ children, className, ...props }: DialogDescr
   return (
     <div
       id={descriptionId}
-      className={cn('text-xs text-[--tui-fg]/70', className)}
+      className={cn('text-xs text-tui-fg/70', className)}
       {...props}
     >
       {children}
@@ -190,7 +190,7 @@ export function DialogFooter({ children, className, ...props }: DialogFooterProp
   return (
     <div
       className={cn(
-        'flex gap-2 justify-end items-center py-2 px-4 border-t-2 border-[--tui-border] bg-[--tui-bg] shrink-0',
+        'flex gap-2 justify-end items-center py-2 px-4 border-t-2 border-tui-border bg-tui-bg shrink-0',
         className
       )}
       {...props}
