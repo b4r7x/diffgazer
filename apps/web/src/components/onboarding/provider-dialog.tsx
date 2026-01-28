@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,6 +11,7 @@ import {
 } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { ProviderSelectorContent } from '../settings/provider-selector-content';
+import { useProviderDialogForm } from './use-provider-dialog-form';
 
 interface ProviderDialogProps {
   open: boolean;
@@ -24,15 +24,10 @@ export function ProviderDialog({
   onOpenChange,
   onComplete,
 }: ProviderDialogProps) {
-  const [provider, setProvider] = useState('openai');
-  const [apiKey, setApiKey] = useState('');
-
-  const handleComplete = () => {
-    onComplete(provider, apiKey);
-    onOpenChange(false);
-  };
-
-  const isValid = provider === 'ollama' || apiKey.trim().length > 0;
+  const { provider, setProvider, apiKey, setApiKey, isValid, handleSubmit } = useProviderDialogForm({
+    onComplete,
+    onClose: () => onOpenChange(false),
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -53,7 +48,7 @@ export function ProviderDialog({
           <DialogClose asChild>
             <Button variant="secondary">Cancel</Button>
           </DialogClose>
-          <Button variant="primary" onClick={handleComplete} disabled={!isValid}>
+          <Button variant="primary" onClick={handleSubmit} disabled={!isValid}>
             Continue
           </Button>
         </DialogFooter>

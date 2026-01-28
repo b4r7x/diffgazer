@@ -1,9 +1,7 @@
 import { createContext, useContext, useState, useMemo, useCallback, type ReactNode } from "react";
+import type { Shortcut } from "@repo/schemas/ui";
 
-export interface Shortcut {
-  key: string;
-  label: string;
-}
+export type { Shortcut };
 
 interface FooterContextValue {
   shortcuts: Shortcut[];

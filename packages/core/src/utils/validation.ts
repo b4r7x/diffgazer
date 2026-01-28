@@ -1,5 +1,5 @@
 import type { ZodSchema } from "zod";
-import { UuidSchema } from "@repo/schemas/errors";
+import { UuidSchema } from "@repo/schemas";
 import type { Result } from "../result.js";
 import { ok, err } from "../result.js";
 import { safeParseJson } from "../json.js";

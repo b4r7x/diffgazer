@@ -6,9 +6,12 @@ import {
   type SavedTriageReview,
   type TriageReviewMetadata,
   type TriageGitContext,
-} from "@repo/schemas/triage-storage";
-import type { TriageResult, TriageSeverity } from "@repo/schemas/triage";
-import type { LensId, ProfileId, DrilldownResult } from "@repo/schemas/lens";
+  type TriageResult,
+  type TriageSeverity,
+  type LensId,
+  type ProfileId,
+  type DrilldownResult,
+} from "@repo/schemas";
 import type { ParsedDiff } from "../diff/types.js";
 import type { Result } from "../result.js";
 import { ok } from "../result.js";
