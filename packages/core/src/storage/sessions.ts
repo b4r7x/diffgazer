@@ -7,7 +7,7 @@ import {
   type SessionMetadata,
   type SessionMessage,
   type MessageRole,
-} from "@repo/schemas/session";
+} from "@repo/schemas";
 import type { Result } from "../result.js";
 import { ok } from "../result.js";
 import { truncate } from "../string.js";

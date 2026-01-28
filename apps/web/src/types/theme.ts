@@ -1,4 +1,4 @@
-import type { Theme } from '@repo/schemas/settings';
+import type { Theme } from '@repo/schemas';
 
 export type WebTheme = Exclude<Theme, "terminal">;  // "auto" | "dark" | "light"
 export type ResolvedTheme = "dark" | "light";

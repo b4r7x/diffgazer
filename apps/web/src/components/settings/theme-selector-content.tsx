@@ -1,6 +1,6 @@
 'use client';
 
-import type { Theme } from '@repo/schemas/settings';
+import type { Theme } from '@repo/schemas';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 export interface ThemeSelectorContentProps {
