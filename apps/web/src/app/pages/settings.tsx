@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useScope, useKey } from '@/hooks/keyboard';
 
 type Tab = 'providers' | 'diagnostics';
 type ModelPreset = 'fast' | 'balanced' | 'best';
@@ -73,10 +75,14 @@ function getStatusBadge(status: ProviderStatus): ReactNode {
 }
 
 export function SettingsPage() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>('providers');
   const [selectedProviderIndex, setSelectedProviderIndex] = useState(0);
   const [selectedPreset, setSelectedPreset] = useState<ModelPreset>('balanced');
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  useScope('settings');
+  useKey('Escape', () => navigate({ to: '/' }));
 
   const selectedProvider = PROVIDERS[selectedProviderIndex];
   const providerId = selectedProvider?.id ?? 'gemini';

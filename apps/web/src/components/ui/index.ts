@@ -3,7 +3,6 @@ export { Checkbox, type CheckboxProps } from './checkbox';
 export { InfoField, type InfoFieldProps, type InfoFieldColor } from './info-field';
 export { Menu, type MenuRootProps, type MenuItemProps, type MenuDividerProps, type MenuItemData } from './menu';
 export { Modal, type ModalProps } from './modal';
-export { NavigableList, type NavigableListRootProps, type NavigableListItemProps, type NavigableItem, type RenderState } from './navigable-list';
 export { Panel, type PanelProps, type PanelHeaderProps, type PanelContentProps, type PanelDividerProps } from './panel';
 export { SectionBox, type SectionBoxProps } from './section-box';
 export { StatusBadge, type StatusBadgeProps, type StatusVariant } from './status-badge';

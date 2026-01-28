@@ -23,7 +23,6 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
         setError(null);
         try {
-            // Fetch both config and provider status
             const [configData, statusData] = await Promise.all([
                 getConfig().catch(() => null),
                 getProviderStatus().catch(() => null)
@@ -34,7 +33,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
                 setModel(configData.model);
             }
 
-            setIsConfigured(!!statusData?.configured);
+            setIsConfigured(statusData?.some(p => p.isActive) ?? false);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to load configuration");
         } finally {

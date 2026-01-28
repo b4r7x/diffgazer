@@ -16,7 +16,6 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
-          ui: ['@base-ui/react'],
           router: ['@tanstack/react-router'],
         },
       },

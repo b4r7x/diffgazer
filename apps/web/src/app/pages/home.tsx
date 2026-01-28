@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { HotkeyProvider, Hotkey } from '@/components/hotkeys';
+import { useScope, useKey } from '@/hooks/keyboard';
 import { ContextSidebar, HomeMenu, type ContextInfo } from '@/features/home/components';
+import { api } from '@/lib/api';
 
 const MENU_ROUTES: Record<string, string> = {
   'review-unstaged': '/review',
@@ -49,30 +50,32 @@ export function HomePage({ context = DEMO_CONTEXT }: HomePageProps) {
     }
   };
 
-  const handleQuit = () => {
+  const handleQuit = async () => {
     try {
-      window.close();
+      await api.post('/shutdown', {});
     } catch {
+      // Server terminates before responding
     }
+    window.close();
   };
 
+  useScope('home');
+  useKey('q', handleQuit);
+  useKey('s', () => navigate({ to: '/settings' }));
+  useKey('h', () => handleActivate('help'));
+
   return (
-    <HotkeyProvider>
-      <Hotkey keys="q" onPress={handleQuit} />
-      <Hotkey keys="s" onPress={() => navigate({ to: '/settings' })} />
-      <Hotkey keys="h" onPress={() => handleActivate('help')} />
-      <div className="bg-tui-bg text-tui-fg h-screen flex flex-col overflow-hidden selection:bg-tui-blue selection:text-black">
-        <Header providerName={context?.providerName} providerStatus="idle" />
-        <div className="flex flex-1 flex-col lg:flex-row items-center lg:items-start justify-start lg:justify-center p-4 md:p-6 lg:p-8 gap-4 md:gap-6 lg:gap-8 overflow-auto">
-          <ContextSidebar context={context} />
-          <HomeMenu
-            selectedIndex={selectedIndex}
-            onSelect={setSelectedIndex}
-            onActivate={handleActivate}
-          />
-        </div>
-        <Footer shortcuts={footerShortcuts} />
+    <div className="bg-tui-bg text-tui-fg h-screen flex flex-col overflow-hidden selection:bg-tui-blue selection:text-black">
+      <Header providerName={context?.providerName} providerStatus="idle" />
+      <div className="flex flex-1 flex-col lg:flex-row items-center lg:items-start justify-start lg:justify-center p-4 md:p-6 lg:p-8 gap-4 md:gap-6 lg:gap-8 overflow-auto">
+        <ContextSidebar context={context} />
+        <HomeMenu
+          selectedIndex={selectedIndex}
+          onSelect={setSelectedIndex}
+          onActivate={handleActivate}
+        />
       </div>
-    </HotkeyProvider>
+      <Footer shortcuts={footerShortcuts} />
+    </div>
   );
 }

@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
+import { useScope, useKey } from "@/hooks/keyboard";
 import type { TriageIssue, TriageSeverity, FixPlanStep } from "@repo/schemas";
 
 type TabId = "details" | "explain" | "trace" | "patch";
@@ -331,6 +333,7 @@ function CodeSnippet({ lines }: CodeSnippetProps) {
 }
 
 export function ReviewPage() {
+  const navigate = useNavigate();
   const [selectedIssueIndex, setSelectedIssueIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<TabId>("details");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
@@ -352,40 +355,17 @@ export function ReviewPage() {
   const selectedIssue = filteredIssues[safeIndex] ?? null;
   const counts = severityCounts(MOCK_ISSUES);
 
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (focusPane === "list") {
-        if (event.key === "j" || event.key === "ArrowDown") {
-          event.preventDefault();
-          setSelectedIssueIndex((i) =>
-            Math.min(i + 1, filteredIssues.length - 1),
-          );
-        } else if (event.key === "k" || event.key === "ArrowUp") {
-          event.preventDefault();
-          setSelectedIssueIndex((i) => Math.max(i - 1, 0));
-        } else if (event.key === "Tab") {
-          event.preventDefault();
-          setFocusPane("details");
-        }
-      } else {
-        if (event.key === "Tab") {
-          event.preventDefault();
-          setFocusPane("list");
-        } else if (event.key === "1") {
-          setActiveTab("details");
-        } else if (event.key === "2") {
-          setActiveTab("explain");
-        } else if (event.key === "3") {
-          setActiveTab("trace");
-        } else if (event.key === "4" && selectedIssue?.suggested_patch) {
-          setActiveTab("patch");
-        }
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [focusPane, filteredIssues.length, selectedIssue?.suggested_patch]);
+  useScope("review");
+  useKey("Escape", () => navigate({ to: "/" }), { enabled: focusPane === "list" });
+  useKey("j", () => setSelectedIssueIndex((i) => Math.min(i + 1, filteredIssues.length - 1)), { enabled: focusPane === "list" });
+  useKey("ArrowDown", () => setSelectedIssueIndex((i) => Math.min(i + 1, filteredIssues.length - 1)), { enabled: focusPane === "list" });
+  useKey("k", () => setSelectedIssueIndex((i) => Math.max(i - 1, 0)), { enabled: focusPane === "list" });
+  useKey("ArrowUp", () => setSelectedIssueIndex((i) => Math.max(i - 1, 0)), { enabled: focusPane === "list" });
+  useKey("Tab", () => setFocusPane(focusPane === "list" ? "details" : "list"));
+  useKey("1", () => setActiveTab("details"), { enabled: focusPane === "details" });
+  useKey("2", () => setActiveTab("explain"), { enabled: focusPane === "details" });
+  useKey("3", () => setActiveTab("trace"), { enabled: focusPane === "details" });
+  useKey("4", () => setActiveTab("patch"), { enabled: focusPane === "details" && !!selectedIssue?.suggested_patch });
 
   const handleToggleStep = (step: number) => {
     setCompletedSteps((prev) => {
@@ -414,7 +394,7 @@ export function ReviewPage() {
 
   const rightShortcuts = [
     { key: "Space", label: "Toggle" },
-    { key: "q", label: "Quit" },
+    { key: "Esc", label: "Back" },
   ];
 
   return (

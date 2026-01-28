@@ -5,6 +5,7 @@ import { Modal } from '@/components/ui/modal';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useScope, useKey } from '@/hooks/keyboard';
 
 export interface TrustCapabilities {
     readFiles: boolean;
@@ -49,33 +50,11 @@ export function TrustPromptModal({
         }
     }, [isOpen]);
 
-    React.useEffect(() => {
-        if (!isOpen) return;
-
-        const handleKeyDown = (e: KeyboardEvent) => {
-            switch (e.key) {
-                case 'ArrowUp':
-                    e.preventDefault();
-                    setFocusedIndex((prev) => (prev > 0 ? prev - 1 : CHECKBOX_ITEMS.length - 1));
-                    break;
-                case 'ArrowDown':
-                    e.preventDefault();
-                    setFocusedIndex((prev) => (prev < CHECKBOX_ITEMS.length - 1 ? prev + 1 : 0));
-                    break;
-                case ' ':
-                    e.preventDefault();
-                    toggleCapability(CHECKBOX_ITEMS[focusedIndex].key);
-                    break;
-                case 'Enter':
-                    e.preventDefault();
-                    onConfirm(capabilities);
-                    break;
-            }
-        };
-
-        document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [isOpen, focusedIndex, capabilities, onConfirm]);
+    useScope('trust-prompt');
+    useKey('ArrowUp', () => setFocusedIndex((prev) => (prev > 0 ? prev - 1 : CHECKBOX_ITEMS.length - 1)), { enabled: isOpen });
+    useKey('ArrowDown', () => setFocusedIndex((prev) => (prev < CHECKBOX_ITEMS.length - 1 ? prev + 1 : 0)), { enabled: isOpen });
+    useKey(' ', () => toggleCapability(CHECKBOX_ITEMS[focusedIndex].key), { enabled: isOpen });
+    useKey('Enter', () => onConfirm(capabilities), { enabled: isOpen });
 
     const toggleCapability = (key: keyof TrustCapabilities) => {
         setCapabilities((prev) => ({ ...prev, [key]: !prev[key] }));

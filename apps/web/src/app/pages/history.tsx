@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Table, type TableColumn } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { useScope, useKey } from "@/hooks/keyboard";
 
 type TabId = "runs" | "sessions";
 
@@ -118,19 +119,9 @@ export function HistoryPage() {
     }
   };
 
-  useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Tab") {
-        event.preventDefault();
-        setActiveTab((prev) => (prev === "runs" ? "sessions" : "runs"));
-      } else if (event.key === "Escape") {
-        navigate({ to: "/" });
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [navigate]);
+  useScope("history");
+  useKey("Tab", () => setActiveTab((prev) => (prev === "runs" ? "sessions" : "runs")));
+  useKey("Escape", () => navigate({ to: "/" }));
 
   const footerShortcuts = [
     { key: "Tab", label: "Switch" },

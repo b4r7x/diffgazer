@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { cn } from '../../lib/utils';
+import { useKey } from '@/hooks/keyboard';
 
 export interface TableColumn {
     key: string;
@@ -25,28 +26,37 @@ export function Table<T extends Record<string, React.ReactNode>>({
     className,
 }: TableProps<T>) {
     const tableRef = React.useRef<HTMLTableElement>(null);
+    const enabled = selectedRowIndex !== undefined && !!onRowSelect;
 
-    React.useEffect(() => {
-        function handleKeyDown(event: KeyboardEvent) {
-            if (selectedRowIndex === undefined || !onRowSelect) return;
-
-            if (event.key === 'j' || event.key === 'ArrowDown') {
-                event.preventDefault();
-                const nextIndex = Math.min(selectedRowIndex + 1, data.length - 1);
-                onRowSelect(nextIndex);
-            } else if (event.key === 'k' || event.key === 'ArrowUp') {
-                event.preventDefault();
-                const prevIndex = Math.max(selectedRowIndex - 1, 0);
-                onRowSelect(prevIndex);
-            } else if (event.key === 'Enter' && onRowClick) {
-                event.preventDefault();
-                onRowClick(data[selectedRowIndex], selectedRowIndex);
-            }
+    useKey('j', () => {
+        if (selectedRowIndex !== undefined && onRowSelect) {
+            onRowSelect(Math.min(selectedRowIndex + 1, data.length - 1));
         }
+    }, { enabled });
 
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedRowIndex, onRowSelect, onRowClick, data]);
+    useKey('ArrowDown', () => {
+        if (selectedRowIndex !== undefined && onRowSelect) {
+            onRowSelect(Math.min(selectedRowIndex + 1, data.length - 1));
+        }
+    }, { enabled });
+
+    useKey('k', () => {
+        if (selectedRowIndex !== undefined && onRowSelect) {
+            onRowSelect(Math.max(selectedRowIndex - 1, 0));
+        }
+    }, { enabled });
+
+    useKey('ArrowUp', () => {
+        if (selectedRowIndex !== undefined && onRowSelect) {
+            onRowSelect(Math.max(selectedRowIndex - 1, 0));
+        }
+    }, { enabled });
+
+    useKey('Enter', () => {
+        if (selectedRowIndex !== undefined && onRowClick) {
+            onRowClick(data[selectedRowIndex], selectedRowIndex);
+        }
+    }, { enabled: enabled && !!onRowClick });
 
     return (
         <div className={cn('overflow-auto border border-[--tui-border]', className)}>

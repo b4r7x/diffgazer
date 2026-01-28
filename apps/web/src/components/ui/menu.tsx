@@ -3,13 +3,13 @@
 import {
   createContext,
   useContext,
-  useEffect,
   Children,
   isValidElement,
   Fragment,
   type ReactNode,
 } from 'react';
 import { cn } from '../../lib/utils';
+import { useKey } from '@/hooks/keyboard';
 
 interface MenuItemData {
   id: string;
@@ -150,7 +150,7 @@ function MenuRoot({
     Children.forEach(node, (child) => {
       if (!isValidElement(child)) return;
       if (child.type === Fragment) {
-        extractItems(child.props.children);
+        extractItems((child.props as { children?: ReactNode }).children);
       } else if (child.type === MenuItem) {
         const props = child.props as MenuItemProps;
         items.push({
@@ -173,47 +173,31 @@ function MenuRoot({
     return start;
   };
 
-  useEffect(() => {
-    if (!keyboardEnabled) return;
+  useKey('ArrowUp', () => {
+    const newIndex = findNextIndex(selectedIndex, -1);
+    if (newIndex !== selectedIndex) onSelect(newIndex);
+  }, { enabled: keyboardEnabled });
 
-    const handleKeyDown = (event: KeyboardEvent) => {
-      switch (event.key) {
-        case 'ArrowUp': {
-          event.preventDefault();
-          const newIndex = findNextIndex(selectedIndex, -1);
-          if (newIndex !== selectedIndex) onSelect(newIndex);
-          break;
-        }
-        case 'ArrowDown': {
-          event.preventDefault();
-          const newIndex = findNextIndex(selectedIndex, 1);
-          if (newIndex !== selectedIndex) onSelect(newIndex);
-          break;
-        }
-        case 'Enter': {
-          event.preventDefault();
-          const item = items[selectedIndex];
-          if (item && !item.disabled) onActivate?.(item);
-          break;
-        }
-        default: {
-          if (!enableNumberJump) break;
-          const num = parseInt(event.key, 10);
-          if (num >= 1 && num <= 9) {
-            const index = num - 1;
-            const item = items[index];
-            if (item && !item.disabled) {
-              onSelect(index);
-              onActivate?.(item);
-            }
-          }
-        }
+  useKey('ArrowDown', () => {
+    const newIndex = findNextIndex(selectedIndex, 1);
+    if (newIndex !== selectedIndex) onSelect(newIndex);
+  }, { enabled: keyboardEnabled });
+
+  useKey('Enter', () => {
+    const item = items[selectedIndex];
+    if (item && !item.disabled) onActivate?.(item);
+  }, { enabled: keyboardEnabled });
+
+  for (let n = 1; n <= 9; n++) {
+    useKey(String(n), () => {
+      const index = n - 1;
+      const item = items[index];
+      if (item && !item.disabled) {
+        onSelect(index);
+        onActivate?.(item);
       }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [keyboardEnabled, selectedIndex, items, enableNumberJump, onSelect, onActivate]);
+    }, { enabled: keyboardEnabled && enableNumberJump });
+  }
 
   const contextValue: MenuContextValue = {
     selectedIndex,
