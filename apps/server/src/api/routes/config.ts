@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
 import { configStore, getOpenRouterModels } from "@repo/core/storage";
 import { getApiKey, setApiKey, deleteApiKey } from "@repo/core/secrets";
 import {
@@ -132,6 +133,55 @@ config.delete("/provider/:providerId", async (c) => {
 
   return c.json({ deleted: true, provider });
 });
+
+config.post(
+  "/provider/:providerId/activate",
+  zValidator("json", z.object({ model: z.string().optional() }), zodErrorHandler),
+  async (c) => {
+    const providerId = c.req.param("providerId");
+
+    // Validate provider ID
+    const parseResult = AIProviderSchema.safeParse(providerId);
+    if (!parseResult.success) {
+      return errorResponse(c, `Invalid provider: ${providerId}`, ErrorCode.VALIDATION_ERROR, 400);
+    }
+    const provider = parseResult.data;
+
+    // Verify API key exists
+    const keyResult = await getApiKey(provider);
+    if (!keyResult.ok || !keyResult.value) {
+      return errorResponse(
+        c,
+        `Provider ${provider} has no API key configured`,
+        ErrorCode.VALIDATION_ERROR,
+        400
+      );
+    }
+
+    // Get model from request or use default
+    const body = c.req.valid("json");
+    const providerInfo = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
+    const model = body.model ?? providerInfo?.defaultModel;
+
+    // Update config
+    const existingConfig = await configStore.read();
+    const now = new Date().toISOString();
+
+    const writeResult = await configStore.write({
+      provider,
+      model,
+      glmEndpoint: existingConfig.ok ? existingConfig.value.glmEndpoint : undefined,
+      createdAt: existingConfig.ok ? existingConfig.value.createdAt : now,
+      updatedAt: now,
+    });
+
+    if (!writeResult.ok) {
+      return handleStoreError(c, writeResult.error);
+    }
+
+    return c.json({ provider, model });
+  }
+);
 
 config.get("/providers", async (c) => {
   const configResult = await configStore.read();

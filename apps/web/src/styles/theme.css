@@ -14,6 +14,7 @@
   --tui-border: #30363D;
   --tui-selection: #1F2428;
   --tui-muted: #6E7681;
+  --tui-input-bg: #010409;
 
   /* Tailwind theme color overrides for nested data-theme */
   --color-tui-bg: var(--tui-bg);
@@ -26,6 +27,7 @@
   --color-tui-border: var(--tui-border);
   --color-tui-selection: var(--tui-selection);
   --color-tui-muted: var(--tui-muted);
+  --color-tui-input-bg: var(--tui-input-bg);
   --color-background: var(--tui-bg);
   --color-foreground: var(--tui-fg);
   --color-border: var(--tui-border);
@@ -85,6 +87,7 @@
   --tui-border: #D0D7DE;
   --tui-selection: #DDF4FF;
   --tui-muted: #57606A;
+  --tui-input-bg: #F6F8FA;
 
   /* Tailwind theme color overrides for nested data-theme */
   --color-tui-bg: var(--tui-bg);
@@ -97,6 +100,7 @@
   --color-tui-border: var(--tui-border);
   --color-tui-selection: var(--tui-selection);
   --color-tui-muted: var(--tui-muted);
+  --color-tui-input-bg: var(--tui-input-bg);
   --color-background: var(--tui-bg);
   --color-foreground: var(--tui-fg);
   --color-border: var(--tui-border);
@@ -193,6 +197,16 @@
 }
 
 .cursor-blink {
+  animation: tui-blink 1s step-end infinite;
+}
+
+/* Blinking cursor block for input fields */
+.cursor-block {
+  display: inline-block;
+  width: 0.6em;
+  height: 1.2em;
+  background-color: var(--tui-blue);
+  vertical-align: text-bottom;
   animation: tui-blink 1s step-end infinite;
 }
 
