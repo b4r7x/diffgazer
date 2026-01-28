@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useEffectEvent } from "react";
 import { useKeyboardContext } from "./use-keyboard-context";
 
 interface UseKeyOptions {
@@ -10,9 +10,11 @@ interface UseKeyOptions {
 export function useKey(hotkey: string, handler: () => void, options?: UseKeyOptions) {
   const { register, activeScope } = useKeyboardContext();
 
+  const stableHandler = useEffectEvent(handler);
+
   useEffect(() => {
     if (options?.enabled === false) return;
     if (!activeScope) return;
-    return register(activeScope, hotkey, handler);
-  }, [register, activeScope, hotkey, handler, options?.enabled]);
+    return register(activeScope, hotkey, stableHandler);
+  }, [register, activeScope, hotkey, options?.enabled]);
 }

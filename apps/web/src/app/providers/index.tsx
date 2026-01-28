@@ -1,8 +1,10 @@
 import { type ReactNode } from 'react'
+import { ThemeProvider } from './theme-provider'
 import { ConfigProvider, useConfigContext } from './config-provider'
 import { KeyboardProvider } from '@/components/keyboard'
 
 export { useConfigContext }
+export { useTheme } from '@/hooks/use-theme'
 
 interface AppProvidersProps {
   children: ReactNode
@@ -10,10 +12,12 @@ interface AppProvidersProps {
 
 export function AppProviders({ children }: AppProvidersProps) {
   return (
-    <ConfigProvider>
-      <KeyboardProvider>
-        {children}
-      </KeyboardProvider>
-    </ConfigProvider>
+    <ThemeProvider>
+      <ConfigProvider>
+        <KeyboardProvider>
+          {children}
+        </KeyboardProvider>
+      </ConfigProvider>
+    </ThemeProvider>
   )
 }
