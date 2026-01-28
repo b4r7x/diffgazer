@@ -4,7 +4,6 @@ import * as React from 'react';
 import { Modal } from '@/components/ui/modal';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { useScope, useKey } from '@/hooks/keyboard';
 
 export interface TrustCapabilities {
@@ -73,7 +72,7 @@ export function TrustPromptModal({
                         <Checkbox
                             key={item.key}
                             checked={capabilities[item.key]}
-                            onChange={() => toggleCapability(item.key)}
+                            onCheckedChange={() => toggleCapability(item.key)}
                             label={item.label}
                             focused={focusedIndex === index}
                         />
@@ -98,30 +97,22 @@ export function TrustPromptModal({
                         Trust Mode
                     </span>
                     <div className="flex gap-4">
-                        <button
-                            type="button"
+                        <Button
+                            variant="toggle"
+                            size="sm"
+                            data-active={trustMode === 'session'}
                             onClick={() => setTrustMode('session')}
-                            className={cn(
-                                'text-sm px-2 py-1 transition-colors',
-                                trustMode === 'session'
-                                    ? 'bg-[--tui-blue] text-black font-bold'
-                                    : 'text-[--tui-fg] hover:bg-[--tui-selection]'
-                            )}
                         >
                             Session only
-                        </button>
-                        <button
-                            type="button"
+                        </Button>
+                        <Button
+                            variant="toggle"
+                            size="sm"
+                            data-active={trustMode === 'persistent'}
                             onClick={() => setTrustMode('persistent')}
-                            className={cn(
-                                'text-sm px-2 py-1 transition-colors',
-                                trustMode === 'persistent'
-                                    ? 'bg-[--tui-blue] text-black font-bold'
-                                    : 'text-[--tui-fg] hover:bg-[--tui-selection]'
-                            )}
                         >
                             Persistent
-                        </button>
+                        </Button>
                     </div>
                 </div>
 
