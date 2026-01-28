@@ -30,11 +30,14 @@ export async function runCommand(options: RunCommandOptions): Promise<void> {
     setBaseUrl(address);
 
     const { mode, sessionId } = getSessionMode(options);
-    const { waitUntilExit } = render(
+    const { waitUntilExit, unmount } = render(
       React.createElement(App, { address, sessionMode: mode, sessionId })
     );
 
-    const shutdown = createShutdownHandler(() => manager.stop());
+    const shutdown = createShutdownHandler(async () => {
+      unmount();
+      await manager.stop();
+    });
     registerShutdownHandlers(shutdown);
 
     await waitUntilExit();

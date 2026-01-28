@@ -37,14 +37,12 @@ export function useReviewHistory() {
   const removeReview = useCallback(async (id: string) => {
       try {
           await apiDeleteReview(id);
-          // Optimistic update
           setReviews(prev => prev.filter(r => r.id !== id));
-          if (currentReview?.id === id) {
+          if (currentReview?.metadata?.id === id) {
               setCurrentReview(null);
           }
       } catch (err) {
           setError(err instanceof Error ? err.message : "Failed to delete review");
-          // Re-fetch to sync state
           fetchReviews();
       }
   }, [currentReview, fetchReviews]);

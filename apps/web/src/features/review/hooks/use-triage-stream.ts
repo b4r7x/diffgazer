@@ -1,7 +1,6 @@
-import * as React from 'react';
 import { useReducer, useCallback, useRef, useEffect } from "react";
-import { streamTriage } from "../api/triage-api";
-import type { TriageOptions, AgentStreamEvent, AgentState, TriageIssue } from "@repo/schemas";
+import { streamTriage, type TriageOptions } from "../api/triage-api";
+import type { AgentStreamEvent, AgentState, TriageIssue } from "@repo/schemas";
 
 interface TriageState {
   issues: TriageIssue[];
@@ -27,7 +26,6 @@ const initialState: TriageState = {
   selectedIssueId: null,
 };
 
-// Helper to update agents list based on event
 function updateAgents(agents: AgentState[], event: AgentStreamEvent): AgentState[] {
     if (event.type === 'agent_start') {
         // Add new agent or update existing (though start implies new/start)
@@ -59,11 +57,6 @@ function updateAgents(agents: AgentState[], event: AgentStreamEvent): AgentState
 
 function updateIssues(issues: TriageIssue[], event: AgentStreamEvent): TriageIssue[] {
      if (event.type === 'issue_found' && event.issue) {
-         // Cast issue to TriageIssue as strict typing might mismatch on passthrough fields or optional ones
-         // Ideally ensure TriageIssue matches event.issue
-         // The issue from event might be missing some fields like 'evidence' or 'confidence' if they are optional in event but required in TriageIssue?
-         // TriageIssueSchema requires evidence arr. IssueFoundEventSchema uses passthrough.
-         // Let's assume the server sends valid TriageIssue structure.
          return [...issues, event.issue as TriageIssue];
      }
      return issues;
@@ -74,7 +67,6 @@ function triageReducer(state: TriageState, action: TriageAction): TriageState {
     case "START":
       return { ...initialState, isStreaming: true };
     case "ADD_EVENT":
-        // Process event to update issues and agents
       return {
           ...state,
           agents: updateAgents(state.agents, action.event),
@@ -106,7 +98,6 @@ export function useTriageStream() {
   }, []);
 
   const start = useCallback((options: TriageOptions) => {
-    // Cleanup any existing stream
     if (cleanupRef.current) {
       cleanupRef.current();
     }
@@ -135,7 +126,6 @@ export function useTriageStream() {
       dispatch({ type: "SELECT_ISSUE", issueId });
   }, []);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (cleanupRef.current) {

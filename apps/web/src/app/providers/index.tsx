@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react'
 import { ConfigProvider, useConfigContext } from './config-provider'
+import { KeyboardProvider } from '@/components/keyboard'
 
 export { useConfigContext }
 
@@ -10,7 +11,9 @@ interface AppProvidersProps {
 export function AppProviders({ children }: AppProvidersProps) {
   return (
     <ConfigProvider>
-      {children}
+      <KeyboardProvider>
+        {children}
+      </KeyboardProvider>
     </ConfigProvider>
   )
 }
