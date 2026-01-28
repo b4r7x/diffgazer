@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { TrustCapabilities } from "@repo/schemas";
 import { useKey } from "@/hooks/keyboard";
@@ -22,8 +22,7 @@ export function TrustPermissionsPage() {
     runCommands: false,
   });
 
-  const footerShortcuts = useMemo(() => FOOTER_SHORTCUTS, []);
-  usePageFooter({ shortcuts: footerShortcuts });
+  usePageFooter({ shortcuts: FOOTER_SHORTCUTS });
 
   useKey("Escape", () => navigate({ to: "/settings" }));
 
