@@ -6,93 +6,90 @@ import { useRouteState } from "@/hooks/use-route-state";
 import { useFooter } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { getProviderStatus } from "@/features/settings/api/config-api";
+import {
+  AVAILABLE_PROVIDERS,
+  GEMINI_MODEL_INFO,
+  OPENAI_MODEL_INFO,
+  ANTHROPIC_MODEL_INFO,
+  GLM_MODEL_INFO,
+  type AIProvider,
+  type ProviderStatus,
+  type ProviderInfo,
+} from "@repo/schemas";
 
 type ModelPreset = "fast" | "balanced" | "best";
-type ProviderStatus = "configured" | "needs-key" | "local";
+type DisplayStatus = "configured" | "needs-key" | "active";
 
-interface Provider {
-  id: string;
-  name: string;
-  status: ProviderStatus;
+interface ProviderWithStatus extends ProviderInfo {
+  displayStatus: DisplayStatus;
 }
 
-const PROVIDERS: Provider[] = [
-  { id: "gemini", name: "Gemini", status: "configured" },
-  { id: "openai", name: "OpenAI", status: "needs-key" },
-  { id: "anthropic", name: "Anthropic", status: "needs-key" },
-  { id: "openai-compatible", name: "OpenAI-compatible", status: "local" },
-];
-
-const PRESET_DESCRIPTIONS: Record<
-  string,
-  Record<ModelPreset, { model: string; description: string }>
-> = {
+// Maps preset to model ID for each provider
+const PRESET_MODEL_IDS: Record<AIProvider, Record<ModelPreset, string>> = {
   gemini: {
-    fast: {
-      model: "Gemini 1.5 Flash",
-      description: "Optimized for speed. Best for quick checks and simple tasks.",
-    },
-    balanced: {
-      model: "Gemini 1.5 Flash",
-      description:
-        "Good for general code review, quick fixes, and standard refactoring tasks.",
-    },
-    best: {
-      model: "Gemini 1.5 Pro",
-      description:
-        "Maximum quality. Best for complex analysis and detailed reviews.",
-    },
+    fast: "gemini-2.5-flash-lite",
+    balanced: "gemini-2.5-flash",
+    best: "gemini-2.5-pro",
   },
   openai: {
-    fast: {
-      model: "GPT-4o-mini",
-      description: "Optimized for speed. Best for quick checks and simple tasks.",
-    },
-    balanced: {
-      model: "GPT-4o",
-      description:
-        "Good for general code review, quick fixes, and standard refactoring tasks.",
-    },
-    best: {
-      model: "GPT-4o",
-      description:
-        "Maximum quality. Best for complex analysis and detailed reviews.",
-    },
+    fast: "gpt-4o-mini",
+    balanced: "gpt-4o",
+    best: "o1-preview",
   },
   anthropic: {
-    fast: {
-      model: "Claude 3.5 Haiku",
-      description: "Optimized for speed. Best for quick checks and simple tasks.",
-    },
-    balanced: {
-      model: "Claude 3.5 Sonnet",
-      description:
-        "Good for general code review, quick fixes, and standard refactoring tasks.",
-    },
-    best: {
-      model: "Claude 3 Opus",
-      description:
-        "Maximum quality. Best for complex analysis and detailed reviews.",
-    },
+    fast: "claude-3-5-haiku-20241022",
+    balanced: "claude-sonnet-4-20250514",
+    best: "claude-3-opus-20240229",
   },
-  "openai-compatible": {
-    fast: {
-      model: "Local Model",
-      description: "Use your locally configured model for fast inference.",
-    },
-    balanced: {
-      model: "Local Model",
-      description: "Use your locally configured model with default settings.",
-    },
-    best: {
-      model: "Local Model",
-      description: "Use your locally configured model with quality settings.",
-    },
+  glm: {
+    fast: "glm-4.6",
+    balanced: "glm-4.7",
+    best: "glm-4.7",
+  },
+  openrouter: {
+    fast: "",
+    balanced: "",
+    best: "",
   },
 };
 
-function getStatusBadge(status: ProviderStatus): ReactNode {
+// Get model info for a provider and model ID
+function getModelInfo(providerId: AIProvider, modelId: string) {
+  switch (providerId) {
+    case "gemini":
+      return GEMINI_MODEL_INFO[modelId as keyof typeof GEMINI_MODEL_INFO];
+    case "openai":
+      return OPENAI_MODEL_INFO[modelId as keyof typeof OPENAI_MODEL_INFO];
+    case "anthropic":
+      return ANTHROPIC_MODEL_INFO[modelId as keyof typeof ANTHROPIC_MODEL_INFO];
+    case "glm":
+      return GLM_MODEL_INFO[modelId as keyof typeof GLM_MODEL_INFO];
+    default:
+      return null;
+  }
+}
+
+// Get preset description
+function getPresetDescription(preset: ModelPreset): string {
+  switch (preset) {
+    case "fast":
+      return "Optimized for speed. Best for quick checks and simple tasks.";
+    case "balanced":
+      return "Good balance of speed and quality. Best for general code review.";
+    case "best":
+      return "Maximum quality. Best for complex analysis and detailed reviews.";
+  }
+}
+
+function getStatusBadge(status: DisplayStatus): ReactNode {
   switch (status) {
+    case "active":
+      return (
+        <span className="text-xs font-medium text-[--tui-green]">
+          [active]
+        </span>
+      );
     case "configured":
       return (
         <span className="text-xs font-medium text-[--tui-green]">
@@ -103,8 +100,6 @@ function getStatusBadge(status: ProviderStatus): ReactNode {
       return (
         <span className="text-xs text-[--tui-yellow]">[needs key]</span>
       );
-    case "local":
-      return <span className="text-xs text-gray-600">[ local/other ]</span>;
   }
 }
 
@@ -121,14 +116,34 @@ export function SettingsProviderPage() {
   const [selectedProviderIndex, setSelectedProviderIndex] = useRouteState('providerIndex', 0);
   const [selectedPreset, setSelectedPreset] = useState<ModelPreset>("balanced");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [providerStatuses, setProviderStatuses] = useState<ProviderStatus[]>([]);
+
+  // Fetch provider status from API
+  useEffect(() => {
+    getProviderStatus().then(setProviderStatuses).catch(console.error);
+  }, []);
+
+  // Merge AVAILABLE_PROVIDERS with status from API
+  const providers: ProviderWithStatus[] = useMemo(() => {
+    return AVAILABLE_PROVIDERS.filter(p => p.id !== "openrouter").map((provider) => {
+      const status = providerStatuses.find((s) => s.provider === provider.id);
+      let displayStatus: DisplayStatus = "needs-key";
+      if (status?.isActive) {
+        displayStatus = "active";
+      } else if (status?.hasApiKey) {
+        displayStatus = "configured";
+      }
+      return { ...provider, displayStatus };
+    });
+  }, [providerStatuses]);
+
+  const selectedProvider = providers[selectedProviderIndex];
+  const providerId = selectedProvider?.id ?? "gemini";
+  const modelId = PRESET_MODEL_IDS[providerId]?.[selectedPreset] ?? "";
+  const modelInfo = getModelInfo(providerId, modelId);
+  const presetLabel = selectedPreset.charAt(0).toUpperCase() + selectedPreset.slice(1);
 
   useKey("Escape", () => navigate({ to: "/settings" }));
-
-  const selectedProvider = PROVIDERS[selectedProviderIndex];
-  const providerId = selectedProvider?.id ?? "gemini";
-  const presetInfo = PRESET_DESCRIPTIONS[providerId][selectedPreset];
-  const presetLabel =
-    selectedPreset.charAt(0).toUpperCase() + selectedPreset.slice(1);
 
   const footerShortcuts = useMemo(() => FOOTER_SHORTCUTS, []);
 
@@ -156,7 +171,7 @@ export function SettingsProviderPage() {
           </h2>
         </div>
         <div className="flex-1 overflow-y-auto scrollbar-hide">
-          {PROVIDERS.map((provider, index) => {
+          {providers.map((provider, index) => {
             const isSelected = index === selectedProviderIndex;
             return (
               <button
@@ -187,7 +202,7 @@ export function SettingsProviderPage() {
                   </span>
                   {provider.name}
                 </span>
-                {getStatusBadge(provider.status)}
+                {getStatusBadge(provider.displayStatus)}
               </button>
             );
           })}
@@ -202,7 +217,7 @@ export function SettingsProviderPage() {
           <h2 className="text-sm font-bold text-[--tui-fg] uppercase tracking-wide">
             {selectedProvider?.name} Configuration
           </h2>
-          {selectedProvider?.status === "configured" && (
+          {selectedProvider?.displayStatus === "active" && (
             <span className="text-xs text-[--tui-green] font-mono">Active</span>
           )}
         </div>
@@ -249,8 +264,8 @@ export function SettingsProviderPage() {
             </div>
             <p className="mt-3 text-xs text-gray-500 max-w-md">
               <span className="text-[--tui-blue] font-bold">{presetLabel}:</span>{" "}
-              Uses <span className="text-[--tui-fg]">{presetInfo.model}</span>.{" "}
-              {presetInfo.description}
+              Uses <span className="text-[--tui-fg]">{modelInfo?.name ?? modelId}</span>.{" "}
+              {getPresetDescription(selectedPreset)}
             </p>
           </div>
 
@@ -265,7 +280,7 @@ export function SettingsProviderPage() {
                 <input
                   type="text"
                   className="bg-[--tui-bg] border border-[--tui-border] text-[--tui-fg] px-3 py-2 text-sm w-full max-w-md focus:outline-none focus:border-[--tui-blue]"
-                  placeholder={presetInfo.model}
+                  placeholder={modelInfo?.name ?? modelId}
                 />
               </div>
               <div className="flex gap-4">

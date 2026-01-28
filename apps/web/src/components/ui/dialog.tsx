@@ -7,6 +7,8 @@ import { useScope, useKey } from '@/hooks/keyboard';
 interface DialogContextValue {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  titleId: string;
+  descriptionId: string;
 }
 
 const DialogContext = React.createContext<DialogContextValue | undefined>(undefined);
@@ -29,12 +31,20 @@ export function Dialog({ open: controlledOpen, onOpenChange, children }: DialogP
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
   const isOpen = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen;
   const handleOpenChange = onOpenChange || setUncontrolledOpen;
+  const dialogId = React.useId();
 
-  useScope('dialog');
+  useScope('dialog', { enabled: isOpen });
   useKey('Escape', () => handleOpenChange(false), { enabled: isOpen });
 
   return (
-    <DialogContext.Provider value={{ open: isOpen, onOpenChange: handleOpenChange }}>
+    <DialogContext.Provider
+      value={{
+        open: isOpen,
+        onOpenChange: handleOpenChange,
+        titleId: `${dialogId}-title`,
+        descriptionId: `${dialogId}-description`,
+      }}
+    >
       {children}
     </DialogContext.Provider>
   );
@@ -76,7 +86,7 @@ interface DialogContentProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export function DialogContent({ children, className, ...props }: DialogContentProps) {
-  const { open, onOpenChange } = useDialogContext();
+  const { open, onOpenChange, titleId, descriptionId } = useDialogContext();
 
   if (!open) return null;
 
@@ -97,6 +107,8 @@ export function DialogContent({ children, className, ...props }: DialogContentPr
         )}
         role="dialog"
         aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
         {...props}
       >
         {children}
@@ -127,18 +139,8 @@ interface DialogTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {
   children: React.ReactNode;
 }
 
-export function DialogTitle({ children, className, id, ...props }: DialogTitleProps) {
-  const { open } = useDialogContext();
-  const titleId = id || 'dialog-title';
-
-  React.useEffect(() => {
-    if (open && titleId) {
-      const dialogElement = document.querySelector('[role="dialog"]');
-      if (dialogElement && !dialogElement.getAttribute('aria-labelledby')) {
-        dialogElement.setAttribute('aria-labelledby', titleId);
-      }
-    }
-  }, [open, titleId]);
+export function DialogTitle({ children, className, ...props }: DialogTitleProps) {
+  const { titleId } = useDialogContext();
 
   return (
     <h2 id={titleId} className={cn('font-bold text-sm', className)} {...props}>
@@ -152,8 +154,11 @@ interface DialogDescriptionProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export function DialogDescription({ children, className, ...props }: DialogDescriptionProps) {
+  const { descriptionId } = useDialogContext();
+
   return (
     <div
+      id={descriptionId}
       className={cn('text-xs text-[--tui-fg]/70', className)}
       {...props}
     >
