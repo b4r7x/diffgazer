@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
 import { Table, type TableColumn } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { useScope, useKey } from "@/hooks/keyboard";
+import { useRouteState } from "@/hooks/use-route-state";
+import { usePageFooter } from "@/hooks/use-page-footer";
 
 type TabId = "runs" | "sessions";
 
@@ -107,10 +107,20 @@ function StatsCell({ item }: { item: HistoryItem }) {
   );
 }
 
+const FOOTER_SHORTCUTS = [
+  { key: "Tab", label: "Switch" },
+  { key: "Enter", label: "Open" },
+  { key: "d", label: "Delete" },
+  { key: "Esc", label: "Back" },
+];
+
 export function HistoryPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>("runs");
-  const [selectedRowIndex, setSelectedRowIndex] = useState(0);
+  const [selectedRowIndex, setSelectedRowIndex] = useRouteState('rowIndex', 0);
+
+  const footerShortcuts = useMemo(() => FOOTER_SHORTCUTS, []);
+  usePageFooter({ shortcuts: footerShortcuts });
 
   const handleRowClick = (_row: Record<string, ReactNode>, index: number) => {
     const rawItem = MOCK_HISTORY[index];
@@ -121,66 +131,51 @@ export function HistoryPage() {
 
   useScope("history");
   useKey("Tab", () =>
-    setActiveTab((prev) => (prev === "runs" ? "sessions" : "runs")),
+    setActiveTab((prev) => (prev === "runs" ? "sessions" : "runs"))
   );
   useKey("Escape", () => navigate({ to: "/" }));
 
-  const footerShortcuts = [
-    { key: "Tab", label: "Switch" },
-    { key: "Enter", label: "Open" },
-    { key: "d", label: "Delete" },
-    { key: "Esc", label: "Back" },
-  ];
-
   return (
-    <div className="tui-base h-screen flex flex-col overflow-hidden">
-      <Header subtitle="History" />
-
-      <div className="flex flex-col flex-1 overflow-hidden px-4 pb-2">
-        <div className="flex items-center gap-6 border-b border-[--tui-border] mb-4 text-sm select-none">
-          <Button
-            variant="tab"
-            data-active={activeTab === "runs"}
-            onClick={() => setActiveTab("runs")}
-          >
-            [Review Runs]
-          </Button>
-          <Button
-            variant="tab"
-            data-active={activeTab === "sessions"}
-            onClick={() => setActiveTab("sessions")}
-          >
-            Sessions
-          </Button>
-        </div>
-
-        <div className="flex-1 overflow-hidden">
-          {activeTab === "runs" ? (
-            <Table
-              columns={COLUMNS}
-              data={MOCK_HISTORY.map((item) => ({
-                id: <span className="tui-text-blue">{item.displayId}</span>,
-                date: <span className="tui-text-muted">{item.date}</span>,
-                scope: item.scope,
-                provider: (
-                  <span className="tui-text-muted">{item.provider}</span>
-                ),
-                stats: <StatsCell item={item} />,
-              }))}
-              selectedRowIndex={selectedRowIndex}
-              onRowSelect={setSelectedRowIndex}
-              onRowClick={handleRowClick}
-              className="h-full"
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full text-[--tui-fg] opacity-50">
-              No sessions available
-            </div>
-          )}
-        </div>
+    <div className="flex flex-col flex-1 overflow-hidden px-4 pb-2">
+      <div className="flex items-center gap-6 border-b border-[--tui-border] mb-4 text-sm select-none">
+        <Button
+          variant="tab"
+          data-active={activeTab === "runs"}
+          onClick={() => setActiveTab("runs")}
+        >
+          [Review Runs]
+        </Button>
+        <Button
+          variant="tab"
+          data-active={activeTab === "sessions"}
+          onClick={() => setActiveTab("sessions")}
+        >
+          Sessions
+        </Button>
       </div>
 
-      <Footer shortcuts={footerShortcuts} />
+      <div className="flex-1 overflow-hidden">
+        {activeTab === "runs" ? (
+          <Table
+            columns={COLUMNS}
+            data={MOCK_HISTORY.map((item) => ({
+              id: <span className="tui-text-blue">{item.displayId}</span>,
+              date: <span className="tui-text-muted">{item.date}</span>,
+              scope: item.scope,
+              provider: <span className="tui-text-muted">{item.provider}</span>,
+              stats: <StatsCell item={item} />,
+            }))}
+            selectedRowIndex={selectedRowIndex}
+            onRowSelect={setSelectedRowIndex}
+            onRowClick={handleRowClick}
+            className="h-full"
+          />
+        ) : (
+          <div className="flex items-center justify-center h-full text-[--tui-fg] opacity-50">
+            No sessions available
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { cn } from '../../lib/utils';
-import { useKey } from '@/hooks/keyboard';
+import { useKey, useKeys } from '@/hooks/keyboard';
 
 export interface TableColumn {
     key: string;
@@ -28,25 +28,13 @@ export function Table<T extends Record<string, React.ReactNode>>({
     const tableRef = React.useRef<HTMLTableElement>(null);
     const enabled = selectedRowIndex !== undefined && !!onRowSelect;
 
-    useKey('j', () => {
+    useKeys(['j', 'ArrowDown'], () => {
         if (selectedRowIndex !== undefined && onRowSelect) {
             onRowSelect(Math.min(selectedRowIndex + 1, data.length - 1));
         }
     }, { enabled });
 
-    useKey('ArrowDown', () => {
-        if (selectedRowIndex !== undefined && onRowSelect) {
-            onRowSelect(Math.min(selectedRowIndex + 1, data.length - 1));
-        }
-    }, { enabled });
-
-    useKey('k', () => {
-        if (selectedRowIndex !== undefined && onRowSelect) {
-            onRowSelect(Math.max(selectedRowIndex - 1, 0));
-        }
-    }, { enabled });
-
-    useKey('ArrowUp', () => {
+    useKeys(['k', 'ArrowUp'], () => {
         if (selectedRowIndex !== undefined && onRowSelect) {
             onRowSelect(Math.max(selectedRowIndex - 1, 0));
         }

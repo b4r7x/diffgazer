@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { cn } from '../../lib/utils';
-import { useKey } from '@/hooks/keyboard';
+import { useKey, useKeys } from '@/hooks/keyboard';
 
 interface MenuItemData {
   id: string;
@@ -22,6 +22,7 @@ interface MenuContextValue {
   onSelect: (index: number) => void;
   onActivate?: (item: MenuItemData) => void;
   items: MenuItemData[];
+  variant: 'default' | 'hub';
 }
 
 interface MenuItemProps {
@@ -29,6 +30,8 @@ interface MenuItemProps {
   disabled?: boolean;
   variant?: 'default' | 'danger';
   hotkey?: number | string;
+  value?: ReactNode;
+  valueVariant?: 'default' | 'success' | 'success-badge' | 'muted';
   children: ReactNode;
   className?: string;
 }
@@ -39,11 +42,17 @@ interface MenuRootProps {
   onActivate?: (item: { id: string; disabled: boolean; index: number }) => void;
   keyboardEnabled?: boolean;
   enableNumberJump?: boolean;
+  variant?: 'default' | 'hub';
   className?: string;
   children: ReactNode;
 }
 
 interface MenuDividerProps {
+  className?: string;
+}
+
+interface MenuHeaderProps {
+  children: ReactNode;
   className?: string;
 }
 
@@ -62,19 +71,19 @@ function MenuItem({
   disabled = false,
   variant = 'default',
   hotkey,
+  value,
+  valueVariant = 'default',
   children,
   className,
 }: MenuItemProps) {
-  const { selectedIndex, onSelect, onActivate, items } = useMenuContext();
+  const { selectedIndex, onSelect, onActivate, items, variant: menuVariant } = useMenuContext();
 
   const itemData = items.find((item) => item.id === id);
   if (!itemData) return null;
 
   const isSelected = itemData.index === selectedIndex;
   const isDanger = variant === 'danger';
-
-  const baseClasses = 'px-4 py-3 flex items-center cursor-pointer font-mono w-full';
-  const disabledClasses = disabled && 'opacity-50 cursor-not-allowed';
+  const isHub = menuVariant === 'hub';
 
   const handleClick = () => {
     if (!disabled) {
@@ -82,6 +91,65 @@ function MenuItem({
       onActivate?.(itemData);
     }
   };
+
+  const disabledClasses = disabled && 'opacity-50 cursor-not-allowed';
+
+  // Hub variant (settings hub style)
+  if (isHub) {
+    const baseClasses = 'px-4 py-4 flex justify-between items-center cursor-pointer text-sm w-full border-b border-tui-border last:border-b-0';
+
+    const getValueClasses = (selected: boolean) => {
+      if (selected) return 'font-mono text-xs uppercase tracking-wide';
+      switch (valueVariant) {
+        case 'success-badge':
+          return 'text-tui-green font-mono text-xs border border-tui-green/30 bg-tui-green/10 px-2 py-0.5 rounded';
+        case 'success':
+          return 'text-tui-violet font-mono text-xs';
+        case 'muted':
+          return 'text-gray-500 font-mono text-xs';
+        default:
+          return 'text-gray-500 font-mono text-xs';
+      }
+    };
+
+    if (isSelected) {
+      const selectedBg = isDanger ? 'bg-tui-red' : 'bg-tui-blue';
+      return (
+        <div
+          role="option"
+          aria-selected={true}
+          aria-disabled={disabled}
+          onClick={handleClick}
+          className={cn(baseClasses, selectedBg, 'text-black font-bold shadow-[inset_0_0_15px_rgba(0,0,0,0.1)]', disabledClasses, className)}
+        >
+          <div className="flex items-center">
+            <span className="w-6 text-black">▌</span>
+            <span>{children}</span>
+          </div>
+          {value && <div className={getValueClasses(true)}>{value}</div>}
+        </div>
+      );
+    }
+
+    return (
+      <div
+        role="option"
+        aria-selected={false}
+        aria-disabled={disabled}
+        onClick={handleClick}
+        className={cn(baseClasses, 'text-tui-fg hover:bg-tui-selection group transition-colors', disabledClasses, className)}
+      >
+        <div className="flex items-center">
+          <span className="w-6 text-tui-blue opacity-0 group-hover:opacity-100 transition-opacity">❯</span>
+          <span className="font-medium group-hover:text-white">{children}</span>
+        </div>
+        {value && <div className={getValueClasses(false)}>{value}</div>}
+      </div>
+    );
+  }
+
+  // Default variant (original style)
+  const baseClasses = 'px-4 py-3 flex items-center cursor-pointer font-mono w-full';
 
   if (isSelected) {
     const selectedBg = isDanger ? 'bg-tui-red' : 'bg-tui-blue';
@@ -109,21 +177,11 @@ function MenuItem({
       aria-selected={false}
       aria-disabled={disabled}
       onClick={handleClick}
-      className={cn(
-        baseClasses,
-        textColor,
-        'hover:bg-tui-selection group transition-colors duration-75',
-        disabledClasses,
-        className
-      )}
+      className={cn(baseClasses, textColor, 'hover:bg-tui-selection group transition-colors duration-75', disabledClasses, className)}
     >
-      <span className={cn('mr-3 shrink-0 opacity-0 group-hover:opacity-100', indicatorColor)}>
-        ▌
-      </span>
+      <span className={cn('mr-3 shrink-0 opacity-0 group-hover:opacity-100', indicatorColor)}>▌</span>
       {hotkey !== undefined && (
-        <span className={cn('mr-4 shrink-0 group-hover:text-tui-fg', indicatorColor)}>
-          [{hotkey}]
-        </span>
+        <span className={cn('mr-4 shrink-0 group-hover:text-tui-fg', indicatorColor)}>[{hotkey}]</span>
       )}
       <span className={cn('tracking-wide', !isDanger && 'group-hover:text-white')}>{children}</span>
     </div>
@@ -134,12 +192,23 @@ function MenuDivider({ className }: MenuDividerProps) {
   return <div className={cn('my-1 border-t border-tui-border mx-4 opacity-50', className)} />;
 }
 
+function MenuHeader({ children, className }: MenuHeaderProps) {
+  return (
+    <div className={cn('absolute -top-3 left-4', className)}>
+      <span className="inline-block border border-tui-blue bg-tui-bg px-2 py-0.5 text-tui-blue font-bold text-xs uppercase tracking-wider">
+        {children}
+      </span>
+    </div>
+  );
+}
+
 function MenuRoot({
   selectedIndex,
   onSelect,
   onActivate,
   keyboardEnabled = true,
   enableNumberJump = false,
+  variant = 'default',
   className,
   children,
 }: MenuRootProps) {
@@ -188,27 +257,28 @@ function MenuRoot({
     if (item && !item.disabled) onActivate?.(item);
   }, { enabled: keyboardEnabled });
 
-  for (let n = 1; n <= 9; n++) {
-    useKey(String(n), () => {
-      const index = n - 1;
-      const item = items[index];
-      if (item && !item.disabled) {
-        onSelect(index);
-        onActivate?.(item);
-      }
-    }, { enabled: keyboardEnabled && enableNumberJump });
-  }
+  const NUMBER_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'] as const;
+
+  useKeys(NUMBER_KEYS, (key) => {
+    const index = parseInt(key, 10) - 1;
+    const item = items[index];
+    if (item && !item.disabled) {
+      onSelect(index);
+      onActivate?.(item);
+    }
+  }, { enabled: keyboardEnabled && enableNumberJump });
 
   const contextValue: MenuContextValue = {
     selectedIndex,
     onSelect,
     onActivate,
     items,
+    variant,
   };
 
   return (
     <MenuContext.Provider value={contextValue}>
-      <div role="listbox" className={cn('w-full', className)}>
+      <div role="listbox" className={cn('w-full relative', className)}>
         {children}
       </div>
     </MenuContext.Provider>
@@ -218,6 +288,7 @@ function MenuRoot({
 export const Menu = Object.assign(MenuRoot, {
   Item: MenuItem,
   Divider: MenuDivider,
+  Header: MenuHeader,
 });
 
-export type { MenuRootProps, MenuItemProps, MenuDividerProps, MenuItemData };
+export type { MenuRootProps, MenuItemProps, MenuDividerProps, MenuHeaderProps, MenuItemData };
