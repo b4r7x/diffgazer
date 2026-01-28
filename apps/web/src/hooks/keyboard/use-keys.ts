@@ -10,21 +10,21 @@ interface UseKeysOptions {
 export function useKeys(
   keys: readonly string[],
   handler: (key: string, index: number) => void,
-  options?: UseKeysOptions
+  options?: UseKeysOptions,
 ) {
   const { register, activeScope } = useKeyboardContext();
 
   const stableHandler = useEffectEvent(handler);
 
-  const keysKey = keys.join(',');
+  const keysKey = keys.join(",");
 
   useEffect(() => {
     if (options?.enabled === false) return;
     if (!activeScope) return;
 
     const cleanups = keys.map((key, i) =>
-      register(activeScope, key, () => stableHandler(key, i))
+      register(activeScope, key, () => stableHandler(key, i)),
     );
-    return () => cleanups.forEach(cleanup => cleanup());
-  }, [register, activeScope, keysKey, options?.enabled]);
+    return () => cleanups.forEach((cleanup) => cleanup());
+  }, [keys, register, activeScope, keysKey, options?.enabled]);
 }

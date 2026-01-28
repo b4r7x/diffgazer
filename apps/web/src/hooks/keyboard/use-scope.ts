@@ -3,8 +3,16 @@
 import { useEffect } from "react";
 import { useKeyboardContext } from "./use-keyboard-context";
 
-export function useScope(name: string) {
+interface UseScopeOptions {
+  enabled?: boolean;
+}
+
+export function useScope(name: string, options: UseScopeOptions = {}) {
+  const { enabled = true } = options;
   const { pushScope } = useKeyboardContext();
 
-  useEffect(() => pushScope(name), [name, pushScope]);
+  useEffect(() => {
+    if (!enabled) return;
+    return pushScope(name);
+  }, [name, pushScope, enabled]);
 }
