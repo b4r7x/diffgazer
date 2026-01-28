@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Menu, MenuItem } from "@/components/ui/menu";
 import { Panel, PanelHeader } from "@/components/ui/panel";
@@ -62,9 +61,7 @@ export function SettingsHubPage() {
   const navigate = useNavigate();
   const [selectedIndex, setSelectedIndex] = useRouteState('menuIndex', 1);
 
-  const footerShortcuts = useMemo(() => FOOTER_SHORTCUTS, []);
-  const footerRight = useMemo(() => FOOTER_RIGHT, []);
-  usePageFooter({ shortcuts: footerShortcuts, rightShortcuts: footerRight });
+  usePageFooter({ shortcuts: FOOTER_SHORTCUTS, rightShortcuts: FOOTER_RIGHT });
 
   useScope("settings-hub");
   useKey("Escape", () => navigate({ to: "/" }));
