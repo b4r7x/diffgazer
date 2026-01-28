@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { matchesHotkey, isInputElement } from '@/lib/keyboard';
 
 type Handler = () => void;
@@ -64,8 +64,13 @@ export function KeyboardProvider({ children }: { children: React.ReactNode }) {
     return () => handlers.get(scope)?.delete(hotkey);
   }, [handlers]);
 
+  const contextValue = useMemo(
+    () => ({ activeScope, pushScope, register }),
+    [activeScope, pushScope, register]
+  );
+
   return (
-    <KeyboardContext.Provider value={{ activeScope, pushScope, register }}>
+    <KeyboardContext.Provider value={contextValue}>
       {children}
     </KeyboardContext.Provider>
   );

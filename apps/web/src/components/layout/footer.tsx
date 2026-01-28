@@ -6,18 +6,22 @@ interface FooterProps {
   className?: string;
 }
 
+// Extracted outside component to avoid recreation on each render
+function renderShortcuts(items: Shortcut[]) {
+  return items.map((shortcut, index) => (
+    // key+label combination is stable for the same shortcut definition
+    <span key={shortcut.key + shortcut.label}>
+      <span>{shortcut.key}</span> <span>{shortcut.label}</span>
+      {index < items.length - 1 && <span className="text-gray-500">•</span>}
+    </span>
+  ));
+}
+
 export function Footer({
   shortcuts,
   rightShortcuts,
   className = '',
 }: FooterProps) {
-  const renderShortcuts = (items: Shortcut[]) =>
-    items.map((shortcut, index) => (
-      <span key={shortcut.key + shortcut.label}>
-        <span>{shortcut.key}</span> <span>{shortcut.label}</span>
-        {index < items.length - 1 && <span className="text-gray-500">•</span>}
-      </span>
-    ));
 
   return (
     <footer

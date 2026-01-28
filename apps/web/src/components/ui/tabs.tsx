@@ -41,20 +41,23 @@ function Tabs({
   const value = controlledValue !== undefined ? controlledValue : uncontrolledValue;
   const handleValueChange = onValueChange || setUncontrolledValue;
 
-  const registerTrigger = (triggerValue: string, element: HTMLButtonElement | null) => {
+  const registerTrigger = React.useCallback((triggerValue: string, element: HTMLButtonElement | null) => {
     if (element) {
       triggersRef.current.set(triggerValue, element);
     } else {
       triggersRef.current.delete(triggerValue);
     }
-  };
+  }, []);
 
-  const getTriggers = () => triggersRef.current;
+  const getTriggers = React.useCallback(() => triggersRef.current, []);
+
+  const contextValue = React.useMemo(
+    () => ({ value, onValueChange: handleValueChange, registerTrigger, getTriggers }),
+    [value, handleValueChange, registerTrigger, getTriggers]
+  );
 
   return (
-    <TabsContext.Provider
-      value={{ value, onValueChange: handleValueChange, registerTrigger, getTriggers }}
-    >
+    <TabsContext.Provider value={contextValue}>
       <div className={cn('flex flex-col', className)}>{children}</div>
     </TabsContext.Provider>
   );
@@ -121,6 +124,12 @@ function TabsTrigger({ value, children, className, disabled }: TabsTriggerProps)
     return () => registerTrigger(value, null);
   }, [value, registerTrigger]);
 
+  const handleClick = React.useCallback(() => {
+    if (!disabled) {
+      onValueChange(value);
+    }
+  }, [disabled, onValueChange, value]);
+
   return (
     <button
       ref={ref}
@@ -129,11 +138,7 @@ function TabsTrigger({ value, children, className, disabled }: TabsTriggerProps)
       aria-controls={`tabpanel-${value}`}
       tabIndex={isActive ? 0 : -1}
       disabled={disabled}
-      onClick={() => {
-        if (!disabled) {
-          onValueChange(value);
-        }
-      }}
+      onClick={handleClick}
       className={cn(
         'px-3 py-1 text-sm font-mono transition-colors cursor-pointer',
         'border border-[--tui-border]',

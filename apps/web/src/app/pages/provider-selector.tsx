@@ -13,14 +13,14 @@ import {
   useProviders,
   type ProviderFilter,
 } from '@/features/providers';
-import { PROVIDER_ENV_VARS, PROVIDER_CAPABILITIES, type AIProvider } from '@repo/schemas';
+import { PROVIDER_ENV_VARS, PROVIDER_CAPABILITIES } from '@repo/schemas';
 
 const FOOTER_SHORTCUTS = [
   { key: '↑/↓', label: 'Navigate' },
+  { key: '←/→', label: 'Switch Panel' },
   { key: '/', label: 'Search' },
-  { key: 'Tab', label: 'Switch Focus' },
-  { key: 't', label: 'Test' },
-  { key: 'k', label: 'Set Key' },
+  { key: 'Enter', label: 'Activate' },
+  { key: 'Esc', label: 'Back' },
 ];
 
 export function ProviderSelectorPage() {
@@ -35,9 +35,11 @@ export function ProviderSelectorPage() {
   // Dialog state
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false);
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Panel focus
-  const [activePanel, setActivePanel] = useState<'list' | 'details'>('list');
+  const [focusZone, setFocusZone] = useState<'list' | 'buttons'>('list');
+  const [buttonIndex, setButtonIndex] = useState(0);
 
   // Data
   const {
@@ -77,11 +79,78 @@ export function ProviderSelectorPage() {
   // Selected provider
   const selectedProvider = filteredProviders[selectedIndex] ?? null;
 
+  // Memoize providers with display status to avoid re-creating objects
+  const providersWithStatus = useMemo(
+    () => filteredProviders.map((p) => ({
+      ...p,
+      displayStatus: p.isActive ? 'active' as const : p.hasApiKey ? 'configured' as const : 'needs-key' as const,
+    })),
+    [filteredProviders]
+  );
+
   // Keyboard shortcuts
-  useKey('Tab', () => setActivePanel((p) => (p === 'list' ? 'details' : 'list')));
-  useKey('Escape', () => navigate({ to: '/settings' }), { enabled: !apiKeyDialogOpen && !modelDialogOpen });
-  useKey('k', () => setApiKeyDialogOpen(true), { enabled: activePanel === 'details' && !apiKeyDialogOpen && !modelDialogOpen });
-  useKey('m', () => setModelDialogOpen(true), { enabled: activePanel === 'details' && !apiKeyDialogOpen && !modelDialogOpen });
+  const dialogOpen = apiKeyDialogOpen || modelDialogOpen;
+  const inButtons = focusZone === 'buttons';
+  const inList = focusZone === 'list';
+  const canRemoveKey = selectedProvider?.hasApiKey ?? false;
+
+  // Helper to skip disabled buttons during navigation
+  const getNextButtonIndex = (current: number, direction: 1 | -1) => {
+    const enabled = [true, true, canRemoveKey, true];
+    let next = current;
+    for (let i = 0; i < 4; i++) {
+      next = (next + direction + 4) % 4;
+      if (enabled[next]) return next;
+    }
+    return current;
+  };
+
+  // Tab toggles zones (only if provider selected)
+  useKey('Tab', () => {
+    if (focusZone === 'list' && selectedProvider) {
+      setFocusZone('buttons');
+      setButtonIndex(0);
+    } else {
+      setFocusZone('list');
+    }
+  });
+
+  // ArrowRight: list → buttons (only if provider selected)
+  useKey('ArrowRight', () => { setFocusZone('buttons'); setButtonIndex(0); },
+    { enabled: !dialogOpen && inList && !!selectedProvider });
+
+  // ArrowLeft: buttons → list
+  useKey('ArrowLeft', () => setFocusZone('list'),
+    { enabled: !dialogOpen && inButtons });
+
+  // ArrowUp/Down: navigate buttons (skip disabled)
+  useKey('ArrowUp', () => setButtonIndex((i) => getNextButtonIndex(i, -1)),
+    { enabled: !dialogOpen && inButtons });
+  useKey('ArrowDown', () => setButtonIndex((i) => getNextButtonIndex(i, 1)),
+    { enabled: !dialogOpen && inButtons });
+
+  // Enter/Space: activate focused button
+  useKey('Enter', () => handleButtonAction(buttonIndex),
+    { enabled: !dialogOpen && inButtons });
+  useKey(' ', () => handleButtonAction(buttonIndex),
+    { enabled: !dialogOpen && inButtons });
+
+  // Escape to go back
+  useKey('Escape', () => navigate({ to: '/settings' }), { enabled: !dialogOpen });
+
+  // Reset focus to list when no provider selected
+  useEffect(() => {
+    if (!selectedProvider && focusZone === 'buttons') {
+      setFocusZone('list');
+    }
+  }, [selectedProvider, focusZone]);
+
+  // Clamp index when filtered list shrinks
+  useEffect(() => {
+    if (selectedIndex >= filteredProviders.length && filteredProviders.length > 0) {
+      setSelectedIndex(filteredProviders.length - 1);
+    }
+  }, [filteredProviders.length, selectedIndex, setSelectedIndex]);
 
   // Footer
   useEffect(() => {
@@ -93,38 +162,66 @@ export function ProviderSelectorPage() {
   }, [selectedProvider, setShortcuts, setRightShortcuts]);
 
   // Handlers
-  const handleSaveApiKey = async (method: 'paste' | 'env', value: string) => {
+  const handleButtonAction = (index: number) => {
     if (!selectedProvider) return;
-    await saveApiKey(selectedProvider.id, value, method);
-    await refetch();
-    setApiKeyDialogOpen(false);
+    switch (index) {
+      case 0: handleSelectProvider(); break;
+      case 1: setApiKeyDialogOpen(true); break;
+      case 2: if (selectedProvider.hasApiKey) handleRemoveKey(); break;
+      case 3: setModelDialogOpen(true); break;
+    }
+  };
+
+  const handleSaveApiKey = async (method: 'paste' | 'env', value: string) => {
+    if (!selectedProvider || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await saveApiKey(selectedProvider.id, value, method);
+      await refetch();
+      setApiKeyDialogOpen(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleRemoveKey = async () => {
-    if (!selectedProvider) return;
-    await removeApiKey(selectedProvider.id);
-    await refetch();
-    setApiKeyDialogOpen(false);
+    if (!selectedProvider || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await removeApiKey(selectedProvider.id);
+      await refetch();
+      setApiKeyDialogOpen(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSelectProvider = async () => {
-    if (!selectedProvider) return;
-    await selectProvider(selectedProvider.id, selectedProvider.model);
-    await refetch();
+    if (!selectedProvider || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await selectProvider(selectedProvider.id, selectedProvider.model);
+      await refetch();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSelectModel = async (modelId: string) => {
-    if (!selectedProvider) return;
-    await selectProvider(selectedProvider.id, modelId);
-    await refetch();
-    setModelDialogOpen(false);
+    if (!selectedProvider || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await selectProvider(selectedProvider.id, modelId);
+      await refetch();
+      setModelDialogOpen(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleActivate = (item: { id: string }) => {
-    const provider = filteredProviders.find((p) => p.id === item.id);
-    if (provider) {
-      setActivePanel('details');
-    }
+  const handleActivate = (_item: { id: string }) => {
+    // Click on list item should NOT change focus zone
+    // Selection already handled by onSelect={setSelectedIndex}
   };
 
   if (isLoading) {
@@ -139,10 +236,7 @@ export function ProviderSelectorPage() {
     <div className="flex-1 flex overflow-hidden">
       <div className="w-2/5 flex flex-col border-r border-tui-border">
         <ProviderList
-          providers={filteredProviders.map((p) => ({
-            ...p,
-            displayStatus: p.isActive ? 'active' : p.hasApiKey ? 'configured' : 'needs-key',
-          }))}
+          providers={providersWithStatus}
           selectedIndex={selectedIndex}
           onSelect={setSelectedIndex}
           onActivate={handleActivate}
@@ -150,7 +244,7 @@ export function ProviderSelectorPage() {
           onFilterChange={setFilter}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          keyboardEnabled={activePanel === 'list' && !apiKeyDialogOpen && !modelDialogOpen}
+          keyboardEnabled={focusZone === 'list' && !dialogOpen}
         />
       </div>
       <div className="w-3/5 flex flex-col bg-[#0b0e14]">
@@ -160,6 +254,8 @@ export function ProviderSelectorPage() {
           onSelectModel={() => setModelDialogOpen(true)}
           onRemoveKey={handleRemoveKey}
           onSelectProvider={handleSelectProvider}
+          focusedButtonIndex={focusZone === 'buttons' && selectedProvider ? buttonIndex : undefined}
+          isFocused={focusZone === 'buttons' && !!selectedProvider}
         />
       </div>
 
