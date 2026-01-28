@@ -27,6 +27,180 @@ npx vitest run <file>        # Run specific test file
 ./scripts/test-integration.sh # Run integration tests (full flow)
 ```
 
+## Specialized Agents & Skills (MANDATORY)
+
+**ALWAYS delegate to specialized agents to preserve main context. Never use basic agents when specialized exist.**
+
+### Workflow
+
+1. **Identify** - Match task to best specialized agent/skill
+2. **Load skill** - For workflows, invoke `/skill-name` first
+3. **Spawn agent** - `Task(specialized-agent)` with clear prompt
+4. **Execute** - Agent works autonomously
+5. **Summarize** - Return `file:line` + findings only
+
+### Rules
+
+- Main context = planning, coordination, user communication ONLY
+- NEVER do deep file reads/searches in main context → delegate to agents
+- Run parallel agents when tasks are independent
+- Always use most specialized agent available
+- Load skills for structured workflows
+
+### Available Specialized Agents
+
+**Feature Development:**
+`feature-dev:code-reviewer`, `feature-dev:code-explorer`, `feature-dev:code-architect`
+
+**PR Review Toolkit:**
+`pr-review-toolkit:code-reviewer`, `pr-review-toolkit:silent-failure-hunter`, `pr-review-toolkit:code-simplifier`, `pr-review-toolkit:comment-analyzer`, `pr-review-toolkit:pr-test-analyzer`, `pr-review-toolkit:type-design-analyzer`
+
+**JavaScript/TypeScript:**
+`javascript-typescript:javascript-pro`, `javascript-typescript:typescript-pro`
+
+**Backend Development:**
+`backend-development:backend-architect`, `backend-development:temporal-python-pro`, `backend-development:tdd-orchestrator`, `backend-development:event-sourcing-architect`, `backend-development:graphql-architect`
+
+**Database:**
+`database-design:database-architect`, `database-design:sql-pro`
+
+**UI/UX:**
+`ui-designer:ui-designer`, `ux-researcher:ux-researcher`
+
+**LLM/AI:**
+`llm-application-dev:prompt-engineer`, `llm-application-dev:ai-engineer`, `llm-application-dev:vector-database-engineer`
+
+**Testing:**
+`unit-testing:test-automator`, `unit-testing:debugger`, `unit-test-generator:unit-test-generator`
+
+**Code Quality:**
+`code-simplifier:code-simplifier`, `code-reviewer:code-reviewer`, `code-review-ai:architect-review`, `codebase-cleanup:code-reviewer`, `codebase-cleanup:test-automator`
+
+**Architecture:**
+`code-architect:code-architect`, `backend-architect:backend-architect`, `api-architect`
+
+**API:**
+`api-integration-specialist:api-integration-specialist`, `api-tester:api-tester`, `api-testing-observability:api-documenter`, `api-scaffolding:backend-architect`, `api-scaffolding:fastapi-pro`, `api-scaffolding:django-pro`, `api-scaffolding:graphql-architect`
+
+**Performance & Observability:**
+`application-performance:performance-engineer`, `application-performance:observability-engineer`, `application-performance:frontend-developer`, `performance-optimizer`
+
+**Security:**
+`backend-api-security:backend-architect`, `backend-api-security:backend-security-coder`, `full-stack-orchestration:security-auditor`, `security-scanning:security-auditor`, `security-scanning:threat-modeling-expert`
+
+**Full Stack:**
+`full-stack-orchestration:test-automator`, `full-stack-orchestration:performance-engineer`, `full-stack-orchestration:deployment-engineer`
+
+**Context Management:**
+`agent-orchestration:context-manager`, `context-management:context-manager`
+
+**Experienced Engineer Specialists:**
+`experienced-engineer:performance-engineer`, `experienced-engineer:testing-specialist`, `experienced-engineer:database-architect`, `experienced-engineer:security-specialist`, `experienced-engineer:devops-engineer`, `experienced-engineer:tech-lead`, `experienced-engineer:ux-ui-designer`, `experienced-engineer:code-quality-reviewer`, `experienced-engineer:documentation-writer`, `experienced-engineer:api-architect`
+
+**Frontend:**
+`frontend-developer:frontend-developer`, `frontend-developer`, `tailwind-frontend-expert`, `frontend-principles`
+
+**React:**
+`react-component-architect`, `react-nextjs-expert`, `react-tanstack-start-expert`, `react-state-manager`, `react-principles`, `nextjs-principles`, `tanstack-start-principles`
+
+**Vue:**
+`vue-component-architect`, `vue-nuxt-expert`
+
+**Django:**
+`django-api-developer`, `django-backend-expert`, `django-orm-expert`
+
+**Laravel:**
+`laravel-backend-expert`, `laravel-eloquent-expert`
+
+**Rails:**
+`rails-activerecord-expert`, `rails-api-developer`, `rails-backend-expert`
+
+**Game Dev:**
+`game-development:minecraft-bukkit-pro`, `game-development:unity-developer`
+
+**Reverse Engineering:**
+`reverse-engineering:malware-analyst`, `reverse-engineering:firmware-analyst`, `reverse-engineering:reverse-engineer`
+
+**SEO:**
+`seo-analysis-monitoring:seo-authority-builder`, `seo-analysis-monitoring:seo-cannibalization-detector`, `seo-analysis-monitoring:seo-content-refresher`, `seo-content-creation:seo-content-planner`, `seo-content-creation:seo-content-writer`, `seo-content-creation:seo-content-auditor`, `seo-technical-optimization:seo-structure-architect`, `seo-technical-optimization:seo-meta-optimizer`, `seo-technical-optimization:seo-keyword-strategist`, `seo-technical-optimization:seo-snippet-hunter`
+
+**Shell:**
+`shell-scripting:posix-shell-pro`, `shell-scripting:bash-pro`
+
+**Web:**
+`web-dev:web-dev`, `web-scripting:ruby-pro`, `web-scripting:php-pro`
+
+**Other Specialized:**
+`trend-researcher:trend-researcher`, `vision-specialist:vision-specialist`, `b2b-project-shipper:b2b-project-shipper`, `hookify:conversation-analyzer`
+
+**Top-Level:**
+`code-reviewer`, `code-archaeologist`, `performance-optimizer`, `documentation-specialist`, `backend-developer`, `project-analyst`, `team-configurator`, `tech-lead-orchestrator`
+
+### Available Skills (invoke via `/skill-name`)
+
+**API & Backend:**
+`/api-scaffolding:fastapi-templates`, `/backend-development:api-design-principles`, `/backend-development:architecture-patterns`, `/backend-development:cqrs-implementation`, `/backend-development:event-store-design`, `/backend-development:microservices-patterns`, `/backend-development:projection-patterns`, `/backend-development:saga-orchestration`, `/backend-development:temporal-python-testing`, `/backend-development:workflow-orchestration-patterns`, `/generate-api-docs:generate-api-docs`
+
+**Audits & Validation:**
+`/audit-react`, `/audit:audit`, `/bulletproof-nodejs`, `/bulletproof-react`, `/validate-react-simplification`, `/validate-test-simplification`, `/validate-tests`, `/run-reusability-audit`
+
+**Bug & Debug:**
+`/bug-detective:bug-detective`, `/bug-fix:bug-fix`, `/project-debug-stream`
+
+**Code Review:**
+`/code-review-assistant:code-review-assistant`, `/code-review:code-review`, `/pr-review-toolkit:review-pr`, `/pr-review:pr-review`
+
+**Database:**
+`/database-design:postgresql`
+
+**Discussion & Planning:**
+`/discuss:discuss`, `/plan:plan`, `/ultrathink:ultrathink`
+
+**Documentation:**
+`/experienced-engineer:code-explain`, `/experienced-engineer:update-claude`, `/project-context`, `/project-structure`, `/project-update`
+
+**Feature Development:**
+`/feature-dev:feature-dev`, `/frontend-design:frontend-design`
+
+**Figma:**
+`/figma:code-connect-components`, `/figma:create-design-system-rules`, `/figma:implement-design`
+
+**Fixes:**
+`/fix-test-types`, `/fix-tests`
+
+**Game Development:**
+`/game-development:godot-gdscript-patterns`, `/game-development:unity-ecs-patterns`
+
+**Hookify:**
+`/hookify:configure`, `/hookify:help`, `/hookify:hookify`, `/hookify:list`, `/hookify:writing-rules`
+
+**JavaScript/TypeScript:**
+`/javascript-testing-patterns`, `/javascript-typescript:javascript-testing-patterns`, `/javascript-typescript:modern-javascript-patterns`, `/javascript-typescript:nodejs-backend-patterns`, `/javascript-typescript:typescript-advanced-types`
+
+**LLM/AI:**
+`/llm-application-dev:embedding-strategies`, `/llm-application-dev:hybrid-search-implementation`, `/llm-application-dev:langchain-architecture`, `/llm-application-dev:llm-evaluation`, `/llm-application-dev:prompt-engineering-patterns`, `/llm-application-dev:rag-implementation`, `/llm-application-dev:similarity-search-patterns`, `/llm-application-dev:vector-index-tuning`
+
+**React & Principles:**
+`/react-principles`, `/vercel-react-best-practices`, `/web-design-guidelines`
+
+**Refactoring:**
+`/refractor:refractor`
+
+**Reverse Engineering:**
+`/reverse-engineering:anti-reversing-techniques`, `/reverse-engineering:binary-analysis-patterns`, `/reverse-engineering:memory-forensics`, `/reverse-engineering:protocol-reverse-engineering`
+
+**Security:**
+`/security-scanning:attack-tree-construction`, `/security-scanning:sast-configuration`, `/security-scanning:security-requirement-extraction`, `/security-scanning:security-sast`, `/security-scanning:stride-analysis-patterns`, `/security-scanning:threat-mitigation-mapping`
+
+**Shell:**
+`/shell-scripting:bash-defensive-patterns`, `/shell-scripting:bats-testing-patterns`, `/shell-scripting:shellcheck-configuration`
+
+**Testing:**
+`/test-file:test-file`
+
+**Other:**
+`/remind`, `/rules`
+
 ## Architecture Decisions (ADRs)
 
 **Follow these accepted decisions (see `.claude/docs/decisions.md`):**

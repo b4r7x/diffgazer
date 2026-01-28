@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { useScope, useKey } from "@/hooks/keyboard";
@@ -460,18 +461,15 @@ export function ReviewPage() {
             {tabs.map(
               (tab) =>
                 tab.show && (
-                  <button
+                  <Button
                     key={tab.id}
+                    variant="tab"
+                    data-active={activeTab === tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={cn(
-                      "mr-4 transition-colors",
-                      activeTab === tab.id
-                        ? "text-[--tui-violet] font-bold border-b-2 border-[--tui-violet]"
-                        : "text-gray-500 hover:text-[--tui-fg]",
-                    )}
+                    className="mr-4"
                   >
                     {activeTab === tab.id ? `[${tab.label}]` : tab.label}
-                  </button>
+                  </Button>
                 ),
             )}
           </div>

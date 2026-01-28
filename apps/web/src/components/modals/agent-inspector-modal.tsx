@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { Modal } from '@/components/ui/modal';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useScope, useKey } from '@/hooks/keyboard';
 
@@ -75,26 +76,17 @@ export function AgentInspectorModal({ isOpen, issue, onClose }: AgentInspectorMo
         <div className="flex justify-center items-center py-2 border-b-2 border-[--tui-border] bg-[--tui-bg] shrink-0">
           <div className="flex gap-8 text-sm tracking-wider font-medium">
             {tabs.map((tab) => (
-              <button
+              <Button
                 key={tab.id}
+                variant="tab"
+                data-active={activeTab === tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  'transition-colors cursor-pointer',
-                  activeTab === tab.id
-                    ? 'text-[--tui-violet] font-bold'
-                    : 'text-gray-500 hover:text-[--tui-fg]'
+                  activeTab === tab.id && 'text-[--tui-violet]'
                 )}
               >
-                {activeTab === tab.id ? (
-                  <span>
-                    <span className="text-[--tui-violet] mr-1">[</span>
-                    {tab.label}
-                    <span className="text-[--tui-violet] ml-1">]</span>
-                  </span>
-                ) : (
-                  tab.label
-                )}
-              </button>
+                {activeTab === tab.id ? `[${tab.label}]` : tab.label}
+              </Button>
             ))}
           </div>
         </div>

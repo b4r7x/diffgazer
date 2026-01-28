@@ -4,7 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { Table, type TableColumn } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { useScope, useKey } from "@/hooks/keyboard";
 
 type TabId = "runs" | "sessions";
@@ -120,7 +120,9 @@ export function HistoryPage() {
   };
 
   useScope("history");
-  useKey("Tab", () => setActiveTab((prev) => (prev === "runs" ? "sessions" : "runs")));
+  useKey("Tab", () =>
+    setActiveTab((prev) => (prev === "runs" ? "sessions" : "runs")),
+  );
   useKey("Escape", () => navigate({ to: "/" }));
 
   const footerShortcuts = [
@@ -136,30 +138,20 @@ export function HistoryPage() {
 
       <div className="flex flex-col flex-1 overflow-hidden px-4 pb-2">
         <div className="flex items-center gap-6 border-b border-[--tui-border] mb-4 text-sm select-none">
-          <button
-            type="button"
-            className={cn(
-              "pb-1 border-b-2 cursor-pointer transition-colors",
-              activeTab === "runs"
-                ? "tui-tab-active"
-                : "tui-tab-inactive border-transparent",
-            )}
+          <Button
+            variant="tab"
+            data-active={activeTab === "runs"}
             onClick={() => setActiveTab("runs")}
           >
             [Review Runs]
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "pb-1 border-b-2 cursor-pointer transition-colors",
-              activeTab === "sessions"
-                ? "tui-tab-active"
-                : "tui-tab-inactive border-transparent",
-            )}
+          </Button>
+          <Button
+            variant="tab"
+            data-active={activeTab === "sessions"}
             onClick={() => setActiveTab("sessions")}
           >
             Sessions
-          </button>
+          </Button>
         </div>
 
         <div className="flex-1 overflow-hidden">

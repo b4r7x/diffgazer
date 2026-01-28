@@ -114,30 +114,22 @@ export function SettingsPage() {
       />
 
       <div className="flex border-b border-[--tui-border] px-4">
-        <button
-          type="button"
+        <Button
+          variant="tab"
+          data-active={activeTab === 'providers'}
           onClick={() => setActiveTab('providers')}
-          className={cn(
-            'px-4 py-2 text-sm transition-colors',
-            activeTab === 'providers'
-              ? 'tui-tab-active'
-              : 'tui-tab-inactive'
-          )}
+          className="px-4 py-2 text-sm"
         >
           Providers
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="tab"
+          data-active={activeTab === 'diagnostics'}
           onClick={() => setActiveTab('diagnostics')}
-          className={cn(
-            'px-4 py-2 text-sm transition-colors',
-            activeTab === 'diagnostics'
-              ? 'tui-tab-active'
-              : 'tui-tab-inactive'
-          )}
+          className="px-4 py-2 text-sm"
         >
           Diagnostics
-        </button>
+        </Button>
       </div>
 
       {activeTab === 'providers' && (
@@ -279,17 +271,17 @@ export function SettingsPage() {
               )}
 
               <div className="mt-auto mb-4">
-                <button
-                  type="button"
+                <Button
+                  variant="link"
                   onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="group cursor-pointer flex items-center gap-2 text-gray-500 hover:text-[--tui-fg] transition-colors"
+                  className="flex items-center gap-2"
                 >
                   <span className="text-[--tui-yellow] font-bold">[a]</span>
                   <span className="border-b border-dashed border-gray-700 group-hover:border-[--tui-fg]">
                     {showAdvanced ? 'Hide' : 'Show'} Advanced Settings (Model ID, Temp, Timeout)
                   </span>
                   <span className="text-sm">{showAdvanced ? '\u25B2' : '\u25BC'}</span>
-                </button>
+                </Button>
               </div>
             </div>
           </div>
