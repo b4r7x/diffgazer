@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, Badge } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { useKey } from "@/hooks/keyboard";
@@ -45,39 +45,197 @@ export function ModelSelectDialog({
 }: ModelSelectDialogProps) {
   const models = getModelsForProvider(provider);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [tierFilter, setTierFilter] = useState<"all" | "free" | "paid">("all");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const listContainerRef = useRef<HTMLDivElement>(null);
 
-  // Reset selected index when dialog opens or models change
+  type FocusZone = 'search' | 'filters' | 'list' | 'footer';
+  const [focusZone, setFocusZone] = useState<FocusZone>('list');
+  const [filterIndex, setFilterIndex] = useState(0);
+  const [footerButtonIndex, setFooterButtonIndex] = useState(1);
+
+  const FILTERS = ['all', 'free', 'paid'] as const;
+
+  // Scroll visibility helpers
+  const isItemVisible = (itemIndex: number): boolean => {
+    const container = listContainerRef.current;
+    if (!container) return true;
+
+    const items = container.querySelectorAll('[role="option"]');
+    const item = items[itemIndex] as HTMLElement | undefined;
+    if (!item) return true;
+
+    const containerRect = container.getBoundingClientRect();
+    const itemRect = item.getBoundingClientRect();
+
+    return itemRect.top >= containerRect.top && itemRect.bottom <= containerRect.bottom;
+  };
+
+  const scrollItemIntoView = (itemIndex: number) => {
+    const container = listContainerRef.current;
+    if (!container) return;
+
+    const items = container.querySelectorAll('[role="option"]');
+    const item = items[itemIndex] as HTMLElement | undefined;
+    if (!item) return;
+
+    item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+
+  // Derive filtered models inline - React 19 Compiler optimizes this
+  let filteredModels = models;
+
+  if (tierFilter === "free") {
+    filteredModels = filteredModels.filter((m) => m.tier === "free");
+  } else if (tierFilter === "paid") {
+    filteredModels = filteredModels.filter((m) => m.tier === "paid");
+  }
+
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase();
+    filteredModels = filteredModels.filter(
+      (m) =>
+        m.name.toLowerCase().includes(query) ||
+        m.description.toLowerCase().includes(query)
+    );
+  }
+
+  // Reset filters and selection when dialog opens
   useEffect(() => {
     if (open) {
+      setSearchQuery("");
+      setTierFilter("all");
+      setFocusZone("list");
+      setFilterIndex(0);
+      setFooterButtonIndex(1);
       const currentIndex = models.findIndex((m) => m.id === currentModel);
       setSelectedIndex(currentIndex >= 0 ? currentIndex : 0);
     }
-  }, [open, currentModel, models]);
+  }, [open, currentModel, provider]);
 
-  const handleConfirm = useCallback(() => {
-    const model = models[selectedIndex];
+  // Clamp selection when filtered list changes
+  useEffect(() => {
+    if (selectedIndex >= filteredModels.length && filteredModels.length > 0) {
+      setSelectedIndex(0);
+    }
+  }, [filteredModels.length, selectedIndex]);
+
+  // Auto-scroll selected item into view
+  useEffect(() => {
+    if (focusZone === 'list' && filteredModels.length > 0) {
+      scrollItemIntoView(selectedIndex);
+    }
+  }, [selectedIndex, focusZone]);
+
+  const handleConfirm = () => {
+    const model = filteredModels[selectedIndex];
     if (model) {
       onSelect(model.id);
       onOpenChange(false);
     }
-  }, [models, selectedIndex, onSelect, onOpenChange]);
+  };
 
-  const handleCancel = useCallback(() => {
+  const handleCancel = () => {
     onOpenChange(false);
-  }, [onOpenChange]);
+  };
 
-  const navigateUp = useCallback(() => {
-    setSelectedIndex((prev) => (prev > 0 ? prev - 1 : models.length - 1));
-  }, [models.length]);
+  const navigateUpOrBoundary = () => {
+    if (selectedIndex > 0) {
+      setSelectedIndex(prev => prev - 1);
+    } else {
+      // At first item - check if visible before transitioning
+      if (isItemVisible(0)) {
+        setFocusZone("filters");
+        setFilterIndex(0);
+      } else {
+        scrollItemIntoView(0);
+      }
+    }
+  };
 
-  const navigateDown = useCallback(() => {
-    setSelectedIndex((prev) => (prev < models.length - 1 ? prev + 1 : 0));
-  }, [models.length]);
+  const navigateDownOrBoundary = () => {
+    const lastIndex = filteredModels.length - 1;
 
-  useKey("Enter", handleConfirm, { enabled: open && models.length > 0 });
-  useKey("Escape", handleCancel, { enabled: open });
-  useKey("ArrowUp", navigateUp, { enabled: open });
-  useKey("ArrowDown", navigateDown, { enabled: open });
+    if (selectedIndex < lastIndex) {
+      setSelectedIndex(prev => prev + 1);
+    } else {
+      // At last item - check if visible before transitioning
+      if (isItemVisible(lastIndex)) {
+        setFocusZone("footer");
+        setFooterButtonIndex(1);
+      } else {
+        scrollItemIntoView(lastIndex);
+      }
+    }
+  };
+
+  // List zone navigation
+  useKey("ArrowUp", navigateUpOrBoundary, { enabled: open && focusZone === "list" });
+  useKey("ArrowDown", navigateDownOrBoundary, { enabled: open && focusZone === "list" });
+  useKey("j", navigateUpOrBoundary, { enabled: open && focusZone === "list" });
+  useKey("k", navigateDownOrBoundary, { enabled: open && focusZone === "list" });
+  useKey("Enter", handleConfirm, { enabled: open && focusZone === "list" && filteredModels.length > 0 });
+
+  // Search zone navigation
+  useKey("ArrowDown", () => {
+    searchInputRef.current?.blur();
+    setFocusZone("filters");
+  }, { enabled: open && focusZone === "search" });
+
+  // Filters zone navigation
+  useKey("ArrowLeft", () => {
+    setFilterIndex((prev) => (prev > 0 ? prev - 1 : FILTERS.length - 1));
+  }, { enabled: open && focusZone === "filters" });
+  useKey("ArrowRight", () => {
+    setFilterIndex((prev) => (prev < FILTERS.length - 1 ? prev + 1 : 0));
+  }, { enabled: open && focusZone === "filters" });
+  useKey("ArrowDown", () => {
+    setFocusZone("list");
+  }, { enabled: open && focusZone === "filters" });
+  useKey("ArrowUp", () => {
+    setFocusZone("search");
+    searchInputRef.current?.focus();
+  }, { enabled: open && focusZone === "filters" });
+  useKey("Enter", () => {
+    setTierFilter(FILTERS[filterIndex]);
+  }, { enabled: open && focusZone === "filters" });
+  useKey(" ", () => {
+    setTierFilter(FILTERS[filterIndex]);
+  }, { enabled: open && focusZone === "filters" });
+
+  // Footer zone navigation
+  useKey("ArrowLeft", () => {
+    setFooterButtonIndex(0);
+  }, { enabled: open && focusZone === "footer" });
+  useKey("ArrowRight", () => {
+    setFooterButtonIndex(1);
+  }, { enabled: open && focusZone === "footer" });
+  useKey("ArrowUp", () => {
+    setFocusZone("list");
+  }, { enabled: open && focusZone === "footer" });
+  useKey("Enter", () => {
+    if (footerButtonIndex === 0) handleCancel();
+    else handleConfirm();
+  }, { enabled: open && focusZone === "footer" });
+  useKey(" ", () => {
+    if (footerButtonIndex === 0) handleCancel();
+    else handleConfirm();
+  }, { enabled: open && focusZone === "footer" });
+
+  // Global shortcuts
+  useKey("/", () => {
+    if (focusZone !== "search") {
+      setFocusZone("search");
+      searchInputRef.current?.focus();
+    }
+  }, { enabled: open });
+  useKey("f", () => {
+    setTierFilter((prev) =>
+      prev === "all" ? "free" : prev === "free" ? "paid" : "all"
+    );
+  }, { enabled: open && focusZone !== "search" });
+  useKey("Escape", handleCancel, { enabled: open && focusZone !== "search" });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -94,13 +252,82 @@ export function ModelSelectDialog({
           </button>
         </div>
 
-        {/* Body */}
-        <div className="p-4 space-y-1 max-h-80 overflow-y-auto">
-          {models.map((model, index) => {
+        {/* Search Input */}
+        <div className="px-4 pt-3 pb-2">
+          <div className="relative">
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-tui-muted text-xs">
+              /
+            </span>
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setFocusZone("search")}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  if (searchQuery) {
+                    setSearchQuery("");
+                  } else {
+                    searchInputRef.current?.blur();
+                    setFocusZone("list");
+                  }
+                  e.stopPropagation();
+                }
+                if (e.key === "ArrowDown") {
+                  searchInputRef.current?.blur();
+                  setFocusZone("filters");
+                  e.preventDefault();
+                }
+              }}
+              placeholder="Search models..."
+              className="w-full bg-tui-input-bg border border-tui-border px-3 py-1.5 pl-6 text-xs focus:border-tui-blue focus:outline-none placeholder:text-gray-600"
+            />
+          </div>
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="px-4 pb-2 flex gap-1.5">
+          {FILTERS.map((filter, idx) => (
+            <button
+              key={filter}
+              type="button"
+              onClick={() => {
+                setTierFilter(filter);
+                setFilterIndex(idx);
+              }}
+              className={cn(
+                "px-2 py-0.5 text-[10px] cursor-pointer transition-colors uppercase",
+                tierFilter === filter
+                  ? "bg-tui-blue text-black font-bold"
+                  : "border border-tui-border hover:border-tui-fg",
+                focusZone === "filters" && filterIndex === idx && "ring-2 ring-tui-blue ring-offset-1 ring-offset-tui-bg"
+              )}
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
+
+        {/* Model List */}
+        <div
+          ref={listContainerRef}
+          role="listbox"
+          aria-label="Available models"
+          className="px-4 space-y-1 max-h-60 overflow-y-auto scrollbar-thin"
+        >
+          {filteredModels.length === 0 ? (
+            <div className="text-center text-gray-500 py-8 text-sm">
+              No models match your search
+            </div>
+          ) : (
+            filteredModels.map((model, index) => {
             const isSelected = index === selectedIndex;
             return (
               <button
                 key={model.id}
+                role="option"
+                aria-selected={isSelected}
                 type="button"
                 onClick={() => {
                   setSelectedIndex(index);
@@ -110,7 +337,8 @@ export function ModelSelectDialog({
                   "flex items-start gap-3 w-full text-left px-3 py-2 rounded transition-colors",
                   isSelected
                     ? "bg-tui-selection/60 text-tui-fg"
-                    : "text-gray-400 hover:bg-tui-selection/30 hover:text-tui-fg"
+                    : "text-gray-400 hover:bg-tui-selection/30 hover:text-tui-fg",
+                  focusZone === "list" && isSelected && "ring-2 ring-tui-blue ring-offset-1 ring-offset-tui-bg"
                 )}
               >
                 <span
@@ -138,19 +366,40 @@ export function ModelSelectDialog({
                 </div>
               </button>
             );
-          })}
+            })
+          )}
         </div>
 
         {/* Footer */}
-        <div className="border-t border-tui-border px-5 py-3 flex justify-between items-center">
-          <span className="text-xs text-gray-500">[Esc] Cancel</span>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            className="bg-tui-blue text-black px-4 py-1.5 text-xs font-bold hover:brightness-110"
-          >
-            [Enter] Confirm
-          </button>
+        <div className="border-t border-tui-border px-4 py-2.5 flex justify-between items-center bg-tui-bg">
+          <div className="flex gap-3 text-[10px] text-gray-500">
+            <span>↑↓/jk navigate</span>
+            <span>/ search</span>
+            <span>f filter</span>
+          </div>
+          <div className="flex gap-3 items-center">
+            <button
+              type="button"
+              onClick={handleCancel}
+              className={cn(
+                "text-xs text-gray-500 hover:text-tui-fg transition-colors",
+                focusZone === "footer" && footerButtonIndex === 0 && "ring-2 ring-tui-blue rounded px-1"
+              )}
+            >
+              [Esc] Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={filteredModels.length === 0}
+              className={cn(
+                "bg-tui-blue text-black px-4 py-1.5 text-xs font-bold hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all",
+                focusZone === "footer" && footerButtonIndex === 1 && "ring-2 ring-tui-blue ring-offset-2 ring-offset-tui-bg"
+              )}
+            >
+              [Enter] Confirm
+            </button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

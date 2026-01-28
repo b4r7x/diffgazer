@@ -79,7 +79,7 @@ export function ProviderSelectorPage() {
 
   // Keyboard shortcuts
   useKey('Tab', () => setActivePanel((p) => (p === 'list' ? 'details' : 'list')));
-  useKey('Escape', () => navigate({ to: '/settings' }));
+  useKey('Escape', () => navigate({ to: '/settings' }), { enabled: !apiKeyDialogOpen && !modelDialogOpen });
   useKey('k', () => setApiKeyDialogOpen(true), { enabled: activePanel === 'details' && !apiKeyDialogOpen && !modelDialogOpen });
   useKey('m', () => setModelDialogOpen(true), { enabled: activePanel === 'details' && !apiKeyDialogOpen && !modelDialogOpen });
 
