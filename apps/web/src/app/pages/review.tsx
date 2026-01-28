@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
-import { useScope, useKey } from "@/hooks/keyboard";
+import { useScope, useKey, useSelectableList } from "@/hooks/keyboard";
+import { useRouteState } from "@/hooks/use-route-state";
+import { usePageFooter } from "@/hooks/use-page-footer";
 import type { TriageIssue, TriageSeverity, FixPlanStep } from "@repo/schemas";
 
 type TabId = "details" | "explain" | "trace" | "patch";
@@ -335,7 +335,7 @@ function CodeSnippet({ lines }: CodeSnippetProps) {
 
 export function ReviewPage() {
   const navigate = useNavigate();
-  const [selectedIssueIndex, setSelectedIssueIndex] = useState(0);
+  const [selectedIssueIndex, setSelectedIssueIndex] = useRouteState('issueIndex', 0);
   const [activeTab, setActiveTab] = useState<TabId>("details");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [focusPane, setFocusPane] = useState<FocusPane>("list");
@@ -348,25 +348,40 @@ export function ReviewPage() {
       ? MOCK_ISSUES
       : MOCK_ISSUES.filter((i) => i.severity === severityFilter);
 
-  // Clamp index during render (derived state) instead of via effect
-  const safeIndex =
-    filteredIssues.length > 0
-      ? Math.min(selectedIssueIndex, filteredIssues.length - 1)
-      : 0;
-  const selectedIssue = filteredIssues[safeIndex] ?? null;
+  const { focusedIndex, setFocusedIndex } = useSelectableList({
+    itemCount: filteredIssues.length,
+    wrap: false,
+    enabled: focusPane === "list",
+    initialIndex: selectedIssueIndex,
+  });
+
+  // Sync hook state with route state for persistence
+  useEffect(() => {
+    if (focusedIndex !== selectedIssueIndex) {
+      setSelectedIssueIndex(focusedIndex);
+    }
+  }, [focusedIndex, selectedIssueIndex, setSelectedIssueIndex]);
+
+  const selectedIssue = filteredIssues[focusedIndex] ?? null;
   const counts = severityCounts(MOCK_ISSUES);
 
   useScope("review");
-  useKey("Escape", () => navigate({ to: "/" }), { enabled: focusPane === "list" });
-  useKey("j", () => setSelectedIssueIndex((i) => Math.min(i + 1, filteredIssues.length - 1)), { enabled: focusPane === "list" });
-  useKey("ArrowDown", () => setSelectedIssueIndex((i) => Math.min(i + 1, filteredIssues.length - 1)), { enabled: focusPane === "list" });
-  useKey("k", () => setSelectedIssueIndex((i) => Math.max(i - 1, 0)), { enabled: focusPane === "list" });
-  useKey("ArrowUp", () => setSelectedIssueIndex((i) => Math.max(i - 1, 0)), { enabled: focusPane === "list" });
+  useKey("Escape", () => navigate({ to: "/" }), {
+    enabled: focusPane === "list",
+  });
   useKey("Tab", () => setFocusPane(focusPane === "list" ? "details" : "list"));
-  useKey("1", () => setActiveTab("details"), { enabled: focusPane === "details" });
-  useKey("2", () => setActiveTab("explain"), { enabled: focusPane === "details" });
-  useKey("3", () => setActiveTab("trace"), { enabled: focusPane === "details" });
-  useKey("4", () => setActiveTab("patch"), { enabled: focusPane === "details" && !!selectedIssue?.suggested_patch });
+  useKey("1", () => setActiveTab("details"), {
+    enabled: focusPane === "details",
+  });
+  useKey("2", () => setActiveTab("explain"), {
+    enabled: focusPane === "details",
+  });
+  useKey("3", () => setActiveTab("trace"), {
+    enabled: focusPane === "details",
+  });
+  useKey("4", () => setActiveTab("patch"), {
+    enabled: focusPane === "details" && !!selectedIssue?.suggested_patch,
+  });
 
   const handleToggleStep = (step: number) => {
     setCompletedSteps((prev) => {
@@ -387,248 +402,244 @@ export function ReviewPage() {
     { id: "patch", label: "Patch", show: !!selectedIssue?.suggested_patch },
   ];
 
-  const footerShortcuts = [
-    { key: "j/k", label: "Select" },
-    { key: "Tab", label: "Focus Pane" },
-    { key: "1-4", label: "Tab" },
-  ];
+  const footerShortcuts = useMemo(
+    () => [
+      { key: "j/k", label: "Select" },
+      { key: "Tab", label: "Focus Pane" },
+      { key: "1-4", label: "Tab" },
+    ],
+    [],
+  );
 
-  const rightShortcuts = [
-    { key: "Space", label: "Toggle" },
-    { key: "Esc", label: "Back" },
-  ];
+  const rightShortcuts = useMemo(
+    () => [
+      { key: "Space", label: "Toggle" },
+      { key: "Esc", label: "Back" },
+    ],
+    [],
+  );
+
+  usePageFooter({ shortcuts: footerShortcuts, rightShortcuts });
 
   return (
-    <div className="bg-[--tui-bg] text-[--tui-fg] h-screen flex flex-col overflow-hidden font-mono">
-      {/* TODO: providerName should come from props/context */}
-      <Header providerName="GPT-4o" providerStatus="active" />
-
-      <div className="flex flex-1 overflow-hidden px-4">
-        {/* Left Panel - Issue List */}
-        <div
-          className={cn(
-            "w-2/5 flex flex-col border-r border-[--tui-border] pr-4",
-            focusPane === "list" && "ring-1 ring-[--tui-blue] ring-inset",
-          )}
-        >
-          {/* Analysis Run Info */}
-          <div className="pb-4 pt-2">
-            <div className="text-[--tui-violet] font-bold mb-2">
-              Analysis #8821
-            </div>
-            <div className="flex gap-2 text-xs flex-wrap">
-              {(["blocker", "high", "medium", "low"] as const).map((sev) => (
-                <SeverityFilterButton
-                  key={sev}
-                  severity={sev}
-                  count={counts[sev]}
-                  isActive={severityFilter === sev}
-                  onClick={() =>
-                    setSeverityFilter((f) => (f === sev ? "all" : sev))
-                  }
-                />
-              ))}
-            </div>
+    <div className="flex flex-1 overflow-hidden px-4 font-mono">
+      {/* Left Panel - Issue List */}
+      <div
+        className={cn(
+          "w-2/5 flex flex-col border-r border-[--tui-border] pr-4",
+          focusPane === "list" && "ring-1 ring-[--tui-blue] ring-inset",
+        )}
+      >
+        {/* Analysis Run Info */}
+        <div className="pb-4 pt-2">
+          <div className="text-[--tui-violet] font-bold mb-2">
+            Analysis #8821
           </div>
-
-          {/* Issue List */}
-          <div className="flex-1 overflow-y-auto scrollbar-hide space-y-1">
-            {filteredIssues.map((issue, index) => (
-              <IssueListItem
-                key={issue.id}
-                issue={issue}
-                isSelected={index === safeIndex}
-                onClick={() => setSelectedIssueIndex(index)}
+          <div className="flex gap-2 text-xs flex-wrap">
+            {(["blocker", "high", "medium", "low"] as const).map((sev) => (
+              <SeverityFilterButton
+                key={sev}
+                severity={sev}
+                count={counts[sev]}
+                isActive={severityFilter === sev}
+                onClick={() =>
+                  setSeverityFilter((f) => (f === sev ? "all" : sev))
+                }
               />
             ))}
-            {filteredIssues.length === 0 && (
-              <div className="text-gray-500 text-sm p-2">
-                No issues match filter
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Right Panel - Issue Details */}
-        <div
-          className={cn(
-            "w-3/5 flex flex-col pl-4",
-            focusPane === "details" && "ring-1 ring-[--tui-blue] ring-inset",
+        {/* Issue List */}
+        <div className="flex-1 overflow-y-auto scrollbar-hide space-y-1">
+          {filteredIssues.map((issue, index) => (
+            <IssueListItem
+              key={issue.id}
+              issue={issue}
+              isSelected={index === focusedIndex}
+              onClick={() => setFocusedIndex(index)}
+            />
+          ))}
+          {filteredIssues.length === 0 && (
+            <div className="text-gray-500 text-sm p-2">
+              No issues match filter
+            </div>
           )}
-        >
-          {/* Tab Navigation */}
-          <div className="flex border-b border-[--tui-border] pb-2 pt-2 mb-4 text-sm">
-            {tabs.map(
-              (tab) =>
-                tab.show && (
-                  <Button
-                    key={tab.id}
-                    variant="tab"
-                    data-active={activeTab === tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className="mr-4"
-                  >
-                    {activeTab === tab.id ? `[${tab.label}]` : tab.label}
-                  </Button>
-                ),
-            )}
-          </div>
-
-          {/* Details Content */}
-          <div className="flex-1 overflow-y-auto scrollbar-hide pr-2">
-            {selectedIssue ? (
-              <>
-                {/* Issue Header */}
-                <div className="mb-6">
-                  <h1
-                    className={cn(
-                      "text-xl font-bold mb-1",
-                      selectedIssue.severity === "blocker" &&
-                        "text-[--tui-red]",
-                      selectedIssue.severity === "high" &&
-                        "text-[--tui-yellow]",
-                      selectedIssue.severity === "medium" && "text-gray-300",
-                      selectedIssue.severity === "low" && "text-gray-400",
-                    )}
-                  >
-                    {selectedIssue.title}
-                  </h1>
-                  <div className="text-xs text-gray-500">
-                    Location:{" "}
-                    <span className="text-[--tui-fg]">
-                      src/{selectedIssue.file}:{selectedIssue.line_start}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Tab Content */}
-                {activeTab === "details" && (
-                  <>
-                    {/* Symptom Section */}
-                    <div className="mb-6">
-                      <h3 className="tui-section-heading text-[--tui-blue] font-bold mb-2 uppercase text-xs tracking-wider">
-                        SYMPTOM
-                      </h3>
-                      <p className="text-sm leading-relaxed text-gray-300">
-                        {selectedIssue.symptom}
-                      </p>
-                      {selectedIssue.evidence.length > 0 && (
-                        <div className="mt-2">
-                          <CodeSnippet
-                            lines={[
-                              {
-                                number: (selectedIssue.line_start ?? 1) - 1,
-                                content:
-                                  selectedIssue.evidence[0]?.excerpt ?? "",
-                              },
-                              {
-                                number: selectedIssue.line_start ?? 1,
-                                content:
-                                  "const result = await db.query(query); <-- UNSAFE",
-                                highlight: true,
-                              },
-                            ]}
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Why It Matters Section */}
-                    <div className="mb-6">
-                      <h3 className="tui-section-heading text-[--tui-blue] font-bold mb-2 uppercase text-xs tracking-wider">
-                        WHY IT MATTERS
-                      </h3>
-                      <p className="text-sm leading-relaxed text-gray-300">
-                        {selectedIssue.whyItMatters}
-                      </p>
-                      {selectedIssue.category === "security" && (
-                        <div className="mt-2 flex gap-2">
-                          <span className="border border-[--tui-red] text-[--tui-red] text-[10px] px-1">
-                            CWE-89
-                          </span>
-                          <span className="border border-[--tui-red] text-[--tui-red] text-[10px] px-1">
-                            OWASP A03
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Fix Plan Section */}
-                    {selectedIssue.fixPlan &&
-                      selectedIssue.fixPlan.length > 0 && (
-                        <div className="mb-6">
-                          <h3 className="tui-section-heading text-[--tui-blue] font-bold mb-2 uppercase text-xs tracking-wider">
-                            FIX PLAN
-                          </h3>
-                          <FixPlanChecklist
-                            steps={selectedIssue.fixPlan}
-                            completedSteps={completedSteps}
-                            onToggle={handleToggleStep}
-                          />
-                        </div>
-                      )}
-                  </>
-                )}
-
-                {activeTab === "explain" && (
-                  <div className="text-sm text-gray-300">
-                    <p className="mb-4">{selectedIssue.rationale}</p>
-                    <p>{selectedIssue.recommendation}</p>
-                  </div>
-                )}
-
-                {activeTab === "trace" && (
-                  <div className="text-sm text-gray-500 italic">
-                    {selectedIssue.trace && selectedIssue.trace.length > 0 ? (
-                      <div className="space-y-2">
-                        {selectedIssue.trace.map((t) => (
-                          <div
-                            key={t.step}
-                            className="border-l-2 border-[--tui-border] pl-2"
-                          >
-                            <div className="text-[--tui-fg]">
-                              Step {t.step}: {t.tool}
-                            </div>
-                            <div className="text-gray-500 text-xs">
-                              {t.outputSummary}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      "No trace data available for this issue."
-                    )}
-                  </div>
-                )}
-
-                {activeTab === "patch" && selectedIssue.suggested_patch && (
-                  <div className="bg-black border border-[--tui-border] p-2 font-mono text-xs">
-                    {selectedIssue.suggested_patch
-                      .split("\n")
-                      .map((line, i) => (
-                        <div
-                          key={i}
-                          className={cn(
-                            line.startsWith("-") && "text-[--tui-red]",
-                            line.startsWith("+") && "text-[--tui-green]",
-                          )}
-                        >
-                          {line}
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-gray-500 text-center py-8">
-                Select an issue to view details
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
-      <Footer shortcuts={footerShortcuts} rightShortcuts={rightShortcuts} />
+      {/* Right Panel - Issue Details */}
+      <div
+        className={cn(
+          "w-3/5 flex flex-col pl-4",
+          focusPane === "details" && "ring-1 ring-[--tui-blue] ring-inset",
+        )}
+      >
+        {/* Tab Navigation */}
+        <div className="flex border-b border-[--tui-border] pb-2 pt-2 mb-4 text-sm">
+          {tabs.map(
+            (tab) =>
+              tab.show && (
+                <Button
+                  key={tab.id}
+                  variant="tab"
+                  data-active={activeTab === tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className="mr-4"
+                >
+                  {activeTab === tab.id ? `[${tab.label}]` : tab.label}
+                </Button>
+              ),
+          )}
+        </div>
+
+        {/* Details Content */}
+        <div className="flex-1 overflow-y-auto scrollbar-hide pr-2">
+          {selectedIssue ? (
+            <>
+              {/* Issue Header */}
+              <div className="mb-6">
+                <h1
+                  className={cn(
+                    "text-xl font-bold mb-1",
+                    selectedIssue.severity === "blocker" && "text-[--tui-red]",
+                    selectedIssue.severity === "high" && "text-[--tui-yellow]",
+                    selectedIssue.severity === "medium" && "text-gray-300",
+                    selectedIssue.severity === "low" && "text-gray-400",
+                  )}
+                >
+                  {selectedIssue.title}
+                </h1>
+                <div className="text-xs text-gray-500">
+                  Location:{" "}
+                  <span className="text-[--tui-fg]">
+                    src/{selectedIssue.file}:{selectedIssue.line_start}
+                  </span>
+                </div>
+              </div>
+
+              {/* Tab Content */}
+              {activeTab === "details" && (
+                <>
+                  {/* Symptom Section */}
+                  <div className="mb-6">
+                    <h3 className="tui-section-heading text-[--tui-blue] font-bold mb-2 uppercase text-xs tracking-wider">
+                      SYMPTOM
+                    </h3>
+                    <p className="text-sm leading-relaxed text-gray-300">
+                      {selectedIssue.symptom}
+                    </p>
+                    {selectedIssue.evidence.length > 0 && (
+                      <div className="mt-2">
+                        <CodeSnippet
+                          lines={[
+                            {
+                              number: (selectedIssue.line_start ?? 1) - 1,
+                              content: selectedIssue.evidence[0]?.excerpt ?? "",
+                            },
+                            {
+                              number: selectedIssue.line_start ?? 1,
+                              content:
+                                "const result = await db.query(query); <-- UNSAFE",
+                              highlight: true,
+                            },
+                          ]}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Why It Matters Section */}
+                  <div className="mb-6">
+                    <h3 className="tui-section-heading text-[--tui-blue] font-bold mb-2 uppercase text-xs tracking-wider">
+                      WHY IT MATTERS
+                    </h3>
+                    <p className="text-sm leading-relaxed text-gray-300">
+                      {selectedIssue.whyItMatters}
+                    </p>
+                    {selectedIssue.category === "security" && (
+                      <div className="mt-2 flex gap-2">
+                        <span className="border border-[--tui-red] text-[--tui-red] text-[10px] px-1">
+                          CWE-89
+                        </span>
+                        <span className="border border-[--tui-red] text-[--tui-red] text-[10px] px-1">
+                          OWASP A03
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Fix Plan Section */}
+                  {selectedIssue.fixPlan &&
+                    selectedIssue.fixPlan.length > 0 && (
+                      <div className="mb-6">
+                        <h3 className="tui-section-heading text-[--tui-blue] font-bold mb-2 uppercase text-xs tracking-wider">
+                          FIX PLAN
+                        </h3>
+                        <FixPlanChecklist
+                          steps={selectedIssue.fixPlan}
+                          completedSteps={completedSteps}
+                          onToggle={handleToggleStep}
+                        />
+                      </div>
+                    )}
+                </>
+              )}
+
+              {activeTab === "explain" && (
+                <div className="text-sm text-gray-300">
+                  <p className="mb-4">{selectedIssue.rationale}</p>
+                  <p>{selectedIssue.recommendation}</p>
+                </div>
+              )}
+
+              {activeTab === "trace" && (
+                <div className="text-sm text-gray-500 italic">
+                  {selectedIssue.trace && selectedIssue.trace.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedIssue.trace.map((t) => (
+                        <div
+                          key={t.step}
+                          className="border-l-2 border-[--tui-border] pl-2"
+                        >
+                          <div className="text-[--tui-fg]">
+                            Step {t.step}: {t.tool}
+                          </div>
+                          <div className="text-gray-500 text-xs">
+                            {t.outputSummary}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    "No trace data available for this issue."
+                  )}
+                </div>
+              )}
+
+              {activeTab === "patch" && selectedIssue.suggested_patch && (
+                <div className="bg-black border border-[--tui-border] p-2 font-mono text-xs">
+                  {selectedIssue.suggested_patch.split("\n").map((line, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        line.startsWith("-") && "text-[--tui-red]",
+                        line.startsWith("+") && "text-[--tui-green]",
+                      )}
+                    >
+                      {line}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-gray-500 text-center py-8">
+              Select an issue to view details
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

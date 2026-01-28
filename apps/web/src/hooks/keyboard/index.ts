@@ -1,4 +1,5 @@
 export { useKeyboardContext } from "./use-keyboard-context";
 export { useKey } from "./use-key";
+export { useKeys } from "./use-keys";
 export { useScope } from "./use-scope";
-export { useNavigableList } from "./use-navigable-list";
+export { useSelectableList } from "./use-selectable-list";

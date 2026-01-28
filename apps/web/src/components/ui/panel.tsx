@@ -8,7 +8,9 @@ export interface PanelProps {
 export interface PanelHeaderProps {
   children: React.ReactNode;
   className?: string;
-  variant?: 'default' | 'subtle';
+  variant?: 'default' | 'subtle' | 'floating' | 'badge';
+  value?: React.ReactNode;
+  valueVariant?: 'default' | 'success' | 'success-badge' | 'muted';
 }
 
 export interface PanelContentProps {
@@ -30,11 +32,33 @@ const spacingClasses: Record<NonNullable<PanelContentProps['spacing']>, string> 
 const headerVariants = {
   default: 'bg-tui-selection text-gray-400 text-xs px-3 py-1 border-b border-tui-border font-bold uppercase tracking-wider',
   subtle: 'bg-tui-selection/30 text-gray-500 text-xs p-2 border-b border-tui-border uppercase tracking-widest text-center',
+  floating: 'absolute -top-3 left-4 bg-tui-bg px-2 text-xs text-tui-blue font-bold border border-tui-border',
+  badge: 'absolute -top-3 left-4 bg-tui-bg px-2 py-0.5 text-xs font-bold',
 };
 
-function PanelHeader({ children, className, variant = 'default' }: PanelHeaderProps) {
+function getValueClasses(valueVariant: PanelHeaderProps['valueVariant'] = 'default') {
+  if (valueVariant === 'success-badge') {
+    return 'bg-tui-green/10 text-tui-green border border-tui-green px-2 py-0.5 text-xs font-bold tracking-wider rounded-sm';
+  }
+  if (valueVariant === 'success') return 'text-tui-green';
+  if (valueVariant === 'muted') return 'text-gray-500';
+  return 'text-gray-400';
+}
+
+function PanelHeader({ children, className, variant = 'default', value, valueVariant = 'default' }: PanelHeaderProps) {
+  const baseClasses = headerVariants[variant];
+
+  if (value !== undefined) {
+    return (
+      <div className={cn(baseClasses, 'flex items-center justify-between', className)}>
+        <span>{children}</span>
+        <span className={getValueClasses(valueVariant)}>{value}</span>
+      </div>
+    );
+  }
+
   return (
-    <div className={cn(headerVariants[variant], className)}>
+    <div className={cn(baseClasses, className)}>
       {children}
     </div>
   );
@@ -56,7 +80,7 @@ function PanelDivider({ className }: PanelDividerProps) {
 
 function PanelRoot({ children, className }: PanelProps) {
   return (
-    <div className={cn('border border-tui-border', className)}>
+    <div className={cn('relative border border-tui-border', className)}>
       {children}
     </div>
   );

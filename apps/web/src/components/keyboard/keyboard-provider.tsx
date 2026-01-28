@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { matchesHotkey, isInputElement } from '@/lib/keyboard';
 
 type Handler = () => void;
@@ -8,15 +8,25 @@ type HandlerMap = Map<string, Handler>;
 
 interface KeyboardContextValue {
   activeScope: string | null;
-  setScope: (scope: string | null) => void;
+  pushScope: (scope: string) => () => void;
   register: (scope: string, hotkey: string, handler: Handler) => () => void;
 }
 
 export const KeyboardContext = createContext<KeyboardContextValue | null>(null);
 
 export function KeyboardProvider({ children }: { children: React.ReactNode }) {
-  const [activeScope, setScope] = useState<string | null>('global');
+  const [scopeStack, setScopeStack] = useState<string[]>(['global']);
   const [handlers] = useState(() => new Map<string, HandlerMap>());
+
+  const activeScope = scopeStack[scopeStack.length - 1] ?? null;
+
+  const pushScope = useCallback((scope: string) => {
+    setScopeStack(prev => [...prev, scope]);
+    return () => setScopeStack(prev => {
+      const idx = prev.lastIndexOf(scope);
+      return idx >= 0 ? [...prev.slice(0, idx), ...prev.slice(idx + 1)] : prev;
+    });
+  }, []);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -37,16 +47,16 @@ export function KeyboardProvider({ children }: { children: React.ReactNode }) {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [activeScope]);
+  }, [activeScope, handlers]);
 
-  function register(scope: string, hotkey: string, handler: Handler) {
+  const register = useCallback((scope: string, hotkey: string, handler: Handler) => {
     if (!handlers.has(scope)) handlers.set(scope, new Map());
     handlers.get(scope)!.set(hotkey, handler);
     return () => handlers.get(scope)?.delete(hotkey);
-  }
+  }, [handlers]);
 
   return (
-    <KeyboardContext.Provider value={{ activeScope, setScope, register }}>
+    <KeyboardContext.Provider value={{ activeScope, pushScope, register }}>
       {children}
     </KeyboardContext.Provider>
   );

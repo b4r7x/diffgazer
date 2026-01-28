@@ -1,7 +1,8 @@
 /* Stargazer TUI Theme - GitHub Dark inspired terminal colors */
 
 /* TUI Color Tokens */
-:root {
+:root,
+[data-theme="dark"] {
   /* Primary palette - GitHub Dark */
   --tui-bg: #0D1117;
   --tui-fg: #C9D1D9;
@@ -12,6 +13,7 @@
   --tui-yellow: #D29922;
   --tui-border: #30363D;
   --tui-selection: #1F2428;
+  --tui-muted: #6E7681;
 
   /* Severity variants */
   --tui-severity-blocker: var(--tui-red);
@@ -52,6 +54,54 @@
   /* Animations */
   --trans-fast: 0.15s ease;
   --radius: 0.25rem;
+}
+
+/* Light Theme - GitHub Light inspired */
+[data-theme="light"] {
+  /* Primary palette - GitHub Light */
+  --tui-bg: #FFFFFF;
+  --tui-fg: #24292F;
+  --tui-blue: #0969DA;
+  --tui-violet: #8250DF;
+  --tui-green: #1A7F37;
+  --tui-red: #CF222E;
+  --tui-yellow: #9A6700;
+  --tui-border: #D0D7DE;
+  --tui-selection: #DDF4FF;
+  --tui-muted: #57606A;
+
+  /* Severity variants */
+  --tui-severity-blocker: var(--tui-red);
+  --tui-severity-high: var(--tui-yellow);
+  --tui-severity-medium: #57606A;
+  --tui-severity-low: #8C959F;
+
+  /* Legacy variable names for compatibility */
+  --background: var(--tui-bg);
+  --foreground: var(--tui-fg);
+  --background0: var(--tui-bg);
+  --foreground0: var(--tui-fg);
+  --primary: var(--tui-blue);
+  --primary-foreground: #FFFFFF;
+  --secondary: var(--tui-selection);
+  --secondary-foreground: var(--tui-fg);
+  --muted: #57606A;
+  --muted-foreground: #8C959F;
+  --border: var(--tui-border);
+  --input: #F6F8FA;
+  --destructive: var(--tui-red);
+  --destructive-foreground: #FFFFFF;
+
+  /* Severity Colors */
+  --severity-blocker: var(--tui-red);
+  --severity-high: var(--tui-yellow);
+  --severity-medium: #57606A;
+  --severity-low: var(--tui-blue);
+
+  /* Status Colors */
+  --status-running: var(--tui-blue);
+  --status-complete: var(--tui-green);
+  --status-pending: #57606A;
 }
 
 /* Font setup */
