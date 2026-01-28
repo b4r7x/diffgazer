@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { cn } from '../../lib/utils';
 import { useScope, useKey } from '@/hooks/keyboard';
+import { Button } from './button';
 
 export interface ModalProps {
     isOpen: boolean;
@@ -41,13 +42,14 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
                     <h2 id="tui-modal-title" className="font-bold text-sm">
                         {title}
                     </h2>
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={onClose}
-                        className="text-[--tui-fg] hover:text-[--tui-blue] transition-colors text-sm"
                         aria-label="Close modal"
                     >
                         [x]
-                    </button>
+                    </Button>
                 </div>
                 <div className="flex-1 overflow-y-auto">
                     {children}
