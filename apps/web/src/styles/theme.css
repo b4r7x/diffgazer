@@ -70,6 +70,22 @@
   --tui-selection: #DDF4FF;
   --tui-muted: #57606A;
 
+  /* Tailwind theme color overrides for nested data-theme */
+  --color-tui-bg: var(--tui-bg);
+  --color-tui-fg: var(--tui-fg);
+  --color-tui-blue: var(--tui-blue);
+  --color-tui-violet: var(--tui-violet);
+  --color-tui-green: var(--tui-green);
+  --color-tui-red: var(--tui-red);
+  --color-tui-yellow: var(--tui-yellow);
+  --color-tui-border: var(--tui-border);
+  --color-tui-selection: var(--tui-selection);
+  --color-tui-muted: var(--tui-muted);
+  --color-background: var(--tui-bg);
+  --color-foreground: var(--tui-fg);
+  --color-border: var(--tui-border);
+  --color-muted: var(--tui-muted);
+
   /* Severity variants */
   --tui-severity-blocker: var(--tui-red);
   --tui-severity-high: var(--tui-yellow);

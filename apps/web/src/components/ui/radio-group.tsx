@@ -25,6 +25,7 @@ interface RadioGroupContextType {
   disabled?: boolean;
   focusedIndex: number;
   items: RadioItemData[];
+  setFocusedIndex: (index: number) => void;
 }
 
 const RadioGroupContext = createContext<RadioGroupContextType | undefined>(undefined);
@@ -41,6 +42,7 @@ export interface RadioGroupProps {
   value?: string;
   defaultValue?: string;
   onValueChange?: (value: string) => void;
+  onFocus?: (value: string) => void;
   orientation?: 'vertical' | 'horizontal';
   disabled?: boolean;
   className?: string;
@@ -53,6 +55,7 @@ function RadioGroupRoot({
   value: controlledValue,
   defaultValue,
   onValueChange,
+  onFocus,
   orientation = 'vertical',
   disabled = false,
   className,
@@ -89,11 +92,12 @@ function RadioGroupRoot({
   // Find initial index based on current value
   const initialIndex = value ? items.findIndex((item) => item.value === value) : 0;
 
-  const { focusedIndex } = useSelectableList({
+  const { focusedIndex, setFocusedIndex } = useSelectableList({
     itemCount: items.length,
     getDisabled: (index) => items[index]?.disabled ?? false,
     wrap,
     onBoundaryReached,
+    onFocus: onFocus ? (i) => onFocus(items[i]?.value) : undefined,
     enabled: !disabled && items.length > 0,
     initialIndex: Math.max(0, initialIndex),
   });
@@ -127,6 +131,7 @@ function RadioGroupRoot({
         disabled,
         focusedIndex,
         items,
+        setFocusedIndex,
       }}
     >
       <div
@@ -167,7 +172,8 @@ function RadioGroupItem({
   const isFocused = itemData ? itemData.index === context.focusedIndex : false;
 
   const handleClick = () => {
-    if (!disabled) {
+    if (!disabled && itemData) {
+      context.setFocusedIndex(itemData.index);
       context.onValueChange?.(value);
     }
   };
@@ -179,11 +185,11 @@ function RadioGroupItem({
       aria-disabled={disabled}
       onClick={handleClick}
       className={cn(
-        'flex items-start gap-3 px-3 py-2 text-left cursor-pointer',
+        'flex items-start gap-3 px-3 py-2 text-left cursor-pointer w-full',
         'font-mono text-sm leading-relaxed',
-        'text-tui-fg',
-        'hover:bg-tui-selection group transition-colors duration-75',
-        isFocused && 'bg-tui-blue !text-black font-bold',
+        'text-tui-fg transition-colors duration-75',
+        !isFocused && 'hover:bg-tui-selection',
+        isFocused && 'bg-tui-blue text-black font-bold hover:bg-tui-blue',
         disabled && 'opacity-50 cursor-not-allowed',
         className
       )}

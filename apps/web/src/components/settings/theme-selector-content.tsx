@@ -6,6 +6,7 @@ import { RadioGroup } from '../ui/radio-group';
 export interface ThemeSelectorContentProps {
   value: Theme;
   onChange: (value: Theme) => void;
+  onFocus?: (value: Theme) => void;
   showTerminalOption?: boolean;
 }
 
@@ -19,6 +20,7 @@ const THEME_OPTIONS: Array<{ value: Theme; label: string; description: string }>
 export function ThemeSelectorContent({
   value,
   onChange,
+  onFocus,
   showTerminalOption = false
 }: ThemeSelectorContentProps) {
   const options = showTerminalOption
@@ -31,6 +33,7 @@ export function ThemeSelectorContent({
       <RadioGroup
         value={value}
         onValueChange={(v) => onChange(v as Theme)}
+        onFocus={onFocus ? (v) => onFocus(v as Theme) : undefined}
       >
         {options.map((option) => (
           <RadioGroup.Item
