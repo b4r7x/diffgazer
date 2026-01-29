@@ -1,7 +1,8 @@
 "use client";
 
-import { DialogFooter } from "@/components/ui";
+import { DialogFooter, Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import type { FocusElement } from "./api-key-dialog";
 
 interface ApiKeyFooterProps {
   onCancel: () => void;
@@ -10,9 +11,8 @@ interface ApiKeyFooterProps {
   canSubmit: boolean;
   isSubmitting: boolean;
   hasExistingKey: boolean;
-  focusedIndex: number;
-  inFooter: boolean;
-  onButtonClick: (index: number, action: () => void) => void;
+  focused: FocusElement;
+  onFocus: (element: FocusElement) => void;
 }
 
 export function ApiKeyFooter({
@@ -22,9 +22,8 @@ export function ApiKeyFooter({
   canSubmit,
   isSubmitting,
   hasExistingKey,
-  focusedIndex,
-  inFooter,
-  onButtonClick,
+  focused,
+  onFocus,
 }: ApiKeyFooterProps) {
   return (
     <DialogFooter className="justify-between">
@@ -33,45 +32,47 @@ export function ApiKeyFooter({
         <span>Enter select</span>
       </div>
       <div className="flex gap-3 items-center">
-        <button
-          type="button"
-          onClick={() => onButtonClick(0, onCancel)}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onCancel}
+          onMouseDown={() => onFocus("cancel")}
           className={cn(
-            "text-xs text-gray-500 hover:text-tui-fg transition-colors",
-            inFooter &&
-              focusedIndex === 0 &&
-              "ring-2 ring-tui-blue rounded px-1"
+            "text-gray-500 hover:text-tui-fg h-auto px-2 py-1",
+            focused === "cancel" && "ring-2 ring-tui-blue"
           )}
         >
           [Esc] Cancel
-        </button>
-        <button
-          type="button"
-          onClick={() => onButtonClick(1, onConfirm)}
+        </Button>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={onConfirm}
+          onMouseDown={() => onFocus("confirm")}
           disabled={!canSubmit || isSubmitting}
           className={cn(
-            "bg-tui-blue text-black px-4 py-1.5 text-xs font-bold hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all",
-            inFooter &&
-              focusedIndex === 1 &&
+            "h-auto px-4 py-1.5",
+            focused === "confirm" &&
               "ring-2 ring-tui-blue ring-offset-2 ring-offset-tui-bg"
           )}
         >
           [Enter] Confirm
-        </button>
+        </Button>
         {hasExistingKey && onRemove && (
-          <button
-            type="button"
-            onClick={() => onButtonClick(2, onRemove)}
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={onRemove}
+            onMouseDown={() => onFocus("remove")}
             disabled={isSubmitting}
             className={cn(
-              "text-tui-red hover:bg-tui-red hover:text-black px-3 py-1.5 text-xs font-bold border border-tui-border hover:border-tui-red disabled:opacity-50 transition-colors",
-              inFooter &&
-                focusedIndex === 2 &&
+              "h-auto px-3 py-1.5",
+              focused === "remove" &&
                 "ring-2 ring-tui-blue ring-offset-2 ring-offset-tui-bg"
             )}
           >
             Remove Key
-          </button>
+          </Button>
         )}
       </div>
     </DialogFooter>
