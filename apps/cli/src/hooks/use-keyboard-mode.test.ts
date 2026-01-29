@@ -1,13 +1,14 @@
 import { describe, it, expect } from "vitest";
-import type { ControlsMode } from "@repo/schemas/settings";
+
+type KeyboardMode = "menu" | "keys";
 
 interface KeyboardModeState {
-  mode: ControlsMode;
+  mode: KeyboardMode;
   isKeyMode: boolean;
   isMenuMode: boolean;
 }
 
-function computeInitialState(initialMode: ControlsMode = "menu"): KeyboardModeState {
+function computeInitialState(initialMode: KeyboardMode = "menu"): KeyboardModeState {
   return {
     mode: initialMode,
     isKeyMode: initialMode === "keys",
@@ -24,7 +25,7 @@ function computeToggledState(current: KeyboardModeState): KeyboardModeState {
   };
 }
 
-function computeSetModeState(newMode: ControlsMode): KeyboardModeState {
+function computeSetModeState(newMode: KeyboardMode): KeyboardModeState {
   return {
     mode: newMode,
     isKeyMode: newMode === "keys",
