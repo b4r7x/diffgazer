@@ -3,25 +3,16 @@
 import {
   createContext,
   useContext,
-  Children,
-  isValidElement,
-  Fragment,
+  useRef,
   type ReactNode,
 } from 'react';
 import { cn } from '../../lib/utils';
-import { useKey, useKeys } from '@/hooks/keyboard';
-
-interface NavigationListItemData {
-  id: string;
-  disabled: boolean;
-  index: number;
-}
+import { useGroupNavigation } from '@/hooks/keyboard';
 
 interface NavigationListContextValue {
-  selectedIndex: number;
-  onSelect: (index: number) => void;
-  onActivate?: (item: NavigationListItemData) => void;
-  items: NavigationListItemData[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  onActivate?: (id: string) => void;
 }
 
 interface NavigationListItemProps {
@@ -35,12 +26,13 @@ interface NavigationListItemProps {
 }
 
 interface NavigationListRootProps {
-  selectedIndex: number;
-  onSelect: (index: number) => void;
-  onActivate?: (item: NavigationListItemData) => void;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  onActivate?: (id: string) => void;
   keyboardEnabled?: boolean;
   className?: string;
   children: ReactNode;
+  onBoundaryReached?: (direction: "up" | "down") => void;
 }
 
 const NavigationListContext = createContext<NavigationListContextValue | null>(null);
@@ -62,23 +54,21 @@ function NavigationListItem({
   children,
   className,
 }: NavigationListItemProps) {
-  const { selectedIndex, onSelect, onActivate, items } = useNavigationListContext();
-
-  const itemData = items.find((item) => item.id === id);
-  if (!itemData) return null;
-
-  const isSelected = itemData.index === selectedIndex;
+  const { selectedId, onSelect, onActivate } = useNavigationListContext();
+  const isSelected = selectedId === id;
 
   const handleClick = () => {
     if (!disabled) {
-      onSelect(itemData.index);
-      onActivate?.(itemData);
+      onSelect(id);
+      onActivate?.(id);
     }
   };
 
   return (
     <div
+      id={id}
       role="option"
+      data-value={id}
       aria-selected={isSelected}
       aria-disabled={disabled}
       onClick={handleClick}
@@ -124,68 +114,37 @@ function NavigationListItem({
 }
 
 function NavigationListRoot({
-  selectedIndex,
+  selectedId,
   onSelect,
   onActivate,
   keyboardEnabled = true,
   className,
   children,
+  onBoundaryReached,
 }: NavigationListRootProps) {
-  const items: NavigationListItemData[] = [];
-  let itemIndex = 0;
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  function extractItems(node: ReactNode) {
-    Children.forEach(node, (child) => {
-      if (!isValidElement(child)) return;
-      if (child.type === Fragment) {
-        extractItems((child.props as { children?: ReactNode }).children);
-      } else if (child.type === NavigationListItem) {
-        const props = child.props as NavigationListItemProps;
-        items.push({
-          id: props.id,
-          disabled: props.disabled ?? false,
-          index: itemIndex++,
-        });
-      }
-    });
-  }
+  const { focusedValue } = useGroupNavigation({
+    containerRef,
+    role: 'option',
+    value: selectedId,
+    onValueChange: onSelect,
+    onEnter: onActivate,
+    enabled: keyboardEnabled,
+    wrap: false,
+    onBoundaryReached,
+  });
 
-  extractItems(children);
-
-  const findNextIndex = (start: number, direction: 1 | -1): number => {
-    let index = start + direction;
-    while (index >= 0 && index < items.length) {
-      if (!items[index]?.disabled) return index;
-      index += direction;
-    }
-    return start;
-  };
-
-  useKeys(['ArrowUp', 'k'], () => {
-    const newIndex = findNextIndex(selectedIndex, -1);
-    if (newIndex !== selectedIndex) onSelect(newIndex);
-  }, { enabled: keyboardEnabled && items.length > 0 });
-
-  useKeys(['ArrowDown', 'j'], () => {
-    const newIndex = findNextIndex(selectedIndex, 1);
-    if (newIndex !== selectedIndex) onSelect(newIndex);
-  }, { enabled: keyboardEnabled && items.length > 0 });
-
-  useKey('Enter', () => {
-    const item = items[selectedIndex];
-    if (item && !item.disabled) onActivate?.(item);
-  }, { enabled: keyboardEnabled });
-
-  const contextValue: NavigationListContextValue = {
-    selectedIndex,
-    onSelect,
-    onActivate,
-    items,
-  };
+  const contextValue = { selectedId, onSelect, onActivate };
 
   return (
     <NavigationListContext.Provider value={contextValue}>
-      <div role="listbox" className={cn('w-full', className)}>
+      <div
+        ref={containerRef}
+        role="listbox"
+        aria-activedescendant={focusedValue ?? undefined}
+        className={cn('w-full', className)}
+      >
         {children}
       </div>
     </NavigationListContext.Provider>
@@ -198,5 +157,4 @@ export { NavigationListItem };
 export type {
   NavigationListRootProps,
   NavigationListItemProps,
-  NavigationListItemData,
 };

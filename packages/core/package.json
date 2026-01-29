@@ -30,6 +30,10 @@
       "types": "./dist/review/index.d.ts",
       "import": "./dist/review/index.js"
     },
+    "./review/browser": {
+      "types": "./dist/review/browser.d.ts",
+      "import": "./dist/review/browser.js"
+    },
     "./testing": {
       "types": "./dist/__test__/testing.d.ts",
       "import": "./dist/__test__/testing.js"

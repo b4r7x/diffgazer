@@ -1,5 +1,9 @@
 import { api } from "../../../lib/api.js";
 import type { SavedReview, ReviewHistoryMetadata } from "@repo/schemas/review-history";
+import {
+  getReview as sharedGetReview,
+  deleteReview as sharedDeleteReview,
+} from "@repo/api";
 
 export interface StreamReviewRequest {
   staged?: boolean;
@@ -27,9 +31,9 @@ export async function getReviewHistory({ projectPath }: GetReviewHistoryRequest)
 }
 
 export async function getReview(id: string): Promise<{ review: SavedReview }> {
-  return api().get<{ review: SavedReview }>(`/reviews/${id}`);
+  return sharedGetReview(api(), id);
 }
 
 export async function deleteReview(id: string): Promise<{ existed: boolean }> {
-  return api().delete<{ existed: boolean }>(`/reviews/${id}`);
+  return sharedDeleteReview(api(), id);
 }

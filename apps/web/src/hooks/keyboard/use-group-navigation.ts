@@ -8,6 +8,10 @@ type NavigationRole = "radio" | "checkbox" | "option" | "menuitem";
 interface UseGroupNavigationOptions {
   containerRef: React.RefObject<HTMLElement | null>;
   role: NavigationRole;
+  // Controlled mode - when value is provided, hook is controlled
+  value?: string | null;
+  onValueChange?: (value: string) => void;
+  // Uncontrolled mode (for checkbox/radio backward compatibility)
   onSelect?: (value: string) => void;
   onEnter?: (value: string) => void;
   onFocusChange?: (value: string) => void;
@@ -36,6 +40,8 @@ interface UseGroupNavigationReturn {
 export function useGroupNavigation({
   containerRef,
   role,
+  value,
+  onValueChange,
   onSelect,
   onEnter,
   onFocusChange,
@@ -44,7 +50,9 @@ export function useGroupNavigation({
   onBoundaryReached,
   initialValue = null,
 }: UseGroupNavigationOptions): UseGroupNavigationReturn {
-  const [focusedValue, setFocusedValue] = useState<string | null>(initialValue);
+  const [internalValue, setInternalValue] = useState<string | null>(initialValue);
+  const isControlled = value !== undefined;
+  const focusedValue = isControlled ? value : internalValue;
 
   const getElements = useCallback(() => {
     if (!containerRef.current) return [];
@@ -67,11 +75,15 @@ export function useGroupNavigation({
       const elements = getElements();
       const el = elements[index];
       if (el?.dataset.value) {
-        setFocusedValue(el.dataset.value);
-        onFocusChange?.(el.dataset.value);
+        if (isControlled) {
+          onValueChange?.(el.dataset.value);
+        } else {
+          setInternalValue(el.dataset.value);
+          onFocusChange?.(el.dataset.value);
+        }
       }
     },
-    [getElements, onFocusChange]
+    [getElements, isControlled, onValueChange, onFocusChange]
   );
 
   const move = useCallback(
@@ -124,11 +136,15 @@ export function useGroupNavigation({
   );
 
   const focus = useCallback(
-    (value: string) => {
-      setFocusedValue(value);
-      onFocusChange?.(value);
+    (v: string) => {
+      if (isControlled) {
+        onValueChange?.(v);
+      } else {
+        setInternalValue(v);
+        onFocusChange?.(v);
+      }
     },
-    [onFocusChange]
+    [isControlled, onValueChange, onFocusChange]
   );
 
   return {
