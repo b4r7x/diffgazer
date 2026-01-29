@@ -11,8 +11,7 @@ import {
   GitDiffView,
   ReviewView,
   SettingsView,
-  SessionsView,
-  ReviewHistoryView,
+  HistoryView,
 } from "./views/index.js";
 import { ThemeProvider, useSettings, SessionRecorderProvider, useSessionRecorderContext, KeyModeProvider } from "../hooks/index.js";
 import type { SessionMode } from "../types/index.js";
@@ -142,27 +141,18 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
             onDeleteProvider={handlers.config.onDeleteProvider}
           />
         )}
-        {view === "sessions" && (
-          <SessionsView
-            sessions={state.sessionList.items}
-            listState={state.sessionList.listState}
-            error={state.activeSession.error || state.sessionList.error}
-            onSelect={handlers.sessions.onSelect}
-            onDelete={handlers.sessions.onDelete}
-            onBack={handlers.sessions.onBack}
-            onNewSession={handlers.sessions.onNewSession}
-          />
-        )}
-        {view === "review-history" && (
-          <ReviewHistoryView
+        {view === "history" && (
+          <HistoryView
             reviews={state.reviewHistory.items}
-            currentReview={state.reviewHistory.current}
-            listState={state.reviewHistory.listState}
-            error={state.reviewHistory.error}
-            onSelect={handlers.reviewHistory.onSelect}
-            onDelete={handlers.reviewHistory.onDelete}
+            sessions={state.sessionList.items}
+            onResumeReview={handlers.reviewHistory.onSelect}
+            onExportReview={() => {
+              // TODO: implement export
+            }}
+            onDeleteReview={handlers.reviewHistory.onDelete}
+            onViewSession={handlers.sessions.onSelect}
+            onDeleteSession={handlers.sessions.onDelete}
             onBack={handlers.reviewHistory.onBack}
-            onClearCurrent={handlers.reviewHistory.onClearCurrent}
           />
         )}
       </Box>
