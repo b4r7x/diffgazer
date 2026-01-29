@@ -8,7 +8,7 @@ import {
     TrustPermissionsPage,
     SettingsThemePage,
     ProviderSelectorPage,
-    SettingsDiagnosticsPage,
+    SettingsAboutPage,
 } from './pages'
 
 // Create root route
@@ -65,10 +65,10 @@ const providerSelectorRoute = createRoute({
     component: ProviderSelectorPage,
 })
 
-const diagnosticsRoute = createRoute({
+const aboutRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: '/settings/diagnostics',
-    component: SettingsDiagnosticsPage,
+    path: '/settings/about',
+    component: SettingsAboutPage,
 })
 
 // Create route tree
@@ -81,7 +81,7 @@ const routeTree = rootRoute.addChildren([
     trustPermissionsRoute,
     themeRoute,
     providerSelectorRoute,
-    diagnosticsRoute,
+    aboutRoute,
 ])
 
 // Create router
