@@ -6,6 +6,7 @@ import type {
     ProvidersStatusResponse,
     SaveConfigRequest
 } from '@repo/schemas';
+import { deleteConfig as sharedDeleteConfig } from "@repo/api";
 
 export async function getProviderStatus(): Promise<ProviderStatus[]> {
     const response = await api.get<ProvidersStatusResponse>('/config/providers');
@@ -21,7 +22,7 @@ export async function saveConfig(config: SaveConfigRequest): Promise<void> {
 }
 
 export async function deleteConfig(): Promise<void> {
-    await api.delete('/config');
+    return sharedDeleteConfig(api);
 }
 
 export async function getSettings(): Promise<SettingsConfig> {

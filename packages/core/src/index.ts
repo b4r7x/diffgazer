@@ -17,13 +17,8 @@ export {
 export { safeParseJson } from "./json.js";
 export { sanitizeUnicode, escapeXml } from "./sanitization.js";
 export { formatRelativeTime, getScoreColor } from "./format.js";
-export {
-  safeReadFile,
-  atomicWriteFile,
-  ensureDirectory,
-  type FileIOErrorCode,
-  type ErrorFactory,
-} from "./fs/index.js";
+// NOTE: fs operations (safeReadFile, atomicWriteFile, ensureDirectory) are NOT exported here
+// They use node:fs/promises which breaks browser bundles. Use @repo/core/storage for server-side file ops.
 export {
   parseSSEStream,
   type SSEParserOptions,

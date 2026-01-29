@@ -209,6 +209,13 @@ importers:
         version: 7.3.1(@types/node@24.10.9)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)
 
   packages/api:
+    dependencies:
+      '@repo/core':
+        specifier: workspace:*
+        version: link:../core
+      '@repo/schemas':
+        specifier: workspace:*
+        version: link:../schemas
     devDependencies:
       '@repo/tsconfig':
         specifier: workspace:*
