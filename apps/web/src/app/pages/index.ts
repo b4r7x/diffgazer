@@ -6,4 +6,4 @@ export { SettingsHubPage } from './settings-hub';
 export { TrustPermissionsPage } from './trust-permissions';
 export { SettingsThemePage } from './settings-theme';
 export { ProviderSelectorPage } from './provider-selector';
-export { SettingsDiagnosticsPage } from './settings-diagnostics';
+export { SettingsAboutPage } from './settings-about';
