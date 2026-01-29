@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import type { AIProvider } from "@repo/schemas/config";
-import type { Theme, ControlsMode, TrustCapabilities } from "@repo/schemas/settings";
+import type { Theme, TrustCapabilities } from "@repo/schemas/settings";
 import { Badge } from "../ui/index.js";
 import { WizardFrame } from "./wizard-frame.js";
 
@@ -18,7 +18,6 @@ interface SummaryStepProps {
   providerName: string;
   model?: string;
   theme: Theme;
-  controlsMode: ControlsMode;
   capabilities?: TrustCapabilities;
   directoryPath?: string;
   onTestConnection: () => Promise<boolean>;
@@ -96,7 +95,6 @@ export function SummaryStep({
   providerName,
   model,
   theme,
-  controlsMode,
   capabilities,
   directoryPath,
   onTestConnection,
@@ -182,10 +180,6 @@ export function SummaryStep({
             <Text>
               <Text dimColor>Theme: </Text>
               {theme}
-            </Text>
-            <Text>
-              <Text dimColor>Controls: </Text>
-              {controlsMode === "menu" ? "Menu Mode" : "Key Mode"}
             </Text>
           </Box>
         </Box>

@@ -2,7 +2,6 @@ import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import { useTheme } from "../../hooks/use-theme.js";
 import { useKeyboardMode } from "../../hooks/use-keyboard-mode.js";
-import type { ControlsMode } from "@repo/schemas/settings";
 import type { Shortcut, ModeShortcuts } from "@repo/schemas/ui";
 
 export type { Shortcut, ModeShortcuts };
@@ -41,7 +40,7 @@ export function FooterBar({
 function getActiveShortcuts(
   shortcuts: Shortcut[] | undefined,
   modeShortcuts: ModeShortcuts | undefined,
-  mode: ControlsMode
+  mode: "menu" | "keys"
 ): Shortcut[] {
   if (modeShortcuts) {
     return mode === "keys" ? modeShortcuts.keys : modeShortcuts.menu;

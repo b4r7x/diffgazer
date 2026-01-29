@@ -11,8 +11,6 @@ type SettingsSection =
   | "trust"
   | "theme"
   | "provider"
-  | "credentials"
-  | "controls"
   | "diagnostics";
 
 const MENU_ITEMS: {
@@ -35,13 +33,6 @@ const MENU_ITEMS: {
     valueVariant: "success",
   },
   {
-    id: "credentials",
-    label: "Credentials",
-    value: "2 Active",
-    valueVariant: "muted",
-  },
-  { id: "controls", label: "Controls", value: "Default", valueVariant: "muted" },
-  {
     id: "diagnostics",
     label: "Diagnostics/About",
     value: "v2.1.0",
@@ -59,7 +50,7 @@ const FOOTER_RIGHT = [{ key: "", label: "HUB-MODE" }];
 
 export function SettingsHubPage() {
   const navigate = useNavigate();
-  const [selectedIndex, setSelectedIndex] = useRouteState('menuIndex', 1);
+  const [selectedIndex, setSelectedIndex] = useRouteState('menuIndex', 0);
 
   usePageFooter({ shortcuts: FOOTER_SHORTCUTS, rightShortcuts: FOOTER_RIGHT });
 
@@ -76,12 +67,6 @@ export function SettingsHubPage() {
         break;
       case "provider":
         navigate({ to: "/settings/providers" });
-        break;
-      case "credentials":
-        navigate({ to: "/settings/credentials" });
-        break;
-      case "controls":
-        navigate({ to: "/settings/controls" });
         break;
       case "diagnostics":
         navigate({ to: "/settings/diagnostics" });

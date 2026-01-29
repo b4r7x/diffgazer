@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import type { AIProvider } from "@repo/schemas/config";
-import type { Theme, ControlsMode, TrustCapabilities, TrustConfig } from "@repo/schemas/settings";
+import type { Theme, TrustCapabilities, TrustConfig } from "@repo/schemas/settings";
 import { useSettingsState } from "../../features/settings/index.js";
 import { SettingsScreen } from "../screens/settings-screen.js";
 
@@ -44,10 +44,6 @@ export function SettingsView({
 
   const handleSaveTheme = async (theme: Theme) => {
     await state.saveTheme(theme);
-  };
-
-  const handleSaveControls = async (mode: ControlsMode) => {
-    await state.saveControlsMode(mode);
   };
 
   const handleSaveTrust = async (capabilities: TrustCapabilities) => {
@@ -96,7 +92,6 @@ export function SettingsView({
         onDeleteProvider={handleDeleteProvider}
         onBack={onBack}
         onSaveTheme={handleSaveTheme}
-        onSaveControls={handleSaveControls}
         onSaveTrust={handleSaveTrust}
         onSaveCredentials={handleSaveCredentials}
       />

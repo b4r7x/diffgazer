@@ -1,6 +1,6 @@
 import type { View } from "./use-navigation.js";
 import type { AIProvider } from "@repo/schemas";
-import type { Theme, ControlsMode, TrustCapabilities, SettingsConfig, TrustConfig } from "@repo/schemas/settings";
+import type { Theme, TrustCapabilities, SettingsConfig, TrustConfig } from "@repo/schemas/settings";
 import type { MenuAction } from "../../../app/views/main-menu-view.js";
 import type { SessionEventType } from "@repo/schemas/session";
 import { openWebUi } from "../../../lib/web-ui.js";
@@ -66,25 +66,12 @@ export function useScreenHandlers({
   const handleSaveTheme = (theme: Theme) => {
     const currentSettings = settings.settings ?? {
       theme: "auto" as const,
-      controlsMode: "menu" as const,
       defaultLenses: ["correctness"] as const,
       defaultProfile: null,
       severityThreshold: "medium" as const,
     };
     void settings.saveSettings({ ...currentSettings, theme });
     recordEvent?.("SETTINGS_CHANGED", { field: "theme", value: theme });
-  };
-
-  const handleSaveControls = (controlsMode: ControlsMode) => {
-    const currentSettings = settings.settings ?? {
-      theme: "auto" as const,
-      controlsMode: "menu" as const,
-      defaultLenses: ["correctness"] as const,
-      defaultProfile: null,
-      severityThreshold: "medium" as const,
-    };
-    void settings.saveSettings({ ...currentSettings, controlsMode });
-    recordEvent?.("SETTINGS_CHANGED", { field: "controlsMode", value: controlsMode });
   };
 
   const handleSaveTrust = (capabilities: TrustCapabilities) => {
@@ -163,7 +150,6 @@ export function useScreenHandlers({
     },
     settings: {
       onSaveTheme: handleSaveTheme,
-      onSaveControls: handleSaveControls,
       onSaveTrust: handleSaveTrust,
       onSelectProvider: handleSelectProvider,
       onSaveCredentials: handleSaveCredentials,

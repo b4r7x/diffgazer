@@ -8,7 +8,6 @@ export type {
   TrustCapabilities,
   TrustMode,
   Theme,
-  ControlsMode,
 } from "@repo/schemas/settings";
 
 export type {
