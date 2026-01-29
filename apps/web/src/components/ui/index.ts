@@ -34,3 +34,4 @@ export { FixPlanChecklist, type FixPlanChecklistProps } from './fix-plan-checkli
 export { IssueListItem, type IssueListItemProps } from './issue-list-item';
 export { SeverityFilterButton, type SeverityFilterButtonProps } from './severity-filter-button';
 export { SeverityFilterGroup, type SeverityFilterGroupProps, type SeverityFilter } from './severity-filter-group';
+export { FocusablePane, type FocusablePaneProps } from './focusable-pane';

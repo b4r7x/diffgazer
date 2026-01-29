@@ -1,5 +1,15 @@
 import { cn } from "@/lib/utils";
-import { Button, CodeSnippet, DiffView, FixPlanChecklist, type CodeLine } from "@/components/ui";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+  CodeSnippet,
+  DiffView,
+  FixPlanChecklist,
+  FocusablePane,
+  type CodeLine
+} from "@/components/ui";
 import { SEVERITY_CONFIG, type SeverityLevel } from "@/features/review/constants/severity";
 import type { TriageIssue } from "@repo/schemas";
 
@@ -15,13 +25,6 @@ export interface IssueDetailsPaneProps {
   className?: string;
 }
 
-const TABS: Array<{ id: TabId; label: string }> = [
-  { id: "details", label: "Details" },
-  { id: "explain", label: "Explain" },
-  { id: "trace", label: "Trace" },
-  { id: "patch", label: "Patch" },
-];
-
 export function IssueDetailsPane({
   issue,
   activeTab,
@@ -31,76 +34,59 @@ export function IssueDetailsPane({
   isFocused,
   className,
 }: IssueDetailsPaneProps) {
-  const visibleTabs = TABS.filter((tab) => tab.id !== "patch" || issue?.suggested_patch);
+  const hasPatch = !!issue?.suggested_patch;
 
   return (
-    <div
-      className={cn(
-        "w-3/5 flex flex-col pl-4",
-        isFocused && "ring-1 ring-tui-blue ring-inset",
-        className
-      )}
-    >
-      <div className="flex border-b border-tui-border pb-2 pt-2 mb-4 text-sm">
-        {visibleTabs.map((tab) => (
-          <Button
-            key={tab.id}
-            variant="tab"
-            data-active={activeTab === tab.id}
-            onClick={() => onTabChange(tab.id)}
-            className="mr-4"
-          >
-            {activeTab === tab.id ? `[${tab.label}]` : tab.label}
-          </Button>
-        ))}
-      </div>
+    <FocusablePane isFocused={isFocused} className={cn("w-3/5 flex flex-col pl-4", className)}>
+      <Tabs value={activeTab} onValueChange={(v) => onTabChange(v as TabId)} className="flex flex-col flex-1">
+        <TabsList className="border-b border-tui-border pb-2 pt-2 mb-4">
+          <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="explain">Explain</TabsTrigger>
+          <TabsTrigger value="trace">Trace</TabsTrigger>
+          {hasPatch && <TabsTrigger value="patch">Patch</TabsTrigger>}
+        </TabsList>
 
-      <div className="flex-1 overflow-y-auto scrollbar-hide pr-2">
-        {issue ? (
-          <>
-            <IssueHeader issue={issue} />
+        <div className="flex-1 overflow-y-auto scrollbar-hide pr-2">
+          {issue ? (
+            <>
+              <IssueHeader issue={issue} />
 
-            {activeTab === "details" && (
-              <DetailsTabContent issue={issue} completedSteps={completedSteps} onToggleStep={onToggleStep} />
-            )}
+              <TabsContent value="details" className="mt-0">
+                <DetailsTabContent issue={issue} completedSteps={completedSteps} onToggleStep={onToggleStep} />
+              </TabsContent>
 
-            {activeTab === "explain" && (
-              <div className="text-sm text-gray-300">
-                <p className="mb-4">{issue.rationale}</p>
-                <p>{issue.recommendation}</p>
-              </div>
-            )}
+              <TabsContent value="explain" className="mt-0">
+                <div className="text-sm text-gray-300">
+                  <p className="mb-4">{issue.rationale}</p>
+                  <p>{issue.recommendation}</p>
+                </div>
+              </TabsContent>
 
-            {activeTab === "trace" && (
-              <TraceTabContent issue={issue} />
-            )}
+              <TabsContent value="trace" className="mt-0">
+                <TraceTabContent issue={issue} />
+              </TabsContent>
 
-            {activeTab === "patch" && issue.suggested_patch && (
-              <DiffView patch={issue.suggested_patch} />
-            )}
-          </>
-        ) : (
-          <div className="text-gray-500 text-center py-8">Select an issue to view details</div>
-        )}
-      </div>
-    </div>
+              {hasPatch && (
+                <TabsContent value="patch" className="mt-0">
+                  <DiffView patch={issue.suggested_patch!} />
+                </TabsContent>
+              )}
+            </>
+          ) : (
+            <div className="text-gray-500 text-center py-8">Select an issue to view details</div>
+          )}
+        </div>
+      </Tabs>
+    </FocusablePane>
   );
 }
 
 function IssueHeader({ issue }: { issue: TriageIssue }) {
-  const severity = issue.severity as SeverityLevel;
+  const severityColor = SEVERITY_CONFIG[issue.severity as SeverityLevel]?.color ?? "text-gray-300";
 
   return (
     <div className="mb-6">
-      <h1
-        className={cn(
-          "text-xl font-bold mb-1",
-          severity === "blocker" && "text-tui-red",
-          severity === "high" && "text-tui-yellow",
-          severity === "medium" && "text-gray-300",
-          severity === "low" && "text-gray-400"
-        )}
-      >
+      <h1 className={cn("text-xl font-bold mb-1", severityColor)}>
         {issue.title}
       </h1>
       <div className="text-xs text-gray-500">
@@ -119,12 +105,13 @@ function DetailsTabContent({
   completedSteps: Set<number>;
   onToggleStep: (step: number) => void;
 }) {
-  const evidenceLines: CodeLine[] = issue.evidence.length > 0
-    ? [
-        { number: (issue.line_start ?? 1) - 1, content: issue.evidence[0]?.excerpt ?? "" },
-        { number: issue.line_start ?? 1, content: "const result = await db.query(query); <-- UNSAFE", type: "highlight" },
-      ]
-    : [];
+  const evidenceLines: CodeLine[] = issue.evidence
+    .filter((e) => e.type === "code" && e.excerpt)
+    .map((e, i) => ({
+      number: e.range?.start ?? issue.line_start ?? i + 1,
+      content: e.excerpt,
+      type: "highlight" as const,
+    }));
 
   return (
     <>

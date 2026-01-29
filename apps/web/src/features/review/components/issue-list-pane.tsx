@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
-import { IssueListItem, SeverityFilterGroup, type SeverityFilter } from "@/components/ui";
-import { getSeverityCounts, type SeverityLevel } from "@/features/review/constants/severity";
+import { IssueListItem, SeverityFilterGroup, FocusablePane, type SeverityFilter } from "@/components/ui";
+import { getSeverityCounts } from "@/features/review/constants/severity";
 import type { TriageIssue } from "@repo/schemas";
 
 export interface IssueListPaneProps {
@@ -33,12 +33,9 @@ export function IssueListPane({
   const counts = getSeverityCounts(allIssues);
 
   return (
-    <div
-      className={cn(
-        "w-2/5 flex flex-col border-r border-tui-border pr-4",
-        isFocused && "ring-1 ring-tui-blue ring-inset",
-        className
-      )}
+    <FocusablePane
+      isFocused={isFocused}
+      className={cn("w-2/5 flex flex-col border-r border-tui-border pr-4", className)}
     >
       <div className="pb-4 pt-2">
         <div className="text-tui-violet font-bold mb-2">{title}</div>
@@ -64,6 +61,6 @@ export function IssueListPane({
           <div className="text-gray-500 text-sm p-2">No issues match filter</div>
         )}
       </div>
-    </div>
+    </FocusablePane>
   );
 }
