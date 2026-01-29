@@ -5,6 +5,7 @@ import type { ModelInfo } from "@repo/schemas";
 interface ModelListItemProps {
   model: ModelInfo;
   isSelected: boolean;
+  isChecked: boolean;
   isFocused: boolean;
   onClick: () => void;
   onDoubleClick: () => void;
@@ -13,6 +14,7 @@ interface ModelListItemProps {
 export function ModelListItem({
   model,
   isSelected,
+  isChecked,
   isFocused,
   onClick,
   onDoubleClick,
@@ -26,21 +28,18 @@ export function ModelListItem({
       onDoubleClick={onDoubleClick}
       className={cn(
         "flex items-start gap-3 w-full text-left px-3 py-2 rounded transition-colors",
-        isSelected
-          ? "bg-tui-selection/60 text-tui-fg"
-          : "text-gray-400 hover:bg-tui-selection/30 hover:text-tui-fg",
-        isFocused &&
-          isSelected &&
-          "ring-2 ring-tui-blue ring-offset-1 ring-offset-tui-bg"
+        isSelected && isFocused
+          ? "bg-tui-selection/60 text-tui-fg ring-2 ring-tui-blue ring-offset-1 ring-offset-tui-bg"
+          : "text-gray-400 hover:bg-tui-selection/30 hover:text-tui-fg"
       )}
     >
       <span
         className={cn(
           "font-bold shrink-0 mt-0.5",
-          isSelected ? "text-tui-blue" : "text-gray-600"
+          isChecked ? "text-tui-blue" : "text-gray-600"
         )}
       >
-        {isSelected ? "[ \u25cf ]" : "[   ]"}
+        {isChecked ? "[ \u25cf ]" : "[   ]"}
       </span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">

@@ -56,7 +56,6 @@ export function ProviderSelectorPage() {
   const filteredProviders = useMemo(() => {
     let result = providers;
 
-    // Apply filter
     if (filter === 'configured') {
       result = result.filter((p) => p.hasApiKey);
     } else if (filter === 'needs-key') {
@@ -67,7 +66,6 @@ export function ProviderSelectorPage() {
       result = result.filter((p) => PROVIDER_CAPABILITIES[p.id]?.tier === 'paid');
     }
 
-    // Apply search
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter((p) => p.name.toLowerCase().includes(query) || p.id.toLowerCase().includes(query));
@@ -133,8 +131,12 @@ export function ProviderSelectorPage() {
 
   useKey('ArrowUp', () => setFocusZone('input'),
     { enabled: !dialogOpen && inFilters });
-  useKey('ArrowDown', () => setFocusZone('list'),
-    { enabled: !dialogOpen && inFilters });
+  useKey('ArrowDown', () => {
+    setFocusZone('list');
+    if (filteredProviders.length > 0) {
+      setSelectedId(filteredProviders[0].id);
+    }
+  }, { enabled: !dialogOpen && inFilters });
   useKey('ArrowLeft', () => setFilterIndex((i) => Math.max(0, i - 1)),
     { enabled: !dialogOpen && inFilters });
   useKey('ArrowRight', () => setFilterIndex((i) => Math.min(FILTER_VALUES.length - 1, i + 1)),
@@ -169,6 +171,10 @@ export function ProviderSelectorPage() {
     { enabled: !dialogOpen && inButtons });
 
   useKey('Escape', () => navigate({ to: '/settings' }), { enabled: !dialogOpen && !inInput });
+
+  useKey('/', () => {
+    setFocusZone('input');
+  }, { enabled: !dialogOpen && !inInput });
 
   useEffect(() => {
     if (!selectedProvider && focusZone === 'buttons') {

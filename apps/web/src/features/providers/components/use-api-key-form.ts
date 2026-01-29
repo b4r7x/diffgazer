@@ -7,36 +7,28 @@ type InputMethod = "paste" | "env";
 interface UseApiKeyFormOptions {
   open: boolean;
   envVarName: string;
-  hasExistingKey: boolean;
-  hasRemoveKey: boolean;
   onSubmit: (method: InputMethod, value: string) => Promise<void>;
   onRemoveKey?: () => Promise<void>;
   onOpenChange: (open: boolean) => void;
-  onResetFooter: (index: number) => void;
 }
 
 export function useApiKeyForm({
   open,
   envVarName,
-  hasExistingKey,
-  hasRemoveKey,
   onSubmit,
   onRemoveKey,
   onOpenChange,
-  onResetFooter,
 }: UseApiKeyFormOptions) {
   const [method, setMethod] = useState<InputMethod>("paste");
   const [keyValue, setKeyValue] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Reset dialog state when opened
   useEffect(() => {
     if (open) {
       setKeyValue("");
       setMethod("paste");
-      onResetFooter(hasExistingKey && hasRemoveKey ? 1 : 0);
     }
-  }, [open, hasExistingKey, hasRemoveKey, onResetFooter]);
+  }, [open]);
 
   const handleSubmit = async () => {
     if (isSubmitting) return;

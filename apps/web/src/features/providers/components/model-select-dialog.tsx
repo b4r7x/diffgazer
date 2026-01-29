@@ -21,11 +21,12 @@ import {
   type ModelInfo,
 } from "@repo/schemas";
 import { useModelFilter } from "./use-model-filter";
-import { useDialogZoneNavigation } from "./use-dialog-zone-navigation";
 import { ModelSearchInput } from "./model-search-input";
 import { ModelFilterTabs, FILTERS } from "./model-filter-tabs";
 import { ModelList } from "./model-list";
 import { DialogFooterActions } from "./dialog-footer-actions";
+
+type FocusZone = "search" | "filters" | "list" | "footer";
 
 interface ModelSelectDialogProps {
   open: boolean;
@@ -65,6 +66,7 @@ export function ModelSelectDialog({
 }: ModelSelectDialogProps) {
   const models = getModelsForProvider(provider);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [checkedModelId, setCheckedModelId] = useState<string | undefined>(currentModel);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
 
@@ -78,26 +80,20 @@ export function ModelSelectDialog({
     resetFilters,
   } = useModelFilter(models);
 
-  const {
-    focusZone,
-    setFocusZone,
-    filterIndex,
-    setFilterIndex,
-    footerButtonIndex,
-    setFooterButtonIndex,
-    resetZones,
-    moveFilterLeft,
-    moveFilterRight,
-  } = useDialogZoneNavigation();
+  const [focusZone, setFocusZone] = useState<FocusZone>("list");
+  const [filterIndex, setFilterIndex] = useState(0);
+  const [footerButtonIndex, setFooterButtonIndex] = useState(1);
 
-  const { isItemVisible, scrollItemIntoView } =
-    useScrollIntoView(listContainerRef);
+  const { scrollItemIntoView } = useScrollIntoView(listContainerRef);
 
   // Reset state when dialog opens
   useEffect(() => {
     if (open) {
       resetFilters();
-      resetZones();
+      setFocusZone("list");
+      setFilterIndex(0);
+      setFooterButtonIndex(1);
+      setCheckedModelId(currentModel);
       const currentIndex = models.findIndex((m) => m.id === currentModel);
       setSelectedIndex(currentIndex >= 0 ? currentIndex : 0);
     }
@@ -125,36 +121,39 @@ export function ModelSelectDialog({
     }
   };
 
+  const handleCheck = () => {
+    const model = filteredModels[selectedIndex];
+    if (model) {
+      setCheckedModelId(model.id);
+    }
+  };
+
   const handleCancel = () => onOpenChange(false);
 
   const navigateUp = () => {
     if (selectedIndex > 0) {
       setSelectedIndex((prev) => prev - 1);
-    } else if (isItemVisible(0)) {
+    } else {
       setFocusZone("filters");
       setFilterIndex(0);
-    } else {
-      scrollItemIntoView(0);
     }
   };
 
   const navigateDown = () => {
-    const lastIndex = filteredModels.length - 1;
-    if (selectedIndex < lastIndex) {
+    if (selectedIndex < filteredModels.length - 1) {
       setSelectedIndex((prev) => prev + 1);
-    } else if (isItemVisible(lastIndex)) {
+    } else {
       setFocusZone("footer");
       setFooterButtonIndex(1);
-    } else {
-      scrollItemIntoView(lastIndex);
     }
   };
 
   // List zone
   useKey("ArrowUp", navigateUp, { enabled: open && focusZone === "list" });
   useKey("ArrowDown", navigateDown, { enabled: open && focusZone === "list" });
-  useKey("j", navigateUp, { enabled: open && focusZone === "list" });
-  useKey("k", navigateDown, { enabled: open && focusZone === "list" });
+  useKey("k", navigateUp, { enabled: open && focusZone === "list" });
+  useKey("j", navigateDown, { enabled: open && focusZone === "list" });
+  useKey(" ", handleCheck, { enabled: open && focusZone === "list" && filteredModels.length > 0 });
   useKey("Enter", handleConfirm, { enabled: open && focusZone === "list" && filteredModels.length > 0 });
 
   // Search zone
@@ -164,9 +163,12 @@ export function ModelSelectDialog({
   }, { enabled: open && focusZone === "search" });
 
   // Filters zone
-  useKey("ArrowLeft", moveFilterLeft, { enabled: open && focusZone === "filters" });
-  useKey("ArrowRight", moveFilterRight, { enabled: open && focusZone === "filters" });
-  useKey("ArrowDown", () => setFocusZone("list"), { enabled: open && focusZone === "filters" });
+  useKey("ArrowLeft", () => setFilterIndex((prev) => (prev > 0 ? prev - 1 : 2)), { enabled: open && focusZone === "filters" });
+  useKey("ArrowRight", () => setFilterIndex((prev) => (prev < 2 ? prev + 1 : 0)), { enabled: open && focusZone === "filters" });
+  useKey("ArrowDown", () => {
+    setFocusZone("list");
+    setSelectedIndex(0);
+  }, { enabled: open && focusZone === "filters" });
   useKey("ArrowUp", () => {
     setFocusZone("search");
     searchInputRef.current?.focus();
@@ -177,7 +179,10 @@ export function ModelSelectDialog({
   // Footer zone
   useKey("ArrowLeft", () => setFooterButtonIndex(0), { enabled: open && focusZone === "footer" });
   useKey("ArrowRight", () => setFooterButtonIndex(1), { enabled: open && focusZone === "footer" });
-  useKey("ArrowUp", () => setFocusZone("list"), { enabled: open && focusZone === "footer" });
+  useKey("ArrowUp", () => {
+    setFocusZone("list");
+    setSelectedIndex(filteredModels.length - 1);
+  }, { enabled: open && focusZone === "footer" });
   useKey("Enter", () => footerButtonIndex === 0 ? handleCancel() : handleConfirm(), { enabled: open && focusZone === "footer" });
   useKey(" ", () => footerButtonIndex === 0 ? handleCancel() : handleConfirm(), { enabled: open && focusZone === "footer" });
 
@@ -197,6 +202,7 @@ export function ModelSelectDialog({
     } else {
       searchInputRef.current?.blur();
       setFocusZone("list");
+      setSelectedIndex(0);
     }
   };
 
@@ -238,10 +244,13 @@ export function ModelSelectDialog({
             ref={listContainerRef}
             models={filteredModels}
             selectedIndex={selectedIndex}
+            currentModelId={checkedModelId}
             isFocused={focusZone === "list"}
             onSelect={(idx) => {
               setFocusZone("list");
               setSelectedIndex(idx);
+              const model = filteredModels[idx];
+              if (model) setCheckedModelId(model.id);
             }}
             onConfirm={handleConfirm}
           />
@@ -260,8 +269,8 @@ export function ModelSelectDialog({
               handleConfirm();
             }}
             canConfirm={filteredModels.length > 0}
-            focusedButtonIndex={footerButtonIndex}
-            isFocused={focusZone === "footer"}
+            cancelFocused={focusZone === "footer" && footerButtonIndex === 0}
+            confirmFocused={focusZone === "footer" && footerButtonIndex === 1}
             hints={FOOTER_HINTS}
           />
         </DialogFooter>
