@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
+import { findNextEnabled, findPrevEnabled } from "../../lib/list-navigation.js";
 
 export interface SelectOption<T extends string = string> {
   id: T;
@@ -73,24 +74,4 @@ export function SelectList<T extends string = string>({
       ))}
     </Box>
   );
-}
-
-function findNextEnabled<T extends string>(
-  options: SelectOption<T>[],
-  currentIndex: number
-): number {
-  for (let i = currentIndex + 1; i < options.length; i++) {
-    if (!options[i]?.disabled) return i;
-  }
-  return -1;
-}
-
-function findPrevEnabled<T extends string>(
-  options: SelectOption<T>[],
-  currentIndex: number
-): number {
-  for (let i = currentIndex - 1; i >= 0; i--) {
-    if (!options[i]?.disabled) return i;
-  }
-  return -1;
 }

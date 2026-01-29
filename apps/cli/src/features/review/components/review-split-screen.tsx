@@ -10,7 +10,7 @@ import { FooterBar, type ModeShortcuts } from "../../../components/ui/footer-bar
 import { IssueListPane } from "./issue-list-pane.js";
 import { IssueDetailsPane } from "./issue-details-pane.js";
 import { AgentActivityPanel } from "./agent-activity-panel.js";
-import { type IssueTab } from "./issue-tabs.js";
+import type { IssueTab } from "../constants.js";
 import { useReviewKeyboard, type FocusArea } from "../hooks/use-review-keyboard.js";
 import { useAgentActivity } from "../hooks/use-agent-activity.js";
 

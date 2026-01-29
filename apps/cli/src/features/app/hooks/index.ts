@@ -1,4 +1,4 @@
-export { useNavigation, type View } from "./use-navigation.js";
+export { useNavigation, type AppView } from "./use-navigation.js";
 export { useScreenHandlers } from "./use-screen-handlers.js";
 export { useDiscussReview } from "./use-discuss-review.js";
 export { useAppInit } from "./use-app-init.js";

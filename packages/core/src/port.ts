@@ -1,11 +1,15 @@
 import { PortSchema } from "@repo/schemas/port";
+import type { Result } from "./result.js";
+import type { AppError } from "./errors.js";
+import { ok, err } from "./result.js";
+import { createError } from "./errors.js";
 
-export function parsePort(value: string): number {
+export function parsePort(value: string): Result<number, AppError> {
   const result = PortSchema.safeParse(value);
   if (!result.success) {
-    throw new Error("Invalid port number");
+    return err(createError("INVALID_PORT", "Invalid port number"));
   }
-  return result.data;
+  return ok(result.data);
 }
 
 export function parsePortOrDefault(value: string | undefined, defaultValue: number): number {

@@ -5,42 +5,15 @@ import { HeaderBrand } from "../../components/ui/header-brand.js";
 import { StatusCard } from "../../components/ui/status-card.js";
 import { FooterBarWithDivider, type Shortcut } from "../../components/ui/footer-bar.js";
 import { useTheme } from "../../hooks/use-theme.js";
+import { type MenuAction, type MenuItem, MENU_ITEMS, MAIN_MENU_SHORTCUTS } from "@repo/core";
+import { findNextEnabled, findPrevEnabled } from "../../lib/list-navigation.js";
 
-export type MenuAction =
-  | "review-unstaged"
-  | "review-staged"
-  | "review-files"
-  | "resume-review"
-  | "history"
-  | "open-web"
-  | "settings"
-  | "help"
-  | "quit";
+export type { MenuAction };
 
-interface MenuItem {
-  key: string;
-  label: string;
-  action: MenuAction;
-  disabled?: boolean;
-}
-
-const MENU_ITEMS: MenuItem[] = [
-  { key: "r", label: "Review unstaged changes", action: "review-unstaged" },
-  { key: "R", label: "Review staged changes", action: "review-staged" },
-  { key: "f", label: "Review specific files...", action: "review-files" },
-  { key: "l", label: "Resume last review", action: "resume-review" },
-  { key: "h", label: "History", action: "history" },
-  { key: "w", label: "Open Web UI", action: "open-web" },
-  { key: "s", label: "Settings", action: "settings" },
-  { key: "?", label: "Help", action: "help" },
-  { key: "q", label: "Quit", action: "quit" },
-];
-
-const FOOTER_SHORTCUTS: Shortcut[] = [
-  { key: "\u2191/\u2193", label: "select" },
-  { key: "Enter", label: "open" },
-  { key: "q", label: "quit" },
-];
+const FOOTER_SHORTCUTS: Shortcut[] = MAIN_MENU_SHORTCUTS.map((s) => ({
+  key: s.key,
+  label: s.label.toLowerCase(),
+}));
 
 interface MainMenuViewProps {
   provider?: string;
@@ -67,7 +40,7 @@ export function MainMenuView({
 
   const menuItems = MENU_ITEMS.map((item) => ({
     ...item,
-    disabled: item.action === "resume-review" && !hasLastReview,
+    disabled: item.id === "resume-review" && !hasLastReview,
   }));
 
   useInput(
@@ -89,21 +62,21 @@ export function MainMenuView({
       if (key.return) {
         const item = menuItems[selectedIndex];
         if (item && !item.disabled) {
-          if (item.action === "quit") {
+          if (item.id === "quit") {
             exit();
           } else {
-            onSelect?.(item.action);
+            onSelect?.(item.id);
           }
         }
         return;
       }
 
-      const matchingItem = menuItems.find((item) => item.key === input);
+      const matchingItem = menuItems.find((item) => item.shortcut === input);
       if (matchingItem && !matchingItem.disabled) {
-        if (matchingItem.action === "quit") {
+        if (matchingItem.id === "quit") {
           exit();
         } else {
-          onSelect?.(matchingItem.action);
+          onSelect?.(matchingItem.id);
         }
       }
     },
@@ -129,7 +102,7 @@ export function MainMenuView({
         </Text>
         <Box flexDirection="column" marginTop={1}>
           {menuItems.map((item, index) => (
-            <Box key={item.key}>
+            <Box key={item.id}>
               <Text
                 color={selectedIndex === index ? colors.ui.accent : undefined}
                 dimColor={item.disabled}
@@ -140,7 +113,7 @@ export function MainMenuView({
                 color={selectedIndex === index ? colors.ui.accent : colors.ui.textMuted}
                 dimColor={item.disabled}
               >
-                [{item.key}]
+                [{item.shortcut}]
               </Text>
               <Text dimColor={item.disabled}> {item.label}</Text>
             </Box>
@@ -151,18 +124,4 @@ export function MainMenuView({
       <FooterBarWithDivider shortcuts={FOOTER_SHORTCUTS} />
     </Box>
   );
-}
-
-function findNextEnabled(items: MenuItem[], currentIndex: number): number {
-  for (let i = currentIndex + 1; i < items.length; i++) {
-    if (!items[i]?.disabled) return i;
-  }
-  return -1;
-}
-
-function findPrevEnabled(items: MenuItem[], currentIndex: number): number {
-  for (let i = currentIndex - 1; i >= 0; i--) {
-    if (!items[i]?.disabled) return i;
-  }
-  return -1;
 }

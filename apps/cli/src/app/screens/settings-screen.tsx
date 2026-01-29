@@ -6,6 +6,7 @@ import type { AIProvider, GLMEndpoint, OpenRouterModel } from "@repo/schemas/con
 import { AVAILABLE_PROVIDERS } from "@repo/schemas/config";
 import type { Theme, TrustCapabilities, TrustConfig, SettingsConfig } from "@repo/schemas/settings";
 import { getEnvVarForProvider } from "@repo/core/ai";
+import { SETTINGS_MENU_ITEMS, type SettingsAction } from "@repo/core";
 import { Card, SelectList, type SelectOption } from "../../components/ui/index.js";
 import { TrustStep } from "../../components/wizard/trust-step.js";
 import { ThemeStep } from "../../components/wizard/theme-step.js";
@@ -54,28 +55,11 @@ interface SettingsScreenProps {
 
 type SectionId = Exclude<SettingsSection, "list">;
 
-const SECTION_OPTIONS: SelectOption<SectionId>[] = [
-  {
-    id: "trust",
-    label: "Trust",
-    description: "Manage directory trust and capabilities",
-  },
-  {
-    id: "theme",
-    label: "Theme",
-    description: "Change color theme preferences",
-  },
-  {
-    id: "provider",
-    label: "Provider",
-    description: "Select AI provider for code review",
-  },
-  {
-    id: "diagnostics",
-    label: "Diagnostics",
-    description: "Run system health checks",
-  },
-];
+const SECTION_OPTIONS: SelectOption<SectionId>[] = SETTINGS_MENU_ITEMS.map((item) => ({
+  id: item.id as SectionId,
+  label: item.label,
+  description: item.description,
+}));
 
 const DEFAULT_CAPABILITIES: TrustCapabilities = {
   readFiles: true,
