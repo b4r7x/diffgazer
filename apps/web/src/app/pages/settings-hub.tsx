@@ -11,7 +11,7 @@ type SettingsSection =
   | "trust"
   | "theme"
   | "provider"
-  | "diagnostics";
+  | "about";
 
 const MENU_ITEMS: {
   id: SettingsSection;
@@ -33,8 +33,8 @@ const MENU_ITEMS: {
     valueVariant: "success",
   },
   {
-    id: "diagnostics",
-    label: "Diagnostics/About",
+    id: "about",
+    label: "About / Diagnostics",
     value: "v2.1.0",
     valueVariant: "muted",
   },
@@ -68,8 +68,8 @@ export function SettingsHubPage() {
       case "provider":
         navigate({ to: "/settings/providers" });
         break;
-      case "diagnostics":
-        navigate({ to: "/settings/diagnostics" });
+      case "about":
+        navigate({ to: "/settings/about" });
         break;
     }
   };
