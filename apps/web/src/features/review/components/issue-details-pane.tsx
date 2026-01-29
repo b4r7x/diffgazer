@@ -8,9 +8,13 @@ import {
   DiffView,
   FixPlanChecklist,
   FocusablePane,
+  SectionHeader,
+  EmptyState,
+  IssueHeader,
+  SecurityBadge,
   type CodeLine
 } from "@/components/ui";
-import { SEVERITY_CONFIG, type SeverityLevel } from "@/features/review/constants/severity";
+import type { SeverityLevel } from "@/features/review/constants/severity";
 import type { TriageIssue } from "@repo/schemas";
 
 export type TabId = "details" | "explain" | "trace" | "patch";
@@ -49,7 +53,12 @@ export function IssueDetailsPane({
         <div className="flex-1 overflow-y-auto scrollbar-hide pr-2">
           {issue ? (
             <>
-              <IssueHeader issue={issue} />
+              <IssueHeader
+                title={issue.title}
+                severity={issue.severity as SeverityLevel}
+                file={issue.file}
+                line={issue.line_start ?? 0}
+              />
 
               <TabsContent value="details" className="mt-0">
                 <DetailsTabContent issue={issue} completedSteps={completedSteps} onToggleStep={onToggleStep} />
@@ -73,26 +82,11 @@ export function IssueDetailsPane({
               )}
             </>
           ) : (
-            <div className="text-gray-500 text-center py-8">Select an issue to view details</div>
+            <EmptyState message="Select an issue to view details" />
           )}
         </div>
       </Tabs>
     </FocusablePane>
-  );
-}
-
-function IssueHeader({ issue }: { issue: TriageIssue }) {
-  const severityColor = SEVERITY_CONFIG[issue.severity as SeverityLevel]?.color ?? "text-gray-300";
-
-  return (
-    <div className="mb-6">
-      <h1 className={cn("text-xl font-bold mb-1", severityColor)}>
-        {issue.title}
-      </h1>
-      <div className="text-xs text-gray-500">
-        Location: <span className="text-tui-fg">src/{issue.file}:{issue.line_start}</span>
-      </div>
-    </div>
   );
 }
 
@@ -116,7 +110,7 @@ function DetailsTabContent({
   return (
     <>
       <div className="mb-6">
-        <h3 className="text-tui-blue font-bold mb-2 uppercase text-xs tracking-wider">SYMPTOM</h3>
+        <SectionHeader>SYMPTOM</SectionHeader>
         <p className="text-sm leading-relaxed text-gray-300">{issue.symptom}</p>
         {evidenceLines.length > 0 && (
           <div className="mt-2">
@@ -126,19 +120,19 @@ function DetailsTabContent({
       </div>
 
       <div className="mb-6">
-        <h3 className="text-tui-blue font-bold mb-2 uppercase text-xs tracking-wider">WHY IT MATTERS</h3>
+        <SectionHeader>WHY IT MATTERS</SectionHeader>
         <p className="text-sm leading-relaxed text-gray-300">{issue.whyItMatters}</p>
         {issue.category === "security" && (
           <div className="mt-2 flex gap-2">
-            <span className="border border-tui-red text-tui-red text-[10px] px-1">CWE-89</span>
-            <span className="border border-tui-red text-tui-red text-[10px] px-1">OWASP A03</span>
+            <SecurityBadge type="CWE" code="89" />
+            <SecurityBadge type="OWASP" code="A03" />
           </div>
         )}
       </div>
 
       {issue.fixPlan && issue.fixPlan.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-tui-blue font-bold mb-2 uppercase text-xs tracking-wider">FIX PLAN</h3>
+          <SectionHeader>FIX PLAN</SectionHeader>
           <FixPlanChecklist
             steps={issue.fixPlan}
             completedSteps={completedSteps}
@@ -152,7 +146,7 @@ function DetailsTabContent({
 
 function TraceTabContent({ issue }: { issue: TriageIssue }) {
   if (!issue.trace || issue.trace.length === 0) {
-    return <div className="text-sm text-gray-500 italic">No trace data available for this issue.</div>;
+    return <EmptyState message="No trace data available for this issue." variant="inline" />;
   }
 
   return (
