@@ -3,12 +3,13 @@ import { cn } from '../../lib/utils';
 export interface PanelProps {
   children: React.ReactNode;
   className?: string;
+  borderless?: boolean;
 }
 
 export interface PanelHeaderProps {
   children: React.ReactNode;
   className?: string;
-  variant?: 'default' | 'subtle' | 'floating' | 'badge';
+  variant?: 'default' | 'subtle' | 'floating' | 'badge' | 'section' | 'section-bordered';
   value?: React.ReactNode;
   valueVariant?: 'default' | 'success' | 'success-badge' | 'muted';
 }
@@ -34,6 +35,8 @@ const headerVariants = {
   subtle: 'bg-tui-selection/30 text-gray-500 text-xs p-2 border-b border-tui-border uppercase tracking-widest text-center',
   floating: 'absolute -top-3 left-4 bg-tui-bg px-2 text-xs text-tui-blue font-bold',
   badge: 'absolute -top-3 left-4 bg-tui-bg px-2 py-0.5 text-xs font-bold',
+  'section': 'text-gray-500 font-bold uppercase text-xs tracking-wider mb-4',
+  'section-bordered': 'text-gray-500 font-bold uppercase text-xs tracking-wider border-b border-tui-border pb-2 mb-2',
 };
 
 function getValueClasses(valueVariant: PanelHeaderProps['valueVariant'] = 'default') {
@@ -78,9 +81,9 @@ function PanelDivider({ className }: PanelDividerProps) {
   );
 }
 
-function PanelRoot({ children, className }: PanelProps) {
+function PanelRoot({ children, className, borderless }: PanelProps) {
   return (
-    <div className={cn('relative border border-tui-border', className)}>
+    <div className={cn('relative', !borderless && 'border border-tui-border', className)}>
       {children}
     </div>
   );

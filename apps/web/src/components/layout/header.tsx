@@ -30,7 +30,7 @@ export function Header({
           className={cn(
             "text-tui-blue font-bold whitespace-pre leading-none select-none",
             "text-[8px] md:text-[10px] lg:text-xs",
-            "[zoom:0.8] md:[zoom:1] lg:[zoom:1.5]",
+            "[zoom:0.8] md:[zoom:1] lg:[zoom:1.2]",
           )}
         />
 
