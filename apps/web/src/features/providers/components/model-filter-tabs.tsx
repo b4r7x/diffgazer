@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import type { TierFilter } from "./use-model-filter";
 
@@ -21,25 +22,24 @@ export function ModelFilterTabs({
   return (
     <div className="px-4 pb-2 flex gap-1.5">
       {FILTERS.map((filter, idx) => (
-        <button
+        <Button
           key={filter}
-          type="button"
+          variant="toggle"
+          size="sm"
+          data-active={value === filter}
           onClick={() => {
             onTabClick(idx);
             onValueChange(filter);
           }}
           className={cn(
-            "px-2 py-0.5 text-[10px] cursor-pointer transition-colors uppercase",
-            value === filter
-              ? "bg-tui-blue text-black font-bold"
-              : "border border-tui-border hover:border-tui-fg",
+            "uppercase text-[10px] h-auto px-2 py-0.5",
             isFocused &&
               focusedIndex === idx &&
               "ring-2 ring-tui-blue ring-offset-1 ring-offset-tui-bg"
           )}
         >
           {filter}
-        </button>
+        </Button>
       ))}
     </div>
   );

@@ -114,6 +114,7 @@ export function ProviderList({
           onSelect={onSelect}
           onActivate={onActivate}
           keyboardEnabled={keyboardEnabled}
+          isFocused={keyboardEnabled}
           onBoundaryReached={onBoundaryReached}
         >
           {providers.map((provider) => {

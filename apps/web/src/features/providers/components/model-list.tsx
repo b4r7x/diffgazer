@@ -5,6 +5,7 @@ import { ModelListItem } from "./model-list-item";
 interface ModelListProps {
   models: ModelInfo[];
   selectedIndex: number;
+  currentModelId?: string;
   isFocused: boolean;
   onSelect: (index: number) => void;
   onConfirm: () => void;
@@ -12,7 +13,7 @@ interface ModelListProps {
 
 export const ModelList = forwardRef<HTMLDivElement, ModelListProps>(
   function ModelList(
-    { models, selectedIndex, isFocused, onSelect, onConfirm },
+    { models, selectedIndex, currentModelId, isFocused, onSelect, onConfirm },
     ref
   ) {
     if (models.length === 0) {
@@ -42,6 +43,7 @@ export const ModelList = forwardRef<HTMLDivElement, ModelListProps>(
             key={model.id}
             model={model}
             isSelected={index === selectedIndex}
+            isChecked={model.id === currentModelId}
             isFocused={isFocused}
             onClick={() => onSelect(index)}
             onDoubleClick={onConfirm}

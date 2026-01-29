@@ -13,6 +13,7 @@ interface NavigationListContextValue {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onActivate?: (id: string) => void;
+  isFocused: boolean;
 }
 
 interface NavigationListItemProps {
@@ -30,6 +31,7 @@ interface NavigationListRootProps {
   onSelect: (id: string) => void;
   onActivate?: (id: string) => void;
   keyboardEnabled?: boolean;
+  isFocused?: boolean;
   className?: string;
   children: ReactNode;
   onBoundaryReached?: (direction: "up" | "down") => void;
@@ -54,8 +56,9 @@ function NavigationListItem({
   children,
   className,
 }: NavigationListItemProps) {
-  const { selectedId, onSelect, onActivate } = useNavigationListContext();
+  const { selectedId, onSelect, onActivate, isFocused } = useNavigationListContext();
   const isSelected = selectedId === id;
+  const showSelection = isSelected && isFocused;
 
   const handleClick = () => {
     if (!disabled) {
@@ -74,8 +77,8 @@ function NavigationListItem({
       onClick={handleClick}
       className={cn(
         'flex cursor-pointer group',
-        isSelected && 'bg-tui-fg text-black',
-        !isSelected && 'hover:bg-tui-selection border-b border-tui-border/50',
+        showSelection && 'bg-tui-fg text-black',
+        !showSelection && 'hover:bg-tui-selection border-b border-tui-border/50',
         disabled && 'opacity-50 cursor-not-allowed',
         className
       )}
@@ -83,17 +86,17 @@ function NavigationListItem({
       <div
         className={cn(
           'w-1 shrink-0',
-          isSelected ? 'bg-tui-blue' : 'bg-transparent group-hover:bg-gray-700'
+          showSelection ? 'bg-tui-blue' : 'bg-transparent group-hover:bg-gray-700'
         )}
       />
       <div className="flex-1 p-3">
         <div className="flex justify-between items-start mb-1">
-          <span className={cn('font-bold flex items-center', isSelected && 'text-black')}>
-            <span className={cn('mr-2', !isSelected && 'opacity-0')}>▌</span>
+          <span className={cn('font-bold flex items-center', showSelection && 'text-black')}>
+            <span className={cn('mr-2', !showSelection && 'opacity-0')}>▌</span>
             {children}
           </span>
           {statusIndicator && (
-            <span className={cn('text-[10px] font-bold', isSelected ? 'text-black' : 'text-tui-yellow')}>
+            <span className={cn('text-[10px] font-bold', showSelection ? 'text-black' : 'text-tui-yellow')}>
               {statusIndicator}
             </span>
           )}
@@ -102,7 +105,7 @@ function NavigationListItem({
           <div className="flex gap-2 items-center">
             {badge}
             {subtitle && (
-              <span className={cn('text-[9px]', isSelected ? 'text-black/70' : 'text-gray-500')}>
+              <span className={cn('text-[9px]', showSelection ? 'text-black/70' : 'text-gray-500')}>
                 {subtitle}
               </span>
             )}
@@ -118,6 +121,7 @@ function NavigationListRoot({
   onSelect,
   onActivate,
   keyboardEnabled = true,
+  isFocused = true,
   className,
   children,
   onBoundaryReached,
@@ -135,7 +139,7 @@ function NavigationListRoot({
     onBoundaryReached,
   });
 
-  const contextValue = { selectedId, onSelect, onActivate };
+  const contextValue = { selectedId, onSelect, onActivate, isFocused };
 
   return (
     <NavigationListContext.Provider value={contextValue}>

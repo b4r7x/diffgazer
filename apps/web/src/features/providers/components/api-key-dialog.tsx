@@ -9,10 +9,12 @@ import {
   DialogBody,
   Badge,
 } from "@/components/ui";
-import { useFooterNavigation } from "@/hooks/keyboard";
+import { useKey } from "@/hooks/keyboard";
 import { useApiKeyForm } from "./use-api-key-form";
 import { ApiKeyMethodSelector } from "./api-key-method-selector";
 import { ApiKeyFooter } from "./api-key-footer";
+
+export type FocusElement = "paste" | "input" | "env" | "cancel" | "confirm" | "remove";
 
 export interface ApiKeyDialogProps {
   open: boolean;
@@ -34,52 +36,82 @@ export function ApiKeyDialog({
   onRemoveKey,
 }: ApiKeyDialogProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const hasRemoveKey = Boolean(onRemoveKey);
-  const buttonCount = hasExistingKey && hasRemoveKey ? 3 : 2;
-
-  const [pendingAction, setPendingAction] = useState<number | null>(null);
-
-  const footer = useFooterNavigation({
-    enabled: open,
-    buttonCount,
-    onAction: setPendingAction,
-  });
+  const [focused, setFocused] = useState<FocusElement>("paste");
 
   const form = useApiKeyForm({
     open,
     envVarName,
-    hasExistingKey,
-    hasRemoveKey,
     onSubmit,
     onRemoveKey,
     onOpenChange,
-    onResetFooter: footer.reset,
   });
 
-  // Execute pending action from keyboard navigation
   useEffect(() => {
-    if (pendingAction === null || form.isSubmitting) return;
-    const action = pendingAction;
-    setPendingAction(null);
-    if (action === 0) {
+    if (open) setFocused("paste");
+  }, [open]);
+
+  const footerElements: FocusElement[] = onRemoveKey
+    ? ["cancel", "confirm", "remove"]
+    : ["cancel", "confirm"];
+  const allElements: FocusElement[] = ["paste", "input", "env", ...footerElements];
+
+  useKey(
+    "ArrowDown",
+    () => {
+      const idx = allElements.indexOf(focused);
+      setFocused(allElements[(idx + 1) % allElements.length]);
+    },
+    { enabled: open }
+  );
+
+  useKey(
+    "ArrowUp",
+    () => {
+      const idx = allElements.indexOf(focused);
+      setFocused(allElements[(idx - 1 + allElements.length) % allElements.length]);
+    },
+    { enabled: open }
+  );
+
+  useKey(
+    "ArrowRight",
+    () => {
+      if (!footerElements.includes(focused)) return;
+      const idx = footerElements.indexOf(focused);
+      setFocused(footerElements[(idx + 1) % footerElements.length]);
+    },
+    { enabled: open }
+  );
+
+  useKey(
+    "ArrowLeft",
+    () => {
+      if (!footerElements.includes(focused)) return;
+      const idx = footerElements.indexOf(focused);
+      setFocused(footerElements[(idx - 1 + footerElements.length) % footerElements.length]);
+    },
+    { enabled: open }
+  );
+
+  const handleSelect = () => {
+    if (focused === "paste") {
+      form.setMethod("paste");
+    } else if (focused === "input") {
+      form.setMethod("paste");
+      inputRef.current?.focus();
+    } else if (focused === "env") {
+      form.setMethod("env");
+    } else if (focused === "cancel") {
       onOpenChange(false);
-    } else if (action === 1) {
+    } else if (focused === "confirm" && form.canSubmit) {
       form.handleSubmit();
-    } else if (action === 2 && hasRemoveKey) {
+    } else if (focused === "remove" && onRemoveKey) {
       form.handleRemove();
     }
-  }, [pendingAction, form.isSubmitting, onOpenChange, hasRemoveKey]);
-
-  const handleBoundaryReached = (direction: "up" | "down") => {
-    if (direction === "down") {
-      footer.enterFooter(hasExistingKey && hasRemoveKey ? 1 : 0);
-    }
   };
 
-  const handleButtonClick = (index: number, action: () => void) => {
-    footer.enterFooter(index);
-    action();
-  };
+  useKey("Enter", handleSelect, { enabled: open && focused !== "input" });
+  useKey(" ", handleSelect, { enabled: open && focused !== "input" });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -107,7 +139,8 @@ export function ApiKeyDialog({
             envVarName={envVarName}
             providerName={providerName}
             inputRef={inputRef}
-            onBoundaryReached={handleBoundaryReached}
+            focused={focused}
+            onFocus={setFocused}
             onKeySubmit={form.handleSubmit}
           />
 
@@ -124,9 +157,8 @@ export function ApiKeyDialog({
           canSubmit={form.canSubmit}
           isSubmitting={form.isSubmitting}
           hasExistingKey={hasExistingKey}
-          focusedIndex={footer.focusedIndex}
-          inFooter={footer.inFooter}
-          onButtonClick={handleButtonClick}
+          focused={focused}
+          onFocus={setFocused}
         />
       </DialogContent>
     </Dialog>
