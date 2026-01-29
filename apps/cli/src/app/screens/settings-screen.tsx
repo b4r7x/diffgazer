@@ -4,14 +4,12 @@ import { Box, Text, useInput } from "ink";
 import Spinner from "ink-spinner";
 import type { AIProvider, GLMEndpoint, OpenRouterModel } from "@repo/schemas/config";
 import { AVAILABLE_PROVIDERS } from "@repo/schemas/config";
-import type { Theme, ControlsMode, TrustCapabilities, TrustConfig, SettingsConfig } from "@repo/schemas/settings";
+import type { Theme, TrustCapabilities, TrustConfig, SettingsConfig } from "@repo/schemas/settings";
 import { getEnvVarForProvider } from "@repo/core/ai";
 import { Card, SelectList, type SelectOption } from "../../components/ui/index.js";
 import { TrustStep } from "../../components/wizard/trust-step.js";
 import { ThemeStep } from "../../components/wizard/theme-step.js";
 import { ProviderStep } from "../../components/wizard/provider-step.js";
-import { CredentialsStep } from "../../components/wizard/credentials-step.js";
-import { ControlsStep } from "../../components/wizard/controls-step.js";
 import { DiagnosticsStep } from "../../components/wizard/diagnostics-step.js";
 import { ModelStep } from "../../components/wizard/model-step.js";
 import { GLMEndpointStep } from "../../components/wizard/glm-endpoint-step.js";
@@ -23,8 +21,6 @@ type SettingsSection =
   | "provider"
   | "glm-endpoint"
   | "model"
-  | "credentials"
-  | "controls"
   | "diagnostics";
 
 interface ProviderConfig {
@@ -49,7 +45,6 @@ interface SettingsScreenProps {
   onDeleteProvider?: (provider: AIProvider) => void;
   onBack: () => void;
   onSaveTheme?: (theme: Theme) => void;
-  onSaveControls?: (controlsMode: ControlsMode) => void;
   onSaveTrust?: (capabilities: TrustCapabilities) => void;
   onSelectProvider?: (provider: AIProvider) => void;
   onSaveCredentials?: (apiKey: string, provider: AIProvider, model?: string, glmEndpoint?: GLMEndpoint) => void;
@@ -74,16 +69,6 @@ const SECTION_OPTIONS: SelectOption<SectionId>[] = [
     id: "provider",
     label: "Provider",
     description: "Select AI provider for code review",
-  },
-  {
-    id: "credentials",
-    label: "Credentials",
-    description: "Manage API keys and authentication",
-  },
-  {
-    id: "controls",
-    label: "Controls",
-    description: "Configure navigation and input mode",
   },
   {
     id: "diagnostics",
@@ -277,7 +262,6 @@ export function SettingsScreen({
   onDeleteProvider,
   onBack,
   onSaveTheme,
-  onSaveControls,
   onSaveTrust,
   onSelectProvider,
   onSaveCredentials,
@@ -323,11 +307,6 @@ export function SettingsScreen({
     goToList();
   };
 
-  const handleControlsSubmit = (controlsMode: ControlsMode) => {
-    onSaveControls?.(controlsMode);
-    goToList();
-  };
-
   const handleTrustComplete = (trust: TrustConfig) => {
     onSaveTrust?.(trust.capabilities);
     goToList();
@@ -355,21 +334,13 @@ export function SettingsScreen({
 
   const handleModelSelect = (selectedModelValue: string) => {
     setSelectedModel(selectedModelValue);
-    setSection("credentials");
-  };
-
-  const handleCredentialsSubmit = (apiKey: string) => {
+    // Save provider and model selection directly (credentials handled via env vars)
     onSaveCredentials?.(
-      apiKey,
+      "", // No API key needed - use env var
       selectedProvider,
-      selectedModel,
+      selectedModelValue,
       selectedProvider === "glm" ? selectedEndpoint : undefined
     );
-    goToList();
-  };
-
-  const handleRemoveCredentials = () => {
-    onDeleteProvider?.(selectedProvider);
     goToList();
   };
 
@@ -483,44 +454,6 @@ export function SettingsScreen({
         onBack={() => selectedProvider === "glm" ? setSection("glm-endpoint") : setSection("provider")}
         isActive
         fetchOpenRouterModels={selectedProvider === "openrouter" ? fetchOpenRouterModels : undefined}
-      />
-    );
-  }
-
-  if (section === "credentials") {
-    const currentProviderInfo = AVAILABLE_PROVIDERS.find((p) => p.id === selectedProvider);
-    const { name: envVarName, value: envVarValue } = getEnvVarForProvider(selectedProvider);
-    const providerConfig = configuredProviders.find((p) => p.provider === selectedProvider);
-    const hasKeyringKey = providerConfig?.hasApiKey ?? false;
-
-    return (
-      <CredentialsStep
-        mode="settings"
-        currentStep={selectedProvider === "glm" ? 3 : 2}
-        totalSteps={selectedProvider === "glm" ? 3 : 2}
-        provider={selectedProvider}
-        providerName={currentProviderInfo?.name ?? selectedProvider}
-        envVarName={envVarName}
-        envVarValue={envVarValue}
-        hasKeyringKey={hasKeyringKey}
-        onSubmit={handleCredentialsSubmit}
-        onRemove={onDeleteProvider ? handleRemoveCredentials : undefined}
-        onBack={() => setSection("model")}
-        isActive
-      />
-    );
-  }
-
-  if (section === "controls") {
-    return (
-      <ControlsStep
-        mode="settings"
-        currentStep={1}
-        totalSteps={1}
-        initialControlsMode={settings?.controlsMode ?? "menu"}
-        onSubmit={handleControlsSubmit}
-        onBack={goToList}
-        isActive
       />
     );
   }

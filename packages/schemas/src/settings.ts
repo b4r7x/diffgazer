@@ -26,13 +26,8 @@ export const THEMES = ["auto", "dark", "light", "terminal"] as const;
 export const ThemeSchema = z.enum(THEMES);
 export type Theme = z.infer<typeof ThemeSchema>;
 
-export const CONTROLS_MODES = ["menu", "keys"] as const;
-export const ControlsModeSchema = z.enum(CONTROLS_MODES);
-export type ControlsMode = z.infer<typeof ControlsModeSchema>;
-
 export const SettingsConfigSchema = z.object({
   theme: ThemeSchema,
-  controlsMode: ControlsModeSchema,
   defaultLenses: z.array(LensIdSchema),
   defaultProfile: ProfileIdSchema.nullable(),
   severityThreshold: TriageSeveritySchema,

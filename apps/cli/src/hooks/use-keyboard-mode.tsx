@@ -6,20 +6,21 @@ import React, {
   type ReactNode,
   type ReactElement,
 } from "react";
-import type { ControlsMode } from "@repo/schemas/settings";
+
+type KeyboardMode = "menu" | "keys";
 
 export interface KeyboardModeContextValue {
-  mode: ControlsMode;
+  mode: KeyboardMode;
   isKeyMode: boolean;
   isMenuMode: boolean;
   toggleMode: () => void;
-  setMode: (mode: ControlsMode) => void;
+  setMode: (mode: KeyboardMode) => void;
 }
 
 const KeyboardModeContext = createContext<KeyboardModeContextValue | null>(null);
 
 interface KeyModeProviderProps {
-  initialMode?: ControlsMode;
+  initialMode?: KeyboardMode;
   children: ReactNode;
 }
 
@@ -27,13 +28,13 @@ export function KeyModeProvider({
   initialMode = "menu",
   children,
 }: KeyModeProviderProps): ReactElement {
-  const [mode, setModeState] = useState<ControlsMode>(initialMode);
+  const [mode, setModeState] = useState<KeyboardMode>(initialMode);
 
   const toggleMode = useCallback(() => {
-    setModeState((current) => (current === "menu" ? "keys" : "menu"));
+    setModeState((current: KeyboardMode) => (current === "menu" ? "keys" : "menu"));
   }, []);
 
-  const setMode = useCallback((newMode: ControlsMode) => {
+  const setMode = useCallback((newMode: KeyboardMode) => {
     setModeState(newMode);
   }, []);
 

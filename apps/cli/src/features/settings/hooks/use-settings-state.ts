@@ -7,7 +7,7 @@ import type {
   CurrentConfigResponse,
   ProvidersStatusResponse,
 } from "@repo/schemas/config";
-import type { SettingsConfig, TrustConfig, Theme, ControlsMode } from "@repo/schemas/settings";
+import type { SettingsConfig, TrustConfig, Theme } from "@repo/schemas/settings";
 import { settingsApi } from "../api/settings-api.js";
 
 export interface SettingsState {
@@ -26,7 +26,6 @@ export interface UseSettingsStateResult extends SettingsState {
   activeProvider: string | undefined;
   loadAll: () => Promise<void>;
   saveTheme: (theme: Theme) => Promise<void>;
-  saveControlsMode: (mode: ControlsMode) => Promise<void>;
   saveTrust: (config: TrustConfig) => Promise<void>;
   saveCredentials: (provider: AIProvider, apiKey: string, model?: string) => Promise<void>;
   deleteConfig: () => Promise<void>;
@@ -34,7 +33,6 @@ export interface UseSettingsStateResult extends SettingsState {
 
 const DEFAULT_SETTINGS: SettingsConfig = {
   theme: "auto",
-  controlsMode: "menu",
   defaultLenses: ["correctness"],
   defaultProfile: null,
   severityThreshold: "medium",
@@ -109,19 +107,6 @@ export function useSettingsState(projectId: string, repoRoot: string): UseSettin
     [saveOp, settings]
   );
 
-  const saveControlsMode = useCallback(
-    async (mode: ControlsMode) => {
-      if (!settings) return;
-
-      await saveOp.execute(async () => {
-        const updatedSettings = { ...settings, controlsMode: mode };
-        await settingsApi.saveSettings(updatedSettings);
-        setSettings(updatedSettings);
-      });
-    },
-    [saveOp, settings]
-  );
-
   const saveTrust = useCallback(
     async (trustConfig: TrustConfig) => {
       await saveOp.execute(async () => {
@@ -177,7 +162,6 @@ export function useSettingsState(projectId: string, repoRoot: string): UseSettin
     activeProvider,
     loadAll,
     saveTheme,
-    saveControlsMode,
     saveTrust,
     saveCredentials,
     deleteConfig,

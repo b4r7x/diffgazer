@@ -32,7 +32,6 @@ export interface UseSettingsResult {
 
 const DEFAULT_SETTINGS: SettingsConfig = {
   theme: "auto",
-  controlsMode: "menu",
   defaultLenses: ["correctness"],
   defaultProfile: null,
   severityThreshold: "medium",
