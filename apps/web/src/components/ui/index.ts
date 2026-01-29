@@ -35,3 +35,7 @@ export { IssueListItem, type IssueListItemProps } from './issue-list-item';
 export { SeverityFilterButton, type SeverityFilterButtonProps } from './severity-filter-button';
 export { SeverityFilterGroup, type SeverityFilterGroupProps, type SeverityFilter } from './severity-filter-group';
 export { FocusablePane, type FocusablePaneProps } from './focusable-pane';
+export { SectionHeader, type SectionHeaderProps } from './section-header';
+export { EmptyState, type EmptyStateProps } from './empty-state';
+export { IssueHeader, type IssueHeaderProps } from './issue-header';
+export { SecurityBadge, SecurityBadgeGroup, type SecurityBadgeProps, type SecurityBadgeGroupProps } from './security-badge';

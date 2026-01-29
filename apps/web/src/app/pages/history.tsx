@@ -1,180 +1,340 @@
-import type { ReactNode } from "react";
 import { useState, useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Table, type TableColumn } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
+import { Panel, PanelHeader, PanelContent, FocusablePane, Tabs, TabsList, TabsTrigger, type SeverityLevel } from "@/components/ui";
 import { useScope, useKey } from "@/hooks/keyboard";
 import { useRouteState } from "@/hooks/use-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
+import { RunAccordionItem, TimelineList, HistoryInsightsPane, type TimelineItem } from "@/features/history/components";
+import type { TriageIssue, TriageSeverity } from "@repo/schemas";
 
 type TabId = "runs" | "sessions";
+type FocusZone = "timeline" | "runs" | "insights";
 
-interface HistoryItem {
+interface HistoryRun {
   id: string;
   displayId: string;
   date: string;
-  scope: string;
+  branch: string;
   provider: string;
-  issueCount: number;
+  timestamp: string;
+  summary: React.ReactNode;
+  issues: TriageIssue[];
   passed: boolean;
-  hasCritical?: boolean;
 }
 
-const MOCK_HISTORY: HistoryItem[] = [
+// Mock data
+const MOCK_ISSUES: TriageIssue[] = [
+  {
+    id: "1",
+    severity: "blocker",
+    category: "security",
+    title: "Missing CSRF token validation in login handler",
+    file: "auth/login.ts",
+    line_start: 42,
+    line_end: 42,
+    rationale: "No CSRF protection",
+    recommendation: "Add CSRF token validation",
+    suggested_patch: null,
+    confidence: 0.95,
+    evidence: [],
+  },
+  {
+    id: "2",
+    severity: "blocker",
+    category: "security",
+    title: "Plaintext password storage detected in memory",
+    file: "auth/session.ts",
+    line_start: 89,
+    line_end: 92,
+    rationale: "Passwords stored in plaintext",
+    recommendation: "Hash passwords before storage",
+    suggested_patch: null,
+    confidence: 0.92,
+    evidence: [],
+  },
+  {
+    id: "3",
+    severity: "high",
+    category: "performance",
+    title: "Inefficient SQL query inside loop",
+    file: "services/data.ts",
+    line_start: 115,
+    line_end: 120,
+    rationale: "N+1 query pattern",
+    recommendation: "Batch queries",
+    suggested_patch: null,
+    confidence: 0.88,
+    evidence: [],
+  },
+];
+
+const MOCK_RUNS: HistoryRun[] = [
   {
     id: "8821",
     displayId: "#8821",
-    date: "2023-10-24",
-    scope: "Staged",
+    date: "today",
+    branch: "Staged",
     provider: "GPT-4o",
-    issueCount: 7,
+    timestamp: "10:42 AM",
+    summary: <>Found <span className="text-tui-red font-bold">2 critical</span> issues in auth module flow.</>,
+    issues: MOCK_ISSUES,
     passed: false,
-    hasCritical: true,
   },
   {
     id: "8820",
     displayId: "#8820",
-    date: "2023-10-23",
-    scope: "main",
+    date: "today",
+    branch: "Main",
     provider: "GPT-3.5",
-    issueCount: 0,
+    timestamp: "09:15 AM",
+    summary: "Regression test passed. No anomalies detected.",
+    issues: [],
     passed: true,
   },
   {
     id: "8819",
     displayId: "#8819",
-    date: "2023-10-23",
-    scope: "feat/auth",
+    date: "today",
+    branch: "feat/auth",
     provider: "GPT-4o",
-    issueCount: 5,
+    timestamp: "08:30 AM",
+    summary: <><span className="text-tui-yellow">1 High</span> severity issue in database migration.</>,
+    issues: [MOCK_ISSUES[2]],
     passed: false,
   },
   {
     id: "8818",
     displayId: "#8818",
-    date: "2023-10-22",
-    scope: "hotfix/db",
-    provider: "GPT-4o",
-    issueCount: 1,
+    date: "today",
+    branch: "hotfix/db",
+    provider: "Claude-3",
+    timestamp: "08:15 AM",
+    summary: "Schema validation failed on user table.",
+    issues: [],
     passed: false,
-    hasCritical: true,
   },
   {
     id: "8817",
     displayId: "#8817",
-    date: "2023-10-22",
-    scope: "Unstaged",
+    date: "yesterday",
+    branch: "Unstaged",
     provider: "GPT-3.5",
-    issueCount: 0,
-    passed: true,
-  },
-  {
-    id: "8816",
-    displayId: "#8816",
-    date: "2023-10-21",
-    scope: "dev",
-    provider: "Claude-3",
-    issueCount: 12,
-    passed: false,
-  },
-  {
-    id: "8815",
-    displayId: "#8815",
-    date: "2023-10-20",
-    scope: "main",
-    provider: "GPT-4o",
-    issueCount: 0,
+    timestamp: "Yesterday",
+    summary: "Passed with no issues.",
+    issues: [],
     passed: true,
   },
 ];
 
-const COLUMNS: TableColumn[] = [
-  { key: "id", header: "ID", width: "6rem" },
-  { key: "date", header: "Date", width: "7rem" },
-  { key: "scope", header: "Scope", width: "10rem" },
-  { key: "provider", header: "Provider", width: "8rem" },
-  { key: "stats", header: "Stats" },
+const TIMELINE_ITEMS: TimelineItem[] = [
+  { id: "today", label: "Today", count: 4 },
+  { id: "yesterday", label: "Yesterday", count: 8 },
+  { id: "jan29", label: "Jan 29", count: 12 },
+  { id: "jan28", label: "Jan 28", count: 5 },
 ];
 
-function StatsCell({ item }: { item: HistoryItem }) {
-  if (item.passed) {
-    return <span className="tui-text-green">Passed</span>;
-  }
-  return (
-    <span className={item.hasCritical ? "tui-text-red" : "tui-text-yellow"}>
-      {item.issueCount} Issue{item.issueCount !== 1 ? "s" : ""}
-    </span>
-  );
+function getSeverityCounts(issues: TriageIssue[]): Record<SeverityLevel, number> {
+  return {
+    blocker: issues.filter((i) => i.severity === "blocker").length,
+    high: issues.filter((i) => i.severity === "high").length,
+    medium: issues.filter((i) => i.severity === "medium").length,
+    low: issues.filter((i) => i.severity === "low").length,
+  };
 }
-
-const FOOTER_SHORTCUTS = [
-  { key: "Tab", label: "Switch" },
-  { key: "Enter", label: "Open" },
-  { key: "d", label: "Delete" },
-  { key: "Esc", label: "Back" },
-];
 
 export function HistoryPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>("runs");
-  const [selectedRowIndex, setSelectedRowIndex] = useRouteState('rowIndex', 0);
+  const [focusZone, setFocusZone] = useState<FocusZone>("runs");
+  const [selectedDateId, setSelectedDateId] = useRouteState("date", "today");
+  const [selectedRunId, setSelectedRunId] = useRouteState("run", MOCK_RUNS[0]?.id ?? null);
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
 
-  const footerShortcuts = useMemo(() => FOOTER_SHORTCUTS, []);
-  usePageFooter({ shortcuts: footerShortcuts });
+  // Filter runs by selected date
+  const filteredRuns = useMemo(
+    () => MOCK_RUNS.filter((run) => run.date === selectedDateId),
+    [selectedDateId]
+  );
 
-  const handleRowClick = (_row: Record<string, ReactNode>, index: number) => {
-    const rawItem = MOCK_HISTORY[index];
-    if (rawItem) {
-      navigate({ to: "/review/$reviewId", params: { reviewId: rawItem.id } });
+  // Get selected run data for insights
+  const selectedRun = useMemo(
+    () => MOCK_RUNS.find((run) => run.id === selectedRunId) ?? null,
+    [selectedRunId]
+  );
+
+  const severityCounts = useMemo(
+    () => (selectedRun ? getSeverityCounts(selectedRun.issues) : { blocker: 0, high: 0, medium: 0, low: 0 }),
+    [selectedRun]
+  );
+
+  const topLenses = ["Security", "Auth", "OWASP"];
+  const topIssues = selectedRun?.issues.slice(0, 3) ?? [];
+
+  // Keyboard scope
+  useScope("history");
+
+  // Tab switching
+  useKey("Tab", () => {
+    setFocusZone((prev) => {
+      if (prev === "timeline") return "runs";
+      if (prev === "runs") return "insights";
+      return "timeline";
+    });
+  });
+
+  // Arrow navigation between zones
+  useKey("ArrowLeft", () => {
+    if (focusZone === "runs") setFocusZone("timeline");
+    else if (focusZone === "insights") setFocusZone("runs");
+  });
+
+  useKey("ArrowRight", () => {
+    if (focusZone === "timeline") setFocusZone("runs");
+    else if (focusZone === "runs") setFocusZone("insights");
+  });
+
+  // Expand/collapse with Enter
+  useKey("Enter", () => {
+    if (focusZone === "runs" && selectedRunId) {
+      setExpandedRunId((prev) => (prev === selectedRunId ? null : selectedRunId));
     }
+  }, { enabled: focusZone === "runs" });
+
+  // Open in full review
+  useKey("o", () => {
+    if (selectedRunId) {
+      navigate({ to: "/review/$reviewId", params: { reviewId: selectedRunId } });
+    }
+  }, { enabled: focusZone === "runs" });
+
+  // Escape handling
+  useKey("Escape", () => {
+    if (expandedRunId) {
+      setExpandedRunId(null);
+    } else {
+      navigate({ to: "/" });
+    }
+  });
+
+  // Page footer shortcuts
+  usePageFooter({
+    shortcuts: [
+      { key: "Tab", label: "Switch Focus" },
+      { key: "Enter", label: "Expand" },
+      { key: "o", label: "Open" },
+    ],
+    rightShortcuts: [
+      { key: "r", label: "Resume" },
+      { key: "e", label: "Export" },
+      { key: "Esc", label: "Back" },
+    ],
+  });
+
+  // Handle boundary navigation
+  const handleTimelineBoundary = (direction: "up" | "down") => {
+    if (direction === "down") setFocusZone("runs");
   };
 
-  useScope("history");
-  useKey("Tab", () =>
-    setActiveTab((prev) => (prev === "runs" ? "sessions" : "runs"))
-  );
-  useKey("Escape", () => navigate({ to: "/" }));
+  const handleRunsBoundary = (direction: "up" | "down") => {
+    if (direction === "up") setFocusZone("timeline");
+  };
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden px-4 pb-2">
-      <div className="flex items-center gap-6 border-b border-[--tui-border] mb-4 text-sm select-none">
-        <Button
-          variant="tab"
-          data-active={activeTab === "runs"}
-          onClick={() => setActiveTab("runs")}
-        >
-          [Review Runs]
-        </Button>
-        <Button
-          variant="tab"
-          data-active={activeTab === "sessions"}
-          onClick={() => setActiveTab("sessions")}
-        >
-          Sessions
-        </Button>
+    <div className="flex flex-col flex-1 overflow-hidden px-4 pb-0">
+      {/* Tabs */}
+      <div className="flex items-center gap-6 border-b border-tui-border mb-0 text-sm select-none shrink-0">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabId)}>
+          <TabsList className="border-b-0">
+            <TabsTrigger value="runs">[Runs]</TabsTrigger>
+            <TabsTrigger value="sessions">Sessions</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
-      <div className="flex-1 overflow-hidden">
-        {activeTab === "runs" ? (
-          <Table
-            columns={COLUMNS}
-            data={MOCK_HISTORY.map((item) => ({
-              id: <span className="tui-text-blue">{item.displayId}</span>,
-              date: <span className="tui-text-muted">{item.date}</span>,
-              scope: item.scope,
-              provider: <span className="tui-text-muted">{item.provider}</span>,
-              stats: <StatsCell item={item} />,
-            }))}
-            selectedRowIndex={selectedRowIndex}
-            onRowSelect={setSelectedRowIndex}
-            onRowClick={handleRowClick}
-            className="h-full"
-          />
-        ) : (
-          <div className="flex items-center justify-center h-full text-[--tui-fg] opacity-50">
-            No sessions available
+      {/* 3-column layout */}
+      <div className="flex flex-1 overflow-hidden border-x border-b border-tui-border">
+        {/* Timeline (left) */}
+        <FocusablePane
+          isFocused={focusZone === "timeline"}
+          className="w-48 border-r border-tui-border flex flex-col shrink-0"
+        >
+          <div className="p-3 text-xs text-gray-500 font-bold uppercase tracking-wider border-b border-tui-border">
+            Timeline
           </div>
-        )}
+          <div className="flex-1 overflow-y-auto p-2">
+            <TimelineList
+              items={TIMELINE_ITEMS}
+              selectedId={selectedDateId}
+              onSelect={setSelectedDateId}
+              keyboardEnabled={focusZone === "timeline"}
+              onBoundaryReached={handleTimelineBoundary}
+            />
+          </div>
+        </FocusablePane>
+
+        {/* Runs (middle) */}
+        <FocusablePane
+          isFocused={focusZone === "runs"}
+          className="flex-1 border-r border-tui-border flex flex-col overflow-hidden"
+        >
+          <div className="p-3 text-xs text-gray-500 font-bold uppercase tracking-wider border-b border-tui-border flex justify-between">
+            <span>Runs</span>
+            <span>Sort: Recent</span>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {activeTab === "runs" ? (
+              filteredRuns.map((run) => (
+                <RunAccordionItem
+                  key={run.id}
+                  id={run.id}
+                  displayId={run.displayId}
+                  branch={run.branch}
+                  provider={run.provider}
+                  timestamp={run.timestamp}
+                  summary={run.summary}
+                  issues={run.issues}
+                  isSelected={run.id === selectedRunId}
+                  isExpanded={run.id === expandedRunId}
+                  onSelect={() => setSelectedRunId(run.id)}
+                  onToggleExpand={() => setExpandedRunId((prev) => (prev === run.id ? null : run.id))}
+                  onIssueClick={(issueId) => {
+                    navigate({ to: "/review/$reviewId", params: { reviewId: run.id } });
+                  }}
+                />
+              ))
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                No sessions available
+              </div>
+            )}
+          </div>
+        </FocusablePane>
+
+        {/* Insights (right) */}
+        <FocusablePane
+          isFocused={focusZone === "insights"}
+          className="w-80 flex flex-col shrink-0"
+        >
+          <HistoryInsightsPane
+            runId={selectedRun?.displayId ?? null}
+            severityCounts={severityCounts}
+            topLenses={topLenses}
+            topIssues={topIssues}
+            duration="4m 12s"
+            onIssueClick={(issueId) => {
+              if (selectedRunId) {
+                navigate({ to: "/review/$reviewId", params: { reviewId: selectedRunId } });
+              }
+            }}
+          />
+        </FocusablePane>
+      </div>
+
+      {/* Search bar placeholder */}
+      <div className="flex items-center gap-2 p-3 bg-tui-bg border-x border-b border-tui-border text-sm font-mono shrink-0">
+        <span className="text-tui-blue font-bold">&gt;</span>
+        <span className="text-gray-500">Search runs by ID, provider or tag...</span>
+        <span className="w-2 h-4 bg-tui-blue opacity-50 animate-pulse" />
       </div>
     </div>
   );
