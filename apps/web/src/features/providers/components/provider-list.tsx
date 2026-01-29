@@ -4,7 +4,7 @@ import { NavigationList, NavigationListItem } from '@/components/ui';
 import { Badge } from '@/components/ui';
 import { Input } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import type { ProviderInfo, ProviderStatus } from '@repo/schemas';
+import type { ProviderInfo } from '@repo/schemas';
 import { PROVIDER_CAPABILITIES } from '@repo/schemas';
 
 type DisplayStatus = 'configured' | 'needs-key' | 'active';
@@ -17,14 +17,17 @@ export type ProviderFilter = 'all' | 'configured' | 'needs-key' | 'free' | 'paid
 
 interface ProviderListProps {
   providers: ProviderWithStatus[];
-  selectedIndex: number;
-  onSelect: (index: number) => void;
-  onActivate: (item: { id: string }) => void;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  onActivate?: (id: string) => void;
   filter: ProviderFilter;
   onFilterChange: (filter: ProviderFilter) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   keyboardEnabled?: boolean;
+  onBoundaryReached?: (direction: "up" | "down") => void;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
+  focusedFilterIndex?: number;
 }
 
 const FILTERS: { value: ProviderFilter; label: string }[] = [
@@ -34,6 +37,8 @@ const FILTERS: { value: ProviderFilter; label: string }[] = [
   { value: 'free', label: 'Free' },
   { value: 'paid', label: 'Paid' },
 ];
+
+export const FILTER_VALUES: ProviderFilter[] = FILTERS.map((f) => f.value);
 
 function getStatusIndicator(status: DisplayStatus): string | undefined {
   switch (status) {
@@ -48,7 +53,7 @@ function getStatusIndicator(status: DisplayStatus): string | undefined {
 
 export function ProviderList({
   providers,
-  selectedIndex,
+  selectedId,
   onSelect,
   onActivate,
   filter,
@@ -56,6 +61,9 @@ export function ProviderList({
   searchQuery,
   onSearchChange,
   keyboardEnabled = true,
+  onBoundaryReached,
+  inputRef,
+  focusedFilterIndex,
 }: ProviderListProps) {
   return (
     <div className="flex flex-col h-full">
@@ -71,6 +79,7 @@ export function ProviderList({
             /
           </span>
           <Input
+            ref={inputRef}
             size="sm"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
@@ -81,7 +90,7 @@ export function ProviderList({
       </div>
 
       <div className="px-3 py-2 border-b border-tui-border flex gap-1.5 flex-wrap">
-        {FILTERS.map((f) => (
+        {FILTERS.map((f, index) => (
           <button
             key={f.value}
             type="button"
@@ -90,7 +99,8 @@ export function ProviderList({
               'px-2 py-0.5 text-[10px] cursor-pointer transition-colors',
               filter === f.value
                 ? 'bg-tui-blue text-black font-bold'
-                : 'border border-tui-border hover:border-tui-fg'
+                : 'border border-tui-border hover:border-tui-fg',
+              focusedFilterIndex === index && 'ring-2 ring-tui-blue ring-offset-1 ring-offset-tui-bg'
             )}
           >
             {f.label}
@@ -100,10 +110,11 @@ export function ProviderList({
 
       <div className="flex-1 overflow-y-auto scrollbar-hide">
         <NavigationList
-          selectedIndex={selectedIndex}
+          selectedId={selectedId}
           onSelect={onSelect}
           onActivate={onActivate}
           keyboardEnabled={keyboardEnabled}
+          onBoundaryReached={onBoundaryReached}
         >
           {providers.map((provider) => {
             const capabilities = PROVIDER_CAPABILITIES[provider.id];

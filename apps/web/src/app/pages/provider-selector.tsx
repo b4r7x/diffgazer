@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useKey } from '@/hooks/keyboard';
 import { useRouteState } from '@/hooks/use-route-state';
@@ -12,6 +12,7 @@ import {
   ModelSelectDialog,
   useProviders,
   type ProviderFilter,
+  FILTER_VALUES,
 } from '@/features/providers';
 import { PROVIDER_ENV_VARS, PROVIDER_CAPABILITIES } from '@repo/schemas';
 
@@ -23,25 +24,25 @@ const FOOTER_SHORTCUTS = [
   { key: 'Esc', label: 'Back' },
 ];
 
+type FocusZone = 'input' | 'filters' | 'list' | 'buttons';
+
 export function ProviderSelectorPage() {
   const navigate = useNavigate();
   const { setShortcuts, setRightShortcuts } = useFooter();
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Route state
-  const [selectedIndex, setSelectedIndex] = useRouteState('providerIndex', 0);
+  const [selectedId, setSelectedId] = useRouteState<string | null>('providerId', null);
   const [filter, setFilter] = useState<ProviderFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Dialog state
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false);
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Panel focus
-  const [focusZone, setFocusZone] = useState<'list' | 'buttons'>('list');
+  const [focusZone, setFocusZone] = useState<FocusZone>('list');
+  const [filterIndex, setFilterIndex] = useState(0);
   const [buttonIndex, setButtonIndex] = useState(0);
 
-  // Data
   const {
     providers,
     activeProvider,
@@ -52,7 +53,6 @@ export function ProviderSelectorPage() {
     refetch,
   } = useProviders();
 
-  // Filter providers
   const filteredProviders = useMemo(() => {
     let result = providers;
 
@@ -76,10 +76,31 @@ export function ProviderSelectorPage() {
     return result;
   }, [providers, filter, searchQuery]);
 
-  // Selected provider
-  const selectedProvider = filteredProviders[selectedIndex] ?? null;
+  const selectedProvider = selectedId
+    ? filteredProviders.find((p) => p.id === selectedId) ?? null
+    : filteredProviders[0] ?? null;
 
-  // Memoize providers with display status to avoid re-creating objects
+  useEffect(() => {
+    if (selectedId === null && selectedProvider) {
+      setSelectedId(selectedProvider.id);
+    }
+  }, [selectedId, selectedProvider, setSelectedId]);
+
+  useEffect(() => {
+    if (focusZone === 'input') {
+      inputRef.current?.focus();
+    } else {
+      inputRef.current?.blur();
+    }
+  }, [focusZone]);
+
+  const handleListBoundary = (direction: "up" | "down") => {
+    if (direction === "up") {
+      setFocusZone('filters');
+      setFilterIndex(FILTER_VALUES.indexOf(filter));
+    }
+  };
+
   const providersWithStatus = useMemo(
     () => filteredProviders.map((p) => ({
       ...p,
@@ -88,71 +109,73 @@ export function ProviderSelectorPage() {
     [filteredProviders]
   );
 
-  // Keyboard shortcuts
   const dialogOpen = apiKeyDialogOpen || modelDialogOpen;
-  const inButtons = focusZone === 'buttons';
+  const inInput = focusZone === 'input';
+  const inFilters = focusZone === 'filters';
   const inList = focusZone === 'list';
+  const inButtons = focusZone === 'buttons';
   const canRemoveKey = selectedProvider?.hasApiKey ?? false;
 
-  // Helper to skip disabled buttons during navigation
   const getNextButtonIndex = (current: number, direction: 1 | -1) => {
     const enabled = [true, true, canRemoveKey, true];
-    let next = current;
-    for (let i = 0; i < 4; i++) {
-      next = (next + direction + 4) % 4;
+    let next = current + direction;
+    while (next >= 0 && next < 4) {
       if (enabled[next]) return next;
+      next += direction;
     }
     return current;
   };
 
-  // Tab toggles zones (only if provider selected)
-  useKey('Tab', () => {
-    if (focusZone === 'list' && selectedProvider) {
-      setFocusZone('buttons');
-      setButtonIndex(0);
-    } else {
-      setFocusZone('list');
-    }
-  });
+  useKey('ArrowDown', () => setFocusZone('filters'),
+    { enabled: !dialogOpen && inInput, allowInInput: true });
+  useKey('Escape', () => setFocusZone('filters'),
+    { enabled: !dialogOpen && inInput, allowInInput: true });
 
-  // ArrowRight: list → buttons (only if provider selected)
+  useKey('ArrowUp', () => setFocusZone('input'),
+    { enabled: !dialogOpen && inFilters });
+  useKey('ArrowDown', () => setFocusZone('list'),
+    { enabled: !dialogOpen && inFilters });
+  useKey('ArrowLeft', () => setFilterIndex((i) => Math.max(0, i - 1)),
+    { enabled: !dialogOpen && inFilters });
+  useKey('ArrowRight', () => setFilterIndex((i) => Math.min(FILTER_VALUES.length - 1, i + 1)),
+    { enabled: !dialogOpen && inFilters });
+  useKey('Enter', () => setFilter(FILTER_VALUES[filterIndex]),
+    { enabled: !dialogOpen && inFilters });
+  useKey(' ', () => setFilter(FILTER_VALUES[filterIndex]),
+    { enabled: !dialogOpen && inFilters });
+
   useKey('ArrowRight', () => { setFocusZone('buttons'); setButtonIndex(0); },
     { enabled: !dialogOpen && inList && !!selectedProvider });
 
-  // ArrowLeft: buttons → list
-  useKey('ArrowLeft', () => setFocusZone('list'),
+  useKey('ArrowLeft', () => {
+    if (buttonIndex === 0) {
+      setFocusZone('list');
+    } else {
+      setButtonIndex((i) => getNextButtonIndex(i, -1));
+    }
+  }, { enabled: !dialogOpen && inButtons });
+
+  useKey('ArrowRight', () => setButtonIndex((i) => getNextButtonIndex(i, 1)),
     { enabled: !dialogOpen && inButtons });
 
-  // ArrowUp/Down: navigate buttons (skip disabled)
   useKey('ArrowUp', () => setButtonIndex((i) => getNextButtonIndex(i, -1)),
     { enabled: !dialogOpen && inButtons });
   useKey('ArrowDown', () => setButtonIndex((i) => getNextButtonIndex(i, 1)),
     { enabled: !dialogOpen && inButtons });
 
-  // Enter/Space: activate focused button
   useKey('Enter', () => handleButtonAction(buttonIndex),
     { enabled: !dialogOpen && inButtons });
   useKey(' ', () => handleButtonAction(buttonIndex),
     { enabled: !dialogOpen && inButtons });
 
-  // Escape to go back
-  useKey('Escape', () => navigate({ to: '/settings' }), { enabled: !dialogOpen });
+  useKey('Escape', () => navigate({ to: '/settings' }), { enabled: !dialogOpen && !inInput });
 
-  // Reset focus to list when no provider selected
   useEffect(() => {
     if (!selectedProvider && focusZone === 'buttons') {
       setFocusZone('list');
     }
   }, [selectedProvider, focusZone]);
 
-  // Clamp index when filtered list shrinks
-  useEffect(() => {
-    if (selectedIndex >= filteredProviders.length && filteredProviders.length > 0) {
-      setSelectedIndex(filteredProviders.length - 1);
-    }
-  }, [filteredProviders.length, selectedIndex, setSelectedIndex]);
-
-  // Footer
   useEffect(() => {
     setShortcuts(FOOTER_SHORTCUTS);
     const statusText = selectedProvider?.isActive ? 'ACTIVE' : selectedProvider?.hasApiKey ? 'READY' : 'NEEDS KEY';
@@ -161,7 +184,6 @@ export function ProviderSelectorPage() {
     ]);
   }, [selectedProvider, setShortcuts, setRightShortcuts]);
 
-  // Handlers
   const handleButtonAction = (index: number) => {
     if (!selectedProvider) return;
     switch (index) {
@@ -219,11 +241,6 @@ export function ProviderSelectorPage() {
     }
   };
 
-  const handleActivate = (_item: { id: string }) => {
-    // Click on list item should NOT change focus zone
-    // Selection already handled by onSelect={setSelectedIndex}
-  };
-
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -237,14 +254,16 @@ export function ProviderSelectorPage() {
       <div className="w-2/5 flex flex-col border-r border-tui-border">
         <ProviderList
           providers={providersWithStatus}
-          selectedIndex={selectedIndex}
-          onSelect={setSelectedIndex}
-          onActivate={handleActivate}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
           filter={filter}
           onFilterChange={setFilter}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          keyboardEnabled={focusZone === 'list' && !dialogOpen}
+          keyboardEnabled={inList && !dialogOpen}
+          onBoundaryReached={handleListBoundary}
+          inputRef={inputRef}
+          focusedFilterIndex={inFilters ? filterIndex : undefined}
         />
       </div>
       <div className="w-3/5 flex flex-col bg-[#0b0e14]">

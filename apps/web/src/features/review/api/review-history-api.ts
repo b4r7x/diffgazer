@@ -1,14 +1,18 @@
 import { api } from "@/lib/api";
-import type { SavedReview, ReviewHistoryMetadata } from "@repo/schemas";
+import type { ReviewHistoryMetadata } from "@repo/schemas";
+import {
+  getReview as sharedGetReview,
+  deleteReview as sharedDeleteReview,
+} from "@repo/api";
 
 export async function getReviewHistory(): Promise<ReviewHistoryMetadata[]> {
   return api.get<ReviewHistoryMetadata[]>("/reviews");
 }
 
-export async function getReview(id: string): Promise<{ review: SavedReview }> {
-  return api.get<{ review: SavedReview }>(`/reviews/${id}`);
+export async function getReview(id: string) {
+  return sharedGetReview(api, id);
 }
 
-export async function deleteReview(id: string): Promise<{ existed: boolean }> {
-  return api.delete<{ existed: boolean }>(`/reviews/${id}`);
+export async function deleteReview(id: string) {
+  return sharedDeleteReview(api, id);
 }
