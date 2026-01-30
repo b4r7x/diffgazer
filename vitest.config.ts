@@ -5,6 +5,7 @@ export default defineConfig({
     projects: [
       "packages/schemas",
       "packages/core",
+      "packages/hooks",
       "apps/server",
       "apps/cli",
     ],

@@ -3,9 +3,14 @@ import figlet from "figlet";
 
 // @ts-expect-error - figlet fonts don't have type declarations
 import bigFont from "figlet/importable-fonts/Big";
+// @ts-expect-error - figlet fonts don't have type declarations
+import smallFont from "figlet/importable-fonts/Small";
 
-// Font loaded once at module level (synchronous, safe)
+// Fonts loaded once at module level (synchronous, safe)
 figlet.parseFont("Big", bigFont);
+figlet.parseFont("Small", smallFont);
+
+export type FigletFont = "Big" | "Small";
 
 interface UseFigletResult {
   text: string | null;
@@ -13,7 +18,7 @@ interface UseFigletResult {
   error: Error | null;
 }
 
-export function useFiglet(inputText: string): UseFigletResult {
+export function useFiglet(inputText: string, font: FigletFont = "Big"): UseFigletResult {
   const [result, setResult] = useState<UseFigletResult>(() => ({
     text: null,
     isLoading: true,
@@ -23,7 +28,7 @@ export function useFiglet(inputText: string): UseFigletResult {
   useEffect(() => {
     let cancelled = false;
 
-    figlet.text(inputText.toUpperCase(), { font: "Big" }, (err, data) => {
+    figlet.text(inputText.toUpperCase(), { font }, (err, data) => {
       if (cancelled) return;
 
       setResult({
@@ -40,7 +45,7 @@ export function useFiglet(inputText: string): UseFigletResult {
     return () => {
       cancelled = true;
     };
-  }, [inputText]);
+  }, [inputText, font]);
 
   return result;
 }

@@ -1,5 +1,5 @@
 export { LoadingView } from "./loading-view.js";
-export { MainMenuView } from "./main-menu-view.js";
+export { MainMenuView, MAIN_MENU_FOOTER_SHORTCUTS } from "./main-menu-view.js";
 export { GitStatusView } from "./git-status-view.js";
 export { GitDiffView } from "./git-diff-view.js";
 export { ReviewView } from "./review-view.js";

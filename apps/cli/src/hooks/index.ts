@@ -69,3 +69,8 @@ export {
   KeyboardModeContext,
   type KeyboardModeContextValue,
 } from "./use-keyboard-mode.js";
+export {
+  useTerminalDimensions,
+  type TerminalDimensions,
+  type UseTerminalDimensionsOptions,
+} from "./use-terminal-dimensions.js";

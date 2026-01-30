@@ -1,13 +1,15 @@
 import type { ReactElement } from "react";
-import { Box, useApp } from "ink";
-import { useRouteState, type MenuAction, MAIN_MENU_SHORTCUTS } from "@repo/core";
-import { HeaderBrand } from "../../components/ui/header-brand.js";
-import { FooterBarWithDivider, type Shortcut } from "../../components/ui/footer-bar.js";
+import { useApp } from "ink";
+import { type MenuAction, MAIN_MENU_SHORTCUTS } from "@repo/core";
+import { useRouteState } from "@repo/hooks";
 import { ContextSidebar, HomeMenu, type ContextInfo } from "../../features/home/index.js";
+import { SplitPane } from "../../components/ui/split-pane.js";
+import { useTerminalDimensions } from "../../hooks/index.js";
+import type { Shortcut } from "@repo/schemas/ui";
 
 export type { MenuAction };
 
-const FOOTER_SHORTCUTS: Shortcut[] = MAIN_MENU_SHORTCUTS.map((s) => ({
+export const MAIN_MENU_FOOTER_SHORTCUTS: Shortcut[] = MAIN_MENU_SHORTCUTS.map((s) => ({
   key: s.key,
   label: s.label.toLowerCase(),
 }));
@@ -33,13 +35,13 @@ export function MainMenuView({
 }: MainMenuViewProps): ReactElement {
   const { exit } = useApp();
   const [selectedIndex, setSelectedIndex] = useRouteState("mainMenu.selectedIndex", 0);
+  const { isNarrow } = useTerminalDimensions();
 
   const contextInfo: ContextInfo = {
     trustedDir: isTrusted ? "Trusted" : undefined,
     providerName: provider !== "Not configured" ? provider : undefined,
     providerMode: model,
     lastRunId: lastReviewAt ?? undefined,
-    lastRunIssueCount: undefined,
   };
 
   const handleActivate = (id: string) => {
@@ -51,25 +53,20 @@ export function MainMenuView({
   };
 
   return (
-    <Box flexDirection="column" marginTop={1}>
-      <HeaderBrand showStars={true} />
-
-      <Box flexDirection="row" marginTop={1} marginBottom={1} gap={2}>
-        <Box width={40}>
-          <ContextSidebar context={contextInfo} />
-        </Box>
-        <Box flexGrow={1}>
-          <HomeMenu
-            selectedIndex={selectedIndex}
-            onSelect={setSelectedIndex}
-            onActivate={handleActivate}
-            hasLastReview={hasLastReview}
-            isActive={isActive}
-          />
-        </Box>
-      </Box>
-
-      <FooterBarWithDivider shortcuts={FOOTER_SHORTCUTS} />
-    </Box>
+    <SplitPane
+      center={!isNarrow}
+      leftWidth={isNarrow ? undefined : 30}
+      rightWidth={isNarrow ? undefined : 50}
+      gap={3}
+    >
+      <ContextSidebar context={contextInfo} />
+      <HomeMenu
+        selectedIndex={selectedIndex}
+        onSelect={setSelectedIndex}
+        onActivate={handleActivate}
+        hasLastReview={hasLastReview}
+        isActive={isActive}
+      />
+    </SplitPane>
   );
 }
