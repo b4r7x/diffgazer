@@ -1,6 +1,5 @@
 import React, { useEffect, useCallback } from "react";
 import { createHash } from "node:crypto";
-import { Box } from "ink";
 import { OnboardingScreen } from "./screens/onboarding-screen.js";
 import { TrustWizardScreen } from "./screens/trust-wizard-screen.js";
 import { useNavigation, useAppInit, useScreenHandlers, useAppState } from "../features/app/index.js";
@@ -17,10 +16,12 @@ import {
   SettingsProvidersView,
   SettingsDiagnosticsView,
   HistoryView,
+  MAIN_MENU_FOOTER_SHORTCUTS,
 } from "./views/index.js";
 import type { AppView, SettingsSection } from "@repo/core";
 import { ThemeProvider, useSettings, SessionRecorderProvider, useSessionRecorderContext, KeyModeProvider } from "../hooks/index.js";
 import type { SessionMode } from "../types/index.js";
+import { GlobalLayout } from "../components/layout/index.js";
 
 export type { SessionMode };
 
@@ -121,9 +122,12 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
     );
   }
 
+  // Get shortcuts based on current view
+  const shortcuts = view === "main" ? MAIN_MENU_FOOTER_SHORTCUTS : [];
+
   return (
     <ThemeProvider theme={theme}>
-      <Box flexDirection="column" padding={1} key={view}>
+      <GlobalLayout shortcuts={shortcuts} key={view}>
         {view === "main" && (
           <MainMenuView
             provider={state.config.currentConfig?.provider ?? "Not configured"}
@@ -179,7 +183,7 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
             onBack={handlers.reviewHistory.onBack}
           />
         )}
-      </Box>
+      </GlobalLayout>
     </ThemeProvider>
   );
 }

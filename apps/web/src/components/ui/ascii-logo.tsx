@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { useFiglet } from "@/hooks/use-figlet";
+import { useFiglet } from "@repo/hooks";
 
 interface AsciiLogoProps {
   text?: string;
