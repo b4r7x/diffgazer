@@ -1,5 +1,7 @@
 # Web Backend Connect
 
+## Type: AUDIT + IMPLEMENT
+
 ## Purpose
 CLI has proper backend connections. Web uses mock data. Connect web to the same backend APIs as CLI.
 
@@ -13,7 +15,9 @@ CLI has proper backend connections. Web uses mock data. Connect web to the same 
 | `pr-review-toolkit:type-design-analyzer` | Type consistency |
 | `pr-review-toolkit:pr-test-analyzer` | Test coverage |
 
-## Execution Steps
+---
+
+## AUDIT PHASE
 
 ### Phase 1: CLI API Analysis
 ```
@@ -46,6 +50,12 @@ Output:
 - Error handling approach
 ```
 
+---
+
+## IMPLEMENT PHASE
+
+> **Note:** IMPLEMENT PHASE runs only after user approval of all audits
+
 ### Phase 4: Implementation
 ```
 Agent: backend-developer (opus) + javascript-typescript:typescript-pro (opus)
@@ -67,6 +77,8 @@ Task: Verify types match between CLI, web, and server
 Agent: pr-review-toolkit:pr-test-analyzer (opus)
 Task: Identify missing tests for new API connections
 ```
+
+---
 
 ## API Connection Checklist
 

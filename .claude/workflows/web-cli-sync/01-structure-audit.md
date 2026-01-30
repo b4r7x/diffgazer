@@ -1,5 +1,9 @@
 # Structure Audit: Web Pages vs CLI Screens
 
+## Type: AUDIT ONLY
+
+## Output: Gap list for review (no implementation)
+
 ## Purpose
 Compare web (source of truth) page structure with CLI screens. Identify what CLI is missing or has differently.
 

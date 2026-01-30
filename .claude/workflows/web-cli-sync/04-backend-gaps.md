@@ -1,5 +1,9 @@
 # Backend Gaps Audit
 
+## Type: AUDIT ONLY
+
+## Output: Endpoint specs for future implementation (separate workflow)
+
 ## Purpose
 Identify what server endpoints need to be created or modified to support web features that don't exist in CLI.
 

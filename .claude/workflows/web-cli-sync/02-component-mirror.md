@@ -1,5 +1,7 @@
 # Component Mirror: Web → CLI (Ink)
 
+## Type: AUDIT + IMPLEMENT
+
 ## Purpose
 Web components are source of truth. Create matching CLI components using React Ink that display the same data in terminal UI.
 
@@ -13,7 +15,9 @@ Web components are source of truth. Create matching CLI components using React I
 | `feature-dev:code-reviewer` | Review created components |
 | `code-simplifier:code-simplifier` | Simplify over-engineered code |
 
-## Execution Steps
+---
+
+## AUDIT PHASE
 
 ### Phase 1: Web Component Inventory
 ```
@@ -39,6 +43,12 @@ Output:
 - Components needing updates
 ```
 
+---
+
+## IMPLEMENT PHASE
+
+> **Note:** IMPLEMENT PHASE runs only after user approval of all audits
+
 ### Phase 4: Create/Update Components
 ```
 Agent: react-component-architect (opus) + javascript-typescript:typescript-pro (opus)
@@ -56,6 +66,8 @@ Task: Review created components for quality
 Agent: code-simplifier:code-simplifier (opus)
 Task: Remove over-engineering, keep it simple
 ```
+
+---
 
 ## Component Translation Rules
 
