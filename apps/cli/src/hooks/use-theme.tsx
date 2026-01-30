@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode, type ReactElement } from "react";
+import { createContext, useContext, useMemo, type ReactNode, type ReactElement } from "react";
 import type { Theme } from "@repo/schemas/settings";
 import { getTheme, getThemeColors, type ThemeTokens, type ThemeColors } from "../lib/theme.js";
 
@@ -16,9 +16,14 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ theme, children }: ThemeProviderProps): ReactElement {
-  const tokens = getTheme(theme);
-  const colors = getThemeColors(theme);
-  const value: ThemeContextValue = { theme, tokens, colors };
+  const value = useMemo<ThemeContextValue>(
+    () => ({
+      theme,
+      tokens: getTheme(theme),
+      colors: getThemeColors(theme),
+    }),
+    [theme]
+  );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

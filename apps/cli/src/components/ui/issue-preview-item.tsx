@@ -2,16 +2,8 @@ import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import { useTheme } from "../../hooks/use-theme.js";
 import { SeverityBadge } from "./badge.js";
-
-type SeverityLevel = "blocker" | "high" | "medium" | "low" | "nit";
-
-const SEVERITY_ICONS: Record<SeverityLevel, string> = {
-  blocker: "X",
-  high: "!",
-  medium: "-",
-  low: ".",
-  nit: "~",
-};
+import { SEVERITY_ICONS } from "../../types/severity.js";
+import type { SeverityLevel } from "../../types/index.js";
 
 export interface IssuePreviewItemProps {
   title: string;

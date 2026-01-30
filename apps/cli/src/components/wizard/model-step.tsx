@@ -12,8 +12,8 @@ import {
 } from "@repo/schemas/config";
 import { Badge, SelectList, type SelectOption } from "../ui/index.js";
 import { WizardFrame } from "./wizard-frame.js";
-
-type WizardMode = "onboarding" | "settings";
+import { type WizardMode, getWizardFrameProps } from "../../types/index.js";
+import { useWizardNavigation, getWizardFooterText } from "../../hooks/index.js";
 
 interface ModelStepProps {
   mode: WizardMode;
@@ -112,10 +112,10 @@ function OpenRouterModelStep({
     badge: model.isFree ? <Badge text="Free" variant="info" /> : <Badge text="Paid" variant="default" />,
   }));
 
-  useInput(
-    (input, key) => {
-      if (!isActive) return;
-
+  useWizardNavigation({
+    onBack: isSearching ? undefined : onBack,
+    isActive,
+    onInput: (input, key) => {
       if (input === "/" && !isSearching) {
         setIsSearching(true);
         return;
@@ -124,29 +124,19 @@ function OpenRouterModelStep({
       if (key.escape && isSearching) {
         setIsSearching(false);
         setSearchQuery("");
-        return;
-      }
-
-      if (input === "b" && !isSearching && onBack) {
-        onBack();
       }
     },
-    { isActive }
-  );
+  });
 
   useEffect(() => {
-    setSelectedIndex(0);
+    if (searchQuery) setSelectedIndex(0);
   }, [searchQuery]);
 
   const footerText = isSearching
     ? "Type to search, Esc to clear, Enter to select"
-    : mode === "onboarding"
-      ? "[/] Search, Arrow keys to select, Enter to continue, [b] Back"
-      : onBack
-        ? "[/] Search, Arrow keys to select, Enter to configure, [b] Back"
-        : "[/] Search, Arrow keys to select, Enter to configure";
+    : getWizardFooterText({ mode, hasBack: !!onBack, prefix: "[/] Search, Arrow keys to select" });
 
-  const frameProps = mode === "settings" ? { width: "66%" as const, centered: true } : {};
+  const frameProps = getWizardFrameProps(mode);
 
   if (loading) {
     return (
@@ -272,25 +262,9 @@ export function ModelStep({
     badge: <TierBadge tier={model.tier} recommended={model.recommended} />,
   }));
 
-  useInput(
-    (input) => {
-      if (!isActive) return;
+  useWizardNavigation({ onBack, isActive });
 
-      if (input === "b" && onBack) {
-        onBack();
-      }
-    },
-    { isActive }
-  );
-
-  const footerText =
-    mode === "onboarding"
-      ? "Arrow keys to select, Enter to continue, [b] Back"
-      : onBack
-        ? "Arrow keys to select, Enter to configure, [b] Back"
-        : "Arrow keys to select, Enter to configure";
-
-  const standardFrameProps = mode === "settings" ? { width: "66%" as const, centered: true } : {};
+  const footerText = getWizardFooterText({ mode, hasBack: !!onBack });
 
   return (
     <WizardFrame
@@ -299,7 +273,7 @@ export function ModelStep({
       totalSteps={totalSteps}
       stepTitle="Select Model"
       footer={footerText}
-      {...standardFrameProps}
+      {...getWizardFrameProps(mode)}
     >
       <Text dimColor>Choose a model for {providerName}:</Text>
 

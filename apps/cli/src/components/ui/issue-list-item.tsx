@@ -2,16 +2,7 @@ import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import { useTheme } from "../../hooks/use-theme.js";
 import type { TriageIssue } from "@repo/schemas";
-
-type SeverityLevel = "blocker" | "high" | "medium" | "low" | "nit";
-
-const SEVERITY_ICONS: Record<SeverityLevel, string> = {
-  blocker: "X",
-  high: "!",
-  medium: "-",
-  low: ".",
-  nit: "~",
-};
+import { SEVERITY_ICONS, type SeverityLevel } from "../../types/severity.js";
 
 export interface IssueListItemProps {
   issue: TriageIssue;
@@ -35,7 +26,7 @@ export function IssueListItem({ issue, isSelected }: IssueListItemProps): ReactE
       <Text> </Text>
       <Box flexDirection="column" flexGrow={1}>
         <Text
-          color={isSelected ? colors.ui.text : colors.ui.text}
+          color={colors.ui.text}
           bold={isSelected}
           inverse={isSelected}
         >

@@ -1,16 +1,9 @@
 import type { ReactElement } from "react";
 import { Text } from "ink";
 import { useTheme } from "../../hooks/use-theme.js";
+import { SEVERITY_LABELS, type SeverityLevel } from "../../types/severity.js";
 
-export type SeverityLevel = "blocker" | "high" | "medium" | "low" | "nit";
-
-const SEVERITY_LABELS: Record<SeverityLevel, string> = {
-  blocker: "BLOCKER",
-  high: "HIGH",
-  medium: "MED",
-  low: "LOW",
-  nit: "NIT",
-};
+export type { SeverityLevel };
 
 export interface SeverityFilterButtonProps {
   severity: SeverityLevel;

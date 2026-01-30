@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { ReactElement } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import { WizardFrame } from "./wizard-frame.js";
-
-type WizardMode = "onboarding" | "settings";
+import { type WizardMode, getWizardFrameProps } from "../../types/index.js";
+import { useWizardNavigation } from "../../hooks/index.js";
 type DiagnosticStatus = "idle" | "running" | "success" | "error";
 
 interface DiagnosticCheck {
@@ -69,9 +69,12 @@ export function DiagnosticsStep({
 }: DiagnosticsStepProps): ReactElement {
   const [checks, setChecks] = useState<DiagnosticCheck[]>(DEFAULT_CHECKS);
   const [isRunning, setIsRunning] = useState(false);
+  const isRunningRef = useRef(false);
+  const hasRunRef = useRef(false);
 
-  const runDiagnostics = async () => {
-    if (isRunning) return;
+  const runDiagnostics = useCallback(async () => {
+    if (isRunningRef.current) return;
+    isRunningRef.current = true;
     setIsRunning(true);
 
     setChecks((prev) =>
@@ -101,36 +104,34 @@ export function DiagnosticsStep({
       }
     }
 
+    isRunningRef.current = false;
     setIsRunning(false);
-  };
+  }, [onRunDiagnostics]);
 
   useEffect(() => {
-    runDiagnostics();
+    if (hasRunRef.current) return;
+    hasRunRef.current = true;
+    void runDiagnostics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally run once on mount
   }, []);
 
-  useInput(
-    (input) => {
+  useWizardNavigation({
+    onBack: isRunning ? undefined : onBack,
+    isActive,
+    onInput: (input) => {
       if (isRunning) return;
 
       if (input === "r") {
-        runDiagnostics();
-        return;
-      }
-
-      if (input === "b" && onBack) {
-        onBack();
+        void runDiagnostics();
       }
     },
-    { isActive }
-  );
+  });
 
   function getFooterText(): string {
     if (isRunning) return "Running diagnostics...";
     if (onBack) return "[r] Run Again  [b] Back";
     return "[r] Run Again";
   }
-
-  const frameProps = mode === "settings" ? { width: "66%" as const, centered: true } : {};
 
   return (
     <WizardFrame
@@ -139,7 +140,7 @@ export function DiagnosticsStep({
       totalSteps={totalSteps}
       stepTitle="System Diagnostics"
       footer={getFooterText()}
-      {...frameProps}
+      {...getWizardFrameProps(mode)}
     >
       <Text dimColor>Checking system status:</Text>
 

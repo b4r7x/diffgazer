@@ -1,7 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
 import { Box, Text } from "ink";
-
-type WizardMode = "onboarding" | "settings";
+import type { WizardMode } from "../../types/index.js";
 
 interface WizardFrameProps {
   mode: WizardMode;

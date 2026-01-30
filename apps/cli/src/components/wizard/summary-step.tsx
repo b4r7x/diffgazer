@@ -1,13 +1,13 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import type { AIProvider } from "@repo/schemas/config";
 import type { Theme, TrustCapabilities } from "@repo/schemas/settings";
 import { Badge } from "../ui/index.js";
 import { WizardFrame } from "./wizard-frame.js";
-
-type WizardMode = "onboarding" | "settings";
+import type { WizardMode } from "../../types/index.js";
+import { useWizardNavigation } from "../../hooks/index.js";
 type ConnectionStatus = "idle" | "testing" | "success" | "error";
 
 interface SummaryStepProps {
@@ -121,31 +121,27 @@ export function SummaryStep({
     }
   };
 
-  useInput(
-    (input, key) => {
-      if (!isActive) return;
+  const isTesting = connectionStatus === "testing";
 
-      if (input === "t" && connectionStatus !== "testing") {
-        handleTestConnection();
+  useWizardNavigation({
+    onBack: isTesting ? undefined : onBack,
+    isActive,
+    onInput: (input, key) => {
+      if (isTesting) return;
+
+      if (input === "t") {
+        void handleTestConnection();
       }
 
-      if (key.return && connectionStatus !== "testing") {
+      if (key.return) {
         onComplete();
       }
-
-      if (input === "b" && onBack && connectionStatus !== "testing") {
-        onBack();
-      }
     },
-    { isActive }
-  );
+  });
 
-  const footerText =
-    mode === "onboarding"
-      ? "[t] Test Connection, Enter to finish setup"
-      : onBack
-        ? "[t] Test Connection, Enter to save, [b] Back"
-        : "[t] Test Connection, Enter to save";
+  const action = mode === "onboarding" ? "finish setup" : "save";
+  const backHint = onBack ? ", [b] Back" : "";
+  const footerText = `[t] Test Connection, Enter to ${action}${backHint}`;
 
   return (
     <WizardFrame

@@ -1,11 +1,11 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import type { TrustCapabilities, TrustConfig, TrustMode } from "@repo/schemas/settings";
 import { ToggleList, type ToggleOption } from "../ui/index.js";
 import { WizardFrame } from "./wizard-frame.js";
-
-type WizardMode = "onboarding" | "settings";
+import { type WizardMode, getWizardFrameProps } from "../../types/index.js";
+import { useWizardNavigation } from "../../hooks/index.js";
 
 interface TrustStepProps {
   mode: WizardMode;
@@ -100,10 +100,10 @@ export function TrustStep({
     onComplete(trustConfig);
   };
 
-  useInput(
-    (input, key) => {
-      if (!isActive) return;
-
+  useWizardNavigation({
+    onBack,
+    isActive,
+    onInput: (input, key) => {
       if (input === "t") {
         handleComplete("persistent");
         return;
@@ -116,17 +116,9 @@ export function TrustStep({
 
       if (key.escape || input === "s") {
         onSkip();
-        return;
-      }
-
-      if (input === "b" && onBack) {
-        onBack();
       }
     },
-    { isActive }
-  );
-
-  const frameProps = mode === "settings" ? { width: "66%" as const, centered: true } : {};
+  });
 
   return (
     <WizardFrame
@@ -134,7 +126,7 @@ export function TrustStep({
       currentStep={currentStep}
       totalSteps={totalSteps}
       stepTitle="Do you trust this directory?"
-      {...frameProps}
+      {...getWizardFrameProps(mode)}
     >
       <Box flexDirection="column">
         <Box flexWrap="wrap">

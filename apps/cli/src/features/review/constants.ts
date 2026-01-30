@@ -25,3 +25,6 @@ export const TRIAGE_SEVERITY_COLORS: Record<TriageSeverity, string> = {
   low: "blue",
   nit: "gray",
 };
+
+export const AGENT_PANEL_WIDTH = 28;
+export const MAX_PATCH_LINES = 30;

@@ -74,3 +74,7 @@ export {
   type TerminalDimensions,
   type UseTerminalDimensionsOptions,
 } from "./use-terminal-dimensions.js";
+export {
+  useWizardNavigation,
+  getWizardFooterText,
+} from "./use-wizard-navigation.js";

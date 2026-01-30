@@ -1,8 +1,9 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import { useTheme } from "../../hooks/use-theme.js";
+import type { SeverityLevel } from "../../types/index.js";
 
-export type SeverityLevel = "blocker" | "high" | "medium" | "low" | "nit";
+export type { SeverityLevel };
 
 export interface SeverityBarProps {
   label: string;

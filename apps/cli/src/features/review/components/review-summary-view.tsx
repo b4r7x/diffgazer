@@ -5,8 +5,8 @@ import type { LensStats } from "../../../components/ui/lens-stats-table.js";
 import {
   AnalysisSummary,
   type IssuePreview,
-  type SeverityCounts,
 } from "../../../components/ui/analysis-summary.js";
+import { calculateSeverityCounts } from "../../../lib/severity-counts.js";
 
 export interface ReviewSummaryViewProps {
   issues: TriageIssue[];
@@ -25,13 +25,7 @@ export function ReviewSummaryView({
   onEnterReview,
   onBack,
 }: ReviewSummaryViewProps): ReactElement {
-  const severityCounts: SeverityCounts = {
-    blocker: issues.filter((i) => i.severity === "blocker").length,
-    high: issues.filter((i) => i.severity === "high").length,
-    medium: issues.filter((i) => i.severity === "medium").length,
-    low: issues.filter((i) => i.severity === "low").length,
-    nit: issues.filter((i) => i.severity === "nit").length,
-  };
+  const severityCounts = calculateSeverityCounts(issues);
 
   const topIssues: IssuePreview[] = issues.slice(0, 3).map((issue) => ({
     id: issue.id,

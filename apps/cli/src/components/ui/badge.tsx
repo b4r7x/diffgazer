@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { Text } from "ink";
 import { useTheme } from "../../hooks/use-theme.js";
+import type { SeverityLevel } from "../../types/index.js";
 
 type BadgeVariant = "default" | "success" | "warning" | "error" | "info" | "muted";
 
@@ -36,8 +37,6 @@ export function Badge({
     </Text>
   );
 }
-
-type SeverityLevel = "blocker" | "high" | "medium" | "low" | "nit";
 
 interface SeverityBadgeProps {
   severity: SeverityLevel;

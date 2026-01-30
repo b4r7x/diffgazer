@@ -1,12 +1,12 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import type { AIProvider } from "@repo/schemas/config";
 import { AVAILABLE_PROVIDERS } from "@repo/schemas/config";
 import { Badge, SelectList, type SelectOption } from "../ui/index.js";
 import { WizardFrame } from "./wizard-frame.js";
-
-type WizardMode = "onboarding" | "settings";
+import type { WizardMode } from "../../types/index.js";
+import { useWizardNavigation, getWizardFooterText } from "../../hooks/index.js";
 
 interface ProviderConfig {
   provider: AIProvider;
@@ -94,23 +94,9 @@ export function ProviderStep({
     };
   });
 
-  useInput(
-    (input) => {
-      if (!isActive) return;
+  useWizardNavigation({ onBack, isActive });
 
-      if (input === "b" && onBack) {
-        onBack();
-      }
-    },
-    { isActive }
-  );
-
-  const footerText =
-    mode === "onboarding"
-      ? "Arrow keys to select, Enter to continue"
-      : onBack
-        ? "Arrow keys to select, Enter to configure, [b] Back"
-        : "Arrow keys to select, Enter to configure";
+  const footerText = getWizardFooterText({ mode, hasBack: !!onBack });
 
   return (
     <WizardFrame

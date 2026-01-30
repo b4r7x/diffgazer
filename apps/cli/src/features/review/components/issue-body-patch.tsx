@@ -1,27 +1,8 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
-import { classifyDiffLine } from "@repo/core/diff";
-
-const MAX_PATCH_LINES = 30;
-
-function DiffLine({ line }: { line: string }): ReactElement {
-  const lineType = classifyDiffLine(line);
-
-  switch (lineType) {
-    case "addition":
-      return <Text color="green">{line}</Text>;
-    case "deletion":
-      return <Text color="red">{line}</Text>;
-    case "hunk-header":
-      return <Text color="cyan">{line}</Text>;
-    case "file-header":
-      return <Text bold>{line}</Text>;
-    case "context":
-    default:
-      return <Text>{line}</Text>;
-  }
-}
+import { DiffLine } from "../../../components/ui/diff-line.js";
+import { MAX_PATCH_LINES } from "../constants.js";
 
 interface IssueBodyPatchProps {
   patch: string | null;
@@ -58,8 +39,8 @@ export function IssueBodyPatch({
         borderColor="gray"
         paddingX={1}
       >
-        {displayLines.map((line, index) => (
-          <DiffLine key={index} line={line} />
+        {displayLines.map((line, lineNumber) => (
+          <DiffLine key={`${lineNumber}:${line.slice(0, 40)}`} line={line} />
         ))}
         {hasMore && (
           <Text dimColor>
