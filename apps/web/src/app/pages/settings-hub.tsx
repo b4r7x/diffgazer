@@ -1,50 +1,19 @@
 "use client";
 
 import { useNavigate } from "@tanstack/react-router";
+import { SETTINGS_MENU_ITEMS, SETTINGS_SHORTCUTS, type SettingsAction } from "@repo/core";
 import { Menu, MenuItem } from "@/components/ui/menu";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { useScope, useKey } from "@/hooks/keyboard";
 import { useRouteState } from "@/hooks/use-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
 
-type SettingsSection =
-  | "trust"
-  | "theme"
-  | "provider"
-  | "about";
-
-const MENU_ITEMS: {
-  id: SettingsSection;
-  label: string;
-  value: string;
-  valueVariant?: "success" | "success-badge" | "muted" | "default";
-}[] = [
-  {
-    id: "trust",
-    label: "Trust & Permissions",
-    value: "Trusted",
-    valueVariant: "success-badge",
-  },
-  { id: "theme", label: "Theme", value: "DARK" },
-  {
-    id: "provider",
-    label: "Provider & Model",
-    value: "Gemini",
-    valueVariant: "success",
-  },
-  {
-    id: "about",
-    label: "About / Diagnostics",
-    value: "v2.1.0",
-    valueVariant: "muted",
-  },
-];
-
-const FOOTER_SHORTCUTS = [
-  { key: "up/dn", label: "Select" },
-  { key: "Enter", label: "Edit" },
-  { key: "Esc", label: "Back" },
-];
+const MENU_VALUES: Record<SettingsAction, { value: string; valueVariant?: "success" | "success-badge" | "muted" | "default" }> = {
+  trust: { value: "Trusted", valueVariant: "success-badge" },
+  theme: { value: "DARK" },
+  provider: { value: "Gemini", valueVariant: "success" },
+  diagnostics: { value: "v2.1.0", valueVariant: "muted" },
+};
 
 const FOOTER_RIGHT = [{ key: "", label: "HUB-MODE" }];
 
@@ -52,13 +21,13 @@ export function SettingsHubPage() {
   const navigate = useNavigate();
   const [selectedIndex, setSelectedIndex] = useRouteState('menuIndex', 0);
 
-  usePageFooter({ shortcuts: FOOTER_SHORTCUTS, rightShortcuts: FOOTER_RIGHT });
+  usePageFooter({ shortcuts: SETTINGS_SHORTCUTS, rightShortcuts: FOOTER_RIGHT });
 
   useScope("settings-hub");
   useKey("Escape", () => navigate({ to: "/" }));
 
   const handleActivate = (item: { id: string }) => {
-    switch (item.id) {
+    switch (item.id as SettingsAction) {
       case "trust":
         navigate({ to: "/settings/trust" });
         break;
@@ -68,7 +37,7 @@ export function SettingsHubPage() {
       case "provider":
         navigate({ to: "/settings/providers" });
         break;
-      case "about":
+      case "diagnostics":
         navigate({ to: "/settings/about" });
         break;
     }
@@ -87,16 +56,19 @@ export function SettingsHubPage() {
             variant="hub"
             className="flex flex-col text-sm pt-2"
           >
-            {MENU_ITEMS.map((item) => (
-              <MenuItem
-                key={item.id}
-                id={item.id}
-                value={item.value}
-                valueVariant={item.valueVariant}
-              >
-                {item.label}
-              </MenuItem>
-            ))}
+            {SETTINGS_MENU_ITEMS.map((item) => {
+              const { value, valueVariant } = MENU_VALUES[item.id];
+              return (
+                <MenuItem
+                  key={item.id}
+                  id={item.id}
+                  value={value}
+                  valueVariant={valueVariant}
+                >
+                  {item.label}
+                </MenuItem>
+              );
+            })}
           </Menu>
         </Panel>
 

@@ -18,9 +18,12 @@ export interface InitializedServer {
 }
 
 export async function initializeServer(options: CommandOptions): Promise<InitializedServer> {
-  const port = parsePort(options.port);
+  const portResult = parsePort(options.port);
+  if (!portResult.ok) {
+    throw new Error(portResult.error.message);
+  }
   const hostname = options.hostname ?? DEFAULT_HOST;
-  const manager = createServerManager({ port, hostname });
+  const manager = createServerManager({ port: portResult.value, hostname });
   const serverAddress = await manager.start();
   return { manager, address: `http://${serverAddress.hostname}:${serverAddress.port}` };
 }

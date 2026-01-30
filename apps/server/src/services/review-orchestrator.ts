@@ -1,7 +1,8 @@
 import type { AIClient, StreamMetadata } from "@repo/core/ai";
 import type { ReviewResult, FileReviewResult } from "@repo/schemas/review";
+import type { Result, AppError } from "@repo/core";
 import { ReviewIssueSchema, ScoreSchema } from "@repo/schemas/review";
-import { getErrorMessage, safeParseJson, truncate, chunk, validateSchema, escapeXml } from "@repo/core";
+import { getErrorMessage, safeParseJson, truncate, chunk, validateSchema, escapeXml, ok, err, createError } from "@repo/core";
 import { z } from "zod";
 import { parseDiff, type FileDiff } from "@repo/core/diff";
 import { createGitService } from "./git.js";
@@ -23,16 +24,16 @@ export interface ChunkedReviewCallbacks {
 async function getDiffForReview(
   staged: boolean,
   projectPath?: string
-): Promise<FileDiff[]> {
+): Promise<Result<FileDiff[], AppError>> {
   const gitService = createGitService({ cwd: projectPath });
   const diff = await gitService.getDiff(staged);
 
   if (!diff.trim()) {
-    throw new Error(`No ${staged ? "staged" : "unstaged"} changes to review`);
+    return err(createError("NO_CHANGES", `No ${staged ? "staged" : "unstaged"} changes to review`));
   }
 
   const parsed = parseDiff(diff);
-  return parsed.files;
+  return ok(parsed.files);
 }
 
 function createReviewBatches(
@@ -142,13 +143,12 @@ export async function reviewDiffChunked(
   staged: boolean,
   callbacks: ChunkedReviewCallbacks
 ): Promise<void> {
-  let files: FileDiff[];
-  try {
-    files = await getDiffForReview(staged);
-  } catch (error) {
-    await callbacks.onError(new Error(`Failed to get git diff: ${getErrorMessage(error)}`));
+  const diffResult = await getDiffForReview(staged);
+  if (!diffResult.ok) {
+    await callbacks.onError(new Error(diffResult.error.message));
     return;
   }
+  const files = diffResult.value;
 
   const batches = createReviewBatches(files, MAX_CONCURRENT_REVIEWS);
   const fileResults: FileReviewResult[] = [];

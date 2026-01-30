@@ -1,4 +1,5 @@
 import { Menu, MenuItem, MenuDivider, Panel, PanelHeader } from '@/components/ui';
+import { getMenuItemsForContext, type MenuItem as CoreMenuItem } from "@repo/core";
 
 interface HomeMenuProps {
   selectedIndex: number;
@@ -6,7 +7,18 @@ interface HomeMenuProps {
   onActivate: (id: string) => void;
 }
 
+function groupItems(items: CoreMenuItem[]) {
+  const groups = { review: [] as CoreMenuItem[], navigation: [] as CoreMenuItem[], system: [] as CoreMenuItem[] };
+  for (const item of items) {
+    if (item.group) groups[item.group].push(item);
+  }
+  return groups;
+}
+
 export function HomeMenu({ selectedIndex, onSelect, onActivate }: HomeMenuProps) {
+  const menuItems = getMenuItemsForContext("web");
+  const { review, navigation, system } = groupItems(menuItems);
+
   return (
     <Panel className="w-full max-w-md lg:w-1/2 lg:max-w-lg h-fit flex flex-col">
       <PanelHeader variant="subtle">Main Menu</PanelHeader>
@@ -17,16 +29,17 @@ export function HomeMenu({ selectedIndex, onSelect, onActivate }: HomeMenuProps)
           onActivate={(item) => onActivate(item.id)}
           enableNumberJump
         >
-          <MenuItem id="review-unstaged">Review Unstaged</MenuItem>
-          <MenuItem id="review-staged">Review Staged</MenuItem>
-          <MenuItem id="review-files">Review Files...</MenuItem>
+          {review.map((item) => (
+            <MenuItem key={item.id} id={item.id}>{item.label}</MenuItem>
+          ))}
           <MenuDivider />
-          <MenuItem id="resume">Resume Last Review</MenuItem>
-          <MenuItem id="history">History</MenuItem>
-          <MenuItem id="settings">Settings</MenuItem>
+          {navigation.map((item) => (
+            <MenuItem key={item.id} id={item.id}>{item.label}</MenuItem>
+          ))}
           <MenuDivider />
-          <MenuItem id="help">Help</MenuItem>
-          <MenuItem id="quit" variant="danger">Quit</MenuItem>
+          {system.map((item) => (
+            <MenuItem key={item.id} id={item.id} variant={item.variant}>{item.label}</MenuItem>
+          ))}
         </Menu>
       </div>
     </Panel>

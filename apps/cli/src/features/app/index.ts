@@ -4,5 +4,5 @@ export {
   useDiscussReview,
   useAppInit,
   useAppState,
-  type View,
+  type AppView,
 } from "./hooks/index.js";

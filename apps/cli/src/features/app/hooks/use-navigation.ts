@@ -1,19 +1,9 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useInput, useApp } from "ink";
 import { useSessionRecorderContext } from "../../../hooks/index.js";
+import { type AppView } from "@repo/core";
 
-export type View =
-  | "loading"
-  | "trust-wizard"
-  | "onboarding"
-  | "main"
-  | "git-status"
-  | "git-diff"
-  | "review"
-  | "chat"
-  | "settings"
-  | "sessions"
-  | "review-history";
+export type { AppView };
 
 interface ViewActions {
   gitStatus: {
@@ -58,8 +48,8 @@ interface ReviewState {
 }
 
 interface UseNavigationResult {
-  view: View;
-  setView: (view: View) => void;
+  view: AppView;
+  setView: (view: AppView) => void;
   diffState: DiffState;
   reviewState: ReviewState;
   navigateToChat: () => void;
@@ -69,7 +59,7 @@ type InputKey = { escape: boolean };
 type InputHandler = (input: string, key: InputKey) => void;
 type KeyActionMap = Record<string, () => void>;
 
-const PASSIVE_VIEWS: ReadonlySet<View> = new Set<View>(["loading", "trust-wizard", "onboarding", "sessions", "main"]);
+const PASSIVE_VIEWS: ReadonlySet<AppView> = new Set<AppView>(["loading", "trust-wizard", "onboarding", "sessions", "main"]);
 
 function createKeyHandler(keyActions: KeyActionMap): InputHandler {
   return (input: string) => {
@@ -94,12 +84,12 @@ function createKeyHandlerWithBack(
 
 export function useNavigation(actions: ViewActions): UseNavigationResult {
   const { exit } = useApp();
-  const [view, setView] = useState<View>("loading");
+  const [view, setView] = useState<AppView>("loading");
   const [diffStaged, setDiffStaged] = useState(false);
   const [reviewStaged, setReviewStaged] = useState(true);
 
   const recorderContext = useSessionRecorderContext();
-  const prevViewRef = useRef<View>(view);
+  const prevViewRef = useRef<AppView>(view);
 
   useEffect(() => {
     if (prevViewRef.current !== view && view !== "loading") {
@@ -237,7 +227,7 @@ export function useNavigation(actions: ViewActions): UseNavigationResult {
     [actions.reviewHistory.currentReview, actions.onDiscussReview]
   );
 
-  const viewHandlers = useMemo<Partial<Record<View, InputHandler>>>(
+  const viewHandlers = useMemo<Partial<Record<AppView, InputHandler>>>(
     () => ({
       main: handleMainInput,
       "git-status": handleGitStatusInput,

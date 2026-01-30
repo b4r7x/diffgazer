@@ -1,4 +1,4 @@
-import type { View } from "./use-navigation.js";
+import type { AppView } from "./use-navigation.js";
 import type { AIProvider } from "@repo/schemas";
 import type { Theme, TrustCapabilities, SettingsConfig, TrustConfig } from "@repo/schemas/settings";
 import type { MenuAction } from "../../../app/views/main-menu-view.js";
@@ -6,7 +6,7 @@ import type { SessionEventType } from "@repo/schemas/session";
 import { openWebUi } from "../../../lib/web-ui.js";
 
 interface UseScreenHandlersOptions {
-  setView: (view: View) => void;
+  setView: (view: AppView) => void;
   config: {
     saveConfig: (provider: AIProvider, apiKey: string, model?: string) => Promise<unknown>;
     deleteConfig: () => Promise<unknown>;

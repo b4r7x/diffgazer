@@ -1,6 +1,6 @@
 import { useInput } from "ink";
 import { useKeyboardMode } from "../../../hooks/use-keyboard-mode.js";
-import { TAB_ORDER, type IssueTab } from "../components/issue-tabs.js";
+import { TAB_ORDER, type IssueTab } from "../constants.js";
 
 export type FocusArea = "list" | "details";
 

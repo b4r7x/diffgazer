@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { SessionMode } from "../../../types/index.js";
 import type { ConfigCheckState, SaveConfigState, TrustLoadState, TrustSaveState } from "../../../hooks/index.js";
-import type { View } from "./use-navigation.js";
+import type { AppView } from "./use-navigation.js";
 
 interface SessionActions {
   continueLastSession: () => Promise<unknown>;
@@ -29,7 +29,7 @@ interface UseAppInitOptions {
   sessionMode: SessionMode;
   sessionId?: string;
   sessionActions: SessionActions;
-  setView: (view: View) => void;
+  setView: (view: AppView) => void;
 }
 
 type InitPhase = "checking-trust" | "checking-config" | "ready";
