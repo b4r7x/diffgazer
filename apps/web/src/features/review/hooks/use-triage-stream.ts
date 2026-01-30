@@ -1,5 +1,5 @@
 import { useReducer, useCallback, useRef, useEffect } from "react";
-import { streamTriage, type TriageOptions } from "../api/triage-api";
+import { streamTriage, type StreamTriageRequest } from "../api/triage-api";
 import type { AgentStreamEvent, AgentState, TriageIssue } from "@repo/schemas";
 
 interface TriageState {
@@ -97,7 +97,7 @@ export function useTriageStream() {
     dispatch({ type: "COMPLETE" });
   }, []);
 
-  const start = useCallback((options: TriageOptions) => {
+  const start = useCallback((options: StreamTriageRequest) => {
     if (cleanupRef.current) {
       cleanupRef.current();
     }

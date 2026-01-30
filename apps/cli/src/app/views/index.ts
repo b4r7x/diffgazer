@@ -4,5 +4,4 @@ export { GitStatusView } from "./git-status-view.js";
 export { GitDiffView } from "./git-diff-view.js";
 export { ReviewView } from "./review-view.js";
 export { SettingsView } from "./settings-view.js";
-export { SessionsView } from "./sessions-view.js";
-export { ReviewHistoryView } from "./review-history-view.js";
+export { HistoryView } from "./history-view.js";
