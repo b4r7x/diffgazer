@@ -59,7 +59,7 @@ type InputKey = { escape: boolean };
 type InputHandler = (input: string, key: InputKey) => void;
 type KeyActionMap = Record<string, () => void>;
 
-const PASSIVE_VIEWS: ReadonlySet<AppView> = new Set<AppView>(["loading", "trust-wizard", "onboarding", "sessions", "main"]);
+const PASSIVE_VIEWS: ReadonlySet<AppView> = new Set<AppView>(["loading", "trust-wizard", "onboarding", "history", "main"]);
 
 function createKeyHandler(keyActions: KeyActionMap): InputHandler {
   return (input: string) => {
@@ -128,11 +128,8 @@ export function useNavigation(actions: ViewActions): UseNavigationResult {
         },
         h: () => {
           void actions.reviewHistory.listReviews();
-          setView("review-history");
-        },
-        H: () => {
           void actions.session.listSessions();
-          setView("sessions");
+          setView("history");
         },
         c: () => {
           if (actions.session.currentSession) {
@@ -214,19 +211,6 @@ export function useNavigation(actions: ViewActions): UseNavigationResult {
     }
   }, [actions.config.checkState]);
 
-  const handleReviewHistoryInput = useCallback<InputHandler>(
-    (input) => {
-      createKeyHandler({
-        d: () => {
-          if (actions.reviewHistory.currentReview) {
-            void actions.onDiscussReview();
-          }
-        },
-      })(input, { escape: false });
-    },
-    [actions.reviewHistory.currentReview, actions.onDiscussReview]
-  );
-
   const viewHandlers = useMemo<Partial<Record<AppView, InputHandler>>>(
     () => ({
       main: handleMainInput,
@@ -235,7 +219,6 @@ export function useNavigation(actions: ViewActions): UseNavigationResult {
       review: handleReviewInput,
       chat: handleChatInput,
       settings: handleSettingsInput,
-      "review-history": handleReviewHistoryInput,
     }),
     [
       handleMainInput,
@@ -244,7 +227,6 @@ export function useNavigation(actions: ViewActions): UseNavigationResult {
       handleReviewInput,
       handleChatInput,
       handleSettingsInput,
-      handleReviewHistoryInput,
     ]
   );
 

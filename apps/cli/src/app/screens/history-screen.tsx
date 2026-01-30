@@ -1,273 +1,284 @@
 import type { ReactElement } from "react";
-import { useState } from "react";
+import { useMemo } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import type { ReviewHistoryMetadata } from "@repo/schemas/review-history";
-import type { SessionMetadataInfo } from "@repo/core/storage";
-import { formatRelativeTime } from "@repo/core";
-import { useListNavigation, type ListState } from "../../hooks/index.js";
-import { Card } from "../../components/ui/card.js";
-import { Badge } from "../../components/ui/badge.js";
-import { SelectionIndicator } from "../../components/selection-indicator.js";
-import { DeleteConfirmation } from "../../components/delete-confirmation.js";
-import { Separator } from "../../components/ui/separator.js";
+import type { SessionMetadata } from "@repo/schemas/session";
+import type { TriageIssue } from "@repo/schemas";
+import { useTheme } from "../../hooks/use-theme.js";
+import { FocusablePane } from "../../components/ui/focusable-pane.js";
+import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs.js";
+import { FooterBar, type Shortcut } from "../../components/ui/footer-bar.js";
+import { TimelineList } from "../../features/history/components/timeline-list.js";
+import { RunAccordionItem } from "../../features/history/components/run-accordion-item.js";
+import { HistoryInsightsPane } from "../../features/history/components/history-insights-pane.js";
+import { useHistoryState } from "../../features/history/hooks/use-history-state.js";
+import { toHistoryRun } from "../../features/history/types.js";
+import type { SeverityLevel } from "../../components/ui/severity-bar.js";
 
-type TabId = "reviews" | "sessions";
-
-interface Tab {
-  id: TabId;
-  label: string;
-}
-
-const TABS: Tab[] = [
-  { id: "reviews", label: "Reviews" },
-  { id: "sessions", label: "Sessions" },
-];
-
-interface ReviewItemProps {
-  review: ReviewHistoryMetadata;
-  isSelected: boolean;
-}
-
-function ReviewItem({ review, isSelected }: ReviewItemProps): ReactElement {
-  return (
-    <Box>
-      <SelectionIndicator isSelected={isSelected} />
-      <Text bold={isSelected}>{review.branch ?? "unknown"}</Text>
-      <Box marginLeft={1}>
-        <Badge text={review.staged ? "staged" : "unstaged"} variant="muted" bold={false} />
-      </Box>
-      <Text dimColor>
-        {" "}{review.issueCount} issues
-        {review.criticalCount > 0 && <Text color="red"> {review.criticalCount}C</Text>}
-        {review.warningCount > 0 && <Text color="yellow"> {review.warningCount}W</Text>}
-        {", "}{formatRelativeTime(review.createdAt)}
-      </Text>
-    </Box>
-  );
-}
-
-interface SessionEventItemProps {
-  session: SessionMetadataInfo;
-  isSelected: boolean;
-}
-
-function SessionEventItem({ session, isSelected }: SessionEventItemProps): ReactElement {
-  const createdDate = new Date(session.createdAt);
-
-  return (
-    <Box>
-      <SelectionIndicator isSelected={isSelected} />
-      <Text bold={isSelected}>{createdDate.toLocaleDateString()}</Text>
-      <Box marginLeft={1}>
-        <Badge text={`${session.eventCount} events`} variant="info" bold={false} />
-      </Box>
-      <Text dimColor>
-        {" "}{createdDate.toLocaleTimeString()}
-      </Text>
-    </Box>
-  );
-}
-
-interface TabBarProps {
-  activeTab: TabId;
-  onTabChange: (tab: TabId) => void;
-}
-
-function TabBar({ activeTab, onTabChange: _onTabChange }: TabBarProps): ReactElement {
-  return (
-    <Box marginBottom={1}>
-      {TABS.map((tab, index) => (
-        <Box key={tab.id}>
-          {index > 0 && <Text dimColor> | </Text>}
-          <Text
-            bold={activeTab === tab.id}
-            color={activeTab === tab.id ? "cyan" : undefined}
-            dimColor={activeTab !== tab.id}
-          >
-            {tab.label}
-          </Text>
-        </Box>
-      ))}
-      <Text dimColor> (Tab/h/l to switch)</Text>
-    </Box>
-  );
-}
-
-export type ReviewAction = "resume" | "export" | "delete";
-export type SessionAction = "view_timeline" | "delete";
-
-interface HistoryScreenProps {
+export interface HistoryScreenProps {
   reviews: ReviewHistoryMetadata[];
-  sessions: SessionMetadataInfo[];
-  reviewsState: ListState;
-  sessionsState: ListState;
-  reviewsError: { message: string } | null;
-  sessionsError: { message: string } | null;
-  onReviewAction: (review: ReviewHistoryMetadata, action: ReviewAction) => void;
-  onSessionAction: (session: SessionMetadataInfo, action: SessionAction) => void;
+  sessions: SessionMetadata[];
+  onResumeReview: (review: ReviewHistoryMetadata) => void;
+  onExportReview: (review: ReviewHistoryMetadata) => void;
+  onDeleteReview: (review: ReviewHistoryMetadata) => void;
+  onViewSession: (session: SessionMetadata) => void;
+  onDeleteSession: (session: SessionMetadata) => void;
   onBack: () => void;
+}
+
+function getSeverityCounts(issues: TriageIssue[]): Record<SeverityLevel, number> {
+  return {
+    blocker: issues.filter((i) => i.severity === "blocker").length,
+    high: issues.filter((i) => i.severity === "high").length,
+    medium: issues.filter((i) => i.severity === "medium").length,
+    low: issues.filter((i) => i.severity === "low").length,
+    nit: 0,
+  };
 }
 
 export function HistoryScreen({
   reviews,
   sessions,
-  reviewsState,
-  sessionsState,
-  reviewsError,
-  sessionsError,
-  onReviewAction,
-  onSessionAction,
+  onResumeReview,
+  onExportReview,
+  onDeleteReview,
+  onViewSession,
+  onDeleteSession,
   onBack,
 }: HistoryScreenProps): ReactElement {
-  const [activeTab, setActiveTab] = useState<TabId>("reviews");
+  const { colors } = useTheme();
   const { exit } = useApp();
 
-  const isReviewsTab = activeTab === "reviews";
-  const currentItems = isReviewsTab ? reviews : sessions;
-  const currentState = isReviewsTab ? reviewsState : sessionsState;
-  const currentError = isReviewsTab ? reviewsError : sessionsError;
+  // Transform reviews to HistoryRuns
+  const runs = useMemo(() => reviews.map(toHistoryRun), [reviews]);
 
-  const reviewNavigation = useListNavigation({
-    items: reviews.map((r) => ({ ...r, id: r.id })),
-    onSelect: (review) => onReviewAction(review, "resume"),
-    onDelete: (review) => onReviewAction(review, "delete"),
-    onBack,
-    disabled: !isReviewsTab,
-    extraHandlers: {
-      e: () => {
-        const review = reviews[reviewNavigation.selectedIndex];
-        if (review) onReviewAction(review, "export");
-      },
-    },
-  });
+  const historyState = useHistoryState({ runs });
 
-  const sessionNavigation = useListNavigation({
-    items: sessions.map((s) => ({ ...s, id: s.sessionId })),
-    onSelect: (session) => {
-      const original = sessions.find((s) => s.sessionId === session.sessionId);
-      if (original) onSessionAction(original, "view_timeline");
-    },
-    onDelete: (session) => {
-      const original = sessions.find((s) => s.sessionId === session.sessionId);
-      if (original) onSessionAction(original, "delete");
-    },
-    onBack,
-    disabled: isReviewsTab,
-  });
+  const {
+    activeTab,
+    focusZone,
+    selectedDateId,
+    selectedRunId,
+    expandedRunId,
+    timelineItems,
+    filteredRuns,
+    selectedRun,
+    setActiveTab,
+    setFocusZone,
+    setSelectedDateId,
+    setSelectedRunId,
+    setExpandedRunId,
+    cycleFocus,
+    moveFocusLeft,
+    moveFocusRight,
+    toggleExpand,
+    collapseOrBack,
+  } = historyState;
 
-  const navigation = isReviewsTab ? reviewNavigation : sessionNavigation;
+  // Compute severity counts for insights
+  const severityCounts = useMemo(
+    () => (selectedRun ? getSeverityCounts(selectedRun.issues) : { blocker: 0, high: 0, medium: 0, low: 0, nit: 0 }),
+    [selectedRun]
+  );
 
+  const topLenses = ["Security", "Auth", "Performance"];
+  const topIssues = selectedRun?.issues.slice(0, 3) ?? [];
+
+  // Keyboard navigation
   useInput((input, key) => {
-    if (navigation.isConfirmingDelete) return;
+    // Tab to cycle focus zones
+    if (key.tab) {
+      cycleFocus();
+      return;
+    }
 
-    if (key.tab || input === "l") {
-      setActiveTab((prev) => (prev === "reviews" ? "sessions" : "reviews"));
+    // Left/Right arrows to move between zones
+    if (key.leftArrow) {
+      moveFocusLeft();
+      return;
     }
-    if (input === "h") {
-      setActiveTab((prev) => (prev === "sessions" ? "reviews" : "sessions"));
+    if (key.rightArrow) {
+      moveFocusRight();
+      return;
     }
+
+    // h/l to switch tabs
+    if (input === "h" && focusZone !== "timeline") {
+      moveFocusLeft();
+      return;
+    }
+    if (input === "l" && focusZone !== "insights") {
+      moveFocusRight();
+      return;
+    }
+
+    // j/k for list navigation within zones
+    if (focusZone === "timeline" && (input === "j" || key.downArrow)) {
+      const currentIndex = timelineItems.findIndex((item) => item.id === selectedDateId);
+      const nextIndex = Math.min(currentIndex + 1, timelineItems.length - 1);
+      const nextItem = timelineItems[nextIndex];
+      if (nextItem) setSelectedDateId(nextItem.id);
+      return;
+    }
+    if (focusZone === "timeline" && (input === "k" || key.upArrow)) {
+      const currentIndex = timelineItems.findIndex((item) => item.id === selectedDateId);
+      const prevIndex = Math.max(currentIndex - 1, 0);
+      const prevItem = timelineItems[prevIndex];
+      if (prevItem) setSelectedDateId(prevItem.id);
+      return;
+    }
+
+    if (focusZone === "runs" && (input === "j" || key.downArrow)) {
+      const currentIndex = filteredRuns.findIndex((run) => run.id === selectedRunId);
+      const nextIndex = Math.min(currentIndex + 1, filteredRuns.length - 1);
+      const nextRun = filteredRuns[nextIndex];
+      if (nextRun) setSelectedRunId(nextRun.id);
+      return;
+    }
+    if (focusZone === "runs" && (input === "k" || key.upArrow)) {
+      const currentIndex = filteredRuns.findIndex((run) => run.id === selectedRunId);
+      const prevIndex = Math.max(currentIndex - 1, 0);
+      const prevRun = filteredRuns[prevIndex];
+      if (prevRun) setSelectedRunId(prevRun.id);
+      return;
+    }
+
+    // Enter to expand/collapse run
+    if (key.return && focusZone === "runs") {
+      toggleExpand();
+      return;
+    }
+
+    // r to resume review
+    if (input === "r" && selectedRunId) {
+      const review = reviews.find((r) => r.id === selectedRunId);
+      if (review) onResumeReview(review);
+      return;
+    }
+
+    // e to export review
+    if (input === "e" && selectedRunId) {
+      const review = reviews.find((r) => r.id === selectedRunId);
+      if (review) onExportReview(review);
+      return;
+    }
+
+    // d to delete
+    if (input === "d" && selectedRunId) {
+      const review = reviews.find((r) => r.id === selectedRunId);
+      if (review) onDeleteReview(review);
+      return;
+    }
+
+    // Escape to collapse or go back
+    if (key.escape) {
+      if (!collapseOrBack()) {
+        onBack();
+      }
+      return;
+    }
+
+    // b to go back
+    if (input === "b") {
+      onBack();
+      return;
+    }
+
+    // q to quit
     if (input === "q") {
       exit();
     }
   });
 
-  const renderLoading = (message: string): ReactElement => (
-    <Box flexDirection="column">
-      <Text>{message}</Text>
-    </Box>
-  );
-
-  const renderError = (error: { message: string }): ReactElement => (
-    <Box flexDirection="column">
-      <Text color="red">Error: {error.message}</Text>
-    </Box>
-  );
-
-  const renderEmpty = (message: string): ReactElement => (
-    <Box flexDirection="column">
-      <Text dimColor>{message}</Text>
-    </Box>
-  );
-
-  const renderReviewsList = (): ReactElement => {
-    if (reviewNavigation.isConfirmingDelete) {
-      return <DeleteConfirmation itemType="review" />;
-    }
-
-    return (
-      <>
-        <Box flexDirection="column">
-          {reviews.map((review, index) => (
-            <ReviewItem
-              key={review.id}
-              review={review}
-              isSelected={reviewNavigation.selectedIndex === index}
-            />
-          ))}
-        </Box>
-        <Box marginTop={1}>
-          <Text dimColor>
-            [Enter] Resume [e] Export [d] Delete [b] Back [q] Quit
-          </Text>
-        </Box>
-      </>
-    );
-  };
-
-  const renderSessionsList = (): ReactElement => {
-    if (sessionNavigation.isConfirmingDelete) {
-      return <DeleteConfirmation itemType="session" />;
-    }
-
-    return (
-      <>
-        <Box flexDirection="column">
-          {sessions.map((session, index) => (
-            <SessionEventItem
-              key={session.sessionId}
-              session={session}
-              isSelected={sessionNavigation.selectedIndex === index}
-            />
-          ))}
-        </Box>
-        <Box marginTop={1}>
-          <Text dimColor>
-            [Enter] View timeline [d] Delete [b] Back [q] Quit
-          </Text>
-        </Box>
-      </>
-    );
-  };
-
-  const renderContent = (): ReactElement => {
-    if (currentState === "loading") {
-      return renderLoading(isReviewsTab ? "Loading reviews..." : "Loading sessions...");
-    }
-
-    if (currentState === "error" && currentError) {
-      return renderError(currentError);
-    }
-
-    if (currentItems.length === 0) {
-      return renderEmpty(
-        isReviewsTab
-          ? "No reviews found. Run a review to get started."
-          : "No sessions found."
-      );
-    }
-
-    return isReviewsTab ? renderReviewsList() : renderSessionsList();
-  };
+  const shortcuts: Shortcut[] = [
+    { key: "Tab", label: "Focus" },
+    { key: "↑/↓", label: "Navigate" },
+    { key: "Enter", label: "Expand" },
+    { key: "r", label: "Resume" },
+    { key: "e", label: "Export" },
+    { key: "b", label: "Back" },
+  ];
 
   return (
-    <Box flexDirection="column" padding={1}>
-      <Card title="History" titleColor="cyan">
-        <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
-        <Separator />
-        <Box marginTop={1} flexDirection="column">
-          {renderContent()}
-        </Box>
-      </Card>
+    <Box flexDirection="column" height="100%">
+      {/* Tabs */}
+      <Box paddingX={1}>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "runs" | "sessions")} isActive={false}>
+          <TabsList>
+            <TabsTrigger value="runs">Runs</TabsTrigger>
+            <TabsTrigger value="sessions">Sessions</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </Box>
+
+      {/* 3-pane layout */}
+      <Box flexGrow={1} flexDirection="row">
+        {/* Timeline (left) */}
+        <FocusablePane isFocused={focusZone === "timeline"} width={20}>
+          <Box paddingX={1}>
+            <Text color={colors.ui.textMuted} bold>TIMELINE</Text>
+          </Box>
+          <Box flexDirection="column" paddingY={1}>
+            <TimelineList
+              items={timelineItems}
+              selectedId={selectedDateId}
+              onSelect={setSelectedDateId}
+              isFocused={focusZone === "timeline"}
+            />
+          </Box>
+        </FocusablePane>
+
+        {/* Runs (middle) */}
+        <FocusablePane isFocused={focusZone === "runs"}>
+          <Box paddingX={1} justifyContent="space-between">
+            <Text color={colors.ui.textMuted} bold>RUNS</Text>
+            <Text color={colors.ui.textMuted}>Sort: Recent</Text>
+          </Box>
+          <Box flexDirection="column">
+            {activeTab === "runs" ? (
+              filteredRuns.length > 0 ? (
+                filteredRuns.map((run) => (
+                  <RunAccordionItem
+                    key={run.id}
+                    id={run.id}
+                    displayId={run.displayId}
+                    branch={run.branch}
+                    provider={run.provider}
+                    timestamp={run.timestamp}
+                    summary={run.summary}
+                    issues={run.issues}
+                    isSelected={run.id === selectedRunId}
+                    isExpanded={run.id === expandedRunId}
+                    criticalCount={run.criticalCount}
+                    warningCount={run.warningCount}
+                  />
+                ))
+              ) : (
+                <Box paddingX={1} paddingY={1}>
+                  <Text color={colors.ui.textMuted}>No runs for this date</Text>
+                </Box>
+              )
+            ) : (
+              <Box paddingX={1} paddingY={1}>
+                <Text color={colors.ui.textMuted}>Sessions tab - coming soon</Text>
+              </Box>
+            )}
+          </Box>
+        </FocusablePane>
+
+        {/* Insights (right) */}
+        <FocusablePane isFocused={focusZone === "insights"} width={30}>
+          <HistoryInsightsPane
+            runId={selectedRun?.displayId ?? null}
+            severityCounts={severityCounts}
+            topLenses={topLenses}
+            topIssues={topIssues}
+          />
+        </FocusablePane>
+      </Box>
+
+      {/* Footer */}
+      <FooterBar shortcuts={shortcuts} />
     </Box>
   );
 }

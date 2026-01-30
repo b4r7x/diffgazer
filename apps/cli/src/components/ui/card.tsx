@@ -5,6 +5,7 @@ import { useTheme } from "../../hooks/use-theme.js";
 interface CardProps {
   title?: string;
   titleColor?: string;
+  badge?: ReactNode;
   children: ReactNode;
   borderColor?: string;
   padding?: number;
@@ -14,6 +15,7 @@ interface CardProps {
 export function Card({
   title,
   titleColor,
+  badge,
   children,
   borderColor,
   padding = 1,
@@ -34,9 +36,32 @@ export function Card({
       width={width}
     >
       {title && (
-        <Box marginBottom={1}>
+        <Box marginBottom={1} gap={1}>
           <Text bold color={resolvedTitleColor}>
             {title}
+          </Text>
+          {badge}
+        </Box>
+      )}
+      {children}
+    </Box>
+  );
+}
+
+interface CardSectionProps {
+  title?: string;
+  children: ReactNode;
+}
+
+export function CardSection({ title, children }: CardSectionProps): ReactElement {
+  const { colors } = useTheme();
+
+  return (
+    <Box flexDirection="column" marginTop={title ? 1 : 0}>
+      {title && (
+        <Box marginBottom={1}>
+          <Text color={colors.ui.textMuted} dimColor>
+            ── {title} ──
           </Text>
         </Box>
       )}

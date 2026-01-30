@@ -8,5 +8,6 @@ export type AppView =
   | "review"
   | "chat"
   | "settings"
+  | "history"
   | "sessions"
   | "review-history";

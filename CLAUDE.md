@@ -52,7 +52,7 @@ Subagents return: `file:line` + one-line summary. NOT full contents.
 
 Location: `~/.claude/workflows/`
 
-`project-documentation`, `bulletproof-structure`, `react-quality`, `ui-reusability`, `component-grouping`, `overengineering-check`, `test-coverage`, `type-safety-audit`, `dead-code-detection`, `import-graph-analysis`, `react-anti-patterns`, `accessibility-audit`, `effect-cleanup-audit`, `silent-failure-hunt`, `result-pattern-compliance`, `test-quality-audit`, `layer-violation-detection`
+`project-documentation`, `bulletproof-structure`, `react-quality`, `ui-reusability`, `component-grouping`, `overengineering-check`, `test-coverage`, `type-safety-audit`, `dead-code-detection`, `import-graph-analysis`, `react-anti-patterns`, `accessibility-audit`, `effect-cleanup-audit`, `silent-failure-hunt`, `result-pattern-compliance`, `test-quality-audit`, `layer-violation-detection`, `cli-restructure`
 
 ## Reference Docs
 

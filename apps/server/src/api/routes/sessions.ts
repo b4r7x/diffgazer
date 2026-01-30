@@ -1,5 +1,7 @@
 import { Hono } from "hono";
+import { streamSSE } from "hono/streaming";
 import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
 import {
   sessionStore,
   createSession,
@@ -7,6 +9,7 @@ import {
   addMessage,
   getLastSession,
 } from "@repo/core/storage";
+import { getErrorMessage } from "@repo/core";
 import {
   CreateSessionRequestSchema,
   AddMessageRequestSchema,
@@ -18,6 +21,12 @@ import {
   zodErrorHandler,
 } from "../../lib/response.js";
 import { requireUuidParam, validateProjectPath } from "../../lib/validation.js";
+import { writeSSEError } from "../../lib/sse-helpers.js";
+import { prepareChatContext, saveUserMessage, streamChatToSSE } from "../../services/chat.js";
+
+const ChatRequestSchema = z.object({
+  message: z.string().min(1),
+});
 
 export const sessions = new Hono();
 
@@ -83,3 +92,35 @@ sessions.delete("/:id", async (c) => {
 
   return c.json({ existed: result.value.existed });
 });
+
+sessions.post(
+  "/:id/chat",
+  zValidator("json", ChatRequestSchema, zodErrorHandler),
+  async (c) => {
+    const sessionId = requireUuidParam(c, "id");
+    const { message } = c.req.valid("json");
+
+    const contextResult = await prepareChatContext(sessionId);
+    if (!contextResult.ok) {
+      const status = contextResult.error.code === ErrorCode.SESSION_NOT_FOUND ? 404 : 400;
+      return errorResponse(c, contextResult.error.message, contextResult.error.code, status);
+    }
+
+    const saveResult = await saveUserMessage(sessionId, message);
+    if (!saveResult.ok) {
+      return errorResponse(c, saveResult.error.message, saveResult.error.code, 500);
+    }
+
+    return streamSSE(c, async (stream) => {
+      try {
+        await streamChatToSSE(sessionId, message, contextResult.value, stream);
+      } catch (error) {
+        try {
+          await writeSSEError(stream, getErrorMessage(error), ErrorCode.INTERNAL_ERROR);
+        } catch {
+          // Stream already closed
+        }
+      }
+    });
+  }
+);
