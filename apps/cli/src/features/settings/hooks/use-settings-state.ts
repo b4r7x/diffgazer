@@ -1,12 +1,6 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import { useAsyncOperation } from "../../../hooks/use-async-operation.js";
-import type {
-  AIProvider,
-  ProviderStatus,
-  ConfigCheckResponse,
-  CurrentConfigResponse,
-  ProvidersStatusResponse,
-} from "@repo/schemas/config";
+import type { AIProvider, ProviderStatus } from "@repo/schemas/config";
 import type { SettingsConfig, TrustConfig, Theme } from "@repo/schemas/settings";
 import { settingsApi } from "../api/settings-api.js";
 
@@ -54,13 +48,8 @@ const INITIAL_DATA_STATE: SettingsDataState = {
   isConfigured: false,
 };
 
-export function useSettingsState(projectId: string, repoRoot: string): UseSettingsStateResult {
-  const loadOp = useAsyncOperation<{
-    settings: SettingsConfig | null;
-    trust: TrustConfig | null;
-    config: ConfigCheckResponse;
-    providerStatus: ProvidersStatusResponse;
-  }>();
+export function useSettingsState(projectId: string): UseSettingsStateResult {
+  const loadOp = useAsyncOperation<void>();
   const saveOp = useAsyncOperation<void>();
 
   const [dataState, setDataState] = useState<SettingsDataState>(INITIAL_DATA_STATE);
@@ -83,7 +72,6 @@ export function useSettingsState(projectId: string, repoRoot: string): UseSettin
           ? providerStatusResult.value
           : { providers: [], activeProvider: undefined };
 
-      // Single batched state update
       setDataState({
         settings: settingsData,
         trust: trustData,
@@ -93,13 +81,6 @@ export function useSettingsState(projectId: string, repoRoot: string): UseSettin
           ? { provider: configData.config.provider, model: configData.config.model }
           : null,
       });
-
-      return {
-        settings: settingsData,
-        trust: trustData,
-        config: configData,
-        providerStatus: providerData,
-      };
     });
   }, [loadOp, projectId]);
 
@@ -159,8 +140,8 @@ export function useSettingsState(projectId: string, repoRoot: string): UseSettin
   const isSaving = saveOp.state.status === "loading";
   const error = loadOp.state.error ?? saveOp.state.error ?? null;
 
-  const isTrusted = useMemo(() => !!dataState.trust, [dataState.trust]);
-  const activeProvider = useMemo(() => dataState.config?.provider, [dataState.config]);
+  const isTrusted = !!dataState.trust;
+  const activeProvider = dataState.config?.provider;
 
   return {
     isLoading,
