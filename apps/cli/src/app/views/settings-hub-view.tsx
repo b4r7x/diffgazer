@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { useState, useEffect } from "react";
-import { Box, Text, useInput, useStdout } from "ink";
+import { Box, Text, useInput } from "ink";
 import {
   SETTINGS_MENU_ITEMS,
   type SettingsAction,
@@ -9,10 +9,10 @@ import {
 import { Menu, MenuItem } from "../../components/ui/menu.js";
 import { Panel, PanelHeader } from "../../components/ui/panel.js";
 import { Badge } from "../../components/ui/badge.js";
-import { FooterBarWithDivider } from "../../components/ui/footer-bar.js";
 import { useSettingsState } from "../../features/settings/hooks/use-settings-state.js";
+import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
 
-const FOOTER_SHORTCUTS = [
+export const SETTINGS_HUB_FOOTER_SHORTCUTS = [
   { key: "1-4", label: "jump" },
   { key: "j/k", label: "navigate" },
   { key: "Enter", label: "select" },
@@ -28,10 +28,15 @@ interface SettingsHubViewProps {
 
 type ValueVariant = "default" | "success" | "success-badge" | "muted";
 
+interface ItemValue {
+  value: string;
+  variant: ValueVariant;
+}
+
 function getValueForItem(
   id: SettingsAction,
   state: ReturnType<typeof useSettingsState>
-): { value: string; variant: ValueVariant } {
+): ItemValue {
   switch (id) {
     case "trust":
       return state.isTrusted
@@ -53,6 +58,10 @@ function getValueForItem(
   }
 }
 
+function getMenuItem(id: SettingsAction) {
+  return SETTINGS_MENU_ITEMS.find((i) => i.id === id)!;
+}
+
 function formatLastSync(lastSyncTime: Date | null): string {
   if (!lastSyncTime) return "never";
 
@@ -66,14 +75,40 @@ function formatLastSync(lastSyncTime: Date | null): string {
   return "1d+ ago";
 }
 
+interface SettingsMenuItemProps {
+  id: SettingsAction;
+  hotkey: number;
+  state: ReturnType<typeof useSettingsState>;
+}
+
+function SettingsMenuItem({ id, hotkey, state }: SettingsMenuItemProps): ReactElement {
+  const item = getMenuItem(id);
+  const { value, variant } = getValueForItem(id, state);
+
+  const displayValue =
+    variant === "success-badge" ? <Badge text={value} variant="success" /> : value;
+  const displayVariant = variant === "success-badge" ? "success" : variant;
+
+  return (
+    <MenuItem
+      id={item.id}
+      hotkey={hotkey}
+      value={displayValue}
+      valueVariant={displayVariant as "default" | "success" | "muted"}
+    >
+      {item.label}
+    </MenuItem>
+  );
+}
+
 export function SettingsHubView({
   projectId,
   onNavigate,
   onBack,
   isActive = true,
 }: SettingsHubViewProps): ReactElement {
-  const { stdout } = useStdout();
-  const panelWidth = Math.min(60, (stdout?.columns ?? 80) - 4);
+  const { columns } = useTerminalDimensions();
+  const panelWidth = Math.min(76, columns - 4);
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [lastSync, setLastSync] = useState<Date | null>(null);
@@ -109,27 +144,13 @@ export function SettingsHubView({
             onActivate={handleActivate}
             isActive={isActive}
             enableNumberJump
+            variant="hub"
+            width={panelWidth - 2}
           >
-            {SETTINGS_MENU_ITEMS.map((item, idx) => {
-              const { value, variant } = getValueForItem(item.id, settingsState);
-              return (
-                <MenuItem
-                  key={item.id}
-                  id={item.id}
-                  hotkey={idx + 1}
-                  value={
-                    variant === "success-badge" ? (
-                      <Badge text={value} variant="success" />
-                    ) : (
-                      value
-                    )
-                  }
-                  valueVariant={variant === "success-badge" ? "success" : variant}
-                >
-                  {item.label}
-                </MenuItem>
-              );
-            })}
+            <SettingsMenuItem id="trust" hotkey={1} state={settingsState} />
+            <SettingsMenuItem id="theme" hotkey={2} state={settingsState} />
+            <SettingsMenuItem id="provider" hotkey={3} state={settingsState} />
+            <SettingsMenuItem id="diagnostics" hotkey={4} state={settingsState} />
           </Menu>
         </Panel>
 
@@ -140,9 +161,6 @@ export function SettingsHubView({
         </Box>
       </Box>
 
-      <Box marginTop={1}>
-        <FooterBarWithDivider shortcuts={FOOTER_SHORTCUTS} />
-      </Box>
     </Box>
   );
 }

@@ -43,14 +43,12 @@ export function GLMEndpointStep({
   const initialIndex = ENDPOINT_OPTIONS.findIndex((e) => e.id === initialEndpoint);
   const [selectedIndex, setSelectedIndex] = useState(Math.max(0, initialIndex));
 
-  const handleSubmit = (option: SelectOption<GLMEndpoint>) => {
+  function handleSubmit(option: SelectOption<GLMEndpoint>): void {
     onSelect(option.id);
-  };
+  }
 
   useInput(
     (input) => {
-      if (!isActive) return;
-
       if (input === "b" && onBack) {
         onBack();
       }
@@ -58,12 +56,13 @@ export function GLMEndpointStep({
     { isActive }
   );
 
-  const footerText =
-    mode === "onboarding"
-      ? "Arrow keys to select, Enter to continue, [b] Back"
-      : onBack
-        ? "Arrow keys to select, Enter to configure, [b] Back"
-        : "Arrow keys to select, Enter to configure";
+  function getFooterText(): string {
+    if (mode === "onboarding") return "Arrow keys to select, Enter to continue, [b] Back";
+    if (onBack) return "Arrow keys to select, Enter to configure, [b] Back";
+    return "Arrow keys to select, Enter to configure";
+  }
+
+  const frameProps = mode === "settings" ? { width: "66%" as const, centered: true } : {};
 
   return (
     <WizardFrame
@@ -71,7 +70,8 @@ export function GLMEndpointStep({
       currentStep={currentStep}
       totalSteps={totalSteps}
       stepTitle="GLM Endpoint"
-      footer={footerText}
+      footer={getFooterText()}
+      {...frameProps}
     >
       <Text dimColor>Select the GLM API endpoint:</Text>
       <Box marginTop={1} marginBottom={1}>

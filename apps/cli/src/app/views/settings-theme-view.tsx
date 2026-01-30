@@ -5,6 +5,13 @@ import type { Theme } from "@repo/schemas/settings";
 import { ThemeStep } from "../../components/wizard/theme-step.js";
 import { Panel, PanelHeader } from "../../components/ui/panel.js";
 import { useSettingsState } from "../../features/settings/hooks/use-settings-state.js";
+import type { Shortcut } from "../../components/ui/footer-bar.js";
+
+export const SETTINGS_THEME_FOOTER_SHORTCUTS: Shortcut[] = [
+  { key: "Up/Down", label: "Navigate" },
+  { key: "Enter", label: "Select" },
+  { key: "b", label: "Back" },
+];
 
 interface SettingsThemeViewProps {
   projectId: string;
@@ -27,10 +34,10 @@ export function SettingsThemeView({
     void settingsState.loadAll();
   }, []);
 
-  const handleSubmit = async (theme: Theme) => {
+  async function handleSubmit(theme: Theme): Promise<void> {
     await settingsState.saveTheme(theme);
     onBack();
-  };
+  }
 
   const currentTheme = settingsState.settings?.theme ?? "auto";
 

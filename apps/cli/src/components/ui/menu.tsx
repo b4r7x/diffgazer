@@ -10,6 +10,7 @@ import {
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../../hooks/use-theme.js";
 import { findNextEnabled, findPrevEnabled } from "../../lib/list-navigation.js";
+import { Separator } from "./separator.js";
 
 interface MenuItemData {
   id: string;
@@ -22,6 +23,9 @@ interface MenuContextValue {
   onSelect: (index: number) => void;
   onActivate?: (item: MenuItemData) => void;
   items: MenuItemData[];
+  variant: "default" | "hub";
+  lastIndex: number;
+  width: number;
 }
 
 interface MenuItemProps {
@@ -40,6 +44,8 @@ interface MenuRootProps {
   onActivate?: (item: MenuItemData) => void;
   isActive?: boolean;
   enableNumberJump?: boolean;
+  variant?: "default" | "hub";
+  width?: number;
   children: ReactNode;
 }
 
@@ -61,6 +67,10 @@ function useMenuContext(): MenuContextValue {
   return context;
 }
 
+function isMenuItemProps(props: unknown): props is MenuItemProps {
+  return typeof props === "object" && props !== null && "id" in props && typeof (props as MenuItemProps).id === "string";
+}
+
 function extractMenuItems(node: ReactNode): MenuItemData[] {
   const items: MenuItemData[] = [];
   let itemIndex = 0;
@@ -70,7 +80,8 @@ function extractMenuItems(node: ReactNode): MenuItemData[] {
       if (!isValidElement(child)) return;
       if (child.type === Fragment) {
         walk((child.props as { children?: ReactNode }).children);
-      } else if (child.type === MenuItem) {
+      } else if (child.type === MenuItem || isMenuItemProps(child.props)) {
+        // Support both direct MenuItem and wrapper components with MenuItem-like props
         const props = child.props as MenuItemProps;
         items.push({
           id: props.id,
@@ -94,7 +105,7 @@ export function MenuItem({
   valueVariant = "default",
   children,
 }: MenuItemProps): ReactElement | null {
-  const { selectedIndex, items } = useMenuContext();
+  const { selectedIndex, items, variant: menuVariant, lastIndex, width: menuWidth } = useMenuContext();
   const { colors } = useTheme();
 
   const itemData = items.find((item) => item.id === id);
@@ -102,53 +113,81 @@ export function MenuItem({
 
   const isSelected = itemData.index === selectedIndex;
   const isDanger = variant === "danger";
+  const isHub = menuVariant === "hub";
+  const isLast = itemData.index === lastIndex;
 
-  const getTextColor = (): string | undefined => {
+  function getTextColor(): string | undefined {
     if (disabled) return colors.ui.textMuted;
     if (isSelected) return "black";
     if (isDanger) return colors.ui.error;
     return colors.ui.text;
-  };
+  }
 
-  const getValueColor = (): string => {
+  function getValueColor(): string {
     if (isSelected) return "black";
     if (valueVariant === "success") return colors.ui.success;
-    if (valueVariant === "muted") return colors.ui.textMuted;
     return colors.ui.textMuted;
-  };
+  }
 
-  const bgColor = isSelected
-    ? isDanger
-      ? colors.ui.error
-      : colors.ui.info
-    : undefined;
+  const bgColor = isSelected ? (isDanger ? colors.ui.error : colors.ui.info) : undefined;
+
+  if (isHub) {
+    return (
+      <Box flexDirection="column">
+        <Box paddingX={2} paddingY={1}>
+          <Text backgroundColor={bgColor} color={getTextColor()} dimColor={disabled}>
+            <Text color={isSelected ? "black" : colors.ui.info}>
+              {isSelected ? "▌" : " "}
+            </Text>
+            <Text> {children}</Text>
+          </Text>
+          <Box flexGrow={1} />
+          {value && (
+            <Text color={getValueColor()}>{value}</Text>
+          )}
+        </Box>
+        {!isLast && (
+          <Box paddingX={2}>
+            <Separator width={Math.max(1, menuWidth - 4)} />
+          </Box>
+        )}
+      </Box>
+    );
+  }
 
   return (
-    <Box paddingX={1}>
-      <Text backgroundColor={bgColor} color={getTextColor()} dimColor={disabled}>
-        <Text color={isSelected ? "black" : colors.ui.info}>
-          {isSelected ? "▌" : " "}
+    <Box paddingX={2}>
+      <Box width={menuWidth - 4}>
+        <Text backgroundColor={bgColor} color={getTextColor()} dimColor={disabled}>
+          <Text color={isSelected ? "black" : colors.ui.info}>
+            {isSelected ? "▌" : " "}
+          </Text>
+          {hotkey !== undefined && (
+            <Text color={isSelected ? "black" : colors.ui.info}> [{hotkey}] </Text>
+          )}
+          <Text>{children}</Text>
         </Text>
-        {hotkey !== undefined && (
-          <Text color={isSelected ? "black" : colors.ui.info}> [{hotkey}] </Text>
-        )}
-        <Text>{children}</Text>
+        <Box flexGrow={1} />
         {value && (
-          <Text color={getValueColor()}> {value}</Text>
+          <Text backgroundColor={bgColor} color={getValueColor()}>{value}</Text>
         )}
-      </Text>
+      </Box>
     </Box>
   );
 }
 
 export function MenuDivider({ label }: MenuDividerProps): ReactElement {
   const { colors } = useTheme();
+  const { width } = useMenuContext();
+  const separatorWidth = Math.max(1, width - 2); // Account for paddingX
 
   return (
     <Box paddingX={1} paddingY={0}>
-      <Text color={colors.ui.border}>
-        {label ? `── ${label} ──` : "────────────────"}
-      </Text>
+      {label ? (
+        <Text color={colors.ui.border}>── {label} ──</Text>
+      ) : (
+        <Separator width={separatorWidth} />
+      )}
     </Box>
   );
 }
@@ -171,9 +210,12 @@ export function Menu({
   onActivate,
   isActive = true,
   enableNumberJump = false,
+  variant = "default",
+  width = 60,
   children,
 }: MenuRootProps): ReactElement {
   const items = extractMenuItems(children);
+  const lastIndex = items.length - 1;
 
   useInput(
     (input, key) => {
@@ -216,6 +258,9 @@ export function Menu({
     onSelect,
     onActivate,
     items,
+    variant,
+    lastIndex,
+    width,
   };
 
   return (
