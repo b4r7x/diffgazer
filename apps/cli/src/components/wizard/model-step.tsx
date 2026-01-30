@@ -112,10 +112,6 @@ function OpenRouterModelStep({
     badge: model.isFree ? <Badge text="Free" variant="info" /> : <Badge text="Paid" variant="default" />,
   }));
 
-  const handleSubmit = (option: SelectOption<string>) => {
-    onSelect(option.id);
-  };
-
   useInput(
     (input, key) => {
       if (!isActive) return;
@@ -150,6 +146,8 @@ function OpenRouterModelStep({
         ? "[/] Search, Arrow keys to select, Enter to configure, [b] Back"
         : "[/] Search, Arrow keys to select, Enter to configure";
 
+  const frameProps = mode === "settings" ? { width: "66%" as const, centered: true } : {};
+
   if (loading) {
     return (
       <WizardFrame
@@ -158,6 +156,7 @@ function OpenRouterModelStep({
         totalSteps={totalSteps}
         stepTitle="Select Model"
         footer="Loading models..."
+        {...frameProps}
       >
         <Box>
           <Spinner type="dots" />
@@ -175,6 +174,7 @@ function OpenRouterModelStep({
         totalSteps={totalSteps}
         stepTitle="Select Model"
         footer={onBack ? "[b] Back" : ""}
+        {...frameProps}
       >
         <Text color="red">Error: {error}</Text>
       </WizardFrame>
@@ -188,6 +188,7 @@ function OpenRouterModelStep({
       totalSteps={totalSteps}
       stepTitle="Select Model"
       footer={footerText}
+      {...frameProps}
     >
       <Text dimColor>Choose a model for {providerName} (400+ models available):</Text>
 
@@ -212,7 +213,7 @@ function OpenRouterModelStep({
             options={options}
             selectedIndex={selectedIndex}
             onSelect={setSelectedIndex}
-            onSubmit={handleSubmit}
+            onSubmit={(option) => onSelect(option.id)}
             isActive={isActive && !isSearching}
           />
           {filteredModels.length > 15 && (
@@ -271,10 +272,6 @@ export function ModelStep({
     badge: <TierBadge tier={model.tier} recommended={model.recommended} />,
   }));
 
-  const handleSubmit = (option: SelectOption<string>) => {
-    onSelect(option.id);
-  };
-
   useInput(
     (input) => {
       if (!isActive) return;
@@ -293,6 +290,8 @@ export function ModelStep({
         ? "Arrow keys to select, Enter to configure, [b] Back"
         : "Arrow keys to select, Enter to configure";
 
+  const standardFrameProps = mode === "settings" ? { width: "66%" as const, centered: true } : {};
+
   return (
     <WizardFrame
       mode={mode}
@@ -300,6 +299,7 @@ export function ModelStep({
       totalSteps={totalSteps}
       stepTitle="Select Model"
       footer={footerText}
+      {...standardFrameProps}
     >
       <Text dimColor>Choose a model for {providerName}:</Text>
 
@@ -308,7 +308,7 @@ export function ModelStep({
           options={options}
           selectedIndex={selectedIndex}
           onSelect={setSelectedIndex}
-          onSubmit={handleSubmit}
+          onSubmit={(option) => onSelect(option.id)}
           isActive={isActive}
         />
       </Box>

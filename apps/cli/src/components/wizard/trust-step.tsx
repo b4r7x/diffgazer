@@ -126,12 +126,7 @@ export function TrustStep({
     { isActive }
   );
 
-  const footerText =
-    mode === "onboarding"
-      ? "Space to toggle, [t] Trust & Continue, [o] Trust Once, [s] Skip"
-      : onBack
-        ? "Space to toggle, [t] Trust, [o] Once, [s] Skip, [b] Back"
-        : "Space to toggle, [t] Trust, [o] Once, [s] Skip";
+  const frameProps = mode === "settings" ? { width: "66%" as const, centered: true } : {};
 
   return (
     <WizardFrame
@@ -139,10 +134,14 @@ export function TrustStep({
       currentStep={currentStep}
       totalSteps={totalSteps}
       stepTitle="Do you trust this directory?"
-      footer={footerText}
+      {...frameProps}
     >
       <Box flexDirection="column">
-        <Text color="cyan">{repoRoot}</Text>
+        <Box flexWrap="wrap">
+          <Text color="cyan" wrap="wrap">
+            {repoRoot}
+          </Text>
+        </Box>
 
         <AccessExplanation />
 
@@ -158,21 +157,6 @@ export function TrustStep({
             onToggle={handleToggle}
             isActive={isActive}
           />
-        </Box>
-
-        <Box marginTop={1} flexDirection="column">
-          <Text dimColor>Actions:</Text>
-          <Box marginLeft={2} flexDirection="column">
-            <Text>
-              <Text color="green">[t]</Text> Trust & Continue - Remember this choice
-            </Text>
-            <Text>
-              <Text color="yellow">[o]</Text> Trust Once - Only for this session
-            </Text>
-            <Text>
-              <Text color="gray">[s]</Text> Skip - Continue without trusting
-            </Text>
-          </Box>
         </Box>
       </Box>
     </WizardFrame>

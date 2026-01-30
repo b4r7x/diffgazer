@@ -7,6 +7,7 @@ export interface FocusablePaneProps {
   children: ReactNode;
   width?: number | string;
   height?: number | string;
+  flexGrow?: number;
 }
 
 export function FocusablePane({
@@ -14,6 +15,7 @@ export function FocusablePane({
   children,
   width,
   height,
+  flexGrow,
 }: FocusablePaneProps): ReactElement {
   const { colors } = useTheme();
 
@@ -26,6 +28,7 @@ export function FocusablePane({
       borderColor={borderColor}
       width={width}
       height={height}
+      flexGrow={flexGrow}
     >
       {children}
     </Box>

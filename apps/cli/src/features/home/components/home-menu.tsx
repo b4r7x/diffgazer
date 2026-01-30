@@ -10,6 +10,7 @@ interface HomeMenuProps {
   onActivate: (id: string) => void;
   hasLastReview?: boolean;
   isActive?: boolean;
+  width?: number;
 }
 
 function groupItems(items: CoreMenuItem[]) {
@@ -33,12 +34,16 @@ export function HomeMenu({
   onActivate,
   hasLastReview = false,
   isActive = true,
+  width = 32,
 }: HomeMenuProps): ReactElement {
   const menuItems = getMenuItemsForContext("cli");
   const { review, navigation, system } = groupItems(menuItems);
 
+  // Menu width is panel width minus border (2 chars)
+  const menuWidth = width - 2;
+
   return (
-    <Panel>
+    <Panel width={width}>
       <PanelHeader variant="subtle">Main Menu</PanelHeader>
       <Box flexDirection="column" paddingY={1}>
         <Menu
@@ -47,6 +52,7 @@ export function HomeMenu({
           onActivate={(item) => onActivate(item.id)}
           isActive={isActive}
           enableNumberJump
+          width={menuWidth}
         >
           {review.map((item) => (
             <MenuItem

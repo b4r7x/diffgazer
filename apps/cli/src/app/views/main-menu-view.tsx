@@ -37,6 +37,11 @@ export function MainMenuView({
   const [selectedIndex, setSelectedIndex] = useRouteState("mainMenu.selectedIndex", 0);
   const { isNarrow } = useTerminalDimensions();
 
+  // Fixed widths for consistent menu sizing
+  const gap = 3;
+  const leftWidth = 40;
+  const rightWidth = 32;
+
   const contextInfo: ContextInfo = {
     trustedDir: isTrusted ? "Trusted" : undefined,
     providerName: provider !== "Not configured" ? provider : undefined,
@@ -55,9 +60,9 @@ export function MainMenuView({
   return (
     <SplitPane
       center={!isNarrow}
-      leftWidth={isNarrow ? undefined : 30}
-      rightWidth={isNarrow ? undefined : 50}
-      gap={3}
+      leftWidth={isNarrow ? undefined : leftWidth}
+      rightWidth={isNarrow ? undefined : rightWidth}
+      gap={gap}
     >
       <ContextSidebar context={contextInfo} />
       <HomeMenu
@@ -66,6 +71,7 @@ export function MainMenuView({
         onActivate={handleActivate}
         hasLastReview={hasLastReview}
         isActive={isActive}
+        width={rightWidth}
       />
     </SplitPane>
   );

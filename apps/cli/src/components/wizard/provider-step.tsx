@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ReactElement, ReactNode } from "react";
+import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
 import type { AIProvider } from "@repo/schemas/config";
 import { AVAILABLE_PROVIDERS } from "@repo/schemas/config";
@@ -94,10 +94,6 @@ export function ProviderStep({
     };
   });
 
-  const handleSubmit = (option: SelectOption<AIProvider>) => {
-    onSelect(option.id);
-  };
-
   useInput(
     (input) => {
       if (!isActive) return;
@@ -123,6 +119,8 @@ export function ProviderStep({
       totalSteps={totalSteps}
       stepTitle="Select AI Provider"
       footer={footerText}
+      width="66%"
+      centered
     >
       <Text dimColor>Choose an AI provider for code review:</Text>
 
@@ -131,7 +129,7 @@ export function ProviderStep({
           options={options}
           selectedIndex={selectedIndex}
           onSelect={setSelectedIndex}
-          onSubmit={handleSubmit}
+          onSubmit={(option) => onSelect(option.id)}
           isActive={isActive}
         />
       </Box>
