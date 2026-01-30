@@ -16,6 +16,7 @@
     "@hono/node-server": "^1.19.9",
     "@repo/api": "workspace:*",
     "@repo/core": "workspace:*",
+    "@repo/hooks": "workspace:*",
     "@repo/schemas": "workspace:*",
     "@repo/server": "workspace:*",
     "chalk": "^5.6.2",

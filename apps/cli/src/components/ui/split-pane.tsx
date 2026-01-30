@@ -9,6 +9,7 @@ interface SplitPaneProps {
   gap?: number;
   height?: number;
   breakpoint?: number;
+  center?: boolean;
   children: [ReactNode, ReactNode];
 }
 
@@ -18,6 +19,7 @@ export function SplitPane({
   gap = 1,
   height,
   breakpoint = DEFAULT_BREAKPOINT,
+  center = false,
   children,
 }: SplitPaneProps): ReactElement {
   const { stdout } = useStdout();
@@ -40,7 +42,12 @@ export function SplitPane({
   }
 
   return (
-    <Box flexDirection="row" gap={gap} height={height}>
+    <Box
+      flexDirection="row"
+      gap={gap}
+      height={height}
+      justifyContent={center ? "center" : undefined}
+    >
       <Box
         flexDirection="column"
         width={leftWidth}
