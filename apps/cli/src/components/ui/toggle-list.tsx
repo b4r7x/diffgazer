@@ -25,14 +25,14 @@ export function ToggleList<T extends string = string>({
 }: ToggleListProps<T>): ReactElement {
   useInput(
     (input, key) => {
-      if (!isActive) return;
-
       if (key.upArrow && selectedIndex > 0) {
         onSelect(selectedIndex - 1);
+        return;
       }
 
       if (key.downArrow && selectedIndex < options.length - 1) {
         onSelect(selectedIndex + 1);
+        return;
       }
 
       if (input === " ") {
@@ -58,8 +58,10 @@ export function ToggleList<T extends string = string>({
             </Text>
             <Text> {option.label}</Text>
           </Box>
-          {selectedIndex === index && option.description && (
-            <Text dimColor>{"      "}{option.description}</Text>
+          {option.description && (
+            <Box marginLeft={6}>
+              <Text dimColor>{option.description}</Text>
+            </Box>
           )}
         </Box>
       ))}

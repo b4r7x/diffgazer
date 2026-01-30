@@ -1,13 +1,12 @@
 import type { ReactElement } from "react";
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { Box, Text, useInput, useStdout } from "ink";
+import { useState, useEffect, useMemo } from "react";
+import { Box, Text, useInput } from "ink";
 import type { AIProvider, ProviderStatus } from "@repo/schemas/config";
 import { AVAILABLE_PROVIDERS, PROVIDER_CAPABILITIES } from "@repo/schemas/config";
 import { SplitPane } from "../../components/ui/split-pane.js";
 import { Panel, PanelHeader, PanelContent, PanelDivider } from "../../components/ui/panel.js";
 import { Badge } from "../../components/ui/badge.js";
-import { FooterBarWithDivider } from "../../components/ui/footer-bar.js";
-import { useTheme } from "../../hooks/use-theme.js";
+import { useTerminalDimensions } from "../../hooks/index.js";
 import { useSettingsState } from "../../features/settings/hooks/use-settings-state.js";
 
 type FocusZone = "search" | "filters" | "list" | "actions";
@@ -21,7 +20,7 @@ const FILTERS: { id: ProviderFilter; label: string }[] = [
   { id: "paid", label: "Paid" },
 ];
 
-const FOOTER_SHORTCUTS = [
+export const SETTINGS_PROVIDERS_FOOTER_SHORTCUTS = [
   { key: "/", label: "search" },
   { key: "Tab", label: "zone" },
   { key: "j/k", label: "navigate" },
@@ -44,10 +43,13 @@ export function SettingsProvidersView({
   onSetApiKey,
   isActive = true,
 }: SettingsProvidersViewProps): ReactElement {
-  const { colors } = useTheme();
-  const { stdout } = useStdout();
-  const terminalHeight = stdout?.rows ?? 24;
-  const listHeight = Math.max(8, terminalHeight - 18);
+  const { columns, isNarrow } = useTerminalDimensions();
+
+  // Proportional widths: 40% left, 60% right
+  const gap = 1;
+  const availableWidth = columns - gap;
+  const leftWidth = Math.floor(availableWidth * 0.4);
+  const rightWidth = Math.floor(availableWidth * 0.6);
 
   const settingsState = useSettingsState(projectId);
 
@@ -141,7 +143,7 @@ export function SettingsProvidersView({
     return result;
   }, [selectedProvider, selectedStatus]);
 
-  const cycleFocusForward = useCallback(() => {
+  function cycleFocusForward(): void {
     setFocusZone((current) => {
       switch (current) {
         case "search":
@@ -156,35 +158,32 @@ export function SettingsProvidersView({
           return "list";
       }
     });
-  }, [actions.length]);
+  }
 
-  const handleAction = useCallback(
-    async (actionId: string) => {
-      if (!selectedProvider) return;
+  async function handleAction(actionId: string): Promise<void> {
+    if (!selectedProvider) return;
 
-      switch (actionId) {
-        case "select-active":
-          if (selectedStatus?.hasApiKey) {
-            await settingsState.saveCredentials(
-              selectedProvider.id,
-              "",
-              selectedStatus.model
-            );
-          }
-          break;
-        case "set-api-key":
-          onSetApiKey(selectedProvider.id);
-          break;
-        case "remove-key":
-          // Would need deleteProviderCredentials API
-          break;
-        case "change-model":
-          onSelectModel(selectedProvider.id);
-          break;
-      }
-    },
-    [selectedProvider, selectedStatus, settingsState, onSelectModel, onSetApiKey]
-  );
+    switch (actionId) {
+      case "select-active":
+        if (selectedStatus?.hasApiKey) {
+          await settingsState.saveCredentials(
+            selectedProvider.id,
+            "",
+            selectedStatus.model
+          );
+        }
+        break;
+      case "set-api-key":
+        onSetApiKey(selectedProvider.id);
+        break;
+      case "remove-key":
+        // Would need deleteProviderCredentials API
+        break;
+      case "change-model":
+        onSelectModel(selectedProvider.id);
+        break;
+    }
+  }
 
   useInput(
     (input, key) => {
@@ -298,8 +297,12 @@ export function SettingsProvidersView({
   }
 
   return (
-    <Box flexDirection="column" padding={1}>
-      <SplitPane leftWidth={35} gap={1}>
+    <Box flexDirection="column" flexGrow={1}>
+      <SplitPane
+        leftWidth={isNarrow ? undefined : leftWidth}
+        rightWidth={isNarrow ? undefined : rightWidth}
+        gap={gap}
+      >
         {/* Left Pane - Provider List */}
         <Panel>
           <PanelHeader>PROVIDERS</PanelHeader>
@@ -333,7 +336,7 @@ export function SettingsProvidersView({
             <PanelDivider />
 
             {/* Provider List */}
-            <Box flexDirection="column" height={listHeight}>
+            <Box flexDirection="column" flexGrow={1}>
               {filteredProviders.map((provider, idx) => {
                 const status = providerStatusMap.get(provider.id);
                 const isSelected = idx === selectedProviderIndex;
@@ -385,9 +388,6 @@ export function SettingsProvidersView({
         </Panel>
       </SplitPane>
 
-      <Box marginTop={1}>
-        <FooterBarWithDivider shortcuts={FOOTER_SHORTCUTS} />
-      </Box>
     </Box>
   );
 }

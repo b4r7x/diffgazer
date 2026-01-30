@@ -11,7 +11,6 @@ interface SettingsViewProps {
   projectId: string;
   repoRoot: string;
   onBack: () => void;
-  onDeleteProvider?: (provider: AIProvider) => void;
 }
 
 function SettingsLoading(): ReactElement {
@@ -30,12 +29,12 @@ export function SettingsView({
   projectId,
   repoRoot,
   onBack,
-  onDeleteProvider,
 }: SettingsViewProps): ReactElement {
   const state = useSettingsState(projectId);
 
   useEffect(() => {
     state.loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (state.isLoading) {
@@ -65,10 +64,6 @@ export function SettingsView({
     await state.deleteConfig();
   };
 
-  const handleDeleteProvider = (provider: AIProvider) => {
-    onDeleteProvider?.(provider);
-  };
-
   const configuredProviders = state.providerStatus.map((p) => ({
     provider: p.provider,
     model: p.model,
@@ -89,7 +84,6 @@ export function SettingsView({
         currentCapabilities={state.trust?.capabilities}
         configuredProviders={configuredProviders}
         onDelete={handleDeleteConfig}
-        onDeleteProvider={handleDeleteProvider}
         onBack={onBack}
         onSaveTheme={handleSaveTheme}
         onSaveTrust={handleSaveTrust}

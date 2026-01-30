@@ -4,6 +4,13 @@ import { Box, Text, useInput, useStdout } from "ink";
 import os from "node:os";
 import chalk from "chalk";
 import { Panel, PanelHeader, PanelContent, PanelDivider } from "../../components/ui/panel.js";
+import type { Shortcut } from "../../components/ui/footer-bar.js";
+
+export const SETTINGS_DIAGNOSTICS_FOOTER_SHORTCUTS: Shortcut[] = [
+  { key: "Left/Right", label: "Navigate" },
+  { key: "Enter", label: "Run" },
+  { key: "b", label: "Back" },
+];
 
 interface SettingsDiagnosticsViewProps {
   onBack: () => void;

@@ -10,6 +10,10 @@ interface WizardFrameProps {
   stepTitle: string;
   children: ReactNode;
   footer?: ReactNode;
+  /** Width of the frame. Use percentage string ("60%") or number for chars */
+  width?: number | string;
+  /** Whether to center the frame horizontally */
+  centered?: boolean;
 }
 
 export function WizardFrame({
@@ -19,12 +23,14 @@ export function WizardFrame({
   stepTitle,
   children,
   footer,
+  width,
+  centered = false,
 }: WizardFrameProps): ReactElement {
   const headerText = mode === "onboarding" ? "Setup" : "Settings";
 
-  return (
-    <Box flexDirection="column" padding={1}>
-      <Box marginBottom={1}>
+  const content = (
+    <Box flexDirection="column" paddingX={1} width={width}>
+      <Box>
         <Text bold color="cyan">
           {headerText}
         </Text>
@@ -35,15 +41,25 @@ export function WizardFrame({
       </Box>
 
       <Text bold>{stepTitle}</Text>
-      <Box marginTop={1} flexDirection="column">
+      <Box flexDirection="column">
         {children}
       </Box>
 
       {footer && (
-        <Box marginTop={1}>
+        <Box>
           <Text dimColor>{footer}</Text>
         </Box>
       )}
     </Box>
   );
+
+  if (centered) {
+    return (
+      <Box justifyContent="center" width="100%">
+        {content}
+      </Box>
+    );
+  }
+
+  return content;
 }

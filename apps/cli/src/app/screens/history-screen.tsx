@@ -5,6 +5,7 @@ import type { ReviewHistoryMetadata } from "@repo/schemas/review-history";
 import type { SessionMetadata } from "@repo/schemas/session";
 import type { TriageIssue } from "@repo/schemas";
 import { useTheme } from "../../hooks/use-theme.js";
+import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
 import { FocusablePane } from "../../components/ui/focusable-pane.js";
 import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs.js";
 import { FooterBar, type Shortcut } from "../../components/ui/footer-bar.js";
@@ -27,13 +28,13 @@ export interface HistoryScreenProps {
 }
 
 function getSeverityCounts(issues: TriageIssue[]): Record<SeverityLevel, number> {
-  return {
-    blocker: issues.filter((i) => i.severity === "blocker").length,
-    high: issues.filter((i) => i.severity === "high").length,
-    medium: issues.filter((i) => i.severity === "medium").length,
-    low: issues.filter((i) => i.severity === "low").length,
-    nit: 0,
-  };
+  const counts: Record<SeverityLevel, number> = { blocker: 0, high: 0, medium: 0, low: 0, nit: 0 };
+  for (const issue of issues) {
+    if (issue.severity in counts) {
+      counts[issue.severity as SeverityLevel]++;
+    }
+  }
+  return counts;
 }
 
 export function HistoryScreen({
@@ -48,6 +49,17 @@ export function HistoryScreen({
 }: HistoryScreenProps): ReactElement {
   const { colors } = useTheme();
   const { exit } = useApp();
+  const { columns, rows } = useTerminalDimensions();
+
+  // Calculate available height: total rows - tabs(1) - footer(1)
+  const contentHeight = Math.max(1, rows - 2);
+
+  // Calculate proportional widths based on terminal columns
+  const timelineWidth = Math.max(16, Math.floor(columns * 0.2));
+  const insightsWidth = Math.max(24, Math.floor(columns * 0.25));
+  // Account for borders (2 chars per pane = 6 total)
+  const timelineDividerWidth = Math.max(1, timelineWidth - 2);
+  const runsDividerWidth = Math.max(1, columns - timelineWidth - insightsWidth - 6);
 
   // Transform reviews to HistoryRuns
   const runs = useMemo(() => reviews.map(toHistoryRun), [reviews]);
@@ -212,14 +224,14 @@ export function HistoryScreen({
       </Box>
 
       {/* 3-pane layout */}
-      <Box flexGrow={1} flexDirection="row">
+      <Box height={contentHeight} flexDirection="row" overflow="hidden">
         {/* Timeline (left) */}
-        <FocusablePane isFocused={focusZone === "timeline"} width={24}>
+        <FocusablePane isFocused={focusZone === "timeline"} width={timelineWidth}>
           <Box flexDirection="column">
             <Box paddingX={1}>
               <Text color={colors.ui.textMuted} bold>TIMELINE</Text>
             </Box>
-            <Text color={colors.ui.border}>{"─".repeat(22)}</Text>
+            <Text color={colors.ui.border}>{"─".repeat(timelineDividerWidth)}</Text>
           </Box>
           <Box flexDirection="column" paddingY={1}>
             <TimelineList
@@ -232,13 +244,13 @@ export function HistoryScreen({
         </FocusablePane>
 
         {/* Runs (middle) */}
-        <FocusablePane isFocused={focusZone === "runs"}>
+        <FocusablePane isFocused={focusZone === "runs"} flexGrow={1}>
           <Box flexDirection="column">
             <Box paddingX={1} justifyContent="space-between">
               <Text color={colors.ui.textMuted} bold>RUNS</Text>
               <Text color={colors.ui.textMuted}>Sort: Recent</Text>
             </Box>
-            <Text color={colors.ui.border}>{"─".repeat(40)}</Text>
+            <Text color={colors.ui.border}>{"─".repeat(runsDividerWidth)}</Text>
           </Box>
           <Box flexDirection="column">
             {activeTab === "runs" ? (
@@ -273,7 +285,7 @@ export function HistoryScreen({
         </FocusablePane>
 
         {/* Insights (right) */}
-        <FocusablePane isFocused={focusZone === "insights"} width={36}>
+        <FocusablePane isFocused={focusZone === "insights"} width={insightsWidth}>
           <HistoryInsightsPane
             runId={selectedRun?.displayId ?? null}
             severityCounts={severityCounts}

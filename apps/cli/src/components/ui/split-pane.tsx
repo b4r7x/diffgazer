@@ -30,7 +30,7 @@ export function SplitPane({
 
   if (isNarrow) {
     return (
-      <Box flexDirection="column" gap={gap} height={height}>
+      <Box flexDirection="column" gap={gap} height={height} flexGrow={height === undefined ? 1 : undefined}>
         <Box flexDirection="column" flexGrow={1}>
           {left}
         </Box>
@@ -41,12 +41,17 @@ export function SplitPane({
     );
   }
 
-  return (
+  const totalWidth = leftWidth !== undefined && rightWidth !== undefined
+    ? leftWidth + rightWidth + gap
+    : undefined;
+
+  const content = (
     <Box
       flexDirection="row"
       gap={gap}
       height={height}
-      justifyContent={center ? "center" : undefined}
+      flexGrow={height === undefined && !center ? 1 : undefined}
+      width={center ? totalWidth : undefined}
     >
       <Box
         flexDirection="column"
@@ -66,4 +71,18 @@ export function SplitPane({
       </Box>
     </Box>
   );
+
+  if (center) {
+    return (
+      <Box
+        justifyContent="center"
+        width="100%"
+        height={height}
+      >
+        {content}
+      </Box>
+    );
+  }
+
+  return content;
 }

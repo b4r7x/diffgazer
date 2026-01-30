@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback } from "react";
 import { createHash } from "node:crypto";
-import { OnboardingScreen } from "./screens/onboarding-screen.js";
+import { OnboardingScreen, SETTINGS_FOOTER_SHORTCUTS } from "./screens/index.js";
 import { TrustWizardScreen } from "./screens/trust-wizard-screen.js";
 import { useNavigation, useAppInit, useScreenHandlers, useAppState } from "../features/app/index.js";
 import {
@@ -17,6 +17,14 @@ import {
   SettingsDiagnosticsView,
   HistoryView,
   MAIN_MENU_FOOTER_SHORTCUTS,
+  SETTINGS_HUB_FOOTER_SHORTCUTS,
+  SETTINGS_TRUST_FOOTER_SHORTCUTS,
+  SETTINGS_PROVIDERS_FOOTER_SHORTCUTS,
+  GIT_STATUS_FOOTER_SHORTCUTS,
+  GIT_DIFF_FOOTER_SHORTCUTS,
+  SETTINGS_THEME_FOOTER_SHORTCUTS,
+  SETTINGS_DIAGNOSTICS_FOOTER_SHORTCUTS,
+  HISTORY_FOOTER_SHORTCUTS,
 } from "./views/index.js";
 import type { AppView, SettingsSection } from "@repo/core";
 import { ThemeProvider, useSettings, SessionRecorderProvider, useSessionRecorderContext, KeyModeProvider } from "../hooks/index.js";
@@ -30,6 +38,19 @@ function createProjectId(path: string): string {
 }
 
 const noop = (): void => {};
+
+const VIEW_SHORTCUTS: Record<string, typeof MAIN_MENU_FOOTER_SHORTCUTS> = {
+  main: MAIN_MENU_FOOTER_SHORTCUTS,
+  settings: SETTINGS_FOOTER_SHORTCUTS,
+  "settings-hub": SETTINGS_HUB_FOOTER_SHORTCUTS,
+  "settings-trust": SETTINGS_TRUST_FOOTER_SHORTCUTS,
+  "settings-providers": SETTINGS_PROVIDERS_FOOTER_SHORTCUTS,
+  "settings-theme": SETTINGS_THEME_FOOTER_SHORTCUTS,
+  "settings-diagnostics": SETTINGS_DIAGNOSTICS_FOOTER_SHORTCUTS,
+  "git-status": GIT_STATUS_FOOTER_SHORTCUTS,
+  "git-diff": GIT_DIFF_FOOTER_SHORTCUTS,
+  history: HISTORY_FOOTER_SHORTCUTS,
+};
 
 interface AppProps {
   address: string;
@@ -61,6 +82,7 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
 
   useEffect(() => {
     localSettings.loadSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -69,6 +91,7 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
       void state.trust.loadTrust(projectId);
       void state.reviewHistory.loadList();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view, projectId]);
 
   useAppInit({
@@ -101,11 +124,13 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
   if (view === "trust-wizard") {
     return (
       <ThemeProvider theme={theme}>
-        <TrustWizardScreen
-          projectId={projectId}
-          repoRoot={repoRoot}
-          onComplete={(trustConfig) => void state.trust.saveTrust(trustConfig)}
-        />
+        <GlobalLayout shortcuts={[]}>
+          <TrustWizardScreen
+            projectId={projectId}
+            repoRoot={repoRoot}
+            onComplete={(trustConfig) => void state.trust.saveTrust(trustConfig)}
+          />
+        </GlobalLayout>
       </ThemeProvider>
     );
   }
@@ -113,17 +138,18 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
   if (view === "onboarding") {
     return (
       <ThemeProvider theme={theme}>
-        <OnboardingScreen
-          saveState={state.config.saveState}
-          error={state.config.error}
-          onSave={handlers.config.onSave}
-        />
+        <GlobalLayout shortcuts={[]}>
+          <OnboardingScreen
+            saveState={state.config.saveState}
+            error={state.config.error}
+            onSave={handlers.config.onSave}
+          />
+        </GlobalLayout>
       </ThemeProvider>
     );
   }
 
-  // Get shortcuts based on current view
-  const shortcuts = view === "main" ? MAIN_MENU_FOOTER_SHORTCUTS : [];
+  const shortcuts = VIEW_SHORTCUTS[view] ?? [];
 
   return (
     <ThemeProvider theme={theme}>
@@ -146,7 +172,6 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
             projectId={projectId}
             repoRoot={repoRoot}
             onBack={handlers.config.onBack}
-            onDeleteProvider={handlers.config.onDeleteProvider}
           />
         )}
         {view === "settings-hub" && (

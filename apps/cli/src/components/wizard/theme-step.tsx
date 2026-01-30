@@ -114,6 +114,8 @@ export function ThemeStep({
         ? "Arrow keys to select, Enter to save, [b] Back"
         : "Arrow keys to select, Enter to save";
 
+  const frameProps = mode === "settings" ? { width: "66%" as const, centered: true } : {};
+
   return (
     <WizardFrame
       mode={mode}
@@ -121,6 +123,7 @@ export function ThemeStep({
       totalSteps={totalSteps}
       stepTitle="Theme Selection"
       footer={footerText}
+      {...frameProps}
     >
       <Box flexDirection="row" gap={2}>
         <Box flexDirection="column" width={40}>

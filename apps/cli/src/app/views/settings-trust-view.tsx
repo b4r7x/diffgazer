@@ -1,9 +1,17 @@
 import type { ReactElement } from "react";
 import { useEffect } from "react";
-import { Box, Text, useStdout } from "ink";
+import { Box, useStdout } from "ink";
 import { TrustStep } from "../../components/wizard/trust-step.js";
 import { Panel, PanelHeader } from "../../components/ui/panel.js";
 import { useSettingsState } from "../../features/settings/hooks/use-settings-state.js";
+
+export const SETTINGS_TRUST_FOOTER_SHORTCUTS = [
+  { key: "Space", label: "toggle" },
+  { key: "t", label: "trust" },
+  { key: "o", label: "once" },
+  { key: "s", label: "skip" },
+  { key: "b", label: "back" },
+];
 
 interface SettingsTrustViewProps {
   projectId: string;
@@ -28,10 +36,12 @@ export function SettingsTrustView({
     void settingsState.loadAll();
   }, []);
 
-  const handleComplete = async (trustConfig: Parameters<typeof settingsState.saveTrust>[0]) => {
+  async function handleComplete(
+    trustConfig: Parameters<typeof settingsState.saveTrust>[0]
+  ): Promise<void> {
     await settingsState.saveTrust(trustConfig);
     onBack();
-  };
+  }
 
   return (
     <Box flexDirection="column" padding={1}>

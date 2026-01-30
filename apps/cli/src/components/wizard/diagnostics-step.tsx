@@ -36,18 +36,18 @@ const DEFAULT_CHECKS: DiagnosticCheck[] = [
   { id: "api", label: "API connectivity", status: "idle" },
 ];
 
-function DiagnosticCheckItem({ check }: { check: DiagnosticCheck }): ReactElement {
-  const statusIcon = {
-    idle: <Text dimColor>[ ]</Text>,
-    running: <Spinner type="dots" />,
-    success: <Text color="green">[OK]</Text>,
-    error: <Text color="red">[X]</Text>,
-  };
+const STATUS_ICONS: Record<DiagnosticStatus, ReactElement> = {
+  idle: <Text dimColor>[ ]</Text>,
+  running: <Spinner type="dots" />,
+  success: <Text color="green">[OK]</Text>,
+  error: <Text color="red">[X]</Text>,
+};
 
+function DiagnosticCheckItem({ check }: { check: DiagnosticCheck }): ReactElement {
   return (
     <Box flexDirection="column">
       <Box>
-        <Box width={6}>{statusIcon[check.status]}</Box>
+        <Box width={6}>{STATUS_ICONS[check.status]}</Box>
         <Text>{check.label}</Text>
       </Box>
       {check.message && (
@@ -110,10 +110,11 @@ export function DiagnosticsStep({
 
   useInput(
     (input) => {
-      if (!isActive || isRunning) return;
+      if (isRunning) return;
 
       if (input === "r") {
         runDiagnostics();
+        return;
       }
 
       if (input === "b" && onBack) {
@@ -123,11 +124,13 @@ export function DiagnosticsStep({
     { isActive }
   );
 
-  const footerText = isRunning
-    ? "Running diagnostics..."
-    : onBack
-      ? "[r] Run Again  [b] Back"
-      : "[r] Run Again";
+  function getFooterText(): string {
+    if (isRunning) return "Running diagnostics...";
+    if (onBack) return "[r] Run Again  [b] Back";
+    return "[r] Run Again";
+  }
+
+  const frameProps = mode === "settings" ? { width: "66%" as const, centered: true } : {};
 
   return (
     <WizardFrame
@@ -135,7 +138,8 @@ export function DiagnosticsStep({
       currentStep={currentStep}
       totalSteps={totalSteps}
       stepTitle="System Diagnostics"
-      footer={footerText}
+      footer={getFooterText()}
+      {...frameProps}
     >
       <Text dimColor>Checking system status:</Text>
 

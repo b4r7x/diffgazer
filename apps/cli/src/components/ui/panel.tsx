@@ -62,21 +62,16 @@ export function PanelHeader({
 }: PanelHeaderProps): ReactElement {
   const { colors } = useTheme();
 
-  const getValueColor = (): string => {
-    switch (valueVariant) {
-      case "success":
-        return colors.ui.success;
-      case "muted":
-        return colors.ui.textMuted;
-      default:
-        return colors.ui.text;
-    }
-  };
+  function getValueColor(): string {
+    if (valueVariant === "success") return colors.ui.success;
+    if (valueVariant === "muted") return colors.ui.textMuted;
+    return colors.ui.text;
+  }
 
-  const renderValue = (): ReactElement | null => {
+  function renderValue(): ReactElement | null {
     if (value === undefined) return null;
     return <Text color={getValueColor()}>{value}</Text>;
-  };
+  }
 
   switch (variant) {
     case "subtle":
@@ -150,8 +145,8 @@ export function PanelContent({
   children,
   spacing = "md",
 }: PanelContentProps): ReactElement {
-  const paddingY = spacing === "none" ? 0 : spacing === "sm" ? 0 : 1;
-  const gap = spacing === "none" ? 0 : spacing === "sm" ? 1 : 1;
+  const paddingY = spacing === "md" ? 1 : 0;
+  const gap = spacing === "none" ? 0 : 1;
 
   return (
     <Box flexDirection="column" paddingX={1} paddingY={paddingY} gap={gap}>
@@ -162,11 +157,12 @@ export function PanelContent({
 
 export function PanelDivider({ width }: PanelDividerProps): ReactElement {
   const { colors } = useTheme();
+  const charCount = width ?? 200;
 
   return (
-    <Box paddingX={1}>
+    <Box width={width ? undefined : "100%"} paddingX={1}>
       <Text color={colors.ui.border} dimColor>
-        {width ? "─".repeat(width) : "────────────────────────────────"}
+        {"─".repeat(charCount)}
       </Text>
     </Box>
   );
