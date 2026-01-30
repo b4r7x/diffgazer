@@ -8,6 +8,13 @@ export type AppView =
   | "review"
   | "chat"
   | "settings"
+  | "settings-hub"
+  | "settings-trust"
+  | "settings-theme"
+  | "settings-providers"
+  | "settings-diagnostics"
   | "history"
   | "sessions"
   | "review-history";
+
+export type SettingsSection = "trust" | "theme" | "providers" | "diagnostics";

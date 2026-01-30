@@ -2,59 +2,44 @@ import { useState, useEffect, type ReactElement } from "react";
 import { Box, Text } from "ink";
 import type { TriageIssue } from "@repo/schemas/triage";
 import { SeverityBadge } from "../../../components/ui/badge.js";
+import { SeverityFilterGroup, type SeverityFilter } from "../../../components/ui/severity-filter-group.js";
+import type { SeverityLevel } from "../../../components/ui/severity-filter-button.js";
 import { useTheme } from "../../../hooks/use-theme.js";
 
 interface IssueListPaneProps {
   issues: TriageIssue[];
+  allIssues?: TriageIssue[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   focus: boolean;
   height: number;
+  title?: string;
+  severityFilter?: SeverityFilter;
+  onSeverityFilterChange?: (filter: SeverityFilter) => void;
+  isFilterFocused?: boolean;
+  focusedFilterIndex?: number;
 }
 
-interface SeverityCounts {
-  blocker: number;
-  high: number;
-  medium: number;
-  low: number;
-  nit: number;
-}
-
-function countSeverities(issues: TriageIssue[]): SeverityCounts {
-  const counts: SeverityCounts = { blocker: 0, high: 0, medium: 0, low: 0, nit: 0 };
-  for (const issue of issues) {
-    counts[issue.severity]++;
-  }
-  return counts;
-}
-
-function formatSeverityCounts(counts: SeverityCounts): string {
-  const parts: string[] = [];
-  if (counts.blocker > 0) parts.push(`${counts.blocker} blocker`);
-  if (counts.high > 0) parts.push(`${counts.high} high`);
-  if (counts.medium > 0) parts.push(`${counts.medium} medium`);
-  if (counts.low > 0) parts.push(`${counts.low} low`);
-  if (counts.nit > 0) parts.push(`${counts.nit} nit`);
-  return parts.join(", ");
-}
 
 function IssueListHeader({
+  title,
   count,
-  severityCounts,
 }: {
+  title?: string;
   count: number;
-  severityCounts: SeverityCounts;
 }): ReactElement {
-  const countsStr = formatSeverityCounts(severityCounts);
+  const { colors } = useTheme();
 
   return (
-    <Box marginBottom={1}>
-      <Text bold>
+    <Box marginBottom={1} flexDirection="column">
+      {title && (
+        <Text bold color={colors.ui.accent}>
+          {title}
+        </Text>
+      )}
+      <Text dimColor>
         {count} issue{count !== 1 ? "s" : ""}
       </Text>
-      {countsStr && (
-        <Text dimColor> ({countsStr})</Text>
-      )}
     </Box>
   );
 }
@@ -132,24 +117,40 @@ function calculateVisibleWindow(
 
 export function IssueListPane({
   issues,
+  allIssues,
   selectedId,
   onSelect,
   focus,
   height,
+  title,
+  severityFilter,
+  onSeverityFilterChange,
+  isFilterFocused = false,
+  focusedFilterIndex = 0,
 }: IssueListPaneProps): ReactElement {
   const { colors } = useTheme();
   const [scrollOffset, setScrollOffset] = useState(0);
 
-  const headerHeight = 2;
+  // Use allIssues for severity counts if provided, otherwise use filtered issues
+  const issuesForCounts = allIssues ?? issues;
+  const severityCounts: Record<SeverityLevel, number> = {
+    blocker: issuesForCounts.filter((i) => i.severity === "blocker").length,
+    high: issuesForCounts.filter((i) => i.severity === "high").length,
+    medium: issuesForCounts.filter((i) => i.severity === "medium").length,
+    low: issuesForCounts.filter((i) => i.severity === "low").length,
+    nit: issuesForCounts.filter((i) => i.severity === "nit").length,
+  };
+
+  const showFilters = severityFilter !== undefined && onSeverityFilterChange !== undefined;
+  const headerHeight = title ? 3 : 2;
+  const filterHeight = showFilters ? 2 : 0;
   const borderHeight = 2;
   const scrollIndicatorHeight = 1;
-  const availableHeight = Math.max(1, height - headerHeight - borderHeight);
+  const availableHeight = Math.max(1, height - headerHeight - filterHeight - borderHeight);
 
   const selectedIndex = selectedId
     ? issues.findIndex((issue) => issue.id === selectedId)
     : -1;
-
-  const severityCounts = countSeverities(issues);
 
   const hasScrollIndicators = issues.length > availableHeight;
   const effectiveVisibleCount = hasScrollIndicators
@@ -177,7 +178,19 @@ export function IssueListPane({
 
   return (
     <Box flexDirection="column" height={height}>
-      <IssueListHeader count={issues.length} severityCounts={severityCounts} />
+      <IssueListHeader title={title} count={issues.length} />
+
+      {showFilters && (
+        <Box marginBottom={1}>
+          <SeverityFilterGroup
+            counts={severityCounts}
+            activeFilter={severityFilter}
+            isFocused={isFilterFocused}
+            focusedIndex={focusedFilterIndex}
+            onFilterChange={onSeverityFilterChange}
+          />
+        </Box>
+      )}
 
       <Box
         flexDirection="column"

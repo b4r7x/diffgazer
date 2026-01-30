@@ -214,9 +214,12 @@ export function HistoryScreen({
       {/* 3-pane layout */}
       <Box flexGrow={1} flexDirection="row">
         {/* Timeline (left) */}
-        <FocusablePane isFocused={focusZone === "timeline"} width={20}>
-          <Box paddingX={1}>
-            <Text color={colors.ui.textMuted} bold>TIMELINE</Text>
+        <FocusablePane isFocused={focusZone === "timeline"} width={24}>
+          <Box flexDirection="column">
+            <Box paddingX={1}>
+              <Text color={colors.ui.textMuted} bold>TIMELINE</Text>
+            </Box>
+            <Text color={colors.ui.border}>{"─".repeat(22)}</Text>
           </Box>
           <Box flexDirection="column" paddingY={1}>
             <TimelineList
@@ -230,9 +233,12 @@ export function HistoryScreen({
 
         {/* Runs (middle) */}
         <FocusablePane isFocused={focusZone === "runs"}>
-          <Box paddingX={1} justifyContent="space-between">
-            <Text color={colors.ui.textMuted} bold>RUNS</Text>
-            <Text color={colors.ui.textMuted}>Sort: Recent</Text>
+          <Box flexDirection="column">
+            <Box paddingX={1} justifyContent="space-between">
+              <Text color={colors.ui.textMuted} bold>RUNS</Text>
+              <Text color={colors.ui.textMuted}>Sort: Recent</Text>
+            </Box>
+            <Text color={colors.ui.border}>{"─".repeat(40)}</Text>
           </Box>
           <Box flexDirection="column">
             {activeTab === "runs" ? (
@@ -267,7 +273,7 @@ export function HistoryScreen({
         </FocusablePane>
 
         {/* Insights (right) */}
-        <FocusablePane isFocused={focusZone === "insights"} width={30}>
+        <FocusablePane isFocused={focusZone === "insights"} width={36}>
           <HistoryInsightsPane
             runId={selectedRun?.displayId ?? null}
             severityCounts={severityCounts}

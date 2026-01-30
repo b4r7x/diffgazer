@@ -18,3 +18,4 @@ export { IssueBodyPatch } from "./issue-body-patch.js";
 export { AgentActivityPanel } from "./agent-activity-panel.js";
 export { FeedbackInput } from "./feedback-input.js";
 export { DrilldownPrompt, type DrilldownPromptProps } from "./drilldown-prompt.js";
+export { ReviewSummaryView, type ReviewSummaryViewProps } from "./review-summary-view.js";

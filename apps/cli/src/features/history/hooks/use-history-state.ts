@@ -10,14 +10,25 @@ interface UseHistoryStateOptions {
 export function useHistoryState({ runs, initialTab = "runs" }: UseHistoryStateOptions) {
   const [activeTab, setActiveTab] = useState<TabId>(initialTab);
   const [focusZone, setFocusZone] = useState<FocusZone>("runs");
-  const [selectedDateId, setSelectedDateId] = useState<string>("today");
-  const [selectedRunId, setSelectedRunId] = useState<string | null>(runs[0]?.id ?? null);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
 
   const timelineItems = useMemo(() => toTimelineItems(runs), [runs]);
 
+  // Default to first available date, not hardcoded "today"
+  const [selectedDateId, setSelectedDateId] = useState<string>(() => {
+    const items = toTimelineItems(runs);
+    return items[0]?.id ?? "today";
+  });
+
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(() => {
+    const items = toTimelineItems(runs);
+    const firstDate = items[0]?.id ?? "today";
+    const firstRunForDate = runs.find((r) => r.date === firstDate);
+    return firstRunForDate?.id ?? runs[0]?.id ?? null;
+  });
+
   const filteredRuns = useMemo(
-    () => runs.filter((run) => run.date === selectedDateId),
+    () => selectedDateId === "all" ? runs : runs.filter((run) => run.date === selectedDateId),
     [runs, selectedDateId]
   );
 

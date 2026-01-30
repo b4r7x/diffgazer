@@ -80,8 +80,11 @@ export function toTimelineItems(runs: HistoryRun[]): TimelineItem[] {
     grouped.set(run.date, (grouped.get(run.date) ?? 0) + 1);
   }
 
-  const dateOrder = ["today", "yesterday"];
+  const dateOrder = ["all", "today", "yesterday"];
   const items: TimelineItem[] = [];
+
+  // Always add "All" option first
+  items.push({ id: "all", label: "All", count: runs.length });
 
   for (const [date, count] of grouped) {
     const label = date === "today" ? "Today" : date === "yesterday" ? "Yesterday" : date.charAt(0).toUpperCase() + date.slice(1);

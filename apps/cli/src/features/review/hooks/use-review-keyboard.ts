@@ -2,13 +2,15 @@ import { useInput } from "ink";
 import { useKeyboardMode } from "../../../hooks/use-keyboard-mode.js";
 import { TAB_ORDER, type IssueTab } from "../constants.js";
 
-export type FocusArea = "list" | "details";
+export type FocusArea = "list" | "details" | "filters";
 
 export interface ReviewKeyboardState {
   focus: FocusArea;
   activeTab?: IssueTab;
   hasPatch?: boolean;
   hasTrace?: boolean;
+  filterFocusedIndex?: number;
+  filterCount?: number;
 }
 
 export interface ReviewKeyboardActions {
@@ -23,6 +25,9 @@ export interface ReviewKeyboardActions {
   onToggleFocus: () => void;
   onBack: () => void;
   onTabChange?: (tab: IssueTab) => void;
+  onFilterNavigate?: (direction: "left" | "right") => void;
+  onFilterSelect?: () => void;
+  onFocusFilters?: () => void;
 }
 
 export interface UseReviewKeyboardOptions {
@@ -63,6 +68,9 @@ export function useReviewKeyboard(options: UseReviewKeyboardOptions): void {
     onToggleFocus,
     onBack,
     onTabChange,
+    onFilterNavigate,
+    onFilterSelect,
+    onFocusFilters,
   } = actions;
 
   const activeTab = state?.activeTab ?? "details";
@@ -81,9 +89,11 @@ export function useReviewKeyboard(options: UseReviewKeyboardOptions): void {
 
   function handleKeysMode(
     input: string,
-    key: { upArrow: boolean; downArrow: boolean; return: boolean; escape: boolean; tab: boolean }
+    key: { upArrow: boolean; downArrow: boolean; leftArrow: boolean; rightArrow: boolean; return: boolean; escape: boolean; tab: boolean }
   ): void {
-    if (focus === "list") {
+    if (focus === "filters") {
+      handleFiltersFocusKeys(input, key);
+    } else if (focus === "list") {
       handleListFocusKeys(input, key);
     } else {
       handleDetailsFocusKeys(input, key);
@@ -94,6 +104,26 @@ export function useReviewKeyboard(options: UseReviewKeyboardOptions): void {
     input: string,
     key: { upArrow: boolean; downArrow: boolean; return: boolean; escape: boolean; tab: boolean }
   ): void {
+    if (input === "1") {
+      onTabChange?.("details");
+      return;
+    }
+
+    if (input === "2") {
+      onTabChange?.("explain");
+      return;
+    }
+
+    if (input === "3" && hasTrace) {
+      onTabChange?.("trace");
+      return;
+    }
+
+    if (input === "4" && hasPatch) {
+      onTabChange?.("patch");
+      return;
+    }
+
     if (input === "j" || key.downArrow) {
       onNavigate("down");
       return;
@@ -139,6 +169,11 @@ export function useReviewKeyboard(options: UseReviewKeyboardOptions): void {
       return;
     }
 
+    if (input === "f") {
+      onFocusFilters?.();
+      return;
+    }
+
     if (key.tab) {
       onToggleFocus();
       return;
@@ -154,6 +189,26 @@ export function useReviewKeyboard(options: UseReviewKeyboardOptions): void {
     input: string,
     key: { upArrow: boolean; downArrow: boolean; return: boolean; escape: boolean; tab: boolean }
   ): void {
+    if (input === "1") {
+      onTabChange?.("details");
+      return;
+    }
+
+    if (input === "2") {
+      onTabChange?.("explain");
+      return;
+    }
+
+    if (input === "3" && hasTrace) {
+      onTabChange?.("trace");
+      return;
+    }
+
+    if (input === "4" && hasPatch) {
+      onTabChange?.("patch");
+      return;
+    }
+
     if (input === "j" || key.downArrow) {
       onNavigate("down");
       return;
@@ -172,6 +227,41 @@ export function useReviewKeyboard(options: UseReviewKeyboardOptions): void {
 
     if (key.escape) {
       onToggleFocus();
+      return;
+    }
+  }
+
+  function handleFiltersFocusKeys(
+    input: string,
+    key: { leftArrow: boolean; rightArrow: boolean; downArrow: boolean; return: boolean; escape: boolean; tab: boolean }
+  ): void {
+    if (input === "h" || key.leftArrow) {
+      onFilterNavigate?.("left");
+      return;
+    }
+
+    if (input === "l" || key.rightArrow) {
+      onFilterNavigate?.("right");
+      return;
+    }
+
+    if (key.return || input === " ") {
+      onFilterSelect?.();
+      return;
+    }
+
+    if (input === "j" || key.downArrow) {
+      onToggleFocus();
+      return;
+    }
+
+    if (key.tab) {
+      onToggleFocus();
+      return;
+    }
+
+    if (key.escape) {
+      onBack();
       return;
     }
   }
