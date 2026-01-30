@@ -7,6 +7,7 @@ import type { AgentStreamEvent } from "@repo/schemas/agent-event";
 import { SplitPane } from "../../../components/ui/split-pane.js";
 import { Separator } from "../../../components/ui/separator.js";
 import { FooterBar, type ModeShortcuts } from "../../../components/ui/footer-bar.js";
+import { type SeverityFilter, SEVERITY_ORDER } from "../../../components/ui/severity-filter-group.js";
 import { IssueListPane } from "./issue-list-pane.js";
 import { IssueDetailsPane } from "./issue-details-pane.js";
 import { AgentActivityPanel } from "./agent-activity-panel.js";
@@ -57,22 +58,28 @@ export function ReviewSplitScreen({
       ? showAgentPanelProp
       : isReviewing && agents.length > 0;
 
-  const selectedIndex = (() => {
-    if (!selectedIssueId) return 0;
-    const idx = issues.findIndex((issue) => issue.id === selectedIssueId);
-    return idx >= 0 ? idx : 0;
-  })();
-
   const [activeTab, setActiveTab] = useState<IssueTab>("details");
   const [focus, setFocus] = useState<FocusArea>("list");
   const [isApplying, setIsApplying] = useState(false);
+  const [filterFocusedIndex, setFilterFocusedIndex] = useState(0);
+  const [activeFilter, setActiveFilter] = useState<SeverityFilter>("all");
 
-  const selectedIssue = issues[selectedIndex] ?? null;
+  const filteredIssues = activeFilter === "all"
+    ? issues
+    : issues.filter((issue) => issue.severity === activeFilter);
+
+  const selectedIndex = (() => {
+    if (!selectedIssueId) return 0;
+    const idx = filteredIssues.findIndex((issue) => issue.id === selectedIssueId);
+    return idx >= 0 ? idx : 0;
+  })();
+
+  const selectedIssue = filteredIssues[selectedIndex] ?? null;
 
   const handleNavigate = (direction: "up" | "down") => {
     const delta = direction === "down" ? 1 : -1;
-    const newIndex = Math.max(0, Math.min(selectedIndex + delta, issues.length - 1));
-    const issue = issues[newIndex];
+    const newIndex = Math.max(0, Math.min(selectedIndex + delta, filteredIssues.length - 1));
+    const issue = filteredIssues[newIndex];
     if (issue) {
       onSelectIssue(issue.id);
     }
@@ -121,7 +128,11 @@ export function ReviewSplitScreen({
   };
 
   const handleToggleFocus = () => {
-    setFocus((prev) => (prev === "list" ? "details" : "list"));
+    setFocus((prev) => {
+      if (prev === "filters") return "list";
+      if (prev === "list") return "details";
+      return "filters";
+    });
   };
 
   const handleBack = () => {
@@ -136,6 +147,25 @@ export function ReviewSplitScreen({
     setActiveTab(tab);
   };
 
+  const handleFilterNavigate = (direction: "left" | "right") => {
+    setFilterFocusedIndex((i) => {
+      const delta = direction === "right" ? 1 : -1;
+      const newIndex = i + delta;
+      return Math.max(0, Math.min(newIndex, SEVERITY_ORDER.length - 1));
+    });
+  };
+
+  const handleFilterSelect = () => {
+    const selectedSeverity = SEVERITY_ORDER[filterFocusedIndex];
+    if (selectedSeverity) {
+      setActiveFilter((current) => current === selectedSeverity ? "all" : selectedSeverity);
+    }
+  };
+
+  const handleFocusFilters = () => {
+    setFocus("filters");
+  };
+
   useReviewKeyboard({
     focus,
     state: {
@@ -143,6 +173,8 @@ export function ReviewSplitScreen({
       activeTab,
       hasPatch: Boolean(selectedIssue?.suggested_patch),
       hasTrace: Boolean(selectedIssue?.trace?.length),
+      filterFocusedIndex,
+      filterCount: SEVERITY_ORDER.length,
     },
     actions: {
       onNavigate: handleNavigate,
@@ -156,6 +188,9 @@ export function ReviewSplitScreen({
       onToggleFocus: handleToggleFocus,
       onBack: handleBack,
       onTabChange: handleTabChange,
+      onFilterNavigate: handleFilterNavigate,
+      onFilterSelect: handleFilterSelect,
+      onFocusFilters: handleFocusFilters,
     },
     disabled: false,
   });
@@ -163,9 +198,9 @@ export function ReviewSplitScreen({
   const footerModeShortcuts: ModeShortcuts = {
     keys: [
       { key: "j/k", label: "Move" },
+      { key: "f", label: "Filters" },
+      { key: "1-4", label: "Tab" },
       { key: "e", label: "Explain" },
-      { key: "/", label: "Command" },
-      { key: "f", label: "Focus" },
       { key: "?", label: "Help" },
     ],
     menu: [
@@ -181,39 +216,47 @@ export function ReviewSplitScreen({
         <Text bold color="cyan">
           {title}
         </Text>
-        <Text dimColor> ({issues.length} issues)</Text>
+        <Text dimColor> ({filteredIssues.length} issues{activeFilter !== "all" ? ` - ${activeFilter}` : ""})</Text>
       </Box>
 
       <Separator />
 
-      <Box marginTop={1} flexGrow={1} flexDirection="row" gap={1}>
-        {showAgentPanel && (
-          <Box flexDirection="column" width={AGENT_PANEL_WIDTH} flexShrink={0}>
-            <AgentActivityPanel
-              agents={agents}
-              currentAction={currentAction}
-              height={listPaneHeight}
-            />
+      <Box marginTop={1} flexGrow={1} flexDirection="column">
+        <Box flexGrow={1} flexDirection="row" gap={1}>
+          {showAgentPanel && (
+            <Box flexDirection="column" width={AGENT_PANEL_WIDTH} flexShrink={0}>
+              <AgentActivityPanel
+                agents={agents}
+                currentAction={currentAction}
+                height={listPaneHeight}
+              />
+            </Box>
+          )}
+          <Box flexGrow={1}>
+            <SplitPane leftWidth={showAgentPanel ? 35 : 40}>
+              <IssueListPane
+                issues={filteredIssues}
+                allIssues={issues}
+                selectedId={selectedIssueId}
+                onSelect={onSelectIssue}
+                focus={focus === "list"}
+                height={listPaneHeight}
+                title={title}
+                severityFilter={activeFilter}
+                onSeverityFilterChange={setActiveFilter}
+                isFilterFocused={focus === "filters"}
+                focusedFilterIndex={filterFocusedIndex}
+              />
+              <IssueDetailsPane
+                issue={selectedIssue}
+                activeTab={activeTab}
+                onApplyPatch={handleApplyFromDetails}
+                isApplying={isApplying}
+                focus={focus === "details"}
+                drilldown={drilldownData}
+              />
+            </SplitPane>
           </Box>
-        )}
-        <Box flexGrow={1}>
-          <SplitPane leftWidth={showAgentPanel ? 35 : 40}>
-            <IssueListPane
-              issues={issues}
-              selectedId={selectedIssueId}
-              onSelect={onSelectIssue}
-              focus={focus === "list"}
-              height={listPaneHeight}
-            />
-            <IssueDetailsPane
-              issue={selectedIssue}
-              activeTab={activeTab}
-              onApplyPatch={handleApplyFromDetails}
-              isApplying={isApplying}
-              focus={focus === "details"}
-              drilldown={drilldownData}
-            />
-          </SplitPane>
         </Box>
       </Box>
 

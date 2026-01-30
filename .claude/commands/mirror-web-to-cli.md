@@ -7,8 +7,16 @@ Replicate web pages to CLI views with **exact 1:1 UI structure** using Ink compo
 ## Usage
 
 ```
-/mirror-web-to-cli <page_name>
+/mirror-web-to-cli <page_name> [--auto]
 ```
+
+### Modes:
+
+| Mode | Command | Behavior |
+|------|---------|----------|
+| **Interactive** | `/mirror-web-to-cli review` | Checkpoint after each step, wait for "ok" |
+| **Auto** | `/mirror-web-to-cli review --auto` | No checkpoints, runs all steps automatically |
+| **Batch All** | `/mirror-web-to-cli all --auto` | Mirror ALL remaining pages sequentially |
 
 ### Available pages:
 

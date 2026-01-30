@@ -113,20 +113,20 @@ export function useScreenHandlers({
           const lastReview = reviewHistory.items[0];
           if (lastReview) {
             void reviewHistory.loadReview(lastReview.id);
-            setView("review-history");
+            setView("history");
           }
         }
         break;
       case "history":
         void reviewHistory.listReviews();
-        setView("review-history");
+        setView("history");
         break;
       case "open-web":
         void openWebUi({ apiUrl: web.apiUrl, webPort: web.webPort });
         break;
       case "settings":
         void config.loadSettings();
-        setView("settings");
+        setView("settings-hub");
         break;
       case "help":
         // Help view not yet implemented

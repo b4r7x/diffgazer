@@ -4,8 +4,13 @@ import type {
   CurrentConfigResponse,
   ConfigCheckResponse,
   ProvidersStatusResponse,
+  OpenRouterModel,
 } from "@repo/schemas/config";
 import type { SettingsConfig, TrustConfig } from "@repo/schemas/settings";
+
+interface OpenRouterModelsResponse {
+  models: OpenRouterModel[];
+}
 
 export interface SettingsResponse {
   settings: SettingsConfig;
@@ -72,5 +77,10 @@ export const settingsApi = {
 
   async loadProviderStatus(): Promise<ProvidersStatusResponse> {
     return await api().get<ProvidersStatusResponse>("/config/providers");
+  },
+
+  async fetchOpenRouterModels(): Promise<OpenRouterModel[]> {
+    const response = await api().get<OpenRouterModelsResponse>("/config/openrouter/models");
+    return response.models;
   },
 };

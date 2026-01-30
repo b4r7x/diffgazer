@@ -11,8 +11,14 @@ import {
   GitDiffView,
   ReviewView,
   SettingsView,
+  SettingsHubView,
+  SettingsTrustView,
+  SettingsThemeView,
+  SettingsProvidersView,
+  SettingsDiagnosticsView,
   HistoryView,
 } from "./views/index.js";
+import type { SettingsSection } from "@repo/core";
 import { ThemeProvider, useSettings, SessionRecorderProvider, useSessionRecorderContext, KeyModeProvider } from "../hooks/index.js";
 import type { SessionMode } from "../types/index.js";
 
@@ -111,15 +117,7 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
 
   return (
     <ThemeProvider theme={theme}>
-      <Box flexDirection="column" padding={1}>
-        {view !== "main" && (
-          <>
-            <Text bold color="cyan">Stargazer</Text>
-            <Text>Server: <Text color="blue">{address}</Text></Text>
-            <Text color="green">Running</Text>
-          </>
-        )}
-
+      <Box flexDirection="column" padding={1} key={view}>
         {view === "main" && (
           <MainMenuView
             provider={state.config.currentConfig?.provider ?? "Not configured"}
@@ -139,6 +137,48 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
             repoRoot={repoRoot}
             onBack={handlers.config.onBack}
             onDeleteProvider={handlers.config.onDeleteProvider}
+          />
+        )}
+        {view === "settings-hub" && (
+          <SettingsHubView
+            projectId={projectId}
+            repoRoot={repoRoot}
+            onNavigate={(section: SettingsSection) => {
+              setView(`settings-${section}` as const);
+            }}
+            onBack={() => setView("main")}
+          />
+        )}
+        {view === "settings-trust" && (
+          <SettingsTrustView
+            projectId={projectId}
+            repoRoot={repoRoot}
+            onBack={() => setView("settings-hub")}
+          />
+        )}
+        {view === "settings-theme" && (
+          <SettingsThemeView
+            projectId={projectId}
+            repoRoot={repoRoot}
+            onBack={() => setView("settings-hub")}
+          />
+        )}
+        {view === "settings-providers" && (
+          <SettingsProvidersView
+            projectId={projectId}
+            repoRoot={repoRoot}
+            onBack={() => setView("settings-hub")}
+            onSelectModel={() => {
+              // TODO: Navigate to model selection view
+            }}
+            onSetApiKey={() => {
+              // TODO: Navigate to API key entry view
+            }}
+          />
+        )}
+        {view === "settings-diagnostics" && (
+          <SettingsDiagnosticsView
+            onBack={() => setView("settings-hub")}
           />
         )}
         {view === "history" && (

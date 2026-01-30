@@ -12,6 +12,8 @@ import type { AgentStreamEvent } from "@repo/schemas/agent-event";
 import { SplitPane } from "../../components/ui/split-pane.js";
 import { Separator } from "../../components/ui/separator.js";
 import { FooterBar, type Shortcut, type ModeShortcuts } from "../../components/ui/footer-bar.js";
+import { SeverityFilterGroup, type SeverityFilter, SEVERITY_ORDER } from "../../components/ui/severity-filter-group.js";
+import type { SeverityLevel } from "../../components/ui/severity-filter-button.js";
 import {
   IssueListPane,
   IssueDetailsPane,
@@ -20,6 +22,7 @@ import {
 } from "../../features/review/components/index.js";
 import { DrilldownPrompt } from "../../features/review/components/drilldown-prompt.js";
 import { AgentActivityPanel } from "../../features/review/components/agent-activity-panel.js";
+import { ReviewSummaryView } from "../../features/review/components/review-summary-view.js";
 import {
   useReviewKeyboard,
   type FocusArea,
@@ -218,6 +221,10 @@ function ReviewSplitScreenView({
   const [ignoredPatterns, setIgnoredPatterns] = useState<string[]>([]);
   const [askResponse, setAskResponse] = useState<string | null>(null);
 
+  // Severity filter state
+  const [filterFocusedIndex, setFilterFocusedIndex] = useState(0);
+  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
+
   const [pendingDrilldowns, setPendingDrilldowns] = useState<string[]>([]);
   const [showingDrilldownPrompt, setShowingDrilldownPrompt] = useState(false);
   const [currentDrilldownIssue, setCurrentDrilldownIssue] = useState<TriageIssue | null>(null);
@@ -229,10 +236,36 @@ function ReviewSplitScreenView({
   const { agents, currentAction } = useAgentActivity(agentEvents);
   const shouldShowAgentPanel = showAgentPanel && agents.length > 0;
 
-  const filteredIssues = useMemo(
+  // Compute severity counts for filter buttons
+  const severityCounts = useMemo<Record<SeverityLevel, number>>(() => {
+    const counts: Record<SeverityLevel, number> = {
+      blocker: 0,
+      high: 0,
+      medium: 0,
+      low: 0,
+      nit: 0,
+    };
+    for (const issue of issues) {
+      if (issue.severity in counts) {
+        counts[issue.severity as SeverityLevel]++;
+      }
+    }
+    return counts;
+  }, [issues]);
+
+  // Apply text filter and ignored patterns first
+  const textFilteredIssues = useMemo(
     () => filterIssues(issues, activeFilter, ignoredPatterns),
     [issues, activeFilter, ignoredPatterns]
   );
+
+  // Then apply severity filter
+  const filteredIssues = useMemo(() => {
+    if (severityFilter === "all") {
+      return textFilteredIssues;
+    }
+    return textFilteredIssues.filter((issue) => issue.severity === severityFilter);
+  }, [textFilteredIssues, severityFilter]);
 
   const selectedIndex = useMemo(() => {
     if (!selectedId) return 0;
@@ -442,12 +475,37 @@ function ReviewSplitScreenView({
   }, [handleNavigate]);
 
   const handleToggleFocus = useCallback(() => {
-    setFocus((prev) => (prev === "list" ? "details" : "list"));
+    setFocus((prev) => {
+      if (prev === "filters") return "list";
+      if (prev === "list") return "details";
+      return "filters";
+    });
   }, []);
 
   const handleTabChange = useCallback((tab: IssueTab) => {
     setActiveTab(tab);
   }, []);
+
+  const handleFocusFilters = useCallback(() => {
+    setFocus("filters");
+  }, []);
+
+  const handleFilterNavigate = useCallback((direction: "left" | "right") => {
+    setFilterFocusedIndex((prev) => {
+      const delta = direction === "right" ? 1 : -1;
+      const newIndex = prev + delta;
+      return Math.max(0, Math.min(newIndex, SEVERITY_ORDER.length - 1));
+    });
+  }, []);
+
+  const handleFilterSelect = useCallback(() => {
+    const selectedSeverity = SEVERITY_ORDER[filterFocusedIndex];
+    if (selectedSeverity) {
+      setSeverityFilter((prev) =>
+        prev === selectedSeverity ? "all" : selectedSeverity
+      );
+    }
+  }, [filterFocusedIndex]);
 
   const handleFeedbackCommand = useCallback(
     (command: FeedbackCommand) => {
@@ -517,6 +575,8 @@ function ReviewSplitScreenView({
       activeTab,
       hasPatch: Boolean(selectedIssue?.suggested_patch),
       hasTrace: Boolean(selectedIssue?.trace?.length),
+      filterFocusedIndex,
+      filterCount: SEVERITY_ORDER.length,
     },
     actions: {
       onNavigate: handleNavigate,
@@ -530,6 +590,9 @@ function ReviewSplitScreenView({
       onToggleFocus: handleToggleFocus,
       onBack: handleBack,
       onTabChange: handleTabChange,
+      onFilterNavigate: handleFilterNavigate,
+      onFilterSelect: handleFilterSelect,
+      onFocusFilters: handleFocusFilters,
     },
     disabled: feedbackMode || showingDrilldownPrompt,
   });
@@ -652,6 +715,16 @@ function ReviewSplitScreenView({
         </Box>
       )}
 
+      <Box marginBottom={1}>
+        <SeverityFilterGroup
+          counts={severityCounts}
+          activeFilter={severityFilter}
+          isFocused={focus === "filters"}
+          focusedIndex={filterFocusedIndex}
+          onFilterChange={setSeverityFilter}
+        />
+      </Box>
+
       <Separator />
 
       <Box marginTop={1} flexGrow={1} flexDirection="row" gap={1}>
@@ -702,8 +775,11 @@ function ReviewSplitScreenView({
   );
 }
 
+type ReviewPhase = "summary" | "results";
+
 export function ReviewView({ state, staged, reviewId, agentEvents = [] }: ReviewViewProps) {
   const { exit } = useApp();
+  const [phase, setPhase] = useState<ReviewPhase>("summary");
 
   const handleBack = useCallback(() => {
     exit();
@@ -772,6 +848,27 @@ export function ReviewView({ state, staged, reviewId, agentEvents = [] }: Review
   }
 
   const { data, reviewId: triageReviewId } = state;
+
+  // Compute filesAnalyzed from unique files in issues
+  const filesAnalyzed = useMemo(() => {
+    const uniqueFiles = new Set(data.issues.map((issue) => issue.file));
+    return uniqueFiles.size;
+  }, [data.issues]);
+
+  if (phase === "summary") {
+    return (
+      <Box flexDirection="column" marginTop={1}>
+        <ReviewSummaryView
+          issues={data.issues}
+          runId={triageReviewId ?? reviewId ?? "N/A"}
+          filesAnalyzed={filesAnalyzed}
+          lensStats={[]}
+          onEnterReview={() => setPhase("results")}
+          onBack={handleBack}
+        />
+      </Box>
+    );
+  }
 
   return (
     <Box flexDirection="column" marginTop={1}>
