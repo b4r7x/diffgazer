@@ -17,6 +17,7 @@ export interface SeverityFilterButtonProps {
   count: number;
   isActive: boolean;
   isFocused?: boolean;
+  onClick?: () => void;
 }
 
 export function SeverityFilterButton({
@@ -24,6 +25,8 @@ export function SeverityFilterButton({
   count,
   isActive,
   isFocused = false,
+  // onClick is accepted for API consistency but not used in CLI (no mouse support)
+  onClick: _onClick,
 }: SeverityFilterButtonProps): ReactElement {
   const { colors } = useTheme();
 

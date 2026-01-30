@@ -38,6 +38,22 @@ const DEFAULT_SETTINGS: SettingsConfig = {
   severityThreshold: "medium",
 };
 
+interface SettingsDataState {
+  settings: SettingsConfig | null;
+  trust: TrustConfig | null;
+  config: { provider: string; model?: string } | null;
+  providerStatus: ProviderStatus[];
+  isConfigured: boolean;
+}
+
+const INITIAL_DATA_STATE: SettingsDataState = {
+  settings: null,
+  trust: null,
+  config: null,
+  providerStatus: [],
+  isConfigured: false,
+};
+
 export function useSettingsState(projectId: string, repoRoot: string): UseSettingsStateResult {
   const loadOp = useAsyncOperation<{
     settings: SettingsConfig | null;
@@ -47,11 +63,7 @@ export function useSettingsState(projectId: string, repoRoot: string): UseSettin
   }>();
   const saveOp = useAsyncOperation<void>();
 
-  const [settings, setSettings] = useState<SettingsConfig | null>(null);
-  const [trust, setTrust] = useState<TrustConfig | null>(null);
-  const [config, setConfig] = useState<{ provider: string; model?: string } | null>(null);
-  const [providerStatus, setProviderStatus] = useState<ProviderStatus[]>([]);
-  const [isConfigured, setIsConfigured] = useState(false);
+  const [dataState, setDataState] = useState<SettingsDataState>(INITIAL_DATA_STATE);
 
   const loadAll = useCallback(async () => {
     await loadOp.execute(async () => {
@@ -71,19 +83,16 @@ export function useSettingsState(projectId: string, repoRoot: string): UseSettin
           ? providerStatusResult.value
           : { providers: [], activeProvider: undefined };
 
-      setSettings(settingsData);
-      setTrust(trustData);
-      setIsConfigured(configData.configured);
-      setProviderStatus(providerData.providers);
-
-      if (configData.configured) {
-        setConfig({
-          provider: configData.config.provider,
-          model: configData.config.model,
-        });
-      } else {
-        setConfig(null);
-      }
+      // Single batched state update
+      setDataState({
+        settings: settingsData,
+        trust: trustData,
+        isConfigured: configData.configured,
+        providerStatus: providerData.providers,
+        config: configData.configured
+          ? { provider: configData.config.provider, model: configData.config.model }
+          : null,
+      });
 
       return {
         settings: settingsData,
@@ -96,22 +105,22 @@ export function useSettingsState(projectId: string, repoRoot: string): UseSettin
 
   const saveTheme = useCallback(
     async (theme: Theme) => {
-      if (!settings) return;
+      if (!dataState.settings) return;
 
       await saveOp.execute(async () => {
-        const updatedSettings = { ...settings, theme };
+        const updatedSettings = { ...dataState.settings!, theme };
         await settingsApi.saveSettings(updatedSettings);
-        setSettings(updatedSettings);
+        setDataState((prev) => ({ ...prev, settings: updatedSettings }));
       });
     },
-    [saveOp, settings]
+    [saveOp, dataState.settings]
   );
 
   const saveTrust = useCallback(
     async (trustConfig: TrustConfig) => {
       await saveOp.execute(async () => {
         await settingsApi.saveTrust(trustConfig);
-        setTrust(trustConfig);
+        setDataState((prev) => ({ ...prev, trust: trustConfig }));
       });
     },
     [saveOp]
@@ -121,11 +130,13 @@ export function useSettingsState(projectId: string, repoRoot: string): UseSettin
     async (provider: AIProvider, apiKey: string, model?: string) => {
       await saveOp.execute(async () => {
         const result = await settingsApi.saveConfig(provider, apiKey, model);
-        setConfig({ provider: result.provider, model: result.model });
-        setIsConfigured(true);
-
         const providerData = await settingsApi.loadProviderStatus();
-        setProviderStatus(providerData.providers);
+        setDataState((prev) => ({
+          ...prev,
+          config: { provider: result.provider, model: result.model },
+          isConfigured: true,
+          providerStatus: providerData.providers,
+        }));
       });
     },
     [saveOp]
@@ -134,11 +145,13 @@ export function useSettingsState(projectId: string, repoRoot: string): UseSettin
   const deleteConfig = useCallback(async () => {
     await saveOp.execute(async () => {
       await settingsApi.deleteConfig();
-      setConfig(null);
-      setIsConfigured(false);
-
       const providerData = await settingsApi.loadProviderStatus();
-      setProviderStatus(providerData.providers);
+      setDataState((prev) => ({
+        ...prev,
+        config: null,
+        isConfigured: false,
+        providerStatus: providerData.providers,
+      }));
     });
   }, [saveOp]);
 
@@ -146,17 +159,17 @@ export function useSettingsState(projectId: string, repoRoot: string): UseSettin
   const isSaving = saveOp.state.status === "loading";
   const error = loadOp.state.error ?? saveOp.state.error ?? null;
 
-  const isTrusted = useMemo(() => !!trust, [trust]);
-  const activeProvider = useMemo(() => config?.provider, [config]);
+  const isTrusted = useMemo(() => !!dataState.trust, [dataState.trust]);
+  const activeProvider = useMemo(() => dataState.config?.provider, [dataState.config]);
 
   return {
     isLoading,
     isSaving,
-    settings,
-    trust,
-    config,
-    providerStatus,
-    isConfigured,
+    settings: dataState.settings,
+    trust: dataState.trust,
+    config: dataState.config,
+    providerStatus: dataState.providerStatus,
+    isConfigured: dataState.isConfigured,
     error,
     isTrusted,
     activeProvider,

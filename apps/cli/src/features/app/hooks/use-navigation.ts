@@ -59,7 +59,18 @@ type InputKey = { escape: boolean };
 type InputHandler = (input: string, key: InputKey) => void;
 type KeyActionMap = Record<string, () => void>;
 
-const PASSIVE_VIEWS: ReadonlySet<AppView> = new Set<AppView>(["loading", "trust-wizard", "onboarding", "history", "main"]);
+const PASSIVE_VIEWS: ReadonlySet<AppView> = new Set<AppView>([
+  "loading",
+  "trust-wizard",
+  "onboarding",
+  "history",
+  "main",
+  "settings-hub",
+  "settings-trust",
+  "settings-theme",
+  "settings-providers",
+  "settings-diagnostics",
+]);
 
 function createKeyHandler(keyActions: KeyActionMap): InputHandler {
   return (input: string) => {
@@ -124,7 +135,7 @@ export function useNavigation(actions: ViewActions): UseNavigationResult {
         },
         S: () => {
           void actions.config.loadSettings();
-          setView("settings");
+          setView("settings-hub");
         },
         h: () => {
           void actions.reviewHistory.listReviews();

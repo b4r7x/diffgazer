@@ -11,6 +11,7 @@ export interface SeverityFilterGroupProps {
   activeFilter: SeverityFilter;
   isFocused?: boolean;
   focusedIndex?: number;
+  onFilterChange?: (filter: SeverityFilter) => void;
 }
 
 export function SeverityFilterGroup({
@@ -18,6 +19,7 @@ export function SeverityFilterGroup({
   activeFilter,
   isFocused = false,
   focusedIndex = 0,
+  onFilterChange,
 }: SeverityFilterGroupProps): ReactElement {
   return (
     <Box gap={1} flexWrap="wrap">
@@ -28,6 +30,7 @@ export function SeverityFilterGroup({
           count={counts[sev]}
           isActive={activeFilter === sev}
           isFocused={isFocused && focusedIndex === index}
+          onClick={onFilterChange ? () => onFilterChange(sev) : undefined}
         />
       ))}
     </Box>

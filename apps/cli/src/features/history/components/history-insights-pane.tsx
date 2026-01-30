@@ -39,10 +39,13 @@ export function HistoryInsightsPane({
   return (
     <Box flexDirection="column">
       {/* Header */}
-      <Box paddingX={1} paddingY={0} borderStyle="single" borderColor={colors.ui.border} borderLeft={false} borderRight={false} borderTop={false}>
-        <Text color={colors.ui.textMuted} bold>
-          INSIGHTS: {runId}
-        </Text>
+      <Box flexDirection="column">
+        <Box paddingX={1}>
+          <Text color={colors.ui.textMuted} bold>
+            INSIGHTS: {runId}
+          </Text>
+        </Box>
+        <Text color={colors.ui.border}>{"─".repeat(34)}</Text>
       </Box>
 
       {/* Severity Histogram */}
@@ -110,8 +113,9 @@ export function HistoryInsightsPane({
 
       {/* Duration footer */}
       {duration && (
-        <Box paddingX={1} marginTop={1} borderStyle="single" borderColor={colors.ui.border} borderLeft={false} borderRight={false} borderBottom={false}>
-          <Box flexDirection="column">
+        <Box flexDirection="column" marginTop={1}>
+          <Text color={colors.ui.border}>{"─".repeat(34)}</Text>
+          <Box paddingX={1} flexDirection="column">
             <Text color={colors.ui.textMuted}>Duration</Text>
             <Text color={colors.ui.text} bold>{duration}</Text>
           </Box>
