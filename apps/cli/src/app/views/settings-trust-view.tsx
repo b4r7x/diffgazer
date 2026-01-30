@@ -22,7 +22,7 @@ export function SettingsTrustView({
   const terminalWidth = stdout?.columns ?? 80;
   const panelWidth = Math.min(70, terminalWidth - 4);
 
-  const settingsState = useSettingsState(projectId, repoRoot);
+  const settingsState = useSettingsState(projectId);
 
   useEffect(() => {
     void settingsState.loadAll();

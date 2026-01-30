@@ -32,7 +32,7 @@ export function SettingsView({
   onBack,
   onDeleteProvider,
 }: SettingsViewProps): ReactElement {
-  const state = useSettingsState(projectId, repoRoot);
+  const state = useSettingsState(projectId);
 
   useEffect(() => {
     state.loadAll();

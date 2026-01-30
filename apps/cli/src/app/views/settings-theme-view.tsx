@@ -8,14 +8,12 @@ import { useSettingsState } from "../../features/settings/hooks/use-settings-sta
 
 interface SettingsThemeViewProps {
   projectId: string;
-  repoRoot: string;
   onBack: () => void;
   isActive?: boolean;
 }
 
 export function SettingsThemeView({
   projectId,
-  repoRoot,
   onBack,
   isActive = true,
 }: SettingsThemeViewProps): ReactElement {
@@ -23,7 +21,7 @@ export function SettingsThemeView({
   const terminalWidth = stdout?.columns ?? 80;
   const panelWidth = Math.min(70, terminalWidth - 4);
 
-  const settingsState = useSettingsState(projectId, repoRoot);
+  const settingsState = useSettingsState(projectId);
 
   useEffect(() => {
     void settingsState.loadAll();

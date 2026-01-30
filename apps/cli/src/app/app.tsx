@@ -1,6 +1,6 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import { createHash } from "node:crypto";
-import { Box, Text } from "ink";
+import { Box } from "ink";
 import { OnboardingScreen } from "./screens/onboarding-screen.js";
 import { TrustWizardScreen } from "./screens/trust-wizard-screen.js";
 import { useNavigation, useAppInit, useScreenHandlers, useAppState } from "../features/app/index.js";
@@ -18,7 +18,7 @@ import {
   SettingsDiagnosticsView,
   HistoryView,
 } from "./views/index.js";
-import type { SettingsSection } from "@repo/core";
+import type { AppView, SettingsSection } from "@repo/core";
 import { ThemeProvider, useSettings, SessionRecorderProvider, useSessionRecorderContext, KeyModeProvider } from "../hooks/index.js";
 import type { SessionMode } from "../types/index.js";
 
@@ -27,6 +27,8 @@ export type { SessionMode };
 function createProjectId(path: string): string {
   return createHash("sha256").update(path).digest("hex").slice(0, 16);
 }
+
+const noop = (): void => {};
 
 interface AppProps {
   address: string;
@@ -47,6 +49,14 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
   const { view, setView, diffState, reviewState } = useNavigation(state.navigationActions);
   const localSettings = useSettings();
   const { recordEvent } = useSessionRecorderContext();
+
+  const theme = localSettings.settings?.theme ?? "auto";
+  const goToSettingsHub = useCallback(() => setView("settings-hub"), [setView]);
+  const goToMain = useCallback(() => setView("main"), [setView]);
+  const handleSettingsNavigate = useCallback(
+    (section: SettingsSection) => setView(`settings-${section}` as AppView),
+    [setView]
+  );
 
   useEffect(() => {
     localSettings.loadSettings();
@@ -79,8 +89,6 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
     recordEvent,
   });
 
-  const theme = localSettings.settings?.theme ?? "auto";
-
   if (view === "loading") {
     return (
       <ThemeProvider theme={theme}>
@@ -95,9 +103,7 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
         <TrustWizardScreen
           projectId={projectId}
           repoRoot={repoRoot}
-          onComplete={(trustConfig) => {
-            void state.trust.saveTrust(trustConfig);
-          }}
+          onComplete={(trustConfig) => void state.trust.saveTrust(trustConfig)}
         />
       </ThemeProvider>
     );
@@ -142,53 +148,31 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
         {view === "settings-hub" && (
           <SettingsHubView
             projectId={projectId}
-            repoRoot={repoRoot}
-            onNavigate={(section: SettingsSection) => {
-              setView(`settings-${section}` as const);
-            }}
-            onBack={() => setView("main")}
+            onNavigate={handleSettingsNavigate}
+            onBack={goToMain}
           />
         )}
         {view === "settings-trust" && (
-          <SettingsTrustView
-            projectId={projectId}
-            repoRoot={repoRoot}
-            onBack={() => setView("settings-hub")}
-          />
+          <SettingsTrustView projectId={projectId} repoRoot={repoRoot} onBack={goToSettingsHub} />
         )}
         {view === "settings-theme" && (
-          <SettingsThemeView
-            projectId={projectId}
-            repoRoot={repoRoot}
-            onBack={() => setView("settings-hub")}
-          />
+          <SettingsThemeView projectId={projectId} onBack={goToSettingsHub} />
         )}
         {view === "settings-providers" && (
           <SettingsProvidersView
             projectId={projectId}
-            repoRoot={repoRoot}
-            onBack={() => setView("settings-hub")}
-            onSelectModel={() => {
-              // TODO: Navigate to model selection view
-            }}
-            onSetApiKey={() => {
-              // TODO: Navigate to API key entry view
-            }}
+            onBack={goToSettingsHub}
+            onSelectModel={noop}
+            onSetApiKey={noop}
           />
         )}
-        {view === "settings-diagnostics" && (
-          <SettingsDiagnosticsView
-            onBack={() => setView("settings-hub")}
-          />
-        )}
+        {view === "settings-diagnostics" && <SettingsDiagnosticsView onBack={goToSettingsHub} />}
         {view === "history" && (
           <HistoryView
             reviews={state.reviewHistory.items}
             sessions={state.sessionList.items}
             onResumeReview={handlers.reviewHistory.onSelect}
-            onExportReview={() => {
-              // TODO: implement export
-            }}
+            onExportReview={noop}
             onDeleteReview={handlers.reviewHistory.onDelete}
             onViewSession={handlers.sessions.onSelect}
             onDeleteSession={handlers.sessions.onDelete}

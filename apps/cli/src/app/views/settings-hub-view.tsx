@@ -10,7 +10,6 @@ import { Menu, MenuItem } from "../../components/ui/menu.js";
 import { Panel, PanelHeader } from "../../components/ui/panel.js";
 import { Badge } from "../../components/ui/badge.js";
 import { FooterBarWithDivider } from "../../components/ui/footer-bar.js";
-import { useTheme } from "../../hooks/use-theme.js";
 import { useSettingsState } from "../../features/settings/hooks/use-settings-state.js";
 
 const FOOTER_SHORTCUTS = [
@@ -22,16 +21,17 @@ const FOOTER_SHORTCUTS = [
 
 interface SettingsHubViewProps {
   projectId: string;
-  repoRoot: string;
   onNavigate: (section: SettingsSection) => void;
   onBack: () => void;
   isActive?: boolean;
 }
 
+type ValueVariant = "default" | "success" | "success-badge" | "muted";
+
 function getValueForItem(
   id: SettingsAction,
   state: ReturnType<typeof useSettingsState>
-): { value: string; variant: "default" | "success" | "success-badge" | "muted" } {
+): { value: string; variant: ValueVariant } {
   switch (id) {
     case "trust":
       return state.isTrusted
@@ -43,10 +43,9 @@ function getValueForItem(
         variant: "default",
       };
     case "provider":
-      if (state.activeProvider) {
-        return { value: state.activeProvider, variant: "success" };
-      }
-      return { value: "Not configured", variant: "muted" };
+      return state.activeProvider
+        ? { value: state.activeProvider, variant: "success" }
+        : { value: "Not configured", variant: "muted" };
     case "diagnostics":
       return { value: "v2.1.0", variant: "muted" };
     default:
@@ -57,13 +56,11 @@ function getValueForItem(
 function formatLastSync(lastSyncTime: Date | null): string {
   if (!lastSyncTime) return "never";
 
-  const now = new Date();
-  const diffMs = now.getTime() - lastSyncTime.getTime();
-  const diffSec = Math.floor(diffMs / 1000);
-  const diffMin = Math.floor(diffSec / 60);
+  const diffMs = Date.now() - lastSyncTime.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMin / 60);
 
-  if (diffSec < 60) return "just now";
+  if (diffMin < 1) return "just now";
   if (diffMin < 60) return `${diffMin}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   return "1d+ ago";
@@ -71,24 +68,19 @@ function formatLastSync(lastSyncTime: Date | null): string {
 
 export function SettingsHubView({
   projectId,
-  repoRoot,
   onNavigate,
   onBack,
   isActive = true,
 }: SettingsHubViewProps): ReactElement {
-  const { colors } = useTheme();
   const { stdout } = useStdout();
-  const terminalWidth = stdout?.columns ?? 80;
-  const panelWidth = Math.min(60, terminalWidth - 4);
+  const panelWidth = Math.min(60, (stdout?.columns ?? 80) - 4);
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [lastSync, setLastSync] = useState<Date | null>(null);
-  const settingsState = useSettingsState(projectId, repoRoot);
+  const settingsState = useSettingsState(projectId);
 
   useEffect(() => {
-    void settingsState.loadAll().then(() => {
-      setLastSync(new Date());
-    });
+    void settingsState.loadAll().then(() => setLastSync(new Date()));
   }, []);
 
   useInput(
@@ -100,12 +92,10 @@ export function SettingsHubView({
     { isActive }
   );
 
-  const handleActivate = (item: { id: string }) => {
+  function handleActivate(item: { id: string }): void {
     const section = item.id as SettingsAction;
-    const navSection: SettingsSection =
-      section === "provider" ? "providers" : section;
-    onNavigate(navSection);
-  };
+    onNavigate(section === "provider" ? "providers" : section);
+  }
 
   return (
     <Box flexDirection="column" padding={1} alignItems="center" justifyContent="center">
@@ -143,7 +133,6 @@ export function SettingsHubView({
           </Menu>
         </Panel>
 
-        {/* Footer info like web */}
         <Box marginTop={1} justifyContent="center" gap={1}>
           <Text dimColor>config path: ~/.config/stargazer/settings.json</Text>
           <Text dimColor>|</Text>

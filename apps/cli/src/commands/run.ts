@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "ink";
+import { withFullScreen } from "fullscreen-ink";
 import { App, type SessionMode } from "../app/app.js";
 import {
   type CommandOptions,
@@ -14,14 +14,10 @@ interface RunCommandOptions extends CommandOptions {
   resume?: string | true;
 }
 
-function getSessionMode(options: RunCommandOptions): {
-  mode: SessionMode;
-  sessionId?: string;
-} {
+function getSessionMode(options: RunCommandOptions): { mode: SessionMode; sessionId?: string } {
   if (options.continue) return { mode: "continue" };
   if (options.resume === true) return { mode: "picker" };
-  if (typeof options.resume === "string")
-    return { mode: "resume", sessionId: options.resume };
+  if (typeof options.resume === "string") return { mode: "resume", sessionId: options.resume };
   return { mode: "new" };
 }
 
@@ -30,17 +26,17 @@ export async function runCommand(options: RunCommandOptions): Promise<void> {
     setBaseUrl(address);
 
     const { mode, sessionId } = getSessionMode(options);
-    const { waitUntilExit, unmount } = render(
-      React.createElement(App, { address, sessionMode: mode, sessionId })
+    const ink = withFullScreen(React.createElement(App, { address, sessionMode: mode, sessionId }));
+
+    registerShutdownHandlers(
+      createShutdownHandler(async () => {
+        ink.instance?.unmount();
+        await manager.stop();
+      })
     );
 
-    const shutdown = createShutdownHandler(async () => {
-      unmount();
-      await manager.stop();
-    });
-    registerShutdownHandlers(shutdown);
-
-    await waitUntilExit();
+    await ink.start();
+    await ink.instance?.waitUntilExit();
     await manager.stop().catch((err) => console.error("Cleanup error:", err));
   });
 }
