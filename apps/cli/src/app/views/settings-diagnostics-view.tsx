@@ -4,26 +4,17 @@ import { Box, Text, useInput, useStdout } from "ink";
 import os from "node:os";
 import chalk from "chalk";
 import { Panel, PanelHeader, PanelContent, PanelDivider } from "../../components/ui/panel.js";
-import { useTheme } from "../../hooks/use-theme.js";
 
 interface SettingsDiagnosticsViewProps {
   onBack: () => void;
   isActive?: boolean;
 }
 
-type ButtonId = "print" | "export" | "reset";
-
-interface ActionButton {
-  id: ButtonId;
-  label: string;
-  focusColor: string;
-}
-
-const ACTION_BUTTONS: ActionButton[] = [
-  { id: "print", label: "Print Paths", focusColor: "blue" },
-  { id: "export", label: "Export Debug Report", focusColor: "green" },
-  { id: "reset", label: "Reset UI Settings", focusColor: "red" },
-];
+const ACTION_BUTTONS = [
+  { id: "print", label: "Print Paths", color: "blue" },
+  { id: "export", label: "Export Debug Report", color: "green" },
+  { id: "reset", label: "Reset UI Settings", color: "red" },
+] as const;
 
 function getColorDepth(): string {
   const level = chalk.level;
@@ -52,10 +43,8 @@ export function SettingsDiagnosticsView({
   onBack,
   isActive = true,
 }: SettingsDiagnosticsViewProps): ReactElement {
-  const { colors } = useTheme();
   const { stdout } = useStdout();
-  const terminalWidth = stdout?.columns ?? 80;
-  const panelWidth = Math.min(72, terminalWidth - 4);
+  const panelWidth = Math.min(72, (stdout?.columns ?? 80) - 4);
 
   const [focusedButton, setFocusedButton] = useState(0);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -64,17 +53,15 @@ export function SettingsDiagnosticsView({
     const mem = process.memoryUsage();
     const cols = process.stdout.columns ?? 80;
     const rows = process.stdout.rows ?? 24;
-    const isTTY = process.stdout.isTTY ?? false;
-    const unicode = getUnicodeSupport();
     const homeDir = os.homedir();
 
     return {
       appVersion: "v1.4.2",
       nodeVersion: process.version,
       terminalSize: `${cols}x${rows}`,
-      isTTY,
+      isTTY: process.stdout.isTTY ?? false,
       colorDepth: getColorDepth(),
-      unicode,
+      unicode: getUnicodeSupport(),
       rss: formatBytes(mem.rss),
       heap: formatBytes(mem.heapUsed),
       paths: {
@@ -84,6 +71,20 @@ export function SettingsDiagnosticsView({
       },
     };
   }, []);
+
+  function handleButtonActivate(id: string): void {
+    switch (id) {
+      case "print":
+        setStatusMessage(`Config: ${systemInfo.paths.config} | Data: ${systemInfo.paths.data}`);
+        break;
+      case "export":
+        setStatusMessage(`Debug report: ${systemInfo.appVersion}, Node ${systemInfo.nodeVersion}, ${systemInfo.terminalSize}`);
+        break;
+      case "reset":
+        setStatusMessage("UI settings reset to defaults.");
+        break;
+    }
+  }
 
   useInput(
     (input, key) => {
@@ -112,20 +113,6 @@ export function SettingsDiagnosticsView({
     { isActive }
   );
 
-  const handleButtonActivate = (id: ButtonId): void => {
-    switch (id) {
-      case "print":
-        setStatusMessage(`Config: ${systemInfo.paths.config} | Data: ${systemInfo.paths.data}`);
-        break;
-      case "export":
-        setStatusMessage(`Debug report: ${systemInfo.appVersion}, Node ${systemInfo.nodeVersion}, ${systemInfo.terminalSize}`);
-        break;
-      case "reset":
-        setStatusMessage("UI settings reset to defaults.");
-        break;
-    }
-  };
-
   return (
     <Box flexDirection="column" padding={1} alignItems="center" justifyContent="center">
       <Box width={panelWidth}>
@@ -135,9 +122,7 @@ export function SettingsDiagnosticsView({
           </PanelHeader>
 
           <PanelContent>
-            {/* Info Grid - 2 columns */}
             <Box flexDirection="column" gap={1}>
-              {/* Row 1: Version Info | Terminal Environment */}
               <Box>
                 <Box width="50%" flexDirection="column">
                   <Text dimColor>VERSION INFO</Text>
@@ -161,7 +146,6 @@ export function SettingsDiagnosticsView({
                 </Box>
               </Box>
 
-              {/* Row 2: Unicode Support | Memory Usage */}
               <Box>
                 <Box width="50%" flexDirection="column">
                   <Text dimColor>UNICODE SUPPORT</Text>
@@ -179,7 +163,6 @@ export function SettingsDiagnosticsView({
 
             <PanelDivider />
 
-            {/* Storage Paths */}
             <Box flexDirection="column">
               <Text color="magenta" bold>STORAGE PATHS</Text>
               <Box flexDirection="column" marginTop={1}>
@@ -200,27 +183,19 @@ export function SettingsDiagnosticsView({
 
             <PanelDivider />
 
-            {/* Action Buttons */}
-            <Box gap={2}>
+            <Box gap={2} justifyContent="space-between">
               {ACTION_BUTTONS.map((button, idx) => {
                 const isFocused = focusedButton === idx;
-                const isLast = idx === ACTION_BUTTONS.length - 1;
-
                 return (
                   <Box
                     key={button.id}
-                    flexGrow={isLast ? 1 : 0}
-                    justifyContent={isLast ? "flex-end" : "flex-start"}
+                    borderStyle="single"
+                    borderColor={isFocused ? button.color : undefined}
+                    paddingX={1}
                   >
-                    <Box
-                      borderStyle="single"
-                      borderColor={isFocused ? button.focusColor : undefined}
-                      paddingX={1}
-                    >
-                      <Text color={isFocused ? button.focusColor : undefined}>
-                        [ {button.label} ]
-                      </Text>
-                    </Box>
+                    <Text color={isFocused ? button.color : undefined}>
+                      [ {button.label} ]
+                    </Text>
                   </Box>
                 );
               })}

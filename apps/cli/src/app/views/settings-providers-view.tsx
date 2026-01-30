@@ -31,7 +31,6 @@ const FOOTER_SHORTCUTS = [
 
 interface SettingsProvidersViewProps {
   projectId: string;
-  repoRoot: string;
   onBack: () => void;
   onSelectModel: (provider: AIProvider) => void;
   onSetApiKey: (provider: AIProvider) => void;
@@ -40,7 +39,6 @@ interface SettingsProvidersViewProps {
 
 export function SettingsProvidersView({
   projectId,
-  repoRoot,
   onBack,
   onSelectModel,
   onSetApiKey,
@@ -51,7 +49,7 @@ export function SettingsProvidersView({
   const terminalHeight = stdout?.rows ?? 24;
   const listHeight = Math.max(8, terminalHeight - 18);
 
-  const settingsState = useSettingsState(projectId, repoRoot);
+  const settingsState = useSettingsState(projectId);
 
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [searchQuery, setSearchQuery] = useState("");

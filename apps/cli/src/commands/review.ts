@@ -1,5 +1,6 @@
 import React from "react";
 import { render } from "ink";
+import { withFullScreen } from "fullscreen-ink";
 import {
   type CommandOptions,
   type ServerManager,
@@ -24,49 +25,35 @@ interface ReviewCommandOptions extends CommandOptions {
 }
 
 function parseFilesOption(files?: string[]): string[] | undefined {
-  if (!files || files.length === 0) {
-    return undefined;
-  }
+  if (!files?.length) return undefined;
   return files.flatMap((f) => f.split(",")).map((f) => f.trim()).filter(Boolean);
 }
 
-async function renderWithCleanup(
-  element: React.ReactElement,
-  manager: ServerManager
-): Promise<void> {
-  const { waitUntilExit } = render(element);
-  const shutdown = createShutdownHandler(() => manager.stop());
-  registerShutdownHandlers(shutdown);
-  await waitUntilExit();
+async function renderWithCleanup(element: React.ReactElement, manager: ServerManager): Promise<void> {
+  const ink = withFullScreen(element);
+  registerShutdownHandlers(
+    createShutdownHandler(async () => {
+      ink.instance?.unmount();
+      await manager.stop();
+    })
+  );
+  await ink.start();
+  await ink.instance?.waitUntilExit();
   await manager.stop().catch((err) => console.error("Cleanup error:", err));
 }
 
-interface PrReviewOptions {
-  manager: ServerManager;
-  staged: boolean;
-  files?: string[];
-  lenses?: LensId[];
-  profile?: ProfileId;
-  outputPath: string;
-}
-
-async function runPrReview({
-  manager,
-  staged,
-  files,
-  lenses,
-  profile,
-  outputPath,
-}: PrReviewOptions): Promise<void> {
+async function runPrReview(
+  manager: ServerManager,
+  staged: boolean,
+  files: string[] | undefined,
+  lenses: LensId[] | undefined,
+  profile: ProfileId | undefined,
+  outputPath: string
+): Promise<void> {
   const { PrReviewApp } = await import("../features/review/apps/pr-review-app.js");
-  const shutdown = createShutdownHandler(() => manager.stop());
-  registerShutdownHandlers(shutdown);
+  registerShutdownHandlers(createShutdownHandler(() => manager.stop()));
 
   let exitCode = 0;
-  const onComplete = (code: number): void => {
-    exitCode = code;
-  };
-
   const { waitUntilExit } = render(
     React.createElement(PrReviewApp, {
       staged,
@@ -74,7 +61,7 @@ async function runPrReview({
       lenses,
       profile,
       outputPath,
-      onComplete,
+      onComplete: (code: number) => { exitCode = code; },
     })
   );
 
@@ -87,47 +74,31 @@ export async function reviewCommand(options: ReviewCommandOptions): Promise<void
   await withServer(options, async (manager, address) => {
     setBaseUrl(address);
 
-    const staged = options.unstaged ? false : true;
+    const staged = !options.unstaged;
     const files = parseFilesOption(options.files);
-    const lenses = options.lens
-      ? (options.lens.split(",") as LensId[])
-      : undefined;
+    const lenses = options.lens?.split(",") as LensId[] | undefined;
     const profile = options.profile as ProfileId | undefined;
 
     if (options.list) {
       const { ReviewHistoryApp } = await import("../features/review/apps/review-history-app.js");
-      await renderWithCleanup(React.createElement(ReviewHistoryApp), manager);
-      return;
+      return renderWithCleanup(React.createElement(ReviewHistoryApp), manager);
     }
 
     if (options.resume) {
       const { ReviewResumeApp } = await import("../features/review/apps/review-resume-app.js");
-      await renderWithCleanup(
-        React.createElement(ReviewResumeApp, { reviewId: options.resume }),
-        manager
-      );
-      return;
+      return renderWithCleanup(React.createElement(ReviewResumeApp, { reviewId: options.resume }), manager);
     }
 
     if (options.pick) {
       const { FilePickerApp } = await import("../features/review/apps/file-picker-app.js");
-      await renderWithCleanup(
-        React.createElement(FilePickerApp, { staged, lenses, profile }),
-        manager
-      );
-      return;
+      return renderWithCleanup(React.createElement(FilePickerApp, { staged, lenses, profile }), manager);
     }
 
     if (options.pr) {
-      const outputPath = options.output ?? "annotations.json";
-      await runPrReview({ manager, staged, files, lenses, profile, outputPath });
-      return;
+      return runPrReview(manager, staged, files, lenses, profile, options.output ?? "annotations.json");
     }
 
     const { InteractiveReviewApp } = await import("../features/review/apps/interactive-review-app.js");
-    await renderWithCleanup(
-      React.createElement(InteractiveReviewApp, { staged, files, lenses, profile }),
-      manager
-    );
+    return renderWithCleanup(React.createElement(InteractiveReviewApp, { staged, files, lenses, profile }), manager);
   });
 }
