@@ -1,10 +1,11 @@
-import { useState, useEffect, type ReactElement } from "react";
+import { type ReactElement } from "react";
 import { Box, Text } from "ink";
 import type { TriageIssue } from "@repo/schemas/triage";
 import { SeverityBadge } from "../../../components/ui/badge.js";
 import { SeverityFilterGroup, type SeverityFilter } from "../../../components/ui/severity-filter-group.js";
-import type { SeverityLevel } from "../../../components/ui/severity-filter-button.js";
 import { useTheme } from "../../../hooks/use-theme.js";
+import { calculateVisibleWindow } from "../../../lib/scroll-window.js";
+import { calculateSeverityCounts } from "../../../lib/severity-counts.js";
 
 interface IssueListPaneProps {
   issues: TriageIssue[];
@@ -87,34 +88,6 @@ function IssueListItem({
   );
 }
 
-function calculateVisibleWindow(
-  totalItems: number,
-  selectedIndex: number,
-  visibleCount: number,
-  currentOffset: number
-): { scrollOffset: number; endIndex: number } {
-  if (totalItems <= visibleCount) {
-    return { scrollOffset: 0, endIndex: totalItems };
-  }
-
-  let scrollOffset = currentOffset;
-
-  if (selectedIndex >= 0) {
-    if (selectedIndex < scrollOffset) {
-      scrollOffset = selectedIndex;
-    } else if (selectedIndex >= scrollOffset + visibleCount) {
-      scrollOffset = selectedIndex - visibleCount + 1;
-    }
-  }
-
-  scrollOffset = Math.max(0, Math.min(scrollOffset, totalItems - visibleCount));
-
-  return {
-    scrollOffset,
-    endIndex: Math.min(scrollOffset + visibleCount, totalItems),
-  };
-}
-
 export function IssueListPane({
   issues,
   allIssues,
@@ -129,17 +102,10 @@ export function IssueListPane({
   focusedFilterIndex = 0,
 }: IssueListPaneProps): ReactElement {
   const { colors } = useTheme();
-  const [scrollOffset, setScrollOffset] = useState(0);
 
   // Use allIssues for severity counts if provided, otherwise use filtered issues
   const issuesForCounts = allIssues ?? issues;
-  const severityCounts: Record<SeverityLevel, number> = {
-    blocker: issuesForCounts.filter((i) => i.severity === "blocker").length,
-    high: issuesForCounts.filter((i) => i.severity === "high").length,
-    medium: issuesForCounts.filter((i) => i.severity === "medium").length,
-    low: issuesForCounts.filter((i) => i.severity === "low").length,
-    nit: issuesForCounts.filter((i) => i.severity === "nit").length,
-  };
+  const severityCounts = calculateSeverityCounts(issuesForCounts);
 
   const showFilters = severityFilter !== undefined && onSeverityFilterChange !== undefined;
   const headerHeight = title ? 3 : 2;
@@ -157,18 +123,11 @@ export function IssueListPane({
     ? Math.max(1, availableHeight - scrollIndicatorHeight * 2)
     : availableHeight;
 
-  const window = calculateVisibleWindow(
-    issues.length,
+  const window = calculateVisibleWindow({
+    totalItems: issues.length,
     selectedIndex,
-    effectiveVisibleCount,
-    scrollOffset
-  );
-
-  useEffect(() => {
-    if (window.scrollOffset !== scrollOffset) {
-      setScrollOffset(window.scrollOffset);
-    }
-  }, [window.scrollOffset, scrollOffset]);
+    visibleCount: effectiveVisibleCount,
+  });
 
   const visibleIssues = issues.slice(window.scrollOffset, window.endIndex);
   const borderColor = focus ? colors.ui.borderFocused : colors.ui.border;

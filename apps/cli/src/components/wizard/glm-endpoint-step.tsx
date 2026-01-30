@@ -1,11 +1,11 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import type { GLMEndpoint } from "@repo/schemas/config";
 import { Badge, SelectList, type SelectOption } from "../ui/index.js";
 import { WizardFrame } from "./wizard-frame.js";
-
-type WizardMode = "onboarding" | "settings";
+import { type WizardMode, getWizardFrameProps } from "../../types/index.js";
+import { useWizardNavigation, getWizardFooterText } from "../../hooks/index.js";
 
 interface GLMEndpointStepProps {
   mode: WizardMode;
@@ -47,22 +47,9 @@ export function GLMEndpointStep({
     onSelect(option.id);
   }
 
-  useInput(
-    (input) => {
-      if (input === "b" && onBack) {
-        onBack();
-      }
-    },
-    { isActive }
-  );
+  useWizardNavigation({ onBack, isActive });
 
-  function getFooterText(): string {
-    if (mode === "onboarding") return "Arrow keys to select, Enter to continue, [b] Back";
-    if (onBack) return "Arrow keys to select, Enter to configure, [b] Back";
-    return "Arrow keys to select, Enter to configure";
-  }
-
-  const frameProps = mode === "settings" ? { width: "66%" as const, centered: true } : {};
+  const footerText = getWizardFooterText({ mode, hasBack: !!onBack });
 
   return (
     <WizardFrame
@@ -70,8 +57,8 @@ export function GLMEndpointStep({
       currentStep={currentStep}
       totalSteps={totalSteps}
       stepTitle="GLM Endpoint"
-      footer={getFooterText()}
-      {...frameProps}
+      footer={footerText}
+      {...getWizardFrameProps(mode)}
     >
       <Text dimColor>Select the GLM API endpoint:</Text>
       <Box marginTop={1} marginBottom={1}>

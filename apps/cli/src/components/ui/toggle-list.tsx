@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
+import { useTheme } from "../../hooks/use-theme.js";
 
 export interface ToggleOption<T extends string = string> {
   id: T;
@@ -23,6 +24,8 @@ export function ToggleList<T extends string = string>({
   onToggle,
   isActive = true,
 }: ToggleListProps<T>): ReactElement {
+  const { colors } = useTheme();
+
   useInput(
     (input, key) => {
       if (key.upArrow && selectedIndex > 0) {
@@ -50,10 +53,10 @@ export function ToggleList<T extends string = string>({
       {options.map((option, index) => (
         <Box key={option.id} flexDirection="column">
           <Box>
-            <Text color={selectedIndex === index ? "green" : undefined}>
+            <Text color={selectedIndex === index ? colors.ui.accent : undefined}>
               {selectedIndex === index ? "> " : "  "}
             </Text>
-            <Text color={option.enabled ? "green" : "gray"}>
+            <Text color={option.enabled ? colors.ui.success : colors.ui.textMuted}>
               [{option.enabled ? "x" : " "}]
             </Text>
             <Text> {option.label}</Text>

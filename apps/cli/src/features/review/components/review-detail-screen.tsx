@@ -1,11 +1,11 @@
-import React, { useState } from "react";
-import { Box, Text, useInput, useApp, useStdout } from "ink";
+import React, { useState, useCallback, useRef } from "react";
+import { Box, Text, useInput, useApp } from "ink";
 import Spinner from "ink-spinner";
 import type { TriageIssue } from "@repo/schemas/triage";
 import type { DrilldownResult } from "@repo/schemas/lens";
-import { TRIAGE_SEVERITY_COLORS } from "../constants.js";
+import { TRIAGE_SEVERITY_COLORS, MAX_PATCH_LINES } from "../constants.js";
 import { Separator } from "../../../components/ui/separator.js";
-import { classifyDiffLine } from "@repo/core/diff";
+import { DiffLine } from "../../../components/ui/diff-line.js";
 import type { ApplyFixResult } from "./review-screen.js";
 
 interface ReviewDetailScreenProps {
@@ -17,27 +17,10 @@ interface ReviewDetailScreenProps {
   onDrilldown: () => void;
 }
 
-function DiffLine({ line }: { line: string }): React.ReactElement {
-  const lineType = classifyDiffLine(line);
-
-  switch (lineType) {
-    case "addition":
-      return <Text color="green">{line}</Text>;
-    case "deletion":
-      return <Text color="red">{line}</Text>;
-    case "hunk-header":
-      return <Text color="cyan">{line}</Text>;
-    case "file-header":
-      return <Text bold>{line}</Text>;
-    case "context":
-    default:
-      return <Text>{line}</Text>;
-  }
-}
-
 function PatchDisplay({ patch }: { patch: string }): React.ReactElement {
-  const lines = patch.split("\n").slice(0, 30);
-  const hasMore = patch.split("\n").length > 30;
+  const allLines = patch.split("\n");
+  const lines = allLines.slice(0, MAX_PATCH_LINES);
+  const hasMore = allLines.length > MAX_PATCH_LINES;
 
   return (
     <Box flexDirection="column" marginTop={1}>
@@ -46,7 +29,7 @@ function PatchDisplay({ patch }: { patch: string }): React.ReactElement {
       </Text>
       <Box flexDirection="column" marginLeft={1} marginTop={1}>
         {lines.map((line, i) => (
-          <DiffLine key={i} line={line} />
+          <DiffLine key={`patch-${i}`} line={line} />
         ))}
         {hasMore && (
           <Text dimColor>... (patch truncated)</Text>
@@ -86,20 +69,17 @@ export function ReviewDetailScreen({
   onDrilldown,
 }: ReviewDetailScreenProps): React.ReactElement {
   const { exit } = useApp();
-  const { stdout } = useStdout();
-  const [scrollOffset, setScrollOffset] = useState(0);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [isApplying, setIsApplying] = useState(false);
+  const isApplyingRef = useRef(false);
 
-  const terminalHeight = stdout?.rows ?? 24;
-  const contentHeight = terminalHeight - 6;
-
-  const handleApply = async () => {
-    if (!onApplyPatch || isApplying) return;
+  const handleApply = useCallback(async () => {
+    if (!onApplyPatch || isApplyingRef.current) return;
 
     const patch = drilldown?.patch ?? issue.suggested_patch;
     if (!patch) return;
 
+    isApplyingRef.current = true;
     setIsApplying(true);
     setFeedback(null);
 
@@ -111,19 +91,12 @@ export function ReviewDetailScreen({
       setFeedback({ type: "error", message: result.message ?? "Failed to apply fix" });
     }
 
+    isApplyingRef.current = false;
     setIsApplying(false);
-  };
+  }, [onApplyPatch, drilldown?.patch, issue]);
 
   useInput((input, key) => {
-    if (isApplying) return;
-
-    if (input === "j" || key.downArrow) {
-      setScrollOffset((s) => s + 1);
-    }
-
-    if (input === "k" || key.upArrow) {
-      setScrollOffset((s) => Math.max(0, s - 1));
-    }
+    if (isApplyingRef.current) return;
 
     if (input === "d" && !drilldown && !isLoadingDrilldown) {
       onDrilldown();
@@ -208,8 +181,8 @@ export function ReviewDetailScreen({
             <Box flexDirection="column" marginTop={1}>
               <Text bold>References:</Text>
               <Box flexDirection="column" marginLeft={1}>
-                {drilldown.references.map((ref, i) => (
-                  <Text key={i} dimColor>
+                {drilldown.references.map((ref) => (
+                  <Text key={ref} dimColor>
                     - {ref}
                   </Text>
                 ))}
@@ -237,7 +210,7 @@ export function ReviewDetailScreen({
 
       <Box marginTop={1}>
         <Text dimColor>
-          [j/k] Scroll  {!drilldown && !isLoadingDrilldown && "[d] Drilldown  "}
+          {!drilldown && !isLoadingDrilldown && "[d] Drilldown  "}
           {hasPatch && "[a] Apply patch  "}[b] Back  [q] Quit
         </Text>
       </Box>

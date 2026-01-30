@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import Spinner from "ink-spinner";
 import type { TriageIssue, TriageResult } from "@repo/schemas/triage";
@@ -127,8 +127,8 @@ export function ReviewScreen({
 }: ReviewScreenProps): React.ReactElement {
   const { exit } = useApp();
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [issueStatuses, setIssueStatuses] = useState<Map<string, IssueStatus>>(
-    new Map()
+  const [issueStatuses, setIssueStatuses] = useState(
+    () => new Map<string, IssueStatus>()
   );
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [isApplying, setIsApplying] = useState(false);
@@ -137,12 +137,15 @@ export function ReviewScreen({
   const showAgentPanel = isReviewing && agents.length > 0;
 
   const issues = result?.issues ?? [];
+  const prevIssuesLengthRef = useRef(issues.length);
 
   useEffect(() => {
-    if (selectedIndex >= issues.length && issues.length > 0) {
-      setSelectedIndex(issues.length - 1);
+    // Only clamp when issues array shrinks
+    if (issues.length < prevIssuesLengthRef.current && issues.length > 0) {
+      setSelectedIndex((idx) => Math.min(idx, issues.length - 1));
     }
-  }, [issues.length, selectedIndex]);
+    prevIssuesLengthRef.current = issues.length;
+  }, [issues.length]);
 
   const getIssueStatus = useCallback(
     (id: string): IssueStatus => {

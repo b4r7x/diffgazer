@@ -79,8 +79,8 @@ export function IssueBodyExplain({
         <Text bold>Evidence ({evidence.length})</Text>
       </Box>
 
-      {evidence.map((item, index) => (
-        <EvidenceItem key={`${item.sourceId}-${index}`} evidence={item} />
+      {evidence.map((item) => (
+        <EvidenceItem key={item.sourceId} evidence={item} />
       ))}
     </Box>
   );

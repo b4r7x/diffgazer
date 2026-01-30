@@ -2,6 +2,12 @@ import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import type { TriageIssue, FixPlanStep } from "@repo/schemas/triage";
 
+const RISK_COLORS: Record<string, string> = {
+  low: "green",
+  medium: "yellow",
+  high: "red",
+};
+
 interface SectionProps {
   title: string;
   content: string;
@@ -22,12 +28,6 @@ function Section({ title, content, color }: SectionProps): ReactElement {
 }
 
 function FixPlanDisplay({ steps }: { steps: FixPlanStep[] }): ReactElement {
-  const riskColors: Record<string, string> = {
-    low: "green",
-    medium: "yellow",
-    high: "red",
-  };
-
   return (
     <Box flexDirection="column" marginBottom={1}>
       <Text bold color="green">
@@ -40,7 +40,7 @@ function FixPlanDisplay({ steps }: { steps: FixPlanStep[] }): ReactElement {
               <Text>{step.step}.</Text>
               <Text wrap="wrap">{step.action}</Text>
               {step.risk && (
-                <Text color={riskColors[step.risk]}>
+                <Text color={RISK_COLORS[step.risk]}>
                   ({step.risk} risk)
                 </Text>
               )}
@@ -64,8 +64,8 @@ function BetterOptionsDisplay({ options }: { options: string[] }): ReactElement 
         Better Options
       </Text>
       <Box flexDirection="column" marginLeft={2}>
-        {options.map((option, index) => (
-          <Text key={index}>- {option}</Text>
+        {options.map((option) => (
+          <Text key={option}>- {option}</Text>
         ))}
       </Box>
     </Box>
@@ -79,8 +79,8 @@ function TestsToAddDisplay({ tests }: { tests: string[] }): ReactElement {
         Tests to Add
       </Text>
       <Box flexDirection="column" marginLeft={2}>
-        {tests.map((test, index) => (
-          <Text key={index}>- {test}</Text>
+        {tests.map((test) => (
+          <Text key={test}>- {test}</Text>
         ))}
       </Box>
     </Box>

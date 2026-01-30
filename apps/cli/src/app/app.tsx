@@ -82,6 +82,7 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
 
   useEffect(() => {
     localSettings.loadSettings();
+    // Intentionally run once on mount only - localSettings is a stable singleton
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
