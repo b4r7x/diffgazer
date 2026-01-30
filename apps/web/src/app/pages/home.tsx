@@ -1,5 +1,5 @@
-import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { MAIN_MENU_SHORTCUTS } from "@repo/core";
 import { useScope, useKey } from "@/hooks/keyboard";
 import { useRouteState } from "@/hooks/use-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
@@ -10,18 +10,10 @@ const MENU_ROUTES: Record<string, string> = {
   "review-unstaged": "/review",
   "review-staged": "/review?staged=true",
   "review-files": "/review?files=true",
-  resume: "/review",
+  "resume-review": "/review",
   history: "/history",
   settings: "/settings",
 };
-
-const FOOTER_SHORTCUTS = [
-  { key: "up/dn", label: "Select" },
-  { key: "Enter", label: "Open" },
-  { key: "s", label: "Settings" },
-  { key: "h", label: "Help" },
-  { key: "q", label: "Quit" },
-];
 
 const DEMO_CONTEXT: ContextInfo = {
   trustedDir: "~/dev/stargazer-core",
@@ -39,8 +31,7 @@ export function HomePage({ context = DEMO_CONTEXT }: HomePageProps) {
   const [selectedIndex, setSelectedIndex] = useRouteState('menuIndex', 0);
   const navigate = useNavigate();
 
-  const footerShortcuts = useMemo(() => FOOTER_SHORTCUTS, []);
-  usePageFooter({ shortcuts: footerShortcuts });
+  usePageFooter({ shortcuts: MAIN_MENU_SHORTCUTS });
 
   const handleActivate = (id: string) => {
     if (id === "quit") {

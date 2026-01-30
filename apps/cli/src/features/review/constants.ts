@@ -1,11 +1,21 @@
-import type { ReviewSeverity } from "@repo/schemas/review";
 import type { TriageSeverity } from "@repo/schemas/triage";
 
-export const SEVERITY_COLORS: Record<ReviewSeverity, string> = {
-  critical: "red",
-  warning: "yellow",
-  suggestion: "blue",
-  nitpick: "gray",
+export type IssueTab = "details" | "explain" | "trace" | "patch";
+
+export const TAB_ORDER = ["details", "explain", "trace", "patch"] as const;
+
+export const TAB_LABELS: Record<IssueTab, string> = {
+  details: "Details",
+  explain: "Explain",
+  trace: "Trace",
+  patch: "Patch",
+};
+
+export const TAB_KEYS: Record<IssueTab, string> = {
+  details: "1",
+  explain: "2",
+  trace: "3",
+  patch: "4",
 };
 
 export const TRIAGE_SEVERITY_COLORS: Record<TriageSeverity, string> = {
@@ -14,12 +24,4 @@ export const TRIAGE_SEVERITY_COLORS: Record<TriageSeverity, string> = {
   medium: "yellow",
   low: "blue",
   nit: "gray",
-};
-
-export const TRIAGE_SEVERITY_ORDER: Record<TriageSeverity, number> = {
-  blocker: 0,
-  high: 1,
-  medium: 2,
-  low: 3,
-  nit: 4,
 };

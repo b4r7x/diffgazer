@@ -49,7 +49,7 @@ export function useGitQuery<TData>(options: UseGitQueryOptions<TData>) {
 
         const result = validateSchema(data, schema, createGitError);
         if (!result.ok) {
-          throw new Error(result.error.message);
+          return Promise.reject(new Error(result.error.message));
         }
 
         return result.value;

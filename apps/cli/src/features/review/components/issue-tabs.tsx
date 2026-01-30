@@ -1,23 +1,11 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-
-export type IssueTab = "details" | "explain" | "trace" | "patch";
-
-const TAB_LABELS: Record<IssueTab, string> = {
-  details: "Details",
-  explain: "Explain",
-  trace: "Trace",
-  patch: "Patch",
-};
-
-const TAB_KEYS: Record<IssueTab, string> = {
-  details: "1",
-  explain: "2",
-  trace: "3",
-  patch: "4",
-};
-
-export const TAB_ORDER = ["details", "explain", "trace", "patch"] as const;
+import {
+  type IssueTab,
+  TAB_ORDER,
+  TAB_LABELS,
+  TAB_KEYS,
+} from "../constants.js";
 
 interface IssueTabsProps {
   activeTab: IssueTab;
@@ -62,5 +50,3 @@ export function IssueTabs({
     </Box>
   );
 }
-
-export { TAB_KEYS };

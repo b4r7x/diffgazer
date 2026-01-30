@@ -5,7 +5,7 @@ import { useConfig } from "../../../hooks/use-config.js";
 import { useTrust, type UseSettingsResult } from "../../../hooks/index.js";
 import { useActiveSession, useSessionList } from "../../sessions/index.js";
 import { useTriage, useReviewHistoryList } from "../../review/index.js";
-import type { View } from "./use-navigation.js";
+import type { AppView } from "./use-navigation.js";
 
 export function useAppState() {
   const gitStatus = useGitStatus();
@@ -60,7 +60,7 @@ export function useAppState() {
       listSessions: sessionList.loadList,
       createSession: activeSession.createSession,
     },
-    screenHandlerConfig: (setView: (view: View) => void, projectId: string, repoRoot: string, localSettings: Pick<UseSettingsResult, "settings" | "saveSettings">, address: string) => ({
+    screenHandlerConfig: (setView: (view: AppView) => void, projectId: string, repoRoot: string, localSettings: Pick<UseSettingsResult, "settings" | "saveSettings">, address: string) => ({
       setView,
       config: { saveConfig: config.saveConfig, deleteConfig: config.deleteConfig, deleteProviderCredentials: config.deleteProviderCredentials, loadSettings: config.loadSettings },
       settings: { settings: localSettings.settings, saveSettings: localSettings.saveSettings },
