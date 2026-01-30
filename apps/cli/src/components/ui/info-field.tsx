@@ -31,7 +31,11 @@ export function InfoField({
       <Text color={colorMap[color]} bold>
         {label.toUpperCase()}
       </Text>
-      <Text color={colors.ui.text}>{children}</Text>
+      {typeof children === "string" ? (
+        <Text color={colors.ui.text}>{children}</Text>
+      ) : (
+        children
+      )}
     </Box>
   );
 }
