@@ -10,7 +10,7 @@ export { IssueListPane, type IssueListPaneProps } from "./issue-list-pane.js";
 export { IssueListHeader, type FilterState, type IssueStatus } from "./issue-list-header.js";
 export { IssueDetailsPane, type IssueDetailsPaneProps } from "./issue-details-pane.js";
 export { IssueTabs } from "./issue-tabs.js";
-export { type IssueTab, TAB_ORDER, TAB_KEYS, TAB_LABELS } from "../constants.js";
+export { type IssueTab, TAB_ORDER, TAB_KEYS, TAB_LABELS, AGENT_PANEL_WIDTH, MAX_PATCH_LINES } from "../constants.js";
 export { IssueBodyDetails } from "./issue-body-details.js";
 export { IssueBodyExplain } from "./issue-body-explain.js";
 export { IssueBodyTrace } from "./issue-body-trace.js";

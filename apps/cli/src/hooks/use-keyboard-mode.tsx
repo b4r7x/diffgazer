@@ -3,6 +3,7 @@ import React, {
   useContext,
   useState,
   useCallback,
+  useMemo,
   type ReactNode,
   type ReactElement,
 } from "react";
@@ -38,13 +39,16 @@ export function KeyModeProvider({
     setModeState(newMode);
   }, []);
 
-  const value: KeyboardModeContextValue = {
-    mode,
-    isKeyMode: mode === "keys",
-    isMenuMode: mode === "menu",
-    toggleMode,
-    setMode,
-  };
+  const value = useMemo<KeyboardModeContextValue>(
+    () => ({
+      mode,
+      isKeyMode: mode === "keys",
+      isMenuMode: mode === "menu",
+      toggleMode,
+      setMode,
+    }),
+    [mode, toggleMode, setMode]
+  );
 
   return (
     <KeyboardModeContext.Provider value={value}>

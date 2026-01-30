@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import type { ReactElement } from "react";
 import { Box, Text, useStdout } from "ink";
 import type { TriageIssue } from "@repo/schemas/triage";
@@ -11,11 +11,9 @@ import { type SeverityFilter, SEVERITY_ORDER } from "../../../components/ui/seve
 import { IssueListPane } from "./issue-list-pane.js";
 import { IssueDetailsPane } from "./issue-details-pane.js";
 import { AgentActivityPanel } from "./agent-activity-panel.js";
-import type { IssueTab } from "../constants.js";
+import { type IssueTab, AGENT_PANEL_WIDTH } from "../constants.js";
 import { useReviewKeyboard, type FocusArea } from "../hooks/use-review-keyboard.js";
 import { useAgentActivity } from "../hooks/use-agent-activity.js";
-
-const AGENT_PANEL_WIDTH = 28;
 
 interface ReviewSplitScreenProps {
   issues: TriageIssue[];
@@ -60,47 +58,42 @@ export function ReviewSplitScreen({
 
   const [activeTab, setActiveTab] = useState<IssueTab>("details");
   const [focus, setFocus] = useState<FocusArea>("list");
-  const [isApplying, setIsApplying] = useState(false);
   const [filterFocusedIndex, setFilterFocusedIndex] = useState(0);
   const [activeFilter, setActiveFilter] = useState<SeverityFilter>("all");
 
-  const filteredIssues = activeFilter === "all"
-    ? issues
-    : issues.filter((issue) => issue.severity === activeFilter);
+  const filteredIssues = useMemo(
+    () => activeFilter === "all" ? issues : issues.filter((issue) => issue.severity === activeFilter),
+    [issues, activeFilter]
+  );
 
-  const selectedIndex = (() => {
+  const selectedIndex = useMemo(() => {
     if (!selectedIssueId) return 0;
     const idx = filteredIssues.findIndex((issue) => issue.id === selectedIssueId);
     return idx >= 0 ? idx : 0;
-  })();
+  }, [selectedIssueId, filteredIssues]);
 
   const selectedIssue = filteredIssues[selectedIndex] ?? null;
 
-  const handleNavigate = (direction: "up" | "down") => {
+  const handleNavigate = useCallback((direction: "up" | "down") => {
     const delta = direction === "down" ? 1 : -1;
     const newIndex = Math.max(0, Math.min(selectedIndex + delta, filteredIssues.length - 1));
     const issue = filteredIssues[newIndex];
     if (issue) {
       onSelectIssue(issue.id);
     }
-  };
+  }, [selectedIndex, filteredIssues, onSelectIssue]);
 
   const handleOpen = () => {
     setFocus("details");
   };
 
   const handleApply = () => {
-    if (isApplying || !selectedIssue) return;
-    setIsApplying(true);
+    if (!selectedIssue) return;
     onApplyPatch(selectedIssue.id);
-    setIsApplying(false);
   };
 
   const handleApplyFromDetails = (issue: TriageIssue) => {
-    if (isApplying) return;
-    setIsApplying(true);
     onApplyPatch(issue.id);
-    setIsApplying(false);
   };
 
   const handleIgnore = () => {
@@ -251,7 +244,7 @@ export function ReviewSplitScreen({
                 issue={selectedIssue}
                 activeTab={activeTab}
                 onApplyPatch={handleApplyFromDetails}
-                isApplying={isApplying}
+                isApplying={false}
                 focus={focus === "details"}
                 drilldown={drilldownData}
               />

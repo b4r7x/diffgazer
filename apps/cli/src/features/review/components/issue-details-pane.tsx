@@ -80,8 +80,8 @@ function DrilldownPanel({ drilldown }: { drilldown: DrilldownResult }): ReactEle
         <Box flexDirection="column" marginTop={1}>
           <Text bold color="magenta">Related Issues</Text>
           <Box marginLeft={2} flexDirection="column">
-            {drilldown.relatedIssues.map((issueId, index) => (
-              <Text key={index} dimColor>- {issueId}</Text>
+            {drilldown.relatedIssues.map((issueId) => (
+              <Text key={issueId} dimColor>- {issueId}</Text>
             ))}
           </Box>
         </Box>
@@ -91,8 +91,8 @@ function DrilldownPanel({ drilldown }: { drilldown: DrilldownResult }): ReactEle
         <Box flexDirection="column" marginTop={1}>
           <Text bold>References</Text>
           <Box marginLeft={2} flexDirection="column">
-            {drilldown.references.map((ref, index) => (
-              <Text key={index} dimColor>- {ref}</Text>
+            {drilldown.references.map((ref) => (
+              <Text key={ref} dimColor>- {ref}</Text>
             ))}
           </Box>
         </Box>

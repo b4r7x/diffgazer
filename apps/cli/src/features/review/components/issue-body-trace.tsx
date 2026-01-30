@@ -1,6 +1,7 @@
-import { useState, useEffect, type ReactElement } from "react";
+import { useMemo, type ReactElement } from "react";
 import { Box, Text } from "ink";
 import type { TraceRef } from "@repo/schemas/triage";
+import { calculateVisibleWindow } from "../../../lib/scroll-window.js";
 
 function parseTimestamp(timestamp: string): number {
   const date = new Date(timestamp);
@@ -82,52 +83,29 @@ function TraceStep({ trace, relativeTime, isLast }: TraceStepProps): ReactElemen
   );
 }
 
-function calculateVisibleWindow(
-  totalItems: number,
-  currentOffset: number,
-  visibleCount: number
-): { scrollOffset: number; endIndex: number } {
-  if (totalItems <= visibleCount) {
-    return { scrollOffset: 0, endIndex: totalItems };
-  }
-
-  const scrollOffset = Math.max(0, Math.min(currentOffset, totalItems - visibleCount));
-  return {
-    scrollOffset,
-    endIndex: Math.min(scrollOffset + visibleCount, totalItems),
-  };
-}
-
 interface IssueBodyTraceProps {
   trace: TraceRef[] | undefined;
   height?: number;
 }
 
 export function IssueBodyTrace({ trace, height }: IssueBodyTraceProps): ReactElement {
-  const [scrollOffset, setScrollOffset] = useState(0);
-
   const traceItems = trace ?? [];
 
-  const firstItem = traceItems[0];
-  const baseTime = firstItem ? parseTimestamp(firstItem.timestamp) : 0;
-  const relativeTimes = traceItems.map((t) => parseTimestamp(t.timestamp) - baseTime);
+  const relativeTimes = useMemo(() => {
+    const firstItem = traceItems[0];
+    const baseTime = firstItem ? parseTimestamp(firstItem.timestamp) : 0;
+    return traceItems.map((t) => parseTimestamp(t.timestamp) - baseTime);
+  }, [traceItems]);
 
   const headerHeight = 2;
   const itemHeight = 4;
   const availableHeight = height ? Math.max(itemHeight, height - headerHeight) : undefined;
   const visibleCount = availableHeight ? Math.floor(availableHeight / itemHeight) : traceItems.length;
 
-  const window = calculateVisibleWindow(traceItems.length, scrollOffset, visibleCount);
-
-  useEffect(() => {
-    setScrollOffset(0);
-  }, [trace]);
-
-  useEffect(() => {
-    if (window.scrollOffset !== scrollOffset) {
-      setScrollOffset(window.scrollOffset);
-    }
-  }, [window.scrollOffset, scrollOffset]);
+  const window = calculateVisibleWindow({
+    totalItems: traceItems.length,
+    visibleCount,
+  });
 
   if (traceItems.length === 0) {
     return (
@@ -160,7 +138,7 @@ export function IssueBodyTrace({ trace, height }: IssueBodyTraceProps): ReactEle
 
         {visibleItems.map((item, index) => (
           <TraceStep
-            key={`${item.step}-${item.tool}`}
+            key={item.step}
             trace={item}
             relativeTime={visibleRelativeTimes[index] ?? 0}
             isLast={window.scrollOffset + index === traceItems.length - 1}

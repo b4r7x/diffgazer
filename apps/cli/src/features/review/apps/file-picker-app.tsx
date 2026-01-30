@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import Spinner from "ink-spinner";
 import type { LensId, ProfileId } from "@repo/schemas/lens";
@@ -49,27 +49,29 @@ export function FilePickerApp({
   const { state: triageState, startTriage } = useTriage({ lenses, profile });
   const [screen, setScreen] = useState<Screen>("picker");
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [checkedFiles, setCheckedFiles] = useState<Set<string>>(new Set());
+  const [checkedFiles, setCheckedFiles] = useState(() => new Set<string>());
   const [selectedIssue, setSelectedIssue] = useState<TriageIssue | null>(null);
   const [drilldown, setDrilldown] = useState<DrilldownResult | null>(null);
 
   useEffect(() => {
     void fetchStatus();
-  }, []);
+  }, [fetchStatus]);
 
-  const fileData =
-    gitState.status === "success"
-      ? staged
-        ? gitState.data.files.staged
-        : gitState.data.files.unstaged
-      : [];
-  const files = fileData.map((f) => f.path);
+  const files = useMemo(() => {
+    if (gitState.status !== "success") return [];
+    const fileData = staged ? gitState.data.files.staged : gitState.data.files.unstaged;
+    return fileData.map((f) => f.path);
+  }, [gitState, staged]);
+
+  const prevFilesLengthRef = useRef(files.length);
 
   useEffect(() => {
-    if (selectedIndex >= files.length && files.length > 0) {
-      setSelectedIndex(files.length - 1);
+    // Only clamp when files array shrinks
+    if (files.length < prevFilesLengthRef.current && files.length > 0) {
+      setSelectedIndex((idx) => Math.min(idx, files.length - 1));
     }
-  }, [files.length, selectedIndex]);
+    prevFilesLengthRef.current = files.length;
+  }, [files.length]);
 
   const toggleFile = useCallback((file: string) => {
     setCheckedFiles((prev) => {

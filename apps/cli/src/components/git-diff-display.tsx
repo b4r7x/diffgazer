@@ -76,7 +76,7 @@ export function GitDiffDisplay({
       </Text>
       <Box flexDirection="column" marginTop={1}>
         {lines.slice(0, MAX_DIFF_LINES_DISPLAY).map((line, i) => (
-          <DiffLine key={i} line={line} colors={colors} />
+          <DiffLine key={`diff-${i}`} line={line} colors={colors} />
         ))}
         {lines.length > MAX_DIFF_LINES_DISPLAY && (
           <Text color={colors.ui.textMuted}>

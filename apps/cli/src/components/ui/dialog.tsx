@@ -149,7 +149,7 @@ interface DialogCloseProps {
 }
 
 export function DialogClose({ label = "Close" }: DialogCloseProps): ReactElement {
-  const { onClose } = useDialogContext();
+  const { isOpen, onClose } = useDialogContext();
   const { colors } = useTheme();
 
   useInput(
@@ -158,7 +158,7 @@ export function DialogClose({ label = "Close" }: DialogCloseProps): ReactElement
         onClose();
       }
     },
-    { isActive: true }
+    { isActive: isOpen }
   );
 
   return (

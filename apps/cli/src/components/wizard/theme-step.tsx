@@ -1,12 +1,12 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
-import { Box, Text, useInput } from "ink";
+import { Box, Text } from "ink";
 import type { Theme } from "@repo/schemas/settings";
 import { THEMES } from "@repo/schemas/settings";
 import { SelectList, type SelectOption } from "../ui/index.js";
 import { WizardFrame } from "./wizard-frame.js";
-
-type WizardMode = "onboarding" | "settings";
+import { type WizardMode, getWizardFrameProps } from "../../types/index.js";
+import { useWizardNavigation, getWizardFooterText } from "../../hooks/index.js";
 
 interface ThemeStepProps {
   mode: WizardMode;
@@ -92,29 +92,21 @@ export function ThemeStep({
 
   const selectedTheme = THEME_OPTIONS[selectedIndex]?.id ?? "auto";
 
-  useInput(
-    (input, key) => {
-      if (!isActive) return;
-
+  useWizardNavigation({
+    onBack,
+    isActive,
+    onInput: (_input, key) => {
       if (key.return) {
         onSubmit(selectedTheme);
       }
-
-      if (input === "b" && onBack) {
-        onBack();
-      }
     },
-    { isActive }
-  );
+  });
 
-  const footerText =
-    mode === "onboarding"
-      ? "Arrow keys to select, Enter to continue"
-      : onBack
-        ? "Arrow keys to select, Enter to save, [b] Back"
-        : "Arrow keys to select, Enter to save";
-
-  const frameProps = mode === "settings" ? { width: "66%" as const, centered: true } : {};
+  const footerText = getWizardFooterText({
+    mode,
+    hasBack: !!onBack,
+    enterAction: mode === "onboarding" ? "continue" : "save",
+  });
 
   return (
     <WizardFrame
@@ -123,7 +115,7 @@ export function ThemeStep({
       totalSteps={totalSteps}
       stepTitle="Theme Selection"
       footer={footerText}
-      {...frameProps}
+      {...getWizardFrameProps(mode)}
     >
       <Box flexDirection="row" gap={2}>
         <Box flexDirection="column" width={40}>

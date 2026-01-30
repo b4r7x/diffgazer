@@ -28,9 +28,9 @@ export function SecurityBadgeGroup({ badges }: SecurityBadgeGroupProps): ReactEl
 
   return (
     <Box gap={1}>
-      {badges.map((badge, i) => (
+      {badges.map((badge) => (
         <SecurityBadge
-          key={`${badge.type}-${badge.code}-${i}`}
+          key={`${badge.type}-${badge.code}`}
           type={badge.type}
           code={badge.code}
         />

@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
 import { findNextEnabled, findPrevEnabled } from "../../lib/list-navigation.js";
+import { useTheme } from "../../hooks/use-theme.js";
 
 export interface SelectOption<T extends string = string> {
   id: T;
@@ -25,6 +26,8 @@ export function SelectList<T extends string = string>({
   onSubmit,
   isActive = true,
 }: SelectListProps<T>): ReactElement {
+  const { colors } = useTheme();
+
   useInput(
     (input, key) => {
       if (!isActive) return;
@@ -54,7 +57,7 @@ export function SelectList<T extends string = string>({
       {options.map((option, index) => (
         <Box key={option.id} flexDirection="column">
           <Box>
-            <Text color={selectedIndex === index ? "green" : undefined}>
+            <Text color={selectedIndex === index ? colors.ui.accent : undefined}>
               {selectedIndex === index ? "> " : "  "}
             </Text>
             <Text
