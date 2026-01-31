@@ -33,6 +33,7 @@ function countIssuesBySeverity(
 }
 
 export interface SaveTriageReviewOptions {
+  reviewId?: string;
   projectPath: string;
   staged: boolean;
   result: TriageResult;
@@ -58,7 +59,7 @@ export async function saveTriageReview(
   };
 
   const metadata: TriageReviewMetadata = {
-    id: randomUUID(),
+    id: options.reviewId ?? randomUUID(),
     projectPath: options.projectPath,
     createdAt: now,
     staged: options.staged,

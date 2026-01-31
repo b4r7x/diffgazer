@@ -24,6 +24,14 @@ interface BranchInfo {
   behind: number;
 }
 
+interface GitBlameResult {
+  author: string;
+  authorEmail: string;
+  commit: string;
+  commitDate: string;
+  summary: string;
+}
+
 function parseBranchLine(line: string): BranchInfo {
   const result: BranchInfo = { branch: null, remoteBranch: null, ahead: 0, behind: 0 };
 
@@ -145,5 +153,40 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
     return stdout;
   }
 
-  return { getStatus, getDiff, isGitInstalled };
+  async function getBlame(file: string, line: number): Promise<GitBlameResult | null> {
+    try {
+      const args = ["blame", "-L", `${line},${line}`, "--porcelain", file];
+      const { stdout } = await execFileAsync("git", args, { cwd, timeout });
+
+      const lines = stdout.split("\n");
+      const commit = lines[0]?.split(" ")[0] ?? "";
+      const author = lines.find(l => l.startsWith("author "))?.slice(7) ?? "Unknown";
+      const authorEmail = lines.find(l => l.startsWith("author-mail "))?.slice(12).replace(/[<>]/g, "") ?? "";
+      const commitTime = lines.find(l => l.startsWith("author-time "))?.slice(12) ?? "0";
+      const summary = lines.find(l => l.startsWith("summary "))?.slice(8) ?? "";
+
+      return {
+        author,
+        authorEmail,
+        commit,
+        commitDate: new Date(Number(commitTime) * 1000).toISOString(),
+        summary,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  async function getFileLines(file: string, startLine: number, endLine: number): Promise<string[]> {
+    try {
+      const args = ["show", `HEAD:${file}`];
+      const { stdout } = await execFileAsync("git", args, { cwd, timeout, maxBuffer: GIT_DIFF_MAX_BUFFER });
+      const allLines = stdout.split("\n");
+      return allLines.slice(Math.max(0, startLine - 1), endLine);
+    } catch {
+      return [];
+    }
+  }
+
+  return { getStatus, getDiff, isGitInstalled, getBlame, getFileLines };
 }

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { createGitService } from "./git.js";
 import type { AIClient } from "../ai/index.js";
 import { getErrorMessage } from "@repo/core";
@@ -5,6 +6,8 @@ import { logger } from "../lib/logger.js";
 import { parseDiff, filterDiffByFiles } from "../diff/index.js";
 import { triageReviewStream, getProfile } from "../review/index.js";
 import { saveTriageReview } from "../storage/index.js";
+import { enrichIssues } from "./enrich.js";
+import { generateReport } from "./report.js";
 import type { TriageResult, TriageOptions as SchemaTriageOptions } from "@repo/schemas/triage";
 import type { LensId, ProfileId } from "@repo/schemas/lens";
 import { ErrorCode } from "@repo/schemas/errors";
@@ -12,7 +15,8 @@ import type { SSEWriter } from "../lib/ai-client.js";
 import { writeSSEError } from "../lib/sse-helpers.js";
 import { createGitDiffError } from "./review.js";
 import type { AgentStreamEvent } from "@repo/schemas/agent-event";
-import type { StepEvent, StepId } from "@repo/schemas/step-event";
+import type { StepEvent, StepId, ReviewStartedEvent } from "@repo/schemas/step-event";
+import type { EnrichProgressEvent } from "@repo/schemas/enrich-event";
 
 const MAX_DIFF_SIZE_BYTES = 524288; // 512KB
 
@@ -34,7 +38,7 @@ function stepError(step: StepId, error: string): StepEvent {
 
 const gitService = createGitService();
 
-async function writeStreamEvent(stream: SSEWriter, event: AgentStreamEvent | StepEvent): Promise<void> {
+async function writeStreamEvent(stream: SSEWriter, event: AgentStreamEvent | StepEvent | EnrichProgressEvent): Promise<void> {
   const data = JSON.stringify(event);
   console.log('[SERVER:EMIT]', event.type, 'size:', data.length, 'preview:', data.slice(0, 150));
   try {
@@ -74,7 +78,18 @@ export async function streamTriageToSSE(
 
   logger.info(`Starting triage stream: staged=${staged}, files=${files?.length ?? 0}, lenses=${lensIds?.join(",") ?? "default"}`);
 
+  // Generate reviewId early so client can track this review immediately
+  const reviewId = randomUUID();
+
   try {
+    // Emit review_started immediately with placeholder filesTotal
+    await writeStreamEvent(stream, {
+      type: "review_started",
+      reviewId,
+      filesTotal: 0,
+      timestamp: now(),
+    } satisfies ReviewStartedEvent);
+
     // Step: diff
     await writeStreamEvent(stream, stepStart("diff"));
 
@@ -105,6 +120,14 @@ export async function streamTriageToSSE(
     logger.info(`Diff retrieved: files=${parsed.files.length}, size=${parsed.totalStats.totalSizeBytes}`);
 
     await writeStreamEvent(stream, stepComplete("diff"));
+
+    // Update client with actual file count
+    await writeStreamEvent(stream, {
+      type: "review_started",
+      reviewId,
+      filesTotal: parsed.files.length,
+      timestamp: now(),
+    } satisfies ReviewStartedEvent);
 
     if (files && files.length > 0) {
       parsed = filterDiffByFiles(parsed, files);
@@ -159,11 +182,34 @@ export async function streamTriageToSSE(
 
     await writeStreamEvent(stream, stepComplete("triage"));
 
-    const finalResult = result.value;
-    logger.info(`Triage complete: issues=${finalResult.issues.length}`);
+    logger.info(`Triage complete: issues=${result.value.issues.length}`);
+
+    // Step 3: Enrich context
+    await writeStreamEvent(stream, stepStart("enrich"));
+
+    const enrichedIssues = await enrichIssues(
+      result.value.issues,
+      gitService,
+      async (event: EnrichProgressEvent) => {
+        await writeStreamEvent(stream, event);
+      }
+    );
+
+    await writeStreamEvent(stream, stepComplete("enrich"));
+
+    // Step 4: Generate report
+    await writeStreamEvent(stream, stepStart("report"));
+
+    // Note: lens-specific stats are tracked during triage via orchestrator_complete event
+    // The generateReport function handles deduplication, sorting, and summary generation
+    const finalResult = generateReport(enrichedIssues, []);
+
+    await writeStreamEvent(stream, stepComplete("report"));
+
     const status = await gitService.getStatus().catch(() => null);
 
     const saveResult = await saveTriageReview({
+      reviewId,
       projectPath: process.cwd(),
       staged,
       result: finalResult,
@@ -179,9 +225,9 @@ export async function streamTriageToSSE(
       return;
     }
 
-    logger.info(`Review saved: reviewId=${saveResult.value.id}, durationMs=${Date.now() - startTime}`);
+    logger.info(`Review saved: reviewId=${reviewId}, durationMs=${Date.now() - startTime}`);
 
-    await writeTriageComplete(stream, finalResult, saveResult.value.id, Date.now() - startTime);
+    await writeTriageComplete(stream, finalResult, reviewId, Date.now() - startTime);
   } catch (error) {
     try {
       await writeSSEError(stream, getErrorMessage(error), ErrorCode.INTERNAL_ERROR);

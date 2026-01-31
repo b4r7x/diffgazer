@@ -3,7 +3,8 @@
 import { useRef, useEffect, useState, type ReactNode } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../../lib/utils';
-import type { ProgressStatus } from '@repo/schemas/ui';
+import { ProgressSubstep } from './progress-substep';
+import type { ProgressStatus, ProgressSubstepData } from '@repo/schemas/ui';
 
 export type { ProgressStatus };
 
@@ -49,6 +50,7 @@ const labelVariants = cva('text-sm', {
 export interface ProgressStepProps extends VariantProps<typeof progressStepVariants> {
   label: string;
   status: ProgressStatus;
+  substeps?: ProgressSubstepData[];
   children?: ReactNode;
   isExpanded?: boolean;
   onToggle?: () => void;
@@ -64,6 +66,7 @@ const STATUS_INDICATORS: Record<ProgressStatus, string> = {
 export function ProgressStep({
   label,
   status,
+  substeps,
   children,
   isExpanded = false,
   onToggle,
@@ -71,16 +74,16 @@ export function ProgressStep({
 }: ProgressStepProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState(0);
-  const hasChildren = Boolean(children);
+  const hasContent = Boolean(children || (substeps && substeps.length > 0));
 
   useEffect(() => {
     if (contentRef.current) {
       setContentHeight(contentRef.current.scrollHeight);
     }
-  }, [children, isExpanded]);
+  }, [children, substeps, isExpanded]);
 
   const handleClick = () => {
-    if (hasChildren && onToggle) {
+    if (hasContent && onToggle) {
       onToggle();
     }
   };
@@ -97,24 +100,31 @@ export function ProgressStep({
       <div
         className={cn(
           progressStepVariants({ status }),
-          hasChildren && 'cursor-pointer'
+          hasContent && 'cursor-pointer'
         )}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
-        tabIndex={hasChildren ? 0 : undefined}
-        role={hasChildren ? 'button' : undefined}
+        tabIndex={hasContent ? 0 : undefined}
+        role={hasContent ? 'button' : undefined}
       >
         <span className={indicatorVariants({ status })}>
           {STATUS_INDICATORS[status]}
         </span>
         <span className={labelVariants({ status })}>{label}</span>
       </div>
-      {hasChildren && (
+      {hasContent && (
         <div
           style={{ height: isExpanded ? contentHeight : 0 }}
           className="overflow-hidden transition-[height] duration-200 ease-in-out"
         >
           <div ref={contentRef} className="pt-2 pl-7">
+            {substeps && substeps.length > 0 && (
+              <div className="space-y-1 mb-2">
+                {substeps.map((substep) => (
+                  <ProgressSubstep key={substep.id} {...substep} />
+                ))}
+              </div>
+            )}
             {children}
           </div>
         </div>

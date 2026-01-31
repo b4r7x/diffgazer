@@ -60,7 +60,34 @@ function convertEventToLogEntry(
     };
   }
 
+  if (event.type === "review_started") {
+    return {
+      id,
+      timestamp,
+      tag: "START",
+      tagType: "system",
+      message: `Review started: ${event.filesTotal} file${event.filesTotal === 1 ? "" : "s"} to analyze`,
+    };
+  }
+
   switch (event.type) {
+    case "file_start":
+      return {
+        id,
+        timestamp,
+        tag: "FILE",
+        tagType: "system",
+        message: `Analyzing ${event.file} (${event.index + 1}/${event.total})`,
+      };
+
+    case "file_complete":
+      return {
+        id,
+        timestamp,
+        tag: "✓",
+        tagType: "system",
+        message: `${event.file} complete`,
+      };
     case "agent_start":
       return {
         id,
@@ -76,14 +103,14 @@ function convertEventToLogEntry(
     }
 
     case "tool_call":
-      return { id, timestamp, tag: "TOOL", tagType: "tool", message: `${event.tool}: ${truncate(event.input, 60)}` };
+      return { id, timestamp, tag: "TOOL", tagType: "tool", message: `${event.tool}: ${truncate(event.input, 60)}`, source: event.tool };
 
     case "tool_result":
-      return { id, timestamp, tag: "TOOL", tagType: "tool", message: truncate(event.summary, 100) };
+      return { id, timestamp, tag: "TOOL", tagType: "tool", message: truncate(event.summary, 100), source: event.tool };
 
     case "issue_found": {
-      const { emoji } = getAgent(event.agent);
-      return { id, timestamp, tag: emoji, tagType: "warning", message: `Found: ${event.issue.title}`, isWarning: true };
+      const { emoji, name } = getAgent(event.agent);
+      return { id, timestamp, tag: emoji, tagType: "warning", message: `Found: ${event.issue.title}`, isWarning: true, source: name };
     }
 
     case "agent_complete": {
