@@ -29,6 +29,8 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       if (queryString) url += `?${queryString}`;
     }
 
+    console.log("[CLIENT:FETCH]", method, url);
+
     const headers: Record<string, string> = { Accept: "application/json" };
     if (options?.body !== undefined) {
       headers["Content-Type"] = "application/json";
@@ -41,10 +43,13 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       signal: options?.signal,
     });
 
+    console.log("[CLIENT:RESPONSE]", response.status, response.statusText, "hasBody:", !!response.body);
+
     if (!response.ok) {
       const responseBody = (await response.json().catch(() => null)) as {
         error?: { message?: string; code?: string };
       } | null;
+      console.error("[CLIENT:ERROR]", response.status, responseBody);
       throw createApiError(responseBody?.error?.message ?? `HTTP ${response.status}`, response.status, responseBody?.error?.code);
     }
 

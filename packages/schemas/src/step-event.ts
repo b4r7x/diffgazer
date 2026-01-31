@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // Step IDs match the workflow phases
-export const STEP_IDS = ["diff", "triage", "enrich", "report"] as const;
+export const STEP_IDS = ["diff", "triage"] as const;
 export const StepIdSchema = z.enum(STEP_IDS);
 export type StepId = z.infer<typeof StepIdSchema>;
 
@@ -13,8 +13,6 @@ export type StepStatus = z.infer<typeof StepStatusSchema>;
 export const STEP_METADATA: Record<StepId, { label: string; description: string }> = {
   diff: { label: "Collect diff", description: "Gathering code changes" },
   triage: { label: "Triage issues", description: "Analyzing with lenses" },
-  enrich: { label: "Enrich context", description: "Adding evidence and deduplicating" },
-  report: { label: "Generate report", description: "Finalizing results" },
 };
 
 // Step events emitted during triage

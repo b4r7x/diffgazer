@@ -1,166 +1,62 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate, useSearch, useParams } from "@tanstack/react-router";
 import { AnalysisSummary } from "@/components/ui";
 import type { LensStats, IssuePreview, SeverityFilter } from "@/components/ui";
-import type { TriageSeverity } from "@repo/schemas/triage";
 import type { TriageIssue } from "@repo/schemas";
 import { SEVERITY_ORDER } from "@repo/schemas/ui";
 import { useScope, useKey, useSelectableList } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { ReviewContainer, IssueListPane, IssueDetailsPane, type ReviewMode, type TabId } from "@/features/review/components";
+import { ReviewContainer, IssueListPane, IssueDetailsPane, type ReviewMode, type TabId, type ReviewCompleteData } from "@/features/review/components";
+import { useExistingReview } from "@/features/review/hooks";
 import { calculateSeverityCounts } from "@repo/core";
 import { filterIssuesBySeverity } from "@repo/core/review";
 
 type FocusZone = "filters" | "list" | "details";
 type ReviewView = "progress" | "summary" | "results";
 
-const MOCK_ISSUES: TriageIssue[] = [
-  {
-    id: "1",
-    severity: "blocker",
-    category: "security",
-    title: "Potential SQL Injection",
-    file: "auth/login.ts",
-    line_start: 42,
-    line_end: 42,
-    rationale: "User input directly concatenated into SQL query",
-    recommendation: "Use parameterized queries",
-    suggested_patch: `- const query = \`SELECT * FROM users WHERE user = '\${username}'\`;
-+ const query = 'SELECT * FROM users WHERE user = ?';
-+ const result = await db.query(query, [username]);`,
-    confidence: 0.95,
-    symptom:
-      "The input variable username is concatenated directly into a raw SQL query string without sanitization. This occurs on line 42 within the authentication logic.",
-    whyItMatters:
-      "This vulnerability allows malicious users to manipulate the query logic by injecting arbitrary SQL commands. An attacker could bypass authentication.",
-    fixPlan: [
-      { step: 1, action: "Import parameterized query builder", files: ["auth/login.ts"] },
-      { step: 2, action: "Replace string concatenation with bound parameters" },
-      { step: 3, action: "Validate input type before query execution" },
-    ],
-    evidence: [
-      {
-        type: "code",
-        title: "Vulnerable code",
-        sourceId: "src-1",
-        file: "auth/login.ts",
-        excerpt: "const query = `SELECT * FROM users WHERE user = '${username}'`;",
-      },
-    ],
-  },
-  {
-    id: "2",
-    severity: "blocker",
-    category: "security",
-    title: "Unsafe Deserialization",
-    file: "api/handlers/data.ts",
-    line_start: 88,
-    line_end: 92,
-    rationale: "Deserializing untrusted data without validation",
-    recommendation: "Validate data schema before deserialization",
-    suggested_patch: null,
-    confidence: 0.9,
-    symptom: "The JSON.parse call on line 88 deserializes user-provided data without any schema validation.",
-    whyItMatters: "Attackers can craft malicious payloads that exploit prototype pollution or execute arbitrary code.",
-    fixPlan: [
-      { step: 1, action: "Add Zod schema for expected data structure" },
-      { step: 2, action: "Validate parsed data against schema" },
-    ],
-    evidence: [],
-  },
-  {
-    id: "3",
-    severity: "high",
-    category: "performance",
-    title: "Memory Leak in Loop",
-    file: "services/processor.ts",
-    line_start: 150,
-    line_end: 165,
-    rationale: "Event listeners added in loop without cleanup",
-    recommendation: "Store references and remove listeners on cleanup",
-    suggested_patch: null,
-    confidence: 0.85,
-    symptom: "Event listeners are attached inside a forEach loop without any mechanism to remove them.",
-    whyItMatters: "Each iteration creates a new listener that persists in memory, causing memory exhaustion.",
-    fixPlan: [
-      { step: 1, action: "Store listener references in array" },
-      { step: 2, action: "Add cleanup function to remove all listeners" },
-    ],
-    evidence: [],
-  },
-  {
-    id: "4",
-    severity: "high",
-    category: "correctness",
-    title: "Missing Error Handling",
-    file: "utils/api-client.ts",
-    line_start: 24,
-    line_end: 28,
-    rationale: "Network request has no error handling",
-    recommendation: "Wrap in try-catch or use .catch()",
-    suggested_patch: null,
-    confidence: 0.88,
-    symptom: "The fetch call on line 24 does not handle network failures or non-2xx responses.",
-    whyItMatters: "Unhandled promise rejections can crash the application or leave it in an inconsistent state.",
-    fixPlan: [
-      { step: 1, action: "Add try-catch wrapper" },
-      { step: 2, action: "Check response.ok before parsing" },
-    ],
-    evidence: [],
-  },
-  {
-    id: "5",
-    severity: "medium",
-    category: "performance",
-    title: "Inefficient Selector",
-    file: "components/Table.tsx",
-    line_start: 12,
-    line_end: 12,
-    rationale: "Selector computes derived state on every render",
-    recommendation: "Memoize the selector or use createSelector",
-    suggested_patch: null,
-    confidence: 0.75,
-    symptom: "The useSelector hook on line 12 performs an array filter operation on every render.",
-    whyItMatters: "This causes unnecessary re-renders and performance issues with large datasets.",
-    evidence: [],
-  },
-  {
-    id: "6",
-    severity: "low",
-    category: "readability",
-    title: "Redundant Code Block",
-    file: "views/dashboard.tsx",
-    line_start: 201,
-    line_end: 215,
-    rationale: "Duplicate logic that could be extracted",
-    recommendation: "Extract common logic into shared utility",
-    suggested_patch: null,
-    confidence: 0.7,
-    symptom: "Lines 201-215 contain logic nearly identical to lines 180-194 in the same file.",
-    whyItMatters: "Duplicated code increases maintenance burden and risk of bugs.",
-    evidence: [],
-  },
-];
+interface ReviewData {
+  issues: TriageIssue[];
+  reviewId: string | null;
+  error: string | null;
+}
 
-function ReviewSummaryView({ onEnterReview, onBack }: { onEnterReview: () => void; onBack: () => void }) {
-  const severityCounts = calculateSeverityCounts(MOCK_ISSUES);
-  const blockerCount = MOCK_ISSUES.filter((i) => i.severity === "blocker").length;
+interface ReviewSummaryViewProps {
+  issues: TriageIssue[];
+  reviewId: string | null;
+  onEnterReview: () => void;
+  onBack: () => void;
+}
 
-  const lensStats: LensStats[] = [
-    { id: "security", name: "Security", icon: "🛡", iconColor: "text-tui-red", count: 4, change: 2 },
-    { id: "performance", name: "Performance", icon: "⚡", iconColor: "text-tui-yellow", count: 5, change: 0 },
-    { id: "style", name: "Style", icon: "✨", iconColor: "text-tui-blue", count: 3, change: -1 },
-  ];
+function ReviewSummaryView({ issues, reviewId, onEnterReview, onBack }: ReviewSummaryViewProps) {
+  const severityCounts = calculateSeverityCounts(issues);
 
-  const topIssues: IssuePreview[] = MOCK_ISSUES.slice(0, 3).map((issue) => ({
+  // Calculate lens stats from actual issues by counting categories
+  const categoryCountMap = issues.reduce<Record<string, number>>((acc, issue) => {
+    acc[issue.category] = (acc[issue.category] || 0) + 1;
+    return acc;
+  }, {});
+
+  const lensStats: LensStats[] = Object.entries(categoryCountMap).map(([category, count]) => ({
+    id: category,
+    name: category.charAt(0).toUpperCase() + category.slice(1),
+    icon: category === "security" ? "shield" : category === "performance" ? "zap" : "code",
+    iconColor: category === "security" ? "text-tui-red" : category === "performance" ? "text-tui-yellow" : "text-tui-blue",
+    count,
+    change: 0,
+  }));
+
+  const topIssues: IssuePreview[] = issues.slice(0, 3).map((issue) => ({
     id: issue.id,
     title: issue.title,
-    file: `src/${issue.file}`,
+    file: issue.file,
     line: issue.line_start ?? 0,
     category: issue.category,
-    severity: issue.severity as TriageSeverity,
+    severity: issue.severity,
   }));
+
+  // Get unique files analyzed
+  const filesAnalyzed = new Set(issues.map((i) => i.file)).size;
 
   useScope("review-summary");
   useKey("Enter", onEnterReview);
@@ -175,7 +71,8 @@ function ReviewSummaryView({ onEnterReview, onBack }: { onEnterReview: () => voi
     <div className="flex-1 overflow-y-auto px-4 py-4">
       <div className="w-full max-w-4xl mx-auto">
         <AnalysisSummary
-          stats={{ runId: "8821", totalIssues: MOCK_ISSUES.length, filesAnalyzed: 7, criticalCount: blockerCount }}
+          // reviewId is null only briefly during initial state before review completes
+          stats={{ runId: reviewId ?? "unknown", totalIssues: issues.length, filesAnalyzed, criticalCount: severityCounts.blocker }}
           severityCounts={severityCounts}
           lensStats={lensStats}
           topIssues={topIssues}
@@ -187,7 +84,12 @@ function ReviewSummaryView({ onEnterReview, onBack }: { onEnterReview: () => voi
   );
 }
 
-function ReviewResultsView() {
+interface ReviewResultsViewProps {
+  issues: TriageIssue[];
+  reviewId: string | null;
+}
+
+function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
   const navigate = useNavigate();
   const [selectedIssueIndex, setSelectedIssueIndex] = useScopedRouteState("issueIndex", 0);
   const [activeTab, setActiveTab] = useState<TabId>("details");
@@ -196,7 +98,7 @@ function ReviewResultsView() {
   const [focusedFilterIndex, setFocusedFilterIndex] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set([1]));
 
-  const filteredIssues = filterIssuesBySeverity(MOCK_ISSUES, severityFilter);
+  const filteredIssues = filterIssuesBySeverity(issues, severityFilter);
 
   const { focusedIndex, setFocusedIndex } = useSelectableList({
     itemCount: filteredIssues.length,
@@ -293,7 +195,7 @@ function ReviewResultsView() {
     <div className="flex flex-1 overflow-hidden px-4 font-mono">
       <IssueListPane
         issues={filteredIssues}
-        allIssues={MOCK_ISSUES}
+        allIssues={issues}
         selectedIndex={focusedIndex}
         onSelectIndex={setFocusedIndex}
         severityFilter={severityFilter}
@@ -301,7 +203,8 @@ function ReviewResultsView() {
         isFocused={focusZone === "list"}
         isFilterFocused={focusZone === "filters"}
         focusedFilterIndex={focusedFilterIndex}
-        title="Analysis #8821"
+        // reviewId is null only briefly during initial state before review completes
+        title={`Analysis #${reviewId ?? "unknown"}`}
       />
       <IssueDetailsPane
         issue={selectedIssue}
@@ -317,22 +220,67 @@ function ReviewResultsView() {
 
 export function ReviewPage() {
   const navigate = useNavigate();
+  const params = useParams({ strict: false }) as { reviewId?: string };
   const search = useSearch({ strict: false }) as { staged?: boolean; files?: boolean };
   const reviewMode: ReviewMode = search.files ? "files" : search.staged ? "staged" : "unstaged";
-  const [view, setView] = useState<ReviewView>("progress");
+  const [view, setView] = useState<ReviewView>(params.reviewId ? "results" : "progress");
+  const [reviewData, setReviewData] = useState<ReviewData>({ issues: [], reviewId: null, error: null });
+
+  const { review: existingReview, isLoading, error: existingError } = useExistingReview(params.reviewId);
+
+  useEffect(() => {
+    // Only load from API if we don't already have data (navigated directly to /review/:id)
+    if (existingReview && !reviewData.reviewId) {
+      setReviewData({
+        issues: existingReview.result.issues,
+        reviewId: existingReview.metadata.id,
+        error: null,
+      });
+      setView("results");
+    }
+  }, [existingReview, reviewData.reviewId]);
+
+  const handleComplete = useCallback((data: ReviewCompleteData) => {
+    setReviewData(data);
+    if (!data.error) {
+      setView("summary");
+      // Update URL without triggering a new fetch (we already have the data)
+      if (data.reviewId) {
+        navigate({ to: "/review/$reviewId", params: { reviewId: data.reviewId }, replace: true });
+      }
+    }
+  }, [navigate]);
+
+  if (params.reviewId && isLoading) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <span className="text-tui-fg-muted" role="status" aria-live="polite">Loading review...</span>
+      </div>
+    );
+  }
+
+  if (params.reviewId && existingError) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <span className="text-tui-red" role="alert">Failed to load review: {existingError}</span>
+      </div>
+    );
+  }
 
   if (view === "progress") {
-    return <ReviewContainer mode={reviewMode} onComplete={() => setView("summary")} />;
+    return <ReviewContainer mode={reviewMode} onComplete={handleComplete} />;
   }
 
   if (view === "summary") {
     return (
       <ReviewSummaryView
+        issues={reviewData.issues}
+        reviewId={reviewData.reviewId}
         onEnterReview={() => setView("results")}
         onBack={() => navigate({ to: "/" })}
       />
     );
   }
 
-  return <ReviewResultsView />;
+  return <ReviewResultsView issues={reviewData.issues} reviewId={reviewData.reviewId} />;
 }

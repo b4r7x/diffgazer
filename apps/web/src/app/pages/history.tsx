@@ -1,173 +1,104 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { FocusablePane, Tabs, TabsList, TabsTrigger } from "@/components/ui";
-import type { TriageIssue } from "@repo/schemas";
+import type { ReviewHistoryMetadata } from "@repo/schemas/review-history";
 import type { HistoryTabId, HistoryFocusZone } from "@repo/schemas/history";
 import type { TimelineItem } from "@repo/schemas/ui";
-import { calculateSeverityCounts } from "@repo/core";
 import { useScope, useKey } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { RunAccordionItem, TimelineList, HistoryInsightsPane } from "@/features/history/components";
+import { RunAccordionItem, TimelineList, HistoryInsightsPane, useReviews } from "@/features/history";
 
-// Local extension of HistoryRun for web-specific React.ReactNode summary
-interface HistoryRun {
-  id: string;
-  displayId: string;
-  date: string;
-  branch: string;
-  provider: string;
-  timestamp: string;
-  summary: React.ReactNode;
-  issues: TriageIssue[];
-  passed: boolean;
+function getDateKey(dateStr: string): string {
+  return dateStr.slice(0, 10); // "2024-01-15T..." -> "2024-01-15"
 }
 
-// Mock data
-const MOCK_ISSUES: TriageIssue[] = [
-  {
-    id: "1",
-    severity: "blocker",
-    category: "security",
-    title: "Missing CSRF token validation in login handler",
-    file: "auth/login.ts",
-    line_start: 42,
-    line_end: 42,
-    rationale: "No CSRF protection",
-    recommendation: "Add CSRF token validation",
-    suggested_patch: null,
-    confidence: 0.95,
-    evidence: [],
-    symptom: "Login handler accepts requests without CSRF validation",
-    whyItMatters: "Exposes application to cross-site request forgery attacks",
-  },
-  {
-    id: "2",
-    severity: "blocker",
-    category: "security",
-    title: "Plaintext password storage detected in memory",
-    file: "auth/session.ts",
-    line_start: 89,
-    line_end: 92,
-    rationale: "Passwords stored in plaintext",
-    recommendation: "Hash passwords before storage",
-    suggested_patch: null,
-    confidence: 0.92,
-    evidence: [],
-    symptom: "Password strings stored without hashing in session memory",
-    whyItMatters: "Memory dumps or process inspection could expose user credentials",
-  },
-  {
-    id: "3",
-    severity: "high",
-    category: "performance",
-    title: "Inefficient SQL query inside loop",
-    file: "services/data.ts",
-    line_start: 115,
-    line_end: 120,
-    rationale: "N+1 query pattern",
-    recommendation: "Batch queries",
-    suggested_patch: null,
-    confidence: 0.88,
-    evidence: [],
-    symptom: "Database queries executed inside iteration loop",
-    whyItMatters: "Causes exponential performance degradation with data growth",
-  },
-];
+function getDateLabel(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const yesterday = new Date(now.setDate(now.getDate() - 1)).toISOString().slice(0, 10);
+  const dateKey = getDateKey(dateStr);
 
-const MOCK_RUNS: HistoryRun[] = [
-  {
-    id: "8821",
-    displayId: "#8821",
-    date: "today",
-    branch: "Staged",
-    provider: "GPT-4o",
-    timestamp: "10:42 AM",
-    summary: <>Found <span className="text-tui-red font-bold">2 critical</span> issues in auth module flow.</>,
-    issues: MOCK_ISSUES,
-    passed: false,
-  },
-  {
-    id: "8820",
-    displayId: "#8820",
-    date: "today",
-    branch: "Main",
-    provider: "GPT-3.5",
-    timestamp: "09:15 AM",
-    summary: "Regression test passed. No anomalies detected.",
-    issues: [],
-    passed: true,
-  },
-  {
-    id: "8819",
-    displayId: "#8819",
-    date: "today",
-    branch: "feat/auth",
-    provider: "GPT-4o",
-    timestamp: "08:30 AM",
-    summary: <><span className="text-tui-yellow">1 High</span> severity issue in database migration.</>,
-    issues: [MOCK_ISSUES[2]],
-    passed: false,
-  },
-  {
-    id: "8818",
-    displayId: "#8818",
-    date: "today",
-    branch: "hotfix/db",
-    provider: "Claude-3",
-    timestamp: "08:15 AM",
-    summary: "Schema validation failed on user table.",
-    issues: [],
-    passed: false,
-  },
-  {
-    id: "8817",
-    displayId: "#8817",
-    date: "yesterday",
-    branch: "Unstaged",
-    provider: "GPT-3.5",
-    timestamp: "Yesterday",
-    summary: "Passed with no issues.",
-    issues: [],
-    passed: true,
-  },
-];
+  if (dateKey === today) return "Today";
+  if (dateKey === yesterday) return "Yesterday";
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 
-const TIMELINE_ITEMS: TimelineItem[] = [
-  { id: "today", label: "Today", count: 4 },
-  { id: "yesterday", label: "Yesterday", count: 8 },
-  { id: "jan29", label: "Jan 29", count: 12 },
-  { id: "jan28", label: "Jan 28", count: 5 },
-];
+function getTimestamp(dateStr: string): string {
+  return new Date(dateStr).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+}
 
+function getRunSummary(metadata: ReviewHistoryMetadata): React.ReactNode {
+  const { criticalCount, warningCount, issueCount } = metadata;
+
+  if (criticalCount > 0) {
+    return (
+      <>
+        Found <span className="text-tui-red font-bold">{criticalCount} critical</span> issue
+        {criticalCount !== 1 ? "s" : ""}.
+      </>
+    );
+  }
+  if (warningCount > 0) {
+    return (
+      <>
+        Found <span className="text-tui-yellow font-bold">{warningCount} warning</span>
+        {warningCount !== 1 ? "s" : ""}.
+      </>
+    );
+  }
+  if (issueCount > 0) {
+    return `Found ${issueCount} issue${issueCount !== 1 ? "s" : ""}.`;
+  }
+  return "Passed with no issues.";
+}
+
+function buildTimelineItems(reviews: ReviewHistoryMetadata[]): TimelineItem[] {
+  const groups = new Map<string, { label: string; count: number }>();
+
+  for (const review of reviews) {
+    const key = getDateKey(review.createdAt);
+    const existing = groups.get(key);
+    if (existing) {
+      existing.count++;
+    } else {
+      groups.set(key, { label: getDateLabel(review.createdAt), count: 1 });
+    }
+  }
+
+  return Array.from(groups.entries())
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([id, { label, count }]) => ({ id, label, count }));
+}
 
 export function HistoryPage() {
   const navigate = useNavigate();
+  const { reviews, isLoading, error } = useReviews();
   const [activeTab, setActiveTab] = useState<HistoryTabId>("runs");
   const [focusZone, setFocusZone] = useState<HistoryFocusZone>("runs");
-  const [selectedDateId, setSelectedDateId] = useScopedRouteState("date", "today");
-  const [selectedRunId, setSelectedRunId] = useScopedRouteState("run", MOCK_RUNS[0]?.id ?? null);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
 
-  // Filter runs by selected date
+  const timelineItems = useMemo(() => buildTimelineItems(reviews), [reviews]);
+
+  const defaultDateId = timelineItems[0]?.id ?? "";
+  const [selectedDateId, setSelectedDateId] = useScopedRouteState("date", defaultDateId);
+  const [selectedRunId, setSelectedRunId] = useScopedRouteState("run", reviews[0]?.id ?? null);
+
   const filteredRuns = useMemo(
-    () => MOCK_RUNS.filter((run) => run.date === selectedDateId),
-    [selectedDateId]
+    () => reviews.filter((r) => getDateKey(r.createdAt) === selectedDateId),
+    [reviews, selectedDateId]
   );
 
-  // Get selected run data for insights
-  const selectedRun = useMemo(
-    () => MOCK_RUNS.find((run) => run.id === selectedRunId) ?? null,
-    [selectedRunId]
-  );
+  const selectedRun = reviews.find((r) => r.id === selectedRunId) ?? null;
 
-  const severityCounts = useMemo(
-    () => (selectedRun ? calculateSeverityCounts(selectedRun.issues) : { blocker: 0, high: 0, medium: 0, low: 0, nit: 0 }),
-    [selectedRun]
-  );
-
-  const topLenses = ["Security", "Auth", "OWASP"];
-  const topIssues = selectedRun?.issues.slice(0, 3) ?? [];
+  const severityCounts = {
+    blocker: selectedRun?.criticalCount ?? 0,
+    high: selectedRun?.warningCount ?? 0,
+    medium: 0,
+    low: 0,
+    nit: 0,
+  };
 
   // Keyboard scope
   useScope("history");
@@ -193,18 +124,26 @@ export function HistoryPage() {
   });
 
   // Expand/collapse with Enter
-  useKey("Enter", () => {
-    if (focusZone === "runs" && selectedRunId) {
-      setExpandedRunId((prev) => (prev === selectedRunId ? null : selectedRunId));
-    }
-  }, { enabled: focusZone === "runs" });
+  useKey(
+    "Enter",
+    () => {
+      if (focusZone === "runs" && selectedRunId) {
+        setExpandedRunId((prev) => (prev === selectedRunId ? null : selectedRunId));
+      }
+    },
+    { enabled: focusZone === "runs" }
+  );
 
   // Open in full review
-  useKey("o", () => {
-    if (selectedRunId) {
-      navigate({ to: "/review/$reviewId", params: { reviewId: selectedRunId } });
-    }
-  }, { enabled: focusZone === "runs" });
+  useKey(
+    "o",
+    () => {
+      if (selectedRunId) {
+        navigate({ to: "/review/$reviewId", params: { reviewId: selectedRunId } });
+      }
+    },
+    { enabled: focusZone === "runs" }
+  );
 
   // Escape handling
   useKey("Escape", () => {
@@ -234,6 +173,24 @@ export function HistoryPage() {
     if (direction === "down") setFocusZone("runs");
   };
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex flex-col flex-1 items-center justify-center text-gray-500">
+        <span>Loading reviews...</span>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col flex-1 items-center justify-center text-tui-red">
+        <span>Error: {error}</span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col flex-1 overflow-hidden px-4 pb-0">
       {/* Tabs */}
@@ -257,13 +214,17 @@ export function HistoryPage() {
             Timeline
           </div>
           <div className="flex-1 overflow-y-auto p-2">
-            <TimelineList
-              items={TIMELINE_ITEMS}
-              selectedId={selectedDateId}
-              onSelect={setSelectedDateId}
-              keyboardEnabled={focusZone === "timeline"}
-              onBoundaryReached={handleTimelineBoundary}
-            />
+            {timelineItems.length > 0 ? (
+              <TimelineList
+                items={timelineItems}
+                selectedId={selectedDateId}
+                onSelect={setSelectedDateId}
+                keyboardEnabled={focusZone === "timeline"}
+                onBoundaryReached={handleTimelineBoundary}
+              />
+            ) : (
+              <div className="text-gray-500 text-sm p-2">No reviews yet</div>
+            )}
           </div>
         </FocusablePane>
 
@@ -278,45 +239,44 @@ export function HistoryPage() {
           </div>
           <div className="flex-1 overflow-y-auto">
             {activeTab === "runs" ? (
-              filteredRuns.map((run) => (
-                <RunAccordionItem
-                  key={run.id}
-                  id={run.id}
-                  displayId={run.displayId}
-                  branch={run.branch}
-                  provider={run.provider}
-                  timestamp={run.timestamp}
-                  summary={run.summary}
-                  issues={run.issues}
-                  isSelected={run.id === selectedRunId}
-                  isExpanded={run.id === expandedRunId}
-                  onSelect={() => setSelectedRunId(run.id)}
-                  onToggleExpand={() => setExpandedRunId((prev) => (prev === run.id ? null : run.id))}
-                  onIssueClick={(_issueId) => {
-                    navigate({ to: "/review/$reviewId", params: { reviewId: run.id } });
-                  }}
-                />
-              ))
+              filteredRuns.length > 0 ? (
+                filteredRuns.map((run) => (
+                  <RunAccordionItem
+                    key={run.id}
+                    id={run.id}
+                    displayId={`#${run.id.slice(0, 4)}`}
+                    branch={run.staged ? "Staged" : run.branch ?? "Main"}
+                    provider="AI"
+                    timestamp={getTimestamp(run.createdAt)}
+                    summary={getRunSummary(run)}
+                    issues={[]}
+                    isSelected={run.id === selectedRunId}
+                    isExpanded={run.id === expandedRunId}
+                    onSelect={() => setSelectedRunId(run.id)}
+                    onToggleExpand={() => setExpandedRunId((prev) => (prev === run.id ? null : run.id))}
+                    onIssueClick={() => navigate({ to: "/review/$reviewId", params: { reviewId: run.id } })}
+                  />
+                ))
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  No runs for this date
+                </div>
+              )
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
-                No sessions available
-              </div>
+              <div className="flex items-center justify-center h-full text-gray-500">No sessions available</div>
             )}
           </div>
         </FocusablePane>
 
         {/* Insights (right) */}
-        <FocusablePane
-          isFocused={focusZone === "insights"}
-          className="w-80 flex flex-col shrink-0 overflow-hidden"
-        >
+        <FocusablePane isFocused={focusZone === "insights"} className="w-80 flex flex-col shrink-0 overflow-hidden">
           <HistoryInsightsPane
-            runId={selectedRun?.displayId ?? null}
+            runId={selectedRun ? `#${selectedRun.id.slice(0, 4)}` : null}
             severityCounts={severityCounts}
-            topLenses={topLenses}
-            topIssues={topIssues}
-            duration="4m 12s"
-            onIssueClick={(_issueId) => {
+            topLenses={[]}
+            topIssues={[]}
+            duration="--"
+            onIssueClick={() => {
               if (selectedRunId) {
                 navigate({ to: "/review/$reviewId", params: { reviewId: selectedRunId } });
               }

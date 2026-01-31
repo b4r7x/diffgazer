@@ -21,10 +21,14 @@ import type { LensId, ProfileId } from "@repo/schemas/lens";
 const triage = new Hono();
 
 triage.get("/stream", async (c) => {
+  console.log("[ROUTE:STREAM] Request received", c.req.url);
+
   const clientResult = await initializeAIClient();
   if (!clientResult.ok) {
+    console.error("[ROUTE:STREAM] AI client init failed:", clientResult.error);
     return errorResponse(c, clientResult.error.message, clientResult.error.code, 500);
   }
+  console.log("[ROUTE:STREAM] AI client initialized");
 
   const staged = c.req.query("staged") !== "false";
   const lensesParam = c.req.query("lenses");
@@ -39,10 +43,15 @@ triage.get("/stream", async (c) => {
     ? filesParam.split(",").map((f) => f.trim()).filter(Boolean)
     : undefined;
 
+  console.log("[ROUTE:STREAM] Params:", { staged, lenses, files, profile });
+
   return streamSSE(c, async (stream) => {
+    console.log("[ROUTE:SSE] Stream started");
     try {
       await streamTriageToSSE(clientResult.value, { staged, files, lenses, profile }, stream);
+      console.log("[ROUTE:SSE] streamTriageToSSE completed");
     } catch (error) {
+      console.error("[ROUTE:SSE] Error:", error);
       try {
         await writeSSEError(stream, getErrorMessage(error), ErrorCode.INTERNAL_ERROR);
       } catch {

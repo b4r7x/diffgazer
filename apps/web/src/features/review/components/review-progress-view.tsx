@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { cn } from '@/lib/utils';
 import { PanelHeader, ProgressList, ActivityLog, Timer, MetricItem } from '@/components/ui';
 import { useScope, useKey } from '@/hooks/keyboard';
@@ -12,6 +13,7 @@ export interface ReviewProgressViewProps {
   entries: LogEntryData[];
   metrics: ReviewProgressMetrics;
   isRunning: boolean;
+  error?: string | null;
   startTime?: Date;
   onViewResults?: () => void;
   onCancel?: () => void;
@@ -23,12 +25,16 @@ export function ReviewProgressView({
   entries,
   metrics,
   isRunning,
+  error,
   startTime,
   onViewResults,
   onCancel,
 }: ReviewProgressViewProps) {
+  const navigate = useNavigate();
   const [focusPane, setFocusPane] = useState<'progress' | 'log'>('progress');
   const [expandedStepId, setExpandedStepId] = useState<string | null>(null);
+
+  const isApiKeyError = error && /api.?key/i.test(error);
 
   // Calculate expanded IDs array for ProgressList (single-expand behavior)
   const expandedIds = expandedStepId ? [expandedStepId] : [];
@@ -114,12 +120,46 @@ export function ReviewProgressView({
           <span className="text-[10px] text-gray-600 font-mono">tail -f agent.log</span>
         </div>
 
-        <ActivityLog
-          entries={entries}
-          showCursor={isRunning}
-          autoScroll={true}
-          className="flex-1"
-        />
+        {error ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center p-6 max-w-md">
+              <div className="text-tui-red text-lg font-bold mb-2">
+                {isApiKeyError ? 'API Key Error' : 'Error'}
+              </div>
+              <div className="text-gray-400 font-mono text-sm mb-2">{error}</div>
+              {isApiKeyError && (
+                <div className="text-gray-500 text-sm mb-4">
+                  Your API key may be invalid or expired.
+                </div>
+              )}
+              <div className={cn('flex gap-3 justify-center', !isApiKeyError && 'mt-4')}>
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="px-4 py-2 border border-tui-border text-sm font-mono hover:bg-tui-border/20"
+                >
+                  [ Back to Home ]
+                </button>
+                {isApiKeyError && (
+                  <button
+                    type="button"
+                    onClick={() => navigate({ to: '/settings/providers' })}
+                    className="px-4 py-2 border border-tui-yellow text-tui-yellow text-sm font-mono hover:bg-tui-yellow/10"
+                  >
+                    [ Configure Provider ]
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <ActivityLog
+            entries={entries}
+            showCursor={isRunning}
+            autoScroll={true}
+            className="flex-1"
+          />
+        )}
       </div>
     </div>
   );

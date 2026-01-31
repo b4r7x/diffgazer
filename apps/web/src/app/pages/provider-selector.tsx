@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useKey } from '@/hooks/keyboard';
 import { useScopedRouteState } from '@/hooks/use-scoped-route-state';
-import { useFooter } from '@/components/layout';
+import { useFooter, useToast } from '@/components/layout';
 import {
   ProviderList,
   ProviderDetails,
@@ -51,6 +51,7 @@ export function ProviderSelectorPage() {
     selectProvider,
     refetch,
   } = useProviders();
+  const { showToast } = useToast();
 
   const filteredProviders = useMemo(() => {
     let result = providers;
@@ -207,6 +208,9 @@ export function ProviderSelectorPage() {
       await saveApiKey(selectedProvider.id, value, method);
       await refetch();
       setApiKeyDialogOpen(false);
+      showToast({ variant: 'success', title: 'API Key Saved', message: 'Provider configured' });
+    } catch (error) {
+      showToast({ variant: 'error', title: 'Failed to Save', message: error instanceof Error ? error.message : 'Unknown error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -219,6 +223,9 @@ export function ProviderSelectorPage() {
       await removeApiKey(selectedProvider.id);
       await refetch();
       setApiKeyDialogOpen(false);
+      showToast({ variant: 'success', title: 'API Key Removed', message: 'Provider key deleted' });
+    } catch (error) {
+      showToast({ variant: 'error', title: 'Failed to Remove', message: error instanceof Error ? error.message : 'Unknown error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -230,6 +237,9 @@ export function ProviderSelectorPage() {
     try {
       await selectProvider(selectedProvider.id, selectedProvider.model);
       await refetch();
+      showToast({ variant: 'success', title: 'Provider Activated', message: `${selectedProvider.name} is now active` });
+    } catch (error) {
+      showToast({ variant: 'error', title: 'Failed to Activate', message: error instanceof Error ? error.message : 'Unknown error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -242,6 +252,9 @@ export function ProviderSelectorPage() {
       await selectProvider(selectedProvider.id, modelId);
       await refetch();
       setModelDialogOpen(false);
+      showToast({ variant: 'success', title: 'Model Selected', message: `Selected ${modelId}` });
+    } catch (error) {
+      showToast({ variant: 'error', title: 'Failed to Select Model', message: error instanceof Error ? error.message : 'Unknown error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -250,7 +263,7 @@ export function ProviderSelectorPage() {
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <span className="text-gray-500">Loading providers...</span>
+        <span className="text-gray-500" role="status" aria-live="polite">Loading providers...</span>
       </div>
     );
   }
