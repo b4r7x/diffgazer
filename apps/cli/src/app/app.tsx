@@ -27,6 +27,7 @@ import {
   HISTORY_FOOTER_SHORTCUTS,
 } from "./views/index.js";
 import type { AppView, SettingsSection } from "@repo/core";
+import type { AIProvider } from "@repo/schemas/config";
 import { ThemeProvider, useSettings, SessionRecorderProvider, useSessionRecorderContext, KeyModeProvider } from "../hooks/index.js";
 import type { SessionMode } from "../types/index.js";
 import { GlobalLayout } from "../components/layout/index.js";
@@ -36,8 +37,6 @@ export type { SessionMode };
 function createProjectId(path: string): string {
   return createHash("sha256").update(path).digest("hex").slice(0, 16);
 }
-
-const noop = (): void => {};
 
 const VIEW_SHORTCUTS: Record<string, typeof MAIN_MENU_FOOTER_SHORTCUTS> = {
   main: MAIN_MENU_FOOTER_SHORTCUTS,
@@ -80,10 +79,29 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
     [setView]
   );
 
+  // Provider configuration handlers - navigate to onboarding for now
+  // A future enhancement could show inline dialogs
+  const handleSelectModel = useCallback(
+    (_provider: AIProvider) => setView("onboarding"),
+    [setView]
+  );
+
+  const handleSetApiKey = useCallback(
+    (_provider: AIProvider) => setView("onboarding"),
+    [setView]
+  );
+
+  const handleExportReview = useCallback(
+    (review: { id: string; title?: string }) => {
+      // Export functionality - placeholder until file export is implemented
+      recordEvent("SETTINGS_CHANGED", { action: "export_review_requested", reviewId: review.id });
+    },
+    [recordEvent]
+  );
+
   useEffect(() => {
     localSettings.loadSettings();
-    // Intentionally run once on mount only - localSettings is a stable singleton
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, []);
 
   useEffect(() => {
@@ -92,7 +110,7 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
       void state.trust.loadTrust(projectId);
       void state.reviewHistory.loadList();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- state methods are stable refs from useAppState
   }, [view, projectId]);
 
   useAppInit({
@@ -192,8 +210,8 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
           <SettingsProvidersView
             projectId={projectId}
             onBack={goToSettingsHub}
-            onSelectModel={noop}
-            onSetApiKey={noop}
+            onSelectModel={handleSelectModel}
+            onSetApiKey={handleSetApiKey}
           />
         )}
         {view === "settings-diagnostics" && <SettingsDiagnosticsView onBack={goToSettingsHub} />}
@@ -202,7 +220,7 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
             reviews={state.reviewHistory.items}
             sessions={state.sessionList.items}
             onResumeReview={handlers.reviewHistory.onSelect}
-            onExportReview={noop}
+            onExportReview={handleExportReview}
             onDeleteReview={handlers.reviewHistory.onDelete}
             onViewSession={handlers.sessions.onSelect}
             onDeleteSession={handlers.sessions.onDelete}

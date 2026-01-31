@@ -40,7 +40,7 @@ export function IssueBodyPatch({
         paddingX={1}
       >
         {displayLines.map((line, lineNumber) => (
-          <DiffLine key={`${lineNumber}:${line.slice(0, 40)}`} line={line} />
+          <DiffLine key={lineNumber} line={line} />
         ))}
         {hasMore && (
           <Text dimColor>

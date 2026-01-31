@@ -106,14 +106,26 @@ export const TriageStreamEventSchema = z.discriminatedUnion("type", [
 ]);
 export type TriageStreamEvent = z.infer<typeof TriageStreamEventSchema>;
 
-// Lazy import to avoid circular dependency with lens.ts
-import type { LensId, ReviewProfile, SeverityFilter } from "./lens.js";
+// SeverityFilter defined here to avoid circular dependency with lens.ts
+export const SeverityFilterSchema = z.object({
+  minSeverity: TriageSeveritySchema,
+});
+export type SeverityFilter = z.infer<typeof SeverityFilterSchema>;
 
 export const TriageOptionsSchema = z.object({
-  profile: z.any().optional(), // ReviewProfileSchema causes circular import
+  profile: z.lazy(() => z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string(),
+    lenses: z.array(z.string()),
+    filter: SeverityFilterSchema.optional(),
+  })).optional(),
   lenses: z.array(z.string()).optional(),
-  filter: z.any().optional(), // SeverityFilterSchema causes circular import
+  filter: SeverityFilterSchema.optional(),
 });
+
+// Explicit interface for proper typing - LensId and ReviewProfile imported from lens.ts
+import type { LensId, ReviewProfile } from "./lens.js";
 export interface TriageOptions {
   profile?: ReviewProfile;
   lenses?: LensId[];
