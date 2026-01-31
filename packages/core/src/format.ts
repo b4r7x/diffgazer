@@ -1,25 +1,28 @@
-const MS_PER_MINUTE = 60_000;
-const MINS_PER_HOUR = 60;
-const HOURS_PER_DAY = 24;
+export type TimerFormat = "short" | "long";
 
-const GOOD_SCORE_THRESHOLD = 8;
-const WARNING_SCORE_THRESHOLD = 5;
+/**
+ * Format elapsed milliseconds as mm:ss (short) or hh:mm:ss (long).
+ */
+export function formatTime(ms: number, format: TimerFormat = "short"): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
 
-export function formatRelativeTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / MS_PER_MINUTE);
-  if (diffMins < MINS_PER_HOUR) return `${diffMins}m ago`;
-  const diffHours = Math.floor(diffMins / MINS_PER_HOUR);
-  if (diffHours < HOURS_PER_DAY) return `${diffHours}h ago`;
-  const diffDays = Math.floor(diffHours / HOURS_PER_DAY);
-  return `${diffDays}d ago`;
+  if (format === "long") {
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+  }
+
+  return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 }
 
-export function getScoreColor(score: number | null): string {
-  if (score === null) return "gray";
-  if (score >= GOOD_SCORE_THRESHOLD) return "green";
-  if (score >= WARNING_SCORE_THRESHOLD) return "yellow";
-  return "red";
+/**
+ * Format a Date or string timestamp as hh:mm:ss.
+ */
+export function formatTimestamp(timestamp: Date | string): string {
+  if (typeof timestamp === "string") return timestamp;
+  const hours = timestamp.getHours().toString().padStart(2, "0");
+  const minutes = timestamp.getMinutes().toString().padStart(2, "0");
+  const seconds = timestamp.getSeconds().toString().padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
 }

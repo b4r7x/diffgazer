@@ -1,4 +1,4 @@
-export { getGitStatus, getGitDiff, type GitStatus } from "./git-api.js";
+export { getGitStatus, type GitStatus } from "./git-api.js";
 export {
   streamTriage,
   streamTriageWithEvents,

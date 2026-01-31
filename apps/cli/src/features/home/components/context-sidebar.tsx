@@ -4,16 +4,11 @@ import {
   Panel,
   PanelHeader,
   PanelContent,
-} from "../../../components/ui/panel.js";
+} from "../../../components/ui/layout/index.js";
 import { InfoField } from "../../../components/ui/info-field.js";
+import type { ContextInfo } from "@repo/schemas/ui";
 
-export interface ContextInfo {
-  trustedDir?: string;
-  providerName?: string;
-  providerMode?: string;
-  lastRunId?: string;
-  lastRunIssueCount?: number;
-}
+export type { ContextInfo };
 
 interface ContextSidebarProps {
   context: ContextInfo;

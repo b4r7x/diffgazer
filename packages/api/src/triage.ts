@@ -7,7 +7,7 @@ import {
   type StreamTriageOptions,
   type StreamTriageResult,
   type StreamTriageError,
-} from "@repo/core/review/browser";
+} from "@repo/core/review";
 import type { ApiClient } from "./types.js";
 
 export type { StreamTriageRequest, StreamTriageOptions, StreamTriageResult, StreamTriageError };

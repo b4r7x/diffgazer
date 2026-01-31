@@ -7,7 +7,7 @@ import {
   listTrustedProjects,
   saveTrust,
   removeTrust,
-} from "@repo/core/storage";
+} from "../../storage/index.js";
 import { SettingsConfigSchema, TrustConfigSchema } from "@repo/schemas/settings";
 import { ErrorCode } from "@repo/schemas/errors";
 import {

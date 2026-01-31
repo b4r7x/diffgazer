@@ -1,1 +1,1 @@
-export { SessionListItem } from "./session-list-item.js";
+// Session components barrel export

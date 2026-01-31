@@ -9,10 +9,14 @@ import {
 } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../../hooks/use-theme.js";
-import { findNextEnabled, findPrevEnabled } from "../../lib/list-navigation.js";
+import { findNextEnabled, findPrevEnabled } from "@repo/core";
 import { Separator } from "./separator.js";
+import type { MenuItemData } from "@repo/schemas/ui";
 
-interface MenuItemData {
+export type { MenuItemData };
+
+// Internal context type with required disabled field
+interface InternalMenuItemData {
   id: string;
   disabled: boolean;
   index: number;
@@ -22,7 +26,7 @@ interface MenuContextValue {
   selectedIndex: number;
   onSelect: (index: number) => void;
   onActivate?: (item: MenuItemData) => void;
-  items: MenuItemData[];
+  items: InternalMenuItemData[];
   variant: "default" | "hub";
   lastIndex: number;
   width: number;
@@ -71,8 +75,8 @@ function isMenuItemProps(props: unknown): props is MenuItemProps {
   return typeof props === "object" && props !== null && "id" in props && typeof (props as MenuItemProps).id === "string";
 }
 
-function extractMenuItems(node: ReactNode): MenuItemData[] {
-  const items: MenuItemData[] = [];
+function extractMenuItems(node: ReactNode): InternalMenuItemData[] {
+  const items: InternalMenuItemData[] = [];
   let itemIndex = 0;
 
   function walk(n: ReactNode): void {
@@ -275,5 +279,4 @@ export type {
   MenuItemProps,
   MenuDividerProps,
   MenuHeaderProps,
-  MenuItemData,
 };

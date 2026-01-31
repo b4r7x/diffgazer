@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import type { GitError } from "@repo/schemas/git";
 import type { z } from "zod";
 import { api } from "../lib/api.js";
-import { validateSchema } from "@repo/core";
+import { validateSchema } from "../lib/validation.js";
 import { useAsyncOperation, type AsyncState } from "./use-async-operation.js";
 
 function createGitError(message: string): GitError {

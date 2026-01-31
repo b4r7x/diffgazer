@@ -4,16 +4,11 @@ import { NavigationList, NavigationListItem } from '@/components/ui';
 import { Badge } from '@/components/ui';
 import { Input } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import type { ProviderInfo } from '@repo/schemas';
 import { PROVIDER_CAPABILITIES } from '@repo/schemas';
+import type { ProviderFilter } from '@repo/schemas';
+import type { ProviderWithStatus, DisplayStatus } from '../types';
 
-type DisplayStatus = 'configured' | 'needs-key' | 'active';
-
-export interface ProviderWithStatus extends ProviderInfo {
-  displayStatus: DisplayStatus;
-}
-
-export type ProviderFilter = 'all' | 'configured' | 'needs-key' | 'free' | 'paid';
+export type { ProviderFilter };
 
 interface ProviderListProps {
   providers: ProviderWithStatus[];

@@ -5,7 +5,8 @@ import {
   type ReviewStreamEvent,
   ReviewStreamEventSchema,
 } from "@repo/schemas/review";
-import { getErrorMessage, isAbortError, createErrorState, truncateToDisplayLength } from "@repo/core";
+import { getErrorMessage, isAbortError, truncateToDisplayLength } from "@repo/core";
+import { createErrorState } from "../../../lib/state-helpers.js";
 import { useSSEStream, type SSEStreamError } from "../../../hooks/use-sse-stream.js";
 import { streamReview } from "../api/index.js";
 

@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react'
 import { ThemeProvider } from './theme-provider'
 import { ConfigProvider, useConfigContext } from './config-provider'
-import { KeyboardProvider } from '@/components/keyboard'
+import { KeyboardProvider } from '@/components/keyboard/keyboard-provider'
 
 export { useConfigContext }
 export { useTheme } from '@/hooks/use-theme'

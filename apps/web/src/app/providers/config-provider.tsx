@@ -5,11 +5,9 @@ import {
     saveConfig as apiSaveConfig,
     deleteProviderCredentials as apiDeleteProviderCredentials,
     getProviderStatus,
-    type ProviderStatus,
-} from "@/features/settings/api/config-api";
-import type { AIProvider } from "@repo/schemas/config";
-
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+} from "@/features/settings/api";
+import type { AIProvider, ProviderStatus } from "@repo/schemas/config";
+import { DEFAULT_TTL } from "@repo/core";
 
 interface CacheEntry {
   data: { provider?: AIProvider; model?: string; providers: ProviderStatus[] };
@@ -20,7 +18,7 @@ let configCache: CacheEntry | null = null;
 
 function getCached(): CacheEntry["data"] | null {
   if (!configCache) return null;
-  if (Date.now() - configCache.timestamp > CACHE_TTL) {
+  if (Date.now() - configCache.timestamp > DEFAULT_TTL) {
     configCache = null;
     return null;
   }

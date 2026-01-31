@@ -10,9 +10,9 @@ import {
   getTriageReview,
   deleteTriageReview,
   addDrilldownToReview,
-} from "@repo/core/storage";
-import { drilldownIssueById } from "@repo/core/review";
-import { parseDiff } from "@repo/core/diff";
+} from "../../storage/index.js";
+import { drilldownIssueById } from "../../review/index.js";
+import { parseDiff } from "../../diff/index.js";
 import { getErrorMessage } from "@repo/core";
 import { ErrorCode } from "@repo/schemas/errors";
 import { createGitService } from "../../services/git.js";

@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
-import { findNextEnabled, findPrevEnabled } from "../../lib/list-navigation.js";
+import { findNextEnabled, findPrevEnabled } from "@repo/core";
 import { useTheme } from "../../hooks/use-theme.js";
 
 export interface SelectOption<T extends string = string> {

@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { AnalysisSummary } from "@/components/ui";
-import type { SeverityLevel, LensStats, IssuePreview, SeverityFilter } from "@/components/ui";
+import type { LensStats, IssuePreview, SeverityFilter } from "@/components/ui";
+import type { TriageSeverity } from "@repo/schemas/triage";
+import type { TriageIssue } from "@repo/schemas";
+import { SEVERITY_ORDER } from "@repo/schemas/ui";
 import { useScope, useKey, useSelectableList } from "@/hooks/keyboard";
-import { useRouteState } from "@/hooks/use-route-state";
+import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ReviewContainer, IssueListPane, IssueDetailsPane, type ReviewMode, type TabId } from "@/features/review/components";
-import { getSeverityCounts, SEVERITY_ORDER } from "@/features/review/constants/severity";
-import type { TriageIssue } from "@repo/schemas";
+import { calculateSeverityCounts } from "@repo/core";
+import { filterIssuesBySeverity } from "@repo/core/review";
 
 type FocusZone = "filters" | "list" | "details";
 type ReviewView = "progress" | "summary" | "results";
@@ -141,7 +144,7 @@ const MOCK_ISSUES: TriageIssue[] = [
 ];
 
 function ReviewSummaryView({ onEnterReview, onBack }: { onEnterReview: () => void; onBack: () => void }) {
-  const severityCounts = getSeverityCounts(MOCK_ISSUES);
+  const severityCounts = calculateSeverityCounts(MOCK_ISSUES);
   const blockerCount = MOCK_ISSUES.filter((i) => i.severity === "blocker").length;
 
   const lensStats: LensStats[] = [
@@ -156,7 +159,7 @@ function ReviewSummaryView({ onEnterReview, onBack }: { onEnterReview: () => voi
     file: `src/${issue.file}`,
     line: issue.line_start ?? 0,
     category: issue.category,
-    severity: issue.severity as SeverityLevel,
+    severity: issue.severity as TriageSeverity,
   }));
 
   useScope("review-summary");
@@ -186,15 +189,14 @@ function ReviewSummaryView({ onEnterReview, onBack }: { onEnterReview: () => voi
 
 function ReviewResultsView() {
   const navigate = useNavigate();
-  const [selectedIssueIndex, setSelectedIssueIndex] = useRouteState("issueIndex", 0);
+  const [selectedIssueIndex, setSelectedIssueIndex] = useScopedRouteState("issueIndex", 0);
   const [activeTab, setActiveTab] = useState<TabId>("details");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [focusedFilterIndex, setFocusedFilterIndex] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set([1]));
 
-  const filteredIssues =
-    severityFilter === "all" ? MOCK_ISSUES : MOCK_ISSUES.filter((i) => i.severity === severityFilter);
+  const filteredIssues = filterIssuesBySeverity(MOCK_ISSUES, severityFilter);
 
   const { focusedIndex, setFocusedIndex } = useSelectableList({
     itemCount: filteredIssues.length,

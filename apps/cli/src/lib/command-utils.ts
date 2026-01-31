@@ -1,9 +1,16 @@
 import chalk from "chalk";
 import { createServerManager } from "./server.js";
-import { getErrorMessage, parsePort } from "@repo/core";
-import { DEFAULT_HOST } from "./constants.js";
+import { getErrorMessage } from "@repo/core";
+import { PortSchema } from "@repo/schemas/port";
+import { DEFAULT_HOST } from "@repo/core";
 
-export { DEFAULT_HOST } from "./constants.js";
+function parsePort(value: string): number {
+  const result = PortSchema.safeParse(value);
+  if (!result.success) {
+    throw new Error("Invalid port number");
+  }
+  return result.data;
+}
 
 export interface CommandOptions {
   port: string;
@@ -18,12 +25,9 @@ export interface InitializedServer {
 }
 
 export async function initializeServer(options: CommandOptions): Promise<InitializedServer> {
-  const portResult = parsePort(options.port);
-  if (!portResult.ok) {
-    throw new Error(portResult.error.message);
-  }
+  const port = parsePort(options.port);
   const hostname = options.hostname ?? DEFAULT_HOST;
-  const manager = createServerManager({ port: portResult.value, hostname });
+  const manager = createServerManager({ port, hostname });
   const serverAddress = await manager.start();
   return { manager, address: `http://${serverAddress.hostname}:${serverAddress.port}` };
 }

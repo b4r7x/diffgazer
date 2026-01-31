@@ -1,8 +1,8 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import { GitStatusDisplay } from "../../components/git-status-display.js";
+import { GitStatusDisplay } from "../../components/git/index.js";
 import type { GitStatusState } from "../../hooks/use-git-status.js";
-import type { Shortcut } from "../../components/ui/footer-bar.js";
+import type { Shortcut } from "../../components/ui/branding/footer-bar.js";
 
 export const GIT_STATUS_FOOTER_SHORTCUTS: Shortcut[] = [
   { key: "r", label: "Refresh" },

@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useInput, useApp } from "ink";
 import { useSessionRecorderContext } from "../../../hooks/index.js";
-import { type AppView } from "@repo/core";
+import { type AppView } from "../../../types/index.js";
 
 export type { AppView };
 

@@ -1,8 +1,8 @@
 import { Box } from "ink";
 import type { ReactElement, ReactNode } from "react";
 import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
-import { HeaderBrand } from "../ui/header-brand.js";
-import { FooterBar } from "../ui/footer-bar.js";
+import { HeaderBrand } from "../ui/branding/header-brand.js";
+import { FooterBar } from "../ui/branding/footer-bar.js";
 import { Separator } from "../ui/separator.js";
 import type { Shortcut } from "@repo/schemas/ui";
 

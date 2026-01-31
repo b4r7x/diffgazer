@@ -3,17 +3,18 @@ import { useMemo } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import type { ReviewHistoryMetadata } from "@repo/schemas/review-history";
 import type { SessionMetadata } from "@repo/schemas/session";
+import type { TriageSeverity } from "@repo/schemas/triage";
 import type { TriageIssue } from "@repo/schemas";
+import { calculateSeverityCounts } from "@repo/core";
 import { useTheme } from "../../hooks/use-theme.js";
 import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
-import { FocusablePane } from "../../components/ui/focusable-pane.js";
+import { FocusablePane } from "../../components/ui/layout/index.js";
 import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs.js";
 import { TimelineList } from "../../features/history/components/timeline-list.js";
 import { RunAccordionItem } from "../../features/history/components/run-accordion-item.js";
 import { HistoryInsightsPane } from "../../features/history/components/history-insights-pane.js";
 import { useHistoryState } from "../../features/history/hooks/use-history-state.js";
 import { toHistoryRun } from "../../features/history/types.js";
-import type { SeverityLevel } from "../../components/ui/severity-bar.js";
 
 export interface HistoryScreenProps {
   reviews: ReviewHistoryMetadata[];
@@ -26,15 +27,6 @@ export interface HistoryScreenProps {
   onBack: () => void;
 }
 
-function getSeverityCounts(issues: TriageIssue[]): Record<SeverityLevel, number> {
-  const counts: Record<SeverityLevel, number> = { blocker: 0, high: 0, medium: 0, low: 0, nit: 0 };
-  for (const issue of issues) {
-    if (issue.severity in counts) {
-      counts[issue.severity as SeverityLevel]++;
-    }
-  }
-  return counts;
-}
 
 export function HistoryScreen({
   reviews,
@@ -88,7 +80,7 @@ export function HistoryScreen({
 
   // Compute severity counts for insights
   const severityCounts = useMemo(
-    () => (selectedRun ? getSeverityCounts(selectedRun.issues) : { blocker: 0, high: 0, medium: 0, low: 0, nit: 0 }),
+    () => (selectedRun ? calculateSeverityCounts(selectedRun.issues) : { blocker: 0, high: 0, medium: 0, low: 0, nit: 0 }),
     [selectedRun]
   );
 

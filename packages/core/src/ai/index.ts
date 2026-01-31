@@ -1,4 +1,4 @@
-export { createAIClient } from "./client.js";
+// Types only - implementation moved to apps/server/src/ai/
 export type {
   AIClient,
   AIClientConfig,
@@ -8,10 +8,3 @@ export type {
   GenerateStreamOptions,
 } from "./types.js";
 export type { AIError, AIErrorCode } from "./errors.js";
-export {
-  FILE_REVIEW_PROMPT,
-  BATCH_REVIEW_PROMPT,
-  buildFileReviewPrompt,
-  buildBatchReviewPrompt,
-} from "./prompts.js";
-export { PROVIDER_ENV_VARS, getEnvVarForProvider } from "./provider-config.js";

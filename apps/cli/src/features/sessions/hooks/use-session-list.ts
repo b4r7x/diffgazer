@@ -1,6 +1,6 @@
 import { useEntityList } from "../../../hooks/use-entity-list.js";
 import type { Session, SessionMetadata } from "@repo/schemas/session";
-import { getSessionList, getSession, deleteSession } from "../api/index.js";
+import { getSessionList, getSession, deleteSession } from "../api/sessions-api.js";
 
 export function useSessionList() {
   const projectPath = process.cwd();

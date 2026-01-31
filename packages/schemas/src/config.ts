@@ -413,3 +413,19 @@ export const PROVIDER_CAPABILITIES: Record<AIProvider, {
     costDescription: 'Access multiple providers through single API. Pricing varies by model.',
   },
 };
+
+// ============================================================================
+// UI Filter Types
+// ============================================================================
+
+export const INPUT_METHODS = ["paste", "env"] as const;
+export const InputMethodSchema = z.enum(INPUT_METHODS);
+export type InputMethod = z.infer<typeof InputMethodSchema>;
+
+export const TIER_FILTERS = ["all", "free", "paid"] as const;
+export const TierFilterSchema = z.enum(TIER_FILTERS);
+export type TierFilter = z.infer<typeof TierFilterSchema>;
+
+export const PROVIDER_FILTERS = ["all", "configured", "needs-key", "free", "paid"] as const;
+export const ProviderFilterSchema = z.enum(PROVIDER_FILTERS);
+export type ProviderFilter = z.infer<typeof ProviderFilterSchema>;

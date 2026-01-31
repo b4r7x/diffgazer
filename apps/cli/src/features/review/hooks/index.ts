@@ -9,7 +9,6 @@ export {
   type ReviewKeyboardActions,
   type UseReviewKeyboardOptions,
 } from "./use-review-keyboard.js";
-export { useAgentActivity, type AgentActivityState } from "./use-agent-activity.js";
 export { useReviewHandlers } from "./use-review-handlers.js";
 export { useDrilldownState } from "./use-drilldown-state.js";
 export { useIssueFiltering } from "./use-issue-filtering.js";

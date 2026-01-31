@@ -32,5 +32,3 @@ export async function selectActiveProvider(
 ): Promise<void> {
     await api.post(`/config/provider/${provider}/activate`, { model });
 }
-
-export type { AIProvider, ProviderStatus };

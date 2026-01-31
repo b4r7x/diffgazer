@@ -1,53 +1,21 @@
 import type { ReviewHistoryMetadata } from "@repo/schemas/review-history";
-import type { SessionMetadataInfo } from "@repo/core/storage";
-import type { TriageIssue } from "@repo/schemas";
+import type { TimelineItem } from "@repo/schemas/ui";
+import { capitalize } from "@repo/core";
+import { formatDateLabel } from "../../lib/format.js";
+import type {
+  HistoryRun,
+  HistoryTabId as TabId,
+  HistoryFocusZone as FocusZone,
+  HistoryState,
+} from "@repo/schemas/history";
 
-export type TabId = "runs" | "sessions";
-export type FocusZone = "timeline" | "runs" | "insights";
-
-export interface TimelineItem {
-  id: string;
-  label: string;
-  count: number;
-}
-
-export interface HistoryRun {
-  id: string;
-  displayId: string;
-  date: string;
-  branch: string;
-  provider: string;
-  timestamp: string;
-  summary: string;
-  issues: TriageIssue[];
-  issueCount: number;
-  criticalCount: number;
-  warningCount: number;
-}
-
-export interface HistoryState {
-  activeTab: TabId;
-  focusZone: FocusZone;
-  selectedDateId: string;
-  selectedRunId: string | null;
-  expandedRunId: string | null;
-}
+export type { TimelineItem, HistoryRun, HistoryState };
+export type { HistoryTabId as TabId, HistoryFocusZone as FocusZone } from "@repo/schemas/history";
 
 // Transform ReviewHistoryMetadata to HistoryRun
 export function toHistoryRun(review: ReviewHistoryMetadata): HistoryRun {
   const date = new Date(review.createdAt);
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-
-  let dateLabel: string;
-  if (date.toDateString() === today.toDateString()) {
-    dateLabel = "today";
-  } else if (date.toDateString() === yesterday.toDateString()) {
-    dateLabel = "yesterday";
-  } else {
-    dateLabel = date.toLocaleDateString("en-US", { month: "short", day: "numeric" }).toLowerCase().replace(" ", "");
-  }
+  const dateLabel = formatDateLabel(date);
 
   // Build summary from counts
   const parts: string[] = [];
@@ -87,7 +55,7 @@ export function toTimelineItems(runs: HistoryRun[]): TimelineItem[] {
   items.push({ id: "all", label: "All", count: runs.length });
 
   for (const [date, count] of grouped) {
-    const label = date === "today" ? "Today" : date === "yesterday" ? "Yesterday" : date.charAt(0).toUpperCase() + date.slice(1);
+    const label = date === "today" ? "Today" : date === "yesterday" ? "Yesterday" : capitalize(date);
     items.push({ id: date, label, count });
   }
 

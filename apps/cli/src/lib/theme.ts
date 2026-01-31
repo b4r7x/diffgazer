@@ -188,7 +188,7 @@ const terminalTheme: ThemeTokens = {
   },
 };
 
-export function supportsColors(): boolean {
+function supportsColors(): boolean {
   if (process.env.NO_COLOR !== undefined) {
     return false;
   }
@@ -205,7 +205,7 @@ export function supportsColors(): boolean {
   return chalk.level > 0;
 }
 
-export function supportsUnicode(): boolean {
+function supportsUnicode(): boolean {
   if (process.platform === "win32") {
     return (
       process.env.WT_SESSION !== undefined ||

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import type { TrustCapabilities, TrustConfig } from "@repo/schemas/settings";
+import { DEFAULT_TRUST_CAPABILITIES } from "@repo/core";
 import { ToggleList, type ToggleOption } from "../../components/ui/index.js";
 
 type TrustAction = "persist" | "once" | "exit";
@@ -29,12 +30,6 @@ const CAPABILITY_OPTIONS: {
   },
 ];
 
-const DEFAULT_CAPABILITIES: TrustCapabilities = {
-  readFiles: true,
-  readGit: true,
-  runCommands: false,
-};
-
 interface TrustWizardScreenProps {
   projectId: string;
   repoRoot: string;
@@ -47,7 +42,7 @@ export function TrustWizardScreen({
   onComplete,
 }: TrustWizardScreenProps): React.ReactElement {
   const { exit } = useApp();
-  const [capabilities, setCapabilities] = useState<TrustCapabilities>(DEFAULT_CAPABILITIES);
+  const [capabilities, setCapabilities] = useState<TrustCapabilities>(DEFAULT_TRUST_CAPABILITIES);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [actionIndex, setActionIndex] = useState(0);
   const [focusArea, setFocusArea] = useState<"capabilities" | "actions">("capabilities");

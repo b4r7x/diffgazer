@@ -1,8 +1,8 @@
 "use client";
 
-import { Panel, PanelHeader, PanelContent } from "@/components/ui/panel";
+import { Panel, PanelHeader, PanelContent } from "@/components/ui/containers";
 import { Menu, MenuItem } from "@/components/ui/menu";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge/badge";
 import type { ResolvedTheme } from "@/types/theme";
 
 interface ThemePreviewCardProps {

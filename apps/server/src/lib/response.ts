@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import type { StoreError } from "@repo/core/storage";
+import type { StoreError } from "../storage/index.js";
 import { ErrorCode } from "@repo/schemas/errors";
 import { errorCodeToStatus } from "./validation.js";
 

@@ -1,11 +1,9 @@
+// Trust functionality has been moved to features/settings/hooks/use-settings-state.ts
+// This hook provides backwards compatibility for existing imports.
+
 import { useState, useCallback } from "react";
-import type { Result } from "@repo/core";
-import type { StoreError } from "@repo/core/storage";
-import {
-  loadTrust as loadTrustStorage,
-  saveTrust as saveTrustStorage,
-} from "@repo/core/storage";
 import type { TrustConfig } from "@repo/schemas/settings";
+import { settingsApi } from "../features/settings/api/settings-api.js";
 import { useAsyncOperation, type AsyncStatus } from "./use-async-operation.js";
 
 export type TrustLoadState = "idle" | "loading" | "loaded" | "error";
@@ -26,8 +24,8 @@ export interface UseTrustResult {
   saveState: TrustSaveState;
   trustConfig: TrustConfig | null;
   error: { message: string } | null;
-  loadTrust: (projectId: string) => Promise<Result<TrustConfig | null, StoreError>>;
-  saveTrust: (config: TrustConfig) => Promise<Result<void, StoreError>>;
+  loadTrust: (projectId: string) => Promise<TrustConfig | null>;
+  saveTrust: (config: TrustConfig) => Promise<void>;
   checkTrust: (projectId: string) => Promise<boolean>;
 }
 
@@ -40,36 +38,35 @@ export function useTrust(): UseTrustResult {
   const [trustConfig, setTrustConfig] = useState<TrustConfig | null>(null);
 
   const loadTrust = useCallback(
-    async (projectId: string): Promise<Result<TrustConfig | null, StoreError>> => {
-      const result = await loadTrustStorage(projectId);
-
-      if (result.ok) {
-        setTrustConfig(result.value);
-        loadOp.setData(result.value);
+    async (projectId: string): Promise<TrustConfig | null> => {
+      const result = await loadOp.execute(async () => {
+        return await settingsApi.loadTrust(projectId);
+      });
+      if (result !== null) {
+        setTrustConfig(result);
       }
-
       return result;
     },
     [loadOp]
   );
 
   const saveTrust = useCallback(
-    async (config: TrustConfig): Promise<Result<void, StoreError>> => {
-      const result = await saveTrustStorage(config);
-
-      if (result.ok) {
-        setTrustConfig(config);
-        saveOp.setData(undefined);
-      }
-
-      return result;
+    async (config: TrustConfig): Promise<void> => {
+      await saveOp.execute(async () => {
+        await settingsApi.saveTrust(config);
+      });
+      setTrustConfig(config);
     },
     [saveOp]
   );
 
   const checkTrust = useCallback(async (projectId: string): Promise<boolean> => {
-    const result = await loadTrustStorage(projectId);
-    return result.ok && result.value !== null;
+    try {
+      const result = await settingsApi.loadTrust(projectId);
+      return result !== null;
+    } catch {
+      return false;
+    }
   }, []);
 
   const loadState = mapToLoadState(loadOp.state.status);

@@ -1,12 +1,7 @@
 import { useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useGroupNavigation } from "@/hooks/keyboard";
-
-export interface TimelineItem {
-  id: string;
-  label: string;
-  count: number;
-}
+import type { TimelineItem } from "@repo/schemas/ui";
 
 export interface TimelineListProps {
   items: TimelineItem[];

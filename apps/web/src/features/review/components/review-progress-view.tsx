@@ -4,13 +4,7 @@ import { PanelHeader, ProgressList, ActivityLog, Timer, MetricItem } from '@/com
 import { useScope, useKey } from '@/hooks/keyboard';
 import { usePageFooter } from '@/hooks/use-page-footer';
 import type { ProgressStepData, LogEntryData } from '@/components/ui';
-
-export interface ReviewProgressMetrics {
-  filesProcessed: number;
-  filesTotal: number;
-  issuesFound: number;
-  elapsed: number;
-}
+import type { ReviewProgressMetrics } from '../types';
 
 export interface ReviewProgressViewProps {
   mode: 'unstaged' | 'staged' | 'files';

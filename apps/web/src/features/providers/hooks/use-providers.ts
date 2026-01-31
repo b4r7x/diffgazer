@@ -4,19 +4,13 @@ import {
     saveApiKey as saveApiKeyApi,
     removeApiKey as removeApiKeyApi,
     selectActiveProvider,
-} from '../api/providers-api';
+} from '../api';
 import {
     AVAILABLE_PROVIDERS,
     type AIProvider,
-    type ProviderInfo,
     type ProviderStatus,
 } from '@repo/schemas';
-
-export interface ProviderWithStatus extends ProviderInfo {
-    hasApiKey: boolean;
-    isActive: boolean;
-    model?: string;
-}
+import type { ProviderWithStatus } from '../types';
 
 export function useProviders() {
     const [statuses, setStatuses] = useState<ProviderStatus[]>([]);
@@ -43,11 +37,14 @@ export function useProviders() {
     const providers: ProviderWithStatus[] = useMemo(() => {
         return AVAILABLE_PROVIDERS.map((provider) => {
             const status = statuses.find((s) => s.provider === provider.id);
+            const hasApiKey = status?.hasApiKey ?? false;
+            const isActive = status?.isActive ?? false;
             return {
                 ...provider,
-                hasApiKey: status?.hasApiKey ?? false,
-                isActive: status?.isActive ?? false,
+                hasApiKey,
+                isActive,
                 model: status?.model,
+                displayStatus: isActive ? 'active' : hasApiKey ? 'configured' : 'needs-key',
             };
         });
     }, [statuses]);

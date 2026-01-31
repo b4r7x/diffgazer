@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getSettings, saveSettings } from '../api/config-api';
+import { getSettings, saveSettings } from '../api';
 import type { SettingsConfig } from '@repo/schemas';
 
 export function useSettings() {

@@ -1,7 +1,6 @@
 'use client';
 
-import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
-import { Input } from '../ui/input';
+import { RadioGroup, RadioGroupItem, Input } from '../ui/form';
 
 const PROVIDERS = [
   { value: 'openai', label: 'OpenAI' },

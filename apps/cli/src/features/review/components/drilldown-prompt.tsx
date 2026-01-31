@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
 import type { TriageIssue } from "@repo/schemas/triage";
-import { Card } from "../../../components/ui/card.js";
+import { Card } from "../../../components/ui/layout/card.js";
 import { useTheme } from "../../../hooks/use-theme.js";
 
 export interface DrilldownPromptProps {

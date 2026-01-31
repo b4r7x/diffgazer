@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { Text } from "ink";
+import type { TriageSeverity } from "@repo/schemas/triage";
 import { useTheme } from "../../hooks/use-theme.js";
-import type { SeverityLevel } from "../../types/index.js";
 
 type BadgeVariant = "default" | "success" | "warning" | "error" | "info" | "muted";
 
@@ -39,7 +39,7 @@ export function Badge({
 }
 
 interface SeverityBadgeProps {
-  severity: SeverityLevel;
+  severity: TriageSeverity;
 }
 
 export function SeverityBadge({ severity }: SeverityBadgeProps): ReactElement {

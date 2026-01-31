@@ -4,8 +4,7 @@ import { ReviewProgressView } from './review-progress-view';
 import { useTriageStream } from '../hooks/use-triage-stream';
 import type { ProgressStepData, ProgressStatus } from '@/components/ui';
 import type { StepState } from '@repo/schemas/step-event';
-
-export type ReviewMode = 'unstaged' | 'staged' | 'files';
+import type { ReviewMode } from '../types';
 
 export interface ReviewContainerProps {
   mode: ReviewMode;
@@ -43,7 +42,8 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     if (!hasStartedRef.current) {
       hasStartedRef.current = true;
       startTimeRef.current = new Date();
-      start({ mode });
+      // Convert mode to StreamTriageRequest format
+      start({ staged: mode === 'staged' });
     }
   }, [mode, start]);
 

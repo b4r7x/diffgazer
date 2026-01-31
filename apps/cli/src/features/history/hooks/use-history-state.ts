@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
+import { useScreenState } from "../../../hooks/use-screen-state.js";
 import type { HistoryState, FocusZone, TabId, HistoryRun, TimelineItem } from "../types.js";
 import { toTimelineItems } from "../types.js";
 
@@ -8,24 +9,33 @@ interface UseHistoryStateOptions {
 }
 
 export function useHistoryState({ runs, initialTab = "runs" }: UseHistoryStateOptions) {
-  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
-  const [focusZone, setFocusZone] = useState<FocusZone>("runs");
-  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
-
   const timelineItems = useMemo(() => toTimelineItems(runs), [runs]);
 
-  // Default to first available date, not hardcoded "today"
-  const [selectedDateId, setSelectedDateId] = useState<string>(() => {
+  // Compute default selected date from available runs
+  const defaultSelectedDateId = useMemo(() => {
     const items = toTimelineItems(runs);
     return items[0]?.id ?? "today";
-  });
+  }, [runs]);
 
-  const [selectedRunId, setSelectedRunId] = useState<string | null>(() => {
+  // Compute default selected run from available runs
+  const defaultSelectedRunId = useMemo(() => {
     const items = toTimelineItems(runs);
     const firstDate = items[0]?.id ?? "today";
     const firstRunForDate = runs.find((r) => r.date === firstDate);
     return firstRunForDate?.id ?? runs[0]?.id ?? null;
-  });
+  }, [runs]);
+
+  const [activeTab, setActiveTab] = useScreenState<TabId>("activeTab", initialTab);
+  const [focusZone, setFocusZone] = useScreenState<FocusZone>("focusZone", "runs");
+  const [expandedRunId, setExpandedRunId] = useScreenState<string | null>("expandedRunId", null);
+  const [selectedDateId, setSelectedDateId] = useScreenState<string>(
+    "selectedDateId",
+    defaultSelectedDateId
+  );
+  const [selectedRunId, setSelectedRunId] = useScreenState<string | null>(
+    "selectedRunId",
+    defaultSelectedRunId
+  );
 
   const filteredRuns = useMemo(
     () => selectedDateId === "all" ? runs : runs.filter((run) => run.date === selectedDateId),

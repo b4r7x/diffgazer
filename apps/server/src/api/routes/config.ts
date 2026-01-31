@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { configStore, getOpenRouterModels, loadSettings } from "@repo/core/storage";
-import { getApiKey, setApiKey, deleteApiKey } from "@repo/core/secrets";
+import { configStore, getOpenRouterModels, loadSettings } from "../../storage/index.js";
+import { getApiKey, setApiKey, deleteApiKey } from "../../secrets/index.js";
 import {
   AIProviderSchema,
   SaveConfigRequestSchema,

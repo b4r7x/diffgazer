@@ -2,8 +2,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { initializeAIClient } from "../../lib/ai-client.js";
 import { errorResponse, zodErrorHandler } from "../../lib/response.js";
-import { parseDiff } from "@repo/core/diff";
-import { triageReview, getLenses, getProfile } from "@repo/core/review";
+import { parseDiff } from "../../diff/index.js";
+import { triageReview, getLenses, getProfile } from "../../review/index.js";
 import type { LensId, ProfileId } from "@repo/schemas/lens";
 import type { TriageIssue, TriageSeverity } from "@repo/schemas/triage";
 

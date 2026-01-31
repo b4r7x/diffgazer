@@ -1,7 +1,7 @@
 "use client";
 
 import { useContext } from "react";
-import { KeyboardContext } from "@/components/keyboard";
+import { KeyboardContext } from "@/components/keyboard/keyboard-provider";
 
 export function useKeyboardContext() {
   const ctx = useContext(KeyboardContext);

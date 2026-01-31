@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { IssueListItem, SeverityFilterGroup, FocusablePane, type SeverityFilter } from "@/components/ui";
-import { getSeverityCounts } from "@/features/review/constants/severity";
+import { calculateSeverityCounts } from "@repo/core";
 import type { TriageIssue } from "@repo/schemas";
 
 export interface IssueListPaneProps {
@@ -30,7 +30,7 @@ export function IssueListPane({
   title = "Analysis",
   className,
 }: IssueListPaneProps) {
-  const counts = getSeverityCounts(allIssues);
+  const counts = calculateSeverityCounts(allIssues);
 
   return (
     <FocusablePane

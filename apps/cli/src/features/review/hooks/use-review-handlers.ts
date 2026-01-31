@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import type { TriageIssue } from "@repo/schemas/triage";
-import type { FeedbackCommand } from "@repo/schemas/feedback";
+import type { FeedbackCommand } from "../../../lib/feedback-schema.js";
 import type { SessionEventType } from "@repo/schemas/session";
 import type { FocusArea } from "./use-review-keyboard.js";
 import type { IssueTab } from "../constants.js";

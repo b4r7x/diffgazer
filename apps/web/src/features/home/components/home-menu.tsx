@@ -1,5 +1,5 @@
 import { Menu, MenuItem, MenuDivider, Panel, PanelHeader } from '@/components/ui';
-import { getMenuItemsForContext, type MenuItem as CoreMenuItem } from "@repo/core";
+import { MENU_ITEMS, type MenuItem as NavMenuItem } from "@repo/core";
 
 interface HomeMenuProps {
   selectedIndex: number;
@@ -7,8 +7,8 @@ interface HomeMenuProps {
   onActivate: (id: string) => void;
 }
 
-function groupItems(items: CoreMenuItem[]) {
-  const groups = { review: [] as CoreMenuItem[], navigation: [] as CoreMenuItem[], system: [] as CoreMenuItem[] };
+function groupItems(items: NavMenuItem[]) {
+  const groups = { review: [] as NavMenuItem[], navigation: [] as NavMenuItem[], system: [] as NavMenuItem[] };
   for (const item of items) {
     if (item.group) groups[item.group].push(item);
   }
@@ -16,8 +16,7 @@ function groupItems(items: CoreMenuItem[]) {
 }
 
 export function HomeMenu({ selectedIndex, onSelect, onActivate }: HomeMenuProps) {
-  const menuItems = getMenuItemsForContext("web");
-  const { review, navigation, system } = groupItems(menuItems);
+  const { review, navigation, system } = groupItems(MENU_ITEMS);
 
   return (
     <Panel className="w-full max-w-md lg:w-1/2 lg:max-w-lg h-fit flex flex-col">

@@ -50,7 +50,7 @@ async function runPrReview(
   profile: ProfileId | undefined,
   outputPath: string
 ): Promise<void> {
-  const { PrReviewApp } = await import("../features/review/apps/pr-review-app.js");
+  const { PrReviewApp } = await import("../features/review/containers/pr-review-app.js");
   registerShutdownHandlers(createShutdownHandler(() => manager.stop()));
 
   let exitCode = 0;
@@ -80,17 +80,17 @@ export async function reviewCommand(options: ReviewCommandOptions): Promise<void
     const profile = options.profile as ProfileId | undefined;
 
     if (options.list) {
-      const { ReviewHistoryApp } = await import("../features/review/apps/review-history-app.js");
+      const { ReviewHistoryApp } = await import("../features/review/containers/review-history-app.js");
       return renderWithCleanup(React.createElement(ReviewHistoryApp), manager);
     }
 
     if (options.resume) {
-      const { ReviewResumeApp } = await import("../features/review/apps/review-resume-app.js");
+      const { ReviewResumeApp } = await import("../features/review/containers/review-resume-app.js");
       return renderWithCleanup(React.createElement(ReviewResumeApp, { reviewId: options.resume }), manager);
     }
 
     if (options.pick) {
-      const { FilePickerApp } = await import("../features/review/apps/file-picker-app.js");
+      const { FilePickerApp } = await import("../features/review/containers/file-picker-app.js");
       return renderWithCleanup(React.createElement(FilePickerApp, { staged, lenses, profile }), manager);
     }
 
@@ -98,7 +98,7 @@ export async function reviewCommand(options: ReviewCommandOptions): Promise<void
       return runPrReview(manager, staged, files, lenses, profile, options.output ?? "annotations.json");
     }
 
-    const { InteractiveReviewApp } = await import("../features/review/apps/interactive-review-app.js");
+    const { InteractiveReviewApp } = await import("../features/review/containers/interactive-review-app.js");
     return renderWithCleanup(React.createElement(InteractiveReviewApp, { staged, files, lenses, profile }), manager);
   });
 }

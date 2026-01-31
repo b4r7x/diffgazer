@@ -2,7 +2,7 @@ import type { ReactElement, ReactNode } from "react";
 import { Box, Text } from "ink";
 import { useTheme } from "../../../hooks/use-theme.js";
 import { Badge } from "../../../components/ui/badge.js";
-import { IssueListItem } from "../../../components/ui/issue-list-item.js";
+import { IssueListItem } from "../../../components/ui/issue/index.js";
 import type { TriageIssue } from "@repo/schemas";
 
 export interface RunAccordionItemProps {

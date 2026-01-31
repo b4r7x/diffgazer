@@ -1,7 +1,7 @@
-import type { AIClient } from "@repo/core/ai";
-import { createAIClient } from "@repo/core/ai";
-import { configStore } from "@repo/core/storage";
-import { getApiKey } from "@repo/core/secrets";
+import type { AIClient } from "../ai/index.js";
+import { createAIClient } from "../ai/index.js";
+import { configStore } from "../storage/index.js";
+import { getApiKey } from "../secrets/index.js";
 import { ErrorCode, type ErrorCode as ErrorCodeType } from "@repo/schemas/errors";
 import type { Result } from "@repo/core";
 import { ok, err } from "@repo/core";

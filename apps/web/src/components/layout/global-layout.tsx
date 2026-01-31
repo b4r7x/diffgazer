@@ -1,8 +1,7 @@
 import { type ReactNode } from "react";
 import { Header } from "./header";
-import { Footer } from "./footer";
-import { useFooter } from "./footer-context";
-import { ToastContainer } from "./toast-container";
+import { Footer, useFooter } from "./footer";
+import { ToastContainer } from "../ui/toast";
 import { useConfig } from "@/features/settings/hooks/use-config";
 
 interface GlobalLayoutProps {

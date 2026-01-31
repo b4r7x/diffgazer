@@ -11,8 +11,8 @@
     "./chat": { "types": "./dist/chat.d.ts", "import": "./dist/chat.js" },
     "./config": { "types": "./dist/config.d.ts", "import": "./dist/config.js" },
     "./errors": { "types": "./dist/errors.d.ts", "import": "./dist/errors.js" },
-    "./feedback": { "types": "./dist/feedback.d.ts", "import": "./dist/feedback.js" },
     "./git": { "types": "./dist/git.d.ts", "import": "./dist/git.js" },
+    "./history": { "types": "./dist/history.d.ts", "import": "./dist/history.js" },
     "./port": { "types": "./dist/port.d.ts", "import": "./dist/port.js" },
     "./review": { "types": "./dist/review.d.ts", "import": "./dist/review.js" },
     "./review-history": { "types": "./dist/review-history.d.ts", "import": "./dist/review-history.js" },
@@ -22,7 +22,7 @@
     "./triage-storage": { "types": "./dist/triage-storage.d.ts", "import": "./dist/triage-storage.js" },
     "./settings": { "types": "./dist/settings.d.ts", "import": "./dist/settings.js" },
     "./step-event": { "types": "./dist/step-event.d.ts", "import": "./dist/step-event.js" },
-    "./stream-events": { "types": "./dist/stream-events.d.ts", "import": "./dist/stream-events.js" },
+    "./full-triage-stream-event": { "types": "./dist/full-triage-stream-event.d.ts", "import": "./dist/full-triage-stream-event.js" },
     "./ui": { "types": "./dist/ui.d.ts", "import": "./dist/ui.js" }
   },
   "scripts": { "build": "tsc", "type-check": "tsc --noEmit", "type-check-test": "tsc --noEmit --project tsconfig.test.json" },

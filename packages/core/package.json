@@ -10,22 +10,6 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./ai": {
-      "types": "./dist/ai/index.d.ts",
-      "import": "./dist/ai/index.js"
-    },
-    "./diff": {
-      "types": "./dist/diff/index.d.ts",
-      "import": "./dist/diff/index.js"
-    },
-    "./storage": {
-      "types": "./dist/storage/index.d.ts",
-      "import": "./dist/storage/index.js"
-    },
-    "./secrets": {
-      "types": "./dist/secrets/index.d.ts",
-      "import": "./dist/secrets/index.js"
-    },
     "./review": {
       "types": "./dist/review/index.d.ts",
       "import": "./dist/review/index.js"
@@ -33,6 +17,14 @@
     "./review/browser": {
       "types": "./dist/review/browser.d.ts",
       "import": "./dist/review/browser.js"
+    },
+    "./diff": {
+      "types": "./dist/diff/index.d.ts",
+      "import": "./dist/diff/index.js"
+    },
+    "./ai": {
+      "types": "./dist/ai/index.d.ts",
+      "import": "./dist/ai/index.js"
     },
     "./testing": {
       "types": "./dist/__test__/testing.d.ts",
@@ -46,19 +38,12 @@
   },
   "sideEffects": false,
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.23",
-    "@ai-sdk/google": "^3.0.13",
-    "@ai-sdk/openai": "^3.0.18",
     "@repo/schemas": "workspace:*",
-    "ai": "^6.0.49",
     "zod": "^3.23.0"
   },
   "devDependencies": {
     "@repo/tsconfig": "workspace:*",
     "@types/node": "^22.0.0",
     "typescript": "^5.7.0"
-  },
-  "optionalDependencies": {
-    "@napi-rs/keyring": "^1.1.0"
   }
 }

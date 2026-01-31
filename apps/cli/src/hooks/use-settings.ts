@@ -1,11 +1,9 @@
+// Settings functionality has been moved to features/settings/hooks/use-settings-state.ts
+// This hook provides backwards compatibility for existing imports.
+
 import { useState, useCallback } from "react";
-import type { Result } from "@repo/core";
-import type { StoreError } from "@repo/core/storage";
-import {
-  loadSettings as loadSettingsStorage,
-  saveSettings as saveSettingsStorage,
-} from "@repo/core/storage";
 import type { SettingsConfig } from "@repo/schemas/settings";
+import { settingsApi } from "../features/settings/api/settings-api.js";
 import { useAsyncOperation, type AsyncStatus } from "./use-async-operation.js";
 
 export type LocalSettingsLoadState = "idle" | "loading" | "loaded" | "error";
@@ -26,8 +24,8 @@ export interface UseSettingsResult {
   saveState: LocalSettingsSaveState;
   settings: SettingsConfig | null;
   error: { message: string } | null;
-  loadSettings: () => Promise<Result<SettingsConfig | null, StoreError>>;
-  saveSettings: (config: SettingsConfig) => Promise<Result<void, StoreError>>;
+  loadSettings: () => Promise<void>;
+  saveSettings: (config: SettingsConfig) => Promise<void>;
 }
 
 const DEFAULT_SETTINGS: SettingsConfig = {
@@ -45,28 +43,21 @@ export function useSettings(): UseSettingsResult {
   const saveOp = useAsyncOperation<void>();
   const [settings, setSettings] = useState<SettingsConfig | null>(null);
 
-  const loadSettings = useCallback(async (): Promise<Result<SettingsConfig | null, StoreError>> => {
-    const result = await loadSettingsStorage();
-
-    if (result.ok) {
-      const config = result.value ?? DEFAULT_SETTINGS;
+  const loadSettings = useCallback(async (): Promise<void> => {
+    await loadOp.execute(async () => {
+      const result = await settingsApi.loadSettings();
+      const config = result ?? DEFAULT_SETTINGS;
       setSettings(config);
-      loadOp.setData(config);
-    }
-
-    return result;
+      return config;
+    });
   }, [loadOp]);
 
   const saveSettings = useCallback(
-    async (config: SettingsConfig): Promise<Result<void, StoreError>> => {
-      const result = await saveSettingsStorage(config);
-
-      if (result.ok) {
+    async (config: SettingsConfig): Promise<void> => {
+      await saveOp.execute(async () => {
+        await settingsApi.saveSettings(config);
         setSettings(config);
-        saveOp.setData(undefined);
-      }
-
-      return result;
+      });
     },
     [saveOp]
   );

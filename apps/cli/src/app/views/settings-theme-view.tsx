@@ -3,9 +3,9 @@ import { useEffect } from "react";
 import { Box, useStdout } from "ink";
 import type { Theme } from "@repo/schemas/settings";
 import { ThemeStep } from "../../components/wizard/theme-step.js";
-import { Panel, PanelHeader } from "../../components/ui/panel.js";
+import { Panel, PanelHeader } from "../../components/ui/layout/index.js";
 import { useSettingsState } from "../../features/settings/hooks/use-settings-state.js";
-import type { Shortcut } from "../../components/ui/footer-bar.js";
+import type { Shortcut } from "../../components/ui/branding/footer-bar.js";
 
 export const SETTINGS_THEME_FOOTER_SHORTCUTS: Shortcut[] = [
   { key: "Up/Down", label: "Navigate" },
