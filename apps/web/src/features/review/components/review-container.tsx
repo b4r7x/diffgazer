@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, useParams } from '@tanstack/react-router';
 import { ReviewProgressView } from './review-progress-view';
 import { ApiKeyMissingView } from './api-key-missing-view';
 import { useTriageStream } from '../hooks/use-triage-stream';
@@ -7,6 +7,8 @@ import { useConfig } from '@/features/settings/hooks/use-config';
 import { convertAgentEventsToLogEntries } from '@repo/core/review';
 import type { ProgressStepData, ProgressStatus } from '@/components/ui';
 import type { StepState } from '@repo/schemas/step-event';
+import type { AgentState, AgentStatus } from '@repo/schemas/agent-event';
+import type { ProgressSubstepData } from '@repo/schemas/ui';
 import type { ReviewMode } from '../types';
 import type { TriageIssue } from '@repo/schemas';
 
@@ -25,12 +27,39 @@ function mapStepStatus(status: StepState['status']): ProgressStatus {
   return status === 'error' ? 'pending' : status;
 }
 
-function mapStepsToProgressData(steps: StepState[]): ProgressStepData[] {
-  return steps.map(step => ({
-    id: step.id,
-    label: step.label,
-    status: mapStepStatus(step.status),
+function mapAgentToSubstepStatus(agentStatus: AgentStatus): ProgressSubstepData['status'] {
+  switch (agentStatus) {
+    case 'queued': return 'pending';
+    case 'running': return 'active';
+    case 'complete': return 'completed';
+  }
+}
+
+function deriveSubstepsFromAgents(agents: AgentState[]): ProgressSubstepData[] {
+  return agents.map(agent => ({
+    id: agent.id,
+    emoji: agent.meta.emoji,
+    label: agent.meta.name,
+    status: mapAgentToSubstepStatus(agent.status),
   }));
+}
+
+function mapStepsToProgressData(
+  steps: StepState[],
+  agents: AgentState[]
+): ProgressStepData[] {
+  return steps.map(step => {
+    const substeps = step.id === 'triage' && agents.length > 0
+      ? deriveSubstepsFromAgents(agents)
+      : undefined;
+
+    return {
+      id: step.id,
+      label: step.label,
+      status: mapStepStatus(step.status),
+      substeps,
+    };
+  });
 }
 
 /**
@@ -41,6 +70,7 @@ function mapStepsToProgressData(steps: StepState[]): ProgressStepData[] {
  */
 export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
   const navigate = useNavigate();
+  const params = useParams({ strict: false }) as { reviewId?: string };
   const { isConfigured, isLoading: configLoading, provider } = useConfig();
   const { state, start, stop } = useTriageStream();
   const startTimeRef = useRef<Date>(new Date());
@@ -53,6 +83,17 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
       hasStreamedRef.current = true;
     }
   }, [state.isStreaming]);
+
+  // Update URL when reviewId becomes available (without adding to history)
+  useEffect(() => {
+    if (state.reviewId && !params.reviewId) {
+      navigate({
+        to: '/review/$reviewId',
+        params: { reviewId: state.reviewId },
+        replace: true,
+      });
+    }
+  }, [state.reviewId, params.reviewId, navigate]);
 
   // Auto-start on mount (only if configured)
   useEffect(() => {
@@ -86,8 +127,8 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
   };
 
   const progressSteps = useMemo(
-    () => mapStepsToProgressData(state.steps),
-    [state.steps]
+    () => mapStepsToProgressData(state.steps, state.agents),
+    [state.steps, state.agents]
   );
 
   const logEntries = useMemo(
@@ -96,11 +137,11 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
   );
 
   const metrics = useMemo(() => ({
-    filesProcessed: state.fileProgress.processed.size,
-    filesTotal: state.fileProgress.total || state.fileProgress.processed.size || 1,
+    filesProcessed: state.fileProgress.completed.size,
+    filesTotal: state.fileProgress.total || state.fileProgress.completed.size || 1,
     issuesFound: state.issues.length,
     elapsed: 0,
-  }), [state.fileProgress.processed.size, state.fileProgress.total, state.issues.length]);
+  }), [state.fileProgress.completed.size, state.fileProgress.total, state.issues.length]);
 
   // Show loading state while checking config
   if (configLoading) {

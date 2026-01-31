@@ -15,8 +15,8 @@ const tagVariants = cva('font-bold', {
       lens: 'text-tui-violet',
       warning: 'text-tui-yellow',
       error: 'text-tui-red',
-      agent: 'text-tui-green',
-      thinking: 'text-tui-cyan',
+      agent: 'text-tui-violet',
+      thinking: 'text-gray-500',
     },
   },
   defaultVariants: { tagType: 'system' },
@@ -27,8 +27,10 @@ export interface LogEntryProps
     VariantProps<typeof tagVariants> {
   timestamp: Date | string;
   tag: string;
+  source?: string;
   message: React.ReactNode;
   isWarning?: boolean;
+  isError?: boolean;
   isMuted?: boolean;
 }
 
@@ -36,22 +38,24 @@ export function LogEntry({
   timestamp,
   tag,
   tagType,
+  source,
   message,
   isWarning,
+  isError,
   isMuted,
   className,
-  ...props
 }: LogEntryProps) {
   return (
-    <div
-      className={cn('font-mono text-sm', isMuted && 'opacity-50', className)}
-      {...props}
-    >
+    <div className={cn('font-mono text-sm leading-relaxed', isMuted && 'opacity-50', className)}>
       <span className="text-gray-600">[{formatTimestamp(timestamp)}]</span>{' '}
-      <span className={tagVariants({ tagType })}>[{tag}]</span>
-      <span className="text-gray-600"> → </span>
-      <span className={cn('text-gray-400', isWarning && 'text-tui-yellow')}>
-        {isWarning && '⚠ '}
+      <span className={tagVariants({ tagType })}>[{tag}]</span>{' '}
+      {source && (
+        <>
+          <span className="font-bold text-tui-fg">{source}</span>
+          <span className="text-gray-600"> → </span>
+        </>
+      )}
+      <span className={cn('text-gray-400', isWarning && 'text-tui-yellow', isError && 'text-tui-red')}>
         {message}
       </span>
     </div>

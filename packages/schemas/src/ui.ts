@@ -101,6 +101,8 @@ export const LogEntryDataSchema = z.object({
   tagType: LogTagTypeSchema.optional(),
   message: z.string(),
   isWarning: z.boolean().optional(),
+  source: z.string().optional(),
+  isError: z.boolean().optional(),
 });
 export type LogEntryData = z.infer<typeof LogEntryDataSchema>;
 
@@ -112,11 +114,20 @@ export const PROGRESS_STATUSES = ["completed", "active", "pending"] as const;
 export const ProgressStatusSchema = z.enum(PROGRESS_STATUSES);
 export type ProgressStatus = z.infer<typeof ProgressStatusSchema>;
 
+export const ProgressSubstepDataSchema = z.object({
+  id: z.string(),
+  emoji: z.string(),
+  label: z.string(),
+  status: z.enum(["pending", "active", "completed"]),
+});
+export type ProgressSubstepData = z.infer<typeof ProgressSubstepDataSchema>;
+
 // Note: ProgressStepData.content is ReactNode at runtime, not serializable
 export const ProgressStepDataSchema = z.object({
   id: z.string(),
   label: z.string(),
   status: ProgressStatusSchema,
+  substeps: z.array(ProgressSubstepDataSchema).optional(),
 });
 export type ProgressStepData = z.infer<typeof ProgressStepDataSchema>;
 

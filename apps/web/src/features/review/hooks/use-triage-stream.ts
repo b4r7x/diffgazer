@@ -36,6 +36,15 @@ function webTriageReducer(state: WebTriageState, action: WebTriageAction): WebTr
   if (action.type === "SET_REVIEW_ID") {
     return { ...state, reviewId: action.reviewId };
   }
+  // Handle review_started event to capture reviewId early
+  if (action.type === "EVENT" && action.event.type === "review_started") {
+    const newState = coreTriageReducer(state, action);
+    return {
+      ...newState,
+      selectedIssueId: state.selectedIssueId,
+      reviewId: action.event.reviewId,
+    };
+  }
   if (action.type === "START" || action.type === "RESET") {
     return { ...coreTriageReducer(state, action), selectedIssueId: null, reviewId: null };
   }

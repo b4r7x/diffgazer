@@ -22,6 +22,7 @@
     "./triage-storage": { "types": "./dist/triage-storage.d.ts", "import": "./dist/triage-storage.js" },
     "./settings": { "types": "./dist/settings.d.ts", "import": "./dist/settings.js" },
     "./step-event": { "types": "./dist/step-event.d.ts", "import": "./dist/step-event.js" },
+    "./enrich-event": { "types": "./dist/enrich-event.d.ts", "import": "./dist/enrich-event.js" },
     "./full-triage-stream-event": { "types": "./dist/full-triage-stream-event.d.ts", "import": "./dist/full-triage-stream-event.js" },
     "./ui": { "types": "./dist/ui.d.ts", "import": "./dist/ui.js" }
   },
