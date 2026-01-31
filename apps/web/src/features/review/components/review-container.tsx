@@ -77,15 +77,14 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
   const startTimeRef = useRef<Date>(new Date());
   const hasStartedRef = useRef(false);
   const hasStreamedRef = useRef(false);
+  const completeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Track when streaming actually starts
   useEffect(() => {
     if (state.isStreaming) {
       hasStreamedRef.current = true;
     }
   }, [state.isStreaming]);
 
-  // Update URL when reviewId becomes available (without adding to history)
   useEffect(() => {
     if (state.reviewId && !params.reviewId) {
       navigate({
@@ -96,7 +95,6 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     }
   }, [state.reviewId, params.reviewId, navigate]);
 
-  // Auto-start or resume on mount (only if configured)
   useEffect(() => {
     if (hasStartedRef.current) return;
     if (configLoading) return;
@@ -117,11 +115,21 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     }
   }, [mode, start, resume, configLoading, isConfigured, params.reviewId]);
 
-  // Notify parent when streaming completes (only after streaming has actually occurred)
+  // Delay transition so users see final step completions before switching views
   useEffect(() => {
     if (!state.isStreaming && hasStreamedRef.current) {
-      onComplete?.({ issues: state.issues, reviewId: state.reviewId, error: state.error });
+      if (completeTimeoutRef.current) {
+        clearTimeout(completeTimeoutRef.current);
+      }
+      completeTimeoutRef.current = setTimeout(() => {
+        onComplete?.({ issues: state.issues, reviewId: state.reviewId, error: state.error });
+      }, 400);
     }
+    return () => {
+      if (completeTimeoutRef.current) {
+        clearTimeout(completeTimeoutRef.current);
+      }
+    };
   }, [state.isStreaming, state.issues, state.reviewId, state.error, onComplete]);
 
   const handleCancel = () => {
@@ -130,6 +138,9 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
   };
 
   const handleViewResults = () => {
+    if (completeTimeoutRef.current) {
+      clearTimeout(completeTimeoutRef.current);
+    }
     stop();
     onComplete?.({ issues: state.issues, reviewId: state.reviewId, error: state.error });
   };
@@ -156,7 +167,6 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     elapsed: 0,
   }), [state.fileProgress.completed.size, state.fileProgress.total, state.issues.length]);
 
-  // Show loading state while checking config
   if (configLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -165,7 +175,6 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     );
   }
 
-  // Show API key missing view if not configured
   if (!isConfigured) {
     return (
       <ApiKeyMissingView

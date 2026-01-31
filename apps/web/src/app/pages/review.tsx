@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useSearch, useParams } from "@tanstack/react-router";
 import { AnalysisSummary } from "@/components/ui";
 import type { LensStats, IssuePreview, SeverityFilter } from "@/components/ui";
@@ -31,7 +31,6 @@ interface ReviewSummaryViewProps {
 function ReviewSummaryView({ issues, reviewId, onEnterReview, onBack }: ReviewSummaryViewProps) {
   const severityCounts = calculateSeverityCounts(issues);
 
-  // Calculate lens stats from actual issues by counting categories
   const categoryCountMap = issues.reduce<Record<string, number>>((acc, issue) => {
     acc[issue.category] = (acc[issue.category] || 0) + 1;
     return acc;
@@ -55,23 +54,26 @@ function ReviewSummaryView({ issues, reviewId, onEnterReview, onBack }: ReviewSu
     severity: issue.severity,
   }));
 
-  // Get unique files analyzed
   const filesAnalyzed = new Set(issues.map((i) => i.file)).size;
 
   useScope("review-summary");
   useKey("Enter", onEnterReview);
   useKey("Escape", onBack);
 
-  usePageFooter({
-    shortcuts: [{ key: "Enter", label: "Start Review" }],
-    rightShortcuts: [{ key: "Esc", label: "Back" }],
-  });
+  const footerShortcuts = useMemo(() => [
+    { key: "Enter", label: "Start Review" }
+  ], []);
+
+  const footerRightShortcuts = useMemo(() => [
+    { key: "Esc", label: "Back" }
+  ], []);
+
+  usePageFooter({ shortcuts: footerShortcuts, rightShortcuts: footerRightShortcuts });
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4">
       <div className="w-full max-w-4xl mx-auto">
         <AnalysisSummary
-          // reviewId is null only briefly during initial state before review completes
           stats={{ runId: reviewId ?? "unknown", totalIssues: issues.length, filesAnalyzed, criticalCount: severityCounts.blocker }}
           severityCounts={severityCounts}
           lensStats={lensStats}
@@ -118,14 +120,12 @@ function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
   useScope("review");
   useKey("Escape", () => navigate({ to: "/" }), { enabled: focusZone === "list" });
 
-  // Pane navigation
   useKey("Tab", () => {
     if (focusZone === "filters") setFocusZone("list");
     else if (focusZone === "list") setFocusZone("details");
     else setFocusZone("filters");
   });
 
-  // Arrow navigation between zones
   useKey("ArrowLeft", () => {
     if (focusZone === "details") setFocusZone("list");
     else if (focusZone === "filters" && focusedFilterIndex > 0) {
@@ -142,18 +142,15 @@ function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
     }
   });
 
-  // Vertical navigation within list zone - go to filters at top
   useKey("ArrowUp", () => {
     if (focusZone === "list" && focusedIndex === 0) {
       setFocusZone("filters");
     }
   }, { enabled: focusZone === "list" });
 
-  // From filters, go down to list
   useKey("ArrowDown", () => setFocusZone("list"), { enabled: focusZone === "filters" });
   useKey("j", () => setFocusZone("list"), { enabled: focusZone === "filters" });
 
-  // Toggle filter when in filter zone
   useKey("Enter", () => {
     const sev = SEVERITY_ORDER[focusedFilterIndex];
     setSeverityFilter((f) => (f === sev ? "all" : sev));
@@ -164,7 +161,6 @@ function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
     setSeverityFilter((f) => (f === sev ? "all" : sev));
   }, { enabled: focusZone === "filters" });
 
-  // Tab selection with number keys
   useKey("1", () => setActiveTab("details"), { enabled: focusZone === "details" });
   useKey("2", () => setActiveTab("explain"), { enabled: focusZone === "details" });
   useKey("3", () => setActiveTab("trace"), { enabled: focusZone === "details" });
@@ -179,17 +175,18 @@ function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
     });
   };
 
-  usePageFooter({
-    shortcuts: [
-      { key: "j/k", label: "Select" },
-      { key: "←/→", label: "Navigate" },
-      { key: "1-4", label: "Tab" },
-    ],
-    rightShortcuts: [
-      { key: "Space", label: "Toggle" },
-      { key: "Esc", label: "Back" },
-    ],
-  });
+  const footerShortcuts = useMemo(() => [
+    { key: "j/k", label: "Select" },
+    { key: "←/→", label: "Navigate" },
+    { key: "1-4", label: "Tab" },
+  ], []);
+
+  const footerRightShortcuts = useMemo(() => [
+    { key: "Space", label: "Toggle" },
+    { key: "Esc", label: "Back" },
+  ], []);
+
+  usePageFooter({ shortcuts: footerShortcuts, rightShortcuts: footerRightShortcuts });
 
   return (
     <div className="flex flex-1 overflow-hidden px-4 font-mono">
@@ -203,7 +200,6 @@ function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
         isFocused={focusZone === "list"}
         isFilterFocused={focusZone === "filters"}
         focusedFilterIndex={focusedFilterIndex}
-        // reviewId is null only briefly during initial state before review completes
         title={`Analysis #${reviewId ?? "unknown"}`}
       />
       <IssueDetailsPane
