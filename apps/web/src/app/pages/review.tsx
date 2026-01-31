@@ -226,11 +226,22 @@ export function ReviewPage() {
   const [view, setView] = useState<ReviewView>(params.reviewId ? "results" : "progress");
   const [reviewData, setReviewData] = useState<ReviewData>({ issues: [], reviewId: null, error: null });
 
-  const { review: existingReview, isLoading, error: existingError } = useExistingReview(params.reviewId);
+  // Only fetch if URL has a reviewId we don't already have loaded
+  const shouldFetch = params.reviewId && params.reviewId !== reviewData.reviewId && view !== "progress";
+
+  const { review: existingReview, isLoading, error: existingError } = useExistingReview(
+    shouldFetch ? params.reviewId : undefined
+  );
 
   useEffect(() => {
-    // Only load from API if we don't already have data (navigated directly to /review/:id)
-    if (existingReview && !reviewData.reviewId) {
+    // Review not found - clear invalid reviewId and start fresh
+    if (existingError && params.reviewId) {
+      navigate({ to: '/review', replace: true });
+    }
+  }, [existingError, params.reviewId, navigate]);
+
+  useEffect(() => {
+    if (existingReview && existingReview.metadata.id !== reviewData.reviewId) {
       setReviewData({
         issues: existingReview.result.issues,
         reviewId: existingReview.metadata.id,
@@ -244,11 +255,10 @@ export function ReviewPage() {
     setReviewData(data);
     if (!data.error) {
       setView("summary");
-      // URL is already updated by ReviewContainer when reviewId becomes available
     }
   }, []);
 
-  if (params.reviewId && isLoading) {
+  if (shouldFetch && isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
         <span className="text-tui-fg-muted" role="status" aria-live="polite">Loading review...</span>
@@ -256,12 +266,10 @@ export function ReviewPage() {
     );
   }
 
+  // When existingError occurs with a reviewId, the useEffect above handles redirect
+  // Show loading state briefly while redirect happens
   if (params.reviewId && existingError) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <span className="text-tui-red" role="alert">Failed to load review: {existingError}</span>
-      </div>
-    );
+    return null;
   }
 
   if (view === "progress") {
