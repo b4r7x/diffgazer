@@ -1,11 +1,10 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Box, Text, useApp, useStdout, useInput } from "ink";
 import Spinner from "ink-spinner";
 import { truncate } from "@repo/core";
 import { getSuggestionReason } from "@repo/core/review";
 import type { TriageState } from "../../features/review/index.js";
 import type { TriageIssue } from "@repo/schemas/triage";
-import type { FeedbackCommand } from "@repo/schemas/feedback";
 import type { AgentStreamEvent } from "@repo/schemas/agent-event";
 import { SplitPane } from "../../components/ui/split-pane.js";
 import { Separator } from "../../components/ui/separator.js";
@@ -15,19 +14,20 @@ import {
   IssueListPane,
   IssueDetailsPane,
   FeedbackInput,
-  type IssueTab,
   AGENT_PANEL_WIDTH,
+  type IssueTab,
 } from "../../features/review/components/index.js";
 import { DrilldownPrompt } from "../../features/review/components/drilldown-prompt.js";
 import { AgentActivityPanel } from "../../features/review/components/agent-activity-panel.js";
 import { ReviewSummaryView } from "../../features/review/components/review-summary-view.js";
 import {
   useReviewKeyboard,
+  useAgentActivity,
+  useDrilldownState,
+  useIssueFiltering,
+  useReviewHandlers,
   type FocusArea,
-} from "../../features/review/hooks/use-review-keyboard.js";
-import { useAgentActivity } from "../../features/review/hooks/use-agent-activity.js";
-import { useDrilldownState } from "../../features/review/hooks/use-drilldown-state.js";
-import { useIssueFiltering } from "../../features/review/hooks/use-issue-filtering.js";
+} from "../../features/review/hooks/index.js";
 import { useSessionRecorderContext } from "../../hooks/index.js";
 
 interface ReviewViewProps {
@@ -115,13 +115,11 @@ function ReviewSplitScreenView({
   const [feedbackMode, setFeedbackMode] = useState(false);
   const [askResponse, setAskResponse] = useState<string | null>(null);
 
-  const recorderContext = useSessionRecorderContext();
-  const prevSelectedIdRef = useRef<string | null>(selectedId);
+  const { recordEvent } = useSessionRecorderContext();
 
   const { agents, currentAction } = useAgentActivity(agentEvents);
   const shouldShowAgentPanel = showAgentPanel && agents.length > 0;
 
-  // Use extracted hooks
   const {
     drilldownState,
     showingDrilldownPrompt,
@@ -156,138 +154,42 @@ function ReviewSplitScreenView({
 
   const selectedIssue = filteredIssues[selectedIndex] ?? null;
 
-  // Record issue open events
+  // Record issue open events when selection changes
+  const prevSelectedIdRef = useRef(selectedId);
   useEffect(() => {
-    if (prevSelectedIdRef.current !== selectedId && selectedIssue) {
-      recorderContext.recordEvent("OPEN_ISSUE", {
-        issueId: selectedIssue.id,
-        title: selectedIssue.title,
-        severity: selectedIssue.severity,
-        file: selectedIssue.file,
-      });
-    }
-    prevSelectedIdRef.current = selectedId;
-  }, [selectedId, selectedIssue, recorderContext]);
-
-  // Navigation handlers
-  const handleNavigate = useCallback(
-    (direction: "up" | "down") => {
-      const delta = direction === "down" ? 1 : -1;
-      const newIndex = Math.max(0, Math.min(selectedIndex + delta, filteredIssues.length - 1));
-      const issue = filteredIssues[newIndex];
-      if (issue) setSelectedId(issue.id);
-    },
-    [selectedIndex, filteredIssues]
-  );
-
-  const handleOpen = useCallback(() => setFocus("details"), []);
-
-  const handleIgnore = useCallback(() => {
-    if (!selectedIssue) return;
-    recorderContext.recordEvent("IGNORE_ISSUE", {
-      issueId: selectedIssue.id,
-      title: selectedIssue.title,
-      severity: selectedIssue.severity,
-    });
-  }, [selectedIssue, recorderContext]);
-
-  const handleBack = useCallback(() => {
-    if (focus === "details") {
-      setFocus("list");
-    } else {
-      onBack();
-    }
-  }, [focus, onBack]);
-
-  const handleApply = useCallback(() => {
-    if (!selectedIssue) return;
-    recorderContext.recordEvent("APPLY_PATCH", {
-      issueId: selectedIssue.id,
-      title: selectedIssue.title,
-      file: selectedIssue.file,
-      hasPatch: Boolean(selectedIssue.suggested_patch),
-    });
-  }, [selectedIssue, recorderContext]);
-
-  const handleApplyFromDetails = useCallback(
-    (issue: TriageIssue) => {
-      recorderContext.recordEvent("APPLY_PATCH", {
-        issueId: issue.id,
-        title: issue.title,
-        file: issue.file,
-        hasPatch: Boolean(issue.suggested_patch),
-      });
-    },
-    [recorderContext]
-  );
-
-  const handleDrilldown = useCallback(async () => {
-    if (!selectedIssue) return;
-    if (!reviewId) {
-      setActiveTab("explain");
-      return;
-    }
-    await triggerDrilldownForIssue(selectedIssue);
-    setActiveTab("explain");
-  }, [selectedIssue, reviewId, triggerDrilldownForIssue]);
-
-  const handleExplain = useCallback(() => void handleDrilldown(), [handleDrilldown]);
-  const handleTrace = useCallback(() => setActiveTab("trace"), []);
-  const handleNextIssue = useCallback(() => handleNavigate("down"), [handleNavigate]);
-  const handlePrevIssue = useCallback(() => handleNavigate("up"), [handleNavigate]);
-
-  const handleToggleFocus = useCallback(() => {
-    setFocus((prev) => {
-      if (prev === "filters") return "list";
-      if (prev === "list") return "details";
-      return "filters";
-    });
-  }, []);
-
-  const handleTabChange = useCallback((tab: IssueTab) => setActiveTab(tab), []);
-  const handleFocusFilters = useCallback(() => setFocus("filters"), []);
-
-  const handleFeedbackCommand = useCallback(
-    (command: FeedbackCommand) => {
-      setFeedbackMode(false);
-
-      switch (command.type) {
-        case "focus":
-          setActiveFilter(command.filter);
-          recorderContext.recordEvent("FILTER_CHANGED", { filter: command.filter, type: "focus" });
-          break;
-
-        case "ignore":
-          addIgnoredPattern(command.pattern);
-          recorderContext.recordEvent("FILTER_CHANGED", { pattern: command.pattern, type: "ignore" });
-          break;
-
-        case "refine": {
-          const targetIssue = filteredIssues.find(
-            (issue) =>
-              issue.id === command.issueId ||
-              issue.id.endsWith(command.issueId) ||
-              issue.title.toLowerCase().includes(command.issueId.toLowerCase())
-          );
-          if (targetIssue) {
-            setSelectedId(targetIssue.id);
-            void handleDrilldown();
-          }
-          break;
-        }
-
-        case "ask":
-          setAskResponse(`Question received: "${command.question}" (response placeholder)`);
-          break;
-
-        case "stop":
-          break;
+    if (prevSelectedIdRef.current !== selectedId && selectedId) {
+      const issue = filteredIssues.find((i) => i.id === selectedId);
+      if (issue) {
+        recordEvent("OPEN_ISSUE", {
+          issueId: issue.id,
+          title: issue.title,
+          severity: issue.severity,
+          file: issue.file,
+        });
       }
-    },
-    [filteredIssues, handleDrilldown, recorderContext, setActiveFilter, addIgnoredPattern]
-  );
+      prevSelectedIdRef.current = selectedId;
+    }
+  }, [selectedId, filteredIssues, recordEvent]);
 
-  const handleFeedbackCancel = useCallback(() => setFeedbackMode(false), []);
+  const handlers = useReviewHandlers({
+    selectedIssue,
+    selectedIndex,
+    filteredIssues,
+    focus,
+    reviewId,
+    setSelectedId,
+    setActiveTab,
+    setFocus,
+    setFeedbackMode,
+    setAskResponse,
+    setActiveFilter,
+    addIgnoredPattern,
+    handleFilterNavigate,
+    handleFilterSelect,
+    triggerDrilldownForIssue,
+    onBack,
+    recordEvent,
+  });
 
   useInput(
     (input) => {
@@ -308,20 +210,20 @@ function ReviewSplitScreenView({
       filterCount: SEVERITY_ORDER.length,
     },
     actions: {
-      onNavigate: handleNavigate,
-      onOpen: handleOpen,
-      onApply: handleApply,
-      onIgnore: handleIgnore,
-      onExplain: handleExplain,
-      onTrace: handleTrace,
-      onNextIssue: handleNextIssue,
-      onPrevIssue: handlePrevIssue,
-      onToggleFocus: handleToggleFocus,
-      onBack: handleBack,
-      onTabChange: handleTabChange,
-      onFilterNavigate: handleFilterNavigate,
-      onFilterSelect: handleFilterSelect,
-      onFocusFilters: handleFocusFilters,
+      onNavigate: handlers.handleNavigate,
+      onOpen: handlers.handleOpen,
+      onApply: handlers.handleApply,
+      onIgnore: handlers.handleIgnore,
+      onExplain: handlers.handleExplain,
+      onTrace: handlers.handleTrace,
+      onNextIssue: handlers.handleNextIssue,
+      onPrevIssue: handlers.handlePrevIssue,
+      onToggleFocus: handlers.handleToggleFocus,
+      onBack: handlers.handleBack,
+      onTabChange: handlers.handleTabChange,
+      onFilterNavigate: handlers.handleFilterNavigate,
+      onFilterSelect: handlers.handleFilterSelect,
+      onFocusFilters: handlers.handleFocusFilters,
     },
     disabled: feedbackMode || showingDrilldownPrompt,
   });
@@ -459,7 +361,7 @@ function ReviewSplitScreenView({
             <IssueDetailsPane
               issue={selectedIssue}
               activeTab={activeTab}
-              onApplyPatch={handleApplyFromDetails}
+              onApplyPatch={handlers.handleApplyFromDetails}
               isApplying={false}
               focus={focus === "details"}
               drilldown={drilldownState.data ?? getCachedDrilldown(selectedIssue?.id ?? "")}
@@ -472,8 +374,8 @@ function ReviewSplitScreenView({
         <Box marginTop={1}>
           <FeedbackInput
             isVisible={feedbackMode}
-            onCommand={handleFeedbackCommand}
-            onCancel={handleFeedbackCancel}
+            onCommand={handlers.handleFeedbackCommand}
+            onCancel={handlers.handleFeedbackCancel}
           />
         </Box>
       )}

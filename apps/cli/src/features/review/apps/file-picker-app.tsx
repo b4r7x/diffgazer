@@ -49,7 +49,7 @@ export function FilePickerApp({
   const { state: triageState, startTriage } = useTriage({ lenses, profile });
   const [screen, setScreen] = useState<Screen>("picker");
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [checkedFiles, setCheckedFiles] = useState(() => new Set<string>());
+  const [checkedFiles, setCheckedFiles] = useState<Set<string>>(() => new Set());
   const [selectedIssue, setSelectedIssue] = useState<TriageIssue | null>(null);
   const [drilldown, setDrilldown] = useState<DrilldownResult | null>(null);
 
