@@ -1,9 +1,12 @@
+import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { MAIN_MENU_SHORTCUTS } from "@repo/core";
 import { useScope, useKey } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ContextSidebar, HomeMenu } from "@/features/home/components";
+import { useConfig } from "@/features/settings";
+import { useReviewHistory } from "@/features/review";
 import type { ContextInfo } from "@repo/schemas/ui";
 import { api } from "@/lib/api";
 
@@ -16,19 +19,19 @@ const MENU_ROUTES: Record<string, string> = {
   settings: "/settings",
 };
 
-const DEMO_CONTEXT: ContextInfo = {
-  trustedDir: "~/dev/stargazer-core",
-  providerName: "Gemini",
-  providerMode: "Balanced",
-  lastRunId: "8821",
-  lastRunIssueCount: 20,
-};
+export function HomePage() {
+  const { provider, model } = useConfig();
+  const { reviews } = useReviewHistory();
 
-interface HomePageProps {
-  context?: ContextInfo;
-}
-
-export function HomePage({ context = DEMO_CONTEXT }: HomePageProps) {
+  const context: ContextInfo = useMemo(() => {
+    const mostRecentReview = reviews[0];
+    return {
+      providerName: provider,
+      providerMode: model,
+      lastRunId: mostRecentReview?.id,
+      lastRunIssueCount: mostRecentReview?.issueCount,
+    };
+  }, [provider, model, reviews]);
   const [selectedIndex, setSelectedIndex] = useScopedRouteState('menuIndex', 0);
   const navigate = useNavigate();
 

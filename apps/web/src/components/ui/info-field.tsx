@@ -7,6 +7,8 @@ export interface InfoFieldProps {
   color?: InfoFieldColor;
   children: React.ReactNode;
   className?: string;
+  onClick?: () => void;
+  ariaLabel?: string;
 }
 
 const labelColors: Record<InfoFieldColor, string> = {
@@ -18,9 +20,26 @@ const labelColors: Record<InfoFieldColor, string> = {
   muted: 'text-gray-400',
 };
 
-export function InfoField({ label, color = 'muted', children, className }: InfoFieldProps) {
+export function InfoField({ label, color = 'muted', children, className, onClick, ariaLabel }: InfoFieldProps) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (onClick && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
   return (
-    <div className={cn(className)}>
+    <div
+      className={cn(
+        className,
+        onClick && 'cursor-pointer hover:opacity-80 transition-opacity'
+      )}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label={onClick ? (ariaLabel ?? `${label} settings`) : undefined}
+      onKeyDown={onClick ? handleKeyDown : undefined}
+    >
       <div className={cn('text-xs uppercase mb-1 font-bold', labelColors[color])}>
         {label}
       </div>

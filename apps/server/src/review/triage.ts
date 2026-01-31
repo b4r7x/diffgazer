@@ -12,7 +12,7 @@ import type {
   SeverityFilter,
 } from "@repo/schemas/triage";
 import { TriageResultSchema } from "@repo/schemas/triage";
-import type { AgentStreamEvent } from "@repo/schemas/agent-event";
+import type { AgentStreamEvent, LensStat } from "@repo/schemas/agent-event";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@repo/schemas/agent-event";
 import type { StepEvent } from "@repo/schemas/step-event";
 import { escapeXml } from "../lib/sanitization.js";
@@ -222,6 +222,7 @@ function getThinkingMessage(lens: Lens): string {
 }
 
 interface LensResult {
+  lensId: Lens["id"];
   lensName: string;
   summary: string;
   issues: TriageIssue[];
@@ -305,6 +306,7 @@ async function runLensAnalysis(
   });
 
   return ok({
+    lensId: lens.id,
     lensName: lens.name,
     summary: result.value.summary,
     issues: issuesWithEvidence,
@@ -330,23 +332,30 @@ export async function triageReviewStream(
 
   const allIssues: TriageIssue[] = [];
   const summaries: string[] = [];
+  const lensStats: LensStat[] = [];
   let lastError: TriageError | null = null;
 
-  for (const settled of settledResults) {
+  settledResults.forEach((settled, i) => {
+    const lens = lenses[i];
+    if (!lens) return;
+
     if (settled.status === "rejected") {
       lastError = { code: "NETWORK_ERROR" as const, message: String(settled.reason) };
-      continue;
+      lensStats.push({ lensId: lens.id, issueCount: 0, status: "failed" });
+      return;
     }
 
     const result = settled.value;
     if (!result.ok) {
       lastError = result.error;
-      continue;
+      lensStats.push({ lensId: lens.id, issueCount: 0, status: "failed" });
+      return;
     }
 
     allIssues.push(...result.value.issues);
     summaries.push(`[${result.value.lensName}] ${result.value.summary}`);
-  }
+    lensStats.push({ lensId: result.value.lensId, issueCount: result.value.issues.length, status: "success" });
+  });
 
   if (allIssues.length === 0 && lastError !== null) {
     return err(lastError);
@@ -363,6 +372,8 @@ export async function triageReviewStream(
     type: "orchestrator_complete",
     summary: combinedSummary,
     totalIssues: sorted.length,
+    lensStats,
+    filesAnalyzed: diff.files.length,
     timestamp: now(),
   });
 

@@ -1,23 +1,30 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { ReviewProgressView } from './review-progress-view';
+import { ApiKeyMissingView } from './api-key-missing-view';
 import { useTriageStream } from '../hooks/use-triage-stream';
+import { useConfig } from '@/features/settings/hooks/use-config';
+import { convertAgentEventsToLogEntries } from '@repo/core/review';
 import type { ProgressStepData, ProgressStatus } from '@/components/ui';
 import type { StepState } from '@repo/schemas/step-event';
 import type { ReviewMode } from '../types';
+import type { TriageIssue } from '@repo/schemas';
+
+export interface ReviewCompleteData {
+  issues: TriageIssue[];
+  reviewId: string | null;
+  error: string | null;
+}
 
 export interface ReviewContainerProps {
   mode: ReviewMode;
-  onComplete?: () => void;
+  onComplete?: (data: ReviewCompleteData) => void;
 }
 
-/** Map StepState status to ProgressStatus (UI doesn't have "error") */
 function mapStepStatus(status: StepState['status']): ProgressStatus {
-  if (status === 'error') return 'pending';
-  return status;
+  return status === 'error' ? 'pending' : status;
 }
 
-/** Convert StepState[] to ProgressStepData[] */
 function mapStepsToProgressData(steps: StepState[]): ProgressStepData[] {
   return steps.map(step => ({
     id: step.id,
@@ -28,37 +35,40 @@ function mapStepsToProgressData(steps: StepState[]): ProgressStepData[] {
 
 /**
  * Container that manages the review flow:
- * 1. Shows ReviewProgressView during triage
- * 2. Calls onComplete when done (parent can switch to results view)
+ * 1. Shows ApiKeyMissingView if not configured
+ * 2. Shows ReviewProgressView during triage
+ * 3. Calls onComplete when done (parent can switch to results view)
  */
 export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
   const navigate = useNavigate();
+  const { isConfigured, isLoading: configLoading, provider } = useConfig();
   const { state, start, stop } = useTriageStream();
-  const startTimeRef = useRef<Date | null>(null);
+  const startTimeRef = useRef<Date>(new Date());
   const hasStartedRef = useRef(false);
+  const hasStreamedRef = useRef(false);
 
-  // Auto-start on mount
+  // Track when streaming actually starts
   useEffect(() => {
-    if (!hasStartedRef.current) {
-      hasStartedRef.current = true;
-      startTimeRef.current = new Date();
-      // Convert mode to StreamTriageRequest format
-      start({ staged: mode === 'staged' });
+    if (state.isStreaming) {
+      hasStreamedRef.current = true;
     }
-  }, [mode, start]);
+  }, [state.isStreaming]);
 
-  // Notify parent when complete
+  // Auto-start on mount (only if configured)
   useEffect(() => {
-    if (!state.isStreaming && state.issues.length > 0 && onComplete) {
-      onComplete();
-    }
-  }, [state.isStreaming, state.issues.length, onComplete]);
+    if (hasStartedRef.current) return;
+    if (configLoading) return;
+    if (!isConfigured) return;
+    hasStartedRef.current = true;
+    start({ staged: mode === 'staged' });
+  }, [mode, start, configLoading, isConfigured]);
 
-  // Map steps from backend state to UI format
-  const progressSteps = useMemo(
-    () => mapStepsToProgressData(state.steps),
-    [state.steps]
-  );
+  // Notify parent when streaming completes (only after streaming has actually occurred)
+  useEffect(() => {
+    if (!state.isStreaming && hasStreamedRef.current) {
+      onComplete?.({ issues: state.issues, reviewId: state.reviewId, error: state.error });
+    }
+  }, [state.isStreaming, state.issues, state.reviewId, state.error, onComplete]);
 
   const handleCancel = () => {
     stop();
@@ -67,22 +77,60 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
 
   const handleViewResults = () => {
     stop();
-    onComplete?.();
+    onComplete?.({ issues: state.issues, reviewId: state.reviewId, error: state.error });
   };
+
+  const handleSetupProvider = () => {
+    stop();
+    navigate({ to: '/settings/providers' });
+  };
+
+  const progressSteps = useMemo(
+    () => mapStepsToProgressData(state.steps),
+    [state.steps]
+  );
+
+  const logEntries = useMemo(
+    () => convertAgentEventsToLogEntries(state.events),
+    [state.events]
+  );
+
+  const metrics = useMemo(() => ({
+    filesProcessed: state.fileProgress.processed.size,
+    filesTotal: state.fileProgress.total || state.fileProgress.processed.size || 1,
+    issuesFound: state.issues.length,
+    elapsed: 0,
+  }), [state.fileProgress.processed.size, state.fileProgress.total, state.issues.length]);
+
+  // Show loading state while checking config
+  if (configLoading) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div className="text-gray-500 font-mono text-sm" role="status" aria-live="polite">Loading...</div>
+      </div>
+    );
+  }
+
+  // Show API key missing view if not configured
+  if (!isConfigured) {
+    return (
+      <ApiKeyMissingView
+        activeProvider={provider}
+        onNavigateSettings={handleSetupProvider}
+        onBack={handleCancel}
+      />
+    );
+  }
 
   return (
     <ReviewProgressView
       mode={mode}
       steps={progressSteps}
-      entries={[]} // TODO: wire up activity log from agent events
-      metrics={{
-        filesProcessed: state.agents.filter(a => a.status === 'complete').length,
-        filesTotal: state.agents.length || 1,
-        issuesFound: state.issues.length,
-        elapsed: 0,
-      }}
+      entries={logEntries}
+      metrics={metrics}
       isRunning={state.isStreaming}
-      startTime={startTimeRef.current ?? undefined}
+      error={state.error}
+      startTime={startTimeRef.current}
       onViewResults={handleViewResults}
       onCancel={handleCancel}
     />

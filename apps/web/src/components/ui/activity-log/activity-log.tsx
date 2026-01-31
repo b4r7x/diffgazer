@@ -36,7 +36,7 @@ export function ActivityLog({
   return (
     <ScrollArea
       className={cn(
-        'flex-1 overflow-hidden font-mono text-sm leading-relaxed scrollbar-hide',
+        'flex-1 font-mono text-sm leading-relaxed',
         className
       )}
       {...props}

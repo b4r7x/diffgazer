@@ -2,23 +2,10 @@ import type { LensId, ProfileId } from "@repo/schemas/lens";
 import type { TriageResult, TriageError } from "@repo/schemas/triage";
 import type { AgentStreamEvent } from "@repo/schemas/agent-event";
 import type { FullTriageStreamEvent } from "@repo/schemas/full-triage-stream-event";
+import type { StepEvent } from "@repo/schemas/step-event";
 import { FullTriageStreamEventSchema } from "@repo/schemas/full-triage-stream-event";
 import { parseSSEStream } from "../streaming/sse-parser.js";
 import { ok, err, type Result } from "../result.js";
-
-const AGENT_EVENT_TYPES = [
-  "agent_start",
-  "agent_thinking",
-  "tool_call",
-  "tool_result",
-  "issue_found",
-  "agent_complete",
-  "orchestrator_complete",
-] as const;
-
-function isAgentEvent(event: FullTriageStreamEvent): event is AgentStreamEvent {
-  return AGENT_EVENT_TYPES.includes(event.type as (typeof AGENT_EVENT_TYPES)[number]);
-}
 
 export interface StreamTriageRequest {
   staged?: boolean;
@@ -30,6 +17,7 @@ export interface StreamTriageRequest {
 
 export interface StreamTriageOptions extends StreamTriageRequest {
   onAgentEvent?: (event: AgentStreamEvent) => void;
+  onStepEvent?: (event: StepEvent) => void;
   onChunk?: (content: string) => void;
   onLensStart?: (lens: string, index: number, total: number) => void;
   onLensComplete?: (lens: string) => void;
@@ -68,7 +56,7 @@ export async function processTriageStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   options: Omit<StreamTriageOptions, keyof StreamTriageRequest>
 ): Promise<Result<StreamTriageResult, StreamTriageError>> {
-  const { onAgentEvent, onChunk, onLensStart, onLensComplete } = options;
+  const { onAgentEvent, onStepEvent, onChunk, onLensStart, onLensComplete } = options;
 
   const agentEvents: AgentStreamEvent[] = [];
   let triageResult: TriageResult | null = null;
@@ -78,19 +66,30 @@ export async function processTriageStream(
   await parseSSEStream<FullTriageStreamEvent>(reader, {
     parseEvent(jsonData: unknown) {
       const parseResult = FullTriageStreamEventSchema.safeParse(jsonData);
-      if (!parseResult.success) {
-        return undefined;
-      }
-      return parseResult.data;
+      return parseResult.success ? parseResult.data : undefined;
     },
     onEvent(event: FullTriageStreamEvent) {
-      if (isAgentEvent(event)) {
-        agentEvents.push(event);
-        onAgentEvent?.(event);
-        return;
-      }
-
       switch (event.type) {
+        // Step events
+        case "step_start":
+        case "step_complete":
+        case "step_error":
+          onStepEvent?.(event);
+          break;
+
+        // Agent events - collect and forward
+        case "agent_start":
+        case "agent_thinking":
+        case "tool_call":
+        case "tool_result":
+        case "issue_found":
+        case "agent_complete":
+        case "orchestrator_complete":
+          agentEvents.push(event);
+          onAgentEvent?.(event);
+          break;
+
+        // Triage stream events
         case "chunk":
           onChunk?.(event.content);
           break;

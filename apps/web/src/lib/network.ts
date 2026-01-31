@@ -5,7 +5,7 @@ export const DEFAULT_HOST = "127.0.0.1";
 export const DEFAULT_PORT = "3000";
 
 /** Default port for web UI API server */
-const WEB_API_PORT = 7860;
+const WEB_API_PORT = 3000;
 
 /** Build the default API URL for web UI */
 export function getDefaultApiUrl(): string {

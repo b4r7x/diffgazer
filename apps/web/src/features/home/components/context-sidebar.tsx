@@ -1,3 +1,4 @@
+import { useNavigate } from '@tanstack/react-router';
 import { Panel, PanelHeader, PanelContent, InfoField } from '@/components/ui';
 import type { ContextInfo } from "@repo/schemas/ui";
 
@@ -6,6 +7,8 @@ interface ContextSidebarProps {
 }
 
 export function ContextSidebar({ context }: ContextSidebarProps) {
+  const navigate = useNavigate();
+
   return (
     <Panel className="w-full max-w-md lg:w-80 h-fit shrink-0">
       <PanelHeader>Context</PanelHeader>
@@ -16,7 +19,7 @@ export function ContextSidebar({ context }: ContextSidebarProps) {
           </InfoField>
         )}
         {context.providerName && (
-          <InfoField label="Provider" color="violet">
+          <InfoField label="Provider" color="violet" onClick={() => navigate({ to: '/settings/providers' })} ariaLabel="Configure provider settings">
             <span className="opacity-90">
               {context.providerName}
               {context.providerMode && ` (${context.providerMode})`}

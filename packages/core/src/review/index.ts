@@ -23,3 +23,4 @@ export {
   filterIssuesBySeverity,
   filterIssues,
 } from "./filtering.js";
+export { convertAgentEventsToLogEntries } from "./event-to-log.js";

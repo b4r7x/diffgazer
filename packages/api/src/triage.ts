@@ -26,12 +26,27 @@ export async function streamTriageWithEvents(
 ): Promise<Result<StreamTriageResult, StreamTriageError>> {
   const { staged, files, lenses, profile, signal, ...handlers } = options;
 
+  console.log("[API:STREAM_START]", { staged, files, lenses, profile });
+
   const response = await streamTriage(client, { staged, files, lenses, profile, signal });
+
+  console.log("[API:RESPONSE]", {
+    status: response.status,
+    ok: response.ok,
+    headers: Object.fromEntries(response.headers.entries()),
+    hasBody: !!response.body,
+  });
+
   const reader = response.body?.getReader();
 
   if (!reader) {
+    console.error("[API:NO_READER] response.body is null");
     return err({ code: "STREAM_ERROR", message: "No response body" });
   }
 
-  return processTriageStream(reader, handlers);
+  console.log("[API:READER_CREATED] starting processTriageStream");
+  const result = await processTriageStream(reader, handlers);
+  console.log("[API:STREAM_RESULT]", result.ok ? "ok" : "err", result.ok ? { reviewId: result.value.reviewId, events: result.value.agentEvents.length } : result.error);
+
+  return result;
 }
