@@ -1,13 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
-import type { TrustConfig, TrustCapabilities, TrustMode } from '@repo/schemas';
-
-export interface SaveTrustRequest {
-    projectId: string;
-    repoRoot: string;
-    capabilities: TrustCapabilities;
-    trustMode: TrustMode;
-}
+import type { TrustConfig } from '@repo/schemas';
+import type { SaveTrustRequest } from '../types';
 
 export function useTrust(projectId: string | null) {
     const [trust, setTrust] = useState<TrustConfig | null>(null);

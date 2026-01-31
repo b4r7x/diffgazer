@@ -1,5 +1,5 @@
 import { useConfigContext } from "@/app/providers";
-import { saveConfig } from "../api/config-api";
+import { saveConfig } from "../api";
 import type { SaveConfigRequest } from "@repo/schemas";
 
 export function useConfig() {

@@ -1,9 +1,10 @@
 import type { ReactElement } from "react";
 import { useApp } from "ink";
-import { type MenuAction, MAIN_MENU_SHORTCUTS } from "@repo/core";
-import { useRouteState } from "@repo/hooks";
-import { ContextSidebar, HomeMenu, type ContextInfo } from "../../features/home/index.js";
-import { SplitPane } from "../../components/ui/split-pane.js";
+import { useScreenState } from "../../hooks/use-screen-state.js";
+import { MAIN_MENU_SHORTCUTS } from "@repo/core";
+import type { MenuAction } from "../../lib/navigation.js";
+import { ContextSidebar, HomeMenu, type ContextInfo } from "../../features/home/components/index.js";
+import { SplitPane } from "../../components/ui/layout/index.js";
 import { useTerminalDimensions } from "../../hooks/index.js";
 import type { Shortcut } from "@repo/schemas/ui";
 
@@ -34,7 +35,7 @@ export function MainMenuView({
   isActive = true,
 }: MainMenuViewProps): ReactElement {
   const { exit } = useApp();
-  const [selectedIndex, setSelectedIndex] = useRouteState("mainMenu.selectedIndex", 0);
+  const [selectedIndex, setSelectedIndex] = useScreenState("selectedIndex", 0);
   const { isNarrow } = useTerminalDimensions();
 
   // Fixed widths for consistent menu sizing

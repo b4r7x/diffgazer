@@ -39,10 +39,6 @@ export const PROFILE_IDS = ["quick", "strict", "perf", "security"] as const;
 export const ProfileIdSchema = z.enum(PROFILE_IDS);
 export type ProfileId = z.infer<typeof ProfileIdSchema>;
 
-// Re-export from triage.ts (canonical location)
-export { SeverityFilterSchema } from "./triage.js";
-export type { SeverityFilter } from "./triage.js";
-
 export const ReviewProfileSchema = z.object({
   id: ProfileIdSchema,
   name: z.string(),

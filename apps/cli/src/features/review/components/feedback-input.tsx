@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
-import { parseFeedbackCommand, type FeedbackCommand } from "@repo/schemas/feedback";
+import { parseFeedbackCommand, type FeedbackCommand } from "../../../lib/feedback-schema.js";
 import { useTheme } from "../../../hooks/use-theme.js";
 
 interface FeedbackInputProps {

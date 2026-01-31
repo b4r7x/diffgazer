@@ -1,14 +1,6 @@
 import { Badge, Button, CapabilityCard, StatusRow } from '@/components/ui';
-import { PROVIDER_CAPABILITIES, type ProviderInfo } from '@repo/schemas';
-
-type DisplayStatus = 'configured' | 'needs-key' | 'active';
-
-export interface ProviderWithStatus extends ProviderInfo {
-  displayStatus: DisplayStatus;
-  hasApiKey: boolean;
-  selectedModel?: string;
-  isActive: boolean;
-}
+import { PROVIDER_CAPABILITIES } from '@repo/schemas';
+import type { ProviderWithStatus } from '../types';
 
 export interface ProviderDetailsProps {
   provider: ProviderWithStatus | null;
@@ -107,8 +99,8 @@ export function ProviderDetails({
         <StatusRow
           label="Selected Model"
           value={
-            provider.selectedModel ? (
-              <span className="text-tui-fg">{provider.selectedModel}</span>
+            provider.model ? (
+              <span className="text-tui-fg">{provider.model}</span>
             ) : (
               <span className="text-gray-500">{provider.defaultModel} (default)</span>
             )

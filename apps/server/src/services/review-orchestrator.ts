@@ -1,10 +1,13 @@
-import type { AIClient, StreamMetadata } from "@repo/core/ai";
+import type { AIClient, StreamMetadata } from "../ai/index.js";
 import type { ReviewResult, FileReviewResult } from "@repo/schemas/review";
 import type { Result, AppError } from "@repo/core";
 import { ReviewIssueSchema, ScoreSchema } from "@repo/schemas/review";
-import { getErrorMessage, safeParseJson, truncate, chunk, validateSchema, escapeXml, ok, err, createError } from "@repo/core";
+import { getErrorMessage, truncate, ok, err, createError, safeParseJson } from "@repo/core";
+import { chunk } from "../lib/array.js";
+import { escapeXml } from "../lib/sanitization.js";
+import { validateSchema } from "../lib/validation.js";
 import { z } from "zod";
-import { parseDiff, type FileDiff } from "@repo/core/diff";
+import { parseDiff, type FileDiff } from "../diff/index.js";
 import { createGitService } from "./git.js";
 import { aggregateReviews } from "./review-aggregator.js";
 

@@ -3,9 +3,9 @@
 import { useNavigate } from "@tanstack/react-router";
 import { SETTINGS_MENU_ITEMS, SETTINGS_SHORTCUTS, type SettingsAction } from "@repo/core";
 import { Menu, MenuItem } from "@/components/ui/menu";
-import { Panel, PanelHeader } from "@/components/ui/panel";
+import { Panel, PanelHeader } from "@/components/ui/containers";
 import { useScope, useKey } from "@/hooks/keyboard";
-import { useRouteState } from "@/hooks/use-route-state";
+import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
 
 const MENU_VALUES: Record<SettingsAction, { value: string; valueVariant?: "success" | "success-badge" | "muted" | "default" }> = {
@@ -19,7 +19,7 @@ const FOOTER_RIGHT = [{ key: "", label: "HUB-MODE" }];
 
 export function SettingsHubPage() {
   const navigate = useNavigate();
-  const [selectedIndex, setSelectedIndex] = useRouteState('menuIndex', 0);
+  const [selectedIndex, setSelectedIndex] = useScopedRouteState('menuIndex', 0);
 
   usePageFooter({ shortcuts: SETTINGS_SHORTCUTS, rightShortcuts: FOOTER_RIGHT });
 

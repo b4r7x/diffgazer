@@ -11,18 +11,17 @@ import {
   DialogActions,
 } from "../../../components/ui/dialog.js";
 import { useTheme } from "../../../hooks/use-theme.js";
-import type { AIProvider, ModelInfo } from "@repo/schemas/config";
+import type { AIProvider, ModelInfo, TierFilter } from "@repo/schemas/config";
 import {
   GEMINI_MODEL_INFO,
   OPENAI_MODEL_INFO,
   ANTHROPIC_MODEL_INFO,
   GLM_MODEL_INFO,
+  TIER_FILTERS,
 } from "@repo/schemas/config";
+import type { ModelDialogFocusZone as FocusZone } from "@repo/schemas/ui";
 
-type FocusZone = "search" | "filters" | "list" | "footer";
-type TierFilter = "all" | "free" | "paid";
-
-const FILTERS: TierFilter[] = ["all", "free", "paid"];
+const FILTERS: TierFilter[] = [...TIER_FILTERS];
 
 function getModelsForProvider(provider: AIProvider): ModelInfo[] {
   switch (provider) {

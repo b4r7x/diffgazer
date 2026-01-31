@@ -1,9 +1,10 @@
 import { useNavigate } from "@tanstack/react-router";
 import { MAIN_MENU_SHORTCUTS } from "@repo/core";
 import { useScope, useKey } from "@/hooks/keyboard";
-import { useRouteState } from "@/hooks/use-route-state";
+import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { ContextSidebar, HomeMenu, type ContextInfo } from "@/features/home/components";
+import { ContextSidebar, HomeMenu } from "@/features/home/components";
+import type { ContextInfo } from "@repo/schemas/ui";
 import { api } from "@/lib/api";
 
 const MENU_ROUTES: Record<string, string> = {
@@ -28,7 +29,7 @@ interface HomePageProps {
 }
 
 export function HomePage({ context = DEMO_CONTEXT }: HomePageProps) {
-  const [selectedIndex, setSelectedIndex] = useRouteState('menuIndex', 0);
+  const [selectedIndex, setSelectedIndex] = useScopedRouteState('menuIndex', 0);
   const navigate = useNavigate();
 
   usePageFooter({ shortcuts: MAIN_MENU_SHORTCUTS });

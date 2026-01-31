@@ -1,12 +1,5 @@
 import { Panel, PanelHeader, PanelContent, InfoField } from '@/components/ui';
-
-export interface ContextInfo {
-  trustedDir?: string;
-  providerName?: string;
-  providerMode?: string;
-  lastRunId?: string;
-  lastRunIssueCount?: number;
-}
+import type { ContextInfo } from "@repo/schemas/ui";
 
 interface ContextSidebarProps {
   context: ContextInfo;

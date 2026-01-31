@@ -1,9 +1,10 @@
-import type { AIClient } from "@repo/core/ai";
+import type { AIClient } from "../ai/index.js";
 import type { Session } from "@repo/schemas/session";
-import { addMessage, sessionStore } from "@repo/core/storage";
+import { addMessage, sessionStore } from "../storage/index.js";
 import { ErrorCode } from "@repo/schemas/errors";
 import type { Result } from "@repo/core";
-import { ok, err, getErrorMessage, escapeXml, sanitizeUnicode } from "@repo/core";
+import { ok, err, getErrorMessage } from "@repo/core";
+import { escapeXml, sanitizeUnicode } from "../lib/sanitization.js";
 import { initializeAIClient, type SSEWriter } from "../lib/ai-client.js";
 import { writeSSEChunk, writeSSEComplete, writeSSEError } from "../lib/sse-helpers.js";
 import { type ChatError } from "@repo/schemas/chat";

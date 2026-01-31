@@ -2,7 +2,7 @@ import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import { truncate } from "@repo/core";
 import type { ReviewState } from "../hooks/index.js";
-import { IssueItem } from "./issue-item.js";
+import { IssueItem } from "./issue/issue-item.js";
 
 export function ReviewDisplay({ state, staged }: { state: ReviewState; staged: boolean }) {
   if (state.status === "idle") {

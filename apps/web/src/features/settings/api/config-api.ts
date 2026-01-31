@@ -1,28 +1,20 @@
 import { api } from '@/lib/api';
 import type {
-    UserConfig,
     SettingsConfig,
     ProviderStatus,
     ProvidersStatusResponse,
     SaveConfigRequest
 } from '@repo/schemas';
-import { deleteConfig as sharedDeleteConfig } from "@repo/api";
+
+export type { ProviderStatus };
 
 export async function getProviderStatus(): Promise<ProviderStatus[]> {
     const response = await api.get<ProvidersStatusResponse>('/config/providers');
     return response.providers;
 }
 
-export async function getConfig(): Promise<UserConfig> {
-    return api.get<UserConfig>('/config');
-}
-
 export async function saveConfig(config: SaveConfigRequest): Promise<void> {
     await api.post('/config', config);
-}
-
-export async function deleteConfig(): Promise<void> {
-    return sharedDeleteConfig(api);
 }
 
 export async function getSettings(): Promise<SettingsConfig> {
@@ -54,5 +46,3 @@ export async function loadInit(): Promise<{
 }> {
     return api.get('/config/init');
 }
-
-export type { UserConfig, SettingsConfig, ProviderStatus, SaveConfigRequest };

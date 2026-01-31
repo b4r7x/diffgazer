@@ -136,7 +136,7 @@ All canonical types should be imported from `@repo/schemas`:
 | **Session Types** | `@repo/schemas/session` | Session metadata and state |
 | **Feedback Types** | `@repo/schemas/feedback` | User feedback on issues |
 | **Agent Event Types** | `@repo/schemas/agent-event` | `AgentStreamEvent`, `AgentId`, agent metadata |
-| **Stream Event Types** | `@repo/schemas/stream-events` | Streaming event discriminators |
+| **Stream Event Types** | `@repo/schemas/full-triage-stream-event` | Streaming event discriminators |
 | **Error Types** | `@repo/schemas/errors` | Error codes and error schemas |
 
 ---

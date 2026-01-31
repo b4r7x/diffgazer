@@ -1,4 +1,4 @@
-import { parsePortOrDefault } from "@repo/core";
+import { PortSchema } from "@repo/schemas/port";
 
 interface ServerConfig {
   host: string;
@@ -7,6 +7,12 @@ interface ServerConfig {
 
 interface Config {
   server: ServerConfig;
+}
+
+function parsePortOrDefault(value: string | undefined, defaultValue: number): number {
+  if (value === undefined) return defaultValue;
+  const result = PortSchema.safeParse(value);
+  return result.success ? result.data : defaultValue;
 }
 
 export const config: Config = {

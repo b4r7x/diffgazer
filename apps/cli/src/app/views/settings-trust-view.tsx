@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { useEffect } from "react";
 import { Box, useStdout } from "ink";
 import { TrustStep } from "../../components/wizard/trust-step.js";
-import { Panel, PanelHeader } from "../../components/ui/panel.js";
+import { Panel, PanelHeader } from "../../components/ui/layout/index.js";
 import { useSettingsState } from "../../features/settings/hooks/use-settings-state.js";
 
 export const SETTINGS_TRUST_FOOTER_SHORTCUTS = [

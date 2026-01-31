@@ -1,8 +1,8 @@
 import type { ReactElement } from "react";
 import { Box } from "ink";
-import { GitDiffDisplay } from "../../components/git-diff-display.js";
+import { GitDiffDisplay } from "../../components/git/index.js";
 import type { GitDiffState } from "../../hooks/use-git-diff.js";
-import type { Shortcut } from "../../components/ui/footer-bar.js";
+import type { Shortcut } from "../../components/ui/branding/footer-bar.js";
 
 export const GIT_DIFF_FOOTER_SHORTCUTS: Shortcut[] = [
   { key: "s", label: "Toggle staged" },

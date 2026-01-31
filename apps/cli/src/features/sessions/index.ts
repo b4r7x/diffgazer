@@ -1,6 +1,5 @@
-export { SessionListItem } from "./components/index.js";
-export { useActiveSession, useSessionList } from "./hooks/index.js";
-export type { SessionState } from "./hooks/index.js";
+export { useActiveSession, type SessionState } from "./hooks/use-active-session.js";
+export { useSessionList } from "./hooks/use-session-list.js";
 export {
   getSessionList,
   getSession,
@@ -12,4 +11,4 @@ export {
   type SessionListResponse,
   type CreateSessionRequest,
   type AddMessageRequest,
-} from "./api/index.js";
+} from "./api/sessions-api.js";

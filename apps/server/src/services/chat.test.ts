@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Session } from "@repo/schemas/session";
-import type { AIClient, StreamCallbacks } from "@repo/core/ai";
+import type { AIClient, StreamCallbacks } from "../ai/index.js";
 import { ErrorCode } from "@repo/schemas/errors";
 
 const mockSessionStore = vi.hoisted(() => ({
@@ -11,7 +11,7 @@ const mockAddMessage = vi.hoisted(() => vi.fn());
 
 const mockInitializeAIClient = vi.hoisted(() => vi.fn());
 
-vi.mock("@repo/core/storage", () => ({
+vi.mock("../storage/index.js", () => ({
   sessionStore: mockSessionStore,
   addMessage: mockAddMessage,
 }));

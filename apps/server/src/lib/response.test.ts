@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, type Mock } from "vitest";
 import type { Context } from "hono";
 import { handleStoreError, zodErrorHandler, errorResponse } from "./response.js";
-import type { StoreError } from "@repo/core/storage";
+import type { StoreError } from "../storage/index.js";
 import { ErrorCode } from "@repo/schemas/errors";
 
 type JsonMock = Mock<(data: unknown, status?: number) => Response>;

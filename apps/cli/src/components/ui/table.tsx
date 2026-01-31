@@ -1,15 +1,17 @@
 import type { ReactElement, ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../../hooks/use-theme.js";
+import type { TableColumn } from "@repo/schemas/ui";
 
-export interface TableColumn {
-  key: string;
-  header: string;
+export type { TableColumn };
+
+// CLI-specific: only uses number widths
+export interface CLITableColumn extends Omit<TableColumn, "width"> {
   width?: number;
 }
 
 export interface TableProps<T extends Record<string, ReactNode>> {
-  columns: TableColumn[];
+  columns: CLITableColumn[];
   data: T[];
   getRowKey?: (row: T, index: number) => string;
   selectedRowIndex?: number;

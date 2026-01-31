@@ -1,15 +1,16 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { FocusablePane, Tabs, TabsList, TabsTrigger, type SeverityLevel } from "@/components/ui";
-import { useScope, useKey } from "@/hooks/keyboard";
-import { useRouteState } from "@/hooks/use-route-state";
-import { usePageFooter } from "@/hooks/use-page-footer";
-import { RunAccordionItem, TimelineList, HistoryInsightsPane, type TimelineItem } from "@/features/history/components";
+import { FocusablePane, Tabs, TabsList, TabsTrigger } from "@/components/ui";
 import type { TriageIssue } from "@repo/schemas";
+import type { HistoryTabId, HistoryFocusZone } from "@repo/schemas/history";
+import type { TimelineItem } from "@repo/schemas/ui";
+import { calculateSeverityCounts } from "@repo/core";
+import { useScope, useKey } from "@/hooks/keyboard";
+import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
+import { usePageFooter } from "@/hooks/use-page-footer";
+import { RunAccordionItem, TimelineList, HistoryInsightsPane } from "@/features/history/components";
 
-type TabId = "runs" | "sessions";
-type FocusZone = "timeline" | "runs" | "insights";
-
+// Local extension of HistoryRun for web-specific React.ReactNode summary
 interface HistoryRun {
   id: string;
   displayId: string;
@@ -139,21 +140,13 @@ const TIMELINE_ITEMS: TimelineItem[] = [
   { id: "jan28", label: "Jan 28", count: 5 },
 ];
 
-function getSeverityCounts(issues: TriageIssue[]): Record<SeverityLevel, number> {
-  return {
-    blocker: issues.filter((i) => i.severity === "blocker").length,
-    high: issues.filter((i) => i.severity === "high").length,
-    medium: issues.filter((i) => i.severity === "medium").length,
-    low: issues.filter((i) => i.severity === "low").length,
-  };
-}
 
 export function HistoryPage() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<TabId>("runs");
-  const [focusZone, setFocusZone] = useState<FocusZone>("runs");
-  const [selectedDateId, setSelectedDateId] = useRouteState("date", "today");
-  const [selectedRunId, setSelectedRunId] = useRouteState("run", MOCK_RUNS[0]?.id ?? null);
+  const [activeTab, setActiveTab] = useState<HistoryTabId>("runs");
+  const [focusZone, setFocusZone] = useState<HistoryFocusZone>("runs");
+  const [selectedDateId, setSelectedDateId] = useScopedRouteState("date", "today");
+  const [selectedRunId, setSelectedRunId] = useScopedRouteState("run", MOCK_RUNS[0]?.id ?? null);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
 
   // Filter runs by selected date
@@ -169,7 +162,7 @@ export function HistoryPage() {
   );
 
   const severityCounts = useMemo(
-    () => (selectedRun ? getSeverityCounts(selectedRun.issues) : { blocker: 0, high: 0, medium: 0, low: 0 }),
+    () => (selectedRun ? calculateSeverityCounts(selectedRun.issues) : { blocker: 0, high: 0, medium: 0, low: 0, nit: 0 }),
     [selectedRun]
   );
 
@@ -245,7 +238,7 @@ export function HistoryPage() {
     <div className="flex flex-col flex-1 overflow-hidden px-4 pb-0">
       {/* Tabs */}
       <div className="flex items-center gap-6 border-b border-tui-border mb-0 text-sm select-none shrink-0">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabId)}>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as HistoryTabId)}>
           <TabsList className="border-b-0">
             <TabsTrigger value="runs">[Runs]</TabsTrigger>
             <TabsTrigger value="sessions">Sessions</TabsTrigger>

@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Hono } from "hono";
 import { config as configRouter } from "./config.js";
-import * as configStorage from "@repo/core/storage";
-import * as secrets from "@repo/core/secrets";
+import * as configStorage from "../../storage/index.js";
+import * as secrets from "../../secrets/index.js";
 import { ok, err, createError } from "@repo/core";
 
-vi.mock("@repo/core/storage", async () => {
-  const actual = await vi.importActual("@repo/core/storage");
+vi.mock("../../storage/index.js", async () => {
+  const actual = await vi.importActual("../../storage/index.js");
   return {
     ...actual,
     configStore: {
@@ -15,7 +15,7 @@ vi.mock("@repo/core/storage", async () => {
   };
 });
 
-vi.mock("@repo/core/secrets", () => ({
+vi.mock("../../secrets/index.js", () => ({
   getApiKey: vi.fn(),
 }));
 

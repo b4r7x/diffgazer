@@ -2,15 +2,17 @@ import { useRef, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { cn } from '../../lib/utils';
 import { useKey, useKeys } from '@/hooks/keyboard';
+import type { TableColumn } from '@repo/schemas/ui';
 
-export interface TableColumn {
-    key: string;
-    header: string;
-    width?: string;
+export type { TableColumn };
+
+// Web-specific: only uses string widths
+export interface WebTableColumn extends Omit<TableColumn, "width"> {
+  width?: string;
 }
 
 export interface TableProps<T extends Record<string, ReactNode>> {
-    columns: TableColumn[];
+    columns: WebTableColumn[];
     data: T[];
     getRowKey?: (row: T, index: number) => string;
     selectedRowIndex?: number;

@@ -1,25 +1,21 @@
 import type { ReactElement } from "react";
 import { useState, useEffect, useMemo } from "react";
 import { Box, Text, useInput } from "ink";
-import type { AIProvider, ProviderStatus } from "@repo/schemas/config";
-import { AVAILABLE_PROVIDERS, PROVIDER_CAPABILITIES, PROVIDER_ENV_VARS } from "@repo/schemas/config";
-import { SplitPane } from "../../components/ui/split-pane.js";
-import { Panel, PanelHeader, PanelContent, PanelDivider } from "../../components/ui/panel.js";
+import type { AIProvider, ProviderStatus, ProviderFilter } from "@repo/schemas/config";
+import { AVAILABLE_PROVIDERS, PROVIDER_CAPABILITIES, PROVIDER_ENV_VARS, PROVIDER_FILTERS } from "@repo/schemas/config";
+import { SplitPane, Panel, PanelHeader, PanelContent, PanelDivider } from "../../components/ui/layout/index.js";
 import { Badge } from "../../components/ui/badge.js";
 import { useTerminalDimensions } from "../../hooks/index.js";
+import { useScreenState } from "../../hooks/use-screen-state.js";
 import { useSettingsState } from "../../features/settings/hooks/use-settings-state.js";
 import { ApiKeyDialog, ModelSelectDialog } from "../../features/settings/components/index.js";
 
 type FocusZone = "search" | "filters" | "list" | "actions";
-type ProviderFilter = "all" | "configured" | "needs-key" | "free" | "paid";
 
-const FILTERS: { id: ProviderFilter; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "configured", label: "Configured" },
-  { id: "needs-key", label: "Needs Key" },
-  { id: "free", label: "Free" },
-  { id: "paid", label: "Paid" },
-];
+const FILTERS: { id: ProviderFilter; label: string }[] = PROVIDER_FILTERS.map((id) => ({
+  id,
+  label: id === "all" ? "All" : id === "configured" ? "Configured" : id === "needs-key" ? "Needs Key" : id === "free" ? "Free" : "Paid",
+}));
 
 export const SETTINGS_PROVIDERS_FOOTER_SHORTCUTS = [
   { key: "/", label: "search" },
@@ -50,12 +46,12 @@ export function SettingsProvidersView({
 
   const settingsState = useSettingsState(projectId);
 
-  const [focusZone, setFocusZone] = useState<FocusZone>("list");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState<ProviderFilter>("all");
-  const [filterIndex, setFilterIndex] = useState(0);
-  const [selectedProviderIndex, setSelectedProviderIndex] = useState(0);
-  const [actionIndex, setActionIndex] = useState(0);
+  const [focusZone, setFocusZone] = useScreenState<FocusZone>("focusZone", "list");
+  const [searchQuery, setSearchQuery] = useScreenState<string>("searchQuery", "");
+  const [activeFilter, setActiveFilter] = useScreenState<ProviderFilter>("activeFilter", "all");
+  const [filterIndex, setFilterIndex] = useScreenState<number>("filterIndex", 0);
+  const [selectedProviderIndex, setSelectedProviderIndex] = useScreenState<number>("selectedProviderIndex", 0);
+  const [actionIndex, setActionIndex] = useScreenState<number>("actionIndex", 0);
   const [showApiKeyDialog, setShowApiKeyDialog] = useState<AIProvider | null>(null);
   const [showModelSelectDialog, setShowModelSelectDialog] = useState<AIProvider | null>(null);
 

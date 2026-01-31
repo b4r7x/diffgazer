@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import type { TriageIssue } from "@repo/schemas/triage";
 import type { DrilldownResult } from "@repo/schemas/lens";
-import { shouldSuggestDrilldown } from "@repo/core/review";
+import { shouldSuggestDrilldown } from "../../../lib/drilldown-suggester.js";
 import { getErrorMessage } from "@repo/core";
 import { triggerDrilldown } from "../api/index.js";
 

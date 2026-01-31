@@ -1,16 +1,13 @@
 import type { ReactElement } from "react";
 import { useState, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
-import {
-  SETTINGS_MENU_ITEMS,
-  type SettingsAction,
-  type SettingsSection,
-} from "@repo/core";
+import { SETTINGS_MENU_ITEMS, type SettingsAction } from "@repo/core";
+import type { SettingsSection } from "../../types/index.js";
 import { Menu, MenuItem } from "../../components/ui/menu.js";
-import { Panel, PanelHeader } from "../../components/ui/panel.js";
+import { Panel, PanelHeader } from "../../components/ui/layout/index.js";
 import { Badge } from "../../components/ui/badge.js";
 import { useSettingsState } from "../../features/settings/hooks/use-settings-state.js";
-import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
+import { useScreenState, useTerminalDimensions } from "../../hooks/index.js";
 
 export const SETTINGS_HUB_FOOTER_SHORTCUTS = [
   { key: "1-4", label: "jump" },
@@ -110,7 +107,7 @@ export function SettingsHubView({
   const { columns } = useTerminalDimensions();
   const panelWidth = Math.min(76, columns - 4);
 
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useScreenState<number>("selectedIndex", 0);
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const settingsState = useSettingsState(projectId);
 

@@ -2,14 +2,16 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { Box, Text, useApp, useStdout, useInput } from "ink";
 import Spinner from "ink-spinner";
 import { truncate } from "@repo/core";
-import { getSuggestionReason } from "@repo/core/review";
+import { getSuggestionReason } from "../../lib/drilldown-suggester.js";
+import { useScreenState } from "../../hooks/use-screen-state.js";
 import type { TriageState } from "../../features/review/index.js";
 import type { TriageIssue } from "@repo/schemas/triage";
 import type { AgentStreamEvent } from "@repo/schemas/agent-event";
-import { SplitPane } from "../../components/ui/split-pane.js";
+import { SplitPane } from "../../components/ui/layout/index.js";
 import { Separator } from "../../components/ui/separator.js";
-import { FooterBar, type Shortcut, type ModeShortcuts } from "../../components/ui/footer-bar.js";
-import { SeverityFilterGroup, SEVERITY_ORDER } from "../../components/ui/severity-filter-group.js";
+import { FooterBar, type Shortcut, type ModeShortcuts } from "../../components/ui/branding/footer-bar.js";
+import { SEVERITY_ORDER } from "@repo/schemas/ui";
+import { SeverityFilterGroup } from "../../components/ui/severity/index.js";
 import {
   IssueListPane,
   IssueDetailsPane,
@@ -19,10 +21,10 @@ import {
 } from "../../features/review/components/index.js";
 import { DrilldownPrompt } from "../../features/review/components/drilldown-prompt.js";
 import { AgentActivityPanel } from "../../features/review/components/agent-activity-panel.js";
-import { ReviewSummaryView } from "../../features/review/components/review-summary-view.js";
+import { ReviewSummaryView } from "../../features/review/components/index.js";
+import { useAgentActivity } from "@repo/hooks";
 import {
   useReviewKeyboard,
-  useAgentActivity,
   useDrilldownState,
   useIssueFiltering,
   useReviewHandlers,
@@ -109,9 +111,9 @@ function ReviewSplitScreenView({
   const terminalHeight = stdout?.rows ?? 24;
   const listPaneHeight = Math.max(10, terminalHeight - 12);
 
-  const [selectedId, setSelectedId] = useState<string | null>(issues[0]?.id ?? null);
-  const [activeTab, setActiveTab] = useState<IssueTab>("details");
-  const [focus, setFocus] = useState<FocusArea>("list");
+  const [selectedId, setSelectedId] = useScreenState<string | null>("selectedId", issues[0]?.id ?? null);
+  const [activeTab, setActiveTab] = useScreenState<IssueTab>("activeTab", "details");
+  const [focus, setFocus] = useScreenState<FocusArea>("focus", "list");
   const [feedbackMode, setFeedbackMode] = useState(false);
   const [askResponse, setAskResponse] = useState<string | null>(null);
 

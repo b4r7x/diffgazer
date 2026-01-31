@@ -14,10 +14,9 @@ import {
   SecurityBadge,
   type CodeLine
 } from "@/components/ui";
-import type { SeverityLevel } from "@/features/review/constants/severity";
+import type { TriageSeverity } from "@repo/schemas/triage";
 import type { TriageIssue } from "@repo/schemas";
-
-export type TabId = "details" | "explain" | "trace" | "patch";
+import type { TabId } from "../types";
 
 export interface IssueDetailsPaneProps {
   issue: TriageIssue | null;
@@ -55,7 +54,7 @@ export function IssueDetailsPane({
             <>
               <IssueHeader
                 title={issue.title}
-                severity={issue.severity as SeverityLevel}
+                severity={issue.severity as TriageSeverity}
                 file={issue.file}
                 line={issue.line_start ?? 0}
               />

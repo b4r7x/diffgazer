@@ -15,7 +15,7 @@ import {
   getSession,
   getLastSession,
   addSessionMessage,
-} from "../api/index.js";
+} from "../api/sessions-api.js";
 
 export type SessionState = "idle" | "loading" | "active" | "error";
 

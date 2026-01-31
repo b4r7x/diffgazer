@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import {
   reviewStore,
   listReviews,
-} from "@repo/core/storage";
+} from "../../storage/index.js";
 import { handleStoreError } from "../../lib/response.js";
 import { requireUuidParam, validateProjectPath } from "../../lib/validation.js";
 

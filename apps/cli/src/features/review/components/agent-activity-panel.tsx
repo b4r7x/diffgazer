@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import type { AgentState } from "@repo/schemas/agent-event";
 import { useTheme } from "../../../hooks/use-theme.js";
-import { Card } from "../../../components/ui/card.js";
+import { Card } from "../../../components/ui/layout/card.js";
 
 interface AgentActivityPanelProps {
   agents: AgentState[];
