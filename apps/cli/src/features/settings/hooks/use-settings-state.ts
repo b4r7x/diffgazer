@@ -4,6 +4,33 @@ import type { AIProvider, ProviderStatus } from "@repo/schemas/config";
 import type { SettingsConfig, TrustConfig, Theme } from "@repo/schemas/settings";
 import { settingsApi } from "../api/settings-api.js";
 
+// Provider status cache with 5-minute TTL
+const CACHE_TTL = 5 * 60 * 1000;
+
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+let providerStatusCache: CacheEntry<ProviderStatus[]> | null = null;
+
+export function getCachedProviders(): ProviderStatus[] | null {
+  if (!providerStatusCache) return null;
+  if (Date.now() - providerStatusCache.timestamp > CACHE_TTL) {
+    providerStatusCache = null;
+    return null;
+  }
+  return providerStatusCache.data;
+}
+
+export function setCachedProviders(data: ProviderStatus[]): void {
+  providerStatusCache = { data, timestamp: Date.now() };
+}
+
+export function invalidateProviderCache(): void {
+  providerStatusCache = null;
+}
+
 export interface SettingsState {
   isLoading: boolean;
   isSaving: boolean;
@@ -22,6 +49,8 @@ export interface UseSettingsStateResult extends SettingsState {
   saveTheme: (theme: Theme) => Promise<void>;
   saveTrust: (config: TrustConfig) => Promise<void>;
   saveCredentials: (provider: AIProvider, apiKey: string, model?: string) => Promise<void>;
+  activateProvider: (provider: AIProvider, model?: string) => Promise<void>;
+  deleteProviderCredentials: (provider: AIProvider) => Promise<void>;
   deleteConfig: () => Promise<void>;
 }
 
@@ -56,11 +85,14 @@ export function useSettingsState(projectId: string): UseSettingsStateResult {
 
   const loadAll = useCallback(async () => {
     await loadOp.execute(async () => {
+      // Check cache first
+      const cachedProviders = getCachedProviders();
+
       const [settingsResult, trustResult, configResult, providerStatusResult] = await Promise.allSettled([
         settingsApi.loadSettings().catch(() => null),
         settingsApi.loadTrust(projectId).catch(() => null),
         settingsApi.checkConfig(),
-        settingsApi.loadProviderStatus(),
+        cachedProviders ? Promise.resolve({ providers: cachedProviders }) : settingsApi.loadProviderStatus(),
       ]);
 
       const settingsData =
@@ -71,6 +103,11 @@ export function useSettingsState(projectId: string): UseSettingsStateResult {
         providerStatusResult.status === "fulfilled"
           ? providerStatusResult.value
           : { providers: [], activeProvider: undefined };
+
+      // Cache the provider status if we fetched it fresh
+      if (!cachedProviders && providerData.providers.length > 0) {
+        setCachedProviders(providerData.providers);
+      }
 
       setDataState({
         settings: settingsData,
@@ -110,8 +147,10 @@ export function useSettingsState(projectId: string): UseSettingsStateResult {
   const saveCredentials = useCallback(
     async (provider: AIProvider, apiKey: string, model?: string) => {
       await saveOp.execute(async () => {
+        invalidateProviderCache();
         const result = await settingsApi.saveConfig(provider, apiKey, model);
         const providerData = await settingsApi.loadProviderStatus();
+        setCachedProviders(providerData.providers);
         setDataState((prev) => ({
           ...prev,
           config: { provider: result.provider, model: result.model },
@@ -123,10 +162,50 @@ export function useSettingsState(projectId: string): UseSettingsStateResult {
     [saveOp]
   );
 
+  const activateProvider = useCallback(
+    async (provider: AIProvider, model?: string) => {
+      await saveOp.execute(async () => {
+        invalidateProviderCache();
+        const result = await settingsApi.activateProvider(provider, model);
+        const providerData = await settingsApi.loadProviderStatus();
+        setCachedProviders(providerData.providers);
+        setDataState((prev) => ({
+          ...prev,
+          config: { provider: result.provider, model: result.model },
+          isConfigured: true,
+          providerStatus: providerData.providers,
+        }));
+      });
+    },
+    [saveOp]
+  );
+
+  const deleteProviderCredentials = useCallback(
+    async (provider: AIProvider) => {
+      await saveOp.execute(async () => {
+        invalidateProviderCache();
+        await settingsApi.deleteProviderCredentials(provider);
+        const providerData = await settingsApi.loadProviderStatus();
+        setCachedProviders(providerData.providers);
+
+        const wasActive = dataState.config?.provider === provider;
+        setDataState((prev) => ({
+          ...prev,
+          config: wasActive ? null : prev.config,
+          isConfigured: wasActive ? false : prev.isConfigured,
+          providerStatus: providerData.providers,
+        }));
+      });
+    },
+    [saveOp, dataState.config?.provider]
+  );
+
   const deleteConfig = useCallback(async () => {
     await saveOp.execute(async () => {
+      invalidateProviderCache();
       await settingsApi.deleteConfig();
       const providerData = await settingsApi.loadProviderStatus();
+      setCachedProviders(providerData.providers);
       setDataState((prev) => ({
         ...prev,
         config: null,
@@ -158,6 +237,8 @@ export function useSettingsState(projectId: string): UseSettingsStateResult {
     saveTheme,
     saveTrust,
     saveCredentials,
+    activateProvider,
+    deleteProviderCredentials,
     deleteConfig,
   };
 }

@@ -4,8 +4,10 @@ import Spinner from "ink-spinner";
 import type { TriageIssue, TriageResult } from "@repo/schemas/triage";
 import type { SavedTriageReview } from "@repo/schemas/triage-storage";
 import type { AgentStreamEvent } from "@repo/schemas/agent-event";
+import type { StepState } from "@repo/schemas/step-event";
 import { TRIAGE_SEVERITY_COLORS } from "../constants.js";
 import { Separator } from "../../../components/ui/separator.js";
+import { ProgressList, type ProgressStepData, type ProgressStatus } from "../../../components/ui/index.js";
 import { AgentActivityPanel } from "./agent-activity-panel.js";
 import { useAgentActivity } from "../hooks/use-agent-activity.js";
 
@@ -29,6 +31,7 @@ export interface ReviewScreenProps {
     currentIndex: number;
     totalLenses: number;
   };
+  steps?: StepState[];
   onSelectIssue: (issue: TriageIssue) => void;
   onBack: () => void;
   onApplyFix?: (issue: TriageIssue) => Promise<ApplyFixResult>;
@@ -113,12 +116,29 @@ function SeveritySummary({ issues }: { issues: TriageIssue[] }): React.ReactElem
   );
 }
 
+function mapStepToProgressStep(step: StepState): ProgressStepData {
+  // Map StepState status to ProgressStatus (error -> active for display)
+  const statusMap: Record<StepState["status"], ProgressStatus> = {
+    pending: "pending",
+    active: "active",
+    completed: "completed",
+    error: "active", // Show error state as active (spinner) - could enhance ProgressStep later
+  };
+
+  return {
+    id: step.id,
+    label: step.label,
+    status: statusMap[step.status],
+  };
+}
+
 export function ReviewScreen({
   review,
   result,
   isLoading,
   loadingMessage,
   lensProgress,
+  steps,
   onSelectIssue,
   onBack,
   onApplyFix,
@@ -223,6 +243,8 @@ export function ReviewScreen({
   });
 
   if (isLoading) {
+    const progressSteps = steps?.map(mapStepToProgressStep) ?? [];
+
     return (
       <Box flexDirection="column" padding={1}>
         <Text bold color="cyan">
@@ -231,10 +253,11 @@ export function ReviewScreen({
         <Separator />
         <Box marginTop={1} flexDirection="row" gap={2}>
           <Box flexDirection="column">
-            <Box>
-              <Spinner type="dots" />
-              <Text> {loadingMessage ?? "Analyzing code..."}</Text>
-            </Box>
+            {progressSteps.length > 0 ? (
+              <ProgressList steps={progressSteps} />
+            ) : (
+              <Text dimColor>Starting analysis...</Text>
+            )}
             {lensProgress && lensProgress.totalLenses > 0 && (
               <Box marginTop={1}>
                 <Text dimColor>

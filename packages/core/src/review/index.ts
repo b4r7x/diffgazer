@@ -7,6 +7,12 @@ export { TraceRecorder } from "./trace-recorder.js";
 export { shouldSuggestDrilldown, getSuggestionReason } from "./drilldown-suggester.js";
 export { calculateAgentActivity, createInitialAgentActivityState, type AgentActivityState } from "./agent-activity.js";
 export {
+  triageReducer,
+  createInitialTriageState,
+  type TriageState,
+  type TriageAction,
+} from "./triage-state.js";
+export {
   buildTriageQueryParams,
   processTriageStream,
   type StreamTriageRequest,

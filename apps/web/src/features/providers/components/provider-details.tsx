@@ -5,6 +5,9 @@ type DisplayStatus = 'configured' | 'needs-key' | 'active';
 
 export interface ProviderWithStatus extends ProviderInfo {
   displayStatus: DisplayStatus;
+  hasApiKey: boolean;
+  selectedModel?: string;
+  isActive: boolean;
 }
 
 export interface ProviderDetailsProps {
@@ -104,8 +107,8 @@ export function ProviderDetails({
         <StatusRow
           label="Selected Model"
           value={
-            provider.model ? (
-              <span className="text-tui-fg">{provider.model}</span>
+            provider.selectedModel ? (
+              <span className="text-tui-fg">{provider.selectedModel}</span>
             ) : (
               <span className="text-gray-500">{provider.defaultModel} (default)</span>
             )

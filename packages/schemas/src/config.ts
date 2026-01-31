@@ -5,6 +5,7 @@ import {
   timestampFields,
   type SharedErrorCode,
 } from "./errors.js";
+import { SettingsConfigSchema } from "./settings.js";
 
 export const AI_PROVIDERS = ["gemini", "openai", "anthropic", "glm", "openrouter"] as const;
 export const AIProviderSchema = z.enum(AI_PROVIDERS);
@@ -339,6 +340,17 @@ export const PROVIDER_ENV_VARS: Record<AIProvider, string> = {
   glm: 'GLM_API_KEY',
   openrouter: 'OPENROUTER_API_KEY',
 };
+
+export const InitResponseSchema = z.object({
+  config: z.object({
+    provider: AIProviderSchema,
+    model: z.string().optional(),
+  }).nullable(),
+  settings: SettingsConfigSchema,
+  providers: z.array(ProviderStatusSchema),
+  configured: z.boolean(),
+});
+export type InitResponse = z.infer<typeof InitResponseSchema>;
 
 export const PROVIDER_CAPABILITIES: Record<AIProvider, {
   toolCalling: string;

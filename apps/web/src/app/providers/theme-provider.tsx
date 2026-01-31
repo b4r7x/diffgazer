@@ -2,6 +2,7 @@
 
 import { createContext, useState, useEffect, useSyncExternalStore, type ReactNode } from 'react';
 import type { WebTheme, ResolvedTheme, ThemeContextValue } from '@/types/theme';
+import { getSettings, saveSettings } from '@/features/settings/api/config-api';
 
 function subscribeToSystemTheme(callback: () => void) {
   const media = window.matchMedia('(prefers-color-scheme: dark)');
@@ -35,12 +36,37 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const resolved: ResolvedTheme = theme === 'auto' ? systemTheme : theme;
 
   useEffect(() => {
+    const isValidWebTheme = (t: string): t is WebTheme => ['light', 'dark', 'auto'].includes(t);
+
+    getSettings()
+      .then(settings => {
+        if (settings?.theme) {
+          // Map 'terminal' to 'dark' for web (terminal theme is CLI-only)
+          const webTheme = settings.theme === 'terminal'
+            ? 'dark'
+            : isValidWebTheme(settings.theme)
+              ? settings.theme
+              : 'auto';
+          setThemeState(webTheme);
+          localStorage.setItem(STORAGE_KEY, webTheme);
+        }
+      })
+      .catch(() => {
+        // Fallback: already using localStorage initial value
+      });
+  }, []);
+
+  useEffect(() => {
     document.documentElement.setAttribute('data-theme', resolved);
   }, [resolved]);
 
   const setTheme = (newTheme: WebTheme) => {
     setThemeState(newTheme);
     localStorage.setItem(STORAGE_KEY, newTheme);
+    // Sync with backend (fire and forget)
+    saveSettings({ theme: newTheme }).catch((err) => {
+      console.error('Failed to sync theme to server:', err);
+    });
   };
 
   return (

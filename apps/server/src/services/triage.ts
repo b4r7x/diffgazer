@@ -11,12 +11,13 @@ import type { SSEWriter } from "../lib/ai-client.js";
 import { writeSSEError } from "../lib/sse-helpers.js";
 import { createGitDiffError } from "./review.js";
 import type { AgentStreamEvent } from "@repo/schemas/agent-event";
+import type { StepEvent } from "@repo/schemas/step-event";
 
 const MAX_DIFF_SIZE_BYTES = 524288; // 512KB
 
 const gitService = createGitService();
 
-async function writeAgentEvent(stream: SSEWriter, event: AgentStreamEvent): Promise<void> {
+async function writeStreamEvent(stream: SSEWriter, event: AgentStreamEvent | StepEvent): Promise<void> {
   await stream.writeSSE({
     event: event.type,
     data: JSON.stringify(event),
@@ -95,8 +96,8 @@ export async function streamTriageToSSE(
         lenses: activeLenses as LensId[],
         filter: profile?.filter,
       },
-      async (event: AgentStreamEvent) => {
-        await writeAgentEvent(stream, event);
+      async (event) => {
+        await writeStreamEvent(stream, event);
       }
     );
 

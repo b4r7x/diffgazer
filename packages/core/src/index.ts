@@ -25,3 +25,4 @@ export { truncate, truncateToDisplayLength } from "./string.js";
 export { chunk } from "./array.js";
 export { parsePort, parsePortOrDefault } from "./port.js";
 export * from "./navigation/index.js";
+export { createCache } from "./cache.js";

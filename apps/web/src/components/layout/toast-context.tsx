@@ -26,7 +26,7 @@ const MAX_TOASTS = 5;
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [dismissingIds, setDismissingIds] = useState<Set<string>>(new Set());
-  const timeoutIdsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const timeoutIdsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const dismissToast = useCallback((id: string) => {
     setDismissingIds(prev => new Set(prev).add(id));

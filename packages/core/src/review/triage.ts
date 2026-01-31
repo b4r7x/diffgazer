@@ -14,6 +14,7 @@ import type {
 import { TriageResultSchema } from "@repo/schemas/triage";
 import type { AgentStreamEvent } from "@repo/schemas/agent-event";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@repo/schemas/agent-event";
+import type { StepEvent, StepId } from "@repo/schemas/step-event";
 import { escapeXml } from "../sanitization.js";
 import { getLenses } from "./lenses/index.js";
 import { getProfile } from "./profiles.js";
@@ -203,6 +204,14 @@ function now(): string {
   return new Date().toISOString();
 }
 
+function emitStep(type: "step_start" | "step_complete", step: StepId): StepEvent {
+  return { type, step, timestamp: now() };
+}
+
+function emitStepError(step: StepId, error: string): StepEvent {
+  return { type: "step_error", step, error, timestamp: now() };
+}
+
 function getThinkingMessage(lens: Lens): string {
   switch (lens.id) {
     case "correctness":
@@ -230,7 +239,7 @@ async function runLensAnalysis(
   client: AIClient,
   lens: Lens,
   diff: ParsedDiff,
-  onEvent: (event: AgentStreamEvent) => void
+  onEvent: (event: AgentStreamEvent | StepEvent) => void
 ): Promise<Result<LensResult, TriageError>> {
   const agentId = LENS_TO_AGENT[lens.id];
   const agentMeta = AGENT_METADATA[agentId];
@@ -314,18 +323,25 @@ export async function triageReviewStream(
   client: AIClient,
   diff: ParsedDiff,
   options: TriageOptions = {},
-  onEvent: (event: AgentStreamEvent) => void
+  onEvent: (event: AgentStreamEvent | StepEvent) => void
 ): Promise<Result<TriageResult, TriageError>> {
+  onEvent(emitStep("step_start", "diff"));
+
   if (diff.files.length === 0) {
+    onEvent(emitStepError("diff", "No files changed"));
     return err({ code: "NO_DIFF", message: "No files changed" });
   }
+
+  onEvent(emitStep("step_complete", "diff"));
 
   const lensIds = options.lenses ?? options.profile?.lenses ?? ["correctness"];
   const lenses = getLenses(lensIds);
   const filter = options.filter ?? options.profile?.filter;
 
+  onEvent(emitStep("step_start", "triage"));
   const lensPromises = lenses.map((lens) => runLensAnalysis(client, lens, diff, onEvent));
   const settledResults = await Promise.allSettled(lensPromises);
+  onEvent(emitStep("step_complete", "triage"));
 
   const allIssues: TriageIssue[] = [];
   const summaries: string[] = [];
@@ -351,19 +367,23 @@ export async function triageReviewStream(
     return err(lastError);
   }
 
+  onEvent(emitStep("step_start", "enrich"));
   const deduplicated = deduplicateIssues(allIssues);
   const filtered = filterIssuesBySeverity(deduplicated, filter);
   const validated = filtered.filter(validateIssueCompleteness);
   const sorted = sortIssuesBySeverity(validated);
+  onEvent(emitStep("step_complete", "enrich"));
 
   const combinedSummary = summaries.join("\n\n");
 
+  onEvent(emitStep("step_start", "report"));
   onEvent({
     type: "orchestrator_complete",
     summary: combinedSummary,
     totalIssues: sorted.length,
     timestamp: now(),
   });
+  onEvent(emitStep("step_complete", "report"));
 
   return ok({
     summary: combinedSummary,

@@ -45,7 +45,6 @@ export function ProviderSelectorPage() {
 
   const {
     providers,
-    activeProvider,
     isLoading,
     saveApiKey,
     removeApiKey,
@@ -74,9 +73,18 @@ export function ProviderSelectorPage() {
     return result;
   }, [providers, filter, searchQuery]);
 
+  const providersWithStatus = useMemo(
+    () => filteredProviders.map((p) => ({
+      ...p,
+      displayStatus: p.isActive ? 'active' as const : p.hasApiKey ? 'configured' as const : 'needs-key' as const,
+      selectedModel: p.model,
+    })),
+    [filteredProviders]
+  );
+
   const selectedProvider = selectedId
-    ? filteredProviders.find((p) => p.id === selectedId) ?? null
-    : filteredProviders[0] ?? null;
+    ? providersWithStatus.find((p) => p.id === selectedId) ?? null
+    : providersWithStatus[0] ?? null;
 
   useEffect(() => {
     if (selectedId === null && selectedProvider) {
@@ -98,14 +106,6 @@ export function ProviderSelectorPage() {
       setFilterIndex(FILTER_VALUES.indexOf(filter));
     }
   };
-
-  const providersWithStatus = useMemo(
-    () => filteredProviders.map((p) => ({
-      ...p,
-      displayStatus: p.isActive ? 'active' as const : p.hasApiKey ? 'configured' as const : 'needs-key' as const,
-    })),
-    [filteredProviders]
-  );
 
   const dialogOpen = apiKeyDialogOpen || modelDialogOpen;
   const inInput = focusZone === 'input';

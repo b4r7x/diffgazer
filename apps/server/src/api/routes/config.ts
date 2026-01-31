@@ -1,14 +1,16 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { configStore, getOpenRouterModels } from "@repo/core/storage";
+import { configStore, getOpenRouterModels, loadSettings } from "@repo/core/storage";
 import { getApiKey, setApiKey, deleteApiKey } from "@repo/core/secrets";
 import {
   AIProviderSchema,
   SaveConfigRequestSchema,
   AVAILABLE_PROVIDERS,
   type ProviderStatus,
+  type InitResponse,
 } from "@repo/schemas/config";
+import { type SettingsConfig } from "@repo/schemas/settings";
 import { ErrorCode } from "@repo/schemas/errors";
 import { errorResponse, handleStoreError, zodErrorHandler } from "../../lib/response.js";
 
@@ -35,6 +37,63 @@ config.get("/check", async (c) => {
       model: storedConfig.model,
     },
   });
+});
+
+const DEFAULT_SETTINGS: SettingsConfig = {
+  theme: "auto",
+  defaultLenses: [],
+  defaultProfile: null,
+  severityThreshold: "low",
+};
+
+config.get("/init", async (c) => {
+  const [configResult, settingsResult, providerStatuses] = await Promise.all([
+    configStore.read(),
+    loadSettings(),
+    Promise.all(
+      AVAILABLE_PROVIDERS.map(async (p) => {
+        const keyResult = await getApiKey(p.id);
+        return {
+          provider: p.id,
+          hasApiKey: keyResult.ok && !!keyResult.value,
+          isActive: false,
+        };
+      })
+    ),
+  ]);
+
+  const settings = settingsResult.ok && settingsResult.value ? settingsResult.value : DEFAULT_SETTINGS;
+
+  let configData: InitResponse["config"] = null;
+  let configured = false;
+
+  if (configResult.ok) {
+    const storedConfig = configResult.value;
+    const apiKeyResult = await getApiKey(storedConfig.provider);
+
+    if (apiKeyResult.ok && apiKeyResult.value) {
+      configData = {
+        provider: storedConfig.provider,
+        model: storedConfig.model,
+      };
+      configured = true;
+    }
+  }
+
+  const providers: ProviderStatus[] = providerStatuses.map((p) => ({
+    ...p,
+    model: configData && p.provider === configData.provider ? configData.model : undefined,
+    isActive: configData ? p.provider === configData.provider : false,
+  }));
+
+  const response: InitResponse = {
+    config: configData,
+    settings,
+    providers,
+    configured,
+  };
+
+  return c.json(response);
 });
 
 config.get("/", async (c) => {

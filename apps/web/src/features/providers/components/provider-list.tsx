@@ -135,7 +135,7 @@ export function ProviderList({
                     {tierBadge}
                   </Badge>
                 }
-                subtitle={provider.model ?? provider.defaultModel}
+                subtitle={provider.defaultModel}
               >
                 {provider.name}
               </NavigationListItem>

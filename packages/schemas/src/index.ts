@@ -12,5 +12,6 @@ export * from "./session.js";
 export * from "./settings.js";
 export * from "./triage.js";
 export * from "./triage-storage.js";
+export * from "./step-event.js";
 export * from "./stream-events.js";
 export * from "./ui.js";

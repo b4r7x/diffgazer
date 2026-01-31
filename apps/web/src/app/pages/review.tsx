@@ -7,7 +7,7 @@ import { useRouteState } from "@/hooks/use-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ReviewContainer, IssueListPane, IssueDetailsPane, type ReviewMode, type TabId } from "@/features/review/components";
 import { getSeverityCounts, SEVERITY_ORDER } from "@/features/review/constants/severity";
-import type { TriageIssue, TriageSeverity } from "@repo/schemas";
+import type { TriageIssue } from "@repo/schemas";
 
 type FocusZone = "filters" | "list" | "details";
 type ReviewView = "progress" | "summary" | "results";
