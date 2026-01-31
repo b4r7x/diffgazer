@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Panel, PanelHeader, PanelContent, SeverityBar, Badge, IssuePreviewItem, type SeverityLevel } from "@/components/ui";
+import { SeverityBar, Badge, type SeverityLevel } from "@/components/ui";
 import { SectionHeader } from "@/components/ui/section-header";
 import type { TriageIssue } from "@repo/schemas";
 

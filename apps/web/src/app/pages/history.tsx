@@ -1,11 +1,11 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Panel, PanelHeader, PanelContent, FocusablePane, Tabs, TabsList, TabsTrigger, type SeverityLevel } from "@/components/ui";
+import { FocusablePane, Tabs, TabsList, TabsTrigger, type SeverityLevel } from "@/components/ui";
 import { useScope, useKey } from "@/hooks/keyboard";
 import { useRouteState } from "@/hooks/use-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { RunAccordionItem, TimelineList, HistoryInsightsPane, type TimelineItem } from "@/features/history/components";
-import type { TriageIssue, TriageSeverity } from "@repo/schemas";
+import type { TriageIssue } from "@repo/schemas";
 
 type TabId = "runs" | "sessions";
 type FocusZone = "timeline" | "runs" | "insights";
@@ -37,6 +37,8 @@ const MOCK_ISSUES: TriageIssue[] = [
     suggested_patch: null,
     confidence: 0.95,
     evidence: [],
+    symptom: "Login handler accepts requests without CSRF validation",
+    whyItMatters: "Exposes application to cross-site request forgery attacks",
   },
   {
     id: "2",
@@ -51,6 +53,8 @@ const MOCK_ISSUES: TriageIssue[] = [
     suggested_patch: null,
     confidence: 0.92,
     evidence: [],
+    symptom: "Password strings stored without hashing in session memory",
+    whyItMatters: "Memory dumps or process inspection could expose user credentials",
   },
   {
     id: "3",
@@ -65,6 +69,8 @@ const MOCK_ISSUES: TriageIssue[] = [
     suggested_patch: null,
     confidence: 0.88,
     evidence: [],
+    symptom: "Database queries executed inside iteration loop",
+    whyItMatters: "Causes exponential performance degradation with data growth",
   },
 ];
 
@@ -235,10 +241,6 @@ export function HistoryPage() {
     if (direction === "down") setFocusZone("runs");
   };
 
-  const handleRunsBoundary = (direction: "up" | "down") => {
-    if (direction === "up") setFocusZone("timeline");
-  };
-
   return (
     <div className="flex flex-col flex-1 overflow-hidden px-4 pb-0">
       {/* Tabs */}
@@ -275,11 +277,11 @@ export function HistoryPage() {
         {/* Runs (middle) */}
         <FocusablePane
           isFocused={focusZone === "runs"}
-          className="flex-1 border-r border-tui-border flex flex-col overflow-hidden"
+          className="flex-1 min-w-0 border-r border-tui-border flex flex-col overflow-hidden"
         >
-          <div className="p-3 text-xs text-gray-500 font-bold uppercase tracking-wider border-b border-tui-border flex justify-between">
-            <span>Runs</span>
-            <span>Sort: Recent</span>
+          <div className="p-3 text-xs text-gray-500 font-bold uppercase tracking-wider border-b border-tui-border flex justify-between overflow-hidden">
+            <span className="truncate">Runs</span>
+            <span className="shrink-0 ml-2">Sort: Recent</span>
           </div>
           <div className="flex-1 overflow-y-auto">
             {activeTab === "runs" ? (
@@ -297,7 +299,7 @@ export function HistoryPage() {
                   isExpanded={run.id === expandedRunId}
                   onSelect={() => setSelectedRunId(run.id)}
                   onToggleExpand={() => setExpandedRunId((prev) => (prev === run.id ? null : run.id))}
-                  onIssueClick={(issueId) => {
+                  onIssueClick={(_issueId) => {
                     navigate({ to: "/review/$reviewId", params: { reviewId: run.id } });
                   }}
                 />
@@ -313,7 +315,7 @@ export function HistoryPage() {
         {/* Insights (right) */}
         <FocusablePane
           isFocused={focusZone === "insights"}
-          className="w-80 flex flex-col shrink-0"
+          className="w-80 flex flex-col shrink-0 overflow-hidden"
         >
           <HistoryInsightsPane
             runId={selectedRun?.displayId ?? null}
@@ -321,7 +323,7 @@ export function HistoryPage() {
             topLenses={topLenses}
             topIssues={topIssues}
             duration="4m 12s"
-            onIssueClick={(issueId) => {
+            onIssueClick={(_issueId) => {
               if (selectedRunId) {
                 navigate({ to: "/review/$reviewId", params: { reviewId: selectedRunId } });
               }

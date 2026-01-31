@@ -131,6 +131,9 @@ export function InteractiveReviewApp({
   const agentEvents = state.status === "loading" || state.status === "success"
     ? state.agentEvents
     : [];
+  const steps = state.status === "loading" || state.status === "success"
+    ? state.steps
+    : undefined;
 
   if (screen === "detail" && selectedIssue) {
     return (
@@ -156,6 +159,7 @@ export function InteractiveReviewApp({
           : "Starting analysis..."
       }
       lensProgress={lensProgress}
+      steps={steps}
       onSelectIssue={handleSelectIssue}
       onBack={handleBack}
       onApplyFix={handleApplyFix}
