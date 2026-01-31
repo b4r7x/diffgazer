@@ -6,6 +6,7 @@ interface ActiveSession {
   startedAt: Date;
   events: FullTriageStreamEvent[];
   isComplete: boolean;
+  isReady: boolean; // Session has initial events and is safe to replay
   subscribers: Set<(event: FullTriageStreamEvent) => void>;
 }
 
@@ -18,10 +19,18 @@ export function createSession(reviewId: string, projectPath: string): ActiveSess
     startedAt: new Date(),
     events: [],
     isComplete: false,
+    isReady: false,
     subscribers: new Set(),
   };
   activeSessions.set(reviewId, session);
   return session;
+}
+
+export function markReady(reviewId: string): void {
+  const session = activeSessions.get(reviewId);
+  if (session) {
+    session.isReady = true;
+  }
 }
 
 export function getSession(reviewId: string): ActiveSession | undefined {
@@ -30,16 +39,23 @@ export function getSession(reviewId: string): ActiveSession | undefined {
 
 export function addEvent(reviewId: string, event: FullTriageStreamEvent): void {
   const session = activeSessions.get(reviewId);
-  if (session) {
+  if (session && !session.isComplete) {
     session.events.push(event);
-    session.subscribers.forEach(cb => cb(event));
+    session.subscribers.forEach(cb => {
+      try {
+        cb(event);
+      } catch (e) {
+        console.error('Subscriber callback error:', e);
+      }
+    });
   }
 }
 
 export function markComplete(reviewId: string): void {
   const session = activeSessions.get(reviewId);
-  if (session) {
+  if (session && !session.isComplete) {
     session.isComplete = true;
+    session.subscribers.clear();
     setTimeout(() => activeSessions.delete(reviewId), 5 * 60 * 1000);
   }
 }
@@ -55,7 +71,7 @@ export function subscribe(reviewId: string, callback: (event: FullTriageStreamEv
 
 export function getActiveSessionForProject(projectPath: string): ActiveSession | undefined {
   for (const session of activeSessions.values()) {
-    if (session.projectPath === projectPath && !session.isComplete) {
+    if (session.projectPath === projectPath && !session.isComplete && session.isReady) {
       return session;
     }
   }

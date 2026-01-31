@@ -72,7 +72,8 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
   const navigate = useNavigate();
   const params = useParams({ strict: false }) as { reviewId?: string };
   const { isConfigured, isLoading: configLoading, provider } = useConfig();
-  const { state, start, stop } = useTriageStream();
+  const { state, start, stop, resume } = useTriageStream();
+
   const startTimeRef = useRef<Date>(new Date());
   const hasStartedRef = useRef(false);
   const hasStreamedRef = useRef(false);
@@ -95,14 +96,26 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     }
   }, [state.reviewId, params.reviewId, navigate]);
 
-  // Auto-start on mount (only if configured)
+  // Auto-start or resume on mount (only if configured)
   useEffect(() => {
     if (hasStartedRef.current) return;
     if (configLoading) return;
     if (!isConfigured) return;
     hasStartedRef.current = true;
-    start({ staged: mode === 'staged' });
-  }, [mode, start, configLoading, isConfigured]);
+
+    const options = { staged: mode === 'staged' };
+
+    if (params.reviewId) {
+      // Try to resume existing session
+      resume(params.reviewId).catch(() => {
+        // Resume failed - start new review instead
+        start(options);
+      });
+    } else {
+      // Start new review
+      start(options);
+    }
+  }, [mode, start, resume, configLoading, isConfigured, params.reviewId]);
 
   // Notify parent when streaming completes (only after streaming has actually occurred)
   useEffect(() => {
@@ -138,7 +151,7 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
 
   const metrics = useMemo(() => ({
     filesProcessed: state.fileProgress.completed.size,
-    filesTotal: state.fileProgress.total || state.fileProgress.completed.size || 1,
+    filesTotal: state.fileProgress.total || state.fileProgress.completed.size,
     issuesFound: state.issues.length,
     elapsed: 0,
   }), [state.fileProgress.completed.size, state.fileProgress.total, state.issues.length]);

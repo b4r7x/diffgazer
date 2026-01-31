@@ -26,27 +26,47 @@ export async function streamTriageWithEvents(
 ): Promise<Result<StreamTriageResult, StreamTriageError>> {
   const { staged, files, lenses, profile, signal, ...handlers } = options;
 
-  console.log("[API:STREAM_START]", { staged, files, lenses, profile });
-
   const response = await streamTriage(client, { staged, files, lenses, profile, signal });
-
-  console.log("[API:RESPONSE]", {
-    status: response.status,
-    ok: response.ok,
-    headers: Object.fromEntries(response.headers.entries()),
-    hasBody: !!response.body,
-  });
 
   const reader = response.body?.getReader();
 
   if (!reader) {
-    console.error("[API:NO_READER] response.body is null");
     return err({ code: "STREAM_ERROR", message: "No response body" });
   }
 
-  console.log("[API:READER_CREATED] starting processTriageStream");
-  const result = await processTriageStream(reader, handlers);
-  console.log("[API:STREAM_RESULT]", result.ok ? "ok" : "err", result.ok ? { reviewId: result.value.reviewId, events: result.value.agentEvents.length } : result.error);
+  return processTriageStream(reader, handlers);
+}
 
-  return result;
+export interface ResumeTriageOptions {
+  reviewId: string;
+  signal?: AbortSignal;
+  onAgentEvent?: StreamTriageOptions["onAgentEvent"];
+  onStepEvent?: StreamTriageOptions["onStepEvent"];
+}
+
+export async function resumeTriageStream(
+  client: ApiClient,
+  options: ResumeTriageOptions
+): Promise<Result<void, StreamTriageError>> {
+  const { reviewId, signal, ...handlers } = options;
+
+  const response = await client.stream(`/reviews/${reviewId}/stream`, { signal });
+
+  if (!response.ok) {
+    return err({ code: "NOT_FOUND", message: "Session not found" });
+  }
+
+  const reader = response.body?.getReader();
+
+  if (!reader) {
+    return err({ code: "STREAM_ERROR", message: "No response body" });
+  }
+
+  const result = await processTriageStream(reader, handlers);
+
+  if (!result.ok) {
+    return err(result.error);
+  }
+
+  return { ok: true, value: undefined };
 }

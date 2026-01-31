@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { cn } from '../../../lib/utils';
 import { LogEntry } from './log-entry';
 import { ScrollArea } from '../scroll-area';
@@ -25,20 +25,29 @@ export function ActivityLog({
   className,
   ...props
 }: ActivityLogProps) {
-  const endRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [isNearBottom, setIsNearBottom] = useState(true);
+
+  const handleScroll = useCallback(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+    setIsNearBottom(distanceFromBottom <= 50);
+  }, []);
 
   useEffect(() => {
-    if (autoScroll && endRef.current) {
-      endRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (autoScroll && isNearBottom && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [entries, autoScroll]);
+  }, [entries, autoScroll, isNearBottom]);
 
   return (
     <ScrollArea
-      className={cn(
-        'flex-1 font-mono text-sm leading-relaxed',
-        className
-      )}
+      ref={scrollRef}
+      onScroll={handleScroll}
+      className={cn('flex-1 font-mono text-sm leading-relaxed', className)}
       {...props}
     >
       <div className="space-y-1 p-2">
@@ -57,7 +66,6 @@ export function ActivityLog({
         {showCursor && (
           <span className="inline-block h-4 w-2 bg-tui-fg cursor-blink" />
         )}
-        <div ref={endRef} />
       </div>
     </ScrollArea>
   );
