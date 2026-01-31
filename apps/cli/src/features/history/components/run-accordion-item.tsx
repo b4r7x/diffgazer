@@ -36,23 +36,18 @@ export function RunAccordionItem({
 
   return (
     <Box flexDirection="column">
-      {/* Header row */}
+      {/* Header row - no borders, clean layout */}
       <Box
         flexDirection="column"
         paddingX={1}
         paddingY={0}
-        borderStyle="single"
-        borderColor={isSelected ? colors.ui.borderFocused : colors.ui.border}
-        borderLeft={isSelected}
-        borderRight={false}
-        borderTop={false}
-        borderBottom={!isExpanded}
+        marginBottom={isExpanded ? 0 : 0}
       >
         {/* First line: ID, branch, provider, timestamp */}
         <Box>
           {/* Selection indicator */}
-          <Text color={isSelected ? colors.ui.info : colors.ui.border}>
-            {isSelected ? "▌" : "│"}
+          <Text color={isSelected ? colors.ui.info : colors.ui.textMuted}>
+            {isSelected ? "▶" : " "}
           </Text>
           <Text> </Text>
 
@@ -107,13 +102,8 @@ export function RunAccordionItem({
       {isExpanded && issues.length > 0 && (
         <Box
           flexDirection="column"
-          paddingLeft={3}
-          borderStyle="single"
-          borderColor={colors.ui.border}
-          borderLeft={true}
-          borderRight={false}
-          borderTop={false}
-          borderBottom={true}
+          paddingLeft={4}
+          marginLeft={1}
         >
           {issues.map((issue) => (
             <IssueListItem
@@ -124,6 +114,7 @@ export function RunAccordionItem({
           ))}
         </Box>
       )}
+
     </Box>
   );
 }

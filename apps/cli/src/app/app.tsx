@@ -210,8 +210,6 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
           <SettingsProvidersView
             projectId={projectId}
             onBack={goToSettingsHub}
-            onSelectModel={handleSelectModel}
-            onSetApiKey={handleSetApiKey}
           />
         )}
         {view === "settings-diagnostics" && <SettingsDiagnosticsView onBack={goToSettingsHub} />}

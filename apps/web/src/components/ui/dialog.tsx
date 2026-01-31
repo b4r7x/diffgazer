@@ -73,9 +73,10 @@ export function DialogTrigger({ children, asChild, ...props }: DialogTriggerProp
   const handleClick = createClickHandler(() => onOpenChange(true), props.onClick);
 
   if (asChild && React.isValidElement(children)) {
-    return React.cloneElement(children, {
+    const childElement = children as React.ReactElement<{ onClick?: React.MouseEventHandler<HTMLElement> }>;
+    return React.cloneElement(childElement, {
       ...props,
-      onClick: createClickHandler(() => onOpenChange(true), children.props.onClick),
+      onClick: createClickHandler(() => onOpenChange(true), childElement.props.onClick),
     } as React.HTMLAttributes<HTMLElement>);
   }
 
@@ -215,9 +216,10 @@ export function DialogClose({ children, asChild, ...props }: DialogCloseProps) {
   const handleClick = createClickHandler(() => onOpenChange(false), props.onClick);
 
   if (asChild && React.isValidElement(children)) {
-    return React.cloneElement(children, {
+    const childElement = children as React.ReactElement<{ onClick?: React.MouseEventHandler<HTMLElement> }>;
+    return React.cloneElement(childElement, {
       ...props,
-      onClick: createClickHandler(() => onOpenChange(false), children.props.onClick),
+      onClick: createClickHandler(() => onOpenChange(false), childElement.props.onClick),
     } as React.HTMLAttributes<HTMLElement>);
   }
 

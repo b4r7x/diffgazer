@@ -6,7 +6,14 @@ import {
 } from "@repo/schemas/stream-events";
 import type { AgentStreamEvent } from "@repo/schemas/agent-event";
 import type { LensId, ProfileId } from "@repo/schemas/lens";
+import type { StepState } from "@repo/schemas/step-event";
+import { isStepEvent } from "@repo/schemas/step-event";
 import { getErrorMessage, isAbortError, createErrorState, truncateToDisplayLength } from "@repo/core";
+import {
+  triageReducer,
+  createInitialTriageState,
+  type TriageState as CoreTriageState,
+} from "@repo/core/review";
 import { useSSEStream, type SSEStreamError } from "../../../hooks/use-sse-stream.js";
 import { streamTriage } from "../api/index.js";
 
@@ -21,8 +28,8 @@ export interface LensProgress {
 
 export type TriageState =
   | { status: "idle" }
-  | { status: "loading"; content: string; lensProgress: LensProgress; agentEvents: AgentStreamEvent[] }
-  | { status: "success"; data: TriageResult; lensProgress: LensProgress; reviewId: string; agentEvents: AgentStreamEvent[] }
+  | { status: "loading"; content: string; lensProgress: LensProgress; agentEvents: AgentStreamEvent[]; steps: StepState[] }
+  | { status: "success"; data: TriageResult; lensProgress: LensProgress; reviewId: string; agentEvents: AgentStreamEvent[]; steps: StepState[] }
   | { status: "error"; error: TriageError };
 
 const initialLensProgress: LensProgress = {
@@ -57,16 +64,32 @@ export function useTriage(options: UseTriageOptions = {}) {
   const streamedContentRef = useRef("");
   const lensProgressRef = useRef<LensProgress>(initialLensProgress);
   const agentEventsRef = useRef<AgentStreamEvent[]>([]);
+  const coreStateRef = useRef<CoreTriageState>(createInitialTriageState());
 
   const handleEvent = useCallback((event: FullTriageStreamEvent): boolean => {
+    // Dispatch step and agent events to core reducer
+    if (isStepEvent(event) || isAgentEvent(event)) {
+      coreStateRef.current = triageReducer(coreStateRef.current, { type: "EVENT", event });
+    }
+
     if (isAgentEvent(event)) {
       agentEventsRef.current = [...agentEventsRef.current, event];
       setState((prev) => {
         if (prev.status === "loading") {
-          return { ...prev, agentEvents: agentEventsRef.current };
+          return { ...prev, agentEvents: agentEventsRef.current, steps: coreStateRef.current.steps };
         }
         return prev;
       });
+    }
+
+    if (isStepEvent(event)) {
+      setState((prev) => {
+        if (prev.status === "loading") {
+          return { ...prev, steps: coreStateRef.current.steps };
+        }
+        return prev;
+      });
+      return false;
     }
 
     if (event.type === "chunk") {
@@ -80,6 +103,7 @@ export function useTriage(options: UseTriageOptions = {}) {
         content: streamedContentRef.current,
         lensProgress: lensProgressRef.current,
         agentEvents: agentEventsRef.current,
+        steps: coreStateRef.current.steps,
       });
       return false;
     }
@@ -96,6 +120,7 @@ export function useTriage(options: UseTriageOptions = {}) {
         content: streamedContentRef.current,
         lensProgress: lensProgressRef.current,
         agentEvents: agentEventsRef.current,
+        steps: coreStateRef.current.steps,
       });
       return false;
     }
@@ -110,22 +135,26 @@ export function useTriage(options: UseTriageOptions = {}) {
         content: streamedContentRef.current,
         lensProgress: lensProgressRef.current,
         agentEvents: agentEventsRef.current,
+        steps: coreStateRef.current.steps,
       });
       return false;
     }
 
     if (event.type === "complete") {
+      coreStateRef.current = triageReducer(coreStateRef.current, { type: "COMPLETE" });
       setState({
         status: "success",
         data: event.result,
         lensProgress: lensProgressRef.current,
         reviewId: event.reviewId,
         agentEvents: agentEventsRef.current,
+        steps: coreStateRef.current.steps,
       });
       return true;
     }
 
     if (event.type === "error") {
+      coreStateRef.current = triageReducer(coreStateRef.current, { type: "ERROR", error: event.error.message });
       setState({ status: "error", error: event.error });
       return true;
     }
@@ -148,7 +177,8 @@ export function useTriage(options: UseTriageOptions = {}) {
     streamedContentRef.current = "";
     lensProgressRef.current = initialLensProgress;
     agentEventsRef.current = [];
-    setState({ status: "loading", content: "", lensProgress: initialLensProgress, agentEvents: [] });
+    coreStateRef.current = triageReducer(createInitialTriageState(), { type: "START" });
+    setState({ status: "loading", content: "", lensProgress: initialLensProgress, agentEvents: [], steps: coreStateRef.current.steps });
 
     try {
       const res = await streamTriage({
@@ -175,6 +205,7 @@ export function useTriage(options: UseTriageOptions = {}) {
 
   function reset(): void {
     abort();
+    coreStateRef.current = triageReducer(coreStateRef.current, { type: "RESET" });
     setState({ status: "idle" });
   }
 

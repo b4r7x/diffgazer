@@ -29,7 +29,7 @@ export { SelectList, type SelectOption } from "./select-list.js";
 
 // Overlays (Wave 5)
 export { Modal } from "./modal.js";
-export { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogClose } from "./dialog.js";
+export { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogClose, DialogActions, DialogAction, useDialogContext } from "./dialog.js";
 export { Toast, ToastContainer, useToast } from "./toast.js";
 export { Callout } from "./callout.js";
 
@@ -42,8 +42,8 @@ export { CapabilityCard } from "./capability-card.js";
 export { StatusCard } from "./status-card.js";
 
 // Progress (Wave 7)
-export { ProgressStep } from "./progress-step.js";
-export { ProgressList } from "./progress-list.js";
+export { ProgressStep, type ProgressStatus } from "./progress-step.js";
+export { ProgressList, type ProgressStepData } from "./progress-list.js";
 export { LogEntry } from "./log-entry.js";
 export { ActivityLog } from "./activity-log.js";
 

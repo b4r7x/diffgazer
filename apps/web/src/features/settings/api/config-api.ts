@@ -33,4 +33,26 @@ export async function saveSettings(settings: Partial<SettingsConfig>): Promise<v
     await api.post('/settings', settings);
 }
 
+export async function activateProvider(
+    providerId: string,
+    model?: string
+): Promise<{ provider: string; model?: string }> {
+    return api.post(`/config/provider/${providerId}/activate`, model ? { model } : undefined);
+}
+
+export async function deleteProviderCredentials(
+    providerId: string
+): Promise<{ deleted: boolean; provider: string }> {
+    return api.delete(`/config/provider/${providerId}`);
+}
+
+export async function loadInit(): Promise<{
+    config: { provider: string; model?: string } | null;
+    settings: SettingsConfig;
+    providers: ProviderStatus[];
+    configured: boolean;
+}> {
+    return api.get('/config/init');
+}
+
 export type { UserConfig, SettingsConfig, ProviderStatus, SaveConfigRequest };

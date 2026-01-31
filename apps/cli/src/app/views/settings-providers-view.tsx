@@ -2,12 +2,13 @@ import type { ReactElement } from "react";
 import { useState, useEffect, useMemo } from "react";
 import { Box, Text, useInput } from "ink";
 import type { AIProvider, ProviderStatus } from "@repo/schemas/config";
-import { AVAILABLE_PROVIDERS, PROVIDER_CAPABILITIES } from "@repo/schemas/config";
+import { AVAILABLE_PROVIDERS, PROVIDER_CAPABILITIES, PROVIDER_ENV_VARS } from "@repo/schemas/config";
 import { SplitPane } from "../../components/ui/split-pane.js";
 import { Panel, PanelHeader, PanelContent, PanelDivider } from "../../components/ui/panel.js";
 import { Badge } from "../../components/ui/badge.js";
 import { useTerminalDimensions } from "../../hooks/index.js";
 import { useSettingsState } from "../../features/settings/hooks/use-settings-state.js";
+import { ApiKeyDialog, ModelSelectDialog } from "../../features/settings/components/index.js";
 
 type FocusZone = "search" | "filters" | "list" | "actions";
 type ProviderFilter = "all" | "configured" | "needs-key" | "free" | "paid";
@@ -31,16 +32,12 @@ export const SETTINGS_PROVIDERS_FOOTER_SHORTCUTS = [
 interface SettingsProvidersViewProps {
   projectId: string;
   onBack: () => void;
-  onSelectModel: (provider: AIProvider) => void;
-  onSetApiKey: (provider: AIProvider) => void;
   isActive?: boolean;
 }
 
 export function SettingsProvidersView({
   projectId,
   onBack,
-  onSelectModel,
-  onSetApiKey,
   isActive = true,
 }: SettingsProvidersViewProps): ReactElement {
   const { columns, isNarrow } = useTerminalDimensions();
@@ -59,6 +56,8 @@ export function SettingsProvidersView({
   const [filterIndex, setFilterIndex] = useState(0);
   const [selectedProviderIndex, setSelectedProviderIndex] = useState(0);
   const [actionIndex, setActionIndex] = useState(0);
+  const [showApiKeyDialog, setShowApiKeyDialog] = useState<AIProvider | null>(null);
+  const [showModelSelectDialog, setShowModelSelectDialog] = useState<AIProvider | null>(null);
 
   useEffect(() => {
     void settingsState.loadAll();
@@ -166,24 +165,61 @@ export function SettingsProvidersView({
     switch (actionId) {
       case "select-active":
         if (selectedStatus?.hasApiKey) {
-          await settingsState.saveCredentials(
-            selectedProvider.id,
-            "",
-            selectedStatus.model
-          );
+          if (!selectedStatus.model) {
+            setShowModelSelectDialog(selectedProvider.id);
+          } else {
+            await settingsState.activateProvider(
+              selectedProvider.id,
+              selectedStatus.model
+            );
+          }
         }
         break;
       case "set-api-key":
-        onSetApiKey(selectedProvider.id);
+        setShowApiKeyDialog(selectedProvider.id);
         break;
       case "remove-key":
-        // Would need deleteProviderCredentials API
+        await settingsState.deleteProviderCredentials(selectedProvider.id);
         break;
       case "change-model":
-        onSelectModel(selectedProvider.id);
+        setShowModelSelectDialog(selectedProvider.id);
         break;
     }
   }
+
+  // Dialog handlers
+  async function handleApiKeySubmit(method: "paste" | "env", value: string): Promise<void> {
+    if (!showApiKeyDialog) return;
+    try {
+      await settingsState.saveCredentials(showApiKeyDialog, method === "paste" ? value : "", undefined);
+    } catch (err) {
+      // Error is already set in settingsState.error, just log
+      console.error('Failed to save API key:', err);
+    }
+  }
+
+  async function handleApiKeyRemove(): Promise<void> {
+    if (!showApiKeyDialog) return;
+    try {
+      await settingsState.deleteProviderCredentials(showApiKeyDialog);
+    } catch (err) {
+      // Error is already set in settingsState.error, just log
+      console.error('Failed to remove API key:', err);
+    }
+  }
+
+  async function handleModelSelect(modelId: string): Promise<void> {
+    if (!showModelSelectDialog) return;
+    try {
+      await settingsState.activateProvider(showModelSelectDialog, modelId);
+    } catch (err) {
+      // Error is already set in settingsState.error, just log
+      console.error('Failed to activate provider:', err);
+    }
+  }
+
+  // Check if any dialog is open (to disable main view input)
+  const isDialogOpen = showApiKeyDialog !== null || showModelSelectDialog !== null;
 
   useInput(
     (input, key) => {
@@ -285,8 +321,22 @@ export function SettingsProvidersView({
           break;
       }
     },
-    { isActive }
+    { isActive: isActive && !isDialogOpen }
   );
+
+  // Get current dialog provider info
+  const apiKeyDialogProvider = showApiKeyDialog
+    ? AVAILABLE_PROVIDERS.find((p) => p.id === showApiKeyDialog)
+    : null;
+  const apiKeyDialogStatus = showApiKeyDialog
+    ? providerStatusMap.get(showApiKeyDialog)
+    : undefined;
+  const modelSelectDialogProvider = showModelSelectDialog
+    ? AVAILABLE_PROVIDERS.find((p) => p.id === showModelSelectDialog)
+    : null;
+  const modelSelectDialogStatus = showModelSelectDialog
+    ? providerStatusMap.get(showModelSelectDialog)
+    : undefined;
 
   if (settingsState.isLoading) {
     return (
@@ -296,6 +346,34 @@ export function SettingsProvidersView({
     );
   }
 
+  // When dialog is open, render ONLY the dialog (not main view)
+  if (showApiKeyDialog && apiKeyDialogProvider) {
+    return (
+      <ApiKeyDialog
+        isOpen={true}
+        onClose={() => setShowApiKeyDialog(null)}
+        providerName={apiKeyDialogProvider.name}
+        envVarName={PROVIDER_ENV_VARS[showApiKeyDialog] ?? `${showApiKeyDialog.toUpperCase()}_API_KEY`}
+        hasExistingKey={apiKeyDialogStatus?.hasApiKey ?? false}
+        onSubmit={handleApiKeySubmit}
+        onRemoveKey={apiKeyDialogStatus?.hasApiKey ? handleApiKeyRemove : undefined}
+      />
+    );
+  }
+
+  if (showModelSelectDialog && modelSelectDialogProvider) {
+    return (
+      <ModelSelectDialog
+        isOpen={true}
+        onClose={() => setShowModelSelectDialog(null)}
+        provider={showModelSelectDialog}
+        currentModel={modelSelectDialogStatus?.model}
+        onSelect={handleModelSelect}
+      />
+    );
+  }
+
+  // Main View
   return (
     <Box flexDirection="column" flexGrow={1}>
       <SplitPane
@@ -387,7 +465,6 @@ export function SettingsProvidersView({
           )}
         </Panel>
       </SplitPane>
-
     </Box>
   );
 }

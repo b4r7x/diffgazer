@@ -5,6 +5,8 @@ import type {
   ConfigCheckResponse,
   ProvidersStatusResponse,
   OpenRouterModel,
+  InitResponse,
+  DeleteProviderCredentialsResponse,
 } from "@repo/schemas/config";
 import type { SettingsConfig, TrustConfig } from "@repo/schemas/settings";
 
@@ -82,5 +84,20 @@ export const settingsApi = {
   async fetchOpenRouterModels(): Promise<OpenRouterModel[]> {
     const response = await api().get<OpenRouterModelsResponse>("/config/openrouter/models");
     return response.models;
+  },
+
+  async activateProvider(providerId: AIProvider, model?: string): Promise<CurrentConfigResponse> {
+    return await api().post<CurrentConfigResponse>(
+      `/config/provider/${providerId}/activate`,
+      model ? { model } : undefined
+    );
+  },
+
+  async deleteProviderCredentials(providerId: AIProvider): Promise<DeleteProviderCredentialsResponse> {
+    return await api().delete<DeleteProviderCredentialsResponse>(`/config/provider/${providerId}`);
+  },
+
+  async loadInit(): Promise<InitResponse> {
+    return await api().get<InitResponse>("/config/init");
   },
 };

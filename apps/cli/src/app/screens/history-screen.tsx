@@ -8,7 +8,6 @@ import { useTheme } from "../../hooks/use-theme.js";
 import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
 import { FocusablePane } from "../../components/ui/focusable-pane.js";
 import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs.js";
-import { FooterBar, type Shortcut } from "../../components/ui/footer-bar.js";
 import { TimelineList } from "../../features/history/components/timeline-list.js";
 import { RunAccordionItem } from "../../features/history/components/run-accordion-item.js";
 import { HistoryInsightsPane } from "../../features/history/components/history-insights-pane.js";
@@ -202,15 +201,6 @@ export function HistoryScreen({
     }
   });
 
-  const shortcuts: Shortcut[] = [
-    { key: "Tab", label: "Focus" },
-    { key: "↑/↓", label: "Navigate" },
-    { key: "Enter", label: "Expand" },
-    { key: "r", label: "Resume" },
-    { key: "e", label: "Export" },
-    { key: "b", label: "Back" },
-  ];
-
   return (
     <Box flexDirection="column" height="100%">
       {/* Tabs */}
@@ -252,24 +242,29 @@ export function HistoryScreen({
             </Box>
             <Text color={colors.ui.border}>{"─".repeat(runsDividerWidth)}</Text>
           </Box>
-          <Box flexDirection="column">
+          <Box flexDirection="column" overflowY="hidden">
             {activeTab === "runs" ? (
               filteredRuns.length > 0 ? (
-                filteredRuns.map((run) => (
-                  <RunAccordionItem
-                    key={run.id}
-                    id={run.id}
-                    displayId={run.displayId}
-                    branch={run.branch}
-                    provider={run.provider}
-                    timestamp={run.timestamp}
-                    summary={run.summary}
-                    issues={run.issues}
-                    isSelected={run.id === selectedRunId}
-                    isExpanded={run.id === expandedRunId}
-                    criticalCount={run.criticalCount}
-                    warningCount={run.warningCount}
-                  />
+                filteredRuns.map((run, index) => (
+                  <Box key={run.id} flexDirection="column">
+                    <RunAccordionItem
+                      id={run.id}
+                      displayId={run.displayId}
+                      branch={run.branch}
+                      provider={run.provider}
+                      timestamp={run.timestamp}
+                      summary={run.summary}
+                      issues={run.issues}
+                      isSelected={run.id === selectedRunId}
+                      isExpanded={run.id === expandedRunId}
+                      criticalCount={run.criticalCount}
+                      warningCount={run.warningCount}
+                    />
+                    {/* Separator between items */}
+                    {index < filteredRuns.length - 1 && (
+                      <Text color={colors.ui.border}>{"─".repeat(runsDividerWidth)}</Text>
+                    )}
+                  </Box>
                 ))
               ) : (
                 <Box paddingX={1} paddingY={1}>
@@ -294,9 +289,6 @@ export function HistoryScreen({
           />
         </FocusablePane>
       </Box>
-
-      {/* Footer */}
-      <FooterBar shortcuts={shortcuts} />
     </Box>
   );
 }
