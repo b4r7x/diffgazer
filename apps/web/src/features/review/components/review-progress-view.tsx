@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { cn } from '@/lib/utils';
 import { PanelHeader, ProgressList, ActivityLog, Timer, MetricItem } from '@/components/ui';
@@ -33,11 +33,15 @@ export function ReviewProgressView({
   const navigate = useNavigate();
   const [focusPane, setFocusPane] = useState<'progress' | 'log'>('progress');
   const [expandedStepId, setExpandedStepId] = useState<string | null>(null);
+  const hasAutoExpandedTriage = useRef(false);
 
+  // Auto-expand triage step once when it becomes active with substeps
   useEffect(() => {
+    if (hasAutoExpandedTriage.current) return;
     const triageStep = steps.find(s => s.id === 'triage');
     if (triageStep?.status === 'active' && triageStep.substeps && triageStep.substeps.length > 0) {
       setExpandedStepId('triage');
+      hasAutoExpandedTriage.current = true;
     }
   }, [steps]);
 
@@ -99,7 +103,10 @@ export function ReviewProgressView({
           <div className="space-y-3 pt-2">
             <MetricItem
               label="Files Processed"
-              value={`${metrics.filesProcessed}/${metrics.filesTotal}`}
+              value={metrics.filesTotal > 0
+                ? `${metrics.filesProcessed}/${metrics.filesTotal}`
+                : `${metrics.filesProcessed}/...`
+              }
             />
             <MetricItem
               label="Issues Found"
@@ -118,7 +125,7 @@ export function ReviewProgressView({
       {/* Right Panel - Activity Log */}
       <div
         className={cn(
-          'w-2/3 flex flex-col pl-6',
+          'w-2/3 flex flex-col pl-6 overflow-hidden',
           focusPane === 'log' && 'ring-1 ring-tui-blue ring-inset'
         )}
       >

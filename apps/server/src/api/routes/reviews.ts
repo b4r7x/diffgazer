@@ -40,3 +40,38 @@ reviews.delete("/:id", async (c) => {
 
   return c.json({ existed: result.value.existed });
 });
+
+reviews.get("/:id/stream", async (c) => {
+  const reviewId = requireUuidParam(c, "id");
+  const session = getSession(reviewId);
+
+  if (!session) {
+    return errorResponse(c, "Session not found", ErrorCode.NOT_FOUND, 404);
+  }
+
+  return streamSSE(c, async (stream) => {
+    for (const event of session.events) {
+      await stream.writeSSE({
+        event: event.type,
+        data: JSON.stringify(event),
+      });
+    }
+
+    if (session.isComplete) {
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      const unsubscribe = subscribe(reviewId, async (event) => {
+        await stream.writeSSE({
+          event: event.type,
+          data: JSON.stringify(event),
+        });
+        if (event.type === "complete" || event.type === "error") {
+          unsubscribe();
+          resolve();
+        }
+      });
+    });
+  });
+});
