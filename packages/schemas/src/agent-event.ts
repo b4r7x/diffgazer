@@ -120,10 +120,19 @@ export const AgentCompleteEventSchema = z.object({
   timestamp: z.string(),
 });
 
+export const LensStatSchema = z.object({
+  lensId: LensIdSchema,
+  issueCount: z.number(),
+  status: z.enum(["success", "failed"]),
+});
+export type LensStat = z.infer<typeof LensStatSchema>;
+
 export const OrchestratorCompleteEventSchema = z.object({
   type: z.literal("orchestrator_complete"),
   summary: z.string(),
   totalIssues: z.number(),
+  lensStats: z.array(LensStatSchema).optional(),
+  filesAnalyzed: z.number().optional(),
   timestamp: z.string(),
 });
 

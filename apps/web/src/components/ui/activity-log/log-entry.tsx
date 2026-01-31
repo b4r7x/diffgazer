@@ -15,6 +15,8 @@ const tagVariants = cva('font-bold', {
       lens: 'text-tui-violet',
       warning: 'text-tui-yellow',
       error: 'text-tui-red',
+      agent: 'text-tui-green',
+      thinking: 'text-tui-cyan',
     },
   },
   defaultVariants: { tagType: 'system' },

@@ -1,13 +1,19 @@
 import type { AgentStreamEvent, AgentState, TriageIssue } from "@repo/schemas";
 import type { StepEvent, StepState, StepId } from "@repo/schemas/step-event";
-import { createInitialSteps, STEP_METADATA } from "@repo/schemas/step-event";
-import { AGENT_METADATA, type AgentId } from "@repo/schemas/agent-event";
+import { createInitialSteps, isStepEvent } from "@repo/schemas/step-event";
+
+export interface FileProgress {
+  total: number;
+  processed: Set<string>;
+}
 
 // Unified triage state for web and CLI
 export interface TriageState {
   steps: StepState[];
   agents: AgentState[];
   issues: TriageIssue[];
+  events: (AgentStreamEvent | StepEvent)[];
+  fileProgress: FileProgress;
   isStreaming: boolean;
   error: string | null;
 }
@@ -24,6 +30,8 @@ export function createInitialTriageState(): TriageState {
     steps: createInitialSteps(),
     agents: [],
     issues: [],
+    events: [],
+    fileProgress: { total: 0, processed: new Set() },
     isStreaming: false,
     error: null,
   };
@@ -41,7 +49,7 @@ function updateAgents(agents: AgentState[], event: AgentStreamEvent): AgentState
       id: event.agent.id,
       meta: event.agent,
       status: "running",
-      progress: 0,
+      progress: 50,
       issueCount: 0,
       currentAction: "Starting...",
     };
@@ -60,9 +68,7 @@ function updateAgents(agents: AgentState[], event: AgentStreamEvent): AgentState
   }
   if (event.type === "tool_call") {
     return agents.map((a) =>
-      a.id === event.agent
-        ? { ...a, lastToolCall: event.tool, currentAction: `Using tool: ${event.tool}` }
-        : a
+      a.id === event.agent ? { ...a, currentAction: `Using tool: ${event.tool}` } : a
     );
   }
   if (event.type === "agent_complete") {
@@ -77,14 +83,15 @@ function updateAgents(agents: AgentState[], event: AgentStreamEvent): AgentState
 
 function updateIssues(issues: TriageIssue[], event: AgentStreamEvent): TriageIssue[] {
   if (event.type === "issue_found" && event.issue) {
+    // Server emits full TriageIssue in issue_found events (see apps/server/src/review/triage.ts)
     return [...issues, event.issue as TriageIssue];
   }
   return issues;
 }
 
-function isStepEvent(event: AgentStreamEvent | StepEvent): event is StepEvent {
-  const type = event.type;
-  return type === "step_start" || type === "step_complete" || type === "step_error";
+function extractFilePath(toolInput: string): string {
+  const colonIndex = toolInput.indexOf(':');
+  return colonIndex === -1 ? toolInput : toolInput.substring(0, colonIndex);
 }
 
 export function triageReducer(state: TriageState, action: TriageAction): TriageState {
@@ -97,26 +104,58 @@ export function triageReducer(state: TriageState, action: TriageAction): TriageS
 
       if (isStepEvent(event)) {
         if (event.type === "step_start") {
-          return { ...state, steps: updateStepStatus(state.steps, event.step, "active") };
+          return {
+            ...state,
+            steps: updateStepStatus(state.steps, event.step, "active"),
+            events: [...state.events, event],
+          };
         }
         if (event.type === "step_complete") {
-          return { ...state, steps: updateStepStatus(state.steps, event.step, "completed") };
+          return {
+            ...state,
+            steps: updateStepStatus(state.steps, event.step, "completed"),
+            events: [...state.events, event],
+          };
         }
         if (event.type === "step_error") {
           return {
             ...state,
             steps: updateStepStatus(state.steps, event.step, "error"),
+            events: [...state.events, event],
             error: event.error,
+            isStreaming: false,
           };
         }
         return state;
       }
 
-      // Agent events
+      // Handle tool_call for readFileContext to track file progress
+      if (event.type === "tool_call" && event.tool === "readFileContext") {
+        const newProcessed = new Set(state.fileProgress.processed);
+        newProcessed.add(extractFilePath(event.input));
+        return {
+          ...state,
+          agents: updateAgents(state.agents, event),
+          fileProgress: { ...state.fileProgress, processed: newProcessed },
+          events: [...state.events, event],
+        };
+      }
+
+      // Handle orchestrator_complete to set total files
+      if (event.type === "orchestrator_complete" && event.filesAnalyzed) {
+        return {
+          ...state,
+          fileProgress: { ...state.fileProgress, total: event.filesAnalyzed },
+          events: [...state.events, event],
+        };
+      }
+
+      // Agent events - accumulate for activity log
       return {
         ...state,
         agents: updateAgents(state.agents, event),
         issues: updateIssues(state.issues, event),
+        events: [...state.events, event],
       };
     }
 

@@ -101,7 +101,7 @@ export const TriageStreamEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("chunk"), content: z.string() }),
   z.object({ type: z.literal("lens_start"), lens: z.string(), index: z.number(), total: z.number() }),
   z.object({ type: z.literal("lens_complete"), lens: z.string() }),
-  z.object({ type: z.literal("complete"), result: TriageResultSchema, reviewId: z.string() }),
+  z.object({ type: z.literal("complete"), result: TriageResultSchema, reviewId: z.string(), durationMs: z.number().optional() }).passthrough(),
   z.object({ type: z.literal("error"), error: TriageErrorSchema }),
 ]);
 export type TriageStreamEvent = z.infer<typeof TriageStreamEventSchema>;

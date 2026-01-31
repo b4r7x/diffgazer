@@ -89,7 +89,7 @@ export type LensStats = z.infer<typeof LensStatsSchema>;
 // Log Types
 // ============================================================================
 
-export const LOG_TAG_TYPES = ["system", "tool", "lens", "warning", "error"] as const;
+export const LOG_TAG_TYPES = ["system", "tool", "lens", "warning", "error", "agent", "thinking"] as const;
 export const LogTagTypeSchema = z.enum(LOG_TAG_TYPES);
 export type LogTagType = z.infer<typeof LogTagTypeSchema>;
 
