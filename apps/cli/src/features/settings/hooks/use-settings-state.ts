@@ -2,10 +2,8 @@ import { useState, useCallback } from "react";
 import { useAsyncOperation } from "../../../hooks/use-async-operation.js";
 import type { AIProvider, ProviderStatus } from "@repo/schemas/config";
 import type { SettingsConfig, TrustConfig, Theme } from "@repo/schemas/settings";
+import { DEFAULT_TTL } from "@repo/core";
 import { settingsApi } from "../api/settings-api.js";
-
-// Provider status cache with 5-minute TTL
-const CACHE_TTL = 5 * 60 * 1000;
 
 interface CacheEntry<T> {
   data: T;
@@ -16,7 +14,7 @@ let providerStatusCache: CacheEntry<ProviderStatus[]> | null = null;
 
 export function getCachedProviders(): ProviderStatus[] | null {
   if (!providerStatusCache) return null;
-  if (Date.now() - providerStatusCache.timestamp > CACHE_TTL) {
+  if (Date.now() - providerStatusCache.timestamp > DEFAULT_TTL) {
     providerStatusCache = null;
     return null;
   }

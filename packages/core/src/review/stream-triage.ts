@@ -1,10 +1,9 @@
 import type { LensId, ProfileId } from "@repo/schemas/lens";
 import type { TriageResult, TriageError } from "@repo/schemas/triage";
 import type { AgentStreamEvent } from "@repo/schemas/agent-event";
-import type { FullTriageStreamEvent } from "@repo/schemas/stream-events";
-import { FullTriageStreamEventSchema } from "@repo/schemas/stream-events";
+import type { FullTriageStreamEvent } from "@repo/schemas/full-triage-stream-event";
+import { FullTriageStreamEventSchema } from "@repo/schemas/full-triage-stream-event";
 import { parseSSEStream } from "../streaming/sse-parser.js";
-import { validateSchema } from "../utils/validation.js";
 import { ok, err, type Result } from "../result.js";
 
 const AGENT_EVENT_TYPES = [
@@ -77,14 +76,14 @@ export async function processTriageStream(
   let triageError: TriageError | null = null;
 
   await parseSSEStream<FullTriageStreamEvent>(reader, {
-    parseEvent(jsonData) {
-      const result = validateSchema(jsonData, FullTriageStreamEventSchema, (msg) => msg);
-      if (!result.ok) {
+    parseEvent(jsonData: unknown) {
+      const parseResult = FullTriageStreamEventSchema.safeParse(jsonData);
+      if (!parseResult.success) {
         return undefined;
       }
-      return result.value;
+      return parseResult.data;
     },
-    onEvent(event) {
+    onEvent(event: FullTriageStreamEvent) {
       if (isAgentEvent(event)) {
         agentEvents.push(event);
         onAgentEvent?.(event);

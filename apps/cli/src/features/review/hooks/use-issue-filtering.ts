@@ -1,9 +1,10 @@
 import { useState, useMemo, useCallback } from "react";
 import type { TriageIssue } from "@repo/schemas/triage";
-import type { SeverityFilter } from "../../../components/ui/severity-filter-group.js";
-import { SEVERITY_ORDER } from "../../../components/ui/severity-filter-group.js";
-import { calculateSeverityCounts, type SeverityCounts } from "../../../lib/severity-counts.js";
-import { filterIssues } from "../../../lib/review-adapters.js";
+import { SEVERITY_ORDER } from "@repo/schemas/ui";
+import type { SeverityFilter } from "../../../components/ui/severity/index.js";
+import { calculateSeverityCounts } from "@repo/core";
+import type { SeverityCounts } from "@repo/schemas/ui";
+import { filterIssuesByPattern as filterIssues } from "@repo/core/review";
 
 interface UseIssueFilteringOptions {
   issues: TriageIssue[];

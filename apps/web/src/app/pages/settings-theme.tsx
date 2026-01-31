@@ -5,10 +5,10 @@ import type { WebTheme, ResolvedTheme } from "@/types/theme";
 import { useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useTheme } from "@/hooks/use-theme";
-import { Panel, PanelHeader, PanelContent } from "@/components/ui/panel";
+import { Panel, PanelHeader, PanelContent } from "@/components/ui/containers";
 import { Callout } from "@/components/ui/callout";
 import { ThemeSelectorContent } from "@/components/settings/theme-selector-content";
-import { ThemePreviewCard } from "@/components/theme";
+import { ThemePreviewCard } from "@/components/theme/theme-preview-card";
 
 const FOOTER_SHORTCUTS = [
   { key: "↑/↓", label: "Select" },

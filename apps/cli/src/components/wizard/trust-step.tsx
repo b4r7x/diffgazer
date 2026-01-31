@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import type { TrustCapabilities, TrustConfig, TrustMode } from "@repo/schemas/settings";
+import { DEFAULT_TRUST_CAPABILITIES } from "@repo/core";
 import { ToggleList, type ToggleOption } from "../ui/index.js";
 import { WizardFrame } from "./wizard-frame.js";
 import { type WizardMode, getWizardFrameProps } from "../../types/index.js";
@@ -21,12 +22,6 @@ interface TrustStepProps {
 }
 
 type CapabilityKey = keyof TrustCapabilities;
-
-const DEFAULT_CAPABILITIES: TrustCapabilities = {
-  readFiles: true,
-  readGit: true,
-  runCommands: false,
-};
 
 const CAPABILITY_OPTIONS: {
   id: CapabilityKey;
@@ -69,7 +64,7 @@ export function TrustStep({
   totalSteps,
   repoRoot,
   projectId,
-  initialCapabilities = DEFAULT_CAPABILITIES,
+  initialCapabilities = DEFAULT_TRUST_CAPABILITIES,
   onComplete,
   onSkip,
   onBack,

@@ -1,8 +1,8 @@
-import type { TriageSeverity } from "@repo/schemas/triage";
+import type { IssueTab } from "@repo/schemas/ui";
 
-export type IssueTab = "details" | "explain" | "trace" | "patch";
+export type { IssueTab } from "@repo/schemas/ui";
 
-export const TAB_ORDER = ["details", "explain", "trace", "patch"] as const;
+export const TAB_ORDER: IssueTab[] = ["details", "explain", "trace", "patch"];
 
 export const TAB_LABELS: Record<IssueTab, string> = {
   details: "Details",
@@ -16,14 +16,6 @@ export const TAB_KEYS: Record<IssueTab, string> = {
   explain: "2",
   trace: "3",
   patch: "4",
-};
-
-export const TRIAGE_SEVERITY_COLORS: Record<TriageSeverity, string> = {
-  blocker: "red",
-  high: "magenta",
-  medium: "yellow",
-  low: "blue",
-  nit: "gray",
 };
 
 export const AGENT_PANEL_WIDTH = 28;

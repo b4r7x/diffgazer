@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef } from "react";
-import { getErrorMessage, isAbortError, createErrorState } from "@repo/core";
+import { getErrorMessage, isAbortError } from "@repo/core";
+import { createErrorState } from "../../../lib/state-helpers.js";
 import { type ChatStreamEvent, type ChatError, ChatStreamEventSchema } from "@repo/schemas/chat";
 import { useSSEStream, type SSEStreamError } from "../../../hooks/use-sse-stream.js";
-import { sendChatMessage } from "../api/index.js";
+import { sendChatMessage } from "../api/chat-api.js";
 
 export type ChatState =
   | { status: "idle" }

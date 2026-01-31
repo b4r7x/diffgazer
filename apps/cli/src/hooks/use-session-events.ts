@@ -1,14 +1,31 @@
+// TODO: This hook needs API endpoints for session events.
+// Storage was moved to apps/server/src/storage/session-events.ts.
+// The CLI should call server API endpoints instead of direct storage access.
+// Required endpoints:
+//   - GET /api/session-events?projectId=xxx
+//   - GET /api/session-events/:sessionId?projectId=xxx
+//   - POST /api/session-events?projectId=xxx (create session)
+//   - POST /api/session-events/:sessionId/events?projectId=xxx (append event)
+
 import { useState, useCallback } from "react";
 import type { Result } from "@repo/core";
 import type { SessionEvent } from "@repo/schemas/session";
-import {
-  listEventSessions,
-  loadEvents as loadEventsFromStorage,
-  createEventSession,
-  appendEvent as appendEventToStorage,
-  type SessionMetadataInfo,
-  type SessionEventError,
-} from "@repo/core/storage";
+import type { AppError } from "@repo/core";
+
+export type SessionEventErrorCode =
+  | "NOT_FOUND"
+  | "PARSE_ERROR"
+  | "WRITE_ERROR"
+  | "PERMISSION_ERROR"
+  | "NOT_IMPLEMENTED";
+
+export type SessionEventError = AppError<SessionEventErrorCode>;
+
+export interface SessionMetadataInfo {
+  sessionId: string;
+  createdAt: number;
+  eventCount: number;
+}
 
 export interface UseSessionEventsState {
   sessions: SessionMetadataInfo[];
@@ -29,6 +46,11 @@ export interface UseSessionEventsActions {
 
 export type UseSessionEventsResult = [UseSessionEventsState, UseSessionEventsActions];
 
+const notImplementedError: SessionEventError = {
+  code: "NOT_IMPLEMENTED",
+  message: "Session events API not yet implemented. See TODO at top of file.",
+};
+
 export function useSessionEvents(): UseSessionEventsResult {
   const [sessions, setSessions] = useState<SessionMetadataInfo[]>([]);
   const [events, setEvents] = useState<SessionEvent[]>([]);
@@ -37,79 +59,41 @@ export function useSessionEvents(): UseSessionEventsResult {
   const [error, setError] = useState<SessionEventError | null>(null);
 
   const listSessions = useCallback(
-    async (projectId: string): Promise<Result<SessionMetadataInfo[], SessionEventError>> => {
-      setIsLoading(true);
-      setError(null);
-
-      const result = await listEventSessions(projectId);
-
-      if (result.ok) {
-        setSessions(result.value);
-      } else {
-        setError(result.error);
-      }
-
-      setIsLoading(false);
-      return result;
+    async (_projectId: string): Promise<Result<SessionMetadataInfo[], SessionEventError>> => {
+      // TODO: Call GET /api/session-events?projectId=xxx
+      console.warn("[useSessionEvents] listSessions not implemented - needs API endpoint");
+      return { ok: false, error: notImplementedError };
     },
     []
   );
 
   const loadEvents = useCallback(
-    async (projectId: string, sessionId: string): Promise<Result<SessionEvent[], SessionEventError>> => {
-      setIsLoading(true);
-      setError(null);
-
-      const result = await loadEventsFromStorage(sessionId, projectId);
-
-      if (result.ok) {
-        setEvents(result.value);
-        setCurrentSessionId(sessionId);
-      } else {
-        setError(result.error);
-      }
-
-      setIsLoading(false);
-      return result;
+    async (_projectId: string, _sessionId: string): Promise<Result<SessionEvent[], SessionEventError>> => {
+      // TODO: Call GET /api/session-events/:sessionId?projectId=xxx
+      console.warn("[useSessionEvents] loadEvents not implemented - needs API endpoint");
+      return { ok: false, error: notImplementedError };
     },
     []
   );
 
   const createSession = useCallback(
-    async (projectId: string): Promise<Result<string, SessionEventError>> => {
-      setIsLoading(true);
-      setError(null);
-
-      const result = await createEventSession(projectId);
-
-      if (result.ok) {
-        setCurrentSessionId(result.value);
-        setEvents([]);
-      } else {
-        setError(result.error);
-      }
-
-      setIsLoading(false);
-      return result;
+    async (_projectId: string): Promise<Result<string, SessionEventError>> => {
+      // TODO: Call POST /api/session-events?projectId=xxx
+      console.warn("[useSessionEvents] createSession not implemented - needs API endpoint");
+      return { ok: false, error: notImplementedError };
     },
     []
   );
 
   const appendEvent = useCallback(
     async (
-      projectId: string,
-      sessionId: string,
-      event: SessionEvent
+      _projectId: string,
+      _sessionId: string,
+      _event: SessionEvent
     ): Promise<Result<void, SessionEventError>> => {
-      const result = await appendEventToStorage(sessionId, event, projectId);
-
-      if (result.ok) {
-        setEvents((prev) => [...prev, event]);
-      } else {
-        setError(result.error);
-      }
-
-      return result;
+      // TODO: Call POST /api/session-events/:sessionId/events?projectId=xxx
+      console.warn("[useSessionEvents] appendEvent not implemented - needs API endpoint");
+      return { ok: false, error: notImplementedError };
     },
     []
   );

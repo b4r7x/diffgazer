@@ -1,11 +1,14 @@
 import { cn } from "@/lib/utils";
-import { SeverityBar, Badge, type SeverityLevel } from "@/components/ui";
+import { SeverityBar, Badge } from "@/components/ui";
 import { SectionHeader } from "@/components/ui/section-header";
+import type { TriageSeverity } from "@repo/schemas/triage";
 import type { TriageIssue } from "@repo/schemas";
+import { HISTOGRAM_SEVERITIES } from "@repo/schemas/ui";
+import { capitalize } from "@repo/core";
 
 export interface HistoryInsightsPaneProps {
   runId: string | null;
-  severityCounts: Record<SeverityLevel, number>;
+  severityCounts: Record<TriageSeverity, number>;
   topLenses: string[];
   topIssues: TriageIssue[];
   duration?: string;
@@ -13,7 +16,6 @@ export interface HistoryInsightsPaneProps {
   className?: string;
 }
 
-const SEVERITY_ORDER: SeverityLevel[] = ["blocker", "high", "medium", "low"];
 
 export function HistoryInsightsPane({
   runId,
@@ -47,10 +49,10 @@ export function HistoryInsightsPane({
             Severity Histogram
           </SectionHeader>
           <div className="space-y-2 mt-3">
-            {SEVERITY_ORDER.map((severity) => (
+            {HISTOGRAM_SEVERITIES.map((severity) => (
               <SeverityBar
                 key={severity}
-                label={severity.charAt(0).toUpperCase() + severity.slice(1)}
+                label={capitalize(severity)}
                 count={severityCounts[severity] ?? 0}
                 max={maxCount}
                 severity={severity}
@@ -92,7 +94,7 @@ export function HistoryInsightsPane({
                       issue.severity === "medium" && "text-gray-400",
                       issue.severity === "low" && "text-tui-blue"
                     )}>
-                      [{issue.severity.charAt(0).toUpperCase() + issue.severity.slice(1)}]
+                      [{capitalize(issue.severity)}]
                     </span>
                     <span className="text-gray-600 font-mono">L:{issue.line_start}</span>
                   </div>

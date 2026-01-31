@@ -1,10 +1,10 @@
 import { createGitService } from "./git.js";
-import type { AIClient } from "@repo/core/ai";
+import type { AIClient } from "../ai/index.js";
 import { getErrorMessage } from "@repo/core";
-import { parseDiff, filterDiffByFiles } from "@repo/core/diff";
-import { triageReviewStream, getProfile } from "@repo/core/review";
-import { saveTriageReview } from "@repo/core/storage";
-import type { TriageResult } from "@repo/schemas/triage";
+import { parseDiff, filterDiffByFiles } from "../diff/index.js";
+import { triageReviewStream, getProfile } from "../review/index.js";
+import { saveTriageReview } from "../storage/index.js";
+import type { TriageResult, TriageOptions as SchemaTriageOptions } from "@repo/schemas/triage";
 import type { LensId, ProfileId } from "@repo/schemas/lens";
 import { ErrorCode } from "@repo/schemas/errors";
 import type { SSEWriter } from "../lib/ai-client.js";
@@ -31,6 +31,7 @@ async function writeTriageComplete(stream: SSEWriter, result: TriageResult, revi
   });
 }
 
+// Server-specific triage options extending schema options
 export interface TriageOptions {
   staged?: boolean;
   files?: string[];

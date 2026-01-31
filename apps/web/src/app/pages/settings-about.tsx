@@ -4,7 +4,7 @@ import { useMemo, useCallback, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useKey, useFooterNavigation } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { Panel, PanelHeader, PanelContent } from "@/components/ui/panel";
+import { Panel, PanelHeader, PanelContent } from "@/components/ui/containers";
 import { cn } from "@/lib/utils";
 
 const DIAGNOSTICS = {

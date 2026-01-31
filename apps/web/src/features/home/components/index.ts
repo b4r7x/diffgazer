@@ -1,2 +1,2 @@
-export { ContextSidebar, type ContextInfo } from './context-sidebar';
+export { ContextSidebar } from './context-sidebar';
 export { HomeMenu } from './home-menu';

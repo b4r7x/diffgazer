@@ -3,17 +3,17 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useKey } from '@/hooks/keyboard';
-import { useRouteState } from '@/hooks/use-route-state';
+import { useScopedRouteState } from '@/hooks/use-scoped-route-state';
 import { useFooter } from '@/components/layout';
 import {
   ProviderList,
   ProviderDetails,
   ApiKeyDialog,
   ModelSelectDialog,
-  useProviders,
   type ProviderFilter,
   FILTER_VALUES,
-} from '@/features/providers';
+} from '@/features/providers/components';
+import { useProviders } from '@/features/providers/hooks';
 import { PROVIDER_ENV_VARS, PROVIDER_CAPABILITIES } from '@repo/schemas';
 
 const FOOTER_SHORTCUTS = [
@@ -31,7 +31,7 @@ export function ProviderSelectorPage() {
   const { setShortcuts, setRightShortcuts } = useFooter();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const [selectedId, setSelectedId] = useRouteState<string | null>('providerId', null);
+  const [selectedId, setSelectedId] = useScopedRouteState<string | null>('providerId', null);
   const [filter, setFilter] = useState<ProviderFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
 

@@ -1,8 +1,8 @@
 import type { ReactElement } from "react";
 import { Box } from "ink";
-import { getMenuItemsForContext, type MenuItem as CoreMenuItem } from "@repo/core";
-import { Panel, PanelHeader } from "../../../components/ui/panel.js";
-import { Menu, MenuItem, MenuDivider } from "../../../components/ui/menu.js";
+import { MENU_ITEMS, type MenuItem } from "../../../lib/navigation.js";
+import { Panel, PanelHeader } from "../../../components/ui/layout/panel.js";
+import { Menu, MenuItem as MenuItemComponent, MenuDivider } from "../../../components/ui/menu.js";
 
 interface HomeMenuProps {
   selectedIndex: number;
@@ -13,11 +13,11 @@ interface HomeMenuProps {
   width?: number;
 }
 
-function groupItems(items: CoreMenuItem[]) {
+function groupItems(items: MenuItem[]) {
   const groups = {
-    review: [] as CoreMenuItem[],
-    navigation: [] as CoreMenuItem[],
-    system: [] as CoreMenuItem[],
+    review: [] as MenuItem[],
+    navigation: [] as MenuItem[],
+    system: [] as MenuItem[],
   };
   for (const item of items) {
     const group = item.group;
@@ -36,8 +36,7 @@ export function HomeMenu({
   isActive = true,
   width = 32,
 }: HomeMenuProps): ReactElement {
-  const menuItems = getMenuItemsForContext("cli");
-  const { review, navigation, system } = groupItems(menuItems);
+  const { review, navigation, system } = groupItems(MENU_ITEMS);
 
   // Menu width is panel width minus border (2 chars)
   const menuWidth = width - 2;
@@ -55,25 +54,25 @@ export function HomeMenu({
           width={menuWidth}
         >
           {review.map((item) => (
-            <MenuItem
+            <MenuItemComponent
               key={item.id}
               id={item.id}
               disabled={item.id === "resume-review" && !hasLastReview}
             >
               {item.label}
-            </MenuItem>
+            </MenuItemComponent>
           ))}
           <MenuDivider />
           {navigation.map((item) => (
-            <MenuItem key={item.id} id={item.id}>
+            <MenuItemComponent key={item.id} id={item.id}>
               {item.label}
-            </MenuItem>
+            </MenuItemComponent>
           ))}
           <MenuDivider />
           {system.map((item) => (
-            <MenuItem key={item.id} id={item.id} variant={item.variant}>
+            <MenuItemComponent key={item.id} id={item.id} variant={item.variant}>
               {item.label}
-            </MenuItem>
+            </MenuItemComponent>
           ))}
         </Menu>
       </Box>

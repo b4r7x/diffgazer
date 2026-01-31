@@ -8,7 +8,7 @@ import {
   listSessions,
   addMessage,
   getLastSession,
-} from "@repo/core/storage";
+} from "../../storage/index.js";
 import { getErrorMessage } from "@repo/core";
 import {
   CreateSessionRequestSchema,

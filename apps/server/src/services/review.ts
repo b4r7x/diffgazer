@@ -1,8 +1,11 @@
 import { createGitService } from "./git.js";
-import type { AIClient, StreamCallbacks } from "@repo/core/ai";
-import { createErrorClassifier, getErrorMessage, safeParseJson, validateSchema, sanitizeUnicode, escapeXml } from "@repo/core";
-import { parseDiff } from "@repo/core/diff";
-import { saveReview } from "@repo/core/storage";
+import type { AIClient, StreamCallbacks } from "../ai/index.js";
+import { getErrorMessage, safeParseJson } from "@repo/core";
+import { sanitizeUnicode, escapeXml } from "../lib/sanitization.js";
+import { createErrorClassifier } from "../lib/error-classifier.js";
+import { validateSchema } from "../lib/validation.js";
+import { parseDiff } from "../diff/index.js";
+import { saveReview } from "../storage/index.js";
 import { ReviewResultSchema, type ReviewResult } from "@repo/schemas/review";
 import { ErrorCode } from "@repo/schemas/errors";
 import type { SSEWriter } from "../lib/ai-client.js";

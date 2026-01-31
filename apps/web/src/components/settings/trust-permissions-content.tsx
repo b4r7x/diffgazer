@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import type { TrustCapabilities } from "@repo/schemas";
 import { Badge, Callout, Button } from "../ui";
-import { CheckboxGroup, CheckboxItem } from "../ui/checkbox";
+import { CheckboxGroup, CheckboxItem } from "../ui/form";
 import { useTrustFormKeyboard } from "@/hooks/keyboard";
 import { cn } from "@/lib/utils";
 

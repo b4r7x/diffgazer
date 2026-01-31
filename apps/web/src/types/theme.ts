@@ -8,7 +8,3 @@ export interface ThemeContextValue {
   resolved: ResolvedTheme;
   setTheme: (theme: WebTheme) => void;
 }
-
-export function toWebTheme(theme: Theme): WebTheme {
-  return theme === "terminal" ? "dark" : theme;
-}

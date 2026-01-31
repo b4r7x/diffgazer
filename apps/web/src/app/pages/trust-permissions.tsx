@@ -4,7 +4,7 @@ import type { TrustCapabilities } from "@repo/schemas";
 import { useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useToast } from "@/components/layout";
-import { Panel, PanelHeader, PanelContent } from "@/components/ui/panel";
+import { Panel, PanelHeader, PanelContent } from "@/components/ui/containers";
 import { TrustPermissionsContent } from "@/components/settings/trust-permissions-content";
 
 const FOOTER_SHORTCUTS = [

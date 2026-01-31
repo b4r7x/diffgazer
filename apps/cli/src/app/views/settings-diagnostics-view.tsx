@@ -3,8 +3,9 @@ import { useState, useMemo } from "react";
 import { Box, Text, useInput, useStdout } from "ink";
 import os from "node:os";
 import chalk from "chalk";
-import { Panel, PanelHeader, PanelContent, PanelDivider } from "../../components/ui/panel.js";
-import type { Shortcut } from "../../components/ui/footer-bar.js";
+import { Panel, PanelHeader, PanelContent, PanelDivider } from "../../components/ui/layout/index.js";
+import { useScreenState } from "../../hooks/use-screen-state.js";
+import type { Shortcut } from "../../components/ui/branding/footer-bar.js";
 
 export const SETTINGS_DIAGNOSTICS_FOOTER_SHORTCUTS: Shortcut[] = [
   { key: "Left/Right", label: "Navigate" },
@@ -53,7 +54,7 @@ export function SettingsDiagnosticsView({
   const { stdout } = useStdout();
   const panelWidth = Math.min(72, (stdout?.columns ?? 80) - 4);
 
-  const [focusedButton, setFocusedButton] = useState(0);
+  const [focusedButton, setFocusedButton] = useScreenState<number>("focusedButton", 0);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const systemInfo = useMemo(() => {

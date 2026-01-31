@@ -2,7 +2,7 @@
 
 import { createContext, useState, useEffect, useSyncExternalStore, type ReactNode } from 'react';
 import type { WebTheme, ResolvedTheme, ThemeContextValue } from '@/types/theme';
-import { getSettings, saveSettings } from '@/features/settings/api/config-api';
+import { getSettings, saveSettings } from '@/features/settings/api';
 
 function subscribeToSystemTheme(callback: () => void) {
   const media = window.matchMedia('(prefers-color-scheme: dark)');

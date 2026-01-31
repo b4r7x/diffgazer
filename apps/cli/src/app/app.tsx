@@ -2,7 +2,7 @@ import React, { useEffect, useCallback } from "react";
 import { createHash } from "node:crypto";
 import { OnboardingScreen, SETTINGS_FOOTER_SHORTCUTS } from "./screens/index.js";
 import { TrustWizardScreen } from "./screens/trust-wizard-screen.js";
-import { useNavigation, useAppInit, useScreenHandlers, useAppState } from "../features/app/index.js";
+import { useNavigation, useAppInit, useScreenHandlers, useAppState, CurrentViewProvider } from "../features/app/index.js";
 import {
   LoadingView,
   MainMenuView,
@@ -26,11 +26,10 @@ import {
   SETTINGS_DIAGNOSTICS_FOOTER_SHORTCUTS,
   HISTORY_FOOTER_SHORTCUTS,
 } from "./views/index.js";
-import type { AppView, SettingsSection } from "@repo/core";
+import type { AppView, SettingsSection, SessionMode } from "../types/index.js";
 import type { AIProvider } from "@repo/schemas/config";
 import { ThemeProvider, useSettings, SessionRecorderProvider, useSessionRecorderContext, KeyModeProvider } from "../hooks/index.js";
-import type { SessionMode } from "../types/index.js";
-import { GlobalLayout } from "../components/layout/index.js";
+import { GlobalLayout } from "../components/layout/global-layout.js";
 
 export type { SessionMode };
 
@@ -132,101 +131,109 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
     recordEvent,
   });
 
-  if (view === "loading") {
-    return (
-      <ThemeProvider theme={theme}>
-        <LoadingView />
-      </ThemeProvider>
-    );
-  }
+  const renderContent = () => {
+    if (view === "loading") {
+      return (
+        <ThemeProvider theme={theme}>
+          <LoadingView />
+        </ThemeProvider>
+      );
+    }
 
-  if (view === "trust-wizard") {
+    if (view === "trust-wizard") {
+      return (
+        <ThemeProvider theme={theme}>
+          <GlobalLayout shortcuts={[]}>
+            <TrustWizardScreen
+              projectId={projectId}
+              repoRoot={repoRoot}
+              onComplete={(trustConfig) => void state.trust.saveTrust(trustConfig)}
+            />
+          </GlobalLayout>
+        </ThemeProvider>
+      );
+    }
+
+    if (view === "onboarding") {
+      return (
+        <ThemeProvider theme={theme}>
+          <GlobalLayout shortcuts={[]}>
+            <OnboardingScreen
+              saveState={state.config.saveState}
+              error={state.config.error}
+              onSave={handlers.config.onSave}
+            />
+          </GlobalLayout>
+        </ThemeProvider>
+      );
+    }
+
+    const shortcuts = VIEW_SHORTCUTS[view] ?? [];
+
     return (
       <ThemeProvider theme={theme}>
-        <GlobalLayout shortcuts={[]}>
-          <TrustWizardScreen
-            projectId={projectId}
-            repoRoot={repoRoot}
-            onComplete={(trustConfig) => void state.trust.saveTrust(trustConfig)}
-          />
+        <GlobalLayout shortcuts={shortcuts} key={view}>
+          {view === "main" && (
+            <MainMenuView
+              provider={state.config.currentConfig?.provider ?? "Not configured"}
+              model={state.config.currentConfig?.model}
+              isTrusted={Boolean(state.trust.trustConfig)}
+              lastReviewAt={state.reviewHistory.items[0]?.createdAt ?? null}
+              hasLastReview={state.reviewHistory.items.length > 0}
+              onSelect={handlers.menu.onSelect}
+            />
+          )}
+          {view === "git-status" && <GitStatusView state={state.gitStatus.state} />}
+          {view === "git-diff" && <GitDiffView state={state.gitDiff.state} staged={diffState.staged} />}
+          {view === "review" && <ReviewView state={state.review.state} staged={reviewState.staged} agentEvents={state.review.agentEvents} />}
+          {view === "settings" && (
+            <SettingsView
+              projectId={projectId}
+              repoRoot={repoRoot}
+              onBack={handlers.config.onBack}
+            />
+          )}
+          {view === "settings-hub" && (
+            <SettingsHubView
+              projectId={projectId}
+              onNavigate={handleSettingsNavigate}
+              onBack={goToMain}
+            />
+          )}
+          {view === "settings-trust" && (
+            <SettingsTrustView projectId={projectId} repoRoot={repoRoot} onBack={goToSettingsHub} />
+          )}
+          {view === "settings-theme" && (
+            <SettingsThemeView projectId={projectId} onBack={goToSettingsHub} />
+          )}
+          {view === "settings-providers" && (
+            <SettingsProvidersView
+              projectId={projectId}
+              onBack={goToSettingsHub}
+            />
+          )}
+          {view === "settings-diagnostics" && <SettingsDiagnosticsView onBack={goToSettingsHub} />}
+          {view === "history" && (
+            <HistoryView
+              reviews={state.reviewHistory.items}
+              sessions={state.sessionList.items}
+              onResumeReview={handlers.reviewHistory.onSelect}
+              onExportReview={handleExportReview}
+              onDeleteReview={handlers.reviewHistory.onDelete}
+              onViewSession={handlers.sessions.onSelect}
+              onDeleteSession={handlers.sessions.onDelete}
+              onBack={handlers.reviewHistory.onBack}
+            />
+          )}
         </GlobalLayout>
       </ThemeProvider>
     );
-  }
-
-  if (view === "onboarding") {
-    return (
-      <ThemeProvider theme={theme}>
-        <GlobalLayout shortcuts={[]}>
-          <OnboardingScreen
-            saveState={state.config.saveState}
-            error={state.config.error}
-            onSave={handlers.config.onSave}
-          />
-        </GlobalLayout>
-      </ThemeProvider>
-    );
-  }
-
-  const shortcuts = VIEW_SHORTCUTS[view] ?? [];
+  };
 
   return (
-    <ThemeProvider theme={theme}>
-      <GlobalLayout shortcuts={shortcuts} key={view}>
-        {view === "main" && (
-          <MainMenuView
-            provider={state.config.currentConfig?.provider ?? "Not configured"}
-            model={state.config.currentConfig?.model}
-            isTrusted={Boolean(state.trust.trustConfig)}
-            lastReviewAt={state.reviewHistory.items[0]?.createdAt ?? null}
-            hasLastReview={state.reviewHistory.items.length > 0}
-            onSelect={handlers.menu.onSelect}
-          />
-        )}
-        {view === "git-status" && <GitStatusView state={state.gitStatus.state} />}
-        {view === "git-diff" && <GitDiffView state={state.gitDiff.state} staged={diffState.staged} />}
-        {view === "review" && <ReviewView state={state.review.state} staged={reviewState.staged} agentEvents={state.review.agentEvents} />}
-        {view === "settings" && (
-          <SettingsView
-            projectId={projectId}
-            repoRoot={repoRoot}
-            onBack={handlers.config.onBack}
-          />
-        )}
-        {view === "settings-hub" && (
-          <SettingsHubView
-            projectId={projectId}
-            onNavigate={handleSettingsNavigate}
-            onBack={goToMain}
-          />
-        )}
-        {view === "settings-trust" && (
-          <SettingsTrustView projectId={projectId} repoRoot={repoRoot} onBack={goToSettingsHub} />
-        )}
-        {view === "settings-theme" && (
-          <SettingsThemeView projectId={projectId} onBack={goToSettingsHub} />
-        )}
-        {view === "settings-providers" && (
-          <SettingsProvidersView
-            projectId={projectId}
-            onBack={goToSettingsHub}
-          />
-        )}
-        {view === "settings-diagnostics" && <SettingsDiagnosticsView onBack={goToSettingsHub} />}
-        {view === "history" && (
-          <HistoryView
-            reviews={state.reviewHistory.items}
-            sessions={state.sessionList.items}
-            onResumeReview={handlers.reviewHistory.onSelect}
-            onExportReview={handleExportReview}
-            onDeleteReview={handlers.reviewHistory.onDelete}
-            onViewSession={handlers.sessions.onSelect}
-            onDeleteSession={handlers.sessions.onDelete}
-            onBack={handlers.reviewHistory.onBack}
-          />
-        )}
-      </GlobalLayout>
-    </ThemeProvider>
+    <CurrentViewProvider currentView={view}>
+      {renderContent()}
+    </CurrentViewProvider>
   );
 }
 

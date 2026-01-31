@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { getSessions, deleteSession as apiDeleteSession } from "../api/sessions-api";
+import { getSessions, deleteSession as apiDeleteSession } from "../api";
 import type { SessionMetadata } from "@repo/schemas";
 
 export function useSessions() {

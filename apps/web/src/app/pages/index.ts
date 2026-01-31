@@ -1,7 +1,6 @@
 export { HomePage } from './home';
 export { ReviewPage } from './review';
 export { HistoryPage } from './history';
-export { SettingsPage } from './settings';
 export { SettingsHubPage } from './settings-hub';
 export { TrustPermissionsPage } from './trust-permissions';
 export { SettingsThemePage } from './settings-theme';

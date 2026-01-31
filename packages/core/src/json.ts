@@ -17,7 +17,7 @@ function stripMarkdownCodeBlock(content: string): string {
   return cleaned.trim();
 }
 
-export function safeParseJson<E>(
+export function safeParseJson<E = undefined>(
   content: string,
   errorFactory: (message: string, details?: string) => E
 ): Result<unknown, E> {

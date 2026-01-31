@@ -7,8 +7,9 @@ import { AVAILABLE_PROVIDERS } from "@repo/schemas/config";
 import type { Theme, TrustCapabilities, TrustConfig, SettingsConfig } from "@repo/schemas/settings";
 import type { Shortcut } from "@repo/schemas/ui";
 import { SETTINGS_MENU_ITEMS, type SettingsAction } from "@repo/core";
+import { DEFAULT_TRUST_CAPABILITIES } from "@repo/core";
 import { Card, SelectList, type SelectOption } from "../../components/ui/index.js";
-import { SplitPane } from "../../components/ui/split-pane.js";
+import { SplitPane } from "../../components/ui/layout/index.js";
 import { useTerminalDimensions } from "../../hooks/index.js";
 import { TrustStep } from "../../components/wizard/trust-step.js";
 import { ThemeStep } from "../../components/wizard/theme-step.js";
@@ -67,12 +68,6 @@ const SECTION_OPTIONS: SelectOption<SectionId>[] = SETTINGS_MENU_ITEMS.map((item
   label: item.label,
   description: item.description,
 }));
-
-const DEFAULT_CAPABILITIES: TrustCapabilities = {
-  readFiles: true,
-  readGit: true,
-  runCommands: false,
-};
 
 function SettingsLoading(): ReactElement {
   return (
@@ -375,7 +370,7 @@ export function SettingsScreen({
         totalSteps={1}
         repoRoot={repoRoot ?? process.cwd()}
         projectId={projectId ?? "default"}
-        initialCapabilities={currentCapabilities ?? DEFAULT_CAPABILITIES}
+        initialCapabilities={currentCapabilities ?? DEFAULT_TRUST_CAPABILITIES}
         onComplete={handleTrustComplete}
         onSkip={handleTrustSkip}
         onBack={goToList}

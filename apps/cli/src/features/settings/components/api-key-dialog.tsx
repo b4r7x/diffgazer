@@ -9,12 +9,11 @@ import {
   DialogFooter,
   DialogActions,
 } from "../../../components/ui/dialog.js";
-import { Input } from "../../../components/ui/input.js";
+import { Input } from "../../../components/ui/form/index.js";
 import { Badge } from "../../../components/ui/badge.js";
 import { useTheme } from "../../../hooks/use-theme.js";
-
-type InputMethod = "paste" | "env";
-type FocusElement = "paste" | "input" | "env" | "cancel" | "confirm" | "remove";
+import type { InputMethod } from "@repo/schemas/config";
+import type { ApiKeyDialogFocusElement as FocusElement } from "@repo/schemas/ui";
 
 export interface ApiKeyDialogProps {
   isOpen: boolean;

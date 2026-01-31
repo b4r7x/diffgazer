@@ -5,8 +5,8 @@ import {
   isAbortError,
   parseSSEStream,
   type SSEParseResult,
-  validateSchema,
 } from "@repo/core";
+import { validateSchema } from "../lib/validation.js";
 
 export type SSEStreamError = {
   message: string;
@@ -50,7 +50,7 @@ export function useSSEStream<TEvent extends { type: string }>(
 
       try {
         const result: SSEParseResult = await parseSSEStream<TEvent>(reader, {
-          parseEvent(jsonData) {
+          parseEvent(jsonData: unknown) {
             const result = validateSchema(jsonData, schema, (msg) => msg);
             if (!result.ok) {
               console.error("Failed to parse stream event:", result.error);
@@ -58,7 +58,7 @@ export function useSSEStream<TEvent extends { type: string }>(
             }
             return result.value;
           },
-          onEvent(event) {
+          onEvent(event: TEvent) {
             if (onEvent(event)) {
               receivedTerminal = true;
             }

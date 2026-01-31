@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
-import { DEFAULT_HOST } from "./lib/constants.js";
+import { DEFAULT_HOST } from "@repo/core";
 import { runCommand } from "./commands/run.js";
 import { serveCommand } from "./commands/serve.js";
 import { reviewCommand } from "./commands/review.js";

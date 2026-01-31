@@ -1,21 +1,35 @@
 export { ReviewListItem } from "./review-list-item.js";
-export { IssueItem } from "./issue-item.js";
 export { ReviewDisplay } from "./review-display.js";
-export { StandaloneReview } from "./standalone-review.js";
-export { ReviewScreen, type ReviewScreenProps } from "./review-screen.js";
-export { ReviewDetailScreen } from "./review-detail-screen.js";
 
-export { ReviewSplitScreen } from "./review-split-screen.js";
-export { IssueListPane, type IssueListPaneProps } from "./issue-list-pane.js";
-export { IssueListHeader, type FilterState, type IssueStatus } from "./issue-list-header.js";
-export { IssueDetailsPane, type IssueDetailsPaneProps } from "./issue-details-pane.js";
-export { IssueTabs } from "./issue-tabs.js";
+// Screen components (re-exported from ./screens)
+export {
+  ReviewScreen,
+  type ReviewScreenProps,
+  type ApplyFixResult,
+  ReviewDetailScreen,
+  ReviewSplitScreen,
+  ReviewSummaryView,
+  type ReviewSummaryViewProps,
+} from "./screens/index.js";
+
 export { type IssueTab, TAB_ORDER, TAB_KEYS, TAB_LABELS, AGENT_PANEL_WIDTH, MAX_PATCH_LINES } from "../constants.js";
-export { IssueBodyDetails } from "./issue-body-details.js";
-export { IssueBodyExplain } from "./issue-body-explain.js";
-export { IssueBodyTrace } from "./issue-body-trace.js";
-export { IssueBodyPatch } from "./issue-body-patch.js";
 export { AgentActivityPanel } from "./agent-activity-panel.js";
 export { FeedbackInput } from "./feedback-input.js";
 export { DrilldownPrompt, type DrilldownPromptProps } from "./drilldown-prompt.js";
-export { ReviewSummaryView, type ReviewSummaryViewProps } from "./review-summary-view.js";
+
+// Issue components
+export {
+  IssueItem,
+  IssueDetailsPane,
+  type IssueDetailsPaneProps,
+  IssueListPane,
+  type IssueListPaneProps,
+  IssueListHeader,
+  type FilterState,
+  type IssueStatus,
+  IssueTabs,
+  IssueBodyDetails,
+  IssueBodyExplain,
+  IssueBodyTrace,
+  IssueBodyPatch,
+} from "./issue/index.js";

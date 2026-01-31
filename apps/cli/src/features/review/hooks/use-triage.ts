@@ -3,12 +3,13 @@ import { type TriageResult, type TriageError } from "@repo/schemas/triage";
 import {
   type FullTriageStreamEvent,
   FullTriageStreamEventSchema,
-} from "@repo/schemas/stream-events";
+} from "@repo/schemas";
 import type { AgentStreamEvent } from "@repo/schemas/agent-event";
 import type { LensId, ProfileId } from "@repo/schemas/lens";
 import type { StepState } from "@repo/schemas/step-event";
 import { isStepEvent } from "@repo/schemas/step-event";
-import { getErrorMessage, isAbortError, createErrorState, truncateToDisplayLength } from "@repo/core";
+import { getErrorMessage, isAbortError, truncateToDisplayLength } from "@repo/core";
+import { createErrorState } from "../../../lib/state-helpers.js";
 import {
   triageReducer,
   createInitialTriageState,

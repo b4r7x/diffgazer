@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
-import type { AIClient } from "@repo/core/ai";
-import type { ParsedDiff } from "@repo/core/diff";
+import type { AIClient } from "../ai/index.js";
+import type { ParsedDiff } from "../diff/index.js";
 import type { TriageResult } from "@repo/schemas/triage";
 import { ErrorCode } from "@repo/schemas/errors";
 
@@ -19,7 +19,7 @@ vi.mock("./git.js", () => ({
   createGitService: vi.fn(() => mockGitService),
 }));
 
-vi.mock("@repo/core/diff", () => ({
+vi.mock("../diff/index.js", () => ({
   parseDiff: mockParseDiff,
   filterDiffByFiles: mockFilterDiffByFiles,
 }));
@@ -29,7 +29,7 @@ vi.mock("@repo/core/review", () => ({
   getProfile: mockGetProfile,
 }));
 
-vi.mock("@repo/core/storage", () => ({
+vi.mock("../storage/index.js", () => ({
   saveTriageReview: mockSaveTriageReview,
 }));
 

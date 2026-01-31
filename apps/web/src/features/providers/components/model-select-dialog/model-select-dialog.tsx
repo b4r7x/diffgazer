@@ -1,0 +1,280 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogBody,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui";
+import { useKey } from "@/hooks/keyboard";
+import { useScrollIntoView } from "@/hooks/use-scroll-into-view";
+import {
+  GEMINI_MODEL_INFO,
+  OPENAI_MODEL_INFO,
+  ANTHROPIC_MODEL_INFO,
+  GLM_MODEL_INFO,
+  type AIProvider,
+  type ModelInfo,
+} from "@repo/schemas";
+import { useModelFilter } from "../../hooks/use-model-filter";
+import { ModelSearchInput } from "./model-search-input";
+import { ModelFilterTabs, FILTERS } from "./model-filter-tabs";
+import { ModelList } from "./model-list";
+import { DialogFooterActions } from "./dialog-footer-actions";
+
+type FocusZone = "search" | "filters" | "list" | "footer";
+
+interface ModelSelectDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  provider: AIProvider;
+  currentModel: string | undefined;
+  onSelect: (modelId: string) => void;
+}
+
+function getModelsForProvider(provider: AIProvider): ModelInfo[] {
+  switch (provider) {
+    case "gemini":
+      return Object.values(GEMINI_MODEL_INFO);
+    case "openai":
+      return Object.values(OPENAI_MODEL_INFO);
+    case "anthropic":
+      return Object.values(ANTHROPIC_MODEL_INFO);
+    case "glm":
+      return Object.values(GLM_MODEL_INFO);
+    default:
+      return [];
+  }
+}
+
+const FOOTER_HINTS = [
+  { key: "↑↓/jk", label: "navigate" },
+  { key: "/", label: "search" },
+  { key: "f", label: "filter" },
+];
+
+export function ModelSelectDialog({
+  open,
+  onOpenChange,
+  provider,
+  currentModel,
+  onSelect,
+}: ModelSelectDialogProps) {
+  const models = getModelsForProvider(provider);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [checkedModelId, setCheckedModelId] = useState<string | undefined>(currentModel);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const listContainerRef = useRef<HTMLDivElement>(null);
+
+  const {
+    searchQuery,
+    setSearchQuery,
+    tierFilter,
+    setTierFilter,
+    filteredModels,
+    cycleTierFilter,
+    resetFilters,
+  } = useModelFilter(models);
+
+  const [focusZone, setFocusZone] = useState<FocusZone>("list");
+  const [filterIndex, setFilterIndex] = useState(0);
+  const [footerButtonIndex, setFooterButtonIndex] = useState(1);
+
+  const { scrollItemIntoView } = useScrollIntoView(listContainerRef);
+
+  // Reset state when dialog opens
+  useEffect(() => {
+    if (open) {
+      resetFilters();
+      setFocusZone("list");
+      setFilterIndex(0);
+      setFooterButtonIndex(1);
+      setCheckedModelId(currentModel);
+      const currentIndex = models.findIndex((m) => m.id === currentModel);
+      setSelectedIndex(currentIndex >= 0 ? currentIndex : 0);
+    }
+  }, [open, currentModel, provider]);
+
+  // Clamp selection when filtered list changes
+  useEffect(() => {
+    if (selectedIndex >= filteredModels.length && filteredModels.length > 0) {
+      setSelectedIndex(0);
+    }
+  }, [filteredModels.length, selectedIndex]);
+
+  // Auto-scroll selected item into view
+  useEffect(() => {
+    if (focusZone === "list" && filteredModels.length > 0) {
+      scrollItemIntoView(selectedIndex);
+    }
+  }, [selectedIndex, focusZone, filteredModels.length]);
+
+  const handleConfirm = () => {
+    const model = filteredModels[selectedIndex];
+    if (model) {
+      onSelect(model.id);
+      onOpenChange(false);
+    }
+  };
+
+  const handleCheck = () => {
+    const model = filteredModels[selectedIndex];
+    if (model) {
+      setCheckedModelId(model.id);
+    }
+  };
+
+  const handleCancel = () => onOpenChange(false);
+
+  const navigateUp = () => {
+    if (selectedIndex > 0) {
+      setSelectedIndex((prev) => prev - 1);
+    } else {
+      setFocusZone("filters");
+      setFilterIndex(0);
+    }
+  };
+
+  const navigateDown = () => {
+    if (selectedIndex < filteredModels.length - 1) {
+      setSelectedIndex((prev) => prev + 1);
+    } else {
+      setFocusZone("footer");
+      setFooterButtonIndex(1);
+    }
+  };
+
+  // List zone
+  useKey("ArrowUp", navigateUp, { enabled: open && focusZone === "list" });
+  useKey("ArrowDown", navigateDown, { enabled: open && focusZone === "list" });
+  useKey("k", navigateUp, { enabled: open && focusZone === "list" });
+  useKey("j", navigateDown, { enabled: open && focusZone === "list" });
+  useKey(" ", handleCheck, { enabled: open && focusZone === "list" && filteredModels.length > 0 });
+  useKey("Enter", handleConfirm, { enabled: open && focusZone === "list" && filteredModels.length > 0 });
+
+  // Search zone
+  useKey("ArrowDown", () => {
+    searchInputRef.current?.blur();
+    setFocusZone("filters");
+  }, { enabled: open && focusZone === "search" });
+
+  // Filters zone
+  useKey("ArrowLeft", () => setFilterIndex((prev) => (prev > 0 ? prev - 1 : 2)), { enabled: open && focusZone === "filters" });
+  useKey("ArrowRight", () => setFilterIndex((prev) => (prev < 2 ? prev + 1 : 0)), { enabled: open && focusZone === "filters" });
+  useKey("ArrowDown", () => {
+    setFocusZone("list");
+    setSelectedIndex(0);
+  }, { enabled: open && focusZone === "filters" });
+  useKey("ArrowUp", () => {
+    setFocusZone("search");
+    searchInputRef.current?.focus();
+  }, { enabled: open && focusZone === "filters" });
+  useKey("Enter", () => setTierFilter(FILTERS[filterIndex]), { enabled: open && focusZone === "filters" });
+  useKey(" ", () => setTierFilter(FILTERS[filterIndex]), { enabled: open && focusZone === "filters" });
+
+  // Footer zone
+  useKey("ArrowLeft", () => setFooterButtonIndex(0), { enabled: open && focusZone === "footer" });
+  useKey("ArrowRight", () => setFooterButtonIndex(1), { enabled: open && focusZone === "footer" });
+  useKey("ArrowUp", () => {
+    setFocusZone("list");
+    setSelectedIndex(filteredModels.length - 1);
+  }, { enabled: open && focusZone === "footer" });
+  useKey("Enter", () => footerButtonIndex === 0 ? handleCancel() : handleConfirm(), { enabled: open && focusZone === "footer" });
+  useKey(" ", () => footerButtonIndex === 0 ? handleCancel() : handleConfirm(), { enabled: open && focusZone === "footer" });
+
+  // Global shortcuts
+  useKey("/", () => {
+    if (focusZone !== "search") {
+      setFocusZone("search");
+      searchInputRef.current?.focus();
+    }
+  }, { enabled: open });
+  useKey("f", cycleTierFilter, { enabled: open && focusZone !== "search" });
+  useKey("Escape", handleCancel, { enabled: open && focusZone !== "search" });
+
+  const handleSearchEscape = () => {
+    if (searchQuery) {
+      setSearchQuery("");
+    } else {
+      searchInputRef.current?.blur();
+      setFocusZone("list");
+      setSelectedIndex(0);
+    }
+  };
+
+  const handleSearchArrowDown = () => {
+    searchInputRef.current?.blur();
+    setFocusZone("filters");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg border border-tui-border shadow-2xl">
+        <DialogHeader className="bg-tui-selection/50">
+          <DialogTitle className="text-tui-blue tracking-wide">Select Model</DialogTitle>
+          <DialogClose className="text-gray-500 hover:text-tui-fg font-bold" />
+        </DialogHeader>
+
+        <DialogBody className="p-0 flex flex-col">
+          <ModelSearchInput
+            ref={searchInputRef}
+            value={searchQuery}
+            onChange={setSearchQuery}
+            onFocus={() => setFocusZone("search")}
+            onEscape={handleSearchEscape}
+            onArrowDown={handleSearchArrowDown}
+          />
+
+          <ModelFilterTabs
+            value={tierFilter}
+            onValueChange={setTierFilter}
+            focusedIndex={filterIndex}
+            isFocused={focusZone === "filters"}
+            onTabClick={(idx) => {
+              setFocusZone("filters");
+              setFilterIndex(idx);
+            }}
+          />
+
+          <ModelList
+            ref={listContainerRef}
+            models={filteredModels}
+            selectedIndex={selectedIndex}
+            currentModelId={checkedModelId}
+            isFocused={focusZone === "list"}
+            onSelect={(idx) => {
+              setFocusZone("list");
+              setSelectedIndex(idx);
+              const model = filteredModels[idx];
+              if (model) setCheckedModelId(model.id);
+            }}
+            onConfirm={handleConfirm}
+          />
+        </DialogBody>
+
+        <DialogFooter className="justify-between">
+          <DialogFooterActions
+            onCancel={() => {
+              setFocusZone("footer");
+              setFooterButtonIndex(0);
+              handleCancel();
+            }}
+            onConfirm={() => {
+              setFocusZone("footer");
+              setFooterButtonIndex(1);
+              handleConfirm();
+            }}
+            canConfirm={filteredModels.length > 0}
+            cancelFocused={focusZone === "footer" && footerButtonIndex === 0}
+            confirmFocused={focusZone === "footer" && footerButtonIndex === 1}
+            hints={FOOTER_HINTS}
+          />
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

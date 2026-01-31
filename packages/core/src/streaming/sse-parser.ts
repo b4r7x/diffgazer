@@ -1,5 +1,5 @@
 import { safeParseJson } from "../json.js";
-import { truncate } from "../string.js";
+import { truncate } from "../strings.js";
 
 const MAX_BUFFER_SIZE = 1024 * 1024;
 

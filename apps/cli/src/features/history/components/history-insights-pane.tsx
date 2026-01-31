@@ -1,21 +1,23 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
+import type { TriageSeverity } from "@repo/schemas/triage";
+import type { TriageIssue } from "@repo/schemas";
+import { HISTOGRAM_SEVERITIES } from "@repo/schemas/ui";
+import { capitalize } from "@repo/core";
 import { useTheme } from "../../../hooks/use-theme.js";
-import { SeverityBar, type SeverityLevel } from "../../../components/ui/severity-bar.js";
+import { SeverityBar } from "../../../components/ui/severity/index.js";
 import { Badge } from "../../../components/ui/badge.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
-import type { TriageIssue } from "@repo/schemas";
 
 export interface HistoryInsightsPaneProps {
   runId: string | null;
-  severityCounts: Record<SeverityLevel, number>;
+  severityCounts: Record<TriageSeverity, number>;
   topLenses: string[];
   topIssues: TriageIssue[];
   duration?: string;
   onIssueClick?: (issueId: string) => void;
 }
 
-const SEVERITY_ORDER: SeverityLevel[] = ["blocker", "high", "medium", "low"];
 
 export function HistoryInsightsPane({
   runId,
@@ -52,10 +54,10 @@ export function HistoryInsightsPane({
       <Box flexDirection="column" paddingX={1} marginTop={1}>
         <SectionHeader>Severity Histogram</SectionHeader>
         <Box flexDirection="column" marginTop={1}>
-          {SEVERITY_ORDER.map((severity) => (
+          {HISTOGRAM_SEVERITIES.map((severity) => (
             <SeverityBar
               key={severity}
-              label={severity.charAt(0).toUpperCase() + severity.slice(1)}
+              label={capitalize(severity)}
               count={severityCounts[severity] ?? 0}
               max={maxCount}
               severity={severity}
@@ -97,7 +99,7 @@ export function HistoryInsightsPane({
                     }
                     bold
                   >
-                    [{issue.severity.charAt(0).toUpperCase() + issue.severity.slice(1)}]
+                    [{capitalize(issue.severity)}]
                   </Text>
                   <Box flexGrow={1} />
                   <Text color={colors.ui.textMuted}>L:{issue.line_start}</Text>
