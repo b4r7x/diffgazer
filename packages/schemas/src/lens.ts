@@ -4,7 +4,7 @@ import {
   createDomainErrorSchema,
   type SharedErrorCode,
 } from "./errors.js";
-import { TriageIssueSchema, TriageSeveritySchema, TraceRefSchema } from "./triage.js";
+import { TriageIssueSchema, TraceRefSchema, SeverityFilterSchema } from "./triage.js";
 
 export const LENS_IDS = [
   "correctness",
@@ -39,10 +39,9 @@ export const PROFILE_IDS = ["quick", "strict", "perf", "security"] as const;
 export const ProfileIdSchema = z.enum(PROFILE_IDS);
 export type ProfileId = z.infer<typeof ProfileIdSchema>;
 
-export const SeverityFilterSchema = z.object({
-  minSeverity: TriageSeveritySchema,
-});
-export type SeverityFilter = z.infer<typeof SeverityFilterSchema>;
+// Re-export from triage.ts (canonical location)
+export { SeverityFilterSchema } from "./triage.js";
+export type { SeverityFilter } from "./triage.js";
 
 export const ReviewProfileSchema = z.object({
   id: ProfileIdSchema,

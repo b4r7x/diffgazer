@@ -28,6 +28,8 @@ export function ToggleList<T extends string = string>({
 
   useInput(
     (input, key) => {
+      if (!isActive) return;
+
       if (key.upArrow && selectedIndex > 0) {
         onSelect(selectedIndex - 1);
         return;
