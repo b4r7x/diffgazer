@@ -71,54 +71,99 @@ export const AGENT_STATUS = ["queued", "running", "complete"] as const;
 export const AgentStatusSchema = z.enum(AGENT_STATUS);
 export type AgentStatus = z.infer<typeof AgentStatusSchema>;
 
-export const AgentStartEventSchema = z.object({
-  type: z.literal("agent_start"),
-  agent: AgentMetaSchema,
-  timestamp: z.string(),
-});
+export const EventCategorySchema = z.enum(["system", "tool", "lens", "agent"]);
+export type EventCategory = z.infer<typeof EventCategorySchema>;
 
-export const AgentThinkingEventSchema = z.object({
-  type: z.literal("agent_thinking"),
-  agent: AgentIdSchema,
-  thought: z.string(),
-  timestamp: z.string(),
-});
-
-export const ToolCallEventSchema = z.object({
-  type: z.literal("tool_call"),
-  agent: AgentIdSchema,
-  tool: z.string(),
-  input: z.string(),
-  timestamp: z.string(),
-});
-
-export const ToolResultEventSchema = z.object({
-  type: z.literal("tool_result"),
-  agent: AgentIdSchema,
-  tool: z.string(),
-  summary: z.string(),
-  timestamp: z.string(),
-});
-
-export const IssueFoundEventSchema = z.object({
-  type: z.literal("issue_found"),
-  agent: AgentIdSchema,
-  issue: z.object({
-    id: z.string(),
-    severity: z.string(),
-    category: z.string(),
-    title: z.string(),
+export const FileStartEventSchema = z
+  .object({
+    type: z.literal("file_start"),
     file: z.string(),
-  }).passthrough(),
-  timestamp: z.string(),
-});
+    index: z.number(),
+    total: z.number(),
+    timestamp: z.string(),
+  })
+  .passthrough();
+export type FileStartEvent = z.infer<typeof FileStartEventSchema>;
 
-export const AgentCompleteEventSchema = z.object({
-  type: z.literal("agent_complete"),
-  agent: AgentIdSchema,
-  issueCount: z.number(),
-  timestamp: z.string(),
-});
+export const FileCompleteEventSchema = z
+  .object({
+    type: z.literal("file_complete"),
+    file: z.string(),
+    index: z.number(),
+    total: z.number(),
+    timestamp: z.string(),
+  })
+  .passthrough();
+export type FileCompleteEvent = z.infer<typeof FileCompleteEventSchema>;
+
+export const AgentStartEventSchema = z
+  .object({
+    type: z.literal("agent_start"),
+    agent: AgentMetaSchema,
+    timestamp: z.string(),
+  })
+  .passthrough();
+export type AgentStartEvent = z.infer<typeof AgentStartEventSchema>;
+
+export const AgentThinkingEventSchema = z
+  .object({
+    type: z.literal("agent_thinking"),
+    agent: AgentIdSchema,
+    thought: z.string(),
+    timestamp: z.string(),
+  })
+  .passthrough();
+export type AgentThinkingEvent = z.infer<typeof AgentThinkingEventSchema>;
+
+export const ToolCallEventSchema = z
+  .object({
+    type: z.literal("tool_call"),
+    agent: AgentIdSchema,
+    tool: z.string(),
+    input: z.string(),
+    timestamp: z.string(),
+  })
+  .passthrough();
+export type ToolCallEvent = z.infer<typeof ToolCallEventSchema>;
+
+export const ToolResultEventSchema = z
+  .object({
+    type: z.literal("tool_result"),
+    agent: AgentIdSchema,
+    tool: z.string(),
+    summary: z.string(),
+    timestamp: z.string(),
+  })
+  .passthrough();
+export type ToolResultEvent = z.infer<typeof ToolResultEventSchema>;
+
+export const IssueFoundEventSchema = z
+  .object({
+    type: z.literal("issue_found"),
+    agent: AgentIdSchema,
+    issue: z
+      .object({
+        id: z.string(),
+        severity: z.string(),
+        category: z.string(),
+        title: z.string(),
+        file: z.string(),
+      })
+      .passthrough(),
+    timestamp: z.string(),
+  })
+  .passthrough();
+export type IssueFoundEvent = z.infer<typeof IssueFoundEventSchema>;
+
+export const AgentCompleteEventSchema = z
+  .object({
+    type: z.literal("agent_complete"),
+    agent: AgentIdSchema,
+    issueCount: z.number(),
+    timestamp: z.string(),
+  })
+  .passthrough();
+export type AgentCompleteEvent = z.infer<typeof AgentCompleteEventSchema>;
 
 export const LensStatSchema = z.object({
   lensId: LensIdSchema,
@@ -127,16 +172,23 @@ export const LensStatSchema = z.object({
 });
 export type LensStat = z.infer<typeof LensStatSchema>;
 
-export const OrchestratorCompleteEventSchema = z.object({
-  type: z.literal("orchestrator_complete"),
-  summary: z.string(),
-  totalIssues: z.number(),
-  lensStats: z.array(LensStatSchema).optional(),
-  filesAnalyzed: z.number().optional(),
-  timestamp: z.string(),
-});
+export const OrchestratorCompleteEventSchema = z
+  .object({
+    type: z.literal("orchestrator_complete"),
+    summary: z.string(),
+    totalIssues: z.number(),
+    lensStats: z.array(LensStatSchema),
+    filesAnalyzed: z.number(),
+    timestamp: z.string(),
+  })
+  .passthrough();
+export type OrchestratorCompleteEvent = z.infer<
+  typeof OrchestratorCompleteEventSchema
+>;
 
 export const AgentStreamEventSchema = z.discriminatedUnion("type", [
+  FileStartEventSchema,
+  FileCompleteEventSchema,
   AgentStartEventSchema,
   AgentThinkingEventSchema,
   ToolCallEventSchema,

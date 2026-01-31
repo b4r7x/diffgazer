@@ -1,4 +1,5 @@
 export * from "./agent-event.js";
+export * from "./enrich-event.js";
 export * from "./chat.js";
 export * from "./config.js";
 export * from "./errors.js";

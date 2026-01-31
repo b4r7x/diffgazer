@@ -48,8 +48,10 @@ export function ActivityLog({
             timestamp={entry.timestamp}
             tag={entry.tag}
             tagType={entry.tagType}
+            source={entry.source}
             message={entry.message}
             isWarning={entry.isWarning}
+            isError={entry.isError}
           />
         ))}
         {showCursor && (

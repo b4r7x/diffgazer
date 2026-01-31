@@ -1,6 +1,7 @@
 import type { LensId, ProfileId } from "@repo/schemas/lens";
 import type { TriageResult, TriageError } from "@repo/schemas/triage";
 import type { AgentStreamEvent } from "@repo/schemas/agent-event";
+import type { EnrichEvent } from "@repo/schemas/enrich-event";
 import type { FullTriageStreamEvent } from "@repo/schemas/full-triage-stream-event";
 import type { StepEvent } from "@repo/schemas/step-event";
 import { FullTriageStreamEventSchema } from "@repo/schemas/full-triage-stream-event";
@@ -18,6 +19,7 @@ export interface StreamTriageRequest {
 export interface StreamTriageOptions extends StreamTriageRequest {
   onAgentEvent?: (event: AgentStreamEvent) => void;
   onStepEvent?: (event: StepEvent) => void;
+  onEnrichEvent?: (event: EnrichEvent) => void;
   onChunk?: (content: string) => void;
   onLensStart?: (lens: string, index: number, total: number) => void;
   onLensComplete?: (lens: string) => void;
@@ -56,7 +58,7 @@ export async function processTriageStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   options: Omit<StreamTriageOptions, keyof StreamTriageRequest>
 ): Promise<Result<StreamTriageResult, StreamTriageError>> {
-  const { onAgentEvent, onStepEvent, onChunk, onLensStart, onLensComplete } = options;
+  const { onAgentEvent, onStepEvent, onEnrichEvent, onChunk, onLensStart, onLensComplete } = options;
 
   const agentEvents: AgentStreamEvent[] = [];
   let triageResult: TriageResult | null = null;
@@ -71,6 +73,10 @@ export async function processTriageStream(
     onEvent(event: FullTriageStreamEvent) {
       switch (event.type) {
         // Step events
+        case "review_started":
+          reviewId = event.reviewId;
+          onStepEvent?.(event);
+          break;
         case "step_start":
         case "step_complete":
         case "step_error":
@@ -85,8 +91,15 @@ export async function processTriageStream(
         case "issue_found":
         case "agent_complete":
         case "orchestrator_complete":
+        case "file_start":
+        case "file_complete":
           agentEvents.push(event);
           onAgentEvent?.(event);
+          break;
+
+        // Enrich events
+        case "enrich_progress":
+          onEnrichEvent?.(event);
           break;
 
         // Triage stream events

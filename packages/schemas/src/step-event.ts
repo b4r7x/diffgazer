@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // Step IDs match the workflow phases
-export const STEP_IDS = ["diff", "triage"] as const;
+export const STEP_IDS = ["diff", "triage", "enrich", "report"] as const;
 export const StepIdSchema = z.enum(STEP_IDS);
 export type StepId = z.infer<typeof StepIdSchema>;
 
@@ -13,6 +13,8 @@ export type StepStatus = z.infer<typeof StepStatusSchema>;
 export const STEP_METADATA: Record<StepId, { label: string; description: string }> = {
   diff: { label: "Collect diff", description: "Gathering code changes" },
   triage: { label: "Triage issues", description: "Analyzing with lenses" },
+  enrich: { label: "Enrich context", description: "Adding git blame and context" },
+  report: { label: "Generate report", description: "Synthesizing final report" },
 };
 
 // Step events emitted during triage
@@ -38,7 +40,16 @@ export const StepErrorEventSchema = z.object({
 });
 export type StepErrorEvent = z.infer<typeof StepErrorEventSchema>;
 
+export const ReviewStartedEventSchema = z.object({
+  type: z.literal("review_started"),
+  reviewId: z.string(),
+  filesTotal: z.number(),
+  timestamp: z.string(),
+});
+export type ReviewStartedEvent = z.infer<typeof ReviewStartedEventSchema>;
+
 export const StepEventSchema = z.discriminatedUnion("type", [
+  ReviewStartedEventSchema,
   StepStartEventSchema,
   StepCompleteEventSchema,
   StepErrorEventSchema,
@@ -66,5 +77,10 @@ export function createInitialSteps(): StepState[] {
 export function isStepEvent(event: unknown): event is StepEvent {
   if (!event || typeof event !== "object") return false;
   const type = (event as { type?: string }).type;
-  return type === "step_start" || type === "step_complete" || type === "step_error";
+  return (
+    type === "review_started" ||
+    type === "step_start" ||
+    type === "step_complete" ||
+    type === "step_error"
+  );
 }

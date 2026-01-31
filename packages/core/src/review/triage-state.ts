@@ -1,18 +1,24 @@
 import type { AgentStreamEvent, AgentState, TriageIssue } from "@repo/schemas";
+import type { EnrichEvent } from "@repo/schemas/enrich-event";
 import type { StepEvent, StepState, StepId } from "@repo/schemas/step-event";
 import { createInitialSteps, isStepEvent } from "@repo/schemas/step-event";
 
 export interface FileProgress {
   total: number;
-  processed: Set<string>;
+  current: number;
+  currentFile: string | null;
+  completed: Set<string>;
 }
+
+// All event types that can flow through the triage stream
+export type TriageEvent = AgentStreamEvent | StepEvent | EnrichEvent;
 
 // Unified triage state for web and CLI
 export interface TriageState {
   steps: StepState[];
   agents: AgentState[];
   issues: TriageIssue[];
-  events: (AgentStreamEvent | StepEvent)[];
+  events: TriageEvent[];
   fileProgress: FileProgress;
   isStreaming: boolean;
   error: string | null;
@@ -20,7 +26,7 @@ export interface TriageState {
 
 export type TriageAction =
   | { type: "START" }
-  | { type: "EVENT"; event: AgentStreamEvent | StepEvent }
+  | { type: "EVENT"; event: TriageEvent }
   | { type: "COMPLETE" }
   | { type: "ERROR"; error: string }
   | { type: "RESET" };
@@ -31,7 +37,7 @@ export function createInitialTriageState(): TriageState {
     agents: [],
     issues: [],
     events: [],
-    fileProgress: { total: 0, processed: new Set() },
+    fileProgress: { total: 0, current: 0, currentFile: null, completed: new Set() },
     isStreaming: false,
     error: null,
   };
@@ -94,6 +100,10 @@ function extractFilePath(toolInput: string): string {
   return colonIndex === -1 ? toolInput : toolInput.substring(0, colonIndex);
 }
 
+function isEnrichEvent(event: TriageEvent): event is EnrichEvent {
+  return event.type === "enrich_progress";
+}
+
 export function triageReducer(state: TriageState, action: TriageAction): TriageState {
   switch (action.type) {
     case "START":
@@ -103,6 +113,16 @@ export function triageReducer(state: TriageState, action: TriageAction): TriageS
       const event = action.event;
 
       if (isStepEvent(event)) {
+        if (event.type === "review_started") {
+          return {
+            ...state,
+            fileProgress: {
+              ...state.fileProgress,
+              total: event.filesTotal,
+            },
+            events: [...state.events, event],
+          };
+        }
         if (event.type === "step_start") {
           return {
             ...state,
@@ -129,19 +149,55 @@ export function triageReducer(state: TriageState, action: TriageAction): TriageS
         return state;
       }
 
-      // Handle tool_call for readFileContext to track file progress
-      if (event.type === "tool_call" && event.tool === "readFileContext") {
-        const newProcessed = new Set(state.fileProgress.processed);
-        newProcessed.add(extractFilePath(event.input));
+      // Handle file_start to track current file being analyzed
+      if (event.type === "file_start") {
         return {
           ...state,
-          agents: updateAgents(state.agents, event),
-          fileProgress: { ...state.fileProgress, processed: newProcessed },
+          fileProgress: {
+            ...state.fileProgress,
+            current: event.index,
+            currentFile: event.file,
+          },
           events: [...state.events, event],
         };
       }
 
-      // Handle orchestrator_complete to set total files
+      // Handle file_complete to mark file as completed
+      if (event.type === "file_complete") {
+        const newCompleted = new Set(state.fileProgress.completed);
+        newCompleted.add(event.file);
+        return {
+          ...state,
+          fileProgress: {
+            ...state.fileProgress,
+            completed: newCompleted,
+            currentFile: null,
+          },
+          events: [...state.events, event],
+        };
+      }
+
+      // Handle enrich events
+      if (isEnrichEvent(event)) {
+        return {
+          ...state,
+          events: [...state.events, event],
+        };
+      }
+
+      // Fallback: Handle tool_call for readFileContext to track file progress (legacy)
+      if (event.type === "tool_call" && event.tool === "readFileContext") {
+        const newCompleted = new Set(state.fileProgress.completed);
+        newCompleted.add(extractFilePath(event.input));
+        return {
+          ...state,
+          agents: updateAgents(state.agents, event),
+          fileProgress: { ...state.fileProgress, completed: newCompleted },
+          events: [...state.events, event],
+        };
+      }
+
+      // Fallback: Handle orchestrator_complete to set total files (legacy)
       if (event.type === "orchestrator_complete" && event.filesAnalyzed) {
         return {
           ...state,

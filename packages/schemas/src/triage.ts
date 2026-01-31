@@ -59,6 +59,29 @@ export const FixPlanStepSchema = z.object({
 });
 export type FixPlanStep = z.infer<typeof FixPlanStepSchema>;
 
+export const GitBlameInfoSchema = z.object({
+  author: z.string(),
+  authorEmail: z.string(),
+  commit: z.string(),
+  commitDate: z.string(),
+  summary: z.string(),
+});
+export type GitBlameInfo = z.infer<typeof GitBlameInfoSchema>;
+
+export const FileContextSchema = z.object({
+  beforeLines: z.array(z.string()),
+  afterLines: z.array(z.string()),
+  totalContext: z.number(),
+});
+export type FileContext = z.infer<typeof FileContextSchema>;
+
+export const EnrichmentDataSchema = z.object({
+  blame: GitBlameInfoSchema.nullable(),
+  context: FileContextSchema.nullable(),
+  enrichedAt: z.string(),
+});
+export type EnrichmentData = z.infer<typeof EnrichmentDataSchema>;
+
 export const TriageIssueSchema = z.object({
   id: z.string(),
   severity: TriageSeveritySchema,
@@ -78,6 +101,7 @@ export const TriageIssueSchema = z.object({
   testsToAdd: z.array(z.string()).optional(),
   evidence: z.array(EvidenceRefSchema),
   trace: z.array(TraceRefSchema).optional(),
+  enrichment: EnrichmentDataSchema.optional(),
 });
 export type TriageIssue = z.infer<typeof TriageIssueSchema>;
 

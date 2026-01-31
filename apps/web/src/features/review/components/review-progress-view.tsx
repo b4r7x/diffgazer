@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { cn } from '@/lib/utils';
 import { PanelHeader, ProgressList, ActivityLog, Timer, MetricItem } from '@/components/ui';
@@ -33,6 +33,13 @@ export function ReviewProgressView({
   const navigate = useNavigate();
   const [focusPane, setFocusPane] = useState<'progress' | 'log'>('progress');
   const [expandedStepId, setExpandedStepId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const triageStep = steps.find(s => s.id === 'triage');
+    if (triageStep?.status === 'active' && triageStep.substeps && triageStep.substeps.length > 0) {
+      setExpandedStepId('triage');
+    }
+  }, [steps]);
 
   const isApiKeyError = error && /api.?key/i.test(error);
 

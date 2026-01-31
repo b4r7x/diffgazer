@@ -250,7 +250,17 @@ async function runLensAnalysis(
     timestamp: now(),
   });
 
-  for (const file of diff.files) {
+  for (let i = 0; i < diff.files.length; i++) {
+    const file = diff.files[i]!;
+
+    onEvent({
+      type: "file_start",
+      file: file.filePath,
+      index: i,
+      total: diff.files.length,
+      timestamp: now(),
+    });
+
     const lineCount = file.rawDiff.split("\n").length;
     const startLine = file.hunks[0]?.newStart ?? 1;
     const lastHunk = file.hunks[file.hunks.length - 1];
@@ -269,6 +279,14 @@ async function runLensAnalysis(
       agent: agentId,
       tool: "readFileContext",
       summary: `Read ${lineCount} lines from ${file.filePath}`,
+      timestamp: now(),
+    });
+
+    onEvent({
+      type: "file_complete",
+      file: file.filePath,
+      index: i,
+      total: diff.files.length,
       timestamp: now(),
     });
   }
@@ -327,8 +345,15 @@ export async function triageReviewStream(
   const lenses = getLenses(lensIds);
   const filter = options.filter ?? options.profile?.filter;
 
-  const lensPromises = lenses.map((lens) => runLensAnalysis(client, lens, diff, onEvent));
-  const settledResults = await Promise.allSettled(lensPromises);
+  const settledResults: PromiseSettledResult<Result<LensResult, TriageError>>[] = [];
+  for (const lens of lenses) {
+    try {
+      const result = await runLensAnalysis(client, lens, diff, onEvent);
+      settledResults.push({ status: "fulfilled", value: result });
+    } catch (error) {
+      settledResults.push({ status: "rejected", reason: error });
+    }
+  }
 
   const allIssues: TriageIssue[] = [];
   const summaries: string[] = [];

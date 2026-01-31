@@ -244,12 +244,9 @@ export function ReviewPage() {
     setReviewData(data);
     if (!data.error) {
       setView("summary");
-      // Update URL without triggering a new fetch (we already have the data)
-      if (data.reviewId) {
-        navigate({ to: "/review/$reviewId", params: { reviewId: data.reviewId }, replace: true });
-      }
+      // URL is already updated by ReviewContainer when reviewId becomes available
     }
-  }, [navigate]);
+  }, []);
 
   if (params.reviewId && isLoading) {
     return (
