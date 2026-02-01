@@ -185,7 +185,14 @@ function AppContent({ address, sessionMode, sessionId, projectId, repoRoot }: Ap
           )}
           {view === "git-status" && <GitStatusView state={state.gitStatus.state} />}
           {view === "git-diff" && <GitDiffView state={state.gitDiff.state} staged={diffState.staged} />}
-          {view === "review" && <ReviewView state={state.review.state} staged={reviewState.staged} agentEvents={state.review.agentEvents} />}
+          {view === "review" && (
+            <ReviewView
+              state={state.review.state}
+              staged={reviewState.staged}
+              agentEvents={state.review.agentEvents}
+              currentReview={state.reviewHistory.current}
+            />
+          )}
           {view === "settings" && (
             <SettingsView
               projectId={projectId}

@@ -1,60 +1,88 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { FocusablePane, Tabs, TabsList, TabsTrigger } from "@/components/ui";
-import type { ReviewHistoryMetadata } from "@repo/schemas/review-history";
-import type { HistoryTabId, HistoryFocusZone } from "@repo/schemas/history";
+import { FocusablePane } from "@/components/ui";
+import type { TriageReviewMetadata } from "@repo/schemas/triage-storage";
+import type { HistoryFocusZone } from "@repo/schemas/history";
 import type { TimelineItem } from "@repo/schemas/ui";
 import { useScope, useKey } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { RunAccordionItem, TimelineList, HistoryInsightsPane, useReviews } from "@/features/history";
+import { RunAccordionItem, TimelineList, HistoryInsightsPane, useReviews, useReviewDetail } from "@/features/history";
+
+const HISTORY_FOOTER_SHORTCUTS = [
+  { key: "Tab", label: "Switch Focus" },
+  { key: "Enter", label: "Expand" },
+  { key: "o", label: "Open" },
+];
+
+const HISTORY_FOOTER_RIGHT_SHORTCUTS = [
+  { key: "r", label: "Resume" },
+  { key: "e", label: "Export" },
+  { key: "Esc", label: "Back" },
+];
 
 function getDateKey(dateStr: string): string {
   return dateStr.slice(0, 10); // "2024-01-15T..." -> "2024-01-15"
 }
 
 function getDateLabel(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  const yesterday = new Date(now.setDate(now.getDate() - 1)).toISOString().slice(0, 10);
   const dateKey = getDateKey(dateStr);
+  const now = new Date();
+  const today = getDateKey(now.toISOString());
+  const yesterday = getDateKey(new Date(now.getTime() - 86400000).toISOString());
 
   if (dateKey === today) return "Today";
   if (dateKey === yesterday) return "Yesterday";
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function getTimestamp(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 }
 
-function getRunSummary(metadata: ReviewHistoryMetadata): React.ReactNode {
-  const { criticalCount, warningCount, issueCount } = metadata;
-
-  if (criticalCount > 0) {
-    return (
-      <>
-        Found <span className="text-tui-red font-bold">{criticalCount} critical</span> issue
-        {criticalCount !== 1 ? "s" : ""}.
-      </>
-    );
-  }
-  if (warningCount > 0) {
-    return (
-      <>
-        Found <span className="text-tui-yellow font-bold">{warningCount} warning</span>
-        {warningCount !== 1 ? "s" : ""}.
-      </>
-    );
-  }
-  if (issueCount > 0) {
-    return `Found ${issueCount} issue${issueCount !== 1 ? "s" : ""}.`;
-  }
-  return "Passed with no issues.";
+function pluralize(count: number, singular: string): string {
+  return count === 1 ? singular : `${singular}s`;
 }
 
-function buildTimelineItems(reviews: ReviewHistoryMetadata[]): TimelineItem[] {
+function getRunSummary(metadata: TriageReviewMetadata): React.ReactNode {
+  const { blockerCount, highCount, mediumCount, lowCount, issueCount } = metadata;
+
+  if (issueCount === 0) {
+    return "Passed with no issues.";
+  }
+
+  const parts: React.ReactNode[] = [];
+
+  if (blockerCount > 0) {
+    parts.push(<span key="blocker" className="text-tui-red">{blockerCount} blocker</span>);
+  }
+  if (highCount > 0) {
+    parts.push(<span key="high" className="text-tui-yellow">{highCount} high</span>);
+  }
+  if (mediumCount > 0) {
+    parts.push(<span key="medium" className="text-tui-blue">{mediumCount} medium</span>);
+  }
+  if (lowCount > 0) {
+    parts.push(<span key="low" className="text-tui-cyan">{lowCount} low</span>);
+  }
+
+  if (parts.length === 0) {
+    return `Found ${issueCount} ${pluralize(issueCount, "issue")}.`;
+  }
+
+  return (
+    <>
+      {parts.map((part, i) => (
+        <span key={i}>
+          {i > 0 && ", "}
+          {part}
+        </span>
+      ))}
+    </>
+  );
+}
+
+function buildTimelineItems(reviews: TriageReviewMetadata[]): TimelineItem[] {
   const groups = new Map<string, { label: string; count: number }>();
 
   for (const review of reviews) {
@@ -75,7 +103,6 @@ function buildTimelineItems(reviews: ReviewHistoryMetadata[]): TimelineItem[] {
 export function HistoryPage() {
   const navigate = useNavigate();
   const { reviews, isLoading, error } = useReviews();
-  const [activeTab, setActiveTab] = useState<HistoryTabId>("runs");
   const [focusZone, setFocusZone] = useState<HistoryFocusZone>("runs");
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
 
@@ -92,18 +119,33 @@ export function HistoryPage() {
 
   const selectedRun = reviews.find((r) => r.id === selectedRunId) ?? null;
 
-  const severityCounts = {
-    blocker: selectedRun?.criticalCount ?? 0,
-    high: selectedRun?.warningCount ?? 0,
-    medium: 0,
-    low: 0,
-    nit: 0,
-  };
+  // Fetch full review details for insights panel
+  const { review: reviewDetail } = useReviewDetail(selectedRunId);
 
-  // Keyboard scope
+  // Calculate top categories from issues
+  const topLenses = useMemo(() => {
+    if (!reviewDetail?.result?.issues) return [];
+    const categoryCount = new Map<string, number>();
+    for (const issue of reviewDetail.result.issues) {
+      categoryCount.set(issue.category, (categoryCount.get(issue.category) ?? 0) + 1);
+    }
+    return Array.from(categoryCount.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([category]) => category);
+  }, [reviewDetail]);
+
+  // Get top 5 issues by severity
+  const topIssues = useMemo(() => {
+    if (!reviewDetail?.result?.issues) return [];
+    const severityOrder = { blocker: 0, high: 1, medium: 2, low: 3, nit: 4 };
+    return [...reviewDetail.result.issues]
+      .sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity])
+      .slice(0, 5);
+  }, [reviewDetail]);
+
   useScope("history");
 
-  // Tab switching
   useKey("Tab", () => {
     setFocusZone((prev) => {
       if (prev === "timeline") return "runs";
@@ -112,7 +154,6 @@ export function HistoryPage() {
     });
   });
 
-  // Arrow navigation between zones
   useKey("ArrowLeft", () => {
     if (focusZone === "runs") setFocusZone("timeline");
     else if (focusZone === "insights") setFocusZone("runs");
@@ -123,7 +164,6 @@ export function HistoryPage() {
     else if (focusZone === "runs") setFocusZone("insights");
   });
 
-  // Expand/collapse with Enter
   useKey(
     "Enter",
     () => {
@@ -134,7 +174,6 @@ export function HistoryPage() {
     { enabled: focusZone === "runs" }
   );
 
-  // Open in full review
   useKey(
     "o",
     () => {
@@ -145,7 +184,6 @@ export function HistoryPage() {
     { enabled: focusZone === "runs" }
   );
 
-  // Escape handling
   useKey("Escape", () => {
     if (expandedRunId) {
       setExpandedRunId(null);
@@ -154,26 +192,15 @@ export function HistoryPage() {
     }
   });
 
-  // Page footer shortcuts
   usePageFooter({
-    shortcuts: [
-      { key: "Tab", label: "Switch Focus" },
-      { key: "Enter", label: "Expand" },
-      { key: "o", label: "Open" },
-    ],
-    rightShortcuts: [
-      { key: "r", label: "Resume" },
-      { key: "e", label: "Export" },
-      { key: "Esc", label: "Back" },
-    ],
+    shortcuts: HISTORY_FOOTER_SHORTCUTS,
+    rightShortcuts: HISTORY_FOOTER_RIGHT_SHORTCUTS
   });
 
-  // Handle boundary navigation
   const handleTimelineBoundary = (direction: "up" | "down") => {
     if (direction === "down") setFocusZone("runs");
   };
 
-  // Loading state
   if (isLoading) {
     return (
       <div className="flex flex-col flex-1 items-center justify-center text-gray-500">
@@ -182,7 +209,6 @@ export function HistoryPage() {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="flex flex-col flex-1 items-center justify-center text-tui-red">
@@ -193,19 +219,11 @@ export function HistoryPage() {
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden px-4 pb-0">
-      {/* Tabs */}
       <div className="flex items-center gap-6 border-b border-tui-border mb-0 text-sm select-none shrink-0">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as HistoryTabId)}>
-          <TabsList className="border-b-0">
-            <TabsTrigger value="runs">[Runs]</TabsTrigger>
-            <TabsTrigger value="sessions">Sessions</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <span className="py-2 text-sm font-medium">Reviews</span>
       </div>
 
-      {/* 3-column layout */}
       <div className="flex flex-1 overflow-hidden border-x border-b border-tui-border">
-        {/* Timeline (left) */}
         <FocusablePane
           isFocused={focusZone === "timeline"}
           className="w-48 border-r border-tui-border flex flex-col shrink-0"
@@ -228,53 +246,45 @@ export function HistoryPage() {
           </div>
         </FocusablePane>
 
-        {/* Runs (middle) */}
         <FocusablePane
           isFocused={focusZone === "runs"}
           className="flex-1 min-w-0 border-r border-tui-border flex flex-col overflow-hidden"
         >
           <div className="p-3 text-xs text-gray-500 font-bold uppercase tracking-wider border-b border-tui-border flex justify-between overflow-hidden">
-            <span className="truncate">Runs</span>
+            <span className="truncate">Reviews</span>
             <span className="shrink-0 ml-2">Sort: Recent</span>
           </div>
           <div className="flex-1 overflow-y-auto">
-            {activeTab === "runs" ? (
-              filteredRuns.length > 0 ? (
-                filteredRuns.map((run) => (
-                  <RunAccordionItem
-                    key={run.id}
-                    id={run.id}
-                    displayId={`#${run.id.slice(0, 4)}`}
-                    branch={run.staged ? "Staged" : run.branch ?? "Main"}
-                    provider="AI"
-                    timestamp={getTimestamp(run.createdAt)}
-                    summary={getRunSummary(run)}
-                    issues={[]}
-                    isSelected={run.id === selectedRunId}
-                    isExpanded={run.id === expandedRunId}
-                    onSelect={() => setSelectedRunId(run.id)}
-                    onToggleExpand={() => setExpandedRunId((prev) => (prev === run.id ? null : run.id))}
-                    onIssueClick={() => navigate({ to: "/review/$reviewId", params: { reviewId: run.id } })}
-                  />
-                ))
-              ) : (
-                <div className="flex items-center justify-center h-full text-gray-500">
-                  No runs for this date
-                </div>
-              )
+            {filteredRuns.length > 0 ? (
+              filteredRuns.map((run) => (
+                <RunAccordionItem
+                  key={run.id}
+                  id={run.id}
+                  displayId={`#${run.id.slice(0, 4)}`}
+                  branch={run.staged ? "Staged" : run.branch ?? "Main"}
+                  provider="AI"
+                  timestamp={getTimestamp(run.createdAt)}
+                  summary={getRunSummary(run)}
+                  issues={[]}
+                  isSelected={run.id === selectedRunId}
+                  isExpanded={run.id === expandedRunId}
+                  onSelect={() => setSelectedRunId(run.id)}
+                  onToggleExpand={() => setExpandedRunId((prev) => (prev === run.id ? null : run.id))}
+                />
+              ))
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">No sessions available</div>
+              <div className="flex items-center justify-center h-full text-gray-500">
+                No runs for this date
+              </div>
             )}
           </div>
         </FocusablePane>
 
-        {/* Insights (right) */}
         <FocusablePane isFocused={focusZone === "insights"} className="w-80 flex flex-col shrink-0 overflow-hidden">
           <HistoryInsightsPane
             runId={selectedRun ? `#${selectedRun.id.slice(0, 4)}` : null}
-            severityCounts={severityCounts}
-            topLenses={[]}
-            topIssues={[]}
+            topLenses={topLenses}
+            topIssues={topIssues}
             duration="--"
             onIssueClick={() => {
               if (selectedRunId) {
@@ -285,7 +295,6 @@ export function HistoryPage() {
         </FocusablePane>
       </div>
 
-      {/* Search bar placeholder */}
       <div className="flex items-center gap-2 p-3 bg-tui-bg border-x border-b border-tui-border text-sm font-mono shrink-0">
         <span className="text-tui-blue font-bold">&gt;</span>
         <span className="text-gray-500">Search runs by ID, provider or tag...</span>

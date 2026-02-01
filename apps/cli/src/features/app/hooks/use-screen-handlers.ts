@@ -1,6 +1,7 @@
 import type { AppView } from "./use-navigation.js";
 import type { AIProvider } from "@repo/schemas";
 import type { Theme, TrustCapabilities, SettingsConfig, TrustConfig } from "@repo/schemas/settings";
+import type { SavedTriageReview } from "@repo/schemas/triage-storage";
 import type { MenuAction } from "../../../app/views/main-menu-view.js";
 import type { SessionEventType } from "@repo/schemas/session";
 import { openWebUi } from "../../../lib/web-ui.js";
@@ -40,6 +41,7 @@ interface UseScreenHandlersOptions {
     reset: () => void;
     clearCurrentReview: () => void;
     items: Array<{ id: string; createdAt?: string }>;
+    current: SavedTriageReview | null;
   };
   chat: {
     sendMessage: (sessionId: string, message: string) => Promise<unknown>;
@@ -108,15 +110,14 @@ export function useScreenHandlers({
         setView("review");
         void review.startReview(false);
         break;
-      case "resume-review":
-        if (reviewHistory.items.length > 0) {
-          const lastReview = reviewHistory.items[0];
-          if (lastReview) {
-            void reviewHistory.loadReview(lastReview.id);
-            setView("history");
-          }
+      case "resume-review": {
+        const lastReview = reviewHistory.items[0];
+        if (lastReview) {
+          void reviewHistory.loadReview(lastReview.id);
+          setView("history");
         }
         break;
+      }
       case "history":
         void reviewHistory.listReviews();
         setView("history");
@@ -167,7 +168,9 @@ export function useScreenHandlers({
       },
     },
     reviewHistory: {
-      onSelect: (review: { id: string }) => void reviewHistory.loadReview(review.id),
+      onSelect: (item: { id: string }) => {
+        void reviewHistory.loadReview(item.id).then(() => setView("review"));
+      },
       onDelete: (review: { id: string }) => void reviewHistory.deleteReview(review.id),
       onBack: () => {
         reviewHistory.reset();

@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useMemo, useEffect } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { MAIN_MENU_SHORTCUTS } from "@repo/core";
 import { useScope, useKey } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
@@ -7,6 +7,7 @@ import { usePageFooter } from "@/hooks/use-page-footer";
 import { ContextSidebar, HomeMenu } from "@/features/home/components";
 import { useConfig } from "@/features/settings";
 import { useReviewHistory } from "@/features/review";
+import { useToast } from "@/components/ui/toast";
 import type { ContextInfo } from "@repo/schemas/ui";
 import { api } from "@/lib/api";
 
@@ -22,6 +23,20 @@ const MENU_ROUTES: Record<string, string> = {
 export function HomePage() {
   const { provider, model } = useConfig();
   const { reviews } = useReviewHistory();
+  const { showToast } = useToast();
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false }) as { error?: string };
+
+  useEffect(() => {
+    if (search.error === 'invalid-review-id') {
+      showToast({
+        variant: "error",
+        title: "Invalid Review ID",
+        message: "The review ID format is invalid.",
+      });
+      navigate({ to: '/', replace: true });
+    }
+  }, [search.error, showToast, navigate]);
 
   const context: ContextInfo = useMemo(() => {
     const mostRecentReview = reviews[0];
@@ -33,7 +48,6 @@ export function HomePage() {
     };
   }, [provider, model, reviews]);
   const [selectedIndex, setSelectedIndex] = useScopedRouteState('menuIndex', 0);
-  const navigate = useNavigate();
 
   usePageFooter({ shortcuts: MAIN_MENU_SHORTCUTS });
 

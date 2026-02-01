@@ -15,7 +15,7 @@ import type { TriageIssue } from '@repo/schemas';
 export interface ReviewCompleteData {
   issues: TriageIssue[];
   reviewId: string | null;
-  error: string | null;
+  resumeFailed?: boolean;
 }
 
 export interface ReviewContainerProps {
@@ -74,7 +74,6 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
   const { isConfigured, isLoading: configLoading, provider } = useConfig();
   const { state, start, stop, resume } = useTriageStream();
 
-  const startTimeRef = useRef<Date>(new Date());
   const hasStartedRef = useRef(false);
   const hasStreamedRef = useRef(false);
   const completeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -95,6 +94,7 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     }
   }, [state.reviewId, params.reviewId, navigate]);
 
+  // Router's beforeLoad already validates UUID format, so we can trust params.reviewId
   useEffect(() => {
     if (hasStartedRef.current) return;
     if (configLoading) return;
@@ -106,8 +106,12 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     if (params.reviewId) {
       // Try to resume existing session
       resume(params.reviewId).catch(() => {
-        // Resume failed - start new review instead
-        start(options);
+        // Resume failed - signal to parent to try loading from storage
+        onComplete?.({
+          issues: [],
+          reviewId: params.reviewId ?? null,
+          resumeFailed: true
+        });
       });
     } else {
       // Start new review
@@ -121,16 +125,22 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
       if (completeTimeoutRef.current) {
         clearTimeout(completeTimeoutRef.current);
       }
+
+      // Check if report step completed - add extra delay for this phase
+      const reportStep = state.steps.find(s => s.id === 'report');
+      const reportCompleted = reportStep?.status === 'completed';
+      const delayMs = reportCompleted ? 2300 : 400;
+
       completeTimeoutRef.current = setTimeout(() => {
-        onComplete?.({ issues: state.issues, reviewId: state.reviewId, error: state.error });
-      }, 400);
+        onComplete?.({ issues: state.issues, reviewId: state.reviewId });
+      }, delayMs);
     }
     return () => {
       if (completeTimeoutRef.current) {
         clearTimeout(completeTimeoutRef.current);
       }
     };
-  }, [state.isStreaming, state.issues, state.reviewId, state.error, onComplete]);
+  }, [state.isStreaming, state.steps, state.issues, state.reviewId, state.error, onComplete]);
 
   const handleCancel = () => {
     stop();
@@ -142,7 +152,7 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
       clearTimeout(completeTimeoutRef.current);
     }
     stop();
-    onComplete?.({ issues: state.issues, reviewId: state.reviewId, error: state.error });
+    onComplete?.({ issues: state.issues, reviewId: state.reviewId });
   };
 
   const handleSetupProvider = () => {
@@ -156,7 +166,7 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
   );
 
   const logEntries = useMemo(
-    () => convertAgentEventsToLogEntries(state.events),
+    () => convertAgentEventsToLogEntries(state.events.filter(e => e.type !== 'enrich_progress')),
     [state.events]
   );
 
@@ -193,7 +203,7 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
       metrics={metrics}
       isRunning={state.isStreaming}
       error={state.error}
-      startTime={startTimeRef.current}
+      startTime={state.startedAt ?? undefined}
       onViewResults={handleViewResults}
       onCancel={handleCancel}
     />

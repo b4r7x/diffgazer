@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { cors } from "hono/cors";
 import { csrf } from "hono/csrf";
+import { HTTPException } from "hono/http-exception";
 import { ErrorCode } from "@repo/schemas/errors";
 import { routes } from "./api/routes/index.js";
 import { errorResponse } from "./lib/response.js";
@@ -53,6 +54,10 @@ export function createServer(): Hono {
   app.route("/", routes);
 
   app.onError((err, c) => {
+    if (err instanceof HTTPException) {
+      const message = err.message || "Validation error";
+      return errorResponse(c, message, ErrorCode.VALIDATION_ERROR, err.status);
+    }
     console.error("Unhandled error:", err);
     return errorResponse(c, "Internal server error", ErrorCode.INTERNAL_ERROR, 500);
   });

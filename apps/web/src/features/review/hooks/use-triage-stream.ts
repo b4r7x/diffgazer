@@ -30,12 +30,16 @@ function createInitialWebState(): WebTriageState {
 }
 
 function webTriageReducer(state: WebTriageState, action: WebTriageAction): WebTriageState {
-  if (action.type === "SELECT_ISSUE") {
-    return { ...state, selectedIssueId: action.issueId };
+  switch (action.type) {
+    case "SELECT_ISSUE":
+      return { ...state, selectedIssueId: action.issueId };
+    case "SET_REVIEW_ID":
+      return { ...state, reviewId: action.reviewId };
+    case "START":
+    case "RESET":
+      return { ...coreTriageReducer(state, action), selectedIssueId: null, reviewId: null };
   }
-  if (action.type === "SET_REVIEW_ID") {
-    return { ...state, reviewId: action.reviewId };
-  }
+
   // Handle review_started event to capture reviewId early
   if (action.type === "EVENT" && action.event.type === "review_started") {
     const newState = coreTriageReducer(state, action);
@@ -45,9 +49,7 @@ function webTriageReducer(state: WebTriageState, action: WebTriageAction): WebTr
       reviewId: action.event.reviewId,
     };
   }
-  if (action.type === "START" || action.type === "RESET") {
-    return { ...coreTriageReducer(state, action), selectedIssueId: null, reviewId: null };
-  }
+
   return { ...coreTriageReducer(state, action), selectedIssueId: state.selectedIssueId, reviewId: state.reviewId };
 }
 
@@ -60,6 +62,15 @@ export function useTriageStream() {
   // Event queue for batched UI updates
   const eventQueueRef = useRef<Array<{ type: 'EVENT', event: TriageEvent }>>([]);
   const rafScheduledRef = useRef(false);
+
+  const handleStreamError = useCallback((error: unknown) => {
+    if (error instanceof Error && error.name === "AbortError") {
+      dispatch({ type: "COMPLETE" });
+    } else {
+      const message = error instanceof Error ? error.message : "Failed to stream";
+      dispatch({ type: "ERROR", error: message });
+    }
+  }, []);
 
   const enqueueEvent = useCallback((event: TriageEvent) => {
     // review_started bypasses queue for immediate URL update
@@ -108,12 +119,8 @@ export function useTriageStream() {
       const result = await streamTriageWithEvents({
         ...options,
         signal: abortController.signal,
-        onAgentEvent: (event: AgentStreamEvent) => {
-          enqueueEvent(event);
-        },
-        onStepEvent: (event: StepEvent) => {
-          enqueueEvent(event);
-        },
+        onAgentEvent: enqueueEvent,
+        onStepEvent: enqueueEvent,
       });
 
       if (!result.ok) {
@@ -123,21 +130,19 @@ export function useTriageStream() {
         dispatch({ type: "COMPLETE" });
       }
     } catch (e) {
-      if (e instanceof Error && e.name === "AbortError") {
-        dispatch({ type: "COMPLETE" });
-      } else {
-        dispatch({ type: "ERROR", error: e instanceof Error ? e.message : "Failed to start stream" });
-      }
+      handleStreamError(e);
     } finally {
       abortControllerRef.current = null;
     }
-  }, [enqueueEvent]);
+  }, [enqueueEvent, handleStreamError]);
 
   const selectIssue = useCallback((issueId: string | null) => {
-      dispatch({ type: "SELECT_ISSUE", issueId });
+    dispatch({ type: "SELECT_ISSUE", issueId });
   }, []);
 
   const resume = useCallback(async (reviewId: string) => {
+    console.log(`[SESSION_RESTORE] Client: Attempting resume for reviewId=${reviewId}`);
+
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -153,29 +158,23 @@ export function useTriageStream() {
       const result = await resumeTriageStream({
         reviewId,
         signal: abortController.signal,
-        onAgentEvent: (event: AgentStreamEvent) => {
-          enqueueEvent(event);
-        },
-        onStepEvent: (event: StepEvent) => {
-          enqueueEvent(event);
-        },
+        onAgentEvent: enqueueEvent,
+        onStepEvent: enqueueEvent,
       });
 
       if (result.ok) {
+        console.log(`[SESSION_RESTORE] Client: Resume completed successfully`);
         dispatch({ type: "COMPLETE" });
       } else {
+        console.log(`[SESSION_RESTORE] Client: Resume failed - ${result.error.message}`);
         dispatch({ type: "ERROR", error: result.error.message });
       }
     } catch (e) {
-      if (e instanceof Error && e.name === "AbortError") {
-        dispatch({ type: "COMPLETE" });
-      } else {
-        dispatch({ type: "ERROR", error: e instanceof Error ? e.message : "Failed to resume stream" });
-      }
+      handleStreamError(e);
     } finally {
       abortControllerRef.current = null;
     }
-  }, [enqueueEvent]);
+  }, [enqueueEvent, handleStreamError]);
 
   // Note: We intentionally don't abort on cleanup to handle React Strict Mode.
   // The stream will complete naturally or be aborted explicitly via stop().

@@ -7,7 +7,6 @@ import {
   type TriageReviewMetadata,
   type TriageGitContext,
   type TriageResult,
-  type TriageSeverity,
   type LensId,
   type ProfileId,
   type DrilldownResult,
@@ -25,11 +24,48 @@ export const triageReviewStore = createCollection<SavedTriageReview, TriageRevie
   getId: (review) => review.metadata.id,
 });
 
-function countIssuesBySeverity(
-  issues: TriageResult["issues"],
-  severity: TriageSeverity
-): number {
-  return issues.filter((issue) => issue.severity === severity).length;
+type SeverityCounts = {
+  blocker: number;
+  high: number;
+  medium: number;
+  low: number;
+  nit: number;
+};
+
+function countSeverities(issues: TriageResult["issues"]): SeverityCounts {
+  const counts: SeverityCounts = { blocker: 0, high: 0, medium: 0, low: 0, nit: 0 };
+  for (const issue of issues) {
+    counts[issue.severity]++;
+  }
+  return counts;
+}
+
+/**
+ * Checks if a review's metadata needs migration (missing severity counts).
+ * Old reviews may have issueCount but missing individual severity counts.
+ */
+function needsMigration(metadata: TriageReviewMetadata, issues: TriageResult["issues"]): boolean {
+  if (issues.length === 0) return false;
+  const totalCounted = metadata.blockerCount + metadata.highCount + metadata.mediumCount + metadata.lowCount + metadata.nitCount;
+  return totalCounted === 0 && metadata.issueCount > 0;
+}
+
+/**
+ * Migrates a review by recalculating severity counts from issues.
+ * Returns true if migration was applied.
+ */
+function migrateReview(review: SavedTriageReview): boolean {
+  if (!needsMigration(review.metadata, review.result.issues)) {
+    return false;
+  }
+
+  const counts = countSeverities(review.result.issues);
+  review.metadata.blockerCount = counts.blocker;
+  review.metadata.highCount = counts.high;
+  review.metadata.mediumCount = counts.medium;
+  review.metadata.lowCount = counts.low;
+  review.metadata.nitCount = counts.nit;
+  return true;
 }
 
 export interface SaveTriageReviewOptions {
@@ -58,6 +94,8 @@ export async function saveTriageReview(
     deletions: options.diff.totalStats.deletions,
   };
 
+  const severityCounts = countSeverities(options.result.issues);
+
   const metadata: TriageReviewMetadata = {
     id: options.reviewId ?? randomUUID(),
     projectPath: options.projectPath,
@@ -67,8 +105,11 @@ export async function saveTriageReview(
     profile: options.profile ?? null,
     lenses: options.lenses,
     issueCount: options.result.issues.length,
-    blockerCount: countIssuesBySeverity(options.result.issues, "blocker"),
-    highCount: countIssuesBySeverity(options.result.issues, "high"),
+    blockerCount: severityCounts.blocker,
+    highCount: severityCounts.high,
+    mediumCount: severityCounts.medium,
+    lowCount: severityCounts.low,
+    nitCount: severityCounts.nit,
     fileCount: options.diff.totalStats.filesChanged,
   };
 
@@ -116,7 +157,16 @@ export async function listTriageReviews(
 export async function getTriageReview(
   reviewId: string
 ): Promise<Result<SavedTriageReview, StoreError>> {
-  return triageReviewStore.read(reviewId);
+  const result = await triageReviewStore.read(reviewId);
+  if (!result.ok) return result;
+
+  const review = result.value;
+  if (migrateReview(review)) {
+    // Persist migrated data in background (fire and forget)
+    triageReviewStore.write(review).catch(() => {});
+  }
+
+  return ok(review);
 }
 
 export async function deleteTriageReview(

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useFooter, type Shortcut } from "@/components/layout";
 
 interface PageFooterOptions {
@@ -8,12 +8,27 @@ interface PageFooterOptions {
 
 const EMPTY_SHORTCUTS: Shortcut[] = [];
 
-export function usePageFooter({ shortcuts, rightShortcuts }: PageFooterOptions) {
+function toKey(shortcuts: Shortcut[]): string {
+  return JSON.stringify(shortcuts);
+}
+
+export function usePageFooter({ shortcuts, rightShortcuts = EMPTY_SHORTCUTS }: PageFooterOptions): void {
   const { setShortcuts, setRightShortcuts } = useFooter();
-  const right = rightShortcuts ?? EMPTY_SHORTCUTS;
+
+  const prevRef = useRef({ left: "[]", right: "[]" });
 
   useEffect(() => {
-    setShortcuts(shortcuts);
-    setRightShortcuts(right);
-  }, [shortcuts, right, setShortcuts, setRightShortcuts]);
+    const leftKey = toKey(shortcuts);
+    const rightKey = toKey(rightShortcuts);
+
+    if (prevRef.current.left !== leftKey) {
+      setShortcuts(shortcuts);
+      prevRef.current.left = leftKey;
+    }
+
+    if (prevRef.current.right !== rightKey) {
+      setRightShortcuts(rightShortcuts);
+      prevRef.current.right = rightKey;
+    }
+  }, [shortcuts, rightShortcuts, setShortcuts, setRightShortcuts]);
 }

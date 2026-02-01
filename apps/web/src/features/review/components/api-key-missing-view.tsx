@@ -2,6 +2,9 @@ import type { AIProvider } from '@repo/schemas/config';
 import { useScope, useKey } from '@/hooks/keyboard';
 import { usePageFooter } from '@/hooks/use-page-footer';
 
+const FOOTER_SHORTCUTS = [{ key: 'Enter', label: 'Setup Provider' }];
+const FOOTER_RIGHT_SHORTCUTS = [{ key: 'Esc', label: 'Back' }];
+
 export interface ApiKeyMissingViewProps {
   activeProvider?: AIProvider;
   onNavigateSettings: () => void;
@@ -18,10 +21,7 @@ export function ApiKeyMissingView({
   useKey('Enter', onNavigateSettings);
   useKey('Escape', onBack);
 
-  usePageFooter({
-    shortcuts: [{ key: 'Enter', label: 'Setup Provider' }],
-    rightShortcuts: [{ key: 'Esc', label: 'Back' }],
-  });
+  usePageFooter({ shortcuts: FOOTER_SHORTCUTS, rightShortcuts: FOOTER_RIGHT_SHORTCUTS });
 
   return (
     <div className="flex flex-1 items-center justify-center">
@@ -29,11 +29,10 @@ export function ApiKeyMissingView({
         <div className="text-tui-yellow text-lg font-bold mb-4">
           API Key Required
         </div>
-        <div className="text-gray-400 font-mono text-sm mb-6">
-          {activeProvider
-            ? `No API key configured for ${activeProvider}. Please configure your provider settings to continue.`
-            : 'No API key configured. Please configure your provider settings to continue.'}
-        </div>
+        <p className="text-gray-400 font-mono text-sm mb-6">
+          No API key configured{activeProvider ? ` for ${activeProvider}` : ''}.
+          Please configure your provider settings to continue.
+        </p>
         <div className="flex gap-4 justify-center">
           <button
             type="button"

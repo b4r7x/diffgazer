@@ -9,8 +9,10 @@ import {
   type StreamTriageError,
 } from "@repo/core/review";
 import type { ApiClient } from "./types.js";
+import type { SavedTriageReview } from "@repo/schemas/triage-storage";
 
 export type { StreamTriageRequest, StreamTriageOptions, StreamTriageResult, StreamTriageError };
+export type { SavedTriageReview };
 
 export async function streamTriage(
   client: ApiClient,
@@ -69,4 +71,11 @@ export async function resumeTriageStream(
   }
 
   return { ok: true, value: undefined };
+}
+
+export async function getTriageReview(
+  client: ApiClient,
+  reviewId: string
+): Promise<{ review: SavedTriageReview }> {
+  return client.get<{ review: SavedTriageReview }>(`/triage/reviews/${reviewId}`);
 }

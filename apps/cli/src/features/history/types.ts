@@ -1,26 +1,36 @@
 import type { ReviewHistoryMetadata } from "@repo/schemas/review-history";
+import type { TriageReviewMetadata } from "@repo/schemas/triage-storage";
 import type { TimelineItem } from "@repo/schemas/ui";
 import { capitalize } from "@repo/core";
 import { formatDateLabel } from "../../lib/format.js";
 import type {
   HistoryRun,
-  HistoryTabId as TabId,
   HistoryFocusZone as FocusZone,
   HistoryState,
 } from "@repo/schemas/history";
 
+// CLI-specific tab type that includes sessions (web app removed this)
+export type TabId = "runs" | "sessions";
 export type { TimelineItem, HistoryRun, HistoryState };
-export type { HistoryTabId as TabId, HistoryFocusZone as FocusZone } from "@repo/schemas/history";
+export type { HistoryFocusZone as FocusZone } from "@repo/schemas/history";
 
-// Transform ReviewHistoryMetadata to HistoryRun
-export function toHistoryRun(review: ReviewHistoryMetadata): HistoryRun {
+type AnyReviewMetadata = ReviewHistoryMetadata | TriageReviewMetadata;
+
+function isTriageMetadata(meta: AnyReviewMetadata): meta is TriageReviewMetadata {
+  return "blockerCount" in meta;
+}
+
+export function toHistoryRun(review: AnyReviewMetadata): HistoryRun {
   const date = new Date(review.createdAt);
-  const dateLabel = formatDateLabel(date);
+  const isTriage = isTriageMetadata(review);
 
-  // Build summary from counts
+  const critical = isTriage ? review.blockerCount : review.criticalCount;
+  const warning = isTriage ? review.highCount : review.warningCount;
+
   const parts: string[] = [];
-  if (review.criticalCount > 0) parts.push(`${review.criticalCount} critical`);
-  if (review.warningCount > 0) parts.push(`${review.warningCount} warnings`);
+  if (critical > 0) parts.push(`${critical} ${isTriage ? "blocker" : "critical"}`);
+  if (warning > 0) parts.push(`${warning} ${isTriage ? "high" : "warnings"}`);
+
   const issueText = review.issueCount === 1 ? "issue" : "issues";
   const summary = parts.length > 0
     ? `${review.issueCount} ${issueText}: ${parts.join(", ")}`
@@ -29,19 +39,24 @@ export function toHistoryRun(review: ReviewHistoryMetadata): HistoryRun {
   return {
     id: review.id,
     displayId: `#${review.id.slice(0, 4)}`,
-    date: dateLabel,
+    date: formatDateLabel(date),
     branch: review.branch ?? "unknown",
     provider: review.staged ? "Staged" : "Unstaged",
     timestamp: date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
     summary,
     issues: [],
     issueCount: review.issueCount,
-    criticalCount: review.criticalCount,
-    warningCount: review.warningCount,
+    criticalCount: critical,
+    warningCount: warning,
   };
 }
 
-// Group runs by date into timeline items
+function getDateLabel(date: string): string {
+  if (date === "today") return "Today";
+  if (date === "yesterday") return "Yesterday";
+  return capitalize(date);
+}
+
 export function toTimelineItems(runs: HistoryRun[]): TimelineItem[] {
   const grouped = new Map<string, number>();
   for (const run of runs) {
@@ -49,14 +64,10 @@ export function toTimelineItems(runs: HistoryRun[]): TimelineItem[] {
   }
 
   const dateOrder = ["all", "today", "yesterday"];
-  const items: TimelineItem[] = [];
-
-  // Always add "All" option first
-  items.push({ id: "all", label: "All", count: runs.length });
+  const items: TimelineItem[] = [{ id: "all", label: "All", count: runs.length }];
 
   for (const [date, count] of grouped) {
-    const label = date === "today" ? "Today" : date === "yesterday" ? "Yesterday" : capitalize(date);
-    items.push({ id: date, label, count });
+    items.push({ id: date, label: getDateLabel(date), count });
   }
 
   items.sort((a, b) => {

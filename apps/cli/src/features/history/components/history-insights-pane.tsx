@@ -1,17 +1,13 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import type { TriageSeverity } from "@repo/schemas/triage";
 import type { TriageIssue } from "@repo/schemas";
-import { HISTOGRAM_SEVERITIES } from "@repo/schemas/ui";
 import { capitalize } from "@repo/core";
 import { useTheme } from "../../../hooks/use-theme.js";
-import { SeverityBar } from "../../../components/ui/severity/index.js";
 import { Badge } from "../../../components/ui/badge.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 
 export interface HistoryInsightsPaneProps {
   runId: string | null;
-  severityCounts: Record<TriageSeverity, number>;
   topLenses: string[];
   topIssues: TriageIssue[];
   duration?: string;
@@ -21,14 +17,11 @@ export interface HistoryInsightsPaneProps {
 
 export function HistoryInsightsPane({
   runId,
-  severityCounts,
   topLenses,
   topIssues,
   duration,
 }: HistoryInsightsPaneProps): ReactElement {
   const { colors } = useTheme();
-
-  const maxCount = Math.max(...Object.values(severityCounts), 1);
 
   if (!runId) {
     return (
@@ -48,23 +41,6 @@ export function HistoryInsightsPane({
           </Text>
         </Box>
         <Text color={colors.ui.border}>{"─".repeat(34)}</Text>
-      </Box>
-
-      {/* Severity Histogram */}
-      <Box flexDirection="column" paddingX={1} marginTop={1}>
-        <SectionHeader>Severity Histogram</SectionHeader>
-        <Box flexDirection="column" marginTop={1}>
-          {HISTOGRAM_SEVERITIES.map((severity) => (
-            <SeverityBar
-              key={severity}
-              label={capitalize(severity)}
-              count={severityCounts[severity] ?? 0}
-              max={maxCount}
-              severity={severity}
-              barWidth={15}
-            />
-          ))}
-        </Box>
       </Box>
 
       {/* Top Lenses */}
