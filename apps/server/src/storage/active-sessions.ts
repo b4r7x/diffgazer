@@ -34,7 +34,11 @@ export function markReady(reviewId: string): void {
 }
 
 export function getSession(reviewId: string): ActiveSession | undefined {
-  return activeSessions.get(reviewId);
+  const session = activeSessions.get(reviewId);
+  if (session) {
+    console.log(`[SESSION_RESTORE] Found session: reviewId=${reviewId}, events=${session.events.length}, isComplete=${session.isComplete}`);
+  }
+  return session;
 }
 
 export function addEvent(reviewId: string, event: FullTriageStreamEvent): void {
@@ -72,6 +76,7 @@ export function subscribe(reviewId: string, callback: (event: FullTriageStreamEv
 export function getActiveSessionForProject(projectPath: string): ActiveSession | undefined {
   for (const session of activeSessions.values()) {
     if (session.projectPath === projectPath && !session.isComplete && session.isReady) {
+      console.log(`[SESSION_RESTORE] Active session for project: reviewId=${session.reviewId}, events=${session.events.length}`);
       return session;
     }
   }

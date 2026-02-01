@@ -15,7 +15,7 @@ const substepVariants = cva("flex items-center gap-2 py-1 text-sm", {
 
 export interface ProgressSubstepProps
   extends ProgressSubstepData,
-    VariantProps<typeof substepVariants> {
+    Omit<VariantProps<typeof substepVariants>, 'status'> {
   className?: string;
 }
 

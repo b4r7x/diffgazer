@@ -18,6 +18,9 @@ function createBaseMetadata(overrides: Record<string, unknown> = {}) {
     issueCount: 5,
     blockerCount: 1,
     highCount: 2,
+    mediumCount: 1,
+    lowCount: 1,
+    nitCount: 0,
     fileCount: 3,
     ...overrides,
   };
@@ -143,6 +146,9 @@ describe("TriageReviewMetadataSchema", () => {
     ["issueCount at zero", { issueCount: 0 }],
     ["blockerCount at zero", { blockerCount: 0 }],
     ["highCount at zero", { highCount: 0 }],
+    ["mediumCount at zero", { mediumCount: 0 }],
+    ["lowCount at zero", { lowCount: 0 }],
+    ["nitCount at zero", { nitCount: 0 }],
     ["fileCount at zero", { fileCount: 0 }],
   ])("accepts %s", (_, overrides) => {
     const result = TriageReviewMetadataSchema.safeParse(
@@ -155,6 +161,9 @@ describe("TriageReviewMetadataSchema", () => {
     ["negative issueCount", { issueCount: -1 }],
     ["negative blockerCount", { blockerCount: -1 }],
     ["negative highCount", { highCount: -1 }],
+    ["negative mediumCount", { mediumCount: -1 }],
+    ["negative lowCount", { lowCount: -1 }],
+    ["negative nitCount", { nitCount: -1 }],
     ["negative fileCount", { fileCount: -1 }],
   ])("rejects %s", (_, overrides) => {
     const result = TriageReviewMetadataSchema.safeParse(
@@ -167,6 +176,9 @@ describe("TriageReviewMetadataSchema", () => {
     ["non-integer issueCount", { issueCount: 5.5 }],
     ["non-integer blockerCount", { blockerCount: 1.2 }],
     ["non-integer highCount", { highCount: 2.7 }],
+    ["non-integer mediumCount", { mediumCount: 1.5 }],
+    ["non-integer lowCount", { lowCount: 1.3 }],
+    ["non-integer nitCount", { nitCount: 0.8 }],
     ["non-integer fileCount", { fileCount: 3.3 }],
   ])("rejects %s", (_, overrides) => {
     const result = TriageReviewMetadataSchema.safeParse(
@@ -182,14 +194,30 @@ describe("TriageReviewMetadataSchema", () => {
     ["missing staged", { staged: undefined }],
     ["missing lenses", { lenses: undefined }],
     ["missing issueCount", { issueCount: undefined }],
-    ["missing blockerCount", { blockerCount: undefined }],
-    ["missing highCount", { highCount: undefined }],
     ["missing fileCount", { fileCount: undefined }],
   ])("rejects metadata with %s", (_, overrides) => {
     const result = TriageReviewMetadataSchema.safeParse(
       createBaseMetadata(overrides)
     );
     expect(result.success).toBe(false);
+  });
+
+  // Severity count fields are optional for backward compatibility with old reviews
+  it.each([
+    ["missing blockerCount", { blockerCount: undefined }, 0],
+    ["missing highCount", { highCount: undefined }, 0],
+    ["missing mediumCount", { mediumCount: undefined }, 0],
+    ["missing lowCount", { lowCount: undefined }, 0],
+    ["missing nitCount", { nitCount: undefined }, 0],
+  ])("accepts metadata with %s and defaults to 0", (_, overrides, expected) => {
+    const result = TriageReviewMetadataSchema.safeParse(
+      createBaseMetadata(overrides)
+    );
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const fieldName = Object.keys(overrides)[0] as keyof typeof result.data;
+      expect(result.data[fieldName]).toBe(expected);
+    }
   });
 
   it("rejects metadata with invalid UUID", () => {
@@ -218,6 +246,48 @@ describe("TriageReviewMetadataSchema", () => {
       createBaseMetadata({ lenses: ["correctness", "invalid-lens"] })
     );
     expect(result.success).toBe(false);
+  });
+
+  it("accepts metadata with all severity counts set to different values", () => {
+    const result = TriageReviewMetadataSchema.safeParse(
+      createBaseMetadata({
+        issueCount: 10,
+        blockerCount: 2,
+        highCount: 3,
+        mediumCount: 2,
+        lowCount: 2,
+        nitCount: 1,
+      })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts metadata with all severity counts set to zero", () => {
+    const result = TriageReviewMetadataSchema.safeParse(
+      createBaseMetadata({
+        issueCount: 0,
+        blockerCount: 0,
+        highCount: 0,
+        mediumCount: 0,
+        lowCount: 0,
+        nitCount: 0,
+      })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts metadata with only one severity having non-zero count", () => {
+    const result = TriageReviewMetadataSchema.safeParse(
+      createBaseMetadata({
+        issueCount: 3,
+        blockerCount: 0,
+        highCount: 0,
+        mediumCount: 3,
+        lowCount: 0,
+        nitCount: 0,
+      })
+    );
+    expect(result.success).toBe(true);
   });
 });
 

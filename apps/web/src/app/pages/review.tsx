@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearch, useParams } from "@tanstack/react-router";
 import { AnalysisSummary } from "@/components/ui";
 import type { LensStats, IssuePreview, SeverityFilter } from "@/components/ui";
@@ -8,9 +8,11 @@ import { useScope, useKey, useSelectableList } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ReviewContainer, IssueListPane, IssueDetailsPane, type ReviewMode, type TabId, type ReviewCompleteData } from "@/features/review/components";
-import { useExistingReview } from "@/features/review/hooks";
+import { useReviewErrorHandler } from "@/features/review/hooks";
 import { calculateSeverityCounts } from "@repo/core";
 import { filterIssuesBySeverity } from "@repo/core/review";
+import { getTriageReview, getReviewStatus } from "@repo/api";
+import { api } from "@/lib/api";
 
 type FocusZone = "filters" | "list" | "details";
 type ReviewView = "progress" | "summary" | "results";
@@ -18,7 +20,6 @@ type ReviewView = "progress" | "summary" | "results";
 interface ReviewData {
   issues: TriageIssue[];
   reviewId: string | null;
-  error: string | null;
 }
 
 interface ReviewSummaryViewProps {
@@ -60,15 +61,10 @@ function ReviewSummaryView({ issues, reviewId, onEnterReview, onBack }: ReviewSu
   useKey("Enter", onEnterReview);
   useKey("Escape", onBack);
 
-  const footerShortcuts = useMemo(() => [
-    { key: "Enter", label: "Start Review" }
-  ], []);
-
-  const footerRightShortcuts = useMemo(() => [
-    { key: "Esc", label: "Back" }
-  ], []);
-
-  usePageFooter({ shortcuts: footerShortcuts, rightShortcuts: footerRightShortcuts });
+  usePageFooter({
+    shortcuts: [{ key: "Enter", label: "Start Review" }],
+    rightShortcuts: [{ key: "Esc", label: "Back" }],
+  });
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4">
@@ -135,10 +131,12 @@ function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
 
   useKey("ArrowRight", () => {
     if (focusZone === "list") setFocusZone("details");
-    else if (focusZone === "filters" && focusedFilterIndex < SEVERITY_ORDER.length - 1) {
-      setFocusedFilterIndex((i) => i + 1);
-    } else if (focusZone === "filters" && focusedFilterIndex === SEVERITY_ORDER.length - 1) {
-      setFocusZone("details");
+    else if (focusZone === "filters") {
+      if (focusedFilterIndex < SEVERITY_ORDER.length - 1) {
+        setFocusedFilterIndex((i) => i + 1);
+      } else {
+        setFocusZone("details");
+      }
     }
   });
 
@@ -151,15 +149,13 @@ function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
   useKey("ArrowDown", () => setFocusZone("list"), { enabled: focusZone === "filters" });
   useKey("j", () => setFocusZone("list"), { enabled: focusZone === "filters" });
 
-  useKey("Enter", () => {
+  const handleToggleSeverityFilter = () => {
     const sev = SEVERITY_ORDER[focusedFilterIndex];
     setSeverityFilter((f) => (f === sev ? "all" : sev));
-  }, { enabled: focusZone === "filters" });
+  };
 
-  useKey(" ", () => {
-    const sev = SEVERITY_ORDER[focusedFilterIndex];
-    setSeverityFilter((f) => (f === sev ? "all" : sev));
-  }, { enabled: focusZone === "filters" });
+  useKey("Enter", handleToggleSeverityFilter, { enabled: focusZone === "filters" });
+  useKey(" ", handleToggleSeverityFilter, { enabled: focusZone === "filters" });
 
   useKey("1", () => setActiveTab("details"), { enabled: focusZone === "details" });
   useKey("2", () => setActiveTab("explain"), { enabled: focusZone === "details" });
@@ -175,18 +171,17 @@ function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
     });
   };
 
-  const footerShortcuts = useMemo(() => [
-    { key: "j/k", label: "Select" },
-    { key: "←/→", label: "Navigate" },
-    { key: "1-4", label: "Tab" },
-  ], []);
-
-  const footerRightShortcuts = useMemo(() => [
-    { key: "Space", label: "Toggle" },
-    { key: "Esc", label: "Back" },
-  ], []);
-
-  usePageFooter({ shortcuts: footerShortcuts, rightShortcuts: footerRightShortcuts });
+  usePageFooter({
+    shortcuts: [
+      { key: "j/k", label: "Select" },
+      { key: "←/→", label: "Navigate" },
+      { key: "1-4", label: "Tab" },
+    ],
+    rightShortcuts: [
+      { key: "Space", label: "Toggle" },
+      { key: "Esc", label: "Back" },
+    ],
+  });
 
   return (
     <div className="flex flex-1 overflow-hidden px-4 font-mono">
@@ -219,56 +214,102 @@ export function ReviewPage() {
   const params = useParams({ strict: false }) as { reviewId?: string };
   const search = useSearch({ strict: false }) as { staged?: boolean; files?: boolean };
   const reviewMode: ReviewMode = search.files ? "files" : search.staged ? "staged" : "unstaged";
-  const [view, setView] = useState<ReviewView>(params.reviewId ? "results" : "progress");
-  const [reviewData, setReviewData] = useState<ReviewData>({ issues: [], reviewId: null, error: null });
+  const [view, setView] = useScopedRouteState<ReviewView>("view", "progress");
+  const [reviewData, setReviewData] = useState<ReviewData>({ issues: [], reviewId: null });
+  const [isLoadingSaved, setIsLoadingSaved] = useState(false);
+  // Start as true if we have a reviewId - prevents ReviewContainer from mounting before check completes
+  const [isCheckingStatus, setIsCheckingStatus] = useState(!!params.reviewId);
+  // Tracks whether pre-check completed so we don't re-run it
+  const [statusCheckDone, setStatusCheckDone] = useState(false);
+  const { handleApiError } = useReviewErrorHandler();
 
-  // Only fetch if URL has a reviewId we don't already have loaded
-  const shouldFetch = params.reviewId && params.reviewId !== reviewData.reviewId && view !== "progress";
-
-  const { review: existingReview, isLoading, error: existingError } = useExistingReview(
-    shouldFetch ? params.reviewId : undefined
-  );
-
-  useEffect(() => {
-    // Review not found - clear invalid reviewId and start fresh
-    if (existingError && params.reviewId) {
-      navigate({ to: '/review', replace: true });
-    }
-  }, [existingError, params.reviewId, navigate]);
-
-  useEffect(() => {
-    if (existingReview && existingReview.metadata.id !== reviewData.reviewId) {
+  // Called when ReviewContainer's resume attempt fails - review exists in storage but not as active session
+  const handleResumeFailed = useCallback(async (reviewId: string) => {
+    // Pre-check already verified status, so just try to load from storage
+    setIsLoadingSaved(true);
+    try {
+      const { review } = await getTriageReview(api, reviewId);
       setReviewData({
-        issues: existingReview.result.issues,
-        reviewId: existingReview.metadata.id,
-        error: null,
+        issues: review.result.issues,
+        reviewId: review.metadata.id,
       });
       setView("results");
+    } catch (error) {
+      handleApiError(error);
+    } finally {
+      setIsLoadingSaved(false);
     }
-  }, [existingReview, reviewData.reviewId]);
+  }, [handleApiError, setView]);
 
   const handleComplete = useCallback((data: ReviewCompleteData) => {
-    setReviewData(data);
-    if (!data.error) {
-      setView("summary");
+    if (data.resumeFailed && data.reviewId) {
+      handleResumeFailed(data.reviewId);
+      return;
     }
-  }, []);
+    setReviewData(data);
+    setView("summary");
+  }, [handleResumeFailed, setView]);
 
-  if (shouldFetch && isLoading) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <span className="text-tui-fg-muted" role="status" aria-live="polite">Loading review...</span>
-      </div>
-    );
-  }
+  // Pre-check review status before mounting ReviewContainer
+  // Uses lightweight status endpoint first, only loads full review if already saved
+  useEffect(() => {
+    if (!params.reviewId || statusCheckDone) return;
 
-  // When existingError occurs with a reviewId, the useEffect above handles redirect
-  // Show loading state briefly while redirect happens
-  if (params.reviewId && existingError) {
-    return null;
-  }
+    const controller = new AbortController();
+
+    const checkStatus = async () => {
+      setIsCheckingStatus(true);
+      try {
+        const status = await getReviewStatus(api, params.reviewId!);
+
+        if (controller.signal.aborted) return;
+
+        if (status.sessionActive) {
+          // Active session exists - let ReviewContainer handle resume
+          setStatusCheckDone(true);
+          setIsCheckingStatus(false);
+          return;
+        }
+
+        if (status.reviewSaved) {
+          // Review exists in storage - load it directly
+          const { review } = await getTriageReview(api, params.reviewId!);
+          if (controller.signal.aborted) return;
+          setReviewData({
+            issues: review.result.issues,
+            reviewId: review.metadata.id,
+          });
+          setView("results");
+          setStatusCheckDone(true);
+          setIsCheckingStatus(false);
+          return;
+        }
+
+        // Neither active nor saved - review doesn't exist
+        handleApiError({ status: 404, message: "Review not found" });
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        handleApiError(error);
+      } finally {
+        setIsCheckingStatus(false);
+      }
+    };
+
+    checkStatus();
+
+    return () => controller.abort();
+  }, [params.reviewId, statusCheckDone, handleApiError, setView]);
 
   if (view === "progress") {
+    if (isLoadingSaved || isCheckingStatus) {
+      return (
+        <div className="flex flex-1 items-center justify-center">
+          <div className="text-gray-500 font-mono text-sm" role="status" aria-live="polite">
+            {isCheckingStatus ? "Checking review..." : "Loading review..."}
+          </div>
+        </div>
+      );
+    }
     return <ReviewContainer mode={reviewMode} onComplete={handleComplete} />;
   }
 

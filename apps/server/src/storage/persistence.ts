@@ -1,7 +1,7 @@
 import { access, readdir, unlink, open } from "node:fs/promises";
 import type { FileHandle } from "node:fs/promises";
 import { dirname } from "node:path";
-import type { ZodSchema } from "zod";
+import type { ZodType, ZodTypeDef } from "zod";
 import type { Result } from "@repo/core";
 import { ok, err } from "@repo/core";
 import type { AppError } from "@repo/core";
@@ -108,7 +108,7 @@ function findMetadataBoundary(buffer: string): number {
 
 function parseMetadataJson<M>(
   buffer: string,
-  schema: ZodSchema<M>,
+  schema: ZodType<M, ZodTypeDef, unknown>,
   name: string
 ): Result<M, StoreError> {
   const metadataKey = '"metadata"';
@@ -141,7 +141,7 @@ function parseMetadataJson<M>(
 
 async function extractMetadataFromFile<M>(
   path: string,
-  schema: ZodSchema<M>,
+  schema: ZodType<M, ZodTypeDef, unknown>,
   name: string
 ): Promise<Result<M, StoreError>> {
   let handle: FileHandle | null = null;
@@ -176,10 +176,10 @@ export interface CollectionConfig<T, M> {
   name: string;
   dir: string;
   filePath: (id: string) => string;
-  schema: ZodSchema<T>;
+  schema: ZodType<T, ZodTypeDef, unknown>;
   getMetadata: (item: T) => M;
   getId: (item: T) => string;
-  metadataSchema?: ZodSchema<M>;
+  metadataSchema?: ZodType<M, ZodTypeDef, unknown>;
 }
 
 export interface Collection<T, M> {
@@ -291,7 +291,7 @@ export function createCollection<T, M>(config: CollectionConfig<T, M>): Collecti
 export interface DocumentConfig<T> {
   name: string;
   filePath: string;
-  schema: ZodSchema<T>;
+  schema: ZodType<T, ZodTypeDef, unknown>;
 }
 
 export interface Document<T> {

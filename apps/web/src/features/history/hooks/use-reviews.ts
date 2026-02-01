@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { getReviews, deleteReview as apiDeleteReview } from "../api";
-import type { ReviewHistoryMetadata } from "@repo/schemas";
+import type { TriageReviewMetadata } from "@repo/schemas/triage-storage";
 
 export function useReviews(projectPath?: string) {
-  const [reviews, setReviews] = useState<ReviewHistoryMetadata[]>([]);
+  const [reviews, setReviews] = useState<TriageReviewMetadata[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

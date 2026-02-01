@@ -2,10 +2,11 @@ import type { ReactElement } from "react";
 import { useMemo } from "react";
 import { Box, Text, useInput, useApp } from "ink";
 import type { ReviewHistoryMetadata } from "@repo/schemas/review-history";
+import type { TriageReviewMetadata } from "@repo/schemas/triage-storage";
 import type { SessionMetadata } from "@repo/schemas/session";
-import type { TriageSeverity } from "@repo/schemas/triage";
+
+type AnyReviewMetadata = ReviewHistoryMetadata | TriageReviewMetadata;
 import type { TriageIssue } from "@repo/schemas";
-import { calculateSeverityCounts } from "@repo/core";
 import { useTheme } from "../../hooks/use-theme.js";
 import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
 import { FocusablePane } from "../../components/ui/layout/index.js";
@@ -17,11 +18,11 @@ import { useHistoryState } from "../../features/history/hooks/use-history-state.
 import { toHistoryRun } from "../../features/history/types.js";
 
 export interface HistoryScreenProps {
-  reviews: ReviewHistoryMetadata[];
+  reviews: AnyReviewMetadata[];
   sessions: SessionMetadata[];
-  onResumeReview: (review: ReviewHistoryMetadata) => void;
-  onExportReview: (review: ReviewHistoryMetadata) => void;
-  onDeleteReview: (review: ReviewHistoryMetadata) => void;
+  onResumeReview: (review: AnyReviewMetadata) => void;
+  onExportReview: (review: AnyReviewMetadata) => void;
+  onDeleteReview: (review: AnyReviewMetadata) => void;
   onViewSession: (session: SessionMetadata) => void;
   onDeleteSession: (session: SessionMetadata) => void;
   onBack: () => void;
@@ -77,12 +78,6 @@ export function HistoryScreen({
     toggleExpand,
     collapseOrBack,
   } = historyState;
-
-  // Compute severity counts for insights
-  const severityCounts = useMemo(
-    () => (selectedRun ? calculateSeverityCounts(selectedRun.issues) : { blocker: 0, high: 0, medium: 0, low: 0, nit: 0 }),
-    [selectedRun]
-  );
 
   const topLenses = ["Security", "Auth", "Performance"];
   const topIssues = selectedRun?.issues.slice(0, 3) ?? [];
@@ -275,7 +270,6 @@ export function HistoryScreen({
         <FocusablePane isFocused={focusZone === "insights"} width={insightsWidth}>
           <HistoryInsightsPane
             runId={selectedRun?.displayId ?? null}
-            severityCounts={severityCounts}
             topLenses={topLenses}
             topIssues={topIssues}
           />

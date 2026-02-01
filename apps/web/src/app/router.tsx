@@ -1,4 +1,4 @@
-import { createRouter, createRootRoute, createRoute } from '@tanstack/react-router'
+import { createRouter, createRootRoute, createRoute, redirect } from '@tanstack/react-router'
 import { RootLayout } from './routes/__root'
 import {
     HomePage,
@@ -11,77 +11,63 @@ import {
     SettingsAboutPage,
 } from './pages'
 
-// Create root route
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 const rootRoute = createRootRoute({
     component: RootLayout,
 })
 
-// Create children routes
-const indexRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/',
-    component: HomePage,
-})
-
-const reviewRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/review',
-    component: ReviewPage,
-})
-
-const reviewDetailRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/review/$reviewId',
-    component: ReviewPage,
-})
-
-const settingsRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/settings',
-    component: SettingsHubPage,
-})
-
-const historyRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/history',
-    component: HistoryPage,
-})
-
-const trustPermissionsRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/settings/trust',
-    component: TrustPermissionsPage,
-})
-
-const themeRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/settings/theme',
-    component: SettingsThemePage,
-})
-
-const providerSelectorRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/settings/providers',
-    component: ProviderSelectorPage,
-})
-
-const aboutRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/settings/about',
-    component: SettingsAboutPage,
-})
-
-// Create route tree
 const routeTree = rootRoute.addChildren([
-    indexRoute,
-    reviewRoute,
-    reviewDetailRoute,
-    settingsRoute,
-    historyRoute,
-    trustPermissionsRoute,
-    themeRoute,
-    providerSelectorRoute,
-    aboutRoute,
+    createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: HomePage,
+    }),
+    createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/review',
+        component: ReviewPage,
+    }),
+    createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/review/$reviewId',
+        component: ReviewPage,
+        beforeLoad: ({ params }) => {
+            if (!UUID_REGEX.test(params.reviewId)) {
+                throw redirect({ to: '/', search: { error: 'invalid-review-id' } });
+            }
+        },
+    }),
+    createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/settings',
+        component: SettingsHubPage,
+    }),
+    createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/history',
+        component: HistoryPage,
+    }),
+    createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/settings/trust',
+        component: TrustPermissionsPage,
+    }),
+    createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/settings/theme',
+        component: SettingsThemePage,
+    }),
+    createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/settings/providers',
+        component: ProviderSelectorPage,
+    }),
+    createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/settings/about',
+        component: SettingsAboutPage,
+    }),
 ])
 
 // Create router
