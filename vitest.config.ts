@@ -5,9 +5,11 @@ export default defineConfig({
     projects: [
       "packages/schemas",
       "packages/core",
+      "packages/api",
       "packages/hooks",
       "apps/server",
       "apps/cli",
+      "apps/web",
     ],
     globals: true,
     coverage: {
@@ -18,6 +20,7 @@ export default defineConfig({
         "dist/**",
         "**/*.d.ts",
         "**/*.test.ts",
+        "**/*.test.tsx",
         "**/vitest.config.ts",
       ],
     },

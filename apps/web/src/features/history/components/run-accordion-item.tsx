@@ -15,6 +15,7 @@ export interface RunAccordionItemProps {
   isExpanded: boolean;
   onSelect: () => void;
   onToggleExpand: () => void;
+  onOpen?: () => void;
   onIssueClick?: (issueId: string) => void;
   className?: string;
 }
@@ -31,6 +32,7 @@ export function RunAccordionItem({
   isExpanded,
   onSelect,
   onToggleExpand,
+  onOpen,
   onIssueClick,
   className,
 }: RunAccordionItemProps) {

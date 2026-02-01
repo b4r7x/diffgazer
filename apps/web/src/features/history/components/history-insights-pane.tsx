@@ -1,14 +1,11 @@
 import { cn } from "@/lib/utils";
-import { SeverityBar, Badge } from "@/components/ui";
+import { Badge } from "@/components/ui";
 import { SectionHeader } from "@/components/ui/section-header";
-import type { TriageSeverity } from "@repo/schemas/triage";
 import type { TriageIssue } from "@repo/schemas";
-import { HISTOGRAM_SEVERITIES } from "@repo/schemas/ui";
 import { capitalize } from "@repo/core";
 
 export interface HistoryInsightsPaneProps {
   runId: string | null;
-  severityCounts: Record<TriageSeverity, number>;
   topLenses: string[];
   topIssues: TriageIssue[];
   duration?: string;
@@ -19,15 +16,12 @@ export interface HistoryInsightsPaneProps {
 
 export function HistoryInsightsPane({
   runId,
-  severityCounts,
   topLenses,
   topIssues,
   duration,
   onIssueClick,
   className,
 }: HistoryInsightsPaneProps) {
-  const maxCount = Math.max(...Object.values(severityCounts), 1);
-
   if (!runId) {
     return (
       <div className={cn("flex items-center justify-center text-gray-500 text-sm", className)}>
@@ -43,24 +37,6 @@ export function HistoryInsightsPane({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* Severity Histogram */}
-        <div>
-          <SectionHeader className="border-b border-gray-800 pb-1">
-            Severity Histogram
-          </SectionHeader>
-          <div className="space-y-2 mt-3">
-            {HISTOGRAM_SEVERITIES.map((severity) => (
-              <SeverityBar
-                key={severity}
-                label={capitalize(severity)}
-                count={severityCounts[severity] ?? 0}
-                max={maxCount}
-                severity={severity}
-              />
-            ))}
-          </div>
-        </div>
-
         {/* Top Lenses */}
         {topLenses.length > 0 && (
           <div>

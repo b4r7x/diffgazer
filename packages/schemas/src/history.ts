@@ -5,7 +5,7 @@ import { TriageIssueSchema } from "./triage.js";
 // History Tab Types
 // ============================================================================
 
-export const HISTORY_TAB_IDS = ["runs", "sessions"] as const;
+export const HISTORY_TAB_IDS = ["runs"] as const;
 export const HistoryTabIdSchema = z.enum(HISTORY_TAB_IDS);
 export type HistoryTabId = z.infer<typeof HistoryTabIdSchema>;
 

@@ -6,6 +6,7 @@ import { getSuggestionReason } from "../../lib/drilldown-suggester.js";
 import { useScreenState } from "../../hooks/use-screen-state.js";
 import type { TriageState } from "../../features/review/index.js";
 import type { TriageIssue } from "@repo/schemas/triage";
+import type { SavedTriageReview } from "@repo/schemas/triage-storage";
 import type { AgentStreamEvent } from "@repo/schemas/agent-event";
 import { SplitPane } from "../../components/ui/layout/index.js";
 import { Separator } from "../../components/ui/separator.js";
@@ -37,6 +38,7 @@ interface ReviewViewProps {
   staged: boolean;
   reviewId?: string;
   agentEvents?: AgentStreamEvent[];
+  currentReview?: SavedTriageReview | null;
 }
 
 function LoadingDisplay({
@@ -391,13 +393,24 @@ function ReviewSplitScreenView({
 
 type ReviewPhase = "summary" | "results";
 
-export function ReviewView({ state, staged, reviewId, agentEvents = [] }: ReviewViewProps) {
+export function ReviewView({ state, staged, reviewId, agentEvents = [], currentReview = null }: ReviewViewProps) {
   const { exit } = useApp();
-  const [phase, setPhase] = useState<ReviewPhase>("summary");
+
+  const isLoadedReview = currentReview && (state.status === "idle" || state.status === "success");
+  const [phase, setPhase] = useState<ReviewPhase>(isLoadedReview ? "results" : "summary");
 
   const handleBack = useCallback(() => exit(), [exit]);
 
-  const idleShortcuts: Shortcut[] = useMemo(
+  const baseShortcuts: Shortcut[] = useMemo(
+    () => [
+      { key: "s", label: `Toggle ${staged ? "unstaged" : "staged"}` },
+      { key: "b", label: "Back" },
+      { key: "q", label: "Quit" },
+    ],
+    [staged]
+  );
+
+  const shortcutsWithRefresh: Shortcut[] = useMemo(
     () => [
       { key: "s", label: `Toggle ${staged ? "unstaged" : "staged"}` },
       { key: "r", label: "Refresh" },
@@ -407,71 +420,74 @@ export function ReviewView({ state, staged, reviewId, agentEvents = [] }: Review
     [staged]
   );
 
-  const loadingShortcuts: Shortcut[] = useMemo(
-    () => [
-      { key: "s", label: `Toggle ${staged ? "unstaged" : "staged"}` },
-      { key: "b", label: "Back" },
-      { key: "q", label: "Quit" },
-    ],
-    [staged]
-  );
+  // Derive display data from either loaded review or streaming state
+  const review = isLoadedReview
+    ? {
+        issues: currentReview.result.issues,
+        summary: currentReview.result.summary,
+        reviewId: currentReview.metadata.id,
+        staged: currentReview.metadata.staged,
+        showAgentPanel: false,
+        agentEvents: [] as AgentStreamEvent[],
+      }
+    : state.status === "success"
+      ? {
+          issues: state.data.issues,
+          summary: state.data.summary,
+          reviewId: reviewId ?? state.reviewId,
+          staged,
+          showAgentPanel: true,
+          agentEvents,
+        }
+      : null;
 
-  const errorShortcuts: Shortcut[] = useMemo(
-    () => [
-      { key: "s", label: `Toggle ${staged ? "unstaged" : "staged"}` },
-      { key: "r", label: "Refresh" },
-      { key: "b", label: "Back" },
-      { key: "q", label: "Quit" },
-    ],
-    [staged]
-  );
-
-  if (state.status === "idle") {
-    return (
-      <Box flexDirection="column" marginTop={1}>
-        <IdleDisplay />
-        <Box marginTop={1}>
-          <FooterBar shortcuts={idleShortcuts} />
+  // Handle non-success states
+  if (!review) {
+    if (state.status === "idle") {
+      return (
+        <Box flexDirection="column" marginTop={1}>
+          <IdleDisplay />
+          <Box marginTop={1}>
+            <FooterBar shortcuts={shortcutsWithRefresh} />
+          </Box>
         </Box>
-      </Box>
-    );
+      );
+    }
+
+    if (state.status === "loading") {
+      return (
+        <Box flexDirection="column" marginTop={1}>
+          <LoadingDisplay content={state.content} staged={staged} agentEvents={agentEvents} />
+          <Box marginTop={1}>
+            <FooterBar shortcuts={baseShortcuts} />
+          </Box>
+        </Box>
+      );
+    }
+
+    if (state.status === "error") {
+      return (
+        <Box flexDirection="column" marginTop={1}>
+          <ErrorDisplay message={state.error.message} />
+          <Box marginTop={1}>
+            <FooterBar shortcuts={shortcutsWithRefresh} />
+          </Box>
+        </Box>
+      );
+    }
+
+    // Unreachable, but TypeScript needs this
+    return null;
   }
 
-  if (state.status === "loading") {
-    return (
-      <Box flexDirection="column" marginTop={1}>
-        <LoadingDisplay content={state.content} staged={staged} agentEvents={agentEvents} />
-        <Box marginTop={1}>
-          <FooterBar shortcuts={loadingShortcuts} />
-        </Box>
-      </Box>
-    );
-  }
-
-  if (state.status === "error") {
-    return (
-      <Box flexDirection="column" marginTop={1}>
-        <ErrorDisplay message={state.error.message} />
-        <Box marginTop={1}>
-          <FooterBar shortcuts={errorShortcuts} />
-        </Box>
-      </Box>
-    );
-  }
-
-  const { data, reviewId: triageReviewId } = state;
-
-  const filesAnalyzed = useMemo(() => {
-    const uniqueFiles = new Set(data.issues.map((issue) => issue.file));
-    return uniqueFiles.size;
-  }, [data.issues]);
+  const filesAnalyzed = new Set(review.issues.map((issue) => issue.file)).size;
 
   if (phase === "summary") {
     return (
       <Box flexDirection="column" marginTop={1}>
         <ReviewSummaryView
-          issues={data.issues}
-          runId={triageReviewId ?? reviewId ?? "N/A"}
+          issues={review.issues}
+          runId={review.reviewId ?? "N/A"}
           filesAnalyzed={filesAnalyzed}
           lensStats={[]}
           onEnterReview={() => setPhase("results")}
@@ -484,14 +500,14 @@ export function ReviewView({ state, staged, reviewId, agentEvents = [] }: Review
   return (
     <Box flexDirection="column" marginTop={1}>
       <ReviewSplitScreenView
-        issues={data.issues}
-        summary={data.summary}
+        issues={review.issues}
+        summary={review.summary}
         overallScore={null}
-        staged={staged}
-        reviewId={reviewId ?? triageReviewId}
+        staged={review.staged}
+        reviewId={review.reviewId}
         onBack={handleBack}
-        agentEvents={agentEvents}
-        showAgentPanel={true}
+        agentEvents={review.agentEvents}
+        showAgentPanel={review.showAgentPanel}
       />
     </Box>
   );

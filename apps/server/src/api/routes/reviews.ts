@@ -3,6 +3,7 @@ import { streamSSE } from "hono/streaming";
 import {
   reviewStore,
   listReviews,
+  getTriageReview,
 } from "../../storage/index.js";
 import { handleStoreError, errorResponse } from "../../lib/response.js";
 import { requireUuidParam, validateProjectPath } from "../../lib/validation.js";
@@ -19,7 +20,7 @@ reviews.get("/", async (c) => {
 
   return c.json({
     reviews: result.value.items,
-    warnings: result.value.warnings.length > 0 ? result.value.warnings : undefined,
+    ...(result.value.warnings.length > 0 && { warnings: result.value.warnings }),
   });
 });
 
@@ -49,29 +50,57 @@ reviews.get("/:id/stream", async (c) => {
     return errorResponse(c, "Session not found", ErrorCode.NOT_FOUND, 404);
   }
 
+  const writeEvent = (stream: any, event: any) =>
+    stream.writeSSE({
+      event: event.type,
+      data: JSON.stringify(event),
+    });
+
   return streamSSE(c, async (stream) => {
     for (const event of session.events) {
-      await stream.writeSSE({
-        event: event.type,
-        data: JSON.stringify(event),
-      });
+      await writeEvent(stream, event);
     }
 
-    if (session.isComplete) {
-      return;
-    }
+    if (session.isComplete) return;
 
     await new Promise<void>((resolve) => {
       const unsubscribe = subscribe(reviewId, async (event) => {
-        await stream.writeSSE({
-          event: event.type,
-          data: JSON.stringify(event),
-        });
+        await writeEvent(stream, event);
         if (event.type === "complete" || event.type === "error") {
           unsubscribe();
           resolve();
         }
       });
     });
+  });
+});
+
+reviews.get("/:id/status", async (c) => {
+  const reviewId = requireUuidParam(c, "id");
+  const session = getSession(reviewId);
+  const savedResult = await getTriageReview(reviewId);
+
+  if (session) {
+    return c.json({
+      sessionActive: true,
+      reviewSaved: savedResult.ok,
+      isComplete: session.isComplete,
+      startedAt: session.startedAt.toISOString(),
+    });
+  }
+
+  if (savedResult.ok) {
+    return c.json({
+      sessionActive: false,
+      reviewSaved: true,
+      isComplete: true,
+      startedAt: savedResult.value.metadata.createdAt,
+    });
+  }
+
+  return c.json({
+    sessionActive: false,
+    reviewSaved: false,
+    isComplete: false,
   });
 });

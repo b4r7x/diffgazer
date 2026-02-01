@@ -1,7 +1,7 @@
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { HTTPException } from "hono/http-exception";
-import type { ZodSchema } from "zod";
+import type { ZodType, ZodTypeDef } from "zod";
 import { UuidSchema } from "@repo/schemas";
 import type { Result } from "@repo/core";
 import { ok, err, safeParseJson } from "@repo/core";
@@ -24,7 +24,7 @@ export function assertValidUuid(id: string): string {
 
 export function validateSchema<T, E>(
   value: unknown,
-  schema: ZodSchema<T>,
+  schema: ZodType<T, ZodTypeDef, unknown>,
   errorFactory: (message: string) => E
 ): Result<T, E> {
   const result = schema.safeParse(value);
@@ -36,7 +36,7 @@ export function validateSchema<T, E>(
 
 export function parseAndValidate<T, E>(
   content: string,
-  schema: ZodSchema<T>,
+  schema: ZodType<T, ZodTypeDef, unknown>,
   parseErrorFactory: (message: string) => E,
   validationErrorFactory: (message: string) => E
 ): Result<T, E> {

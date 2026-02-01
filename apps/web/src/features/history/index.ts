@@ -2,5 +2,5 @@ export { RunAccordionItem, type RunAccordionItemProps } from "./components/run-a
 export { TimelineList, type TimelineListProps } from "./components/timeline-list";
 export { HistoryInsightsPane, type HistoryInsightsPaneProps } from "./components/history-insights-pane";
 
-export { useReviews } from "./hooks";
+export { useReviews, useReviewDetail } from "./hooks";
 export { getReviews, deleteReview } from "./api";
