@@ -1,23 +1,22 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import type { TriageIssue } from "@repo/schemas";
+import type { SeverityCounts } from "@repo/schemas/ui";
 import { capitalize } from "@repo/core";
 import { useTheme } from "../../../hooks/use-theme.js";
-import { Badge } from "../../../components/ui/badge.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
+import { SeverityBreakdown } from "../../../components/ui/severity/index.js";
 
 export interface HistoryInsightsPaneProps {
   runId: string | null;
-  topLenses: string[];
+  severityCounts: SeverityCounts | null;
   topIssues: TriageIssue[];
   duration?: string;
-  onIssueClick?: (issueId: string) => void;
 }
-
 
 export function HistoryInsightsPane({
   runId,
-  topLenses,
+  severityCounts,
   topIssues,
   duration,
 }: HistoryInsightsPaneProps): ReactElement {
@@ -43,15 +42,10 @@ export function HistoryInsightsPane({
         <Text color={colors.ui.border}>{"─".repeat(34)}</Text>
       </Box>
 
-      {/* Top Lenses */}
-      {topLenses.length > 0 && (
+      {/* Severity Breakdown */}
+      {severityCounts && (
         <Box flexDirection="column" paddingX={1} marginTop={1}>
-          <SectionHeader>Top Lenses</SectionHeader>
-          <Box marginTop={1} gap={1} flexWrap="wrap">
-            {topLenses.map((lens) => (
-              <Badge key={lens} text={lens} variant="muted" />
-            ))}
-          </Box>
+          <SeverityBreakdown counts={severityCounts} borderless />
         </Box>
       )}
 
@@ -63,18 +57,7 @@ export function HistoryInsightsPane({
             {topIssues.slice(0, 3).map((issue) => (
               <Box key={issue.id} flexDirection="column" marginBottom={1}>
                 <Box>
-                  <Text
-                    color={
-                      issue.severity === "blocker"
-                        ? colors.severity.blocker
-                        : issue.severity === "high"
-                          ? colors.severity.high
-                          : issue.severity === "medium"
-                            ? colors.severity.medium
-                            : colors.severity.low
-                    }
-                    bold
-                  >
+                  <Text color={colors.severity[issue.severity]} bold>
                     [{capitalize(issue.severity)}]
                   </Text>
                   <Box flexGrow={1} />
