@@ -1,1 +1,1 @@
-export { useFiglet, type FigletFont, type FigletResult } from "./use-figlet.js";
+export { useFiglet, type FigletFont } from "./use-figlet.js";

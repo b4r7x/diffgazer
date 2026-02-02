@@ -7,7 +7,7 @@ interface LogoProps {
 }
 
 export function Logo({ text = "Stargazer", className }: LogoProps): React.ReactElement {
-  const { text: asciiText, isLoading } = useFiglet(text);
+  const asciiText = useFiglet(text);
 
   return (
     <pre
@@ -20,7 +20,7 @@ export function Logo({ text = "Stargazer", className }: LogoProps): React.ReactE
       }}
       aria-label={text.toUpperCase()}
     >
-      {isLoading ? text : asciiText}
+      {asciiText ?? text}
     </pre>
   );
 }
