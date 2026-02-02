@@ -13,5 +13,3 @@ export const config = {
     web: 3001,
   },
 } as const;
-
-export type Config = typeof config;
