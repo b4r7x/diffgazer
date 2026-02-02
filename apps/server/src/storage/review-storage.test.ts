@@ -82,7 +82,7 @@ describe("review-storage severity histogram", () => {
 
       const options: SaveTriageReviewOptions = {
         projectPath: "/test/project",
-        staged: false,
+        mode: "unstaged",
         result: createMockTriageResult(issues),
         diff: createMockDiff(),
         branch: "main",
@@ -114,7 +114,7 @@ describe("review-storage severity histogram", () => {
 
       const options: SaveTriageReviewOptions = {
         projectPath: "/test/project",
-        staged: false,
+        mode: "unstaged",
         result: createMockTriageResult(issues),
         diff: createMockDiff(),
         branch: "main",
@@ -141,7 +141,7 @@ describe("review-storage severity histogram", () => {
     it("sets all counts to zero when no issues are present", async () => {
       const options: SaveTriageReviewOptions = {
         projectPath: "/test/project",
-        staged: false,
+        mode: "unstaged",
         result: createMockTriageResult([]),
         diff: createMockDiff(),
         branch: "main",
@@ -174,7 +174,7 @@ describe("review-storage severity histogram", () => {
 
       const options: SaveTriageReviewOptions = {
         projectPath: "/test/project",
-        staged: false,
+        mode: "unstaged",
         result: createMockTriageResult(issues),
         diff: createMockDiff(),
         branch: "main",
@@ -207,7 +207,7 @@ describe("review-storage severity histogram", () => {
 
       const options: SaveTriageReviewOptions = {
         projectPath: "/test/project",
-        staged: false,
+        mode: "unstaged",
         result: createMockTriageResult(issues),
         diff: createMockDiff(),
         branch: "main",
@@ -241,7 +241,7 @@ describe("review-storage severity histogram", () => {
 
       const options: SaveTriageReviewOptions = {
         projectPath: "/test/project",
-        staged: false,
+        mode: "unstaged",
         result: createMockTriageResult(issues),
         diff: createMockDiff(),
         branch: "main",
@@ -276,7 +276,7 @@ describe("review-storage severity histogram", () => {
 
       const options: SaveTriageReviewOptions = {
         projectPath: "/test/project",
-        staged: false,
+        mode: "unstaged",
         result: createMockTriageResult(issues),
         diff: createMockDiff(),
         branch: "main",
@@ -326,7 +326,7 @@ describe("review-storage severity histogram", () => {
 
       const options: SaveTriageReviewOptions = {
         projectPath: "/test/project",
-        staged: false,
+        mode: "unstaged",
         result: createMockTriageResult(issues),
         diff: createMockDiff(),
         branch: "main",
@@ -359,7 +359,7 @@ describe("review-storage severity histogram", () => {
 
       const options: SaveTriageReviewOptions = {
         projectPath: "/test/project",
-        staged: false,
+        mode: "unstaged",
         result: createMockTriageResult(issues),
         diff: createMockDiff(),
         branch: "main",
@@ -398,7 +398,7 @@ describe("review-storage severity histogram", () => {
           id: "550e8400-e29b-41d4-a716-446655440000",
           projectPath: "/test/project",
           createdAt: new Date().toISOString(),
-          staged: false,
+          mode: "unstaged",
           branch: "main",
           profile: null,
           lenses: ["correctness"],
@@ -450,7 +450,7 @@ describe("review-storage severity histogram", () => {
           id: "550e8400-e29b-41d4-a716-446655440000",
           projectPath: "/test/project",
           createdAt: new Date().toISOString(),
-          staged: false,
+          mode: "unstaged",
           branch: "main",
           profile: null,
           lenses: ["correctness"],
@@ -488,7 +488,7 @@ describe("review-storage severity histogram", () => {
           id: "550e8400-e29b-41d4-a716-446655440000",
           projectPath: "/test/project",
           createdAt: new Date().toISOString(),
-          staged: false,
+          mode: "unstaged",
           branch: "main",
           profile: null,
           lenses: ["correctness"],

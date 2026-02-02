@@ -37,7 +37,8 @@ export interface MenuItem {
 export const MENU_ITEMS: MenuItem[] = [
   { id: "review-unstaged", label: "Review Unstaged", shortcut: "r", group: "review" },
   { id: "review-staged", label: "Review Staged", shortcut: "R", group: "review" },
-  { id: "review-files", label: "Review Files...", shortcut: "f", group: "review" },
+  // TODO: future feature - file selection UI not implemented
+  // { id: "review-files", label: "Review Files...", shortcut: "f", group: "review" },
   { id: "resume-review", label: "Resume Last Review", shortcut: "l", group: "review" },
   { id: "history", label: "History", shortcut: "h", group: "navigation" },
   { id: "settings", label: "Settings", shortcut: "s", group: "navigation" },

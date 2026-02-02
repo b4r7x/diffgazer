@@ -29,7 +29,7 @@ async function getDiffForReview(
   projectPath?: string
 ): Promise<Result<FileDiff[], AppError>> {
   const gitService = createGitService({ cwd: projectPath });
-  const diff = await gitService.getDiff(staged);
+  const diff = await gitService.getDiff(staged ? "staged" : "unstaged");
 
   if (!diff.trim()) {
     return err(createError("NO_CHANGES", `No ${staged ? "staged" : "unstaged"} changes to review`));

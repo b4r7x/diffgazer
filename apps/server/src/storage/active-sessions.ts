@@ -1,11 +1,12 @@
 import type { FullTriageStreamEvent } from '@repo/schemas';
+import type { ReviewMode } from '@repo/schemas/triage-storage';
 
 interface ActiveSession {
   reviewId: string;
   projectPath: string;
   headCommit: string;
   statusHash: string;
-  staged: boolean;
+  mode: ReviewMode;
   startedAt: Date;
   events: FullTriageStreamEvent[];
   isComplete: boolean;
@@ -20,14 +21,14 @@ export function createSession(
   projectPath: string,
   headCommit: string,
   statusHash: string,
-  staged: boolean
+  mode: ReviewMode
 ): ActiveSession {
   const session: ActiveSession = {
     reviewId,
     projectPath,
     headCommit,
     statusHash,
-    staged,
+    mode,
     startedAt: new Date(),
     events: [],
     isComplete: false,
@@ -85,14 +86,14 @@ export function getActiveSessionForProject(
   projectPath: string,
   headCommit: string,
   statusHash: string,
-  staged: boolean
+  mode: ReviewMode
 ): ActiveSession | undefined {
   for (const session of activeSessions.values()) {
     if (
       session.projectPath === projectPath &&
       session.headCommit === headCommit &&
       session.statusHash === statusHash &&
-      session.staged === staged &&
+      session.mode === mode &&
       !session.isComplete &&
       session.isReady
     ) {

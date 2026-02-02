@@ -107,7 +107,7 @@ export async function reviewDiff(
 ): Promise<void> {
   let diff: string;
   try {
-    diff = await gitService.getDiff(staged);
+    diff = await gitService.getDiff(staged ? "staged" : "unstaged");
   } catch (error: unknown) {
     callbacks.onError(createGitDiffError(error));
     return;

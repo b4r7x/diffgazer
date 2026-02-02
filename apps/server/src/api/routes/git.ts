@@ -59,7 +59,9 @@ git.get("/diff", async (c) => {
   const result = await getGitService(c, c.req.query("path"));
   if (!result.ok) return result.response;
 
-  const staged = c.req.query("staged") === "true";
+  const modeParam = c.req.query("mode") as "staged" | "unstaged" | "files" | undefined;
+  const stagedParam = c.req.query("staged");
+  const mode: "staged" | "unstaged" | "files" = modeParam ?? (stagedParam === "true" ? "staged" : "unstaged");
 
   try {
     const status = await result.service.getStatus();
@@ -67,8 +69,8 @@ git.get("/diff", async (c) => {
       return errorResponse(c, "Not a git repository", ErrorCode.NOT_GIT_REPO, 400);
     }
 
-    const diff = await result.service.getDiff(staged);
-    return c.json({ diff, staged });
+    const diff = await result.service.getDiff(mode);
+    return c.json({ diff, mode });
   } catch (error) {
     console.error("Git diff error:", getErrorMessage(error));
     return errorResponse(c, "Failed to retrieve git diff", ErrorCode.COMMAND_FAILED, 500);

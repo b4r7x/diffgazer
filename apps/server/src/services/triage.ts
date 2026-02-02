@@ -17,6 +17,7 @@ import { createGitDiffError } from "./review.js";
 import type { StepEvent, StepId, ReviewStartedEvent } from "@repo/schemas/step-event";
 import type { EnrichProgressEvent } from "@repo/schemas/enrich-event";
 import type { FullTriageStreamEvent } from "@repo/schemas";
+import type { ReviewMode } from "@repo/schemas/triage-storage";
 import { createSession, addEvent, markComplete, markReady, getActiveSessionForProject, subscribe } from "../storage/active-sessions.js";
 
 const MAX_DIFF_SIZE_BYTES = 524288; // 512KB
@@ -53,7 +54,7 @@ async function writeTriageComplete(stream: SSEWriter, result: TriageResult, revi
 
 // Server-specific triage options extending schema options
 export interface TriageOptions {
-  staged?: boolean;
+  mode?: ReviewMode;
   files?: string[];
   lenses?: LensId[];
   profile?: ProfileId;
@@ -64,19 +65,19 @@ export async function streamTriageToSSE(
   options: TriageOptions,
   stream: SSEWriter
 ): Promise<void> {
-  const { staged = true, files, lenses: lensIds, profile: profileId } = options;
+  const { mode = "unstaged", files, lenses: lensIds, profile: profileId } = options;
   const startTime = Date.now();
   const projectPath = process.cwd();
   const gitService = createGitService({ cwd: projectPath });
 
-  logger.info(`Starting triage stream: staged=${staged}, files=${files?.length ?? 0}, lenses=${lensIds?.join(",") ?? "default"}`);
+  logger.info(`Starting triage stream: mode=${mode}, files=${files?.length ?? 0}, lenses=${lensIds?.join(",") ?? "default"}`);
 
   let headCommit: string;
   let statusHash: string;
   try {
     headCommit = await gitService.getHeadCommit();
     statusHash = await gitService.getStatusHash();
-    logger.info(`[SESSION] Git state: head=${headCommit.slice(0, 8)}, status=${statusHash || "clean"}, staged=${staged}`);
+    logger.info(`[SESSION] Git state: head=${headCommit.slice(0, 8)}, status=${statusHash || "clean"}, mode=${mode}`);
   } catch (error) {
     logger.warn(`Failed to get git state: ${error instanceof Error ? error.message : String(error)}`);
     headCommit = "";
@@ -84,7 +85,7 @@ export async function streamTriageToSSE(
   }
 
   // Skip session reuse if headCommit is empty (git failure)
-  const existingSession = headCommit ? getActiveSessionForProject(projectPath, headCommit, statusHash, staged) : undefined;
+  const existingSession = headCommit ? getActiveSessionForProject(projectPath, headCommit, statusHash, mode) : undefined;
 
   if (existingSession) {
     logger.info(`[SESSION] Found existing session: reviewId=${existingSession.reviewId}, events=${existingSession.events.length}`);
@@ -127,7 +128,7 @@ export async function streamTriageToSSE(
 
   // Generate reviewId early so client can track this review immediately
   const reviewId = randomUUID();
-  createSession(reviewId, projectPath, headCommit, statusHash, staged);
+  createSession(reviewId, projectPath, headCommit, statusHash, mode);
   logger.info(`[SESSION] Created new session: reviewId=${reviewId}`);
 
   // Helper to emit events to both stream and session store
@@ -154,8 +155,8 @@ export async function streamTriageToSSE(
 
     let diff: string;
     try {
-      logger.debug(`Fetching git diff: staged=${staged}`);
-      diff = await gitService.getDiff(staged);
+      logger.debug(`Fetching git diff: mode=${mode}`);
+      diff = await gitService.getDiff(mode);
     } catch (error: unknown) {
       const errorMessage = createGitDiffError(error).message;
       logger.error(`Git diff failed: ${errorMessage}`);
@@ -166,8 +167,8 @@ export async function streamTriageToSSE(
     }
 
     if (!diff.trim()) {
-      logger.warn(`Empty diff detected: staged=${staged}`);
-      const errorMessage = staged
+      logger.warn(`Empty diff detected: mode=${mode}`);
+      const errorMessage = mode === "staged"
         ? "No staged changes found. Use 'git add' to stage files, or review unstaged changes instead."
         : "No unstaged changes found. Make some edits first, or review staged changes instead.";
       await emitEvent(stepError("diff", errorMessage));
@@ -195,7 +196,7 @@ export async function streamTriageToSSE(
       if (parsed.files.length === 0) {
         await writeSSEError(
           stream,
-          `None of the specified files have ${staged ? "staged" : "unstaged"} changes`,
+          `None of the specified files have ${mode} changes`,
           "NO_DIFF"
         );
         markComplete(reviewId);
@@ -275,7 +276,7 @@ export async function streamTriageToSSE(
     const saveResult = await saveTriageReview({
       reviewId,
       projectPath: process.cwd(),
-      staged,
+      mode,
       result: finalResult,
       diff: parsed,
       branch: status?.branch ?? null,

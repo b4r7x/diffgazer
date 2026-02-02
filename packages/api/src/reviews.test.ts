@@ -125,7 +125,7 @@ describe("getTriageReview", () => {
       id: "review-123",
       projectPath: "/test/project",
       createdAt: "2026-01-01T12:00:00Z",
-      staged: true,
+      mode: "staged",
       branch: "main",
       profile: null,
       lenses: ["correctness"],

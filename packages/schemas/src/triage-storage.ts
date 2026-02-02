@@ -3,6 +3,9 @@ import { UuidSchema, createdAtField } from "./errors.js";
 import { TriageResultSchema } from "./triage.js";
 import { LensIdSchema, ProfileIdSchema, DrilldownResultSchema } from "./lens.js";
 
+export const ReviewModeSchema = z.enum(["staged", "unstaged", "files"]);
+export type ReviewMode = z.infer<typeof ReviewModeSchema>;
+
 const countField = z.number().int().nonnegative();
 
 export const TriageReviewMetadataSchema = z
@@ -10,7 +13,8 @@ export const TriageReviewMetadataSchema = z
     id: UuidSchema,
     projectPath: z.string(),
     ...createdAtField,
-    staged: z.boolean(),
+    mode: ReviewModeSchema.optional(),
+    staged: z.boolean().optional(), // Deprecated: kept for backward compat
     branch: z.string().nullable(),
     profile: ProfileIdSchema.nullable(),
     lenses: z.array(LensIdSchema),
@@ -26,6 +30,8 @@ export const TriageReviewMetadataSchema = z
   })
   .transform((data) => ({
     ...data,
+    // Migrate old staged boolean to mode
+    mode: data.mode ?? (data.staged ? "staged" : "unstaged"),
     blockerCount: data.blockerCount ?? 0,
     highCount: data.highCount ?? 0,
     mediumCount: data.mediumCount ?? 0,

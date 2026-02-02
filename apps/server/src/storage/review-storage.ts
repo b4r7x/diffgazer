@@ -11,6 +11,7 @@ import {
   type LensId,
   type ProfileId,
   type DrilldownResult,
+  type ReviewMode,
 } from "@repo/schemas";
 import type { ParsedDiff } from "../diff/index.js";
 import type { Result } from "@repo/core";
@@ -69,7 +70,7 @@ function migrateReview(review: SavedTriageReview): boolean {
 export interface SaveTriageReviewOptions {
   reviewId?: string;
   projectPath: string;
-  staged: boolean;
+  mode: ReviewMode;
   result: TriageResult;
   diff: ParsedDiff;
   branch: string | null;
@@ -99,7 +100,7 @@ export async function saveTriageReview(
     id: options.reviewId ?? randomUUID(),
     projectPath: options.projectPath,
     createdAt: now,
-    staged: options.staged,
+    mode: options.mode,
     branch: options.branch,
     profile: options.profile ?? null,
     lenses: options.lenses,

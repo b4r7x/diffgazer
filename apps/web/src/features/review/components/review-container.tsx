@@ -95,6 +95,7 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
       navigate({
         to: '/review/$reviewId',
         params: { reviewId: state.reviewId },
+        search: (prev: Record<string, unknown>) => prev, // Preserve query params (mode)
         replace: true,
       });
     }
@@ -107,7 +108,7 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     if (!isConfigured) return;
     hasStartedRef.current = true;
 
-    const options = { staged: mode === 'staged' };
+    const options = { mode };
 
     if (params.reviewId) {
       // Try to resume existing session
@@ -168,9 +169,8 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
 
   const handleSwitchMode = () => {
     stop();
-    const newMode = mode === 'staged' ? '' : '?staged=true';
-    navigate({ to: `/review${newMode}`, replace: true });
-    // Force re-mount by resetting ref
+    const newMode = mode === 'staged' ? 'unstaged' : 'staged';
+    navigate({ to: '/review', search: { mode: newMode }, replace: true });
     hasStartedRef.current = false;
   };
 
