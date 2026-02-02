@@ -1,0 +1,17 @@
+{
+  "name": "stargazer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm run --parallel dev:web dev:cli",
+    "dev:cli": "pnpm --filter @stargazer/cli dev",
+    "dev:web": "pnpm --filter @stargazer/web dev",
+    "build": "pnpm -r build",
+    "cli": "pnpm --filter @stargazer/cli dev",
+    "web": "pnpm --filter @stargazer/web dev"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  },
+  "packageManager": "pnpm@9.15.0"
+}
