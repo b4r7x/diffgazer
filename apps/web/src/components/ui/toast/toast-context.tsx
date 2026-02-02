@@ -25,25 +25,28 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [dismissingIds, setDismissingIds] = useState<Set<string>>(new Set());
   const timeoutIdsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  const dismissToast = useCallback((id: string) => {
-    setDismissingIds(prev => new Set(prev).add(id));
-  }, []);
+  const dismissToastRef = useRef<(id: string) => void>(() => {});
+  const showToastRef = useRef<(options: Omit<Toast, "id">) => void>(() => {});
+  const removeToastRef = useRef<(id: string) => void>(() => {});
 
-  const showToast = useCallback((options: Omit<Toast, "id">) => {
+  dismissToastRef.current = (id: string) => {
+    setDismissingIds(prev => new Set(prev).add(id));
+  };
+
+  showToastRef.current = (options: Omit<Toast, "id">) => {
     const id = crypto.randomUUID();
     const toast: Toast = { ...options, id };
 
     setToasts(prev => [...prev, toast].slice(-MAX_TOASTS));
 
-    // Auto-dismiss for non-errors
     if (options.variant !== "error") {
       const duration = options.duration ?? DEFAULT_DURATION;
-      const timeoutId = setTimeout(() => dismissToast(id), duration);
+      const timeoutId = setTimeout(() => dismissToastRef.current(id), duration);
       timeoutIdsRef.current.set(id, timeoutId);
     }
-  }, [dismissToast]);
+  };
 
-  const removeToast = useCallback((id: string) => {
+  removeToastRef.current = (id: string) => {
     const timeoutId = timeoutIdsRef.current.get(id);
     if (timeoutId) {
       clearTimeout(timeoutId);
@@ -55,7 +58,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       next.delete(id);
       return next;
     });
-  }, []);
+  };
+
+  const dismissToast = useCallback((id: string) => dismissToastRef.current(id), []);
+  const showToast = useCallback((options: Omit<Toast, "id">) => showToastRef.current(options), []);
+  const removeToast = useCallback((id: string) => removeToastRef.current(id), []);
 
   const contextValue = useMemo(
     () => ({ toasts, dismissingIds, showToast, dismissToast, removeToast }),
