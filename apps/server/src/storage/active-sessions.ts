@@ -3,6 +3,8 @@ import type { FullTriageStreamEvent } from '@repo/schemas';
 interface ActiveSession {
   reviewId: string;
   projectPath: string;
+  headCommit: string;
+  staged: boolean;
   startedAt: Date;
   events: FullTriageStreamEvent[];
   isComplete: boolean;
@@ -12,10 +14,17 @@ interface ActiveSession {
 
 const activeSessions = new Map<string, ActiveSession>();
 
-export function createSession(reviewId: string, projectPath: string): ActiveSession {
+export function createSession(
+  reviewId: string,
+  projectPath: string,
+  headCommit: string,
+  staged: boolean
+): ActiveSession {
   const session: ActiveSession = {
     reviewId,
     projectPath,
+    headCommit,
+    staged,
     startedAt: new Date(),
     events: [],
     isComplete: false,
@@ -34,11 +43,7 @@ export function markReady(reviewId: string): void {
 }
 
 export function getSession(reviewId: string): ActiveSession | undefined {
-  const session = activeSessions.get(reviewId);
-  if (session) {
-    console.log(`[SESSION_RESTORE] Found session: reviewId=${reviewId}, events=${session.events.length}, isComplete=${session.isComplete}`);
-  }
-  return session;
+  return activeSessions.get(reviewId);
 }
 
 export function addEvent(reviewId: string, event: FullTriageStreamEvent): void {
@@ -73,10 +78,19 @@ export function subscribe(reviewId: string, callback: (event: FullTriageStreamEv
   return () => {};
 }
 
-export function getActiveSessionForProject(projectPath: string): ActiveSession | undefined {
+export function getActiveSessionForProject(
+  projectPath: string,
+  headCommit: string,
+  staged: boolean
+): ActiveSession | undefined {
   for (const session of activeSessions.values()) {
-    if (session.projectPath === projectPath && !session.isComplete && session.isReady) {
-      console.log(`[SESSION_RESTORE] Active session for project: reviewId=${session.reviewId}, events=${session.events.length}`);
+    if (
+      session.projectPath === projectPath &&
+      session.headCommit === headCommit &&
+      session.staged === staged &&
+      !session.isComplete &&
+      session.isReady
+    ) {
       return session;
     }
   }
