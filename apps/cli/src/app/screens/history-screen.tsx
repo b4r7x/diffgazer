@@ -4,9 +4,9 @@ import { Box, Text, useInput, useApp } from "ink";
 import type { ReviewHistoryMetadata } from "@repo/schemas/review-history";
 import type { TriageReviewMetadata } from "@repo/schemas/triage-storage";
 import type { SessionMetadata } from "@repo/schemas/session";
+import { calculateSeverityCounts } from "@repo/core";
 
 type AnyReviewMetadata = ReviewHistoryMetadata | TriageReviewMetadata;
-import type { TriageIssue } from "@repo/schemas";
 import { useTheme } from "../../hooks/use-theme.js";
 import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
 import { FocusablePane } from "../../components/ui/layout/index.js";
@@ -14,7 +14,7 @@ import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs.js";
 import { TimelineList } from "../../features/history/components/timeline-list.js";
 import { RunAccordionItem } from "../../features/history/components/run-accordion-item.js";
 import { HistoryInsightsPane } from "../../features/history/components/history-insights-pane.js";
-import { useHistoryState } from "../../features/history/hooks/use-history-state.js";
+import { useHistoryState, useReviewDetail } from "../../features/history/hooks/index.js";
 import { toHistoryRun } from "../../features/history/types.js";
 
 export interface HistoryScreenProps {
@@ -79,8 +79,15 @@ export function HistoryScreen({
     collapseOrBack,
   } = historyState;
 
-  const topLenses = ["Security", "Auth", "Performance"];
-  const topIssues = selectedRun?.issues.slice(0, 3) ?? [];
+  // Fetch full review details for selected run
+  const { review: reviewDetail } = useReviewDetail(selectedRunId);
+  const issues = reviewDetail?.result?.issues ?? [];
+
+  // Calculate severity counts from review issues
+  const severityCounts = useMemo(
+    () => (issues.length > 0 ? calculateSeverityCounts(issues) : null),
+    [issues]
+  );
 
   // Keyboard navigation
   useInput((input, key) => {
@@ -270,8 +277,8 @@ export function HistoryScreen({
         <FocusablePane isFocused={focusZone === "insights"} width={insightsWidth}>
           <HistoryInsightsPane
             runId={selectedRun?.displayId ?? null}
-            topLenses={topLenses}
-            topIssues={topIssues}
+            severityCounts={severityCounts}
+            topIssues={issues}
           />
         </FocusablePane>
       </Box>

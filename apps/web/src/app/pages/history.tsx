@@ -8,6 +8,7 @@ import { useScope, useKey } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { RunAccordionItem, TimelineList, HistoryInsightsPane, useReviews, useReviewDetail } from "@/features/history";
+import { calculateSeverityCounts } from "@repo/core";
 
 const HISTORY_FOOTER_SHORTCUTS = [
   { key: "Tab", label: "Switch Focus" },
@@ -119,30 +120,20 @@ export function HistoryPage() {
 
   const selectedRun = reviews.find((r) => r.id === selectedRunId) ?? null;
 
-  // Fetch full review details for insights panel
   const { review: reviewDetail } = useReviewDetail(selectedRunId);
 
-  // Calculate top categories from issues
-  const topLenses = useMemo(() => {
-    if (!reviewDetail?.result?.issues) return [];
-    const categoryCount = new Map<string, number>();
-    for (const issue of reviewDetail.result.issues) {
-      categoryCount.set(issue.category, (categoryCount.get(issue.category) ?? 0) + 1);
-    }
-    return Array.from(categoryCount.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([category]) => category);
-  }, [reviewDetail]);
+  const issues = reviewDetail?.result?.issues;
 
-  // Get top 5 issues by severity
-  const topIssues = useMemo(() => {
-    if (!reviewDetail?.result?.issues) return [];
+  const severityCounts = useMemo(() => {
+    if (!issues) return null;
+    return calculateSeverityCounts(issues);
+  }, [issues]);
+
+  const sortedIssues = useMemo(() => {
+    if (!issues) return [];
     const severityOrder = { blocker: 0, high: 1, medium: 2, low: 3, nit: 4 };
-    return [...reviewDetail.result.issues]
-      .sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity])
-      .slice(0, 5);
-  }, [reviewDetail]);
+    return [...issues].sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+  }, [issues]);
 
   useScope("history");
 
@@ -283,8 +274,8 @@ export function HistoryPage() {
         <FocusablePane isFocused={focusZone === "insights"} className="w-80 flex flex-col shrink-0 overflow-hidden">
           <HistoryInsightsPane
             runId={selectedRun ? `#${selectedRun.id.slice(0, 4)}` : null}
-            topLenses={topLenses}
-            topIssues={topIssues}
+            severityCounts={severityCounts}
+            issues={sortedIssues}
             duration="--"
             onIssueClick={() => {
               if (selectedRunId) {

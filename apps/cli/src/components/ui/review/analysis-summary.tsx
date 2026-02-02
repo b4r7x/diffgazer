@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import { useTheme } from "../../../hooks/use-theme.js";
 import { Card } from "../layout/index.js";
-import { SeverityBar } from "../severity/index.js";
+import { SeverityBreakdown } from "../severity/index.js";
 import { IssuePreviewItem } from "../issue/index.js";
 import { LensStatsTable, type LensStats } from "./lens-stats-table.js";
 import { SectionHeader } from "../section-header.js";
@@ -26,15 +26,6 @@ export function AnalysisSummary({
   selectedIssueIndex,
 }: AnalysisSummaryProps): ReactElement {
   const { colors } = useTheme();
-
-  const maxCount = Math.max(
-    severityCounts.blocker,
-    severityCounts.high,
-    severityCounts.medium,
-    severityCounts.low,
-    severityCounts.nit,
-    1
-  );
 
   return (
     <Box flexDirection="column" gap={1}>
@@ -74,15 +65,7 @@ export function AnalysisSummary({
       </Box>
 
       <Box gap={2}>
-        <Card title="Severity Breakdown" width="50%">
-          <Box flexDirection="column" gap={0}>
-            <SeverityBar label="BLOCKER" count={severityCounts.blocker} max={maxCount} severity="blocker" />
-            <SeverityBar label="HIGH" count={severityCounts.high} max={maxCount} severity="high" />
-            <SeverityBar label="MEDIUM" count={severityCounts.medium} max={maxCount} severity="medium" />
-            <SeverityBar label="LOW" count={severityCounts.low} max={maxCount} severity="low" />
-            <SeverityBar label="NIT" count={severityCounts.nit} max={maxCount} severity="nit" />
-          </Box>
-        </Card>
+        <SeverityBreakdown counts={severityCounts} />
 
         <Card title="Issues by Lens" width="50%">
           <LensStatsTable lenses={lensStats} />

@@ -3,21 +3,20 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HistoryInsightsPane } from "./history-insights-pane";
 import type { TriageIssue } from "@repo/schemas";
+import type { SeverityCounts } from "@repo/schemas/ui";
 
 /**
- * HistoryInsightsPane Tests - Severity Histogram Removal
+ * HistoryInsightsPane Tests
  *
  * Verifies that:
- * 1. Severity Histogram section is completely removed
- * 2. severityCounts prop no longer exists in component interface
- * 3. Top Lenses section still renders correctly
- * 4. Top Issues section still renders correctly
- * 5. Component maintains all other functionality
+ * 1. Severity Breakdown section renders correctly with severityCounts
+ * 2. Issues section renders correctly
+ * 3. Component maintains all other functionality
  *
  * Location: apps/web/src/features/history/components/history-insights-pane.tsx
  */
 
-describe("HistoryInsightsPane - Severity Histogram Removal", () => {
+describe("HistoryInsightsPane - Severity Breakdown Section", () => {
   const mockIssues: TriageIssue[] = [
     {
       id: "issue-1",
@@ -43,118 +42,41 @@ describe("HistoryInsightsPane - Severity Histogram Removal", () => {
     },
   ];
 
+  const mockSeverityCounts: SeverityCounts = {
+    blocker: 1,
+    high: 2,
+    medium: 3,
+    low: 4,
+  };
+
   const defaultProps = {
     runId: "run-123",
-    topLenses: ["performance", "security"],
-    topIssues: mockIssues,
+    severityCounts: mockSeverityCounts,
+    issues: mockIssues,
     duration: "1m 23s",
   };
 
-  it("does NOT render SEVERITY HISTOGRAM section heading", () => {
+  it("renders SEVERITY BREAKDOWN section heading when severityCounts provided", () => {
     render(<HistoryInsightsPane {...defaultProps} />);
 
-    // Use queryByText which returns null if not found
-    const severityHistogramHeading = screen.queryByText(/severity histogram/i);
-    expect(severityHistogramHeading).toBeNull();
+    const severityBreakdownHeading = screen.getByText(/severity breakdown/i);
+    expect(severityBreakdownHeading).toBeDefined();
   });
 
-  it("does NOT render severity level labels (Blocker, High, Medium, Low)", () => {
-    render(<HistoryInsightsPane {...defaultProps} />);
-
-    // Verify none of the severity labels exist as standalone section headers
-    const blockerLabel = screen.queryByText(/^blocker$/i);
-    const highLabel = screen.queryByText(/^high$/i);
-    const mediumLabel = screen.queryByText(/^medium$/i);
-    const lowLabel = screen.queryByText(/^low$/i);
-
-    expect(blockerLabel).toBeNull();
-    expect(highLabel).toBeNull();
-    expect(mediumLabel).toBeNull();
-    expect(lowLabel).toBeNull();
-  });
-
-  it("does NOT render SeverityBar components", () => {
-    const { container } = render(<HistoryInsightsPane {...defaultProps} />);
-
-    // SeverityBar would have specific data-testid or class patterns
-    // Since we don't have access to SeverityBar implementation, check the component doesn't exist
-    const severityBars = container.querySelectorAll('[class*="severity-bar"]');
-    expect(severityBars.length).toBe(0);
-  });
-
-  it("does NOT accept severityCounts prop (type safety check)", () => {
-    // This is a compile-time check, but we can verify runtime behavior
-    // @ts-expect-error - severityCounts should not exist on props
-    const propsWithSeverityCounts = {
-      ...defaultProps,
-      severityCounts: { blocker: 1, high: 2, medium: 3, low: 4 },
-    };
-
-    // Component should render without errors even if extra props are passed
-    const { container } = render(<HistoryInsightsPane {...propsWithSeverityCounts} />);
-    expect(container).toBeDefined();
-
-    // But the severity histogram should still not render
-    const severityHistogramHeading = screen.queryByText(/severity histogram/i);
-    expect(severityHistogramHeading).toBeNull();
-  });
-});
-
-describe("HistoryInsightsPane - Top Lenses Section", () => {
-  const defaultProps = {
-    runId: "run-456",
-    topLenses: ["performance", "security", "accessibility"],
-    topIssues: [],
-  };
-
-  it("DOES render TOP LENSES section heading", () => {
-    render(<HistoryInsightsPane {...defaultProps} />);
-
-    const topLensesHeading = screen.getByText(/top lenses/i);
-    expect(topLensesHeading).toBeDefined();
-  });
-
-  it("DOES render all lens badges", () => {
-    render(<HistoryInsightsPane {...defaultProps} />);
-
-    const performanceBadge = screen.getByText("performance");
-    const securityBadge = screen.getByText("security");
-    const accessibilityBadge = screen.getByText("accessibility");
-
-    expect(performanceBadge).toBeDefined();
-    expect(securityBadge).toBeDefined();
-    expect(accessibilityBadge).toBeDefined();
-  });
-
-  it("does not render Top Lenses section when topLenses is empty", () => {
+  it("does NOT render Severity Breakdown section when severityCounts is null", () => {
     render(
       <HistoryInsightsPane
         {...defaultProps}
-        topLenses={[]}
+        severityCounts={null}
       />
     );
 
-    const topLensesHeading = screen.queryByText(/top lenses/i);
-    expect(topLensesHeading).toBeNull();
-  });
-
-  it("renders single lens correctly", () => {
-    render(
-      <HistoryInsightsPane
-        {...defaultProps}
-        topLenses={["performance"]}
-      />
-    );
-
-    const topLensesHeading = screen.getByText(/top lenses/i);
-    const performanceBadge = screen.getByText("performance");
-
-    expect(topLensesHeading).toBeDefined();
-    expect(performanceBadge).toBeDefined();
+    const severityBreakdownHeading = screen.queryByText(/severity breakdown/i);
+    expect(severityBreakdownHeading).toBeNull();
   });
 });
 
-describe("HistoryInsightsPane - Top Issues Section", () => {
+describe("HistoryInsightsPane - Issues Section", () => {
   const mockIssues: TriageIssue[] = [
     {
       id: "issue-1",
@@ -193,15 +115,15 @@ describe("HistoryInsightsPane - Top Issues Section", () => {
 
   const defaultProps = {
     runId: "run-789",
-    topLenses: [],
-    topIssues: mockIssues,
+    severityCounts: null,
+    issues: mockIssues,
   };
 
-  it("DOES render TOP ISSUES section heading with count", () => {
+  it("DOES render ISSUES section heading with count", () => {
     render(<HistoryInsightsPane {...defaultProps} />);
 
-    const topIssuesHeading = screen.getByText(/top 3 issues/i);
-    expect(topIssuesHeading).toBeDefined();
+    const issuesHeading = screen.getByText(/3 issues/i);
+    expect(issuesHeading).toBeDefined();
   });
 
   it("DOES render all issue titles", () => {
@@ -219,7 +141,7 @@ describe("HistoryInsightsPane - Top Issues Section", () => {
   it("DOES render severity labels within issue items", () => {
     render(<HistoryInsightsPane {...defaultProps} />);
 
-    // Severity labels appear in issue items, just not as histogram section
+    // Severity labels appear in issue items
     const blockerLabel = screen.getByText("[Blocker]");
     const lowLabel = screen.getByText("[Low]");
     const highLabel = screen.getByText("[High]");
@@ -241,16 +163,16 @@ describe("HistoryInsightsPane - Top Issues Section", () => {
     expect(line55).toBeDefined();
   });
 
-  it("does not render Top Issues section when topIssues is empty", () => {
+  it("does not render Issues section when issues is empty", () => {
     render(
       <HistoryInsightsPane
         {...defaultProps}
-        topIssues={[]}
+        issues={[]}
       />
     );
 
-    const topIssuesHeading = screen.queryByText(/top.*issues/i);
-    expect(topIssuesHeading).toBeNull();
+    const issuesHeading = screen.queryByText(/\d+ issues/i);
+    expect(issuesHeading).toBeNull();
   });
 
   it("calls onIssueClick when issue is clicked", async () => {
@@ -291,8 +213,8 @@ describe("HistoryInsightsPane - Other Functionality", () => {
     render(
       <HistoryInsightsPane
         runId={null}
-        topLenses={["performance"]}
-        topIssues={[]}
+        severityCounts={null}
+        issues={[]}
       />
     );
 
@@ -304,24 +226,34 @@ describe("HistoryInsightsPane - Other Functionality", () => {
     render(
       <HistoryInsightsPane
         runId={null}
-        topLenses={["performance"]}
-        topIssues={[]}
+        severityCounts={{ blocker: 1, high: 0, medium: 0, low: 0 }}
+        issues={[{
+          id: "issue-1",
+          title: "Test issue",
+          description: "Desc",
+          file: "test.ts",
+          line_start: 1,
+          line_end: 1,
+          category: "test",
+          severity: "blocker",
+          explanation: "Exp",
+        }]}
       />
     );
 
-    const topLensesHeading = screen.queryByText(/top lenses/i);
-    const topIssuesHeading = screen.queryByText(/top.*issues/i);
+    const severityBreakdownHeading = screen.queryByText(/severity breakdown/i);
+    const issuesHeading = screen.queryByText(/\d+ issues/i);
 
-    expect(topLensesHeading).toBeNull();
-    expect(topIssuesHeading).toBeNull();
+    expect(severityBreakdownHeading).toBeNull();
+    expect(issuesHeading).toBeNull();
   });
 
   it("renders run ID in header when provided", () => {
     render(
       <HistoryInsightsPane
         runId="abc-123"
-        topLenses={[]}
-        topIssues={[]}
+        severityCounts={null}
+        issues={[]}
       />
     );
 
@@ -333,8 +265,8 @@ describe("HistoryInsightsPane - Other Functionality", () => {
     render(
       <HistoryInsightsPane
         runId="run-999"
-        topLenses={[]}
-        topIssues={[]}
+        severityCounts={null}
+        issues={[]}
         duration="2m 45s"
       />
     );
@@ -350,8 +282,8 @@ describe("HistoryInsightsPane - Other Functionality", () => {
     render(
       <HistoryInsightsPane
         runId="run-999"
-        topLenses={[]}
-        topIssues={[]}
+        severityCounts={null}
+        issues={[]}
       />
     );
 
@@ -363,8 +295,8 @@ describe("HistoryInsightsPane - Other Functionality", () => {
     const { container } = render(
       <HistoryInsightsPane
         runId="run-999"
-        topLenses={[]}
-        topIssues={[]}
+        severityCounts={null}
+        issues={[]}
         className="custom-class"
       />
     );
@@ -375,11 +307,11 @@ describe("HistoryInsightsPane - Other Functionality", () => {
 });
 
 describe("HistoryInsightsPane - Component Interface", () => {
-  it("accepts all required props without severityCounts", () => {
+  it("accepts all required props", () => {
     const props = {
       runId: "test-run",
-      topLenses: ["performance"],
-      topIssues: [],
+      severityCounts: null,
+      issues: [],
     };
 
     // Type check: this should compile without errors
@@ -387,11 +319,11 @@ describe("HistoryInsightsPane - Component Interface", () => {
     expect(container).toBeDefined();
   });
 
-  it("accepts all optional props without severityCounts", () => {
+  it("accepts all optional props", () => {
     const props = {
       runId: "test-run",
-      topLenses: ["performance"],
-      topIssues: [],
+      severityCounts: { blocker: 1, high: 2, medium: 3, low: 4 },
+      issues: [],
       duration: "1m 30s",
       onIssueClick: vi.fn(),
       className: "test-class",

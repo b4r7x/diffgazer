@@ -1,23 +1,23 @@
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui";
 import { SectionHeader } from "@/components/ui/section-header";
+import { SeverityBreakdown } from "@/components/ui/severity/severity-breakdown";
 import type { TriageIssue } from "@repo/schemas";
+import type { SeverityCounts } from "@repo/schemas/ui";
 import { capitalize } from "@repo/core";
 
 export interface HistoryInsightsPaneProps {
   runId: string | null;
-  topLenses: string[];
-  topIssues: TriageIssue[];
+  severityCounts: SeverityCounts | null;
+  issues: TriageIssue[];
   duration?: string;
   onIssueClick?: (issueId: string) => void;
   className?: string;
 }
 
-
 export function HistoryInsightsPane({
   runId,
-  topLenses,
-  topIssues,
+  severityCounts,
+  issues,
   duration,
   onIssueClick,
   className,
@@ -37,30 +37,26 @@ export function HistoryInsightsPane({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* Top Lenses */}
-        {topLenses.length > 0 && (
+        {/* Severity Breakdown */}
+        {severityCounts && (
           <div>
             <SectionHeader className="border-b border-gray-800 pb-1">
-              Top Lenses
+              Severity Breakdown
             </SectionHeader>
-            <div className="flex flex-wrap gap-2 mt-3">
-              {topLenses.map((lens) => (
-                <Badge key={lens} variant="neutral" size="sm">
-                  {lens}
-                </Badge>
-              ))}
+            <div className="mt-3">
+              <SeverityBreakdown counts={severityCounts} />
             </div>
           </div>
         )}
 
-        {/* Top Issues */}
-        {topIssues.length > 0 && (
+        {/* Issues */}
+        {issues.length > 0 && (
           <div>
             <SectionHeader className="border-b border-gray-800 pb-1">
-              Top {topIssues.length} Issues
+              {issues.length} Issues
             </SectionHeader>
             <div className="space-y-3 mt-3">
-              {topIssues.map((issue) => (
+              {issues.map((issue) => (
                 <div key={issue.id} className="text-xs">
                   <div className="flex justify-between mb-1">
                     <span className={cn(
