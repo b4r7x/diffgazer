@@ -5,17 +5,6 @@ import { HistoryInsightsPane } from "./history-insights-pane";
 import type { TriageIssue } from "@repo/schemas";
 import type { SeverityCounts } from "@repo/schemas/ui";
 
-/**
- * HistoryInsightsPane Tests
- *
- * Verifies that:
- * 1. Severity Breakdown section renders correctly with severityCounts
- * 2. Issues section renders correctly
- * 3. Component maintains all other functionality
- *
- * Location: apps/web/src/features/history/components/history-insights-pane.tsx
- */
-
 describe("HistoryInsightsPane - Severity Breakdown Section", () => {
   const mockIssues: TriageIssue[] = [
     {
@@ -64,12 +53,7 @@ describe("HistoryInsightsPane - Severity Breakdown Section", () => {
   });
 
   it("does NOT render Severity Breakdown section when severityCounts is null", () => {
-    render(
-      <HistoryInsightsPane
-        {...defaultProps}
-        severityCounts={null}
-      />
-    );
+    render(<HistoryInsightsPane {...defaultProps} severityCounts={null} />);
 
     const severityBreakdownHeading = screen.queryByText(/severity breakdown/i);
     expect(severityBreakdownHeading).toBeNull();
@@ -164,12 +148,7 @@ describe("HistoryInsightsPane - Issues Section", () => {
   });
 
   it("does not render Issues section when issues is empty", () => {
-    render(
-      <HistoryInsightsPane
-        {...defaultProps}
-        issues={[]}
-      />
-    );
+    render(<HistoryInsightsPane {...defaultProps} issues={[]} />);
 
     const issuesHeading = screen.queryByText(/\d+ issues/i);
     expect(issuesHeading).toBeNull();
@@ -180,10 +159,7 @@ describe("HistoryInsightsPane - Issues Section", () => {
     const user = userEvent.setup();
 
     render(
-      <HistoryInsightsPane
-        {...defaultProps}
-        onIssueClick={onIssueClick}
-      />
+      <HistoryInsightsPane {...defaultProps} onIssueClick={onIssueClick} />,
     );
 
     const issueTitle = screen.getByText("Memory leak in useEffect");
@@ -211,11 +187,7 @@ describe("HistoryInsightsPane - Issues Section", () => {
 describe("HistoryInsightsPane - Other Functionality", () => {
   it("shows placeholder when runId is null", () => {
     render(
-      <HistoryInsightsPane
-        runId={null}
-        severityCounts={null}
-        issues={[]}
-      />
+      <HistoryInsightsPane runId={null} severityCounts={null} issues={[]} />,
     );
 
     const placeholder = screen.getByText("Select a run to view insights");
@@ -227,18 +199,20 @@ describe("HistoryInsightsPane - Other Functionality", () => {
       <HistoryInsightsPane
         runId={null}
         severityCounts={{ blocker: 1, high: 0, medium: 0, low: 0 }}
-        issues={[{
-          id: "issue-1",
-          title: "Test issue",
-          description: "Desc",
-          file: "test.ts",
-          line_start: 1,
-          line_end: 1,
-          category: "test",
-          severity: "blocker",
-          explanation: "Exp",
-        }]}
-      />
+        issues={[
+          {
+            id: "issue-1",
+            title: "Test issue",
+            description: "Desc",
+            file: "test.ts",
+            line_start: 1,
+            line_end: 1,
+            category: "test",
+            severity: "blocker",
+            explanation: "Exp",
+          },
+        ]}
+      />,
     );
 
     const severityBreakdownHeading = screen.queryByText(/severity breakdown/i);
@@ -250,11 +224,7 @@ describe("HistoryInsightsPane - Other Functionality", () => {
 
   it("renders run ID in header when provided", () => {
     render(
-      <HistoryInsightsPane
-        runId="abc-123"
-        severityCounts={null}
-        issues={[]}
-      />
+      <HistoryInsightsPane runId="abc-123" severityCounts={null} issues={[]} />,
     );
 
     const header = screen.getByText(/insights: run abc-123/i);
@@ -268,7 +238,7 @@ describe("HistoryInsightsPane - Other Functionality", () => {
         severityCounts={null}
         issues={[]}
         duration="2m 45s"
-      />
+      />,
     );
 
     const durationLabel = screen.getByText(/duration/i);
@@ -280,11 +250,7 @@ describe("HistoryInsightsPane - Other Functionality", () => {
 
   it("does not render duration footer when duration is undefined", () => {
     render(
-      <HistoryInsightsPane
-        runId="run-999"
-        severityCounts={null}
-        issues={[]}
-      />
+      <HistoryInsightsPane runId="run-999" severityCounts={null} issues={[]} />,
     );
 
     const durationLabel = screen.queryByText(/duration/i);
@@ -298,7 +264,7 @@ describe("HistoryInsightsPane - Other Functionality", () => {
         severityCounts={null}
         issues={[]}
         className="custom-class"
-      />
+      />,
     );
 
     const mainDiv = container.firstChild as HTMLElement;

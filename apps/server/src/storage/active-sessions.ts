@@ -4,6 +4,7 @@ interface ActiveSession {
   reviewId: string;
   projectPath: string;
   headCommit: string;
+  statusHash: string;
   staged: boolean;
   startedAt: Date;
   events: FullTriageStreamEvent[];
@@ -18,12 +19,14 @@ export function createSession(
   reviewId: string,
   projectPath: string,
   headCommit: string,
+  statusHash: string,
   staged: boolean
 ): ActiveSession {
   const session: ActiveSession = {
     reviewId,
     projectPath,
     headCommit,
+    statusHash,
     staged,
     startedAt: new Date(),
     events: [],
@@ -81,12 +84,14 @@ export function subscribe(reviewId: string, callback: (event: FullTriageStreamEv
 export function getActiveSessionForProject(
   projectPath: string,
   headCommit: string,
+  statusHash: string,
   staged: boolean
 ): ActiveSession | undefined {
   for (const session of activeSessions.values()) {
     if (
       session.projectPath === projectPath &&
       session.headCommit === headCommit &&
+      session.statusHash === statusHash &&
       session.staged === staged &&
       !session.isComplete &&
       session.isReady

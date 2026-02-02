@@ -191,11 +191,29 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
   async function getHeadCommit(): Promise<string> {
     try {
       const { stdout } = await execFileAsync("git", ["rev-parse", "HEAD"], { cwd, timeout });
-      return stdout.trim();
+      const commit = stdout.trim();
+      if (!commit) {
+        throw new Error("Empty commit hash returned from git rev-parse HEAD");
+      }
+      return commit;
+    } catch (error) {
+      throw error instanceof Error ? error : new Error("Failed to get HEAD commit");
+    }
+  }
+
+  async function getStatusHash(): Promise<string> {
+    try {
+      const { stdout } = await execFileAsync("git", ["status", "--porcelain"], { cwd, timeout });
+      const lines = stdout.split("\n").filter(Boolean).sort();
+      if (lines.length === 0) {
+        return "";
+      }
+      const { createHash } = await import("node:crypto");
+      return createHash("sha256").update(lines.join("\n")).digest("hex").slice(0, 16);
     } catch {
       return "";
     }
   }
 
-  return { getStatus, getDiff, isGitInstalled, getBlame, getFileLines, getHeadCommit };
+  return { getStatus, getDiff, isGitInstalled, getBlame, getFileLines, getHeadCommit, getStatusHash };
 }

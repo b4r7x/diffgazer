@@ -7,6 +7,8 @@ import { ErrorCode } from "@repo/schemas/errors";
 const mockGitService = vi.hoisted(() => ({
   getDiff: vi.fn(),
   getStatus: vi.fn(),
+  getHeadCommit: vi.fn(),
+  getStatusHash: vi.fn(),
 }));
 
 const mockParseDiff = vi.hoisted(() => vi.fn());
@@ -24,7 +26,7 @@ vi.mock("../diff/index.js", () => ({
   filterDiffByFiles: mockFilterDiffByFiles,
 }));
 
-vi.mock("@repo/core/review", () => ({
+vi.mock("../review/index.js", () => ({
   triageReviewStream: mockTriageReviewStream,
   getProfile: mockGetProfile,
 }));
@@ -84,6 +86,9 @@ describe("Triage Service", () => {
     });
 
     const setupSuccessfulTriage = () => {
+      mockGitService.getHeadCommit.mockResolvedValue("abc123");
+      mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
+      mockGitService.getStatusHash.mockResolvedValue("M  file1.ts\nM  file2.ts");
       mockTriageReviewStream.mockResolvedValue({
         ok: true,
         value: { summary: "Test summary", issues: [] },
@@ -93,6 +98,8 @@ describe("Triage Service", () => {
     };
 
     it("validates diff size limit", async () => {
+      mockGitService.getHeadCommit.mockResolvedValue("abc123");
+      mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       const largeDiff = "diff --git a/large.ts b/large.ts\n" + "x".repeat(600000);
       mockGitService.getDiff.mockResolvedValue(largeDiff);
       mockParseDiff.mockReturnValue(createMockParsedDiff(600000));
@@ -106,6 +113,8 @@ describe("Triage Service", () => {
     });
 
     it("handles empty diff", async () => {
+      mockGitService.getHeadCommit.mockResolvedValue("abc123");
+      mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       mockGitService.getDiff.mockResolvedValue("");
 
       await streamTriageToSSE(mockAIClient, { staged: true }, mockStream);
@@ -117,6 +126,8 @@ describe("Triage Service", () => {
     });
 
     it("handles whitespace-only diff", async () => {
+      mockGitService.getHeadCommit.mockResolvedValue("abc123");
+      mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       mockGitService.getDiff.mockResolvedValue("   \n\t\n  ");
 
       await streamTriageToSSE(mockAIClient, { staged: false }, mockStream);
@@ -128,6 +139,8 @@ describe("Triage Service", () => {
     });
 
     it("filters diff by specified files", async () => {
+      mockGitService.getHeadCommit.mockResolvedValue("abc123");
+      mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       const diff = "diff content";
       const parsedDiff = createMockParsedDiff();
       const filteredDiff = createMockParsedDiff();
@@ -147,6 +160,8 @@ describe("Triage Service", () => {
     });
 
     it("handles no files matching filter", async () => {
+      mockGitService.getHeadCommit.mockResolvedValue("abc123");
+      mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       const diff = "diff content";
       const parsedDiff = createMockParsedDiff();
       const emptyDiff: ParsedDiff = {
@@ -171,6 +186,8 @@ describe("Triage Service", () => {
     });
 
     it("calls triageReviewStream with correct parameters", async () => {
+      mockGitService.getHeadCommit.mockResolvedValue("abc123");
+      mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       const diff = "diff content";
       const parsedDiff = createMockParsedDiff();
 
@@ -195,6 +212,8 @@ describe("Triage Service", () => {
     });
 
     it("uses profile lenses when profile specified", async () => {
+      mockGitService.getHeadCommit.mockResolvedValue("abc123");
+      mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       const diff = "diff content";
       const parsedDiff = createMockParsedDiff();
 
@@ -221,6 +240,8 @@ describe("Triage Service", () => {
     });
 
     it("defaults to correctness lens when no lenses or profile", async () => {
+      mockGitService.getHeadCommit.mockResolvedValue("abc123");
+      mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       const diff = "diff content";
       const parsedDiff = createMockParsedDiff();
 
@@ -241,6 +262,8 @@ describe("Triage Service", () => {
     });
 
     it("saves review with metadata", async () => {
+      mockGitService.getHeadCommit.mockResolvedValue("abc123");
+      mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       const diff = "diff content";
       const parsedDiff = createMockParsedDiff();
 
@@ -272,6 +295,8 @@ describe("Triage Service", () => {
     });
 
     it("emits complete event with review ID", async () => {
+      mockGitService.getHeadCommit.mockResolvedValue("abc123");
+      mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       const diff = "diff content";
       const parsedDiff = createMockParsedDiff();
 
@@ -293,6 +318,8 @@ describe("Triage Service", () => {
     });
 
     it("handles git diff error", async () => {
+      mockGitService.getHeadCommit.mockResolvedValue("abc123");
+      mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       mockGitService.getDiff.mockRejectedValue(new Error("Git not found"));
 
       await streamTriageToSSE(mockAIClient, { staged: true }, mockStream);
@@ -304,6 +331,8 @@ describe("Triage Service", () => {
     });
 
     it("handles triage review error", async () => {
+      mockGitService.getHeadCommit.mockResolvedValue("abc123");
+      mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       const diff = "diff content";
       const parsedDiff = createMockParsedDiff();
 
@@ -323,6 +352,8 @@ describe("Triage Service", () => {
     });
 
     it("handles save error", async () => {
+      mockGitService.getHeadCommit.mockResolvedValue("abc123");
+      mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       const diff = "diff content";
       const parsedDiff = createMockParsedDiff();
 
@@ -347,6 +378,8 @@ describe("Triage Service", () => {
     });
 
     it("handles unexpected errors", async () => {
+      mockGitService.getHeadCommit.mockResolvedValue("abc123");
+      mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       mockGitService.getDiff.mockImplementation(() => {
         throw new Error("Unexpected error");
       });
@@ -360,6 +393,8 @@ describe("Triage Service", () => {
     });
 
     it("applies profile filter to triage stream", async () => {
+      mockGitService.getHeadCommit.mockResolvedValue("abc123");
+      mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       const diff = "diff content";
       const parsedDiff = createMockParsedDiff();
 
@@ -385,6 +420,8 @@ describe("Triage Service", () => {
     });
 
     it("handles git status failure gracefully", async () => {
+      mockGitService.getHeadCommit.mockResolvedValue("abc123");
+      mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       const diff = "diff content";
       const parsedDiff = createMockParsedDiff();
 
@@ -407,6 +444,8 @@ describe("Triage Service", () => {
     });
 
     it("processes unstaged changes when staged=false", async () => {
+      mockGitService.getHeadCommit.mockResolvedValue("abc123");
+      mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       const diff = "diff content";
       const parsedDiff = createMockParsedDiff();
 
@@ -425,6 +464,8 @@ describe("Triage Service", () => {
     });
 
     it("forwards agent events to SSE stream", async () => {
+      mockGitService.getHeadCommit.mockResolvedValue("abc123");
+      mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       const diff = "diff content";
       const parsedDiff = createMockParsedDiff();
 
