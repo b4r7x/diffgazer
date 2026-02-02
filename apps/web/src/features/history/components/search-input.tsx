@@ -6,12 +6,13 @@ interface SearchInputProps {
   onFocus?: () => void;
   onEscape: () => void;
   onArrowUp?: () => void;
+  onArrowDown?: () => void;
   placeholder?: string;
 }
 
 export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
   function SearchInput(
-    { value, onChange, onFocus, onEscape, onArrowUp, placeholder = "Search runs by ID..." },
+    { value, onChange, onFocus, onEscape, onArrowUp, onArrowDown, placeholder = "Search runs by ID..." },
     ref
   ) {
     return (
@@ -30,6 +31,9 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             } else if (e.key === "ArrowUp" && onArrowUp) {
               e.preventDefault();
               onArrowUp();
+            } else if (e.key === "ArrowDown" && onArrowDown) {
+              e.preventDefault();
+              onArrowDown();
             }
           }}
           placeholder={placeholder}

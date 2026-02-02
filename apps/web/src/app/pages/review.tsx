@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate, useSearch, useParams } from "@tanstack/react-router";
-import { AnalysisSummary } from "@/components/ui";
+import { useSearch, useParams, useRouter, useCanGoBack } from "@tanstack/react-router";
+import { AnalysisSummary, Button } from "@/components/ui";
 import type { LensStats, IssuePreview, SeverityFilter } from "@/components/ui";
 import type { TriageIssue } from "@repo/schemas";
 import { SEVERITY_ORDER } from "@repo/schemas/ui";
@@ -30,6 +30,7 @@ interface ReviewSummaryViewProps {
 }
 
 function ReviewSummaryView({ issues, reviewId, onEnterReview, onBack }: ReviewSummaryViewProps) {
+  const router = useRouter();
   const severityCounts = calculateSeverityCounts(issues);
 
   const categoryCountMap = issues.reduce<Record<string, number>>((acc, issue) => {
@@ -59,7 +60,7 @@ function ReviewSummaryView({ issues, reviewId, onEnterReview, onBack }: ReviewSu
 
   useScope("review-summary");
   useKey("Enter", onEnterReview);
-  useKey("Escape", onBack);
+  useKey("Escape", () => router.history.back());
 
   usePageFooter({
     shortcuts: [{ key: "Enter", label: "Start Review" }],
@@ -88,7 +89,8 @@ interface ReviewResultsViewProps {
 }
 
 function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
-  const navigate = useNavigate();
+  const router = useRouter();
+  const canGoBack = useCanGoBack();
   const [selectedIssueIndex, setSelectedIssueIndex] = useScopedRouteState("issueIndex", 0);
   const [activeTab, setActiveTab] = useState<TabId>("details");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
@@ -113,8 +115,10 @@ function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
 
   const selectedIssue = filteredIssues[focusedIndex] ?? null;
 
+  const handleBack = () => router.history.back();
+
   useScope("review");
-  useKey("Escape", () => navigate({ to: "/" }), { enabled: focusZone === "list" });
+  useKey("Escape", handleBack, { enabled: focusZone === "list" });
 
   useKey("Tab", () => {
     if (focusZone === "filters") setFocusZone("list");
@@ -184,33 +188,41 @@ function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
   });
 
   return (
-    <div className="flex flex-1 overflow-hidden px-4 font-mono">
-      <IssueListPane
-        issues={filteredIssues}
-        allIssues={issues}
-        selectedIndex={focusedIndex}
-        onSelectIndex={setFocusedIndex}
-        severityFilter={severityFilter}
-        onSeverityFilterChange={setSeverityFilter}
-        isFocused={focusZone === "list"}
-        isFilterFocused={focusZone === "filters"}
-        focusedFilterIndex={focusedFilterIndex}
-        title={`Analysis #${reviewId ?? "unknown"}`}
-      />
-      <IssueDetailsPane
-        issue={selectedIssue}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        completedSteps={completedSteps}
-        onToggleStep={handleToggleStep}
-        isFocused={focusZone === "details"}
-      />
+    <div className="flex flex-col flex-1 overflow-hidden px-4 font-mono">
+      <div className="flex items-center gap-4 py-2 border-b border-tui-border mb-2 shrink-0">
+        {canGoBack && (
+          <Button variant="ghost" size="sm" onClick={handleBack} className="text-gray-500 hover:text-tui-fg">
+            ← Back
+          </Button>
+        )}
+        <span className="text-sm font-medium text-tui-violet">Analysis #{reviewId ?? "unknown"}</span>
+      </div>
+      <div className="flex flex-1 overflow-hidden">
+        <IssueListPane
+          issues={filteredIssues}
+          allIssues={issues}
+          selectedIndex={focusedIndex}
+          onSelectIndex={setFocusedIndex}
+          severityFilter={severityFilter}
+          onSeverityFilterChange={setSeverityFilter}
+          isFocused={focusZone === "list"}
+          isFilterFocused={focusZone === "filters"}
+          focusedFilterIndex={focusedFilterIndex}
+        />
+        <IssueDetailsPane
+          issue={selectedIssue}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          completedSteps={completedSteps}
+          onToggleStep={handleToggleStep}
+          isFocused={focusZone === "details"}
+        />
+      </div>
     </div>
   );
 }
 
 export function ReviewPage() {
-  const navigate = useNavigate();
   const params = useParams({ strict: false }) as { reviewId?: string };
   const search = useSearch({ strict: false }) as { staged?: boolean; files?: boolean };
   const reviewMode: ReviewMode = search.files ? "files" : search.staged ? "staged" : "unstaged";
@@ -313,13 +325,15 @@ export function ReviewPage() {
     return <ReviewContainer mode={reviewMode} onComplete={handleComplete} />;
   }
 
+  const router = useRouter();
+
   if (view === "summary") {
     return (
       <ReviewSummaryView
         issues={reviewData.issues}
         reviewId={reviewData.reviewId}
         onEnterReview={() => setView("results")}
-        onBack={() => navigate({ to: "/" })}
+        onBack={() => router.history.back()}
       />
     );
   }

@@ -148,7 +148,7 @@ export function HistoryPage() {
   useScope("history");
 
   useKey("Tab", () => {
-    const zones: HistoryFocusZone[] = ["timeline", "runs", "insights", "search"];
+    const zones: HistoryFocusZone[] = ["search", "timeline", "runs", "insights"];
     setFocusZone((prev) => zones[(zones.indexOf(prev) + 1) % zones.length]);
   });
 
@@ -167,15 +167,14 @@ export function HistoryPage() {
     searchInputRef.current?.focus();
   }, { enabled: focusZone !== "search" });
 
-  useKey(
-    "o",
-    () => {
-      if (selectedRunId) {
-        navigate({ to: "/review/$reviewId", params: { reviewId: selectedRunId } });
-      }
-    },
-    { enabled: focusZone === "runs" }
-  );
+  const navigateToSelectedRun = () => {
+    if (selectedRunId) {
+      navigate({ to: "/review/$reviewId", params: { reviewId: selectedRunId } });
+    }
+  };
+
+  useKey("o", navigateToSelectedRun, { enabled: focusZone === "runs" });
+  useKey(" ", navigateToSelectedRun, { enabled: focusZone === "runs" });
 
   useKey("Escape", () => {
     if (expandedRunId) {
@@ -203,21 +202,17 @@ export function HistoryPage() {
     }
   };
 
-  const handleSearchArrowUp = () => {
+  const handleSearchArrowDown = () => {
     searchInputRef.current?.blur();
-    setFocusZone("runs");
+    setFocusZone("timeline");
   };
 
   const handleRunActivate = (runId: string) => {
-    if (expandedRunId === runId) {
-      navigate({ to: "/review/$reviewId", params: { reviewId: runId } });
-    } else {
-      setExpandedRunId(runId);
-    }
+    navigate({ to: "/review/$reviewId", params: { reviewId: runId } });
   };
 
   const handleRunsBoundary = (direction: "up" | "down") => {
-    if (direction === "down") {
+    if (direction === "up") {
       setFocusZone("search");
       searchInputRef.current?.focus();
     }
@@ -244,6 +239,15 @@ export function HistoryPage() {
       <div className="flex items-center gap-6 border-b border-tui-border mb-0 text-sm select-none shrink-0">
         <span className="py-2 text-sm font-medium">Reviews</span>
       </div>
+
+      <SearchInput
+        ref={searchInputRef}
+        value={searchQuery}
+        onChange={setSearchQuery}
+        onFocus={() => setFocusZone("search")}
+        onEscape={handleSearchEscape}
+        onArrowDown={handleSearchArrowDown}
+      />
 
       <div className="flex flex-1 overflow-hidden border-x border-b border-tui-border">
         <FocusablePane
@@ -325,15 +329,6 @@ export function HistoryPage() {
           />
         </FocusablePane>
       </div>
-
-      <SearchInput
-        ref={searchInputRef}
-        value={searchQuery}
-        onChange={setSearchQuery}
-        onFocus={() => setFocusZone("search")}
-        onEscape={handleSearchEscape}
-        onArrowUp={handleSearchArrowUp}
-      />
     </div>
   );
 }
