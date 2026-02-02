@@ -122,7 +122,7 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
 
   // Delay transition so users see final step completions before switching views
   useEffect(() => {
-    if (!state.isStreaming && hasStreamedRef.current) {
+    if (!state.isStreaming && hasStreamedRef.current && !state.error) {
       if (completeTimeoutRef.current) {
         clearTimeout(completeTimeoutRef.current);
       }
