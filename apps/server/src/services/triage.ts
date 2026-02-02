@@ -37,8 +37,6 @@ function stepError(step: StepId, error: string): StepEvent {
   return { type: "step_error", step, error, timestamp: now() };
 }
 
-const gitService = createGitService();
-
 async function writeStreamEvent(stream: SSEWriter, event: FullTriageStreamEvent): Promise<void> {
   await stream.writeSSE({
     event: event.type,
@@ -69,15 +67,33 @@ export async function streamTriageToSSE(
   const { staged = true, files, lenses: lensIds, profile: profileId } = options;
   const startTime = Date.now();
   const projectPath = process.cwd();
+  const gitService = createGitService({ cwd: projectPath });
 
   logger.info(`Starting triage stream: staged=${staged}, files=${files?.length ?? 0}, lenses=${lensIds?.join(",") ?? "default"}`);
 
-  const headCommit = await gitService.getHeadCommit();
+  let headCommit: string;
+  let statusHash: string;
+  try {
+    headCommit = await gitService.getHeadCommit();
+    statusHash = await gitService.getStatusHash();
+    logger.info(`[SESSION] Git state: head=${headCommit.slice(0, 8)}, status=${statusHash || "clean"}, staged=${staged}`);
+  } catch (error) {
+    logger.warn(`Failed to get git state: ${error instanceof Error ? error.message : String(error)}`);
+    headCommit = "";
+    statusHash = "";
+  }
 
-  // Check for existing active session for this project
-  const existingSession = getActiveSessionForProject(projectPath, headCommit, staged);
+  // Skip session reuse if headCommit is empty (git failure)
+  const existingSession = headCommit ? getActiveSessionForProject(projectPath, headCommit, statusHash, staged) : undefined;
+
   if (existingSession) {
-    logger.info(`Replaying existing session: reviewId=${existingSession.reviewId}, events=${existingSession.events.length}`);
+    logger.info(`[SESSION] Found existing session: reviewId=${existingSession.reviewId}, events=${existingSession.events.length}`);
+  } else {
+    logger.info(`[SESSION] No matching session found, will create new`);
+  }
+
+  if (existingSession) {
+    logger.info(`[SESSION] Replaying existing session: reviewId=${existingSession.reviewId}, events=${existingSession.events.length}`);
     // Replay events
     for (const event of existingSession.events) {
       await writeStreamEvent(stream, event);
@@ -111,7 +127,8 @@ export async function streamTriageToSSE(
 
   // Generate reviewId early so client can track this review immediately
   const reviewId = randomUUID();
-  createSession(reviewId, projectPath, headCommit, staged);
+  createSession(reviewId, projectPath, headCommit, statusHash, staged);
+  logger.info(`[SESSION] Created new session: reviewId=${reviewId}`);
 
   // Helper to emit events to both stream and session store
   const emitEvent = async (event: FullTriageStreamEvent) => {
