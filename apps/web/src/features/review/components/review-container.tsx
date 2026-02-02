@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { ReviewProgressView } from './review-progress-view';
 import { ApiKeyMissingView } from './api-key-missing-view';
+import { NoChangesView } from './no-changes-view';
 import { useTriageStream } from '../hooks/use-triage-stream';
 import { useConfig } from '@/features/settings/hooks/use-config';
 import { convertAgentEventsToLogEntries } from '@repo/core/review';
@@ -160,6 +161,18 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     navigate({ to: '/settings/providers' });
   };
 
+  const handleSwitchMode = () => {
+    stop();
+    const newMode = mode === 'staged' ? '' : '?staged=true';
+    navigate({ to: `/review${newMode}`, replace: true });
+    // Force re-mount by resetting ref
+    hasStartedRef.current = false;
+  };
+
+  const isNoDiffError =
+    state.error?.includes('No staged changes') ||
+    state.error?.includes('No unstaged changes');
+
   const progressSteps = useMemo(
     () => mapStepsToProgressData(state.steps, state.agents),
     [state.steps, state.agents]
@@ -191,6 +204,16 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
         activeProvider={provider}
         onNavigateSettings={handleSetupProvider}
         onBack={handleCancel}
+      />
+    );
+  }
+
+  if (isNoDiffError) {
+    return (
+      <NoChangesView
+        mode={mode}
+        onBack={handleCancel}
+        onSwitchMode={handleSwitchMode}
       />
     );
   }
