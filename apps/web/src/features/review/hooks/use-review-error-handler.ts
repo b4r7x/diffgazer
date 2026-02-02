@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useToast } from "@/components/ui/toast";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -5,36 +6,26 @@ export function useReviewErrorHandler() {
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  const redirectWithToast = (title: string, message: string) => {
+  const handleApiError = useCallback((error: unknown) => {
+    const err = error as { status?: number; message?: string };
+
+    const title =
+      err.status === 400 ? "Invalid Review ID" :
+      err.status === 404 ? "Review Not Found" :
+      "Error Loading Review";
+
+    const message =
+      err.status === 400 ? "The review ID format is invalid." :
+      err.status === 404 ? "The review session was not found or has expired." :
+      err.message || "An error occurred while loading the review.";
+
     showToast({
       variant: "error",
       title,
       message,
     });
     navigate({ to: "/" });
-  };
-
-  const handleInvalidFormat = () => {
-    redirectWithToast("Invalid Review ID", "The review ID format is invalid.");
-  };
-
-  const handleNotFound = () => {
-    redirectWithToast("Review Not Found", "The review session was not found or has expired.");
-  };
-
-  const handleApiError = (error: unknown) => {
-    const err = error as { status?: number; message?: string };
-    if (err.status === 400) {
-      handleInvalidFormat();
-    } else if (err.status === 404) {
-      handleNotFound();
-    } else {
-      redirectWithToast(
-        "Error Loading Review",
-        err.message || "An error occurred while loading the review."
-      );
-    }
-  };
+  }, [showToast, navigate]);
 
   return {
     handleApiError,
