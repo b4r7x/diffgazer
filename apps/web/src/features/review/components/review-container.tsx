@@ -78,12 +78,17 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
   const hasStartedRef = useRef(false);
   const hasStreamedRef = useRef(false);
   const completeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onCompleteRef = useRef(onComplete);
 
   useEffect(() => {
     if (state.isStreaming) {
       hasStreamedRef.current = true;
     }
   }, [state.isStreaming]);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     if (state.reviewId && !params.reviewId) {
@@ -108,7 +113,7 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
       // Try to resume existing session
       resume(params.reviewId).catch(() => {
         // Resume failed - signal to parent to try loading from storage
-        onComplete?.({
+        onCompleteRef.current?.({
           issues: [],
           reviewId: params.reviewId ?? null,
           resumeFailed: true
@@ -133,7 +138,7 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
       const delayMs = reportCompleted ? 2300 : 400;
 
       completeTimeoutRef.current = setTimeout(() => {
-        onComplete?.({ issues: state.issues, reviewId: state.reviewId });
+        onCompleteRef.current?.({ issues: state.issues, reviewId: state.reviewId });
       }, delayMs);
     }
     return () => {
@@ -141,7 +146,7 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
         clearTimeout(completeTimeoutRef.current);
       }
     };
-  }, [state.isStreaming, state.steps, state.issues, state.reviewId, state.error, onComplete]);
+  }, [state.isStreaming, state.steps, state.issues, state.reviewId, state.error]);
 
   const handleCancel = () => {
     stop();
@@ -153,7 +158,7 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
       clearTimeout(completeTimeoutRef.current);
     }
     stop();
-    onComplete?.({ issues: state.issues, reviewId: state.reviewId });
+    onCompleteRef.current?.({ issues: state.issues, reviewId: state.reviewId });
   };
 
   const handleSetupProvider = () => {
