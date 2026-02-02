@@ -226,7 +226,7 @@ export function ReviewPage() {
   const params = useParams({ strict: false }) as { reviewId?: string };
   const search = useSearch({ strict: false }) as { staged?: boolean; files?: boolean };
   const reviewMode: ReviewMode = search.files ? "files" : search.staged ? "staged" : "unstaged";
-  const [view, setView] = useScopedRouteState<ReviewView>("view", "progress");
+  const [view, setView] = useState<ReviewView>("progress");
   const [reviewData, setReviewData] = useState<ReviewData>({ issues: [], reviewId: null });
   const [isLoadingSaved, setIsLoadingSaved] = useState(false);
   // Start as true if we have a reviewId - prevents ReviewContainer from mounting before check completes
