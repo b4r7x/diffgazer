@@ -159,7 +159,7 @@ describe('ReviewContainer', () => {
       );
 
       await waitFor(() => {
-        expect(mockStart).toHaveBeenCalledWith({ staged: false });
+        expect(mockStart).toHaveBeenCalledWith({ mode: "unstaged" });
       });
     });
 
@@ -262,7 +262,7 @@ describe('ReviewContainer', () => {
       );
 
       await waitFor(() => {
-        expect(mockStart).toHaveBeenCalledWith({ staged: true });
+        expect(mockStart).toHaveBeenCalledWith({ mode: "staged" });
       });
     });
 
@@ -275,11 +275,11 @@ describe('ReviewContainer', () => {
       );
 
       await waitFor(() => {
-        expect(mockStart).toHaveBeenCalledWith({ staged: false });
+        expect(mockStart).toHaveBeenCalledWith({ mode: "unstaged" });
       });
     });
 
-    it('passes mode "files" to start options as unstaged', async () => {
+    it('passes mode "files" to start options', async () => {
       render(
         <ReviewContainer
           mode="files"
@@ -288,7 +288,7 @@ describe('ReviewContainer', () => {
       );
 
       await waitFor(() => {
-        expect(mockStart).toHaveBeenCalledWith({ staged: false });
+        expect(mockStart).toHaveBeenCalledWith({ mode: "files" });
       });
     });
   });
@@ -560,7 +560,7 @@ describe('ReviewContainer', () => {
       );
 
       expect(mockResume).not.toHaveBeenCalled();
-      expect(mockStart).toHaveBeenCalledWith({ staged: false });
+      expect(mockStart).toHaveBeenCalledWith({ mode: "unstaged" });
     });
 
     it('calls resume when reviewId exists in params', async () => {

@@ -148,7 +148,7 @@ export function PrReviewApp({
 
       try {
         const res = await streamTriage({
-          staged,
+          mode: staged ? "staged" : "unstaged",
           files,
           lenses,
           profile,

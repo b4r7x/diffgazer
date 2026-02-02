@@ -17,6 +17,7 @@ import { getErrorMessage } from "@repo/core";
 import { ErrorCode } from "@repo/schemas/errors";
 import { createGitService } from "../../services/git.js";
 import type { LensId, ProfileId } from "@repo/schemas/lens";
+import type { ReviewMode } from "@repo/schemas/triage-storage";
 
 const triage = new Hono();
 
@@ -30,7 +31,14 @@ triage.get("/stream", async (c) => {
   }
   console.log("[ROUTE:STREAM] AI client initialized");
 
-  const staged = c.req.query("staged") !== "false";
+  // Support both new 'mode' and legacy 'staged' params
+  const modeParam = c.req.query("mode");
+  const stagedParam = c.req.query("staged");
+  const mode: ReviewMode = modeParam
+    ? modeParam as ReviewMode
+    : stagedParam !== undefined
+      ? (stagedParam !== "false" ? "staged" : "unstaged")
+      : "unstaged";
   const lensesParam = c.req.query("lenses");
   const filesParam = c.req.query("files");
   const profile = c.req.query("profile") as ProfileId | undefined;
@@ -43,12 +51,12 @@ triage.get("/stream", async (c) => {
     ? filesParam.split(",").map((f) => f.trim()).filter(Boolean)
     : undefined;
 
-  console.log("[ROUTE:STREAM] Params:", { staged, lenses, files, profile });
+  console.log("[ROUTE:STREAM] Params:", { mode, lenses, files, profile });
 
   return streamSSE(c, async (stream) => {
     console.log("[ROUTE:SSE] Stream started");
     try {
-      await streamTriageToSSE(clientResult.value, { staged, files, lenses, profile }, stream);
+      await streamTriageToSSE(clientResult.value, { mode, files, lenses, profile }, stream);
       console.log("[ROUTE:SSE] streamTriageToSSE completed");
     } catch (error) {
       console.error("[ROUTE:SSE] Error:", error);
@@ -117,7 +125,7 @@ triage.post("/reviews/:id/drilldown", async (c) => {
 
   const review = reviewResult.value;
   const gitService = createGitService();
-  const diff = await gitService.getDiff(review.metadata.staged);
+  const diff = await gitService.getDiff(review.metadata.mode);
   const parsed = parseDiff(diff);
 
   const drilldownResult = await drilldownIssueById(

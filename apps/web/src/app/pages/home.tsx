@@ -11,13 +11,16 @@ import { useToast } from "@/components/ui/toast";
 import type { ContextInfo } from "@repo/schemas/ui";
 import { api } from "@/lib/api";
 
-const MENU_ROUTES: Record<string, string> = {
-  "review-unstaged": "/review",
-  "review-staged": "/review?staged=true",
-  "review-files": "/review?files=true",
-  "resume-review": "/review",
-  history: "/history",
-  settings: "/settings",
+type RouteConfig = { to: string; search?: Record<string, string> };
+
+const MENU_ROUTES: Record<string, RouteConfig> = {
+  "review-unstaged": { to: "/review" },
+  "review-staged": { to: "/review", search: { mode: "staged" } },
+  // TODO: future feature - file selection UI not implemented
+  // "review-files": { to: "/review", search: { mode: "files" } },
+  "resume-review": { to: "/review" },
+  history: { to: "/history" },
+  settings: { to: "/settings" },
 };
 
 export function HomePage() {
@@ -58,7 +61,7 @@ export function HomePage() {
     }
     const route = MENU_ROUTES[id];
     if (route) {
-      navigate({ to: route });
+      navigate({ to: route.to, search: route.search });
     }
   };
 

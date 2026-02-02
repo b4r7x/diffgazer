@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { GIT_FILE_STATUS_CODES, type GitStatus, type GitStatusFiles, type GitFileEntry, type GitFileStatusCode } from "@repo/schemas/git";
+import type { ReviewMode } from "@repo/schemas/triage-storage";
 
 const execFileAsync = promisify(execFile);
 
@@ -147,8 +148,8 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
     }
   }
 
-  async function getDiff(staged = false): Promise<string> {
-    const args = staged ? ["diff", "--cached"] : ["diff"];
+  async function getDiff(mode: ReviewMode = "unstaged"): Promise<string> {
+    const args = mode === "staged" ? ["diff", "--cached"] : ["diff"];
     const { stdout } = await execFileAsync("git", args, { cwd, timeout, maxBuffer: GIT_DIFF_MAX_BUFFER });
     return stdout;
   }

@@ -426,7 +426,7 @@ export function ReviewView({ state, staged, reviewId, agentEvents = [], currentR
         issues: currentReview.result.issues,
         summary: currentReview.result.summary,
         reviewId: currentReview.metadata.id,
-        staged: currentReview.metadata.staged,
+        staged: currentReview.metadata.mode === "staged",
         showAgentPanel: false,
         agentEvents: [] as AgentStreamEvent[],
       }

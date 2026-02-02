@@ -8,6 +8,7 @@ import { useScope, useKey, useSelectableList } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ReviewContainer, IssueListPane, IssueDetailsPane, type ReviewMode, type TabId, type ReviewCompleteData } from "@/features/review/components";
+import type { ReviewSearch } from "@/app/router";
 import { useReviewErrorHandler } from "@/features/review/hooks";
 import { calculateSeverityCounts } from "@repo/core";
 import { filterIssuesBySeverity } from "@repo/core/review";
@@ -224,8 +225,8 @@ function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
 
 export function ReviewPage() {
   const params = useParams({ strict: false }) as { reviewId?: string };
-  const search = useSearch({ strict: false }) as { staged?: boolean; files?: boolean };
-  const reviewMode: ReviewMode = search.files ? "files" : search.staged ? "staged" : "unstaged";
+  const search = useSearch({ strict: false }) as ReviewSearch;
+  const reviewMode = search.mode;
   const [view, setView] = useState<ReviewView>("progress");
   const [reviewData, setReviewData] = useState<ReviewData>({ issues: [], reviewId: null });
   const [isLoadingSaved, setIsLoadingSaved] = useState(false);
