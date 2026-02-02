@@ -248,13 +248,13 @@ index 1234567..abcdefg 100644
       );
     });
 
-    it("returns staged diff when staged=true", async () => {
+    it("returns staged diff when mode is 'staged'", async () => {
       const diffOutput = "staged diff content";
 
       mockExecFileAsync.mockResolvedValue({ stdout: diffOutput, stderr: "" });
 
       const service = createGitService();
-      const diff = await service.getDiff(true);
+      const diff = await service.getDiff("staged");
 
       expect(diff).toBe(diffOutput);
       expect(mockExecFileAsync).toHaveBeenCalledWith(

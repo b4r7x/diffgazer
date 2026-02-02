@@ -183,7 +183,7 @@ export function useTriage(options: UseTriageOptions = {}) {
 
     try {
       const res = await streamTriage({
-        staged,
+        mode: staged ? "staged" : "unstaged",
         files: options.files,
         lenses: options.lenses,
         profile: options.profile,

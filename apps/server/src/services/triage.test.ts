@@ -104,7 +104,7 @@ describe("Triage Service", () => {
       mockGitService.getDiff.mockResolvedValue(largeDiff);
       mockParseDiff.mockReturnValue(createMockParsedDiff(600000));
 
-      await streamTriageToSSE(mockAIClient, { staged: true }, mockStream);
+      await streamTriageToSSE(mockAIClient, { mode: "staged" }, mockStream);
 
       expect(mockStream.writeSSE).toHaveBeenCalledWith({
         event: "error",
@@ -117,7 +117,7 @@ describe("Triage Service", () => {
       mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       mockGitService.getDiff.mockResolvedValue("");
 
-      await streamTriageToSSE(mockAIClient, { staged: true }, mockStream);
+      await streamTriageToSSE(mockAIClient, { mode: "staged" }, mockStream);
 
       expect(mockStream.writeSSE).toHaveBeenCalledWith({
         event: "error",
@@ -130,7 +130,7 @@ describe("Triage Service", () => {
       mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       mockGitService.getDiff.mockResolvedValue("   \n\t\n  ");
 
-      await streamTriageToSSE(mockAIClient, { staged: false }, mockStream);
+      await streamTriageToSSE(mockAIClient, { mode: "unstaged" }, mockStream);
 
       expect(mockStream.writeSSE).toHaveBeenCalledWith({
         event: "error",
@@ -152,7 +152,7 @@ describe("Triage Service", () => {
 
       await streamTriageToSSE(
         mockAIClient,
-        { staged: true, files: ["test.ts", "other.ts"] },
+        { mode: "staged", files: ["test.ts", "other.ts"] },
         mockStream
       );
 
@@ -175,7 +175,7 @@ describe("Triage Service", () => {
 
       await streamTriageToSSE(
         mockAIClient,
-        { staged: true, files: ["nonexistent.ts"] },
+        { mode: "staged", files: ["nonexistent.ts"] },
         mockStream
       );
 
@@ -197,7 +197,7 @@ describe("Triage Service", () => {
 
       await streamTriageToSSE(
         mockAIClient,
-        { staged: true, lenses: ["correctness", "security"] },
+        { mode: "staged", lenses: ["correctness", "security"] },
         mockStream
       );
 
@@ -226,7 +226,7 @@ describe("Triage Service", () => {
       });
       setupSuccessfulTriage();
 
-      await streamTriageToSSE(mockAIClient, { staged: true, profile: "strict" }, mockStream);
+      await streamTriageToSSE(mockAIClient, { mode: "staged", profile: "strict" }, mockStream);
 
       expect(mockGetProfile).toHaveBeenCalledWith("strict");
       expect(mockTriageReviewStream).toHaveBeenCalledWith(
@@ -249,7 +249,7 @@ describe("Triage Service", () => {
       mockParseDiff.mockReturnValue(parsedDiff);
       setupSuccessfulTriage();
 
-      await streamTriageToSSE(mockAIClient, { staged: true }, mockStream);
+      await streamTriageToSSE(mockAIClient, { mode: "staged" }, mockStream);
 
       expect(mockTriageReviewStream).toHaveBeenCalledWith(
         mockAIClient,
@@ -278,20 +278,22 @@ describe("Triage Service", () => {
 
       await streamTriageToSSE(
         mockAIClient,
-        { staged: true, lenses: ["correctness"], profile: "quick" },
+        { mode: "staged", lenses: ["correctness"], profile: "quick" },
         mockStream
       );
 
-      expect(mockSaveTriageReview).toHaveBeenCalledWith({
-        projectPath: process.cwd(),
-        staged: true,
-        result: { summary: "Test summary", issues: [] },
-        diff: parsedDiff,
-        branch: "feature-branch",
-        commit: null,
-        profile: "quick",
-        lenses: ["correctness"],
-      });
+      expect(mockSaveTriageReview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectPath: process.cwd(),
+          mode: "staged",
+          result: { summary: "Test summary", issues: [] },
+          diff: parsedDiff,
+          branch: "feature-branch",
+          commit: null,
+          profile: "quick",
+          lenses: ["correctness"],
+        })
+      );
     });
 
     it("emits complete event with review ID", async () => {
@@ -309,7 +311,7 @@ describe("Triage Service", () => {
       mockGitService.getStatus.mockResolvedValue({ branch: "main" });
       mockSaveTriageReview.mockResolvedValue({ ok: true, value: { id: "review-456" } });
 
-      await streamTriageToSSE(mockAIClient, { staged: true }, mockStream);
+      await streamTriageToSSE(mockAIClient, { mode: "staged" }, mockStream);
 
       expect(mockStream.writeSSE).toHaveBeenCalledWith({
         event: "complete",
@@ -322,7 +324,7 @@ describe("Triage Service", () => {
       mockGitService.getStatusHash.mockResolvedValue("M  test.ts");
       mockGitService.getDiff.mockRejectedValue(new Error("Git not found"));
 
-      await streamTriageToSSE(mockAIClient, { staged: true }, mockStream);
+      await streamTriageToSSE(mockAIClient, { mode: "staged" }, mockStream);
 
       expect(mockStream.writeSSE).toHaveBeenCalledWith({
         event: "error",
@@ -343,7 +345,7 @@ describe("Triage Service", () => {
         error: { message: "AI service error", code: "AI_ERROR" },
       });
 
-      await streamTriageToSSE(mockAIClient, { staged: true }, mockStream);
+      await streamTriageToSSE(mockAIClient, { mode: "staged" }, mockStream);
 
       expect(mockStream.writeSSE).toHaveBeenCalledWith({
         event: "error",
@@ -369,7 +371,7 @@ describe("Triage Service", () => {
         error: { message: "Write failed" },
       });
 
-      await streamTriageToSSE(mockAIClient, { staged: true }, mockStream);
+      await streamTriageToSSE(mockAIClient, { mode: "staged" }, mockStream);
 
       expect(mockStream.writeSSE).toHaveBeenCalledWith({
         event: "error",
@@ -384,7 +386,7 @@ describe("Triage Service", () => {
         throw new Error("Unexpected error");
       });
 
-      await streamTriageToSSE(mockAIClient, { staged: true }, mockStream);
+      await streamTriageToSSE(mockAIClient, { mode: "staged" }, mockStream);
 
       expect(mockStream.writeSSE).toHaveBeenCalledWith({
         event: "error",
@@ -407,7 +409,7 @@ describe("Triage Service", () => {
       });
       setupSuccessfulTriage();
 
-      await streamTriageToSSE(mockAIClient, { staged: true, profile: "quick" }, mockStream);
+      await streamTriageToSSE(mockAIClient, { mode: "staged", profile: "quick" }, mockStream);
 
       expect(mockTriageReviewStream).toHaveBeenCalledWith(
         mockAIClient,
@@ -434,7 +436,7 @@ describe("Triage Service", () => {
       mockGitService.getStatus.mockRejectedValue(new Error("Git status failed"));
       mockSaveTriageReview.mockResolvedValue({ ok: true, value: { id: "review-123" } });
 
-      await streamTriageToSSE(mockAIClient, { staged: true }, mockStream);
+      await streamTriageToSSE(mockAIClient, { mode: "staged" }, mockStream);
 
       expect(mockSaveTriageReview).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -453,12 +455,12 @@ describe("Triage Service", () => {
       mockParseDiff.mockReturnValue(parsedDiff);
       setupSuccessfulTriage();
 
-      await streamTriageToSSE(mockAIClient, { staged: false }, mockStream);
+      await streamTriageToSSE(mockAIClient, { mode: "unstaged" }, mockStream);
 
-      expect(mockGitService.getDiff).toHaveBeenCalledWith(false);
+      expect(mockGitService.getDiff).toHaveBeenCalledWith("unstaged");
       expect(mockSaveTriageReview).toHaveBeenCalledWith(
         expect.objectContaining({
-          staged: false,
+          mode: "unstaged",
         })
       );
     });
@@ -479,7 +481,7 @@ describe("Triage Service", () => {
       mockGitService.getStatus.mockResolvedValue({ branch: "main" });
       mockSaveTriageReview.mockResolvedValue({ ok: true, value: { id: "review-123" } });
 
-      await streamTriageToSSE(mockAIClient, { staged: true }, mockStream);
+      await streamTriageToSSE(mockAIClient, { mode: "staged" }, mockStream);
 
       expect(mockStream.writeSSE).toHaveBeenCalledWith({
         event: "agent_start",

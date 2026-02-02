@@ -4,12 +4,13 @@ import type { AgentStreamEvent } from "@repo/schemas/agent-event";
 import type { EnrichEvent } from "@repo/schemas/enrich-event";
 import type { FullTriageStreamEvent } from "@repo/schemas/full-triage-stream-event";
 import type { StepEvent } from "@repo/schemas/step-event";
+import type { ReviewMode } from "@repo/schemas/triage-storage";
 import { FullTriageStreamEventSchema } from "@repo/schemas/full-triage-stream-event";
 import { parseSSEStream } from "../streaming/sse-parser.js";
 import { ok, err, type Result } from "../result.js";
 
 export interface StreamTriageRequest {
-  staged?: boolean;
+  mode?: ReviewMode;
   files?: string[];
   lenses?: LensId[];
   profile?: ProfileId;
@@ -38,9 +39,9 @@ export interface TriageStreamController {
 }
 
 export function buildTriageQueryParams(options: StreamTriageRequest): Record<string, string> {
-  const { staged = true, files, lenses, profile } = options;
+  const { mode = "unstaged", files, lenses, profile } = options;
   const params: Record<string, string> = {
-    staged: String(staged),
+    mode,
   };
   if (files && files.length > 0) {
     params.files = files.join(",");
