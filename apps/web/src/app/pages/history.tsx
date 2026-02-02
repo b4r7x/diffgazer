@@ -7,6 +7,7 @@ import type { TimelineItem } from "@repo/schemas/ui";
 import { useScope, useKey } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
+import { NavigationList } from "@/components/ui/navigation-list";
 import { RunAccordionItem, TimelineList, HistoryInsightsPane, SearchInput, useReviews, useReviewDetail } from "@/features/history";
 
 const HISTORY_FOOTER_SHORTCUTS = [
@@ -20,6 +21,20 @@ const HISTORY_FOOTER_RIGHT_SHORTCUTS = [
   { key: "e", label: "Export" },
   { key: "Esc", label: "Back" },
 ];
+
+const FOCUS_LEFT: Record<HistoryFocusZone, HistoryFocusZone | null> = {
+  timeline: null,
+  runs: "timeline",
+  insights: "runs",
+  search: "insights",
+};
+
+const FOCUS_RIGHT: Record<HistoryFocusZone, HistoryFocusZone | null> = {
+  timeline: "runs",
+  runs: "insights",
+  insights: "search",
+  search: null,
+};
 
 function getDateKey(dateStr: string): string {
   return dateStr.slice(0, 10); // "2024-01-15T..." -> "2024-01-15"
@@ -138,31 +153,19 @@ export function HistoryPage() {
   });
 
   useKey("ArrowLeft", () => {
-    if (focusZone === "runs") setFocusZone("timeline");
-    else if (focusZone === "insights") setFocusZone("runs");
-    else if (focusZone === "search") setFocusZone("insights");
+    const next = FOCUS_LEFT[focusZone];
+    if (next) setFocusZone(next);
   });
 
   useKey("ArrowRight", () => {
-    if (focusZone === "timeline") setFocusZone("runs");
-    else if (focusZone === "runs") setFocusZone("insights");
-    else if (focusZone === "insights") setFocusZone("search");
+    const next = FOCUS_RIGHT[focusZone];
+    if (next) setFocusZone(next);
   });
 
   useKey("/", () => {
     setFocusZone("search");
     searchInputRef.current?.focus();
   }, { enabled: focusZone !== "search" });
-
-  useKey(
-    "Enter",
-    () => {
-      if (focusZone === "runs" && selectedRunId) {
-        setExpandedRunId((prev) => (prev === selectedRunId ? null : selectedRunId));
-      }
-    },
-    { enabled: focusZone === "runs" }
-  );
 
   useKey(
     "o",
@@ -192,14 +195,32 @@ export function HistoryPage() {
   };
 
   const handleSearchEscape = () => {
-    if (searchQuery) return setSearchQuery("");
-    searchInputRef.current?.blur();
-    setFocusZone("runs");
+    if (searchQuery) {
+      setSearchQuery("");
+    } else {
+      searchInputRef.current?.blur();
+      setFocusZone("runs");
+    }
   };
 
   const handleSearchArrowUp = () => {
     searchInputRef.current?.blur();
     setFocusZone("runs");
+  };
+
+  const handleRunActivate = (runId: string) => {
+    if (expandedRunId === runId) {
+      navigate({ to: "/review/$reviewId", params: { reviewId: runId } });
+    } else {
+      setExpandedRunId(runId);
+    }
+  };
+
+  const handleRunsBoundary = (direction: "up" | "down") => {
+    if (direction === "down") {
+      setFocusZone("search");
+      searchInputRef.current?.focus();
+    }
   };
 
   if (isLoading) {
@@ -257,22 +278,31 @@ export function HistoryPage() {
           </div>
           <div className="flex-1 overflow-y-auto">
             {filteredRuns.length > 0 ? (
-              filteredRuns.map((run) => (
-                <RunAccordionItem
-                  key={run.id}
-                  id={run.id}
-                  displayId={`#${run.id.slice(0, 4)}`}
-                  branch={run.staged ? "Staged" : run.branch ?? "Main"}
-                  provider="AI"
-                  timestamp={getTimestamp(run.createdAt)}
-                  summary={getRunSummary(run)}
-                  issues={[]}
-                  isSelected={run.id === selectedRunId}
-                  isExpanded={run.id === expandedRunId}
-                  onSelect={() => setSelectedRunId(run.id)}
-                  onToggleExpand={() => setExpandedRunId((prev) => (prev === run.id ? null : run.id))}
-                />
-              ))
+              <NavigationList
+                selectedId={selectedRunId}
+                onSelect={setSelectedRunId}
+                onActivate={handleRunActivate}
+                keyboardEnabled={focusZone === "runs"}
+                onBoundaryReached={handleRunsBoundary}
+              >
+                {filteredRuns.map((run) => (
+                  <RunAccordionItem
+                    key={run.id}
+                    id={run.id}
+                    displayId={`#${run.id.slice(0, 4)}`}
+                    branch={run.staged ? "Staged" : run.branch ?? "Main"}
+                    provider="AI"
+                    timestamp={getTimestamp(run.createdAt)}
+                    summary={getRunSummary(run)}
+                    issues={[]}
+                    isSelected={run.id === selectedRunId}
+                    isExpanded={run.id === expandedRunId}
+                    onSelect={() => setSelectedRunId(run.id)}
+                    onToggleExpand={() => setExpandedRunId((prev) => (prev === run.id ? null : run.id))}
+                    onOpen={() => navigate({ to: "/review/$reviewId", params: { reviewId: run.id } })}
+                  />
+                ))}
+              </NavigationList>
             ) : (
               <div className="flex items-center justify-center h-full text-gray-500">
                 No runs for this date
