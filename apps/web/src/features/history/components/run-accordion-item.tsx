@@ -36,17 +36,6 @@ export function RunAccordionItem({
   onIssueClick,
   className,
 }: RunAccordionItemProps) {
-  const handleClick = () => {
-    onSelect();
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      onToggleExpand();
-    }
-  };
-
   return (
     <div
       id={id}
@@ -54,6 +43,7 @@ export function RunAccordionItem({
       data-value={id}
       aria-selected={isSelected}
       aria-expanded={isExpanded}
+      onDoubleClick={onOpen}
       className={cn(
         "border-b border-tui-border relative group",
         isSelected && "bg-tui-selection",
@@ -68,9 +58,7 @@ export function RunAccordionItem({
 
       {/* Header */}
       <div
-        onClick={handleClick}
-        onKeyDown={handleKeyDown}
-        tabIndex={0}
+        onClick={onSelect}
         className="p-3 pl-4 cursor-pointer overflow-hidden"
       >
         <div className="flex justify-between items-start mb-1 min-w-0">
