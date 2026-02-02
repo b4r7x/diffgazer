@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearch, useParams, useRouter, useCanGoBack } from "@tanstack/react-router";
 import { AnalysisSummary, Button } from "@/components/ui";
 import type { LensStats, IssuePreview, SeverityFilter } from "@/components/ui";
@@ -233,6 +233,7 @@ export function ReviewPage() {
   const [isCheckingStatus, setIsCheckingStatus] = useState(!!params.reviewId);
   // Tracks whether pre-check completed so we don't re-run it
   const [statusCheckDone, setStatusCheckDone] = useState(false);
+  const initialReviewIdRef = useRef(params.reviewId);
   const { handleApiError } = useReviewErrorHandler();
 
   // Called when ReviewContainer's resume attempt fails - review exists in storage but not as active session
@@ -265,7 +266,7 @@ export function ReviewPage() {
   // Pre-check review status before mounting ReviewContainer
   // Uses lightweight status endpoint first, only loads full review if already saved
   useEffect(() => {
-    if (!params.reviewId || statusCheckDone) return;
+    if (!initialReviewIdRef.current || !params.reviewId || statusCheckDone) return;
 
     const controller = new AbortController();
 
