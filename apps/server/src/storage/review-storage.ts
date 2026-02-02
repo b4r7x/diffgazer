@@ -3,6 +3,7 @@ import { paths } from "./paths.js";
 import { createCollection, filterByProjectAndSort, type StoreError } from "./persistence.js";
 import {
   SavedTriageReviewSchema,
+  TriageReviewMetadataSchema,
   type SavedTriageReview,
   type TriageReviewMetadata,
   type TriageGitContext,
@@ -20,6 +21,7 @@ export const triageReviewStore = createCollection<SavedTriageReview, TriageRevie
   dir: paths.triageReviews,
   filePath: paths.triageReviewFile,
   schema: SavedTriageReviewSchema,
+  metadataSchema: TriageReviewMetadataSchema,
   getMetadata: (review) => review.metadata,
   getId: (review) => review.metadata.id,
 });
@@ -41,30 +43,26 @@ function countSeverities(issues: TriageResult["issues"]): SeverityCounts {
 }
 
 /**
- * Checks if a review's metadata needs migration (missing severity counts).
- * Old reviews may have issueCount but missing individual severity counts.
- */
-function needsMigration(metadata: TriageReviewMetadata, issues: TriageResult["issues"]): boolean {
-  if (issues.length === 0) return false;
-  const totalCounted = metadata.blockerCount + metadata.highCount + metadata.mediumCount + metadata.lowCount + metadata.nitCount;
-  return totalCounted === 0 && metadata.issueCount > 0;
-}
-
-/**
  * Migrates a review by recalculating severity counts from issues.
  * Returns true if migration was applied.
  */
 function migrateReview(review: SavedTriageReview): boolean {
-  if (!needsMigration(review.metadata, review.result.issues)) {
-    return false;
-  }
+  const { metadata } = review;
+  const { issues } = review.result;
 
-  const counts = countSeverities(review.result.issues);
-  review.metadata.blockerCount = counts.blocker;
-  review.metadata.highCount = counts.high;
-  review.metadata.mediumCount = counts.medium;
-  review.metadata.lowCount = counts.low;
-  review.metadata.nitCount = counts.nit;
+  if (issues.length === 0) return false;
+
+  const totalCounted =
+    metadata.blockerCount + metadata.highCount + metadata.mediumCount + metadata.lowCount + metadata.nitCount;
+
+  if (totalCounted > 0 || metadata.issueCount === 0) return false;
+
+  const counts = countSeverities(issues);
+  metadata.blockerCount = counts.blocker;
+  metadata.highCount = counts.high;
+  metadata.mediumCount = counts.medium;
+  metadata.lowCount = counts.low;
+  metadata.nitCount = counts.nit;
   return true;
 }
 
@@ -151,7 +149,29 @@ export async function listTriageReviews(
   if (!result.ok) return result;
 
   const items = filterByProjectAndSort(result.value.items, projectPath, "createdAt");
-  return ok({ items, warnings: result.value.warnings });
+
+  // Migrate old reviews that have missing severity counts
+  const migratedItems = await Promise.all(
+    items.map(async (metadata) => {
+      const totalCounted =
+        metadata.blockerCount + metadata.highCount + metadata.mediumCount + metadata.lowCount + metadata.nitCount;
+
+      if (totalCounted === 0 && metadata.issueCount > 0) {
+        const reviewResult = await triageReviewStore.read(metadata.id);
+        if (!reviewResult.ok) return metadata;
+
+        const review = reviewResult.value;
+        if (migrateReview(review)) {
+          triageReviewStore.write(review).catch(() => {});
+          return review.metadata;
+        }
+      }
+
+      return metadata;
+    })
+  );
+
+  return ok({ items: migratedItems, warnings: result.value.warnings });
 }
 
 export async function getTriageReview(
