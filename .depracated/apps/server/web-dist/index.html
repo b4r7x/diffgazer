@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>web</title>
+    <script>
+      (function() {
+        var stored = localStorage.getItem('stargazer-theme');
+        var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var preference = stored || 'auto';
+        var resolved = preference === 'auto'
+          ? (systemDark ? 'dark' : 'light')
+          : preference;
+        document.documentElement.setAttribute('data-theme', resolved);
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-UVhQNSPp.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/router-C6lT6upl.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-B7FvjgyG.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
