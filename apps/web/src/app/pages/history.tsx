@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { FocusablePane } from "@/components/ui";
 import type { TriageReviewMetadata } from "@repo/schemas/triage-storage";
@@ -7,8 +7,7 @@ import type { TimelineItem } from "@repo/schemas/ui";
 import { useScope, useKey } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { RunAccordionItem, TimelineList, HistoryInsightsPane, useReviews, useReviewDetail } from "@/features/history";
-import { calculateSeverityCounts } from "@repo/core";
+import { RunAccordionItem, TimelineList, HistoryInsightsPane, SearchInput, useReviews, useReviewDetail } from "@/features/history";
 
 const HISTORY_FOOTER_SHORTCUTS = [
   { key: "Tab", label: "Switch Focus" },
@@ -41,34 +40,20 @@ function getTimestamp(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 }
 
-function pluralize(count: number, singular: string): string {
-  return count === 1 ? singular : `${singular}s`;
-}
-
 function getRunSummary(metadata: TriageReviewMetadata): React.ReactNode {
   const { blockerCount, highCount, mediumCount, lowCount, issueCount } = metadata;
 
-  if (issueCount === 0) {
-    return "Passed with no issues.";
-  }
+  if (issueCount === 0) return "Passed with no issues.";
 
   const parts: React.ReactNode[] = [];
 
-  if (blockerCount > 0) {
-    parts.push(<span key="blocker" className="text-tui-red">{blockerCount} blocker</span>);
-  }
-  if (highCount > 0) {
-    parts.push(<span key="high" className="text-tui-yellow">{highCount} high</span>);
-  }
-  if (mediumCount > 0) {
-    parts.push(<span key="medium" className="text-tui-blue">{mediumCount} medium</span>);
-  }
-  if (lowCount > 0) {
-    parts.push(<span key="low" className="text-tui-cyan">{lowCount} low</span>);
-  }
+  if (blockerCount > 0) parts.push(<span key="blocker" className="text-tui-red">{blockerCount} blocker</span>);
+  if (highCount > 0) parts.push(<span key="high" className="text-tui-yellow">{highCount} high</span>);
+  if (mediumCount > 0) parts.push(<span key="medium" className="text-tui-blue">{mediumCount} medium</span>);
+  if (lowCount > 0) parts.push(<span key="low" className="text-tui-cyan">{lowCount} low</span>);
 
   if (parts.length === 0) {
-    return `Found ${issueCount} ${pluralize(issueCount, "issue")}.`;
+    return `Found ${issueCount} issue${issueCount === 1 ? "" : "s"}.`;
   }
 
   return (
@@ -106,6 +91,8 @@ export function HistoryPage() {
   const { reviews, isLoading, error } = useReviews();
   const [focusZone, setFocusZone] = useState<HistoryFocusZone>("runs");
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const timelineItems = useMemo(() => buildTimelineItems(reviews), [reviews]);
 
@@ -113,10 +100,12 @@ export function HistoryPage() {
   const [selectedDateId, setSelectedDateId] = useScopedRouteState("date", defaultDateId);
   const [selectedRunId, setSelectedRunId] = useScopedRouteState("run", reviews[0]?.id ?? null);
 
-  const filteredRuns = useMemo(
-    () => reviews.filter((r) => getDateKey(r.createdAt) === selectedDateId),
-    [reviews, selectedDateId]
-  );
+  const filteredRuns = useMemo(() => {
+    const byDate = reviews.filter((r) => getDateKey(r.createdAt) === selectedDateId);
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return byDate;
+    return byDate.filter((r) => r.id.toLowerCase().includes(query) || `#${r.id.slice(0, 4)}`.includes(query));
+  }, [reviews, selectedDateId, searchQuery]);
 
   const selectedRun = reviews.find((r) => r.id === selectedRunId) ?? null;
 
@@ -125,9 +114,15 @@ export function HistoryPage() {
   const issues = reviewDetail?.result?.issues;
 
   const severityCounts = useMemo(() => {
-    if (!issues) return null;
-    return calculateSeverityCounts(issues);
-  }, [issues]);
+    if (!selectedRun) return null;
+    return {
+      blocker: selectedRun.blockerCount,
+      high: selectedRun.highCount,
+      medium: selectedRun.mediumCount,
+      low: selectedRun.lowCount,
+      nit: selectedRun.nitCount,
+    };
+  }, [selectedRun]);
 
   const sortedIssues = useMemo(() => {
     if (!issues) return [];
@@ -138,22 +133,26 @@ export function HistoryPage() {
   useScope("history");
 
   useKey("Tab", () => {
-    setFocusZone((prev) => {
-      if (prev === "timeline") return "runs";
-      if (prev === "runs") return "insights";
-      return "timeline";
-    });
+    const zones: HistoryFocusZone[] = ["timeline", "runs", "insights", "search"];
+    setFocusZone((prev) => zones[(zones.indexOf(prev) + 1) % zones.length]);
   });
 
   useKey("ArrowLeft", () => {
     if (focusZone === "runs") setFocusZone("timeline");
     else if (focusZone === "insights") setFocusZone("runs");
+    else if (focusZone === "search") setFocusZone("insights");
   });
 
   useKey("ArrowRight", () => {
     if (focusZone === "timeline") setFocusZone("runs");
     else if (focusZone === "runs") setFocusZone("insights");
+    else if (focusZone === "insights") setFocusZone("search");
   });
+
+  useKey("/", () => {
+    setFocusZone("search");
+    searchInputRef.current?.focus();
+  }, { enabled: focusZone !== "search" });
 
   useKey(
     "Enter",
@@ -190,6 +189,17 @@ export function HistoryPage() {
 
   const handleTimelineBoundary = (direction: "up" | "down") => {
     if (direction === "down") setFocusZone("runs");
+  };
+
+  const handleSearchEscape = () => {
+    if (searchQuery) return setSearchQuery("");
+    searchInputRef.current?.blur();
+    setFocusZone("runs");
+  };
+
+  const handleSearchArrowUp = () => {
+    searchInputRef.current?.blur();
+    setFocusZone("runs");
   };
 
   if (isLoading) {
@@ -286,11 +296,14 @@ export function HistoryPage() {
         </FocusablePane>
       </div>
 
-      <div className="flex items-center gap-2 p-3 bg-tui-bg border-x border-b border-tui-border text-sm font-mono shrink-0">
-        <span className="text-tui-blue font-bold">&gt;</span>
-        <span className="text-gray-500">Search runs by ID, provider or tag...</span>
-        <span className="w-2 h-4 bg-tui-blue opacity-50 animate-pulse" />
-      </div>
+      <SearchInput
+        ref={searchInputRef}
+        value={searchQuery}
+        onChange={setSearchQuery}
+        onFocus={() => setFocusZone("search")}
+        onEscape={handleSearchEscape}
+        onArrowUp={handleSearchArrowUp}
+      />
     </div>
   );
 }
