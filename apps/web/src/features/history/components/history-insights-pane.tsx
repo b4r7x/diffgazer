@@ -32,8 +32,8 @@ export function HistoryInsightsPane({
 
   return (
     <div className={cn("flex flex-col h-full", className)}>
-      <div className="p-3 text-xs text-gray-500 font-bold uppercase tracking-wider border-b border-tui-border">
-        Insights: Run {runId}
+      <div className="p-3 text-xs text-gray-500 font-bold border-b border-tui-border">
+        <span className="uppercase tracking-wider">Insights: Run</span> {runId}
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
