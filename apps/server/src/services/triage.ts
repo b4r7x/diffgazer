@@ -72,8 +72,10 @@ export async function streamTriageToSSE(
 
   logger.info(`Starting triage stream: staged=${staged}, files=${files?.length ?? 0}, lenses=${lensIds?.join(",") ?? "default"}`);
 
+  const headCommit = await gitService.getHeadCommit();
+
   // Check for existing active session for this project
-  const existingSession = getActiveSessionForProject(projectPath);
+  const existingSession = getActiveSessionForProject(projectPath, headCommit, staged);
   if (existingSession) {
     logger.info(`Replaying existing session: reviewId=${existingSession.reviewId}, events=${existingSession.events.length}`);
     // Replay events
@@ -109,30 +111,25 @@ export async function streamTriageToSSE(
 
   // Generate reviewId early so client can track this review immediately
   const reviewId = randomUUID();
-  createSession(reviewId, projectPath);
+  createSession(reviewId, projectPath, headCommit, staged);
 
   // Helper to emit events to both stream and session store
   const emitEvent = async (event: FullTriageStreamEvent) => {
-    console.log('[SERVER:EMIT]', event.type, event.type === 'review_started' ? event.reviewId : '');
     addEvent(reviewId, event);
     await writeStreamEvent(stream, event);
   };
 
   try {
     // Emit review_started immediately with placeholder filesTotal
-    console.log('[SERVER:EMITTING] review_started', reviewId);
     await emitEvent({
       type: "review_started",
       reviewId,
       filesTotal: 0,
       timestamp: now(),
     } satisfies ReviewStartedEvent);
-    console.log('[SERVER:EMITTED] review_started');
 
     // Step: diff
-    console.log('[SERVER:EMITTING] step_start diff');
     await emitEvent(stepStart("diff"));
-    console.log('[SERVER:EMITTED] step_start diff');
 
     // Mark session ready AFTER initial events are emitted
     // This prevents reconnecting clients from seeing an empty session
@@ -166,19 +163,15 @@ export async function streamTriageToSSE(
 
     logger.info(`Diff retrieved: files=${parsed.files.length}, size=${parsed.totalStats.totalSizeBytes}`);
 
-    console.log('[SERVER:EMITTING] step_complete diff');
     await emitEvent(stepComplete("diff"));
-    console.log('[SERVER:EMITTED] step_complete diff');
 
     // Update client with actual file count
-    console.log('[SERVER:EMITTING] review_started (update filesTotal)', parsed.files.length);
     await emitEvent({
       type: "review_started",
       reviewId,
       filesTotal: parsed.files.length,
       timestamp: now(),
     } satisfies ReviewStartedEvent);
-    console.log('[SERVER:EMITTED] review_started (update filesTotal)');
 
     if (files && files.length > 0) {
       parsed = filterDiffByFiles(parsed, files);
@@ -210,9 +203,7 @@ export async function streamTriageToSSE(
     const activeLenses = lensIds ?? profile?.lenses ?? ["correctness"];
 
     // Step: triage
-    console.log('[SERVER:EMITTING] step_start triage');
     await emitEvent(stepStart("triage"));
-    console.log('[SERVER:EMITTED] step_start triage');
 
     logger.debug(`Starting triage analysis: lenses=${activeLenses.join(",")}`);
 
@@ -236,16 +227,12 @@ export async function streamTriageToSSE(
       return;
     }
 
-    console.log('[SERVER:EMITTING] step_complete triage');
     await emitEvent(stepComplete("triage"));
-    console.log('[SERVER:EMITTED] step_complete triage');
 
     logger.info(`Triage complete: issues=${result.value.issues.length}`);
 
     // Step 3: Enrich context
-    console.log('[SERVER:EMITTING] step_start enrich');
     await emitEvent(stepStart("enrich"));
-    console.log('[SERVER:EMITTED] step_start enrich');
 
     const enrichedIssues = await enrichIssues(
       result.value.issues,
@@ -255,22 +242,16 @@ export async function streamTriageToSSE(
       }
     );
 
-    console.log('[SERVER:EMITTING] step_complete enrich');
     await emitEvent(stepComplete("enrich"));
-    console.log('[SERVER:EMITTED] step_complete enrich');
 
     // Step 4: Generate report
-    console.log('[SERVER:EMITTING] step_start report');
     await emitEvent(stepStart("report"));
-    console.log('[SERVER:EMITTED] step_start report');
 
     // Note: lens-specific stats are tracked during triage via orchestrator_complete event
     // The generateReport function handles deduplication, sorting, and summary generation
     const finalResult = generateReport(enrichedIssues, []);
 
-    console.log('[SERVER:EMITTING] step_complete report');
     await emitEvent(stepComplete("report"));
-    console.log('[SERVER:EMITTED] step_complete report');
 
     const status = await gitService.getStatus().catch(() => null);
 
@@ -295,14 +276,12 @@ export async function streamTriageToSSE(
 
     logger.info(`Review saved: reviewId=${reviewId}, durationMs=${Date.now() - startTime}`);
 
-    console.log('[SERVER:EMITTING] complete');
     await emitEvent({
       type: "complete",
       result: finalResult,
       reviewId,
       durationMs: Date.now() - startTime,
     });
-    console.log('[SERVER:EMITTED] complete');
     markComplete(reviewId);
   } catch (error) {
     markComplete(reviewId);

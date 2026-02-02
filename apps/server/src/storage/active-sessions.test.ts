@@ -29,7 +29,7 @@ describe("active-sessions", () => {
       const reviewId = "review-123";
       const projectPath = "/project/path";
 
-      createSession(reviewId, projectPath);
+      createSession(reviewId, projectPath, "abc123", true);
       const result = getSession(reviewId);
 
       expect(result).toBeDefined();
@@ -58,7 +58,7 @@ describe("active-sessions", () => {
       const reviewId = "review-with-events";
       const projectPath = "/project/path";
 
-      const session = createSession(reviewId, projectPath);
+      const session = createSession(reviewId, projectPath, "abc123", true);
       session.events.push(mockEvent);
       session.events.push(mockEvent);
 
@@ -73,7 +73,7 @@ describe("active-sessions", () => {
       const reviewId = "review-complete";
       const projectPath = "/project/path";
 
-      const session = createSession(reviewId, projectPath);
+      const session = createSession(reviewId, projectPath, "abc123", true);
       markComplete(reviewId);
 
       // Note: markComplete clears subscribers and deletes after timeout,
@@ -90,11 +90,11 @@ describe("active-sessions", () => {
       const projectPath = "/src/project";
       const reviewId = "review-abc";
 
-      const session = createSession(reviewId, projectPath);
+      const session = createSession(reviewId, projectPath, "abc123", true);
       markReady(reviewId);
       session.events.push(mockEvent);
 
-      const result = getActiveSessionForProject(projectPath);
+      const result = getActiveSessionForProject(projectPath, "abc123", true);
 
       expect(result).toBeDefined();
       expect(console.log).toHaveBeenCalledWith(
@@ -109,7 +109,7 @@ describe("active-sessions", () => {
     });
 
     it("does not log when no active session found", () => {
-      const result = getActiveSessionForProject("/non/existent/project");
+      const result = getActiveSessionForProject("/non/existent/project", "abc123", true);
 
       expect(result).toBeUndefined();
       expect(console.log).not.toHaveBeenCalled();
@@ -119,7 +119,7 @@ describe("active-sessions", () => {
       const projectPath = "/project/incomplete";
       const reviewId = "incomplete-review";
 
-      createSession(reviewId, projectPath);
+      createSession(reviewId, projectPath, "abc123", true);
       markReady(reviewId);
       // Don't call markComplete, but we'll manually set it
       const session = getSession(reviewId);
@@ -127,7 +127,7 @@ describe("active-sessions", () => {
         session.isComplete = true;
       }
 
-      const result = getActiveSessionForProject(projectPath);
+      const result = getActiveSessionForProject(projectPath, "abc123", true);
 
       expect(result).toBeUndefined();
       // Should not log because session is complete
@@ -140,10 +140,10 @@ describe("active-sessions", () => {
       const projectPath = "/project/not-ready";
       const reviewId = "not-ready-review";
 
-      createSession(reviewId, projectPath);
+      createSession(reviewId, projectPath, "abc123", true);
       // Don't call markReady
 
-      const result = getActiveSessionForProject(projectPath);
+      const result = getActiveSessionForProject(projectPath, "abc123", true);
 
       expect(result).toBeUndefined();
       // Should not log because session is not ready
@@ -156,13 +156,13 @@ describe("active-sessions", () => {
       const projectPath = "/project/with/events";
       const reviewId = "review-events";
 
-      const session = createSession(reviewId, projectPath);
+      const session = createSession(reviewId, projectPath, "abc123", true);
       markReady(reviewId);
       session.events.push(mockEvent);
       session.events.push(mockEvent);
       session.events.push(mockEvent);
 
-      getActiveSessionForProject(projectPath);
+      getActiveSessionForProject(projectPath, "abc123", true);
 
       expect(console.log).toHaveBeenCalledWith(
         expect.stringContaining("events=3")
@@ -174,13 +174,13 @@ describe("active-sessions", () => {
       const reviewId1 = "review-1";
       const reviewId2 = "review-2";
 
-      const session1 = createSession(reviewId1, projectPath);
+      const session1 = createSession(reviewId1, projectPath, "abc123", true);
       markReady(reviewId1);
 
-      const session2 = createSession(reviewId2, projectPath);
+      const session2 = createSession(reviewId2, projectPath, "abc123", true);
       markReady(reviewId2);
 
-      const result = getActiveSessionForProject(projectPath);
+      const result = getActiveSessionForProject(projectPath, "abc123", true);
 
       // Should return one of them
       expect(result).toBeDefined();
@@ -195,11 +195,11 @@ describe("active-sessions", () => {
       const reviewId = "review-test";
       const projectPath = "/integration/test";
 
-      const session = createSession(reviewId, projectPath);
+      const session = createSession(reviewId, projectPath, "abc123", true);
       markReady(reviewId);
 
       getSession(reviewId);
-      getActiveSessionForProject(projectPath);
+      getActiveSessionForProject(projectPath, "abc123", true);
 
       expect(console.log).toHaveBeenCalledTimes(2);
     });
@@ -208,7 +208,7 @@ describe("active-sessions", () => {
       const reviewId = "not-ready-review";
       const projectPath = "/project";
 
-      createSession(reviewId, projectPath);
+      createSession(reviewId, projectPath, "abc123", true);
       // Don't mark ready
 
       getSession(reviewId);
@@ -222,7 +222,7 @@ describe("active-sessions", () => {
       const reviewId = "consistency-test";
       const projectPath = "/consistency/path";
 
-      const session = createSession(reviewId, projectPath);
+      const session = createSession(reviewId, projectPath, "abc123", true);
       markReady(reviewId);
 
       getSession(reviewId);

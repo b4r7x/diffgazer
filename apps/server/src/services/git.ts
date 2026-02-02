@@ -188,5 +188,14 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
     }
   }
 
-  return { getStatus, getDiff, isGitInstalled, getBlame, getFileLines };
+  async function getHeadCommit(): Promise<string> {
+    try {
+      const { stdout } = await execFileAsync("git", ["rev-parse", "HEAD"], { cwd, timeout });
+      return stdout.trim();
+    } catch {
+      return "";
+    }
+  }
+
+  return { getStatus, getDiff, isGitInstalled, getBlame, getFileLines, getHeadCommit };
 }

@@ -31,6 +31,8 @@ describe("GET /:id/status", () => {
     vi.mocked(activeSessionsModule.getSession).mockReturnValue({
       reviewId,
       projectPath: "/test/project",
+      headCommit: "abc123",
+      staged: true,
       startedAt,
       events: [],
       isComplete: false,
@@ -137,6 +139,8 @@ describe("GET /:id/status", () => {
     vi.mocked(activeSessionsModule.getSession).mockReturnValue({
       reviewId,
       projectPath: "/test/project",
+      headCommit: "abc123",
+      staged: true,
       startedAt,
       events: [],
       isComplete: true,
@@ -207,6 +211,8 @@ describe("GET /:id/status", () => {
     vi.mocked(activeSessionsModule.getSession).mockReturnValue({
       reviewId,
       projectPath: "/test/project",
+      headCommit: "abc123",
+      staged: true,
       startedAt: sessionStartedAt,
       events: [],
       isComplete: false,
