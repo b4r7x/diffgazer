@@ -77,6 +77,7 @@ export interface SaveTriageReviewOptions {
   profile?: ProfileId;
   lenses: LensId[];
   drilldowns?: DrilldownResult[];
+  durationMs?: number;
 }
 
 export async function saveTriageReview(
@@ -109,6 +110,7 @@ export async function saveTriageReview(
     lowCount: severityCounts.low,
     nitCount: severityCounts.nit,
     fileCount: options.diff.totalStats.filesChanged,
+    durationMs: options.durationMs,
   };
 
   const savedReview: SavedTriageReview = {
