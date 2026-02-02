@@ -195,9 +195,12 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     elapsed: 0,
   }), [state.fileProgress.completed.size, state.fileProgress.total, state.issues.length]);
 
+  // Show loading before start() is called (hasStartedRef is false) AND while checking for changes
+  const isInitializing = !hasStartedRef.current && isConfigured && !configLoading;
+
   const loadingMessage = configLoading
     ? 'Loading...'
-    : isCheckingForChanges
+    : (isCheckingForChanges || isInitializing)
       ? 'Checking for changes...'
       : null;
 
