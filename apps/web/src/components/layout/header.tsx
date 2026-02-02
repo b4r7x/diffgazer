@@ -1,5 +1,6 @@
 import { cn } from "../../lib/utils";
 import { AsciiLogo } from "../ui/ascii-logo";
+import { Button } from "../ui/button";
 
 type ProviderStatus = "active" | "idle" | "error";
 
@@ -7,23 +8,31 @@ interface HeaderProps {
   providerName?: string;
   providerStatus?: ProviderStatus;
   subtitle?: string;
+  onBack?: () => void;
 }
 
 export function Header({
   providerName = "Not configured",
   providerStatus = "idle",
   subtitle,
+  onBack,
 }: HeaderProps) {
   return (
     <header className="relative p-4 pb-2 shrink-0">
-      {/* Provider status - top right */}
+      {onBack && (
+        <div className="absolute top-4 left-4">
+          <Button variant="ghost" size="sm" onClick={onBack} className="text-gray-500 hover:text-tui-fg">
+            ← Back
+          </Button>
+        </div>
+      )}
+
       <div className="absolute top-4 right-4 text-xs">
         <span className="text-gray-500">●</span> {providerName}{" "}
         <span className="text-gray-500">•</span>{" "}
         <span className="text-gray-500 capitalize">{providerStatus}</span>
       </div>
 
-      {/* Centered content */}
       <div className="flex flex-col items-center pt-4 md:pt-6">
         <AsciiLogo
           text="stargazer"

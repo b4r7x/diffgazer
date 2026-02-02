@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useSearch, useParams, useRouter, useCanGoBack } from "@tanstack/react-router";
+import {
+  useSearch,
+  useParams,
+  useRouter,
+  useCanGoBack,
+} from "@tanstack/react-router";
 import { AnalysisSummary, Button } from "@/components/ui";
 import type { LensStats, IssuePreview, SeverityFilter } from "@/components/ui";
 import type { TriageIssue } from "@repo/schemas";
@@ -7,7 +12,14 @@ import { SEVERITY_ORDER } from "@repo/schemas/ui";
 import { useScope, useKey, useSelectableList } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { ReviewContainer, IssueListPane, IssueDetailsPane, type ReviewMode, type TabId, type ReviewCompleteData } from "@/features/review/components";
+import {
+  ReviewContainer,
+  IssueListPane,
+  IssueDetailsPane,
+  type ReviewMode,
+  type TabId,
+  type ReviewCompleteData,
+} from "@/features/review/components";
 import type { ReviewSearch } from "@/app/router";
 import { useReviewErrorHandler } from "@/features/review/hooks";
 import { calculateSeverityCounts } from "@repo/core";
@@ -30,23 +42,43 @@ interface ReviewSummaryViewProps {
   onBack: () => void;
 }
 
-function ReviewSummaryView({ issues, reviewId, onEnterReview, onBack }: ReviewSummaryViewProps) {
+function ReviewSummaryView({
+  issues,
+  reviewId,
+  onEnterReview,
+  onBack,
+}: ReviewSummaryViewProps) {
   const router = useRouter();
   const severityCounts = calculateSeverityCounts(issues);
 
-  const categoryCountMap = issues.reduce<Record<string, number>>((acc, issue) => {
-    acc[issue.category] = (acc[issue.category] || 0) + 1;
-    return acc;
-  }, {});
+  const categoryCountMap = issues.reduce<Record<string, number>>(
+    (acc, issue) => {
+      acc[issue.category] = (acc[issue.category] || 0) + 1;
+      return acc;
+    },
+    {},
+  );
 
-  const lensStats: LensStats[] = Object.entries(categoryCountMap).map(([category, count]) => ({
-    id: category,
-    name: category.charAt(0).toUpperCase() + category.slice(1),
-    icon: category === "security" ? "shield" : category === "performance" ? "zap" : "code",
-    iconColor: category === "security" ? "text-tui-red" : category === "performance" ? "text-tui-yellow" : "text-tui-blue",
-    count,
-    change: 0,
-  }));
+  const lensStats: LensStats[] = Object.entries(categoryCountMap).map(
+    ([category, count]) => ({
+      id: category,
+      name: category.charAt(0).toUpperCase() + category.slice(1),
+      icon:
+        category === "security"
+          ? "shield"
+          : category === "performance"
+            ? "zap"
+            : "code",
+      iconColor:
+        category === "security"
+          ? "text-tui-red"
+          : category === "performance"
+            ? "text-tui-yellow"
+            : "text-tui-blue",
+      count,
+      change: 0,
+    }),
+  );
 
   const topIssues: IssuePreview[] = issues.slice(0, 3).map((issue) => ({
     id: issue.id,
@@ -72,7 +104,12 @@ function ReviewSummaryView({ issues, reviewId, onEnterReview, onBack }: ReviewSu
     <div className="flex-1 overflow-y-auto px-4 py-4">
       <div className="w-full max-w-4xl mx-auto">
         <AnalysisSummary
-          stats={{ runId: reviewId ?? "unknown", totalIssues: issues.length, filesAnalyzed, criticalCount: severityCounts.blocker }}
+          stats={{
+            runId: reviewId ?? "unknown",
+            totalIssues: issues.length,
+            filesAnalyzed,
+            criticalCount: severityCounts.blocker,
+          }}
           severityCounts={severityCounts}
           lensStats={lensStats}
           topIssues={topIssues}
@@ -91,13 +128,17 @@ interface ReviewResultsViewProps {
 
 function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
   const router = useRouter();
-  const canGoBack = useCanGoBack();
-  const [selectedIssueIndex, setSelectedIssueIndex] = useScopedRouteState("issueIndex", 0);
+  const [selectedIssueIndex, setSelectedIssueIndex] = useScopedRouteState(
+    "issueIndex",
+    0,
+  );
   const [activeTab, setActiveTab] = useState<TabId>("details");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [focusedFilterIndex, setFocusedFilterIndex] = useState(0);
-  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set([1]));
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(
+    new Set([1]),
+  );
 
   const filteredIssues = filterIssuesBySeverity(issues, severityFilter);
 
@@ -145,13 +186,19 @@ function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
     }
   });
 
-  useKey("ArrowUp", () => {
-    if (focusZone === "list" && focusedIndex === 0) {
-      setFocusZone("filters");
-    }
-  }, { enabled: focusZone === "list" });
+  useKey(
+    "ArrowUp",
+    () => {
+      if (focusZone === "list" && focusedIndex === 0) {
+        setFocusZone("filters");
+      }
+    },
+    { enabled: focusZone === "list" },
+  );
 
-  useKey("ArrowDown", () => setFocusZone("list"), { enabled: focusZone === "filters" });
+  useKey("ArrowDown", () => setFocusZone("list"), {
+    enabled: focusZone === "filters",
+  });
   useKey("j", () => setFocusZone("list"), { enabled: focusZone === "filters" });
 
   const handleToggleSeverityFilter = () => {
@@ -159,13 +206,23 @@ function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
     setSeverityFilter((f) => (f === sev ? "all" : sev));
   };
 
-  useKey("Enter", handleToggleSeverityFilter, { enabled: focusZone === "filters" });
+  useKey("Enter", handleToggleSeverityFilter, {
+    enabled: focusZone === "filters",
+  });
   useKey(" ", handleToggleSeverityFilter, { enabled: focusZone === "filters" });
 
-  useKey("1", () => setActiveTab("details"), { enabled: focusZone === "details" });
-  useKey("2", () => setActiveTab("explain"), { enabled: focusZone === "details" });
-  useKey("3", () => setActiveTab("trace"), { enabled: focusZone === "details" });
-  useKey("4", () => setActiveTab("patch"), { enabled: focusZone === "details" && !!selectedIssue?.suggested_patch });
+  useKey("1", () => setActiveTab("details"), {
+    enabled: focusZone === "details",
+  });
+  useKey("2", () => setActiveTab("explain"), {
+    enabled: focusZone === "details",
+  });
+  useKey("3", () => setActiveTab("trace"), {
+    enabled: focusZone === "details",
+  });
+  useKey("4", () => setActiveTab("patch"), {
+    enabled: focusZone === "details" && !!selectedIssue?.suggested_patch,
+  });
 
   const handleToggleStep = (step: number) => {
     setCompletedSteps((prev) => {
@@ -191,12 +248,9 @@ function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
   return (
     <div className="flex flex-col flex-1 overflow-hidden px-4 font-mono">
       <div className="flex items-center gap-4 py-2 border-b border-tui-border mb-2 shrink-0">
-        {canGoBack && (
-          <Button variant="ghost" size="sm" onClick={handleBack} className="text-gray-500 hover:text-tui-fg">
-            ← Back
-          </Button>
-        )}
-        <span className="text-sm font-medium text-tui-violet">Analysis #{reviewId ?? "unknown"}</span>
+        <span className="text-sm font-medium text-tui-violet">
+          Analysis #{reviewId ?? "unknown"}
+        </span>
       </div>
       <div className="flex flex-1 overflow-hidden">
         <IssueListPane
@@ -228,7 +282,10 @@ export function ReviewPage() {
   const search = useSearch({ strict: false }) as ReviewSearch;
   const reviewMode = search.mode;
   const [view, setView] = useState<ReviewView>("progress");
-  const [reviewData, setReviewData] = useState<ReviewData>({ issues: [], reviewId: null });
+  const [reviewData, setReviewData] = useState<ReviewData>({
+    issues: [],
+    reviewId: null,
+  });
   const [isLoadingSaved, setIsLoadingSaved] = useState(false);
   // Start as true if we have a reviewId - prevents ReviewContainer from mounting before check completes
   const [isCheckingStatus, setIsCheckingStatus] = useState(!!params.reviewId);
@@ -238,36 +295,43 @@ export function ReviewPage() {
   const { handleApiError } = useReviewErrorHandler();
 
   // Called when ReviewContainer's resume attempt fails - review exists in storage but not as active session
-  const handleResumeFailed = useCallback(async (reviewId: string) => {
-    // Pre-check already verified status, so just try to load from storage
-    setIsLoadingSaved(true);
-    try {
-      const { review } = await getTriageReview(api, reviewId);
-      setReviewData({
-        issues: review.result.issues,
-        reviewId: review.metadata.id,
-      });
-      setView("results");
-    } catch (error) {
-      handleApiError(error);
-    } finally {
-      setIsLoadingSaved(false);
-    }
-  }, [handleApiError, setView]);
+  const handleResumeFailed = useCallback(
+    async (reviewId: string) => {
+      // Pre-check already verified status, so just try to load from storage
+      setIsLoadingSaved(true);
+      try {
+        const { review } = await getTriageReview(api, reviewId);
+        setReviewData({
+          issues: review.result.issues,
+          reviewId: review.metadata.id,
+        });
+        setView("results");
+      } catch (error) {
+        handleApiError(error);
+      } finally {
+        setIsLoadingSaved(false);
+      }
+    },
+    [handleApiError, setView],
+  );
 
-  const handleComplete = useCallback((data: ReviewCompleteData) => {
-    if (data.resumeFailed && data.reviewId) {
-      handleResumeFailed(data.reviewId);
-      return;
-    }
-    setReviewData(data);
-    setView("summary");
-  }, [handleResumeFailed, setView]);
+  const handleComplete = useCallback(
+    (data: ReviewCompleteData) => {
+      if (data.resumeFailed && data.reviewId) {
+        handleResumeFailed(data.reviewId);
+        return;
+      }
+      setReviewData(data);
+      setView("summary");
+    },
+    [handleResumeFailed, setView],
+  );
 
   // Pre-check review status before mounting ReviewContainer
   // Uses lightweight status endpoint first, only loads full review if already saved
   useEffect(() => {
-    if (!initialReviewIdRef.current || !params.reviewId || statusCheckDone) return;
+    if (!initialReviewIdRef.current || !params.reviewId || statusCheckDone)
+      return;
 
     const controller = new AbortController();
 
@@ -318,7 +382,11 @@ export function ReviewPage() {
     if (isLoadingSaved || isCheckingStatus) {
       return (
         <div className="flex flex-1 items-center justify-center">
-          <div className="text-gray-500 font-mono text-sm" role="status" aria-live="polite">
+          <div
+            className="text-gray-500 font-mono text-sm"
+            role="status"
+            aria-live="polite"
+          >
             {isCheckingStatus ? "Checking review..." : "Loading review..."}
           </div>
         </div>
@@ -340,5 +408,10 @@ export function ReviewPage() {
     );
   }
 
-  return <ReviewResultsView issues={reviewData.issues} reviewId={reviewData.reviewId} />;
+  return (
+    <ReviewResultsView
+      issues={reviewData.issues}
+      reviewId={reviewData.reviewId}
+    />
+  );
 }

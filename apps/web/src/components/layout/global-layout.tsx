@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { useRouter, useCanGoBack } from "@tanstack/react-router";
 import { Header } from "./header";
 import { Footer, useFooter } from "./footer";
 import { ToastContainer } from "../ui/toast";
@@ -9,8 +10,8 @@ interface GlobalLayoutProps {
 }
 
 function getProviderStatus(isLoading: boolean, isConfigured: boolean) {
-  if (isLoading) return "idle" as const;
-  return isConfigured ? "active" as const : "idle" as const;
+  if (isLoading) return "idle";
+  return isConfigured ? "active" : "idle";
 }
 
 function getProviderDisplay(provider?: string, model?: string) {
@@ -20,15 +21,22 @@ function getProviderDisplay(provider?: string, model?: string) {
 }
 
 export function GlobalLayout({ children }: GlobalLayoutProps) {
+  const router = useRouter();
+  const canGoBack = useCanGoBack();
   const { provider, model, isConfigured, isLoading } = useConfig();
   const { shortcuts, rightShortcuts } = useFooter();
 
   const providerStatus = getProviderStatus(isLoading, isConfigured);
   const providerName = getProviderDisplay(provider, model);
+  const showBack = canGoBack && router.state.location.pathname !== '/';
 
   return (
     <div className="tui-base h-screen flex flex-col overflow-hidden selection:bg-tui-blue selection:text-black">
-      <Header providerName={providerName} providerStatus={providerStatus} />
+      <Header
+        providerName={providerName}
+        providerStatus={providerStatus}
+        onBack={showBack ? () => router.history.back() : undefined}
+      />
       <main className="flex-1 flex flex-col overflow-hidden">{children}</main>
       <Footer shortcuts={shortcuts} rightShortcuts={rightShortcuts} />
       <ToastContainer />
