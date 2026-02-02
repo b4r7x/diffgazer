@@ -18,7 +18,7 @@ export interface SeverityBreakdownProps {
 }
 
 export function SeverityBreakdown({ counts, className }: SeverityBreakdownProps) {
-  const maxCount = Math.max(...SEVERITY_ORDER.map((s) => counts[s]), 1);
+  const total = SEVERITY_ORDER.reduce((sum, s) => sum + counts[s], 0) || 1;
 
   return (
     <div className={cn('flex flex-col gap-1', className)}>
@@ -27,7 +27,7 @@ export function SeverityBreakdown({ counts, className }: SeverityBreakdownProps)
           key={severity}
           label={SEVERITY_LABELS[severity]}
           count={counts[severity]}
-          max={maxCount}
+          max={total}
           severity={severity}
         />
       ))}
