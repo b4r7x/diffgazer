@@ -13,7 +13,7 @@ export type HistoryTabId = z.infer<typeof HistoryTabIdSchema>;
 // History Focus Zone
 // ============================================================================
 
-export const HISTORY_FOCUS_ZONES = ["timeline", "runs", "insights"] as const;
+export const HISTORY_FOCUS_ZONES = ["timeline", "runs", "insights", "search"] as const;
 export const HistoryFocusZoneSchema = z.enum(HISTORY_FOCUS_ZONES);
 export type HistoryFocusZone = z.infer<typeof HistoryFocusZoneSchema>;
 

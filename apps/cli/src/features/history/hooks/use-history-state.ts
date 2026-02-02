@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from "react";
 import { useScreenState } from "../../../hooks/use-screen-state.js";
-import type { HistoryState, FocusZone, TabId, HistoryRun, TimelineItem } from "../types.js";
+import type { FocusZone, TabId, HistoryRun } from "../types.js";
 import { toTimelineItems } from "../types.js";
 
 interface UseHistoryStateOptions {
@@ -11,19 +11,8 @@ interface UseHistoryStateOptions {
 export function useHistoryState({ runs, initialTab = "runs" }: UseHistoryStateOptions) {
   const timelineItems = useMemo(() => toTimelineItems(runs), [runs]);
 
-  // Compute default selected date from available runs
-  const defaultSelectedDateId = useMemo(() => {
-    const items = toTimelineItems(runs);
-    return items[0]?.id ?? "today";
-  }, [runs]);
-
-  // Compute default selected run from available runs
-  const defaultSelectedRunId = useMemo(() => {
-    const items = toTimelineItems(runs);
-    const firstDate = items[0]?.id ?? "today";
-    const firstRunForDate = runs.find((r) => r.date === firstDate);
-    return firstRunForDate?.id ?? runs[0]?.id ?? null;
-  }, [runs]);
+  const defaultSelectedDateId = timelineItems[0]?.id ?? "today";
+  const defaultSelectedRunId = runs.find((r) => r.date === defaultSelectedDateId)?.id ?? runs[0]?.id ?? null;
 
   const [activeTab, setActiveTab] = useScreenState<TabId>("activeTab", initialTab);
   const [focusZone, setFocusZone] = useScreenState<FocusZone>("focusZone", "runs");
@@ -36,11 +25,21 @@ export function useHistoryState({ runs, initialTab = "runs" }: UseHistoryStateOp
     "selectedRunId",
     defaultSelectedRunId
   );
+  const [searchQuery, setSearchQuery] = useScreenState<string>("searchQuery", "");
 
-  const filteredRuns = useMemo(
-    () => selectedDateId === "all" ? runs : runs.filter((run) => run.date === selectedDateId),
-    [runs, selectedDateId]
-  );
+  const filteredRuns = useMemo(() => {
+    let result = selectedDateId === "all" ? runs : runs.filter((run) => run.date === selectedDateId);
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter((run) =>
+        run.id.toLowerCase().includes(query) ||
+        run.displayId.toLowerCase().includes(query)
+      );
+    }
+
+    return result;
+  }, [runs, selectedDateId, searchQuery]);
 
   const selectedRun = useMemo(
     () => runs.find((run) => run.id === selectedRunId) ?? null,
@@ -49,14 +48,16 @@ export function useHistoryState({ runs, initialTab = "runs" }: UseHistoryStateOp
 
   const cycleFocus = useCallback(() => {
     setFocusZone((prev) => {
+      if (prev === "search") return "timeline";
       if (prev === "timeline") return "runs";
       if (prev === "runs") return "insights";
-      return "timeline";
+      return "search";
     });
   }, []);
 
   const moveFocusLeft = useCallback(() => {
     setFocusZone((prev) => {
+      if (prev === "timeline") return "search";
       if (prev === "runs") return "timeline";
       if (prev === "insights") return "runs";
       return prev;
@@ -65,6 +66,7 @@ export function useHistoryState({ runs, initialTab = "runs" }: UseHistoryStateOp
 
   const moveFocusRight = useCallback(() => {
     setFocusZone((prev) => {
+      if (prev === "search") return "timeline";
       if (prev === "timeline") return "runs";
       if (prev === "runs") return "insights";
       return prev;
@@ -78,12 +80,16 @@ export function useHistoryState({ runs, initialTab = "runs" }: UseHistoryStateOp
   }, [selectedRunId]);
 
   const collapseOrBack = useCallback(() => {
+    if (searchQuery) {
+      setSearchQuery("");
+      return true;
+    }
     if (expandedRunId) {
       setExpandedRunId(null);
       return true;
     }
     return false;
-  }, [expandedRunId]);
+  }, [searchQuery, expandedRunId]);
 
   return {
     // State
@@ -92,6 +98,7 @@ export function useHistoryState({ runs, initialTab = "runs" }: UseHistoryStateOp
     selectedDateId,
     selectedRunId,
     expandedRunId,
+    searchQuery,
     timelineItems,
     filteredRuns,
     selectedRun,
@@ -102,6 +109,7 @@ export function useHistoryState({ runs, initialTab = "runs" }: UseHistoryStateOp
     setSelectedDateId,
     setSelectedRunId,
     setExpandedRunId,
+    setSearchQuery,
     cycleFocus,
     moveFocusLeft,
     moveFocusRight,

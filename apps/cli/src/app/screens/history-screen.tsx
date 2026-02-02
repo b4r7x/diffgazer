@@ -14,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs.js";
 import { TimelineList } from "../../features/history/components/timeline-list.js";
 import { RunAccordionItem } from "../../features/history/components/run-accordion-item.js";
 import { HistoryInsightsPane } from "../../features/history/components/history-insights-pane.js";
+import { SearchInput } from "../../features/history/components/search-input.js";
 import { useHistoryState, useReviewDetail } from "../../features/history/hooks/index.js";
 import { toHistoryRun } from "../../features/history/types.js";
 
@@ -43,8 +44,8 @@ export function HistoryScreen({
   const { exit } = useApp();
   const { columns, rows } = useTerminalDimensions();
 
-  // Calculate available height: total rows - tabs(1) - footer(1)
-  const contentHeight = Math.max(1, rows - 2);
+  // Available height: total rows minus tabs(1), search(1), and borders(1)
+  const contentHeight = Math.max(1, rows - 3);
 
   // Calculate proportional widths based on terminal columns
   const timelineWidth = Math.max(16, Math.floor(columns * 0.2));
@@ -67,11 +68,13 @@ export function HistoryScreen({
     timelineItems,
     filteredRuns,
     selectedRun,
+    searchQuery,
     setActiveTab,
     setFocusZone,
     setSelectedDateId,
     setSelectedRunId,
     setExpandedRunId,
+    setSearchQuery,
     cycleFocus,
     moveFocusLeft,
     moveFocusRight,
@@ -107,6 +110,29 @@ export function HistoryScreen({
       return;
     }
 
+    // "/" to focus search
+    if (input === "/" && focusZone !== "search") {
+      setFocusZone("search");
+      return;
+    }
+
+    // Search zone navigation
+    if (focusZone === "search") {
+      if (key.downArrow || key.return) {
+        setFocusZone("timeline");
+        return;
+      }
+      if (key.escape) {
+        if (searchQuery) {
+          setSearchQuery("");
+        } else {
+          setFocusZone("timeline");
+        }
+        return;
+      }
+      return; // Block other keys in search (input handled by SearchInput)
+    }
+
     // h/l to switch tabs
     if (input === "h" && focusZone !== "timeline") {
       moveFocusLeft();
@@ -118,33 +144,34 @@ export function HistoryScreen({
     }
 
     // j/k for list navigation within zones
-    if (focusZone === "timeline" && (input === "j" || key.downArrow)) {
+    const isDown = input === "j" || key.downArrow;
+    const isUp = input === "k" || key.upArrow;
+
+    if (focusZone === "timeline" && (isDown || isUp)) {
       const currentIndex = timelineItems.findIndex((item) => item.id === selectedDateId);
-      const nextIndex = Math.min(currentIndex + 1, timelineItems.length - 1);
+      if (isUp && currentIndex === 0) {
+        setFocusZone("search");
+        return;
+      }
+      const nextIndex = isDown
+        ? Math.min(currentIndex + 1, timelineItems.length - 1)
+        : Math.max(currentIndex - 1, 0);
       const nextItem = timelineItems[nextIndex];
       if (nextItem) setSelectedDateId(nextItem.id);
       return;
     }
-    if (focusZone === "timeline" && (input === "k" || key.upArrow)) {
-      const currentIndex = timelineItems.findIndex((item) => item.id === selectedDateId);
-      const prevIndex = Math.max(currentIndex - 1, 0);
-      const prevItem = timelineItems[prevIndex];
-      if (prevItem) setSelectedDateId(prevItem.id);
-      return;
-    }
 
-    if (focusZone === "runs" && (input === "j" || key.downArrow)) {
+    if (focusZone === "runs" && (isDown || isUp)) {
       const currentIndex = filteredRuns.findIndex((run) => run.id === selectedRunId);
-      const nextIndex = Math.min(currentIndex + 1, filteredRuns.length - 1);
+      if (isUp && currentIndex === 0) {
+        setFocusZone("search");
+        return;
+      }
+      const nextIndex = isDown
+        ? Math.min(currentIndex + 1, filteredRuns.length - 1)
+        : Math.max(currentIndex - 1, 0);
       const nextRun = filteredRuns[nextIndex];
       if (nextRun) setSelectedRunId(nextRun.id);
-      return;
-    }
-    if (focusZone === "runs" && (input === "k" || key.upArrow)) {
-      const currentIndex = filteredRuns.findIndex((run) => run.id === selectedRunId);
-      const prevIndex = Math.max(currentIndex - 1, 0);
-      const prevRun = filteredRuns[prevIndex];
-      if (prevRun) setSelectedRunId(prevRun.id);
       return;
     }
 
@@ -154,25 +181,21 @@ export function HistoryScreen({
       return;
     }
 
-    // r to resume review
-    if (input === "r" && selectedRunId) {
-      const review = reviews.find((r) => r.id === selectedRunId);
-      if (review) onResumeReview(review);
-      return;
-    }
-
-    // e to export review
-    if (input === "e" && selectedRunId) {
-      const review = reviews.find((r) => r.id === selectedRunId);
-      if (review) onExportReview(review);
-      return;
-    }
-
-    // d to delete
-    if (input === "d" && selectedRunId) {
-      const review = reviews.find((r) => r.id === selectedRunId);
-      if (review) onDeleteReview(review);
-      return;
+    // Review actions (r=resume, e=export, d=delete)
+    const selectedReview = selectedRunId ? reviews.find((r) => r.id === selectedRunId) : undefined;
+    if (selectedReview) {
+      if (input === "r") {
+        onResumeReview(selectedReview);
+        return;
+      }
+      if (input === "e") {
+        onExportReview(selectedReview);
+        return;
+      }
+      if (input === "d") {
+        onDeleteReview(selectedReview);
+        return;
+      }
     }
 
     // Escape to collapse or go back
@@ -205,6 +228,15 @@ export function HistoryScreen({
             <TabsTrigger value="sessions">Sessions</TabsTrigger>
           </TabsList>
         </Tabs>
+      </Box>
+
+      {/* Search bar */}
+      <Box paddingX={1}>
+        <SearchInput
+          value={searchQuery}
+          onChange={setSearchQuery}
+          isFocused={focusZone === "search"}
+        />
       </Box>
 
       {/* 3-pane layout */}
