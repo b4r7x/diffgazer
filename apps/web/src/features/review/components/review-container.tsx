@@ -173,6 +173,11 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     state.error?.includes('No staged changes') ||
     state.error?.includes('No unstaged changes');
 
+  const diffStep = state.steps.find(s => s.id === 'diff');
+  const isCheckingForChanges = state.isStreaming &&
+    diffStep?.status !== 'completed' &&
+    diffStep?.status !== 'error';
+
   const progressSteps = useMemo(
     () => mapStepsToProgressData(state.steps, state.agents),
     [state.steps, state.agents]
@@ -190,10 +195,18 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     elapsed: 0,
   }), [state.fileProgress.completed.size, state.fileProgress.total, state.issues.length]);
 
-  if (configLoading) {
+  const loadingMessage = configLoading
+    ? 'Loading...'
+    : isCheckingForChanges
+      ? 'Checking for changes...'
+      : null;
+
+  if (loadingMessage) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="text-gray-500 font-mono text-sm" role="status" aria-live="polite">Loading...</div>
+        <div className="text-gray-500 font-mono text-sm" role="status" aria-live="polite">
+          {loadingMessage}
+        </div>
       </div>
     );
   }
