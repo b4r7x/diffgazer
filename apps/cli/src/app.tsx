@@ -1,10 +1,23 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Box, Text, useApp, useInput } from "ink";
 import Spinner from "ink-spinner";
-import { useApiServer } from "./hooks/use-api-server.js";
-import { useWebServer } from "./hooks/use-web-server.js";
+import { useServer } from "./hooks/use-server.js";
+import { createApiServer } from "./lib/api-server.js";
+import { createWebServer } from "./lib/web-server.js";
 import { type ServerState } from "./lib/create-process-server.js";
 import { Logo } from "./components/logo.js";
+import { config } from "./config.js";
+
+// Module-level server creation (React recommended pattern for singleton external stores)
+const apiServer = createApiServer({
+  cwd: config.paths.server,
+  port: config.ports.api,
+});
+
+const webServer = createWebServer({
+  cwd: config.paths.web,
+  port: config.ports.web,
+});
 
 function ServerStatus({ label, state }: { label: string; state: ServerState }): React.ReactElement | null {
   if (state.status === "starting") {
@@ -43,8 +56,26 @@ function StatusDisplay({ api, web }: { api: ServerState; web: ServerState }): Re
 
 export function App(): React.ReactElement {
   const { exit } = useApp();
-  const api = useApiServer({ onExit: exit });
-  const web = useWebServer();
+  const api = useServer(apiServer);
+  const web = useServer(webServer);
+
+  // Centralized signal handling
+  useEffect(() => {
+    function handleExit(): void {
+      apiServer.stop();
+      webServer.stop();
+      exit();
+      setTimeout(() => process.exit(0), 100);
+    }
+
+    process.on("SIGINT", handleExit);
+    process.on("SIGTERM", handleExit);
+
+    return () => {
+      process.off("SIGINT", handleExit);
+      process.off("SIGTERM", handleExit);
+    };
+  }, [exit]);
 
   useInput((input, key) => {
     if (key.escape || (key.ctrl && input === "c")) {
