@@ -75,6 +75,7 @@ export function useGroupNavigation({
       const elements = getElements();
       const el = elements[index];
       if (el?.dataset.value) {
+        el.scrollIntoView({ block: 'nearest' });
         if (isControlled) {
           onValueChange?.(el.dataset.value);
         } else {
