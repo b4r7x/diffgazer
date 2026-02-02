@@ -119,7 +119,14 @@ export function HistoryPage() {
     const byDate = reviews.filter((r) => getDateKey(r.createdAt) === selectedDateId);
     const query = searchQuery.trim().toLowerCase();
     if (!query) return byDate;
-    return byDate.filter((r) => r.id.toLowerCase().includes(query) || `#${r.id.slice(0, 4)}`.includes(query));
+    return byDate.filter((r) => {
+      if (r.id.toLowerCase().includes(query)) return true;
+      if (`#${r.id.slice(0, 4)}`.toLowerCase().includes(query)) return true;
+      const branchText = r.staged ? "staged" : (r.branch?.toLowerCase() ?? "main");
+      if (branchText.includes(query)) return true;
+      if (r.projectPath.toLowerCase().includes(query)) return true;
+      return false;
+    });
   }, [reviews, selectedDateId, searchQuery]);
 
   const selectedRun = reviews.find((r) => r.id === selectedRunId) ?? null;
@@ -138,6 +145,16 @@ export function HistoryPage() {
       nit: selectedRun.nitCount,
     };
   }, [selectedRun]);
+
+  const duration = useMemo(() => {
+    const ms = selectedRun?.durationMs;
+    if (!ms) return "--";
+    const seconds = Math.floor(ms / 1000);
+    if (seconds === 0) return `${ms}ms`;
+    if (seconds < 60) return `${seconds}.${Math.floor((ms % 1000) / 100)}s`;
+    const minutes = Math.floor(seconds / 60);
+    return `${minutes}m ${seconds % 60}s`;
+  }, [selectedRun?.durationMs]);
 
   const sortedIssues = useMemo(() => {
     if (!issues) return [];
@@ -320,7 +337,7 @@ export function HistoryPage() {
             runId={selectedRun ? `#${selectedRun.id.slice(0, 4)}` : null}
             severityCounts={severityCounts}
             issues={sortedIssues}
-            duration="--"
+            duration={duration}
             onIssueClick={() => {
               if (selectedRunId) {
                 navigate({ to: "/review/$reviewId", params: { reviewId: selectedRunId } });

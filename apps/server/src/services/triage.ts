@@ -284,6 +284,7 @@ export async function streamTriageToSSE(
       commit: null,
       profile: profileId,
       lenses: activeLenses as LensId[],
+      durationMs: Date.now() - startTime,
     });
 
     if (!saveResult.ok) {

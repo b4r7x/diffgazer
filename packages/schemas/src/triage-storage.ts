@@ -22,6 +22,7 @@ export const TriageReviewMetadataSchema = z
     lowCount: countField.optional(),
     nitCount: countField.optional(),
     fileCount: countField,
+    durationMs: countField.optional(),
   })
   .transform((data) => ({
     ...data,
