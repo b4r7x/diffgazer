@@ -1,5 +1,6 @@
 import { useSyncExternalStore, useEffect } from "react";
-import { createApiServer, type ApiServerState } from "../lib/api-server.js";
+import { createApiServer } from "../lib/api-server.js";
+import { type ServerState } from "../lib/create-process-server.js";
 import { config } from "../config.js";
 
 const apiServer = createApiServer({
@@ -11,7 +12,7 @@ interface UseApiServerOptions {
   onExit: () => void;
 }
 
-export function useApiServer({ onExit }: UseApiServerOptions): ApiServerState {
+export function useApiServer({ onExit }: UseApiServerOptions): ServerState {
   useEffect(() => {
     function handleExit(): void {
       apiServer.stop();
@@ -31,5 +32,3 @@ export function useApiServer({ onExit }: UseApiServerOptions): ApiServerState {
 
   return useSyncExternalStore(apiServer.subscribe, apiServer.getSnapshot);
 }
-
-export type { ApiServerState } from "../lib/api-server.js";

@@ -1,5 +1,6 @@
 import { useSyncExternalStore, useEffect } from "react";
-import { createWebServer, type WebServerState } from "../lib/web-server.js";
+import { createWebServer } from "../lib/web-server.js";
+import { type ServerState } from "../lib/create-process-server.js";
 import { config } from "../config.js";
 
 const webServer = createWebServer({
@@ -7,12 +8,10 @@ const webServer = createWebServer({
   port: config.ports.web,
 });
 
-export function useWebServer(): WebServerState {
+export function useWebServer(): ServerState {
   useEffect(() => {
     return () => webServer.stop();
   }, []);
 
   return useSyncExternalStore(webServer.subscribe, webServer.getSnapshot);
 }
-
-export type { WebServerState } from "../lib/web-server.js";

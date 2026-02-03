@@ -7,9 +7,9 @@ interface LogoProps {
 }
 
 export function Logo({ color = "cyan" }: LogoProps): React.ReactElement {
-  const { text, isLoading } = useFiglet("Stargazer", "Big");
+  const text = useFiglet("Stargazer", "Big");
 
-  if (isLoading || !text) {
+  if (!text) {
     return <Text color={color}>Stargazer</Text>;
   }
 

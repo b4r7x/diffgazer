@@ -1,51 +1,41 @@
 import React from "react";
 import { Box, Text, useApp, useInput } from "ink";
 import Spinner from "ink-spinner";
-import { useApiServer, type ApiServerState } from "./hooks/use-api-server.js";
-import { useWebServer, type WebServerState } from "./hooks/use-web-server.js";
+import { useApiServer } from "./hooks/use-api-server.js";
+import { useWebServer } from "./hooks/use-web-server.js";
+import { type ServerState } from "./lib/create-process-server.js";
 import { Logo } from "./components/logo.js";
 
-function StatusDisplay({
-  api,
-  web,
-}: {
-  api: ApiServerState;
-  web: WebServerState;
-}): React.ReactElement {
+function ServerStatus({ label, state }: { label: string; state: ServerState }): React.ReactElement | null {
+  if (state.status === "starting") {
+    return (
+      <Text>
+        <Text color="green">
+          <Spinner type="dots" />
+        </Text>
+        {` ${label} starting...`}
+      </Text>
+    );
+  }
+  if (state.status === "running") {
+    return (
+      <Text>
+        <Text color="green">{label}: </Text>
+        <Text color="blue">{state.address}</Text>
+      </Text>
+    );
+  }
+  if (state.status === "error") {
+    return <Text color="red">{label} Error: {state.error}</Text>;
+  }
+  return null;
+}
+
+function StatusDisplay({ api, web }: { api: ServerState; web: ServerState }): React.ReactElement {
   return (
     <>
-      {api.status === "starting" && (
-        <Text>
-          <Text color="green">
-            <Spinner type="dots" />
-          </Text>
-          {" API starting..."}
-        </Text>
-      )}
-      {api.status === "running" && (
-        <Text>
-          <Text color="green">API: </Text>
-          <Text color="blue">{api.address}</Text>
-        </Text>
-      )}
-      {api.status === "error" && <Text color="red">API Error: {api.error}</Text>}
-
-      {web.status === "starting" && (
-        <Text>
-          <Text color="green">
-            <Spinner type="dots" />
-          </Text>
-          {" Web starting..."}
-        </Text>
-      )}
-      {web.status === "running" && (
-        <Text>
-          <Text color="green">Web: </Text>
-          <Text color="blue">{web.address}</Text>
-        </Text>
-      )}
-      {web.status === "error" && <Text color="red">Web Error: {web.error}</Text>}
-
+      <ServerStatus label="API" state={api} />
+      <ServerStatus label="Web" state={web} />
       <Text dimColor>Esc to exit</Text>
     </>
   );
