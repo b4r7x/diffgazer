@@ -1,0 +1,104 @@
+{
+  "metadata": {
+    "id": "8b0756c4-1c77-4ad4-a6ed-c19d9497f5d5",
+    "projectPath": "/Users/voitz/Projects/stargazer/apps/cli",
+    "createdAt": "2026-01-25T06:54:06.305Z",
+    "staged": false,
+    "branch": "feature/review-bounding",
+    "overallScore": 9,
+    "issueCount": 9,
+    "criticalCount": 0,
+    "warningCount": 2
+  },
+  "result": {
+    "summary": "This extensive diff introduces significant architectural and user experience improvements across the Stargazer CLI and server. Key changes include a complete overhaul of the CLI's UI with an interactive onboarding wizard, a detailed settings screen, and a new split-pane review interface. The AI interaction is made more robust by explicitly instructing models to return raw JSON and adding client-side parsing to handle markdown code blocks. The issue schema has been greatly expanded to capture richer details, including `symptom`, `whyItMatters`, and `evidence`, improving the actionable insights from AI reviews. Crucially, a project trust system has been implemented to enhance security by allowing users to control AI capabilities. New API endpoints for provider management and a comprehensive theming system further mature the application.",
+    "issues": [
+      {
+        "severity": "warning",
+        "category": "logic",
+        "file": "apps/cli/src/features/app/hooks/use-navigation.ts",
+        "line": 240,
+        "title": "Inconsistent 'Quit' (q) behavior in Main Menu",
+        "description": "The `useNavigation` hook now prevents the 'q' key from quitting the application when the `view` is 'main'. This deviates from typical TUI behavior where 'q' often serves as a universal quit command from the top-level menu, potentially confusing users who expect consistent behavior.",
+        "suggestion": "Re-evaluate the decision to disable 'q' in the 'main' view. Consider allowing 'q' to exit the application from the main menu for a more intuitive user experience, or provide a clear alternative shortcut for quitting."
+      },
+      {
+        "severity": "suggestion",
+        "category": "documentation",
+        "file": "apps/cli/src/app/screens/onboarding-screen.tsx",
+        "line": 100,
+        "title": "Simplified Error Feedback in OnboardingScreen",
+        "description": "The error message for `saveState === 'error'` in `OnboardingScreen` has been simplified to a generic 'Press any key to go back and try again.' While this might reduce visual clutter, it removes the explicit 'Retry' option and specific error details, which could make troubleshooting harder for users in some scenarios.",
+        "suggestion": "Consider retaining more specific error details or providing a 'Retry' option, perhaps with a more prominent prompt, to guide users more effectively through configuration issues."
+      },
+      {
+        "severity": "suggestion",
+        "category": "logic",
+        "file": "apps/cli/src/app/views/review-view.tsx",
+        "line": 204,
+        "title": "Non-functional 'Apply Patch' action in ReviewView",
+        "description": "The `handleApply` callback in `ReviewSplitScreenView` is currently a no-op, with a comment indicating 'review issues don't have patches'. This means that while a UI element for 'Apply Patch' might be visible or accessible via keyboard shortcuts, it will not perform any action. This could lead to a confusing or frustrating user experience if the feature is expected.",
+        "suggestion": "If 'Apply Patch' is not supported for review issues, consider disabling or hiding the corresponding UI elements and keyboard shortcuts. Alternatively, add a temporary placeholder message to inform the user that this feature is not available for the current context."
+      },
+      {
+        "severity": "suggestion",
+        "category": "logic",
+        "file": "apps/cli/src/features/app/hooks/use-screen-handlers.ts",
+        "line": 86,
+        "title": "'Review specific files' action fallback",
+        "description": "The `handleMenuSelect` function for the 'review-files' action includes a comment indicating 'File picker not yet implemented, fall back to unstaged review'. This means selecting to review specific files will currently initiate an unstaged review, which is not what the user explicitly requested. This could lead to user confusion or frustration.",
+        "suggestion": "Clearly communicate to the user that the file picker is not yet implemented when they select 'review-files'. Offer to proceed with an unstaged review or return to the main menu. Once implemented, remove the fallback."
+      },
+      {
+        "severity": "suggestion",
+        "category": "documentation",
+        "file": "apps/cli/src/hooks/use-config.ts",
+        "line": 40,
+        "title": "Deprecated Hook Usage Warning",
+        "description": "The `useConfig` hook is marked as `@deprecated` with a note to 'Use useSettingsState from features/settings instead'. While this is a good practice for indicating future changes, it's essential to ensure that the new `useSettingsState` hook is fully implemented, tested, and integrated before removing `useConfig` to avoid breaking changes or introducing new bugs during the transition.",
+        "suggestion": "Ensure `useSettingsState` is a complete replacement for all functionalities of `useConfig` before deprecating. Consider adding a runtime warning if `useConfig` is used in new code to guide developers towards the preferred alternative."
+      },
+      {
+        "severity": "warning",
+        "category": "security",
+        "file": "apps/cli/src/app/app.tsx",
+        "line": 30,
+        "title": "Project ID generation using `process.cwd()`",
+        "description": "The `createProjectId` function uses `process.cwd()` to generate a project ID. If a user runs `stargazer` from a subdirectory of a larger monorepo or project, the trust configuration (which is scoped by `projectId`) might be created for the subdirectory, but the AI's capabilities might implicitly apply to the entire repository if it navigates up the file system. This could lead to an overly broad trust scope or inconsistent trust management.",
+        "suggestion": "Consider deriving the `projectId` from the Git repository root (e.g., by finding the `.git` directory) instead of `process.cwd()`. This ensures that trust is consistently scoped to the actual project or repository, regardless of the current working directory. If `process.cwd()` is intentionally used, clarify the implications for trust scope in documentation."
+      },
+      {
+        "severity": "suggestion",
+        "category": "logic",
+        "file": "packages/core/src/review/triage.ts",
+        "line": 222,
+        "title": "Silent Filtering of Incomplete Issues",
+        "description": "The `validateIssueCompleteness` function filters out issues missing key fields (`symptom`, `whyItMatters`, `evidence`, etc.) without providing explicit feedback to the user or the AI model. This could lead to valid issues being silently dropped if the AI fails to adhere to the expanded schema, potentially reducing the completeness of the review.",
+        "suggestion": "Consider adding logging or a mechanism to inform the user (e.g., a warning in the UI) when issues are filtered due to incompleteness. For AI models, explore techniques like self-correction prompts or fine-tuning to encourage adherence to the full schema."
+      },
+      {
+        "severity": "suggestion",
+        "category": "performance",
+        "file": "packages/core/src/review/drilldown.ts",
+        "line": 33,
+        "title": "JSON.stringify for input/output summarization in TraceRecorder",
+        "description": "The `TraceRecorder` uses `JSON.stringify` by default for `inputSummary` and `outputSummary` if no custom summarizer is provided. While `truncate` is applied, `JSON.stringify` can be computationally expensive for very large objects, and may not always produce the most human-readable summary, even after truncation.",
+        "suggestion": "For tool functions that might handle large or complex objects, consider providing custom `input` and `output` summarizer functions to `recorder.wrap` or `recorder.wrapWithArtifacts`. This can improve performance and generate more meaningful summaries for tracing."
+      },
+      {
+        "severity": "suggestion",
+        "category": "security",
+        "file": "packages/core/src/review/drilldown.ts",
+        "line": 33,
+        "title": "Potential for Sensitive Data in TraceRecorder Summaries",
+        "description": "The `TraceRecorder` captures `inputSummary` and `outputSummary` of tool calls. If tool inputs or outputs contain sensitive data (e.g., API keys, PII, internal system paths), this information could inadvertently be stored in the trace, even with truncation. While truncation helps, it does not guarantee full redaction.",
+        "suggestion": "Implement explicit redaction or masking for sensitive data fields within custom `input` and `output` summarizer functions for tools that handle such information. Document best practices for tool developers regarding sensitive data in traces."
+      }
+    ],
+    "overallScore": 9
+  },
+  "gitContext": {
+    "branch": "feature/review-bounding",
+    "fileCount": 43
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "metadata": {
+    "id": "e1007b53-41c7-4bf9-bc66-674f767ebea1",
+    "projectPath": "/Users/voitz/Projects/stargazer/apps/cli",
+    "createdAt": "2026-01-25T08:51:01.394Z",
+    "staged": false,
+    "branch": "feature/review-bounding",
+    "overallScore": 9,
+    "issueCount": 4,
+    "criticalCount": 0,
+    "warningCount": 0
+  },
+  "result": {
+    "summary": "This diff represents a substantial architectural and feature overhaul, significantly enhancing the CLI's user experience, transparency, and robustness. Key improvements include a new interactive review screen with drilldown and agent activity streaming, a guided onboarding wizard, a comprehensive settings management system, and project trust capabilities. The changes also introduce a PR review mode for CI/CD integration and bolster AI response parsing with normalization and markdown stripping. Overall, this is a highly positive and impactful set of changes.",
+    "issues": [
+      {
+        "severity": "suggestion",
+        "category": "best-practice",
+        "file": "apps/cli/src/features/app/hooks/use-app-state.ts",
+        "line": null,
+        "title": "Large `screenHandlerConfig` Object",
+        "description": "The `screenHandlerConfig` object in `useAppState` is growing very large, passing many actions and state slices to `useScreenHandlers`. While functional, this indicates a potential for prop drilling and could become harder to manage as the application scales. Consider using a more localized context or a dedicated reducer for complex feature interactions to reduce the surface area of this configuration object.",
+        "suggestion": "Explore using React Context for specific feature areas (e.g., settings context, review context) or a global state management library/pattern (e.g., useReducer, Zustand) to encapsulate related state and actions, simplifying the `screenHandlerConfig`."
+      },
+      {
+        "severity": "suggestion",
+        "category": "best-practice",
+        "file": "apps/cli/src/app/views/review-view.tsx",
+        "line": null,
+        "title": "High Complexity in `ReviewSplitScreenView`",
+        "description": "The `ReviewSplitScreenView` component is highly complex, managing multiple states for issue selection, tabs, focus areas, drilldown, feedback, and filtering. While well-structured with sub-components, the sheer volume of state and logic in one component can make it difficult to reason about and maintain. This could lead to subtle bugs or make future enhancements challenging.",
+        "suggestion": "Consider further decomposition of `ReviewSplitScreenView` into smaller, more focused components, or introduce a dedicated state management solution (e.g., a reducer for `ReviewSplitScreenView`'s complex state) to centralize and simplify state transitions and logic."
+      },
+      {
+        "severity": "suggestion",
+        "category": "documentation",
+        "file": "apps/server/src/services/triage.ts",
+        "line": 118,
+        "title": "Temporary Agent Event Implementation (TODO)",
+        "description": "The `TODO` comment `// TODO: Replace with triageReviewStream when available from Agent 2.1` indicates that the current agent event streaming implementation in `streamTriageToSSE` is a temporary measure. This means the agent events are likely synthesized based on the overall lens output rather than truly streamed in real-time from the AI's internal thought process. While an acceptable interim solution, it's important to track this for a future, more transparent implementation.",
+        "suggestion": "Prioritize the development or integration of a `triageReviewStream` that genuinely streams agent events as they occur within the AI model's processing. Update the `CLAUDE.md` and relevant documentation to reflect that agent event streaming is currently simulated and will be enhanced in a future version."
+      },
+      {
+        "severity": "nitpick",
+        "category": "style",
+        "file": "apps/cli/src/app/screens/onboarding-screen.tsx",
+        "line": 56,
+        "title": "Duplicated `PROVIDER_ENV_VARS` Constant",
+        "description": "The `PROVIDER_ENV_VARS` object is duplicated in both `onboarding-screen.tsx` and `settings-screen.tsx`. Duplicating constants can lead to inconsistencies if one instance is updated and the other is not.",
+        "suggestion": "Move the `PROVIDER_ENV_VARS` constant to a shared utility file (e.g., `packages/core/src/config/constants.ts` or a new file within `apps/cli/src/lib`) and import it where needed."
+      }
+    ],
+    "overallScore": 9
+  },
+  "gitContext": {
+    "branch": "feature/review-bounding",
+    "fileCount": 52
+  }
+}
