@@ -1,0 +1,187 @@
+/* Stargazer TUI Theme - GitHub Dark inspired terminal colors */
+
+:root,
+[data-theme="dark"] {
+  --tui-bg: #0d1117;
+  --tui-fg: #c9d1d9;
+  --tui-blue: #58a6ff;
+  --tui-violet: #bc8cff;
+  --tui-green: #3fb950;
+  --tui-red: #ff7b72;
+  --tui-yellow: #d29922;
+  --tui-border: #30363d;
+  --tui-selection: #1f2428;
+  --tui-muted: #6e7681;
+  --tui-input-bg: #010409;
+
+  --color-tui-bg: var(--tui-bg);
+  --color-tui-fg: var(--tui-fg);
+  --color-tui-blue: var(--tui-blue);
+  --color-tui-violet: var(--tui-violet);
+  --color-tui-green: var(--tui-green);
+  --color-tui-red: var(--tui-red);
+  --color-tui-yellow: var(--tui-yellow);
+  --color-tui-border: var(--tui-border);
+  --color-tui-selection: var(--tui-selection);
+  --color-tui-muted: var(--tui-muted);
+  --color-tui-input-bg: var(--tui-input-bg);
+  --color-background: var(--tui-bg);
+  --color-foreground: var(--tui-fg);
+  --color-border: var(--tui-border);
+  --color-muted: var(--tui-muted);
+
+  --tui-severity-blocker: var(--tui-red);
+  --tui-severity-high: var(--tui-yellow);
+  --tui-severity-medium: #6e7681;
+  --tui-severity-low: #484f58;
+
+  --tui-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  --background: var(--tui-bg);
+  --foreground: var(--tui-fg);
+  --background0: var(--tui-bg);
+  --foreground0: var(--tui-fg);
+  --primary: var(--tui-blue);
+  --primary-foreground: var(--tui-bg);
+  --secondary: var(--tui-selection);
+  --secondary-foreground: var(--tui-fg);
+  --muted: #6e7681;
+  --muted-foreground: #484f58;
+  --border: var(--tui-border);
+  --input: var(--tui-selection);
+  --destructive: var(--tui-red);
+  --destructive-foreground: var(--tui-bg);
+
+  --severity-blocker: var(--tui-red);
+  --severity-high: var(--tui-yellow);
+  --severity-medium: #6e7681;
+  --severity-low: var(--tui-blue);
+
+  --status-running: var(--tui-blue);
+  --status-complete: var(--tui-green);
+  --status-pending: #6e7681;
+
+  --trans-fast: 0.15s ease;
+  --radius: 0.25rem;
+}
+
+[data-theme="light"] {
+  --tui-bg: #ffffff;
+  --tui-fg: #24292f;
+  --tui-blue: #0969da;
+  --tui-violet: #8250df;
+  --tui-green: #1a7f37;
+  --tui-red: #cf222e;
+  --tui-yellow: #9a6700;
+  --tui-border: #d0d7de;
+  --tui-selection: #ddf4ff;
+  --tui-muted: #57606a;
+  --tui-input-bg: #f6f8fa;
+
+  --color-tui-bg: var(--tui-bg);
+  --color-tui-fg: var(--tui-fg);
+  --color-tui-blue: var(--tui-blue);
+  --color-tui-violet: var(--tui-violet);
+  --color-tui-green: var(--tui-green);
+  --color-tui-red: var(--tui-red);
+  --color-tui-yellow: var(--tui-yellow);
+  --color-tui-border: var(--tui-border);
+  --color-tui-selection: var(--tui-selection);
+  --color-tui-muted: var(--tui-muted);
+  --color-tui-input-bg: var(--tui-input-bg);
+  --color-background: var(--tui-bg);
+  --color-foreground: var(--tui-fg);
+  --color-border: var(--tui-border);
+  --color-muted: var(--tui-muted);
+
+  --tui-severity-blocker: var(--tui-red);
+  --tui-severity-high: var(--tui-yellow);
+  --tui-severity-medium: #57606a;
+  --tui-severity-low: #8c959f;
+
+  --background: var(--tui-bg);
+  --foreground: var(--tui-fg);
+  --background0: var(--tui-bg);
+  --foreground0: var(--tui-fg);
+  --primary: var(--tui-blue);
+  --primary-foreground: #ffffff;
+  --secondary: var(--tui-selection);
+  --secondary-foreground: var(--tui-fg);
+  --muted: #57606a;
+  --muted-foreground: #8c959f;
+  --border: var(--tui-border);
+  --input: #f6f8fa;
+  --destructive: var(--tui-red);
+  --destructive-foreground: #ffffff;
+
+  --severity-blocker: var(--tui-red);
+  --severity-high: var(--tui-yellow);
+  --severity-medium: #57606a;
+  --severity-low: var(--tui-blue);
+
+  --status-running: var(--tui-blue);
+  --status-complete: var(--tui-green);
+  --status-pending: #57606a;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("https://fonts.gstatic.com/s/jetbrainsmono/v18/tDbY2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKxjPVmUsaaDhw.woff2")
+    format("woff2");
+}
+
+.tui-base {
+  font-family: var(--tui-font-mono);
+  background-color: var(--tui-bg);
+  color: var(--tui-fg);
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: var(--tui-bg);
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--tui-border);
+  border-radius: 2px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--tui-fg);
+}
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--tui-border) var(--tui-bg);
+}
+
+@keyframes tui-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.cursor-blink {
+  animation: tui-blink 1s step-end infinite;
+}

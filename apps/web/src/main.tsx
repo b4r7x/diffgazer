@@ -1,5 +1,11 @@
-import React from "react";
-import { createRoot } from "react-dom/client";
-import { App } from "./app.tsx";
+import ReactDOM from "react-dom/client";
+import { RouterProvider } from "@tanstack/react-router";
+import { router } from "./app/router";
+import { AppProviders } from "./app/providers";
+import "./styles/index.css";
 
-createRoot(document.getElementById("root")!).render(<App />);
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <AppProviders>
+    <RouterProvider router={router} />
+  </AppProviders>
+);

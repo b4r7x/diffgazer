@@ -9,6 +9,7 @@ import type { ServerController } from "./create-process-server.js";
 export interface EmbeddedServerConfig {
   port: number;
   onReady?: (address: string) => void;
+  projectRoot?: string;
 }
 
 const moduleDir = dirname(fileURLToPath(import.meta.url));
@@ -27,6 +28,10 @@ export function createEmbeddedServer(
     if (!existsSync(webRoot)) {
       console.error(`Web assets not found at ${webRoot}`);
       return;
+    }
+
+    if (config.projectRoot) {
+      process.env.STARGAZER_PROJECT_ROOT = config.projectRoot;
     }
 
     const app = createApp();

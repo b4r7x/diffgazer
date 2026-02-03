@@ -1,0 +1,22 @@
+{
+  "metadata": {
+    "id": "87af6fa8-8876-411d-aa04-4071e0dcaf98",
+    "projectPath": "/Users/voitz/Projects/stargazer/apps/cli",
+    "createdAt": "2026-01-24T19:37:51.201Z",
+    "staged": false,
+    "branch": "feature/review-bounding",
+    "overallScore": null,
+    "issueCount": 0,
+    "criticalCount": 0,
+    "warningCount": 0
+  },
+  "result": {
+    "summary": "```json\n{\n  \"summary\": \"The diff introduces a substantial refactor of the CLI application, moving from a basic display to a sophisticated multi-step wizard for onboarding and a complex split-pane interface for code reviews. Key improvements include a new ThemeProvider, a TraceRecorder for auditing AI tool calls, and a more robust data model for issues (including evidence and symptoms). The code is generally well-structured and includes comprehensive unit tests for the new logic.\",\n  \"issues\": [\n    {\n      \"severity\": \"warning\",\n      \"category\": \"logic\",\n      \"file\": \"apps/cli/src/app/views/review-view.tsx\",\n      \"line\": 52,\n      \"title\": \"Schema Mismatch in Issue Adapter\",\n      \"description\": \"The function `adaptReviewIssueToTriageIssue` initializes the `evidence` field as an empty array. However, the updated `TriageIssueSchema` and the `validateIssueCompleteness` function in `triage.ts` require the evidence array to contain at least one item. This will cause adapted review issues to fail validation.\",\n      \"suggestion\": \"Populate the evidence array with a default entry using the `file` and `line` properties from the `ReviewIssue` within the adapter.\"\n    },\n    {\n      \"severity\": \"nitpick\",\n      \"category\": \"performance\",\n      \"file\": \"packages/core/src/review/drilldown.ts\",\n      \"line\": 31,\n      \"title\": \"Expensive Stringification in TraceRecorder\",\n      \"description\": \"The `TraceRecorder.wrap` method calls `JSON.stringify(input)` on every tool execution to create a summary. If the input contains large file contents or deep objects, this could lead to performance degradation and high memory usage during long sessions.\",\n      \"suggestion\": \"Check the size or type of the input before stringifying, or use a more efficient summary approach for large objects.\"\n    },\n    {\n      \"severity\": \"nitpick\",\n      \"category\": \"best-practice\",\n      \"file\": \"apps/cli/src/app/app.tsx\",\n      \"line\": 16,\n      \"title\": \"Project ID Path Sensitivity\",\n      \"description\": \"The `createProjectId` function uses `process.cwd()` to generate a unique ID. This makes the project identity sensitive to the exact directory path. If a user renames the folder or accesses it via a different symlink, the project ID will change, potentially losing associated local settings.\",\n      \"suggestion\": \"Consider using the root of the Git repository (e.g., via `git rev-parse --show-toplevel`) as the base for the hash to ensure stability across directory renames.\"\n    },\n    {\n      \"severity\": \"suggestion\",\n      \"category\": \"logic\",\n      \"file\": \"packages/core/src/review/triage.ts\",\n      \"line\": 128,\n      \"title\": \"Potential for duplicate evidence\",\n      \"description\": \"The `ensureIssueEvidence` function adds evidence if the array is empty, but `extractedEvidence` might also return an empty array if no matching hunk is found. In that case, it falls back to a generic 'Issue in file' object. This logic is safe but could result in redundant 'generic' evidence if multiple checks fail.\",\n      \"suggestion\": \"Consolidate the fallback logic to ensure a single high-quality fallback is used if hunk extraction fails.\"\n    }\n  ],\n  \"overallScore\": 8\n}\n```",
+    "issues": [],
+    "overallScore": null
+  },
+  "gitContext": {
+    "branch": "feature/review-bounding",
+    "fileCount": 26
+  }
+}
