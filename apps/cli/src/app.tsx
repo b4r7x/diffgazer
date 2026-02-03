@@ -1,7 +1,8 @@
-import React, { useEffect } from "react";
-import { Box, Text, useApp, useInput } from "ink";
+import React from "react";
+import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import { useServer } from "./hooks/use-server.js";
+import { useExitHandler } from "./hooks/use-exit-handler.js";
 import { createApiServer } from "./lib/api-server.js";
 import { createWebServer } from "./lib/web-server.js";
 import { type ServerState } from "./lib/create-process-server.js";
@@ -55,32 +56,14 @@ function StatusDisplay({ api, web }: { api: ServerState; web: ServerState }): Re
 }
 
 export function App(): React.ReactElement {
-  const { exit } = useApp();
   const api = useServer(apiServer);
   const web = useServer(webServer);
 
-  // Centralized signal handling
-  useEffect(() => {
-    function handleExit(): void {
+  useExitHandler({
+    onExit: () => {
       apiServer.stop();
       webServer.stop();
-      exit();
-      setTimeout(() => process.exit(0), 100);
-    }
-
-    process.on("SIGINT", handleExit);
-    process.on("SIGTERM", handleExit);
-
-    return () => {
-      process.off("SIGINT", handleExit);
-      process.off("SIGTERM", handleExit);
-    };
-  }, [exit]);
-
-  useInput((input, key) => {
-    if (key.escape || (key.ctrl && input === "c")) {
-      exit();
-    }
+    },
   });
 
   return (
