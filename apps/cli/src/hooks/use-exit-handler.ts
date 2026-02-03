@@ -2,14 +2,15 @@ import { useEffect, useEffectEvent } from "react";
 import { useApp, useInput } from "ink";
 
 interface ExitHandlerOptions {
-  onExit: () => void;
+  onExit?: () => void;
 }
 
-export function useExitHandler({ onExit }: ExitHandlerOptions): void {
+export function useExitHandler(options: ExitHandlerOptions = {}): void {
+  const { onExit } = options;
   const { exit } = useApp();
 
   const handleExit = useEffectEvent(() => {
-    onExit();
+    onExit?.();
     exit();
     setTimeout(() => process.exit(0), 100);
   });
@@ -26,7 +27,7 @@ export function useExitHandler({ onExit }: ExitHandlerOptions): void {
 
   useInput((input, key) => {
     if (key.escape || (key.ctrl && input === "c")) {
-      exit();
+      handleExit();
     }
   });
 }

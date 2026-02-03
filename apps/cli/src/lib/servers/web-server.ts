@@ -1,12 +1,15 @@
 import open from "open";
-import { createProcessServer, type ProcessServer } from "./create-process-server.js";
+import {
+  createProcessServer,
+  type ServerController,
+} from "./create-process-server.js";
 
 export interface WebServerConfig {
   cwd: string;
   port: number;
 }
 
-export function createWebServer(config: WebServerConfig): ProcessServer {
+export function createWebServer(config: WebServerConfig): ServerController {
   return createProcessServer({
     command: "npx",
     args: ["vite", "--port", String(config.port)],

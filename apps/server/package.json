@@ -10,8 +10,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsx src/index.ts",
-    "start": "node dist/index.js"
+    "dev": "tsx src/dev.ts",
+    "start": "node dist/dev.js"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.0",
