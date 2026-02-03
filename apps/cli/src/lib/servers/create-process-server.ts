@@ -1,11 +1,6 @@
-import { getErrorMessage } from "@stargazer/core";
 import { execa, type ResultPromise } from "execa";
-import { createServerStateStore } from "./server-store.js";
-import type { ServerState } from "./server-store.js";
 
 export interface ServerController {
-  getSnapshot: () => ServerState;
-  subscribe: (callback: () => void) => () => void;
   start: () => void;
   stop: () => void;
 }
@@ -23,15 +18,12 @@ export interface ProcessServerConfig {
 export function createProcessServer(
   config: ProcessServerConfig,
 ): ServerController {
-  const store = createServerStateStore();
   let serverProcess: ResultPromise | null = null;
 
   function start(): void {
     if (serverProcess) {
       return;
     }
-
-    store.setState({ status: "starting", address: null, error: null });
 
     let env = globalThis.process.env;
     if (config.env) {
@@ -54,7 +46,6 @@ export function createProcessServer(
 
       if (data.toString().includes(config.readyPattern)) {
         const address = `http://localhost:${config.port}`;
-        store.setState({ status: "running", address, error: null });
         config.onReady?.(address);
       }
     });
@@ -65,29 +56,21 @@ export function createProcessServer(
       }
 
       if (!err.killed) {
-        store.setState({
-          status: "error",
-          address: null,
-          error: getErrorMessage(err),
-        });
+        console.error(err);
       }
     });
   }
 
   return {
-    getSnapshot: store.getSnapshot,
-    subscribe: store.subscribe,
     start,
     stop: () => {
       if (!serverProcess) {
-        store.setIdle();
         return;
       }
 
       const process = serverProcess;
       serverProcess = null;
       process.kill("SIGTERM");
-      store.setIdle();
     },
   };
 }
