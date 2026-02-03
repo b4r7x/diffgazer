@@ -1,16 +1,21 @@
 import React from "react";
-import { DevApp } from "./apps/dev-app.js";
-import { ProdApp } from "./apps/prod-app.js";
 import { CliMode } from "../types/cli.js";
+import { ServerProvider } from "./providers/server-provider.js";
+import { devServerFactories } from "./modes/dev.js";
+import { prodServerFactories } from "./modes/prod.js";
+import { StatusScreen } from "./screens/status-screen.js";
 
 interface AppRouterProps {
   mode: CliMode;
 }
 
 export function AppRouter({ mode }: AppRouterProps): React.ReactElement {
-  if (mode === "dev") {
-    return <DevApp />;
-  }
+  const serverFactories =
+    mode === "dev" ? devServerFactories : prodServerFactories;
 
-  return <ProdApp />;
+  return (
+    <ServerProvider servers={serverFactories}>
+      <StatusScreen />
+    </ServerProvider>
+  );
 }
