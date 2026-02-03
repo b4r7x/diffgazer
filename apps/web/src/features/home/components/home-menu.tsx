@@ -1,0 +1,80 @@
+import { Menu, MenuDivider, MenuItem, Panel, PanelHeader } from "@/components/ui";
+
+export interface MenuItemDefinition {
+  id: string;
+  label: string;
+  shortcut?: string;
+  variant?: "default" | "danger";
+  group: "review" | "navigation" | "system";
+}
+
+interface HomeMenuProps {
+  selectedIndex: number;
+  onSelect: (index: number) => void;
+  onActivate: (id: string) => void;
+  items: MenuItemDefinition[];
+  isTrusted?: boolean;
+  hasLastReview?: boolean;
+}
+
+function groupItems(items: MenuItemDefinition[]) {
+  return items.reduce(
+    (groups, item) => {
+      if (item.group) groups[item.group].push(item);
+      return groups;
+    },
+    {
+      review: [] as MenuItemDefinition[],
+      navigation: [] as MenuItemDefinition[],
+      system: [] as MenuItemDefinition[],
+    }
+  );
+}
+
+export function HomeMenu({
+  selectedIndex,
+  onSelect,
+  onActivate,
+  items,
+  isTrusted = false,
+  hasLastReview = false,
+}: HomeMenuProps): JSX.Element {
+  const { review, navigation, system } = groupItems(items);
+
+  const isDisabled = (id: string): boolean => {
+    if (id === "resume-review") return !hasLastReview;
+    return !isTrusted;
+  };
+
+  return (
+    <Panel className="w-full max-w-md lg:w-1/2 lg:max-w-lg h-fit flex flex-col">
+      <PanelHeader variant="subtle">Main Menu</PanelHeader>
+      <div className="flex flex-col py-2">
+        <Menu
+          selectedIndex={selectedIndex}
+          onSelect={onSelect}
+          onActivate={(item) => onActivate(item.id)}
+          enableNumberJump
+        >
+          {review.map((item) => (
+            <MenuItem key={item.id} id={item.id} disabled={isDisabled(item.id)}>
+              {item.label}
+            </MenuItem>
+          ))}
+          <MenuDivider />
+          {navigation.map((item) => (
+            <MenuItem key={item.id} id={item.id}>
+              {item.label}
+            </MenuItem>
+          ))}
+          <MenuDivider />
+          {system.map((item) => (
+            <MenuItem key={item.id} id={item.id} variant={item.variant}>
+              {item.label}
+            </MenuItem>
+          ))}
+        </Menu>
+      </div>
+    </Panel>
+  );
+}

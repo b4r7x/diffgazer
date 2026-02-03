@@ -1,0 +1,86 @@
+{
+  "metadata": {
+    "id": "0a464403-2b9f-4eb3-9242-26cb9c7553ee",
+    "projectPath": "/Users/voitz/Projects/stargazer/apps/cli",
+    "createdAt": "2026-01-24T21:50:50.169Z",
+    "staged": false,
+    "branch": "feature/review-bounding",
+    "overallScore": 9,
+    "issueCount": 7,
+    "criticalCount": 0,
+    "warningCount": 0
+  },
+  "result": {
+    "summary": "This extensive diff introduces significant architectural improvements, feature enhancements, and UI/UX overhauls across the CLI application. Key changes include a new project-specific trust management system, a refactored multi-step wizard for onboarding and settings, dynamic theming, and a highly interactive split-pane view for code reviews. The AI interaction is also enhanced with richer issue data, tool call tracing, and more robust JSON parsing from AI responses. New API endpoints for granular provider credential management further improve the backend. Overall, the changes aim to provide a more secure, user-friendly, and powerful code review experience.",
+    "issues": [
+      {
+        "severity": "suggestion",
+        "category": "logic",
+        "file": "apps/cli/src/app/app.tsx",
+        "line": null,
+        "title": "Incomplete `onTestConnection` prop in `OnboardingScreen`",
+        "description": "The `OnboardingScreen` component now accepts an `onTestConnection` prop, but it is not passed from the `App` component. This means the 'Test Connection' functionality in the onboarding wizard, if present, will not be active.",
+        "suggestion": "Ensure `onTestConnection` is passed to `OnboardingScreen` from `App` if this functionality is intended to be active during onboarding, or confirm it's an intentional omission for the onboarding flow."
+      },
+      {
+        "severity": "suggestion",
+        "category": "logic",
+        "file": "apps/cli/src/app/screens/onboarding-screen.tsx",
+        "line": null,
+        "title": "Empty `configuredProviders` prop in `OnboardingScreen`",
+        "description": "The `OnboardingScreen` is passed `configuredProviders={[]}` from `App.tsx`. If the onboarding process is intended to show or interact with already configured providers, this prop should be populated with actual data from `state.config.providerStatus`.",
+        "suggestion": "Review if `configuredProviders` should be populated with `state.config.providerStatus?.providers ?? []` to enable display of existing configurations during onboarding, or if the onboarding is strictly for new configurations."
+      },
+      {
+        "severity": "suggestion",
+        "category": "logic",
+        "file": "apps/cli/src/features/app/hooks/use-screen-handlers.ts",
+        "line": null,
+        "title": "Missing `onRunDiagnostics` implementation in `useScreenHandlers`",
+        "description": "The `SettingsScreen` now supports an `onRunDiagnostics` prop, but there is no corresponding handler defined or passed in `useScreenHandlers`. This means the 'Diagnostics' section in settings will not function as expected.",
+        "suggestion": "Implement the `onRunDiagnostics` handler within `useScreenHandlers` to provide the diagnostic functionality for the settings screen."
+      },
+      {
+        "severity": "suggestion",
+        "category": "style",
+        "file": "apps/cli/src/hooks/use-config.ts",
+        "line": 15,
+        "title": "Deprecated `useConfig` for settings management",
+        "description": "A `@deprecated` comment indicates that `useConfig` should eventually be replaced by `useSettingsState` from `features/settings`. While not an immediate issue, it highlights a pending refactor. It's important to ensure a clear migration path and that `useConfig` is not prematurely stripped of necessary functionalities before the full transition.",
+        "suggestion": "Plan the full migration from `useConfig` to `useSettingsState` carefully, ensuring all dependent components are updated and `useConfig` is gradually phased out or repurposed solely for AI provider configuration."
+      },
+      {
+        "severity": "nitpick",
+        "category": "documentation",
+        "file": "apps/server/src/api/routes/index.ts",
+        "line": 9,
+        "title": "Imported `settings` route not defined in diff",
+        "description": "The `settings` route is imported (`import { settings } from './settings.js';`) and used (`routes.route('/settings', settings);`), but the `apps/server/src/api/routes/settings.js` file and its content are not included in this diff. This suggests an incomplete or missing part of the change.",
+        "suggestion": "Ensure the `settings.js` file and its route definitions are included in the codebase, or if it's an intended future addition, clarify its status."
+      },
+      {
+        "severity": "suggestion",
+        "category": "performance",
+        "file": "packages/core/src/review/drilldown.ts",
+        "line": 64,
+        "title": "Potential performance concern with `JSON.stringify` in `TraceRecorder`",
+        "description": "The `TraceRecorder`'s `wrap` method uses `JSON.stringify(input)` and `JSON.stringify(output)` for default summaries. If `input` or `output` objects are very large, this could lead to performance overhead and large memory consumption, even with subsequent truncation.",
+        "suggestion": "For tools that might handle very large data structures, consider implementing more specific `input` and `output` summarizers to avoid stringifying the entire object, or add a size limit before `JSON.stringify` to prevent excessive processing of large objects."
+      },
+      {
+        "severity": "suggestion",
+        "category": "logic",
+        "file": "packages/core/src/review/triage.ts",
+        "line": 141,
+        "title": "Fallback evidence for `ensureIssueEvidence` might be too generic",
+        "description": "In `ensureIssueEvidence`, if `file` is not found or `extractEvidenceFromDiff` yields no results, a generic evidence reference is created using `issue.rationale`. This fallback might not always provide the most useful or specific evidence, especially if the rationale itself is broad.",
+        "suggestion": "While a fallback is necessary, consider if the generic evidence can be made more informative or if there are other heuristics to find relevant context when direct diff extraction fails. This could involve searching the file content for keywords from the issue title/description."
+      }
+    ],
+    "overallScore": 9
+  },
+  "gitContext": {
+    "branch": "feature/review-bounding",
+    "fileCount": 40
+  }
+}

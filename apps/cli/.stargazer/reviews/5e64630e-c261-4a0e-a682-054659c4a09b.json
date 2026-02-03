@@ -1,0 +1,22 @@
+{
+  "metadata": {
+    "id": "5e64630e-c261-4a0e-a682-054659c4a09b",
+    "projectPath": "/Users/voitz/Projects/stargazer/apps/cli",
+    "createdAt": "2026-01-22T18:28:51.637Z",
+    "staged": false,
+    "branch": "feature/review-bounding",
+    "overallScore": null,
+    "issueCount": 0,
+    "criticalCount": 0,
+    "warningCount": 0,
+    "sessionId": null
+  },
+  "result": {
+    "summary": "```json\n{\n  \"summary\": \"The provided diff reveals a codebase that is either heavily obfuscated, uses a highly unconventional domain-specific language (DSL), or has been redacted. The changes introduce complex nested logic, new conditional branches, and significant updates to documentation/test skeletons. The primary concern is the total lack of semantic naming (using symbols like '.', '$', and '/' as identifiers) and the use of empty or whitespace-heavy strings for logic, which makes the code impossible to audit for security, performance, or correctness.\",\n  \"issues\": [\n    {\n      \"severity\": \"critical\",\n      \"category\": \"style\",\n      \"file\": null,\n      \"line\": null,\n      \"title\": \"Extreme Code Obfuscation\",\n      \"description\": \"The code uses punctuation, symbols, and empty strings instead of descriptive variable or function names. This violates almost all clean code principles and makes the codebase a significant maintenance liability.\",\n      \"suggestion\": \"Replace symbolic identifiers with meaningful, descriptive names that convey intent.\"\n    },\n    {\n      \"severity\": \"warning\",\n      \"category\": \"logic\",\n      \"file\": \"//////-.\",\n      \"line\": null,\n      \"title\": \"Fragile Conditional Logic\",\n      \"description\": \"The diff introduces complex nested conditions such as `(  \\\"\\\" && . && ( \\\"\\\" . . / ... ))`. Without semantic context, the logical flow is brittle and prone to 'off-by-one' or truthiness errors that are difficult to debug.\",\n      \"suggestion\": \"Simplify nested logic into named boolean variables or helper functions.\"\n    },\n    {\n      \"severity\": \"warning\",\n      \"category\": \"security\",\n      \"file\": \"//////-.\",\n      \"line\": null,\n      \"title\": \"Hardcoded Relative Paths\",\n      \"description\": \"The use of hardcoded strings like `../../..//-.` and `../..//.` for pathing or resource location is present. This is fragile and can lead to path traversal vulnerabilities if these strings are used in file system operations or URL construction without sanitization.\",\n      \"suggestion\": \"Use a centralized path management utility or configuration constants instead of hardcoded relative strings.\"\n    },\n    {\n      \"severity\": \"suggestion\",\n      \"category\": \"documentation\",\n      \"file\": \"///----.\",\n      \"line\": null,\n      \"title\": \"Placeholder Documentation\",\n      \"description\": \"The Markdown documentation section uses placeholders like `****` and `//.` for titles and list items. This provides no actual value to the end-user or developer.\",\n      \"suggestion\": \"Populate documentation with actual descriptive text and usage instructions.\"\n    },\n    {\n      \"severity\": \"warning\",\n      \"category\": \"best-practice\",\n      \"file\": \"////.\",\n      \"line\": null,\n      \"title\": \"Repetitive Method Calls with Generic Strings\",\n      \"description\": \"Multiple calls to `.(\\\"-, -- \\\", \\\" \\\", \\\"\\\")` suggest a builder pattern or a configuration sequence that is highly repetitive and relies on magic strings, which increases the risk of typos.\",\n      \"suggestion\": \"Refactor repetitive configurations into a data structure (e.g., a map or array) and iterate over it.\"\n    }\n  ],\n  \"overallScore\": 2\n}\n```",
+    "issues": []
+  },
+  "gitContext": {
+    "branch": "feature/review-bounding",
+    "fileCount": 33
+  }
+}

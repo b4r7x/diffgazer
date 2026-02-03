@@ -9,15 +9,23 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@stargazer/api": "workspace:*",
     "@stargazer/hooks": "workspace:*",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "@tanstack/react-router": "^1.151.6",
+    "@tailwindcss/vite": "^4.1.18",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss": "^4.1.18",
+    "zod": "^4.3.5"
   },
   "devDependencies": {
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "@vitejs/plugin-react": "^4.3.0",
-    "typescript": "^5.7.0",
-    "vite": "^6.0.0"
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.2",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
   }
 }

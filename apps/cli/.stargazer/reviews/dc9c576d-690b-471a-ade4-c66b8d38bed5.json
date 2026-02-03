@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "id": "dc9c576d-690b-471a-ade4-c66b8d38bed5",
+    "projectPath": "/Users/voitz/Projects/stargazer/apps/cli",
+    "createdAt": "2026-01-22T18:43:48.527Z",
+    "staged": false,
+    "branch": "feature/review-bounding",
+    "overallScore": 0,
+    "issueCount": 0,
+    "criticalCount": 0,
+    "warningCount": 0,
+    "sessionId": null
+  },
+  "result": {
+    "summary": "The provided git diff content is highly obfuscated and does not resemble any standard programming language, configuration format, or human-readable text. It consists almost entirely of placeholder characters, making it impossible to interpret the code's intent, logic, functionality, or potential security implications. Therefore, a meaningful code review cannot be performed.",
+    "issues": [],
+    "overallScore": 0
+  },
+  "gitContext": {
+    "branch": "feature/review-bounding",
+    "fileCount": 33
+  }
+}

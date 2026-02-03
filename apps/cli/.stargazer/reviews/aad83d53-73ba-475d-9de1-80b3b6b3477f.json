@@ -1,0 +1,22 @@
+{
+  "metadata": {
+    "id": "aad83d53-73ba-475d-9de1-80b3b6b3477f",
+    "projectPath": "/Users/voitz/Projects/stargazer/apps/cli",
+    "createdAt": "2026-01-22T17:33:29.362Z",
+    "staged": false,
+    "branch": "feature/review-bounding",
+    "overallScore": null,
+    "issueCount": 0,
+    "criticalCount": 0,
+    "warningCount": 0,
+    "sessionId": null
+  },
+  "result": {
+    "summary": "```json\n{\n  \"summary\": \"The diff introduces extensive structural and logic changes across multiple files, characterized by a highly symbolic and abstracted coding style. Key updates include modified conditional logic, expanded data mappings, and documentation of new symbolic functions. The code exhibits high cyclomatic complexity, deep nesting, and potential security risks related to string-based path construction.\",\n  \"issues\": [\n    {\n      \"severity\": \"warning\",\n      \"category\": \"logic\",\n      \"file\": \"/////\",\n      \"line\": null,\n      \"title\": \"Simplification of state validation\",\n      \"description\": \"A condition previously checking for both an empty string and a specific '-' value was reduced to only check for the empty string. This may bypass necessary validation for the '-' state, potentially leading to incorrect execution paths.\",\n      \"suggestion\": \"Confirm if the '-' state is no longer relevant or if it should be handled by a separate logic branch to maintain strict validation.\"\n    },\n    {\n      \"severity\": \"warning\",\n      \"category\": \"security\",\n      \"file\": \"///////-.\",\n      \"line\": null,\n      \"title\": \"Manual string concatenation for paths\",\n      \"description\": \"The code uses the '+' operator to build strings from multiple symbolic variables and separators (e.g., `.(.. / ) +`), which appears to be constructing a file path or URL. This approach is vulnerable to path traversal or injection if the variables are not strictly controlled or sanitized.\",\n      \"suggestion\": \"Utilize a safe path-joining library or utility and ensure all dynamic components are strictly validated against a whitelist.\"\n    },\n    {\n      \"severity\": \"suggestion\",\n      \"category\": \"style\",\n      \"file\": \"//////.\",\n      \"line\": null,\n      \"title\": \"Deeply nested logic structures\",\n      \"description\": \"New logic additions show extreme nesting levels for callbacks and conditionals (up to 7+ levels). This significantly increases the cognitive load for maintenance and increases the likelihood of logical errors during future updates.\",\n      \"suggestion\": \"Flatten the logic by using early returns (guard clauses) or extracting deeply nested blocks into named helper functions.\"\n    },\n    {\n      \"severity\": \"warning\",\n      \"category\": \"documentation\",\n      \"file\": \"///----.\",\n      \"line\": null,\n      \"title\": \"Abstract documentation\",\n      \"description\": \"The documentation updates in the Markdown section use symbolic placeholders instead of descriptive parameter names or types. This fails to provide meaningful guidance on the API's purpose, usage, or expected data formats.\",\n      \"suggestion\": \"Replace symbolic placeholders with descriptive, human-readable names that reflect the actual business logic or data types involved.\"\n    },\n    {\n      \"severity\": \"nitpick\",\n      \"category\": \"style\",\n      \"file\": \"////.\",\n      \"line\": null,\n      \"title\": \"Redundant or unclear configuration calls\",\n      \"description\": \"Multiple calls with similar or identical string arguments (e.g., '-, -- ') are added in sequence. Without context, these appear redundant or like placeholder data that may have been inadvertently committed.\",\n      \"suggestion\": \"Consolidate redundant calls and replace hardcoded strings with meaningful constants to improve maintainability.\"\n    }\n  ],\n  \"overallScore\": 3\n}\n```",
+    "issues": []
+  },
+  "gitContext": {
+    "branch": "feature/review-bounding",
+    "fileCount": 33
+  }
+}

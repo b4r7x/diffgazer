@@ -1,0 +1,51 @@
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import type { Shortcut } from "@/types/ui";
+
+export type { Shortcut };
+
+interface FooterContextValue {
+  shortcuts: Shortcut[];
+  rightShortcuts: Shortcut[];
+  setShortcuts: (shortcuts: Shortcut[]) => void;
+  setRightShortcuts: (shortcuts: Shortcut[]) => void;
+}
+
+const FooterContext = createContext<FooterContextValue | undefined>(undefined);
+
+const DEFAULT_SHORTCUTS: Shortcut[] = [
+  { key: "?", label: "Help" },
+  { key: "q", label: "Quit" },
+];
+
+export function FooterProvider({ children }: { children: ReactNode }): JSX.Element {
+  const [shortcuts, setShortcuts] = useState<Shortcut[]>(DEFAULT_SHORTCUTS);
+  const [rightShortcuts, setRightShortcuts] = useState<Shortcut[]>([]);
+
+  const setShortcutsCallback = useCallback((newShortcuts: Shortcut[]) => {
+    setShortcuts(newShortcuts);
+  }, []);
+
+  const setRightShortcutsCallback = useCallback((newShortcuts: Shortcut[]) => {
+    setRightShortcuts(newShortcuts);
+  }, []);
+
+  const contextValue = useMemo(
+    () => ({
+      shortcuts,
+      rightShortcuts,
+      setShortcuts: setShortcutsCallback,
+      setRightShortcuts: setRightShortcutsCallback,
+    }),
+    [shortcuts, rightShortcuts, setShortcutsCallback, setRightShortcutsCallback]
+  );
+
+  return <FooterContext.Provider value={contextValue}>{children}</FooterContext.Provider>;
+}
+
+export function useFooter(): FooterContextValue {
+  const context = useContext(FooterContext);
+  if (context === undefined) {
+    throw new Error("useFooter must be used within a FooterProvider");
+  }
+  return context;
+}

@@ -1,0 +1,21 @@
+{
+  "metadata": {
+    "id": "dedb0b17-7a97-4fab-85dc-61d06831b547",
+    "projectPath": "/Users/voitz/Projects/stargazer/apps/cli",
+    "createdAt": "2026-01-23T10:20:09.831Z",
+    "staged": false,
+    "branch": "feature/review-bounding",
+    "overallScore": null,
+    "issueCount": 0,
+    "criticalCount": 0,
+    "warningCount": 0
+  },
+  "result": {
+    "summary": "```json\n{\n  \"summary\": \"The diff indicates a refactoring effort focused on expanding function signatures to accept additional parameters, updating path resolutions, and modifying configuration files to include broader file patterns. There is also evidence of improved string validation and documentation additions.\",\n  \"issues\": [\n    {\n      \"severity\": \"warning\",\n      \"category\": \"logic\",\n      \"file\": null,\n      \"line\": null,\n      \"title\": \"Function Signature Mismatch\",\n      \"description\": \"Several functions across multiple files have been modified to accept additional parameters (e.g., changing from 1 to 2 or 2 to 3 arguments). Without seeing the corresponding call sites, there is a risk of runtime errors if all invocations were not updated.\",\n      \"suggestion\": \"Verify that all call sites for the modified functions have been updated to provide the new arguments.\"\n    },\n    {\n      \"severity\": \"suggestion\",\n      \"category\": \"best-practice\",\n      \"file\": null,\n      \"line\": null,\n      \"title\": \"Broad Glob Pattern in Configuration\",\n      \"description\": \"The addition of the glob pattern '**/*..' in the configuration files (Segments 9 and 11) may be overly broad and could include unintended files in the build or processing pipeline.\",\n      \"suggestion\": \"Restrict the glob pattern to specific file extensions to avoid processing unnecessary files.\"\n    },\n    {\n      \"severity\": \"nitpick\",\n      \"category\": \"style\",\n      \"file\": null,\n      \"line\": null,\n      \"title\": \"Hardcoded Empty String Array\",\n      \"description\": \"An array containing six empty strings was added in Segment 4. This appears to be placeholder code or a magic value that lacks descriptive context.\",\n      \"suggestion\": \"Replace the hardcoded empty strings with a named constant or explain the purpose of this array with a comment.\"\n    },\n    {\n      \"severity\": \"suggestion\",\n      \"category\": \"logic\",\n      \"file\": null,\n      \"line\": null,\n      \"title\": \"Path Depth Changes\",\n      \"description\": \"References to directory paths have been modified (e.g., changing '../.' to '../../.'). This suggests a shift in the project's directory structure or module resolution logic.\",\n      \"suggestion\": \"Ensure that these path changes are consistent with the actual file system layout to prevent 'module not found' errors.\"\n    }\n  ],\n  \"overallScore\": 6\n}\n```",
+    "issues": []
+  },
+  "gitContext": {
+    "branch": "feature/review-bounding",
+    "fileCount": 11
+  }
+}

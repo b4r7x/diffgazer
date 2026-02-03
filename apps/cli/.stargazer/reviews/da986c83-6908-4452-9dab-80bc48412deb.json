@@ -1,0 +1,140 @@
+{
+  "metadata": {
+    "id": "da986c83-6908-4452-9dab-80bc48412deb",
+    "projectPath": "/Users/voitz/Projects/stargazer/apps/cli",
+    "createdAt": "2026-01-25T09:03:21.801Z",
+    "staged": false,
+    "branch": "feature/review-bounding",
+    "overallScore": 8,
+    "issueCount": 13,
+    "criticalCount": 2,
+    "warningCount": 4
+  },
+  "result": {
+    "summary": "This pull request introduces a substantial set of features and architectural improvements across the CLI application, server, core logic, and documentation. Key highlights include a complete overhaul of the CLI's user interface with a new wizard-style onboarding, a feature-rich interactive review screen with agent activity streaming and drilldown tracing, and new systems for user settings, project trust, and session event tracking. The AI interaction robustness is significantly improved through explicit prompt instructions for JSON output, markdown stripping, and comprehensive issue normalization and validation. Additionally, a non-interactive PR review mode for CI integration is introduced. The extensive documentation updates are commendable for maintaining clarity amidst these significant changes.",
+    "issues": [
+      {
+        "severity": "warning",
+        "category": "logic",
+        "file": "apps/cli/src/app/app.tsx",
+        "line": 40,
+        "title": "Inconsistent Settings Loading Logic",
+        "description": "The `useEffect` hook calls `localSettings.loadSettings()` once on component mount, but `state.config.loadSettings()` is called within another `useEffect` when the `view` changes to 'main' or 'settings'. This dual approach to loading settings might be confusing and could lead to inconsistencies, especially since `useConfig` is marked as deprecated. It would be clearer to consolidate settings loading under the new `useSettings` hook.",
+        "suggestion": "Ensure all settings loading logic is consistent and preferably managed by the `useSettings` hook. Remove redundant calls to `state.config.loadSettings()` if `localSettings.loadSettings()` is intended to be the primary mechanism."
+      },
+      {
+        "severity": "warning",
+        "category": "best-practice",
+        "file": "apps/cli/src/app/screens/onboarding-screen.tsx",
+        "line": 139,
+        "title": "Untested Connection in Onboarding",
+        "description": "The `handleTestConnection` function defaults to returning `true` if `onTestConnection` is not provided. This could lead to a misleading user experience where the onboarding process indicates a successful connection even if no actual test was performed, potentially causing issues later. This should be made explicit to the user or `onTestConnection` should be mandatory.",
+        "suggestion": "Make `onTestConnection` a required prop for `OnboardingScreen` or, if it remains optional, ensure there's clear UI feedback to the user that the connection test was skipped, or default to a 'pending' or 'failed' state instead of 'true'."
+      },
+      {
+        "severity": "nitpick",
+        "category": "style",
+        "file": "apps/cli/src/app/screens/settings-screen.tsx",
+        "line": 286,
+        "title": "Duplicate Constant `PROVIDER_ENV_VARS`",
+        "description": "The `PROVIDER_ENV_VARS` constant is duplicated in `apps/cli/src/app/screens/onboarding-screen.tsx` and `apps/cli/src/app/screens/settings-screen.tsx`. Duplication of constants can lead to inconsistencies if one instance is updated but the other is not.",
+        "suggestion": "Move `PROVIDER_ENV_VARS` to a shared utility file or schema package (`@repo/schemas/config` or `@repo/core/config`) and import it where needed."
+      },
+      {
+        "severity": "nitpick",
+        "category": "best-practice",
+        "file": "apps/cli/src/app/screens/settings-screen.tsx",
+        "line": 130,
+        "title": "Hardcoded `DEFAULT_CAPABILITIES`",
+        "description": "The `DEFAULT_CAPABILITIES` constant is defined directly within `SettingsScreen.tsx`. This configuration value, especially for security-sensitive capabilities, should ideally be sourced from a shared configuration or schema package to ensure consistency and central management.",
+        "suggestion": "Move `DEFAULT_CAPABILITIES` to `@repo/schemas/settings` or a similar central configuration location."
+      },
+      {
+        "severity": "suggestion",
+        "category": "style",
+        "file": "apps/cli/src/app/views/main-menu-view.tsx",
+        "line": 125,
+        "title": "Direct `useApp().exit()` Call in View",
+        "description": "The `MainMenuView` directly calls `useApp().exit()` to quit the application. While functional, it tightly couples the view component to the Ink app lifecycle. It is generally better practice to propagate such actions (e.g., via the `onSelect` prop) to a higher-level container or application logic, maintaining a cleaner separation of concerns.",
+        "suggestion": "Refactor the 'quit' action to be handled by the parent `AppContent` or `App` component, receiving the action via `onSelect` from `MainMenuView`."
+      },
+      {
+        "severity": "warning",
+        "category": "logic",
+        "file": "apps/cli/src/features/app/hooks/use-navigation.ts",
+        "line": 243,
+        "title": "Inconsistent 'q' Key Behavior",
+        "description": "The global `useInput` handler for the 'q' key now explicitly excludes `main` view from exiting the app, in addition to `loading`. This makes the 'q' key inconsistent, as it will still exit from `git-status`, `git-diff`, `review`, `settings`, `review-history`, but not from `main` (where `MainMenuView` handles it). This inconsistent behavior can be confusing for users who expect 'q' to universally quit the application.",
+        "suggestion": "Re-evaluate the global 'q' key handling. Consider either making 'q' universally quit the app (with appropriate confirmation if needed) or ensuring its behavior is consistent across all views, perhaps by handling it at a higher level or removing the global handler if individual views manage it."
+      },
+      {
+        "severity": "warning",
+        "category": "logic",
+        "file": "apps/cli/src/app/views/review-view.tsx",
+        "line": 403,
+        "title": "Drilldown Limited by Missing `reviewId`",
+        "description": "The `handleDrilldown` function checks for a `reviewId`. If `reviewId` is not present, it merely changes the active tab to 'explain' without performing an actual drilldown. This limitation is not explicitly communicated to the user, who might expect a full drilldown feature. The `reviewId` prop for `ReviewView` is optional, which contributes to this potential scenario.",
+        "suggestion": "Clearly communicate to the user when drilldown functionality is limited or unavailable due to a missing `reviewId`. Consider disabling the drilldown action or providing a tooltip/message explaining the requirement for a saved review."
+      },
+      {
+        "severity": "suggestion",
+        "category": "best-practice",
+        "file": "apps/cli/src/app/views/review-view.tsx",
+        "line": 348,
+        "title": "Incomplete 'Ignore Issue' UX",
+        "description": "The `handleIgnore` function only records a `IGNORE_ISSUE` event but does not immediately filter the ignored issue from the `filteredIssues` list in the current view. While `ignoredPatterns` state exists, it's not updated by this handler, leading to a disconnect between the user's action and the immediate visual feedback.",
+        "suggestion": "Update the `handleIgnore` function to also add the selected issue's pattern (e.g., its ID or a derived pattern) to `ignoredPatterns` so that the issue is immediately hidden from the filtered list, providing a more intuitive user experience."
+      },
+      {
+        "severity": "critical",
+        "category": "logic",
+        "file": "apps/cli/src/app/views/review-view.tsx",
+        "line": 709,
+        "title": "Incorrect 'Back' Navigation in Review View",
+        "description": "The `handleBack` function in `ReviewView` (when the focus is not on details) calls `exit()`, which quits the entire application. This is a significant UX issue and inconsistent with other views where 'back' navigates to the previous screen (e.g., the main menu). Users will expect to return to the main application menu, not to terminate the program.",
+        "suggestion": "Change `handleBack` to navigate back to the main menu using `setView('main')` instead of `exit()`."
+      },
+      {
+        "severity": "suggestion",
+        "category": "logic",
+        "file": "apps/cli/src/app/views/review-view.tsx",
+        "line": 361,
+        "title": "Patch Application Logic Missing from Handler",
+        "description": "The `handleApply` and `handleApplyFromDetails` functions only record an `APPLY_PATCH` event. The actual logic for applying the suggested patch (e.g., interacting with a Git service to stage the patch) is not present within these handlers or the `ReviewSplitScreenView` component. The handler names imply execution of the patch, which could be misleading.",
+        "suggestion": "Implement the actual patch application logic within these handlers, or call a service function that performs the patch. If patch application is handled elsewhere, the handler names should reflect that they only 'trigger' or 'request' an apply operation."
+      },
+      {
+        "severity": "critical",
+        "category": "security",
+        "file": "apps/server/src/api/routes/config.ts",
+        "line": 128,
+        "title": "Overly Broad `configStore.remove()` on Provider Deletion",
+        "description": "When deleting provider credentials via `DELETE /provider/:providerId`, if the deleted provider was the `activeProvider`, `configStore.remove()` is called. This function removes the *entire* `config.json` file. If a user has configurations for multiple providers (e.g., Gemini and Anthropic) stored in `config.json`, deleting the active provider's credentials could inadvertently wipe out all other provider configurations, leading to data loss.",
+        "suggestion": "Instead of calling `configStore.remove()`, implement a more granular `configStore.update()` or `configStore.deleteProvider()` that specifically targets and removes only the configuration related to the specified provider, without affecting other stored settings or provider credentials in `config.json`. This may require a refactoring of how `config.json` stores multiple provider configurations."
+      },
+      {
+        "severity": "suggestion",
+        "category": "best-practice",
+        "file": "apps/cli/src/features/review/components/review-screen.tsx",
+        "line": 15,
+        "title": "Possible Dead Code: `ReviewScreen`",
+        "description": "The `ReviewScreen` component is still present in the codebase and has received updates (e.g., `agentEvents` prop, `AgentActivityPanel`). However, `apps/cli/src/app/views/review-view.tsx` now directly uses `ReviewSplitScreenView` for displaying reviews. This suggests that `ReviewScreen` might be dead code or used in a legacy path not covered by the main application flow. Having unused or redundant components can increase maintenance burden.",
+        "suggestion": "Verify if `ReviewScreen` is still actively used anywhere in the application. If not, consider removing or refactoring it to prevent confusion and reduce codebase bloat. If it serves a specific, different purpose, clarify its role in documentation or rename it to reflect that."
+      },
+      {
+        "severity": "suggestion",
+        "category": "logic",
+        "file": "packages/core/src/review/triage.ts",
+        "line": 194,
+        "title": "Suboptimal Evidence Excerpt Fallback",
+        "description": "In `ensureIssueEvidence`, when `excerpt` from `extractEvidenceFromDiff` is empty, it falls back to `lines.slice(0, 5).join('\\n')`. This fallback provides the first 5 lines of the hunk, which may not be the most relevant context for the specific issue, especially if the issue is in the middle or end of the hunk. This could lead to less helpful evidence for the user.",
+        "suggestion": "Improve the fallback logic for `excerpt` to generate a more context-aware snippet, perhaps by attempting to center the excerpt around the `line_start` or by intelligently selecting lines that are most likely to provide relevant context for the issue."
+      }
+    ],
+    "overallScore": 8
+  },
+  "gitContext": {
+    "branch": "feature/review-bounding",
+    "fileCount": 52
+  }
+}
