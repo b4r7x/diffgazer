@@ -1,10 +1,11 @@
-# @stargazer/cli
+# stargazer
 
-CLI tool that starts the Stargazer development environment.
+CLI tool that starts the Stargazer environment.
 
 ## What it does
 
-Spawns both the API server and web frontend, then opens the browser.
+- Dev: spawns API server and web frontend (HMR)
+- Prod (npm): runs embedded server and serves static files
 
 ## Development
 
@@ -19,32 +20,36 @@ pnpm dev
 ## Production Build
 
 ```bash
-pnpm build       # Compile TypeScript → dist/
+pnpm build       # Build deps + web + bundle
 pnpm start       # Run compiled version
 ```
 
-## Global Install (future)
+## Global Install (npm)
 
 ```bash
-npm install -g @stargazer/cli
+npm install -g stargazer
 stargazer        # Run from anywhere
 ```
 
 ## Exit
 
-Press `Ctrl+C` to stop both servers. Exit code 143 is normal (SIGTERM).
+Press `Ctrl+C` or `Esc` to stop.
 
 ## Architecture
 
 ```
 src/
-  index.tsx                    # Entry point
-  app.tsx                      # UI components (Banner, StatusDisplay)
-  config.ts                    # Ports and paths
-  hooks/
-    use-server-processes.ts    # Process management with execa
+  index.tsx                 # Entry point (dev/prod mode)
+  config.ts                 # Ports + paths
+  app/
+    index.tsx               # App layout + router shell
+    app-router.tsx          # Dev/prod switch (future router)
+    dev-app.tsx             # Dev UI
+    api-server.ts           # Dev API (child process)
+    web-server.ts           # Dev web (child process)
+    prod-app.tsx            # Prod UI
+    embedded-server.ts      # Prod server (static files)
+  hooks/                    # CLI hooks
+  lib/                      # Process server controller
+  ui/                       # UI pieces (logo, status)
 ```
-
-## Cross-Platform
-
-Uses `execa` for Windows/Linux/Mac compatibility.
