@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState } from "react";
+import { useState } from "react";
 import type { TrustCapabilities } from "@/types/config";
 import { Badge, Callout, Button } from "@/components/ui";
 import { CheckboxGroup, CheckboxItem } from "@/components/ui/form";
@@ -17,9 +17,13 @@ export interface TrustPermissionsContentProps {
 }
 
 const CAPABILITIES = [
-  { id: "readFiles", label: "Read repository files", description: "Access source code and configuration files" },
-  { id: "readGit", label: "Read git metadata", description: "Access commit history, branches, and tags" },
-  { id: "runCommands", label: "Run commands (tests/lint)", description: "Execute shell scripts and commands" },
+  {
+    id: "readFiles",
+    label: "Repository access (files + git metadata)",
+    description: "Read files and git metadata for reviews",
+    disabled: false,
+  },
+  { id: "runCommands", label: "Run commands (tests/lint)", description: "Currently unavailable", disabled: true },
 ] as const;
 
 export function TrustPermissionsContent({
@@ -47,22 +51,18 @@ export function TrustPermissionsContent({
     onRevoke,
   });
 
-  const selectedCapabilities = useMemo(
-    () => Object.entries(value).filter(([_, v]) => v).map(([k]) => k),
-    [value]
-  );
+  const selectedCapabilities = value.readFiles ? ["readFiles"] : [];
 
-  const handleBoundaryReached = useCallback((dir: 'up' | 'down') => {
-    if (dir === 'down' && showActions) {
-      setFocusZone('buttons');
+  const handleBoundaryReached = (dir: "up" | "down") => {
+    if (dir === "down" && showActions) {
+      setFocusZone("buttons");
     }
-  }, [showActions]);
+  };
 
   const handleValueChange = (selected: string[]) => {
     onChange({
       readFiles: selected.includes("readFiles"),
-      readGit: selected.includes("readGit"),
-      runCommands: selected.includes("runCommands"),
+      runCommands: false,
     });
   };
 
@@ -91,23 +91,20 @@ export function TrustPermissionsContent({
         onBoundaryReached={handleBoundaryReached}
         disabled={focusZone !== 'list'}
       >
-        {CAPABILITIES.map(({ id, label, description }) => (
+        {CAPABILITIES.map(({ id, label, description, disabled }) => (
           <CheckboxItem
             key={id}
             value={id}
-            label={
-              <span className={id === "runCommands" && value.runCommands ? "text-tui-yellow" : undefined}>
-                {label}
-              </span>
-            }
+            label={label}
             description={description}
+            disabled={disabled}
           />
         ))}
       </CheckboxGroup>
 
       {/* Security Warning - always visible */}
       <Callout variant="warning" title="SECURITY WARNING">
-        Enabling 'Run commands' allows the AI to execute shell scripts.
+        Run commands is currently unavailable. When enabled, it allows the AI to execute shell scripts.
         This grants significant access to your system.
       </Callout>
 

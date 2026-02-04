@@ -22,7 +22,6 @@ export interface ProviderStatus {
 
 export interface TrustCapabilities {
   readFiles: boolean;
-  readGit: boolean;
   runCommands: boolean;
 }
 

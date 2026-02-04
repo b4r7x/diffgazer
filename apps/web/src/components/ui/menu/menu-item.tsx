@@ -46,21 +46,27 @@ export function MenuItem({
     ? "px-4 py-4 flex justify-between items-center cursor-pointer text-sm w-full border-b border-tui-border last:border-b-0"
     : "px-4 py-3 flex items-center cursor-pointer font-mono w-full";
 
-  let baseTextClass = "text-tui-fg";
-  if (!isHub && isDanger) baseTextClass = "text-tui-red";
+  const baseTextClass = !isHub && isDanger ? "text-tui-red" : "text-tui-fg";
 
-  const stateClasses = isSelected
-    ? cn(selectedBg, "text-black font-bold", isHub && "shadow-[inset_0_0_15px_rgba(0,0,0,0.1)]")
-    : cn(baseTextClass, "hover:bg-tui-selection group transition-colors", !isHub && "duration-75");
+  let stateClasses = cn(baseTextClass, "hover:bg-tui-selection group transition-colors", !isHub && "duration-75");
+  if (disabled) {
+    stateClasses = cn(baseTextClass, "opacity-50", !isHub && "hover:bg-transparent");
+  } else if (isSelected) {
+    stateClasses = cn(
+      selectedBg,
+      "text-black font-bold",
+      isHub && "shadow-[inset_0_0_15px_rgba(0,0,0,0.1)]"
+    );
+  }
 
-  const getValueClasses = () => {
-    if (isSelected) return "font-mono text-xs uppercase tracking-wide";
-    if (valueVariant === "success-badge") {
-      return "text-tui-green font-mono text-xs border border-tui-green/30 bg-tui-green/10 px-2 py-0.5 rounded";
-    }
-    if (valueVariant === "success") return "text-tui-violet font-mono text-xs";
-    return "text-gray-500 font-mono text-xs";
-  };
+  let valueClasses = "text-gray-500 font-mono text-xs";
+  if (isSelected) {
+    valueClasses = "font-mono text-xs uppercase tracking-wide";
+  } else if (valueVariant === "success-badge") {
+    valueClasses = "text-tui-green font-mono text-xs border border-tui-green/30 bg-tui-green/10 px-2 py-0.5 rounded";
+  } else if (valueVariant === "success") {
+    valueClasses = "text-tui-violet font-mono text-xs";
+  }
 
   const indicatorColor = isDanger ? "text-tui-red" : "text-tui-blue";
 
@@ -70,7 +76,7 @@ export function MenuItem({
       aria-selected={isSelected}
       aria-disabled={disabled}
       onClick={handleClick}
-      className={cn(baseClasses, stateClasses, disabled && "opacity-50 cursor-not-allowed", className)}
+      className={cn(baseClasses, stateClasses, disabled && "cursor-not-allowed", className)}
     >
       {isHub ? (
         <>
@@ -87,7 +93,7 @@ export function MenuItem({
             </span>
             <span className={cn(isSelected ? "" : "font-medium group-hover:text-white")}>{children}</span>
           </div>
-          {value && <div className={getValueClasses()}>{value}</div>}
+          {value && <div className={valueClasses}>{value}</div>}
         </>
       ) : (
         <>

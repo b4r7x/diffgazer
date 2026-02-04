@@ -99,6 +99,7 @@ configRouter.post(
   zValidator("param", providerParamSchema),
   zValidator("json", activateProviderBodySchema, (result, c) => {
     if (!result.success) return invalidBodyResponse(c);
+    return;
   }),
   (c): Response => {
     const { providerId } = c.req.valid("param");

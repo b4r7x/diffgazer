@@ -3,7 +3,6 @@ import {
   GEMINI_MODELS,
   GeminiModelSchema,
   GLM_MODELS,
-  GLM_ENDPOINTS,
   OpenRouterModelSchema,
   OpenRouterModelCacheSchema,
   AIProviderSchema,
@@ -19,7 +18,7 @@ import {
 } from "./config.js";
 
 describe("AIProviderSchema", () => {
-  it.each(["gemini", "openai", "anthropic", "glm", "openrouter"])(
+  it.each(["gemini", "zai", "zai-coding", "openrouter"])(
     "accepts valid provider: %s",
     (provider) => {
       const result = AIProviderSchema.safeParse(provider);
@@ -54,7 +53,7 @@ describe("GeminiModelSchema", () => {
   );
 });
 
-describe("GLM_MODELS and GLM_ENDPOINTS", () => {
+describe("GLM_MODELS", () => {
   it.each([...GLM_MODELS])(
     "GLM_MODELS contains valid model: %s",
     (model) => {
@@ -64,17 +63,6 @@ describe("GLM_MODELS and GLM_ENDPOINTS", () => {
 
   it("GLM_MODELS has expected models", () => {
     expect(GLM_MODELS).toEqual(["glm-4.7", "glm-4.6"]);
-  });
-
-  it.each([...GLM_ENDPOINTS])(
-    "GLM_ENDPOINTS contains valid endpoint: %s",
-    (endpoint) => {
-      expect(GLM_ENDPOINTS).toContain(endpoint);
-    }
-  );
-
-  it("GLM_ENDPOINTS has expected endpoints", () => {
-    expect(GLM_ENDPOINTS).toEqual(["coding", "standard"]);
   });
 });
 
@@ -195,30 +183,20 @@ describe("ProviderInfoSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("accepts valid openai provider info", () => {
+  it("accepts valid z.ai provider info", () => {
     const result = ProviderInfoSchema.safeParse({
-      id: "openai",
-      name: "OpenAI",
-      defaultModel: "gpt-4o",
-      models: ["gpt-4o", "gpt-4o-mini"],
+      id: "zai",
+      name: "Z.AI",
+      defaultModel: "glm-4.7",
+      models: ["glm-4.7", "glm-4.6"],
     });
     expect(result.success).toBe(true);
   });
 
-  it("accepts valid anthropic provider info", () => {
+  it("accepts valid z.ai coding provider info", () => {
     const result = ProviderInfoSchema.safeParse({
-      id: "anthropic",
-      name: "Anthropic",
-      defaultModel: "claude-sonnet-4-20250514",
-      models: ["claude-sonnet-4-20250514", "claude-3-5-sonnet-20241022"],
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("accepts valid glm provider info", () => {
-    const result = ProviderInfoSchema.safeParse({
-      id: "glm",
-      name: "GLM (Z.ai)",
+      id: "zai-coding",
+      name: "Z.AI Coding Plan",
       defaultModel: "glm-4.7",
       models: ["glm-4.7", "glm-4.6"],
     });
@@ -267,16 +245,16 @@ describe("UserConfigSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("accepts valid glm config with endpoint", () => {
+  it("accepts valid z.ai config", () => {
     const result = UserConfigSchema.safeParse(
-      createBaseUserConfig({ provider: "glm", model: "glm-4.7", glmEndpoint: "coding" })
+      createBaseUserConfig({ provider: "zai", model: "glm-4.7" })
     );
     expect(result.success).toBe(true);
   });
 
-  it("accepts valid glm config with standard endpoint", () => {
+  it("accepts valid z.ai coding config", () => {
     const result = UserConfigSchema.safeParse(
-      createBaseUserConfig({ provider: "glm", model: "glm-4.6", glmEndpoint: "standard" })
+      createBaseUserConfig({ provider: "zai-coding", model: "glm-4.6" })
     );
     expect(result.success).toBe(true);
   });
@@ -329,20 +307,30 @@ describe("UserConfigSchema", () => {
     );
 
     it.each([...GLM_MODELS])(
-      "accepts valid glm model: %s",
+      "accepts valid z.ai model: %s",
       (model) => {
         const result = UserConfigSchema.safeParse(
-          createBaseUserConfig({ provider: "glm", model })
+          createBaseUserConfig({ provider: "zai", model })
+        );
+        expect(result.success).toBe(true);
+      }
+    );
+
+    it.each([...GLM_MODELS])(
+      "accepts valid z.ai coding model: %s",
+      (model) => {
+        const result = UserConfigSchema.safeParse(
+          createBaseUserConfig({ provider: "zai-coding", model })
         );
         expect(result.success).toBe(true);
       }
     );
 
     it.each(["gpt-4", "gemini-2.5-flash", "claude-3-opus", "invalid-model"])(
-      "rejects invalid model for glm provider: %s",
+      "rejects invalid model for z.ai provider: %s",
       (model) => {
         const result = UserConfigSchema.safeParse(
-          createBaseUserConfig({ provider: "glm", model })
+          createBaseUserConfig({ provider: "zai", model })
         );
         expect(result.success).toBe(false);
         if (!result.success) {
@@ -354,15 +342,32 @@ describe("UserConfigSchema", () => {
       }
     );
 
-    it.each(["openai/gpt-4o", "anthropic/claude-3-opus", "meta-llama/llama-3.1-8b-instruct:free"])(
-      "accepts any model for openrouter provider: %s",
+    it.each(["gpt-4", "gemini-2.5-flash", "claude-3-opus", "invalid-model"])(
+      "rejects invalid model for z.ai coding provider: %s",
       (model) => {
         const result = UserConfigSchema.safeParse(
-          createBaseUserConfig({ provider: "openrouter", model })
+          createBaseUserConfig({ provider: "zai-coding", model })
         );
-        expect(result.success).toBe(true);
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.error.issues[0]?.path).toContain("model");
+          expect(result.error.issues[0]?.message).toBe(
+            "Model is not valid for the selected provider"
+          );
+        }
       }
     );
+
+    it.each([
+      "openai/gpt-4o",
+      "anthropic/claude-3-opus",
+      "meta-llama/llama-3.1-8b-instruct:free",
+    ])("accepts any model for openrouter provider: %s", (model) => {
+      const result = UserConfigSchema.safeParse(
+        createBaseUserConfig({ provider: "openrouter", model })
+      );
+      expect(result.success).toBe(true);
+    });
   });
 });
 
@@ -381,16 +386,16 @@ describe("SaveConfigRequestSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("accepts valid glm request with endpoint", () => {
+  it("accepts valid z.ai request", () => {
     const result = SaveConfigRequestSchema.safeParse(
-      createBaseSaveConfigRequest({ provider: "glm", model: "glm-4.7", glmEndpoint: "coding" })
+      createBaseSaveConfigRequest({ provider: "zai", model: "glm-4.7" })
     );
     expect(result.success).toBe(true);
   });
 
-  it("accepts valid glm request with standard endpoint", () => {
+  it("accepts valid z.ai coding request", () => {
     const result = SaveConfigRequestSchema.safeParse(
-      createBaseSaveConfigRequest({ provider: "glm", glmEndpoint: "standard" })
+      createBaseSaveConfigRequest({ provider: "zai-coding", model: "glm-4.6" })
     );
     expect(result.success).toBe(true);
   });

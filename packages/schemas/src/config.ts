@@ -7,7 +7,7 @@ import {
 } from "./errors.js";
 import { SettingsConfigSchema, TrustConfigSchema } from "./settings.js";
 
-export const AI_PROVIDERS = ["gemini", "openai", "anthropic", "glm", "openrouter"] as const;
+export const AI_PROVIDERS = ["gemini", "zai", "zai-coding", "openrouter"] as const;
 export const AIProviderSchema = z.enum(AI_PROVIDERS);
 export type AIProvider = z.infer<typeof AIProviderSchema>;
 
@@ -65,89 +65,6 @@ export const GEMINI_MODEL_INFO: Record<GeminiModel, ModelInfo> = {
   },
 };
 
-export const OPENAI_MODELS = [
-  "gpt-4o",
-  "gpt-4o-mini",
-  "gpt-4-turbo",
-  "o1-preview",
-  "o1-mini",
-] as const;
-
-export const OpenAIModelSchema = z.enum(OPENAI_MODELS);
-export type OpenAIModel = z.infer<typeof OpenAIModelSchema>;
-
-export const OPENAI_MODEL_INFO: Record<OpenAIModel, ModelInfo> = {
-  "gpt-4o": {
-    id: "gpt-4o",
-    name: "GPT-4o",
-    description: "Most capable multimodal model",
-    tier: "paid",
-    recommended: true,
-  },
-  "gpt-4o-mini": {
-    id: "gpt-4o-mini",
-    name: "GPT-4o Mini",
-    description: "Fast and affordable for lighter tasks",
-    tier: "paid",
-  },
-  "gpt-4-turbo": {
-    id: "gpt-4-turbo",
-    name: "GPT-4 Turbo",
-    description: "High intelligence with vision capabilities",
-    tier: "paid",
-  },
-  "o1-preview": {
-    id: "o1-preview",
-    name: "o1 Preview",
-    description: "Advanced reasoning model",
-    tier: "paid",
-  },
-  "o1-mini": {
-    id: "o1-mini",
-    name: "o1 Mini",
-    description: "Fast reasoning model",
-    tier: "paid",
-  },
-};
-
-export const ANTHROPIC_MODELS = [
-  "claude-sonnet-4-20250514",
-  "claude-3-5-sonnet-20241022",
-  "claude-3-5-haiku-20241022",
-  "claude-3-opus-20240229",
-] as const;
-
-export const AnthropicModelSchema = z.enum(ANTHROPIC_MODELS);
-export type AnthropicModel = z.infer<typeof AnthropicModelSchema>;
-
-export const ANTHROPIC_MODEL_INFO: Record<AnthropicModel, ModelInfo> = {
-  "claude-sonnet-4-20250514": {
-    id: "claude-sonnet-4-20250514",
-    name: "Claude Sonnet 4",
-    description: "Latest Sonnet with improved reasoning",
-    tier: "paid",
-    recommended: true,
-  },
-  "claude-3-5-sonnet-20241022": {
-    id: "claude-3-5-sonnet-20241022",
-    name: "Claude 3.5 Sonnet",
-    description: "Excellent balance of intelligence and speed",
-    tier: "paid",
-  },
-  "claude-3-5-haiku-20241022": {
-    id: "claude-3-5-haiku-20241022",
-    name: "Claude 3.5 Haiku",
-    description: "Fast and efficient for simple tasks",
-    tier: "paid",
-  },
-  "claude-3-opus-20240229": {
-    id: "claude-3-opus-20240229",
-    name: "Claude 3 Opus",
-    description: "Most powerful for complex analysis",
-    tier: "paid",
-  },
-};
-
 export const GLM_MODELS = ["glm-4.7", "glm-4.6"] as const;
 export type GLMModel = (typeof GLM_MODELS)[number];
 
@@ -167,9 +84,6 @@ export const GLM_MODEL_INFO: Record<GLMModel, ModelInfo> = {
     recommended: false,
   },
 };
-
-export const GLM_ENDPOINTS = ["coding", "standard"] as const;
-export type GLMEndpoint = (typeof GLM_ENDPOINTS)[number];
 
 export const OpenRouterModelSchema = z.object({
   id: z.string(),
@@ -208,20 +122,14 @@ export const AVAILABLE_PROVIDERS: ProviderInfo[] = [
     models: [...GEMINI_MODELS],
   },
   {
-    id: "openai",
-    name: "OpenAI",
-    defaultModel: "gpt-4o",
-    models: [...OPENAI_MODELS],
+    id: "zai",
+    name: "Z.AI",
+    defaultModel: "glm-4.7",
+    models: [...GLM_MODELS],
   },
   {
-    id: "anthropic",
-    name: "Anthropic",
-    defaultModel: "claude-sonnet-4-20250514",
-    models: [...ANTHROPIC_MODELS],
-  },
-  {
-    id: "glm",
-    name: "GLM (Z.ai)",
+    id: "zai-coding",
+    name: "Z.AI Coding Plan",
     defaultModel: "glm-4.7",
     models: [...GLM_MODELS],
   },
@@ -237,16 +145,13 @@ function isValidModelForProvider(provider: AIProvider, model: string): boolean {
   switch (provider) {
     case "gemini":
       return GEMINI_MODELS.includes(model as GeminiModel);
-    case "openai":
-      return OPENAI_MODELS.includes(model as OpenAIModel);
-    case "anthropic":
-      return ANTHROPIC_MODELS.includes(model as AnthropicModel);
-    case "glm":
+    case "zai":
+    case "zai-coding":
       return GLM_MODELS.includes(model as GLMModel);
     case "openrouter":
-      return true; // Dynamic models, validated elsewhere
-    default:
       return true;
+    default:
+      return false;
   }
 }
 
@@ -254,7 +159,6 @@ export const UserConfigSchema = z
   .object({
     provider: AIProviderSchema,
     model: z.string().optional(),
-    glmEndpoint: z.enum(GLM_ENDPOINTS).optional(),
     ...timestampFields,
   })
   .refine((data) => !data.model || isValidModelForProvider(data.provider, data.model), {
@@ -285,7 +189,6 @@ export const SaveConfigRequestSchema = z.object({
   provider: AIProviderSchema,
   apiKey: z.string().min(1),
   model: z.string().optional(),
-  glmEndpoint: z.enum(GLM_ENDPOINTS).optional(),
 });
 export type SaveConfigRequest = z.infer<typeof SaveConfigRequestSchema>;
 
@@ -342,9 +245,8 @@ export type ProjectInfo = z.infer<typeof ProjectInfoSchema>;
 
 export const PROVIDER_ENV_VARS: Record<AIProvider, string> = {
   gemini: 'GOOGLE_API_KEY',
-  openai: 'OPENAI_API_KEY',
-  anthropic: 'ANTHROPIC_API_KEY',
-  glm: 'GLM_API_KEY',
+  zai: 'ZAI_API_KEY',
+  'zai-coding': 'ZAI_API_KEY',
   openrouter: 'OPENROUTER_API_KEY',
 };
 
@@ -380,27 +282,7 @@ export const PROVIDER_CAPABILITIES: Record<AIProvider, {
     capabilities: ['TOOLS', 'JSON', 'FAST'],
     costDescription: 'Free tier available for Gemini 1.5 Flash and Pro within rate limits. Paid tier offers higher throughput and per-token billing for commercial use.',
   },
-  openai: {
-    toolCalling: 'Supported (Native)',
-    jsonMode: 'Supported (JSON mode)',
-    streaming: 'Server-Sent Events',
-    contextWindow: '128K Tokens',
-    tier: 'paid',
-    tierBadge: 'PAID',
-    capabilities: ['TOOLS', 'JSON', 'VISION'],
-    costDescription: 'Pay-per-token pricing. GPT-4o offers best value for code review tasks.',
-  },
-  anthropic: {
-    toolCalling: 'Supported (Native)',
-    jsonMode: 'Supported (JSON mode)',
-    streaming: 'Server-Sent Events',
-    contextWindow: '200K Tokens',
-    tier: 'paid',
-    tierBadge: 'PAID',
-    capabilities: ['TOOLS', 'VISION', 'LONG-CTX'],
-    costDescription: 'Pay-per-token pricing. Claude excels at nuanced code analysis.',
-  },
-  glm: {
+  zai: {
     toolCalling: 'Supported (Native)',
     jsonMode: 'Supported',
     streaming: 'Server-Sent Events',
@@ -408,7 +290,17 @@ export const PROVIDER_CAPABILITIES: Record<AIProvider, {
     tier: 'paid',
     tierBadge: 'PAID',
     capabilities: ['FAST', 'TOOLS'],
-    costDescription: 'Competitive pricing for GLM-4.7 with excellent code understanding.',
+    costDescription: 'Z.AI standard endpoint for GLM models.',
+  },
+  "zai-coding": {
+    toolCalling: 'Supported (Native)',
+    jsonMode: 'Supported',
+    streaming: 'Server-Sent Events',
+    contextWindow: '200K Tokens',
+    tier: 'paid',
+    tierBadge: 'PAID',
+    capabilities: ['FAST', 'TOOLS'],
+    costDescription: 'Z.AI coding endpoint optimized for code-centric workloads.',
   },
   openrouter: {
     toolCalling: 'Varies by model',
