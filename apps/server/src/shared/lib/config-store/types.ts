@@ -1,13 +1,20 @@
+import type {
+  ProjectInfo,
+  ProviderStatus,
+  SecretsStorage,
+  SettingsConfig,
+  TrustCapabilities,
+  TrustConfig,
+} from "@stargazer/api";
+
 export type {
   ProjectInfo,
   ProviderStatus,
   SecretsStorage,
   SettingsConfig,
-  Theme,
   TrustCapabilities,
   TrustConfig,
-  TrustMode,
-} from "@stargazer/api";
+};
 
 export interface ConfigState {
   settings: SettingsConfig;

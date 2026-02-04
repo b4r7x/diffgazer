@@ -1,4 +1,4 @@
-export type SecretsStorageErrorCode =
+type SecretsStorageErrorCode =
   | "KEYRING_UNAVAILABLE"
   | "KEYRING_READ_FAILED"
   | "KEYRING_WRITE_FAILED"

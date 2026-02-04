@@ -1,19 +1,74 @@
 import { z } from "zod";
-import type { Result } from "../result.js";
-import { ok, err } from "../result.js";
+import { type Result, ok, err } from "@stargazer/core";
 import { escapeXml } from "../../utils/sanitization.js";
-import type { AIClient, AIError } from "../ai/index.js";
-import type { ParsedDiff } from "../diff/index.js";
-import type { TriageIssue, TriageResult } from "@stargazer/schemas/triage";
+import type { AIClient, AIError } from "../ai/types.js";
+import type { FileDiff, ParsedDiff } from "../diff/types.js";
+import type { TraceRef, TriageIssue, TriageResult } from "@stargazer/schemas/triage";
 import type { DrilldownResult } from "@stargazer/schemas/lens";
 import type { AgentStreamEvent } from "@stargazer/schemas/agent-event";
-import { TraceRecorder } from "./trace-recorder.js";
 
 function now(): string {
   return new Date().toISOString();
 }
 
-export type DrilldownError = AIError | { code: "ISSUE_NOT_FOUND"; message: string };
+function summarizeOutput(value: unknown): string {
+  if (value === null || value === undefined) {
+    return String(value);
+  }
+
+  if (typeof value === "string") {
+    const lines = value.split("\n").length;
+    const chars = value.length;
+    if (chars > 100) {
+      return `${chars} chars, ${lines} lines`;
+    }
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return `Array[${value.length}]`;
+  }
+
+  if (typeof value === "object") {
+    const keys = Object.keys(value);
+    return `Object{${keys.slice(0, 3).join(", ")}${keys.length > 3 ? ", ..." : ""}}`;
+  }
+
+  return String(value);
+}
+
+class TraceRecorder {
+  private steps: TraceRef[] = [];
+
+  async wrap<T>(toolName: string, inputSummary: string, fn: () => Promise<T>): Promise<T> {
+    const step = this.steps.length + 1;
+    const timestamp = new Date().toISOString();
+
+    const result = await fn();
+
+    const trace: TraceRef = {
+      step,
+      tool: toolName,
+      inputSummary,
+      outputSummary: summarizeOutput(result),
+      timestamp,
+    };
+
+    this.steps.push(trace);
+
+    return result;
+  }
+
+  getTrace(): TraceRef[] {
+    return [...this.steps];
+  }
+
+  clear(): void {
+    this.steps = [];
+  }
+}
+
+type DrilldownError = AIError | { code: "ISSUE_NOT_FOUND"; message: string };
 
 const DrilldownResponseSchema = z.object({
   detailedAnalysis: z.string(),
@@ -25,8 +80,10 @@ const DrilldownResponseSchema = z.object({
   references: z.array(z.string()),
 });
 
+type DrilldownResponse = z.infer<typeof DrilldownResponseSchema>;
+
 function buildDrilldownPrompt(issue: TriageIssue, diff: ParsedDiff, allIssues: TriageIssue[]): string {
-  const targetFile = diff.files.find((f) => f.filePath === issue.file);
+  const targetFile = diff.files.find((f: FileDiff) => f.filePath === issue.file);
   const fileDiff = targetFile ? escapeXml(targetFile.rawDiff) : "File diff not available";
 
   const otherIssuesSummary = allIssues
@@ -90,7 +147,7 @@ Provide a deep analysis of this issue:
 Respond with JSON matching this schema.`;
 }
 
-export interface DrilldownOptions {
+interface DrilldownOptions {
   traceRecorder?: TraceRecorder;
   onEvent?: (event: AgentStreamEvent) => void;
 }
@@ -105,7 +162,7 @@ async function drilldownIssue(
   const recorder = options?.traceRecorder ?? new TraceRecorder();
   const onEvent = options?.onEvent ?? (() => {});
 
-  const targetFile = diff.files.find((f) => f.filePath === issue.file);
+  const targetFile = diff.files.find((f: FileDiff) => f.filePath === issue.file);
   if (targetFile) {
     const lineCount = targetFile.rawDiff.split("\n").length;
     const startLine = issue.line_start ?? targetFile.hunks[0]?.newStart ?? 1;
@@ -130,7 +187,7 @@ async function drilldownIssue(
 
   const prompt = buildDrilldownPrompt(issue, diff, allIssues);
 
-  const result = await recorder.wrap(
+  const result: Result<DrilldownResponse, AIError> = await recorder.wrap(
     "generateAnalysis",
     `issue analysis: ${issue.id} - ${issue.title}`,
     () => client.generate(prompt, DrilldownResponseSchema)

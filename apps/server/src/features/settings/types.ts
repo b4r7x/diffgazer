@@ -1,3 +1,3 @@
-import type { SettingsConfig } from "../../shared/lib/config-store/index.js";
+import type { SettingsConfig } from "../../shared/lib/config-store/types.js";
 
 export type { SettingsConfig };

@@ -8,7 +8,7 @@ const DEFAULT_RUBRIC: SeverityRubric = {
   nit: "Style preference or minor improvement suggestion",
 };
 
-export const correctnessLens: Lens = {
+const correctnessLens: Lens = {
   id: "correctness",
   name: "Correctness",
   description: "Analyzes code for logical errors, edge cases, and potential bugs",
@@ -42,7 +42,7 @@ IMPORTANT SECURITY INSTRUCTIONS:
   },
 };
 
-export const securityLens: Lens = {
+const securityLens: Lens = {
   id: "security",
   name: "Security",
   description: "Identifies security vulnerabilities, injection risks, and auth issues",
@@ -77,7 +77,7 @@ IMPORTANT SECURITY INSTRUCTIONS:
   },
 };
 
-export const performanceLens: Lens = {
+const performanceLens: Lens = {
   id: "performance",
   name: "Performance",
   description: "Detects performance issues, memory leaks, and inefficiencies",
@@ -111,7 +111,7 @@ IMPORTANT SECURITY INSTRUCTIONS:
   },
 };
 
-export const simplicityLens: Lens = {
+const simplicityLens: Lens = {
   id: "simplicity",
   name: "Simplicity",
   description: "Reviews code for unnecessary complexity and maintainability issues",
@@ -146,7 +146,7 @@ IMPORTANT SECURITY INSTRUCTIONS:
   },
 };
 
-export const testsLens: Lens = {
+const testsLens: Lens = {
   id: "tests",
   name: "Tests",
   description: "Evaluates test coverage, quality, and testing best practices",

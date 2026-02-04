@@ -8,8 +8,6 @@ import {
   writeKeyringSecret,
 } from "./keyring.js";
 import {
-  DEFAULT_PROVIDERS,
-  DEFAULT_SETTINGS,
   loadConfig,
   loadSecrets,
   loadTrust,
@@ -323,41 +321,3 @@ export const deleteProviderCredentials = (providerId: AIProvider): boolean => {
   persistConfig(configState);
   return providerExists || hadSecret;
 };
-
-export const resetConfigStore = (): void => {
-  const previousProviders = configState.providers;
-  if (resolveSecretsStorage(configState.settings.secretsStorage) === "keyring") {
-    for (const provider of previousProviders) {
-      try {
-        deleteKeyringSecret(getApiKeyName(provider.provider));
-      } catch (error) {
-        console.warn(
-          `[stargazer] Failed to delete keyring secret for '${provider.provider}': ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
-      }
-    }
-  }
-
-  configState = {
-    settings: { ...DEFAULT_SETTINGS },
-    providers: DEFAULT_PROVIDERS.map((provider) => ({ ...provider })),
-  };
-  secretsState = { providers: {} };
-  trustState = { projects: {} };
-
-  persistConfig(configState);
-  persistSecrets(secretsState);
-  persistTrust(trustState);
-};
-
-export const getStoreSnapshot = (): {
-  config: ConfigState;
-  secrets: SecretsState;
-  trust: TrustState;
-} => ({
-  config: configState,
-  secrets: secretsState,
-  trust: trustState,
-});

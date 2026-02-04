@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { paths } from "./paths.js";
-import { createCollection, filterByProjectAndSort, type StoreError } from "./persistence.js";
+import { join } from "node:path";
 import {
   SavedReviewSchema,
   type SavedReview,
@@ -8,13 +7,18 @@ import {
   type ReviewGitContext,
   type ReviewResult,
 } from "@stargazer/schemas";
-import type { Result } from "../result.js";
-import { ok } from "../result.js";
+import { createCollection, filterByProjectAndSort, type StoreError } from "./persistence.js";
+import { getGlobalStargazerDir } from "../paths.js";
+import { type Result, ok } from "@stargazer/core";
+
+const REVIEWS_DIR = join(getGlobalStargazerDir(), "reviews");
+const getReviewFile = (reviewId: string): string =>
+  join(REVIEWS_DIR, `${reviewId}.json`);
 
 export const reviewStore = createCollection<SavedReview, ReviewHistoryMetadata>({
   name: "review",
-  dir: paths.reviews,
-  filePath: paths.reviewFile,
+  dir: REVIEWS_DIR,
+  filePath: getReviewFile,
   schema: SavedReviewSchema,
   getMetadata: (review) => review.metadata,
   getId: (review) => review.metadata.id,
