@@ -11,6 +11,7 @@ export type {
   ProvidersStatusResponse,
   ReviewHistoryMetadata,
   SavedReview,
+  SecretsStorage,
   SaveConfigRequest,
   SettingsConfig,
   StreamOptions,

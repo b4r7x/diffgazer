@@ -4,7 +4,10 @@ import { RootLayout } from "./routes/__root";
 import { HomePage } from "./routes/home";
 import { ReviewPage } from "./routes/review";
 import { SettingsHubPage } from "./routes/settings";
+import { SettingsDiagnosticsPage } from "./routes/settings/diagnostics";
 import { HistoryPage } from "./routes/history";
+import { SettingsStoragePage } from "./routes/settings/storage";
+import { SettingsThemePage } from "./routes/settings/theme";
 import { TrustPermissionsPage } from "./routes/settings/trust-permissions";
 import { ProviderSettingsPage } from "./routes/settings/providers";
 import { HelpPage } from "./routes/help";
@@ -61,8 +64,23 @@ const routeTree = rootRoute.addChildren([
   }),
   createRoute({
     getParentRoute: () => rootRoute,
+    path: "/settings/theme",
+    component: SettingsThemePage,
+  }),
+  createRoute({
+    getParentRoute: () => rootRoute,
     path: "/settings/providers",
     component: ProviderSettingsPage,
+  }),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/settings/storage",
+    component: SettingsStoragePage,
+  }),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/settings/diagnostics",
+    component: SettingsDiagnosticsPage,
   }),
   createRoute({
     getParentRoute: () => rootRoute,

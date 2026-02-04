@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import type { SecretsStorage, SettingsConfig } from "@/types/config";
 import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@/lib/navigation";
 import { useKey, useScope } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
@@ -8,6 +9,7 @@ import { ContextSidebar, HomeMenu } from "@/features/home";
 import { useConfig } from "@/features/settings";
 import { useReviewHistory } from "@/features/review";
 import { useToast } from "@/components/ui";
+import { StorageWizard } from "@/components/settings";
 import type { ContextInfo } from "@/types/ui";
 import { api } from "@/lib/api";
 
@@ -29,6 +31,11 @@ export function HomePage() {
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as { error?: string };
 
+  const [settings, setSettings] = useState<SettingsConfig | null>(null);
+  const [wizardDismissed, setWizardDismissed] = useState(false);
+  const [wizardSaving, setWizardSaving] = useState(false);
+  const [wizardError, setWizardError] = useState<string | null>(null);
+
   const isTrusted = trust !== null;
   const hasLastReview = reviews.length > 0;
 
@@ -41,6 +48,26 @@ export function HomePage() {
     });
     navigate({ to: "/", replace: true });
   }, [search.error, showToast, navigate]);
+
+  useEffect(() => {
+    let active = true;
+
+    api
+      .getSettings()
+      .then((data) => {
+        if (!active) return;
+        setSettings(data);
+      })
+      .catch(() => {
+        if (!active) return;
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const showWizard = settings !== null && !settings.secretsStorage && !wizardDismissed;
 
   const mostRecentReview = reviews[0];
   const context: ContextInfo = {
@@ -57,11 +84,31 @@ export function HomePage() {
 
   const handleQuit = async (): Promise<void> => {
     try {
-      await api.post("/shutdown", {});
+      await api.client.post("/shutdown", {});
     } catch {
       // Server terminates before responding
     }
     window.close();
+  };
+
+  const handleWizardComplete = async (choice: SecretsStorage): Promise<void> => {
+    setWizardSaving(true);
+    setWizardError(null);
+    try {
+      await api.saveSettings({ secretsStorage: choice });
+      setSettings((current) =>
+        current ? { ...current, secretsStorage: choice } : current
+      );
+      setWizardDismissed(true);
+    } catch (err) {
+      setWizardError(err instanceof Error ? err.message : "Failed to save settings");
+    } finally {
+      setWizardSaving(false);
+    }
+  };
+
+  const handleWizardSkip = () => {
+    setWizardDismissed(true);
   };
 
   const handleActivate = (id: string) => {
@@ -92,6 +139,17 @@ export function HomePage() {
   });
   useKey("s", () => navigate({ to: "/settings" }));
   useKey("h", () => handleActivate("help"));
+
+  if (showWizard) {
+    return (
+      <StorageWizard
+        onComplete={handleWizardComplete}
+        onSkip={handleWizardSkip}
+        isLoading={wizardSaving}
+        error={wizardError}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-1 flex-col lg:flex-row items-center lg:items-start justify-start lg:justify-center p-4 md:p-6 lg:p-8 gap-4 md:gap-6 lg:gap-8 overflow-auto">
