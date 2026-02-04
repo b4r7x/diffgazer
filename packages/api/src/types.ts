@@ -103,6 +103,16 @@ export interface ConfigResponse {
   model?: string;
 }
 
+export interface ActivateProviderResponse {
+  provider: AIProvider;
+  model?: string;
+}
+
+export interface DeleteProviderResponse {
+  deleted: boolean;
+  provider: AIProvider;
+}
+
 export interface DeleteConfigResponse {
   deleted: boolean;
 }
@@ -248,6 +258,24 @@ export interface ReviewStreamStatus {
   startedAt?: string;
 }
 
+export type AnnotationLevel = "notice" | "warning" | "failure";
+
+export interface GitHubAnnotation {
+  path: string;
+  start_line: number;
+  end_line: number;
+  annotation_level: AnnotationLevel;
+  message: string;
+  title: string;
+}
+
+export interface InlineComment {
+  path: string;
+  line: number;
+  side: "RIGHT";
+  body: string;
+}
+
 export interface PRReviewResponse {
   summary: string;
   issues: Array<{
@@ -258,18 +286,6 @@ export interface PRReviewResponse {
     message: string;
     suggestion?: string;
   }>;
-  annotations: Array<{
-    path: string;
-    start_line: number;
-    end_line: number;
-    annotation_level: "notice" | "warning" | "failure";
-    message: string;
-    title: string;
-  }>;
-  inlineComments: Array<{
-    path: string;
-    line: number;
-    side: "RIGHT";
-    body: string;
-  }>;
+  annotations: GitHubAnnotation[];
+  inlineComments: InlineComment[];
 }

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
-import type { Shortcut } from "@/types/ui";
+import type { Shortcut } from "@stargazer/schemas/ui";
 
 export type { Shortcut };
 

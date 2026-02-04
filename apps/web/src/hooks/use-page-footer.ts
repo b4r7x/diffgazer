@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useFooter } from "@/components/layout";
-import type { Shortcut } from "@/types/ui";
+import type { Shortcut } from "@stargazer/schemas/ui";
 
 interface PageFooterOptions {
   shortcuts: Shortcut[];

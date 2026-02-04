@@ -11,7 +11,7 @@ import { useReviewHistory } from "@/features/review";
 import { useToast } from "@/components/ui";
 import { StorageWizard } from "@/components/settings";
 import { TrustModal } from "@/components/modals/trust-modal";
-import type { ContextInfo } from "@/types/ui";
+import type { ContextInfo } from "@stargazer/schemas/ui";
 import { api } from "@/lib/api";
 
 type RouteConfig = { to: string; search?: Record<string, string> };
