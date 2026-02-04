@@ -31,7 +31,7 @@ export function TrustPermissionsContent({
   onRevoke,
   isTrusted = false,
   isLoading = false,
-}: TrustPermissionsContentProps): JSX.Element {
+}: TrustPermissionsContentProps) {
   type FocusZone = "list" | "buttons";
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [buttonIndex, setButtonIndex] = useState(0);

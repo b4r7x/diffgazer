@@ -28,7 +28,7 @@ export function InfoField({
   className,
   onClick,
   ariaLabel,
-}: InfoFieldProps): JSX.Element {
+}: InfoFieldProps) {
   const handleKeyDown = (event: KeyboardEvent) => {
     if (onClick && (event.key === "Enter" || event.key === " ")) {
       event.preventDefault();

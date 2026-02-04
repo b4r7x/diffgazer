@@ -24,7 +24,7 @@ export function MenuItem({
   valueVariant = "default",
   children,
   className,
-}: MenuItemProps): JSX.Element | null {
+}: MenuItemProps) {
   const { selectedIndex, onSelect, onActivate, items, variant: menuVariant } = useMenuContext();
 
   const itemData = items.find((item) => item.id === id);

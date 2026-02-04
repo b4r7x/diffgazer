@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 
-import React from "react";
 import { render } from "ink";
 import { App } from "./app/index.js";
-import { CliMode } from "./types/cli.js";
+import type { CliMode } from "./types/cli.js";
 
 function parseCliMode(args: string[]): CliMode {
   return args.includes("--dev") ? "dev" : "prod";

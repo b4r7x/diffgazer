@@ -1,4 +1,4 @@
-import React from "react";
+import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import { useFiglet } from "@stargazer/hooks";
 
@@ -6,7 +6,7 @@ interface LogoProps {
   color?: string;
 }
 
-export function Logo({ color = "cyan" }: LogoProps): React.ReactElement {
+export function Logo({ color = "cyan" }: LogoProps): ReactElement {
   const text = useFiglet("Stargazer", "Big");
 
   if (!text) {
