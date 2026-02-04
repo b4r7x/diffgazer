@@ -2,8 +2,33 @@ import { randomUUID } from "node:crypto";
 import { createGitService } from "../../shared/lib/git/service.js";
 import type { AIClient, AIError } from "../../shared/lib/ai/types.js";
 import { getErrorMessage } from "@stargazer/core";
-import { parseDiff, filterDiffByFiles } from "../../shared/lib/diff/parser.js";
+import { parseDiff } from "../../shared/lib/diff/parser.js";
 import type { ParsedDiff, FileDiff, DiffHunk } from "../../shared/lib/diff/types.js";
+
+function filterDiffByFiles(parsed: ParsedDiff, files: string[]): ParsedDiff {
+  if (files.length === 0) {
+    return parsed;
+  }
+
+  const normalizedFiles = new Set(files.map((f) => f.replace(/^\.\//, "")));
+
+  const filteredFiles = parsed.files.filter((file) => {
+    const normalizedPath = file.filePath.replace(/^\.\//, "");
+    return normalizedFiles.has(normalizedPath);
+  });
+
+  const totalStats = filteredFiles.reduce(
+    (acc, file) => ({
+      filesChanged: acc.filesChanged + 1,
+      additions: acc.additions + file.stats.additions,
+      deletions: acc.deletions + file.stats.deletions,
+      totalSizeBytes: acc.totalSizeBytes + file.stats.sizeBytes,
+    }),
+    { filesChanged: 0, additions: 0, deletions: 0, totalSizeBytes: 0 }
+  );
+
+  return { files: filteredFiles, totalStats };
+}
 import { saveTriageReview } from "../../shared/lib/storage/reviews.js";
 import type { Lens, LensId, ProfileId, ReviewProfile, SeverityRubric } from "@stargazer/schemas/lens";
 import { ErrorCode } from "@stargazer/schemas/errors";
