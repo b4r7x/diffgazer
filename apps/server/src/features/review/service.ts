@@ -1,9 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { createGitService } from "../../shared/lib/services/git.js";
+import { createGitService } from "../../shared/lib/git/service.js";
 import type { AIClient, StreamCallbacks } from "../../shared/lib/ai/types.js";
-import { getErrorMessage } from "../../shared/lib/errors.js";
-import { safeParseJson } from "../../shared/lib/json.js";
+import { getErrorMessage, safeParseJson } from "@stargazer/core";
 import { escapeXml, sanitizeUnicode } from "../../shared/utils/sanitization.js";
 import { validateSchema } from "../../shared/lib/validation.js";
 import { parseDiff } from "../../shared/lib/diff/parser.js";
@@ -21,8 +20,8 @@ import {
 } from "@stargazer/schemas";
 import { ReviewResultSchema, type ReviewResult } from "@stargazer/schemas/review";
 import { ErrorCode } from "@stargazer/schemas/errors";
-import type { SSEWriter } from "../../shared/lib/ai-client.js";
-import { writeSSEChunk, writeSSEComplete, writeSSEError } from "../../shared/lib/sse-helpers.js";
+import type { SSEWriter } from "../../shared/lib/ai/client.js";
+import { writeSSEChunk, writeSSEComplete, writeSSEError } from "../../shared/lib/http/sse.js";
 import { type Result, ok } from "@stargazer/core";
 
 type GitDiffErrorCode =

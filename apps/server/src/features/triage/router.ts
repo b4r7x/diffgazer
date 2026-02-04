@@ -9,25 +9,25 @@ import type { LensId, ProfileId, DrilldownResult } from "@stargazer/schemas/lens
 import type { ReviewMode } from "@stargazer/schemas/triage-storage";
 import type { TraceRef, TriageIssue, TriageResult } from "@stargazer/schemas/triage";
 import type { AgentStreamEvent } from "@stargazer/schemas/agent-event";
-import { errorResponse, handleStoreError, zodErrorHandler } from "../../shared/lib/response.js";
-import { getErrorMessage } from "../../shared/lib/errors.js";
+import { errorResponse, handleStoreError, zodErrorHandler } from "../../shared/lib/http/response.js";
+import { getErrorMessage } from "@stargazer/core";
 import { parseDiff } from "../../shared/lib/diff/parser.js";
 import type { FileDiff, ParsedDiff } from "../../shared/lib/diff/types.js";
-import { createGitService } from "../../shared/lib/services/git.js";
+import { createGitService } from "../../shared/lib/git/service.js";
 import { escapeXml } from "../../shared/utils/sanitization.js";
 import type { AIClient, AIError } from "../../shared/lib/ai/types.js";
-import { writeSSEError } from "../../shared/lib/sse-helpers.js";
-import { getProjectRoot } from "../../shared/lib/request.js";
+import { writeSSEError } from "../../shared/lib/http/sse.js";
+import { getProjectRoot } from "../../shared/lib/http/request.js";
 import { isValidProjectPath } from "../../shared/lib/validation.js";
-import { requireRepoAccess } from "../../shared/lib/trust-guard.js";
+import { requireRepoAccess } from "../../shared/lib/middleware/trust-guard.js";
 import {
   addDrilldownToReview,
   deleteTriageReview,
   getTriageReview,
   listTriageReviews,
-} from "../../shared/lib/storage/review-storage.js";
+} from "../../shared/lib/storage/reviews.js";
 import { DrilldownRequestSchema, TriageReviewIdParamSchema } from "./schemas.js";
-import { initializeAIClient } from "../../shared/lib/ai-client.js";
+import { initializeAIClient } from "../../shared/lib/ai/client.js";
 import { streamTriageToSSE } from "./service.js";
 
 function now(): string {

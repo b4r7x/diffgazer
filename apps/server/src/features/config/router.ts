@@ -15,9 +15,9 @@ import {
   getProvidersStatus,
   saveConfig,
 } from "./service.js";
-import { SecretsStorageError } from "../../shared/lib/config-store/errors.js";
-import { errorResponse } from "../../shared/lib/error-response.js";
-import { getProjectRoot } from "../../shared/lib/request.js";
+import { SecretsStorageError } from "../../shared/lib/config/errors.js";
+import { errorResponse } from "../../shared/lib/http/response.js";
+import { getProjectRoot } from "../../shared/lib/http/request.js";
 
 const configRouter = new Hono();
 

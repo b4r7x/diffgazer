@@ -1,5 +1,5 @@
 import type { Context } from "hono";
-import { PROJECT_ROOT_HEADER, resolveProjectRoot } from "./paths.js";
+import { PROJECT_ROOT_HEADER, resolveProjectRoot } from "../paths.js";
 
 export const getProjectRoot = (c: Context): string =>
   resolveProjectRoot({

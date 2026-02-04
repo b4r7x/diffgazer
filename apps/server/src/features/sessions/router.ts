@@ -5,9 +5,9 @@ import { streamSSE } from "hono/streaming";
 import { z } from "zod";
 import { AddMessageRequestSchema, CreateSessionRequestSchema } from "@stargazer/schemas/session";
 import { ErrorCode } from "@stargazer/schemas/errors";
-import { errorResponse, handleStoreError, zodErrorHandler } from "../../shared/lib/response.js";
-import { getErrorMessage } from "../../shared/lib/errors.js";
-import { writeSSEError } from "../../shared/lib/sse-helpers.js";
+import { errorResponse, handleStoreError, zodErrorHandler } from "../../shared/lib/http/response.js";
+import { getErrorMessage } from "@stargazer/core";
+import { writeSSEError } from "../../shared/lib/http/sse.js";
 import { isValidProjectPath } from "../../shared/lib/validation.js";
 import {
   addMessage,

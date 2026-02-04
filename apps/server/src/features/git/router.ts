@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { ErrorCode } from "@stargazer/schemas/errors";
-import { errorResponse } from "../../shared/lib/error-response.js";
-import { getProjectRoot } from "../../shared/lib/request.js";
-import { requireRepoAccess } from "../../shared/lib/trust-guard.js";
+import { errorResponse } from "../../shared/lib/http/response.js";
+import { getProjectRoot } from "../../shared/lib/http/request.js";
+import { requireRepoAccess } from "../../shared/lib/middleware/trust-guard.js";
 import { resolveGitService } from "./service.js";
 import { GitDiffModeSchema, type GitDiffMode } from "./schemas.js";
 

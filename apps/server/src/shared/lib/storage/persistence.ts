@@ -1,10 +1,10 @@
 import { mkdir, readFile, writeFile, readdir, unlink, rename, open } from "node:fs/promises";
 import type { FileHandle } from "node:fs/promises";
 import type { ZodType } from "zod";
-import { type Result, ok, err } from "@stargazer/core";
-import type { AppError } from "../errors.js";
-import { createError, getErrorMessage, isNodeError } from "../errors.js";
-import { safeParseJson } from "../json.js";
+import { type Result, ok, err, type AppError, createError, getErrorMessage, safeParseJson } from "@stargazer/core";
+
+const isNodeError = (error: unknown, code: string): error is NodeJS.ErrnoException =>
+  error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === code;
 import { isValidUuid, parseAndValidate, validateSchema } from "../validation.js";
 
 export type StoreErrorCode =

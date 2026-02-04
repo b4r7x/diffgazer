@@ -1,13 +1,13 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { ErrorCode } from "@stargazer/schemas/errors";
-import { errorResponse } from "../../shared/lib/response.js";
-import { writeSSEError } from "../../shared/lib/sse-helpers.js";
-import { getErrorMessage } from "../../shared/lib/errors.js";
-import { getProjectRoot } from "../../shared/lib/request.js";
-import { initializeAIClient } from "../../shared/lib/ai-client.js";
+import { errorResponse } from "../../shared/lib/http/response.js";
+import { writeSSEError } from "../../shared/lib/http/sse.js";
+import { getErrorMessage } from "@stargazer/core";
+import { getProjectRoot } from "../../shared/lib/http/request.js";
+import { initializeAIClient } from "../../shared/lib/ai/client.js";
 import { streamReviewToSSE } from "./service.js";
-import { requireRepoAccess } from "../../shared/lib/trust-guard.js";
+import { requireRepoAccess } from "../../shared/lib/middleware/trust-guard.js";
 
 const reviewRouter = new Hono();
 
