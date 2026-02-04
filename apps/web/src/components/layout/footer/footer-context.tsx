@@ -17,7 +17,7 @@ const DEFAULT_SHORTCUTS: Shortcut[] = [
   { key: "q", label: "Quit" },
 ];
 
-export function FooterProvider({ children }: { children: ReactNode }): JSX.Element {
+export function FooterProvider({ children }: { children: ReactNode }) {
   const [shortcuts, setShortcuts] = useState<Shortcut[]>(DEFAULT_SHORTCUTS);
   const [rightShortcuts, setRightShortcuts] = useState<Shortcut[]>([]);
 

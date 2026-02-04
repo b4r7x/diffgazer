@@ -16,10 +16,13 @@
   "dependencies": {
     "@hono/node-server": "^1.13.0",
     "@hono/zod-validator": "^0.7.6",
+    "@napi-rs/keyring": "^1.2.0",
     "hono": "^4.6.0",
     "zod": "^4.3.5"
   },
   "devDependencies": {
+    "@napi-rs/keyring": "^1.1.6",
+    "@repo/tsconfig": "workspace:*",
     "@types/node": "^22.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5.7.0"

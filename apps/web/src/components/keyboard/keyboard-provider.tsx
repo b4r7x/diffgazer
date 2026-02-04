@@ -24,7 +24,7 @@ interface KeyboardContextValue {
 
 export const KeyboardContext = createContext<KeyboardContextValue | null>(null);
 
-export function KeyboardProvider({ children }: { children: ReactNode }): JSX.Element {
+export function KeyboardProvider({ children }: { children: ReactNode }) {
   const [scopeStack, setScopeStack] = useState<string[]>(["global"]);
   const [handlers] = useState(() => new Map<string, HandlerMap>());
 

@@ -8,7 +8,7 @@ interface ContextSidebarProps {
   projectPath?: string;
 }
 
-export function ContextSidebar({ context, isTrusted, projectPath }: ContextSidebarProps): JSX.Element {
+export function ContextSidebar({ context, isTrusted, projectPath }: ContextSidebarProps) {
   const navigate = useNavigate();
 
   return (

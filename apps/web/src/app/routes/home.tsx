@@ -32,7 +32,6 @@ export function HomePage() {
   const search = useSearch({ strict: false }) as { error?: string };
 
   const [settings, setSettings] = useState<SettingsConfig | null>(null);
-  const [wizardDismissed, setWizardDismissed] = useState(false);
   const [wizardSaving, setWizardSaving] = useState(false);
   const [wizardError, setWizardError] = useState<string | null>(null);
 
@@ -67,7 +66,7 @@ export function HomePage() {
     };
   }, []);
 
-  const showWizard = settings !== null && !settings.secretsStorage && !wizardDismissed;
+  const showWizard = settings !== null && !settings.secretsStorage;
 
   const mostRecentReview = reviews[0];
   const context: ContextInfo = {
@@ -99,16 +98,11 @@ export function HomePage() {
       setSettings((current) =>
         current ? { ...current, secretsStorage: choice } : current
       );
-      setWizardDismissed(true);
     } catch (err) {
       setWizardError(err instanceof Error ? err.message : "Failed to save settings");
     } finally {
       setWizardSaving(false);
     }
-  };
-
-  const handleWizardSkip = () => {
-    setWizardDismissed(true);
   };
 
   const handleActivate = (id: string) => {
@@ -144,7 +138,6 @@ export function HomePage() {
     return (
       <StorageWizard
         onComplete={handleWizardComplete}
-        onSkip={handleWizardSkip}
         isLoading={wizardSaving}
         error={wizardError}
       />

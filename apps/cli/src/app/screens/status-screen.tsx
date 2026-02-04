@@ -1,6 +1,7 @@
-import React from "react";
 import { StatusDisplay } from "../../components/ui/status-display.js";
 
-export function StatusScreen(): React.ReactElement {
+import type { ReactElement } from "react";
+
+export function StatusScreen(): ReactElement {
   return <StatusDisplay />;
 }

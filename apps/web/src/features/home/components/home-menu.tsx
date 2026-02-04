@@ -38,7 +38,7 @@ export function HomeMenu({
   items,
   isTrusted = false,
   hasLastReview = false,
-}: HomeMenuProps): JSX.Element {
+}: HomeMenuProps) {
   const { review, navigation, system } = groupItems(items);
 
   const isDisabled = (id: string): boolean => {

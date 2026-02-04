@@ -29,7 +29,7 @@ function mapSettingsTheme(theme: string): WebTheme {
   return resolveWebTheme(theme);
 }
 
-export function ThemeProvider({ children }: { children: ReactNode }): JSX.Element {
+export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<WebTheme>(() => {
     if (typeof window === "undefined") return "auto";
     return resolveWebTheme(localStorage.getItem(STORAGE_KEY));

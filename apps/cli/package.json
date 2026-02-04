@@ -18,7 +18,7 @@
     "build:deps": "pnpm --filter @stargazer/core build && pnpm --filter @stargazer/hooks build && pnpm --filter @stargazer/server build",
     "build:web": "pnpm --filter @stargazer/web exec tsc -b && pnpm --filter @stargazer/web exec vite build --outDir ../cli/dist/web",
     "build:bundle": "tsup",
-    "dev": "tsx src/index.tsx --dev",
+    "dev": "tsx --tsconfig tsconfig.json src/index.tsx --dev",
     "start": "node bin/stargazer.js"
   },
   "dependencies": {
@@ -33,6 +33,7 @@
     "react": "^19.0.0"
   },
   "devDependencies": {
+    "@repo/tsconfig": "workspace:*",
     "@stargazer/hooks": "workspace:*",
     "@stargazer/core": "workspace:*",
     "@stargazer/server": "workspace:*",

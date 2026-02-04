@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { SecretsStorage, SettingsConfig } from "@/types/config";
-import { Button, Panel, PanelContent, PanelHeader } from "@/components/ui";
+import { Button, Callout } from "@/components/ui";
+import { StorageSelectorContent, WizardLayout } from "@/components/settings";
 import { api } from "@/lib/api";
 import { SETTINGS_SHORTCUTS } from "@/lib/navigation";
 import { useKey } from "@/hooks/keyboard";
@@ -51,79 +52,53 @@ export function SettingsStoragePage() {
     setError(null);
     try {
       await api.saveSettings({ secretsStorage: storageChoice });
-      setSettings((current) =>
-        current ? { ...current, secretsStorage: storageChoice } : current
-      );
+      navigate({ to: "/settings" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save settings");
-    } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <div className="flex-1 flex items-center justify-center p-6">
-      <Panel className="w-full max-w-2xl">
-        <PanelHeader>Secrets Storage</PanelHeader>
-        <PanelContent>
-          <div className="space-y-4">
-            <div>
-              <div className="text-xs uppercase tracking-wider text-gray-500 font-bold">
-                Storage Preference
-              </div>
-              <p className="text-gray-500 mt-1">
-                Choose where API keys are stored for this machine.
-              </p>
-            </div>
+    <WizardLayout
+      title="Configure Secrets Storage"
+      subtitle="Choose where API keys and sensitive data should be stored."
+      footer={
+        <>
+          <Button
+            variant="ghost"
+            onClick={() => navigate({ to: "/settings" })}
+            disabled={isSaving}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="success"
+            onClick={handleSave}
+            disabled={isSaving || !storageChoice || !isDirty}
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+        </>
+      }
+    >
+      {isLoading ? (
+        <p className="text-gray-500">Loading settings...</p>
+      ) : (
+        <div className="space-y-6">
+          <StorageSelectorContent
+            value={storageChoice}
+            onChange={setStorageChoice}
+            disabled={isSaving}
+          />
 
-            {isLoading ? (
-              <p className="text-gray-500">Loading settings...</p>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="toggle"
-                    size="sm"
-                    data-active={storageChoice === "file"}
-                    onClick={() => setStorageChoice("file")}
-                    disabled={isSaving}
-                  >
-                    File (local)
-                  </Button>
-                  <Button
-                    variant="toggle"
-                    size="sm"
-                    data-active={storageChoice === "keyring"}
-                    onClick={() => setStorageChoice("keyring")}
-                    disabled={isSaving}
-                  >
-                    Keyring
-                  </Button>
-                </div>
-                <p className="text-xs text-gray-500">
-                  Keyring support is stored as a preference. File storage remains the default backend.
-                </p>
-                <div className="text-xs text-gray-500">
-                  Current: {settings?.secretsStorage ?? "not set"}
-                </div>
-              </div>
-            )}
+          <Callout variant="info">
+            Changes will take effect immediately after saving.
+          </Callout>
 
-            {error ? <p className="text-tui-red">{error}</p> : null}
-
-            <div>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleSave}
-                disabled={isSaving || !storageChoice || !isDirty}
-              >
-                {isSaving ? "Saving..." : "Save"}
-              </Button>
-            </div>
-          </div>
-        </PanelContent>
-      </Panel>
-    </div>
+          {error && <p className="text-tui-red text-sm">{error}</p>}
+        </div>
+      )}
+    </WizardLayout>
   );
 }

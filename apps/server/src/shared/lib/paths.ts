@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import path from "node:path";
+import * as path from "node:path";
 
 export const PROJECT_ROOT_HEADER = "x-stargazer-project-root";
 

@@ -28,7 +28,7 @@ export function Menu({
   variant = "default",
   className,
   children,
-}: MenuProps): JSX.Element {
+}: MenuProps) {
   const items: InternalMenuItemData[] = [];
   let itemIndex = 0;
 

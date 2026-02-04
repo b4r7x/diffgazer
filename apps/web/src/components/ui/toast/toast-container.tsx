@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "./toast-context";
 import { Toast } from "./toast";
 
-export function ToastContainer(): JSX.Element | null {
+export function ToastContainer() {
   const { toasts, dismissingIds, dismissToast, removeToast } = useToast();
 
   if (toasts.length === 0) return null;

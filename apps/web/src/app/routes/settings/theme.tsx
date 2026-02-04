@@ -1,5 +1,10 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Button, Panel, PanelContent, PanelHeader } from "@/components/ui";
+import type { Theme } from "@repo/schemas";
+import type { WebTheme, ResolvedTheme } from "@/types/theme";
+import { Panel, PanelContent, PanelHeader, Callout } from "@/components/ui";
+import { ThemeSelectorContent } from "@/components/settings";
+import { ThemePreviewCard } from "@/components/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
@@ -7,58 +12,58 @@ import { SETTINGS_SHORTCUTS } from "@/lib/navigation";
 
 export function SettingsThemePage() {
   const navigate = useNavigate();
-  const { theme, setTheme } = useTheme();
+  const { theme, resolved, setTheme } = useTheme();
+  const [previewTheme, setPreviewTheme] = useState<WebTheme>(theme);
+
+  useEffect(() => {
+    setPreviewTheme(theme);
+  }, [theme]);
+
+  const previewResolved: ResolvedTheme =
+    previewTheme === "auto" ? resolved : previewTheme;
 
   usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
 
   useKey("Escape", () => navigate({ to: "/settings" }));
+  useKey("Enter", () => {
+    setTheme(previewTheme);
+    navigate({ to: "/settings" });
+  });
 
   return (
-    <div className="flex-1 flex items-center justify-center p-6">
-      <Panel className="w-full max-w-2xl">
-        <PanelHeader>Theme</PanelHeader>
-        <PanelContent>
-          <div className="space-y-4">
-            <div>
-              <div className="text-xs uppercase tracking-wider text-gray-500 font-bold">
-                Appearance
-              </div>
-              <p className="text-gray-500 mt-1">
-                Choose how the interface should look on this device.
-              </p>
+    <div className="flex-1 flex flex-col p-6 min-h-0">
+      <div className="grid grid-cols-[2fr_3fr] gap-6 w-full h-full min-h-0">
+        {/* Left Panel - Theme Settings */}
+        <Panel className="relative pt-4 flex flex-col h-full">
+          <PanelHeader variant="floating" className="text-tui-violet">
+            Theme Settings
+          </PanelHeader>
+          <PanelContent className="flex-1 flex flex-col">
+            <ThemeSelectorContent
+              value={theme as Theme}
+              onChange={(v) => {
+                setTheme(v as WebTheme);
+              }}
+              onFocus={(v) => setPreviewTheme(v as WebTheme)}
+            />
+            <div className="mt-auto pt-6">
+              <Callout variant="info">
+                Hover to preview. Press Space to apply theme instantly.
+              </Callout>
             </div>
+          </PanelContent>
+        </Panel>
 
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="toggle"
-                size="sm"
-                data-active={theme === "auto"}
-                onClick={() => setTheme("auto")}
-              >
-                Auto
-              </Button>
-              <Button
-                variant="toggle"
-                size="sm"
-                data-active={theme === "dark"}
-                onClick={() => setTheme("dark")}
-              >
-                Dark
-              </Button>
-              <Button
-                variant="toggle"
-                size="sm"
-                data-active={theme === "light"}
-                onClick={() => setTheme("light")}
-              >
-                Light
-              </Button>
-            </div>
-
-            <div className="text-xs text-gray-500">Current: {theme.toUpperCase()}</div>
-          </div>
-        </PanelContent>
-      </Panel>
+        {/* Right Panel - Live Preview */}
+        <Panel className="relative pt-4 flex flex-col h-full overflow-hidden">
+          <PanelHeader variant="floating" className="text-tui-blue">
+            Live Preview
+          </PanelHeader>
+          <PanelContent className="flex-1 flex items-center justify-center p-0">
+            <ThemePreviewCard previewTheme={previewResolved} />
+          </PanelContent>
+        </Panel>
+      </div>
     </div>
   );
 }

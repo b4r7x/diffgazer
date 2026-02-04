@@ -1,4 +1,4 @@
-import type { ProjectInfo, ProviderStatus, SettingsConfig } from "../../shared/lib/config-store.js";
+import type { ProjectInfo, ProviderStatus, SettingsConfig } from "../../shared/lib/config-store/index.js";
 
 export interface SaveConfigRequest {
   provider: string;

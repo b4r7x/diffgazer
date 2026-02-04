@@ -15,7 +15,7 @@ export function Header({
   providerStatus = "idle",
   subtitle,
   onBack,
-}: HeaderProps): JSX.Element {
+}: HeaderProps) {
   return (
     <header className="relative p-4 pb-2 shrink-0">
       {onBack && (

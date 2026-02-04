@@ -20,7 +20,7 @@ const ToastContext = createContext<ToastContextValue | undefined>(undefined);
 const DEFAULT_DURATION = 5000;
 const MAX_TOASTS = 5;
 
-export function ToastProvider({ children }: { children: ReactNode }): JSX.Element {
+export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [dismissingIds, setDismissingIds] = useState<Set<string>>(new Set());
   const timeoutIdsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());

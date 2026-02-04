@@ -58,7 +58,7 @@ export function Toast({
   onDismiss,
   onRemove,
   dismissing,
-}: ToastProps): JSX.Element {
+}: ToastProps) {
   const displayTitle = title || titles[variant];
 
   return (
