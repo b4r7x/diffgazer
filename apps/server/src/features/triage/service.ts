@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { createGitService } from "../../shared/lib/services/git.js";
+import { createGitService } from "../../shared/lib/git/service.js";
 import type { AIClient, AIError } from "../../shared/lib/ai/types.js";
-import { getErrorMessage } from "../../shared/lib/errors.js";
+import { getErrorMessage } from "@stargazer/core";
 import { parseDiff, filterDiffByFiles } from "../../shared/lib/diff/parser.js";
 import type { ParsedDiff, FileDiff, DiffHunk } from "../../shared/lib/diff/types.js";
-import { saveTriageReview } from "../../shared/lib/storage/review-storage.js";
+import { saveTriageReview } from "../../shared/lib/storage/reviews.js";
 import type { Lens, LensId, ProfileId, ReviewProfile, SeverityRubric } from "@stargazer/schemas/lens";
 import { ErrorCode } from "@stargazer/schemas/errors";
 import { SEVERITY_ORDER, type Result, ok, err } from "@stargazer/core";
@@ -18,8 +18,8 @@ import type {
   TriageOptions as SchemaTriageOptions,
 } from "@stargazer/schemas/triage";
 import { TriageResultSchema } from "@stargazer/schemas/triage";
-import type { SSEWriter } from "../../shared/lib/ai-client.js";
-import { writeSSEError } from "../../shared/lib/sse-helpers.js";
+import type { SSEWriter } from "../../shared/lib/ai/client.js";
+import { writeSSEError } from "../../shared/lib/http/sse.js";
 import type { StepEvent, StepId, ReviewStartedEvent } from "@stargazer/schemas/step-event";
 import type { EnrichProgressEvent } from "@stargazer/schemas/enrich-event";
 import type { FullTriageStreamEvent } from "@stargazer/schemas";

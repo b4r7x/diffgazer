@@ -1,8 +1,8 @@
 import type { Context, Next } from "hono";
 import { ErrorCode } from "@stargazer/schemas/errors";
-import { getProjectInfo } from "./config-store/store.js";
-import { getProjectRoot } from "./request.js";
-import { errorResponse } from "./response.js";
+import { getProjectInfo } from "../config/store.js";
+import { getProjectRoot } from "../http/request.js";
+import { errorResponse } from "../http/response.js";
 
 export const requireRepoAccess = async (
   c: Context,

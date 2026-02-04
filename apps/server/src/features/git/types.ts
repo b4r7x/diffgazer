@@ -1,4 +1,4 @@
-import type { createGitService } from "../../shared/lib/services/git.js";
+import type { createGitService } from "../../shared/lib/git/service.js";
 
 export type GitService = ReturnType<typeof createGitService>;
 
