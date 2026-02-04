@@ -3,7 +3,7 @@ import type { Context } from "hono";
 import { ErrorCode } from "@stargazer/schemas/errors";
 import { errorResponse } from "../../shared/lib/http/response.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
-import { requireRepoAccess } from "../../shared/lib/middleware/trust-guard.js";
+import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
 import { resolveGitService } from "./service.js";
 import { GitDiffModeSchema, type GitDiffMode } from "./schemas.js";
 
