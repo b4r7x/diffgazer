@@ -10,6 +10,11 @@ import {
   getGlobalTrustPath,
   getProjectInfoPath,
 } from "../paths.js";
+import { AI_PROVIDERS, type AIProvider } from "@repo/schemas/config";
+
+const isValidAIProvider = (value: string): value is AIProvider => {
+  return AI_PROVIDERS.includes(value as AIProvider);
+};
 import type {
   ConfigState,
   ProjectFile,
@@ -99,7 +104,10 @@ export const syncProvidersWithSecrets = (
   }));
 
   for (const providerId of Object.keys(secrets.providers)) {
+    // Type guard: only add if it's a valid AIProvider
+    if (!isValidAIProvider(providerId)) continue;
     if (providerIds.has(providerId)) continue;
+
     nextProviders.push({
       provider: providerId,
       hasApiKey: true,
