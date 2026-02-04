@@ -182,8 +182,11 @@ export function initializeAIClient(): Result<AIClient, AIClientError> {
     return err({ message: "AI provider not configured", code: ErrorCode.CONFIG_NOT_FOUND });
   }
 
-  const apiKey = getProviderApiKey(activeProvider.provider);
-  if (!apiKey) {
+  const apiKeyResult = getProviderApiKey(activeProvider.provider);
+  if (!apiKeyResult.ok) {
+    return err({ message: apiKeyResult.error.message, code: ErrorCode.AI_CLIENT_ERROR });
+  }
+  if (!apiKeyResult.value) {
     return err({
       message: `API key not found for provider '${activeProvider.provider}'`,
       code: ErrorCode.API_KEY_MISSING,
@@ -191,7 +194,7 @@ export function initializeAIClient(): Result<AIClient, AIClientError> {
   }
 
   const clientResult = createAIClient({
-    apiKey,
+    apiKey: apiKeyResult.value,
     provider: activeProvider.provider,
     model: activeProvider.model,
   });

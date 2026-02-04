@@ -15,7 +15,6 @@ import {
   getProvidersStatus,
   saveConfig,
 } from "./service.js";
-import { SecretsStorageError } from "../../shared/lib/config/errors.js";
 import { errorResponse } from "../../shared/lib/http/response.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
 
@@ -51,12 +50,19 @@ configRouter.get("/init", (c): Response => {
 });
 
 configRouter.get("/check", (c): Response => {
-  return c.json(checkConfig());
+  const result = checkConfig();
+  if (!result.ok) {
+    return errorResponse(c, result.error.message, result.error.code, 400);
+  }
+  return c.json(result.value);
 });
 
 configRouter.get("/", (c): Response => {
-  const config = getConfig();
-  if (!config) {
+  const result = getConfig();
+  if (!result.ok) {
+    return errorResponse(c, result.error.message, result.error.code, 400);
+  }
+  if (!result.value) {
     return errorResponse(
       c,
       "Configuration not found",
@@ -64,7 +70,7 @@ configRouter.get("/", (c): Response => {
       404,
     );
   }
-  return c.json(config);
+  return c.json(result.value);
 });
 
 configRouter.get("/providers", (c): Response => {
@@ -81,13 +87,9 @@ configRouter.post(
   }),
   (c): Response => {
     const body = c.req.valid("json");
-    try {
-      saveConfig(body);
-    } catch (error) {
-      if (error instanceof SecretsStorageError) {
-        return errorResponse(c, error.message, error.code, 400);
-      }
-      throw error;
+    const result = saveConfig(body);
+    if (!result.ok) {
+      return errorResponse(c, result.error.message, result.error.code, 400);
     }
     return c.json({ saved: true });
   },
@@ -118,21 +120,20 @@ configRouter.delete(
   zValidator("param", providerParamSchema),
   (c): Response => {
     const { providerId } = c.req.valid("param");
-    try {
-      const result = deleteProvider(providerId);
-      return c.json(result);
-    } catch (error) {
-      if (error instanceof SecretsStorageError) {
-        return errorResponse(c, error.message, error.code, 400);
-      }
-      throw error;
+    const result = deleteProvider(providerId);
+    if (!result.ok) {
+      return errorResponse(c, result.error.message, result.error.code, 400);
     }
+    return c.json(result.value);
   },
 );
 
 configRouter.delete("/", (c): Response => {
   const result = deleteConfig();
-  if (!result) {
+  if (!result.ok) {
+    return errorResponse(c, result.error.message, result.error.code, 400);
+  }
+  if (!result.value) {
     return errorResponse(
       c,
       "Configuration not found",
@@ -140,7 +141,7 @@ configRouter.delete("/", (c): Response => {
       404,
     );
   }
-  return c.json(result);
+  return c.json(result.value);
 });
 
 export { configRouter };
