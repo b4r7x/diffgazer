@@ -22,6 +22,7 @@ import type {
   SecretsState,
   SettingsConfig,
   SecretsStorage,
+  TrustCapabilities,
   TrustState,
 } from "./types.js";
 
@@ -31,11 +32,10 @@ export const DEFAULT_SETTINGS: SettingsConfig = {
 };
 
 export const DEFAULT_PROVIDERS: ProviderStatus[] = [
-  { provider: "openai", hasApiKey: false, isActive: false },
-  { provider: "anthropic", hasApiKey: false, isActive: false },
   { provider: "gemini", hasApiKey: false, isActive: false },
+  { provider: "zai", hasApiKey: false, isActive: false },
+  { provider: "zai-coding", hasApiKey: false, isActive: false },
   { provider: "openrouter", hasApiKey: false, isActive: false },
-  { provider: "glm", hasApiKey: false, isActive: false },
 ];
 
 const CONFIG_PATH = getGlobalConfigPath();
@@ -45,10 +45,20 @@ const TRUST_PATH = getGlobalTrustPath();
 const cloneProviders = (providers: ProviderStatus[]): ProviderStatus[] =>
   providers.map((provider) => ({ ...provider }));
 
+const normalizeProviders = (providers: ProviderStatus[]): ProviderStatus[] => {
+  const valid = providers.filter((provider) => isValidAIProvider(provider.provider));
+  const byId = new Map(valid.map((provider) => [provider.provider, provider]));
+
+  return DEFAULT_PROVIDERS.map((provider) => ({
+    ...provider,
+    ...byId.get(provider.provider),
+  }));
+};
+
 export const loadConfig = (): ConfigState => {
   const stored = readJsonFileSync<ConfigState>(CONFIG_PATH);
   const settings = stored?.settings ?? DEFAULT_SETTINGS;
-  const providers = stored?.providers ?? DEFAULT_PROVIDERS;
+  const providers = normalizeProviders(stored?.providers ?? DEFAULT_PROVIDERS);
 
   return {
     settings: { ...settings },
@@ -65,13 +75,36 @@ export const loadSecrets = (): SecretsState => {
   return { providers: { ...stored.providers } };
 };
 
+const normalizeTrustCapabilities = (
+  capabilities: TrustCapabilities | null | undefined,
+): TrustCapabilities => {
+  if (!capabilities) {
+    return { readFiles: false, runCommands: false };
+  }
+
+  return {
+    readFiles: Boolean(capabilities.readFiles),
+    runCommands: Boolean(capabilities.runCommands),
+  };
+};
+
 export const loadTrust = (): TrustState => {
   const stored = readJsonFileSync<TrustState>(TRUST_PATH);
   if (!stored?.projects) {
     return { projects: {} };
   }
 
-  return { projects: { ...stored.projects } };
+  const normalized = Object.fromEntries(
+    Object.entries(stored.projects).map(([projectId, config]) => [
+      projectId,
+      {
+        ...config,
+        capabilities: normalizeTrustCapabilities(config.capabilities),
+      },
+    ])
+  );
+
+  return { projects: normalized };
 };
 
 export const persistConfig = (state: ConfigState): void => {

@@ -1,7 +1,5 @@
 import { generateObject, streamText, type LanguageModel } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createOpenAI } from "@ai-sdk/openai";
-import { createAnthropic } from "@ai-sdk/anthropic";
 import { createZhipu } from "zhipu-ai-provider";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import type { z } from "zod";
@@ -19,9 +17,8 @@ import { createError, toError, getErrorMessage } from "../errors.js";
 
 const DEFAULT_MODELS = {
   gemini: "gemini-2.5-flash",
-  openai: "gpt-4o",
-  anthropic: "claude-sonnet-4-20250514",
-  glm: "glm-4.7",
+  zai: "glm-4.7",
+  "zai-coding": "glm-4.7",
   openrouter: "",
 } as const;
 
@@ -62,7 +59,7 @@ const classifyApiError = (error: unknown): AIError => {
 };
 
 const createLanguageModel = (config: AIClientConfig): LanguageModel => {
-  const { provider, apiKey, model, glmEndpoint } = config;
+  const { provider, apiKey, model } = config;
   const modelId = model ?? DEFAULT_MODELS[provider];
 
   switch (provider) {
@@ -70,21 +67,17 @@ const createLanguageModel = (config: AIClientConfig): LanguageModel => {
       const google = createGoogleGenerativeAI({ apiKey });
       return google(modelId);
     }
-    case "openai": {
-      const openai = createOpenAI({ apiKey });
-      return openai(modelId);
-    }
-    case "anthropic": {
-      const anthropic = createAnthropic({ apiKey });
-      return anthropic(modelId);
-    }
-    case "glm": {
+    case "zai": {
       const zhipu = createZhipu({
         apiKey,
-        baseURL:
-          glmEndpoint === "standard"
-            ? "https://open.bigmodel.cn/api/paas/v4"
-            : "https://api.z.ai/api/coding/paas/v4",
+        baseURL: "https://api.z.ai/api/paas/v4",
+      });
+      return zhipu(modelId);
+    }
+    case "zai-coding": {
+      const zhipu = createZhipu({
+        apiKey,
+        baseURL: "https://api.z.ai/api/coding/paas/v4",
       });
       return zhipu(modelId);
     }

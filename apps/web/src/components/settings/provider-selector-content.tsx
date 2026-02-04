@@ -3,10 +3,10 @@
 import { RadioGroup, RadioGroupItem, Input } from '../ui/form';
 
 const PROVIDERS = [
-  { value: 'openai', label: 'OpenAI' },
-  { value: 'gemini', label: 'Gemini' },
-  { value: 'anthropic', label: 'Anthropic' },
-  { value: 'ollama', label: 'Local (Ollama)' },
+  { value: 'gemini', label: 'Google Gemini' },
+  { value: 'zai', label: 'Z.AI' },
+  { value: 'zai-coding', label: 'Z.AI Coding Plan' },
+  { value: 'openrouter', label: 'OpenRouter' },
 ] as const;
 
 export interface ProviderSelectorContentProps {
@@ -37,7 +37,7 @@ export function ProviderSelectorContent({
         </RadioGroup>
       </div>
 
-      {showApiKey && provider !== 'ollama' && (
+      {showApiKey && (
         <div>
           <label className="text-sm font-mono text-[--tui-fg] mb-2 block">
             API KEY:

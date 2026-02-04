@@ -4,7 +4,6 @@ import { TriageSeveritySchema } from "./triage.js";
 
 export const TrustCapabilitiesSchema = z.object({
   readFiles: z.boolean(),
-  readGit: z.boolean(),
   runCommands: z.boolean(),
 });
 export type TrustCapabilities = z.infer<typeof TrustCapabilitiesSchema>;

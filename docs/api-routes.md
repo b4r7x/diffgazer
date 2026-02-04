@@ -45,7 +45,7 @@ Some global errors (403/404/500) may only include `message` without `code`.
 **Response**
 ```json
 {
-  "config": { "provider": "openai", "model": "gpt-4o" },
+  "config": { "provider": "gemini", "model": "gemini-2.5-flash" },
   "settings": {
     "theme": "auto",
     "defaultLenses": ["security"],
@@ -54,7 +54,7 @@ Some global errors (403/404/500) may only include `message` without `code`.
     "secretsStorage": "file"
   },
   "providers": [
-    { "provider": "openai", "hasApiKey": true, "isActive": true, "model": "gpt-4o" }
+    { "provider": "gemini", "hasApiKey": true, "isActive": true, "model": "gemini-2.5-flash" }
   ],
   "configured": true,
   "project": {
@@ -64,7 +64,7 @@ Some global errors (403/404/500) may only include `message` without `code`.
       "projectId": "uuid",
       "repoRoot": "/path/to/project",
       "trustedAt": "2026-02-04T12:00:00.000Z",
-      "capabilities": { "readFiles": true, "readGit": true, "runCommands": false },
+      "capabilities": { "readFiles": true, "runCommands": false },
       "trustMode": "persistent"
     }
   }
@@ -85,7 +85,7 @@ Notes:
 ```json
 {
   "configured": true,
-  "config": { "provider": "openai", "model": "gpt-4o" }
+  "config": { "provider": "gemini", "model": "gemini-2.5-flash" }
 }
 ```
 
@@ -102,7 +102,7 @@ When not configured:
 
 **Response**
 ```json
-{ "provider": "openai", "model": "gpt-4o" }
+{ "provider": "gemini", "model": "gemini-2.5-flash" }
 ```
 
 **Errors**
@@ -118,10 +118,10 @@ When not configured:
 ```json
 {
   "providers": [
-    { "provider": "openai", "hasApiKey": true, "isActive": true, "model": "gpt-4o" },
-    { "provider": "anthropic", "hasApiKey": false, "isActive": false }
+    { "provider": "gemini", "hasApiKey": true, "isActive": true, "model": "gemini-2.5-flash" },
+    { "provider": "openrouter", "hasApiKey": false, "isActive": false }
   ],
-  "activeProvider": "openai"
+  "activeProvider": "gemini"
 }
 ```
 
@@ -134,9 +134,9 @@ When not configured:
 **Request Body**
 ```json
 {
-  "provider": "openai",
+  "provider": "gemini",
   "apiKey": "sk-...",
-  "model": "gpt-4o"
+  "model": "gemini-2.5-flash"
 }
 ```
 
@@ -161,12 +161,12 @@ When not configured:
 
 **Request Body**
 ```json
-{ "model": "gpt-4o" }
+{ "model": "gemini-2.5-flash" }
 ```
 
 **Response**
 ```json
-{ "provider": "openai", "model": "gpt-4o" }
+{ "provider": "gemini", "model": "gemini-2.5-flash" }
 ```
 
 **Errors**
@@ -182,7 +182,7 @@ When not configured:
 
 **Response**
 ```json
-{ "deleted": true, "provider": "openai" }
+{ "deleted": true, "provider": "gemini" }
 ```
 
 **Errors**
@@ -325,7 +325,7 @@ When not configured:
     "projectId": "uuid",
     "repoRoot": "/path/to/project",
     "trustedAt": "2026-02-04T12:00:00.000Z",
-    "capabilities": { "readFiles": true, "readGit": true, "runCommands": false },
+    "capabilities": { "readFiles": true, "runCommands": false },
     "trustMode": "persistent"
   }
 }
@@ -349,7 +349,7 @@ When not configured:
       "projectId": "uuid",
       "repoRoot": "/path/to/project",
       "trustedAt": "2026-02-04T12:00:00.000Z",
-      "capabilities": { "readFiles": true, "readGit": true, "runCommands": false },
+      "capabilities": { "readFiles": true, "runCommands": false },
       "trustMode": "persistent"
     }
   ]
@@ -368,7 +368,7 @@ When not configured:
   "projectId": "uuid",
   "repoRoot": "/path/to/project",
   "trustedAt": "2026-02-04T12:00:00.000Z",
-  "capabilities": { "readFiles": true, "readGit": true, "runCommands": false },
+  "capabilities": { "readFiles": true, "runCommands": false },
   "trustMode": "persistent"
 }
 ```
@@ -380,7 +380,7 @@ When not configured:
     "projectId": "uuid",
     "repoRoot": "/path/to/project",
     "trustedAt": "2026-02-04T12:00:00.000Z",
-    "capabilities": { "readFiles": true, "readGit": true, "runCommands": false },
+    "capabilities": { "readFiles": true, "runCommands": false },
     "trustMode": "persistent"
   }
 }

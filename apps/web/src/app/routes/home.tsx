@@ -10,6 +10,7 @@ import { useConfig } from "@/features/settings";
 import { useReviewHistory } from "@/features/review";
 import { useToast } from "@/components/ui";
 import { StorageWizard } from "@/components/settings";
+import { TrustModal } from "@/components/modals/trust-modal";
 import type { ContextInfo } from "@/types/ui";
 import { api } from "@/lib/api";
 
@@ -25,7 +26,7 @@ const MENU_ROUTES: Record<string, RouteConfig> = {
 };
 
 export function HomePage() {
-  const { provider, model, trust, repoRoot } = useConfig();
+  const { provider, model, trust, repoRoot, projectId } = useConfig();
   const { reviews } = useReviewHistory();
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ export function HomePage() {
   const [wizardSaving, setWizardSaving] = useState(false);
   const [wizardError, setWizardError] = useState<string | null>(null);
 
-  const isTrusted = trust !== null;
+  const isTrusted = Boolean(trust?.capabilities.readFiles);
   const hasLastReview = reviews.length > 0;
 
   useEffect(() => {
@@ -67,6 +68,7 @@ export function HomePage() {
   }, []);
 
   const showWizard = settings !== null && !settings.secretsStorage;
+  const trustModalOpen = Boolean(projectId && repoRoot && trust === null);
 
   const mostRecentReview = reviews[0];
   const context: ContextInfo = {
@@ -74,7 +76,7 @@ export function HomePage() {
     providerMode: model,
     lastRunId: mostRecentReview?.id,
     lastRunIssueCount: mostRecentReview?.issueCount,
-    trustedDir: trust?.repoRoot,
+    trustedDir: isTrusted ? trust?.repoRoot : undefined,
   };
 
   const [selectedIndex, setSelectedIndex] = useScopedRouteState("menuIndex", 0);
@@ -136,29 +138,47 @@ export function HomePage() {
 
   if (showWizard) {
     return (
-      <StorageWizard
-        onComplete={handleWizardComplete}
-        isLoading={wizardSaving}
-        error={wizardError}
-      />
+      <>
+        <StorageWizard
+          onComplete={handleWizardComplete}
+          isLoading={wizardSaving}
+          error={wizardError}
+        />
+        {projectId && repoRoot && (
+          <TrustModal
+            isOpen={trustModalOpen}
+            directory={repoRoot}
+            projectId={projectId}
+          />
+        )}
+      </>
     );
   }
 
   return (
-    <div className="flex flex-1 flex-col lg:flex-row items-center lg:items-start justify-start lg:justify-center p-4 md:p-6 lg:p-8 gap-4 md:gap-6 lg:gap-8 overflow-auto">
-      <ContextSidebar
-        context={context}
-        isTrusted={isTrusted}
-        projectPath={repoRoot ?? undefined}
-      />
-      <HomeMenu
-        selectedIndex={selectedIndex}
-        onSelect={setSelectedIndex}
-        onActivate={handleActivate}
-        items={MENU_ITEMS}
-        isTrusted={isTrusted}
-        hasLastReview={hasLastReview}
-      />
-    </div>
+    <>
+      <div className="flex flex-1 flex-col lg:flex-row items-center lg:items-start justify-start lg:justify-center p-4 md:p-6 lg:p-8 gap-4 md:gap-6 lg:gap-8 overflow-auto">
+        <ContextSidebar
+          context={context}
+          isTrusted={isTrusted}
+          projectPath={repoRoot ?? undefined}
+        />
+        <HomeMenu
+          selectedIndex={selectedIndex}
+          onSelect={setSelectedIndex}
+          onActivate={handleActivate}
+          items={MENU_ITEMS}
+          isTrusted={isTrusted}
+          hasLastReview={hasLastReview}
+        />
+      </div>
+      {projectId && repoRoot && (
+        <TrustModal
+          isOpen={trustModalOpen}
+          directory={repoRoot}
+          projectId={projectId}
+        />
+      )}
+    </>
   );
 }

@@ -1,53 +1,101 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { TrustCapabilities } from "@/types/config";
-import { Panel, PanelContent, PanelHeader } from "@/components/ui";
-import { TrustPermissionsContent } from "@/components/settings";
-import { useConfigContext } from "@/app/providers/config-provider";
 import { useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { SETTINGS_SHORTCUTS } from "@/lib/navigation";
+import { useToast, Panel, PanelHeader, PanelContent } from "@/components/ui";
+import { TrustPermissionsContent } from "@/components/settings";
+import { useConfig, useTrust } from "@/features/settings";
+
+const FOOTER_SHORTCUTS = [
+  { key: "Space", label: "Toggle" },
+  { key: "Enter", label: "Save" },
+  { key: "Esc", label: "Back" },
+];
 
 const DEFAULT_CAPABILITIES: TrustCapabilities = {
-  readFiles: false,
-  readGit: false,
+  readFiles: true,
   runCommands: false,
 };
 
 export function TrustPermissionsPage() {
   const navigate = useNavigate();
-  const { trust, repoRoot, isLoading } = useConfigContext();
+  const { showToast } = useToast();
+  const { projectId, repoRoot, trust } = useConfig();
+  const { save, revoke, isLoading } = useTrust(projectId);
 
   const [capabilities, setCapabilities] = useState<TrustCapabilities>(
-    trust?.capabilities ?? DEFAULT_CAPABILITIES
+    () => ({ ...(trust?.capabilities ?? DEFAULT_CAPABILITIES), runCommands: false }),
   );
 
-  usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
+  usePageFooter({ shortcuts: FOOTER_SHORTCUTS });
   useKey("Escape", () => navigate({ to: "/settings" }));
 
-  const directory = repoRoot ?? "Unknown directory";
-  const isTrusted = trust !== null;
+  async function handleSave(): Promise<void> {
+    if (!projectId || !repoRoot) {
+      showToast({
+        variant: "error",
+        title: "Error",
+        message: "Project information not available",
+      });
+      return;
+    }
+
+    try {
+      await save({
+        projectId,
+        repoRoot,
+        capabilities,
+        trustMode: "persistent",
+        trustedAt: new Date().toISOString(),
+      });
+      showToast({
+        variant: "success",
+        title: "Saved",
+        message: "Trust permissions updated",
+      });
+      navigate({ to: "/settings" });
+    } catch (error) {
+      showToast({
+        variant: "error",
+        title: "Error",
+        message: error instanceof Error ? error.message : "Failed to save trust settings",
+      });
+    }
+  }
+
+  async function handleRevoke(): Promise<void> {
+    try {
+      await revoke();
+      showToast({
+        variant: "success",
+        title: "Revoked",
+        message: "Trust has been revoked for this directory",
+      });
+    } catch (error) {
+      showToast({
+        variant: "error",
+        title: "Error",
+        message: error instanceof Error ? error.message : "Failed to revoke trust",
+      });
+    }
+  }
 
   return (
-    <div className="flex-1 flex items-center justify-center p-6">
+    <div className="flex-1 flex items-center justify-center p-4">
       <Panel className="w-full max-w-2xl">
-        <PanelHeader>Trust &amp; Permissions</PanelHeader>
+        <PanelHeader>TRUST &amp; PERMISSIONS</PanelHeader>
         <PanelContent>
-          {isLoading ? (
-            <p className="text-gray-500">Loading trust settings...</p>
-          ) : (
-            <TrustPermissionsContent
-              directory={directory}
-              value={capabilities}
-              onChange={setCapabilities}
-              isTrusted={isTrusted}
-            />
-          )}
-          {!isTrusted && !isLoading && (
-            <p className="text-gray-500 text-sm mt-4">
-              This project is not currently trusted. Trust settings are managed via the CLI.
-            </p>
-          )}
+          <TrustPermissionsContent
+            directory={repoRoot ?? "Loading..."}
+            value={capabilities}
+            onChange={setCapabilities}
+            isTrusted={Boolean(trust?.capabilities.readFiles)}
+            isLoading={isLoading}
+            showActions
+            onSave={handleSave}
+            onRevoke={handleRevoke}
+          />
         </PanelContent>
       </Panel>
     </div>

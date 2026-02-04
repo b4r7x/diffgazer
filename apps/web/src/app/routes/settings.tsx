@@ -22,6 +22,7 @@ export function SettingsHubPage() {
   const { provider, isConfigured, trust } = useConfig();
   const { theme } = useTheme();
   const [selectedIndex, setSelectedIndex] = useScopedRouteState("menuIndex", 0);
+  const isTrusted = Boolean(trust?.capabilities.readFiles);
 
   const [settings, setSettings] = useState<SettingsConfig | null>(null);
   const [settingsError, setSettingsError] = useState<string | null>(null);
@@ -58,8 +59,8 @@ export function SettingsHubPage() {
 
     return {
       trust: {
-        value: trust ? "Trusted" : "Not trusted",
-        valueVariant: trust ? "success-badge" : "muted",
+        value: isTrusted ? "Trusted" : "Not trusted",
+        valueVariant: isTrusted ? "success-badge" : "muted",
       },
       theme: {
         value: theme.toUpperCase(),
@@ -78,7 +79,7 @@ export function SettingsHubPage() {
         valueVariant: "muted",
       },
     };
-  }, [isConfigured, provider, settings?.secretsStorage, theme, trust]);
+  }, [isConfigured, provider, settings?.secretsStorage, theme, isTrusted]);
 
   const handleActivate = (item: { id: string }) => {
     switch (item.id as SettingsAction) {

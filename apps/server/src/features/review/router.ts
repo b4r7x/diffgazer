@@ -7,10 +7,11 @@ import { getErrorMessage } from "../../shared/lib/errors.js";
 import { getProjectRoot } from "../../shared/lib/request.js";
 import { initializeAIClient } from "../../shared/lib/ai-client.js";
 import { streamReviewToSSE } from "./service.js";
+import { requireRepoAccess } from "../../shared/lib/trust-guard.js";
 
 const reviewRouter = new Hono();
 
-reviewRouter.get("/stream", async (c): Promise<Response> => {
+reviewRouter.get("/stream", requireRepoAccess, async (c): Promise<Response> => {
   const clientResult = initializeAIClient();
   if (!clientResult.ok) {
     return errorResponse(c, clientResult.error.message, clientResult.error.code, 500);

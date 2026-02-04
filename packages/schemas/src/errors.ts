@@ -16,6 +16,7 @@ export const ErrorCode = {
   NOT_GIT_REPO: "NOT_GIT_REPO",
   COMMAND_FAILED: "COMMAND_FAILED",
   INVALID_PATH: "INVALID_PATH",
+  TRUST_REQUIRED: "TRUST_REQUIRED",
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

@@ -30,11 +30,9 @@ export interface ApiClient {
 
 export type AIProvider =
   | "gemini"
-  | "openai"
-  | "anthropic"
-  | "glm"
-  | "openrouter"
-  | (string & {});
+  | "zai"
+  | "zai-coding"
+  | "openrouter";
 
 export interface ProviderStatus {
   provider: AIProvider;
@@ -46,7 +44,6 @@ export interface ProviderStatus {
 
 export interface TrustCapabilities {
   readFiles: boolean;
-  readGit: boolean;
   runCommands: boolean;
 }
 
