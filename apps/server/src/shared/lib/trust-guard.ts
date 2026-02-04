@@ -1,6 +1,6 @@
 import type { Context, Next } from "hono";
 import { ErrorCode } from "@stargazer/schemas/errors";
-import { getProjectInfo } from "./config-store/index.js";
+import { getProjectInfo } from "./config-store/store.js";
 import { getProjectRoot } from "./request.js";
 import { errorResponse } from "./response.js";
 

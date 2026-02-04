@@ -15,7 +15,7 @@ import {
   getLastSession,
   listSessions,
   sessionStore,
-} from "../../shared/lib/storage/index.js";
+} from "../../shared/lib/storage/sessions.js";
 import { ChatRequestSchema } from "./schemas.js";
 import { prepareChatContext, saveUserMessage, streamChatToSSE } from "./service.js";
 

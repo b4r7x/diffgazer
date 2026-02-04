@@ -1,11 +1,11 @@
 import { createGitService } from "../../shared/lib/services/git.js";
-import type { AIClient, StreamCallbacks } from "../../shared/lib/ai/index.js";
+import type { AIClient, StreamCallbacks } from "../../shared/lib/ai/types.js";
 import { getErrorMessage } from "../../shared/lib/errors.js";
 import { safeParseJson } from "../../shared/lib/json.js";
 import { escapeXml, sanitizeUnicode } from "../../shared/utils/sanitization.js";
 import { validateSchema } from "../../shared/lib/validation.js";
-import { parseDiff } from "../../shared/lib/diff/index.js";
-import { saveReview } from "../../shared/lib/storage/index.js";
+import { parseDiff } from "../../shared/lib/diff/parser.js";
+import { saveReview } from "../../shared/lib/storage/review-history.js";
 import { ReviewResultSchema, type ReviewResult } from "@stargazer/schemas/review";
 import { ErrorCode } from "@stargazer/schemas/errors";
 import type { SSEWriter } from "../../shared/lib/ai-client.js";

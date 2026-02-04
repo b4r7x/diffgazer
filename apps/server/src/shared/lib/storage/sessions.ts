@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { paths } from "./paths.js";
-import { createCollection, filterByProjectAndSort, type StoreError } from "./persistence.js";
+import { join } from "node:path";
 import {
   SessionSchema,
   type Session,
@@ -8,16 +7,21 @@ import {
   type SessionMessage,
   type MessageRole,
 } from "@stargazer/schemas";
-import type { Result } from "../result.js";
-import { ok } from "../result.js";
-import { truncate } from "../strings.js";
+import { truncate } from "@stargazer/core";
+import { createCollection, filterByProjectAndSort, type StoreError } from "./persistence.js";
+import { getGlobalStargazerDir } from "../paths.js";
+import { type Result, ok } from "@stargazer/core";
+
+const SESSIONS_DIR = join(getGlobalStargazerDir(), "sessions");
+const getSessionFile = (sessionId: string): string =>
+  join(SESSIONS_DIR, `${sessionId}.json`);
 
 const AUTO_TITLE_MAX_LENGTH = 50;
 
 export const sessionStore = createCollection<Session, SessionMetadata>({
   name: "session",
-  dir: paths.sessions,
-  filePath: paths.sessionFile,
+  dir: SESSIONS_DIR,
+  filePath: getSessionFile,
   schema: SessionSchema,
   getMetadata: (session) => session.metadata,
   getId: (session) => session.metadata.id,

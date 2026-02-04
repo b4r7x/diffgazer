@@ -1,11 +1,10 @@
-import type { AIClient } from "./ai/index.js";
-import { createAIClient } from "./ai/index.js";
-import { getActiveProvider, getProviderApiKey } from "./config-store/index.js";
+import type { AIClient } from "./ai/types.js";
+import { createAIClient } from "./ai/sdk-client.js";
+import { getActiveProvider, getProviderApiKey } from "./config-store/store.js";
 import { ErrorCode, type ErrorCode as ErrorCodeType } from "@stargazer/schemas/errors";
-import type { Result } from "./result.js";
-import { ok, err } from "./result.js";
+import { type Result, ok, err } from "@stargazer/core";
 
-export interface AIClientError {
+interface AIClientError {
   message: string;
   code: ErrorCodeType;
 }

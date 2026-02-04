@@ -6,7 +6,8 @@ import { ErrorCode } from "@stargazer/schemas/errors";
 import { deleteReview, getReview, listReviews } from "./repo.js";
 import { errorResponse } from "../../shared/lib/error-response.js";
 import { getProjectRoot } from "../../shared/lib/request.js";
-import { getSession, getTriageReview, subscribe } from "../../shared/lib/storage/index.js";
+import { getSession, subscribe } from "../../shared/lib/storage/active-sessions.js";
+import { getTriageReview } from "../../shared/lib/storage/review-storage.js";
 import { zodErrorHandler } from "../../shared/lib/response.js";
 
 const reviewsRouter = new Hono();

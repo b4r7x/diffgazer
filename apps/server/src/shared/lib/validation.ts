@@ -1,23 +1,11 @@
-import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import { HTTPException } from "hono/http-exception";
 import type { ZodType } from "zod";
 import { UuidSchema } from "@stargazer/schemas";
-import type { Result } from "./result.js";
-import { ok, err } from "./result.js";
+import { type Result, ok, err } from "@stargazer/core";
 import { safeParseJson } from "./json.js";
 import type { StoreErrorCode } from "./storage/persistence.js";
 
-export { UuidSchema };
-
 export const isValidUuid = (id: string): boolean => UuidSchema.safeParse(id).success;
-
-export const assertValidUuid = (id: string): string => {
-  if (!UuidSchema.safeParse(id).success) {
-    throw new Error(`Invalid UUID format: ${id}`);
-  }
-  return id;
-};
 
 export const validateSchema = <T, E>(
   value: unknown,
@@ -59,26 +47,6 @@ export const isValidProjectPath = (value: string): boolean => {
     return false;
   }
   return true;
-};
-
-export const requireUuidParam = (c: Context, paramName: string): string => {
-  const value = c.req.param(paramName);
-  if (!isValidUuid(value)) {
-    throw new HTTPException(400, {
-      message: `Invalid ${paramName} format: expected UUID`,
-    });
-  }
-  return value;
-};
-
-export const validateProjectPath = (value: string | undefined): string | undefined => {
-  if (!value) return undefined;
-  if (!isValidProjectPath(value)) {
-    throw new HTTPException(400, {
-      message: "Invalid projectPath: contains path traversal or null bytes",
-    });
-  }
-  return value;
 };
 
 export const errorCodeToStatus = (code: StoreErrorCode): ContentfulStatusCode => {
