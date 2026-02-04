@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
-import { SecretsStorageError } from "./errors.js";
+import { type Result, ok, err, createError } from "@stargazer/core";
+import type { SecretsStorageError, SecretsStorageErrorCode } from "./types.js";
 
 type KeyringModule = typeof import("@napi-rs/keyring");
 
@@ -66,57 +67,68 @@ export const isKeyringAvailable = (): boolean => {
   return cachedKeyringAvailable;
 };
 
-const requireKeyring = (): KeyringModule => {
+const requireKeyring = (): Result<KeyringModule, SecretsStorageError> => {
   const keyring = loadKeyring();
   if (!keyring || !isKeyringAvailable()) {
-    throw new SecretsStorageError(
-      "KEYRING_UNAVAILABLE",
-      "System keyring is not available"
+    return err(
+      createError<SecretsStorageErrorCode>("KEYRING_UNAVAILABLE", "System keyring is not available")
     );
   }
-  return keyring;
+  return ok(keyring);
 };
 
-export const readKeyringSecret = (key: string): string | null => {
-  const keyring = requireKeyring();
+export const readKeyringSecret = (
+  key: string
+): Result<string | null, SecretsStorageError> => {
+  const keyringResult = requireKeyring();
+  if (!keyringResult.ok) return keyringResult;
+
   try {
-    const entry = new keyring.Entry(KEYRING_APP_NAME, key);
+    const entry = new keyringResult.value.Entry(KEYRING_APP_NAME, key);
     const value = entry.getPassword();
-    return value ?? null;
+    return ok(value ?? null);
   } catch {
-    throw new SecretsStorageError(
-      "KEYRING_READ_FAILED",
-      `Failed to read secret '${key}' from keyring`
+    return err(
+      createError<SecretsStorageErrorCode>("KEYRING_READ_FAILED", `Failed to read secret '${key}' from keyring`)
     );
   }
 };
 
-export const writeKeyringSecret = (key: string, value: string): void => {
-  const keyring = requireKeyring();
+export const writeKeyringSecret = (
+  key: string,
+  value: string
+): Result<void, SecretsStorageError> => {
+  const keyringResult = requireKeyring();
+  if (!keyringResult.ok) return keyringResult;
+
   try {
-    const entry = new keyring.Entry(KEYRING_APP_NAME, key);
+    const entry = new keyringResult.value.Entry(KEYRING_APP_NAME, key);
     entry.setPassword(value);
+    return ok(undefined);
   } catch {
-    throw new SecretsStorageError(
-      "KEYRING_WRITE_FAILED",
-      `Failed to store secret '${key}' in keyring`
+    return err(
+      createError<SecretsStorageErrorCode>("KEYRING_WRITE_FAILED", `Failed to store secret '${key}' in keyring`)
     );
   }
 };
 
-export const deleteKeyringSecret = (key: string): boolean => {
-  const existing = readKeyringSecret(key);
-  if (existing === null) return false;
+export const deleteKeyringSecret = (
+  key: string
+): Result<boolean, SecretsStorageError> => {
+  const existingResult = readKeyringSecret(key);
+  if (!existingResult.ok) return existingResult;
+  if (existingResult.value === null) return ok(false);
 
-  const keyring = requireKeyring();
+  const keyringResult = requireKeyring();
+  if (!keyringResult.ok) return keyringResult;
+
   try {
-    const entry = new keyring.Entry(KEYRING_APP_NAME, key);
+    const entry = new keyringResult.value.Entry(KEYRING_APP_NAME, key);
     entry.deletePassword();
-    return true;
+    return ok(true);
   } catch {
-    throw new SecretsStorageError(
-      "KEYRING_DELETE_FAILED",
-      `Failed to delete secret '${key}' from keyring`
+    return err(
+      createError<SecretsStorageErrorCode>("KEYRING_DELETE_FAILED", `Failed to delete secret '${key}' from keyring`)
     );
   }
 };

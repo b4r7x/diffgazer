@@ -13,7 +13,6 @@ import {
   saveTrust,
   updateSettings,
 } from "../../shared/lib/config/store.js";
-import { SecretsStorageError } from "../../shared/lib/config/errors.js";
 import { errorResponse } from "../../shared/lib/http/response.js";
 
 const settingsRouter = new Hono();
@@ -67,15 +66,11 @@ settingsRouter.post(
   }),
   (c): Response => {
     const patch = c.req.valid("json");
-    try {
-      const settings = updateSettings(patch);
-      return c.json(settings);
-    } catch (error) {
-      if (error instanceof SecretsStorageError) {
-        return errorResponse(c, error.message, error.code, 400);
-      }
-      throw error;
+    const result = updateSettings(patch);
+    if (!result.ok) {
+      return errorResponse(c, result.error.message, result.error.code, 400);
     }
+    return c.json(result.value);
   }
 );
 

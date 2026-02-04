@@ -1,5 +1,6 @@
 import { resolveProjectRoot } from "../paths.js";
-import { SecretsStorageError } from "./errors.js";
+import { type Result, ok, err, createError } from "@stargazer/core";
+import type { SecretsStorageError, SecretsStorageErrorCode } from "./types.js";
 import type { AIProvider } from "@stargazer/schemas/config";
 import {
   deleteKeyringSecret,
@@ -100,19 +101,19 @@ const ensureProvider = (providerId: AIProvider): ProviderStatus => {
 const migrateSecretsStorage = (
   fromStorage: SecretsStorage,
   toStorage: SecretsStorage,
-): void => {
-  if (fromStorage === toStorage) return;
+): Result<void, SecretsStorageError> => {
+  if (fromStorage === toStorage) return ok(undefined);
 
   if (fromStorage === "file" && toStorage === "keyring") {
     if (!isKeyringAvailable()) {
-      throw new SecretsStorageError(
-        "KEYRING_UNAVAILABLE",
-        "System keyring is not available",
+      return err(
+        createError<SecretsStorageErrorCode>("KEYRING_UNAVAILABLE", "System keyring is not available")
       );
     }
 
     for (const [providerId, apiKey] of Object.entries(secretsState.providers)) {
-      writeKeyringSecret(getApiKeyName(providerId), apiKey);
+      const writeResult = writeKeyringSecret(getApiKeyName(providerId), apiKey);
+      if (!writeResult.ok) return writeResult;
     }
 
     secretsState = { providers: {} };
@@ -125,45 +126,47 @@ const migrateSecretsStorage = (
         }`,
       );
     }
-    return;
+    return ok(undefined);
   }
 
   if (fromStorage === "keyring" && toStorage === "file") {
     const nextSecrets: Record<string, string> = {};
     for (const provider of configState.providers) {
       if (!provider.hasApiKey) continue;
-      const secret = readKeyringSecret(getApiKeyName(provider.provider));
-      if (secret === null) {
-        throw new SecretsStorageError(
-          "SECRET_NOT_FOUND",
-          `Secret for provider '${provider.provider}' not found in keyring`,
+      const secretResult = readKeyringSecret(getApiKeyName(provider.provider));
+      if (!secretResult.ok) return secretResult;
+      if (secretResult.value === null) {
+        return err(
+          createError<SecretsStorageErrorCode>(
+            "SECRET_NOT_FOUND",
+            `Secret for provider '${provider.provider}' not found in keyring`
+          )
         );
       }
-      nextSecrets[provider.provider] = secret;
+      nextSecrets[provider.provider] = secretResult.value;
     }
 
     secretsState = { providers: nextSecrets };
     persistFileSecrets();
 
     for (const providerId of Object.keys(nextSecrets)) {
-      try {
-        deleteKeyringSecret(getApiKeyName(providerId));
-      } catch (error) {
+      const deleteResult = deleteKeyringSecret(getApiKeyName(providerId));
+      if (!deleteResult.ok) {
         console.warn(
-          `[stargazer] Failed to delete keyring secret for '${providerId}': ${
-            error instanceof Error ? error.message : String(error)
-          }`,
+          `[stargazer] Failed to delete keyring secret for '${providerId}': ${deleteResult.error.message}`,
         );
       }
     }
   }
+
+  return ok(undefined);
 };
 
 export const getSettings = (): SettingsConfig => ({ ...configState.settings });
 
 export const updateSettings = (
   patch: Partial<SettingsConfig>,
-): SettingsConfig => {
+): Result<SettingsConfig, SecretsStorageError> => {
   const nextSettings: SettingsConfig = {
     ...configState.settings,
     ...patch,
@@ -173,7 +176,8 @@ export const updateSettings = (
   const nextStorage = resolveSecretsStorage(nextSettings.secretsStorage);
 
   if (currentStorage !== nextStorage) {
-    migrateSecretsStorage(currentStorage, nextStorage);
+    const migrateResult = migrateSecretsStorage(currentStorage, nextStorage);
+    if (!migrateResult.ok) return migrateResult;
     if (nextStorage === "file") {
       configState.providers = syncProvidersWithSecrets(
         configState.providers,
@@ -186,7 +190,7 @@ export const updateSettings = (
   configState.settings = nextSettings;
 
   persistConfig(configState);
-  return getSettings();
+  return ok(getSettings());
 };
 
 export const getProviders = (): ProviderStatus[] =>
@@ -197,9 +201,11 @@ export const getActiveProvider = (): ProviderStatus | null => {
   return active ? { ...active } : null;
 };
 
-export const getProviderApiKey = (providerId: string): string | null => {
+export const getProviderApiKey = (
+  providerId: string
+): Result<string | null, SecretsStorageError> => {
   if (resolveSecretsStorage(configState.settings.secretsStorage) === "file") {
-    return secretsState.providers[providerId] ?? null;
+    return ok(secretsState.providers[providerId] ?? null);
   }
 
   return readKeyringSecret(getApiKeyName(providerId));
@@ -246,7 +252,7 @@ export const saveProviderCredentials = (input: {
   provider: AIProvider;
   apiKey: string;
   model?: string;
-}): ProviderStatus => {
+}): Result<ProviderStatus, SecretsStorageError> => {
   const { provider, apiKey, model } = input;
   const storage = resolveSecretsStorage(configState.settings.secretsStorage);
 
@@ -254,7 +260,8 @@ export const saveProviderCredentials = (input: {
     secretsState.providers[provider] = apiKey;
     persistSecrets(secretsState);
   } else {
-    writeKeyringSecret(getApiKeyName(provider), apiKey);
+    const writeResult = writeKeyringSecret(getApiKeyName(provider), apiKey);
+    if (!writeResult.ok) return writeResult;
     if (provider in secretsState.providers) {
       delete secretsState.providers[provider];
       persistFileSecrets();
@@ -265,7 +272,7 @@ export const saveProviderCredentials = (input: {
   setActiveProvider(provider, { model, hasApiKey: true });
 
   persistConfig(configState);
-  return getActiveProvider() ?? { ...ensureProvider(provider) };
+  return ok(getActiveProvider() ?? { ...ensureProvider(provider) });
 };
 
 export const activateProvider = (input: {
@@ -284,7 +291,9 @@ export const activateProvider = (input: {
   return getActiveProvider();
 };
 
-export const deleteProviderCredentials = (providerId: AIProvider): boolean => {
+export const deleteProviderCredentials = (
+  providerId: AIProvider
+): Result<boolean, SecretsStorageError> => {
   const providerExists = configState.providers.some(
     (item) => item.provider === providerId,
   );
@@ -298,7 +307,9 @@ export const deleteProviderCredentials = (providerId: AIProvider): boolean => {
 
     persistFileSecrets();
   } else {
-    hadSecret = deleteKeyringSecret(getApiKeyName(providerId));
+    const deleteResult = deleteKeyringSecret(getApiKeyName(providerId));
+    if (!deleteResult.ok) return deleteResult;
+    hadSecret = deleteResult.value;
     if (providerId in secretsState.providers) {
       delete secretsState.providers[providerId];
       persistFileSecrets();
@@ -319,5 +330,5 @@ export const deleteProviderCredentials = (providerId: AIProvider): boolean => {
   });
 
   persistConfig(configState);
-  return providerExists || hadSecret;
+  return ok(providerExists || hadSecret);
 };

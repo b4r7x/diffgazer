@@ -6,6 +6,7 @@ import type {
   TrustCapabilities,
   TrustConfig,
 } from "@stargazer/api";
+import type { AppError } from "@stargazer/core";
 
 export type {
   ProjectInfo,
@@ -34,3 +35,13 @@ export interface ProjectFile {
   repoRoot: string;
   createdAt: string;
 }
+
+export type SecretsStorageErrorCode =
+  | "KEYRING_UNAVAILABLE"
+  | "KEYRING_READ_FAILED"
+  | "KEYRING_WRITE_FAILED"
+  | "KEYRING_DELETE_FAILED"
+  | "SECRET_NOT_FOUND"
+  | "SECRETS_MIGRATION_FAILED";
+
+export type SecretsStorageError = AppError<SecretsStorageErrorCode>;
