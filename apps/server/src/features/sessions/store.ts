@@ -8,8 +8,8 @@ import {
   type MessageRole,
 } from "@stargazer/schemas";
 import { truncate } from "@stargazer/core";
-import { createCollection, filterByProjectAndSort, type StoreError } from "./persistence.js";
-import { getGlobalStargazerDir } from "../paths.js";
+import { createCollection, filterByProjectAndSort, type StoreError } from "../../shared/lib/storage/persistence.js";
+import { getGlobalStargazerDir } from "../../shared/lib/paths.js";
 import { type Result, ok } from "@stargazer/core";
 
 const SESSIONS_DIR = join(getGlobalStargazerDir(), "sessions");
