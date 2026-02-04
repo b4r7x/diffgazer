@@ -1,4 +1,4 @@
-import type { Lens, LensId, SeverityRubric } from "@repo/schemas/lens";
+import type { Lens, LensId, SeverityRubric } from "@stargazer/schemas/lens";
 
 const DEFAULT_RUBRIC: SeverityRubric = {
   blocker: "Prevents deployment or causes data loss/corruption",

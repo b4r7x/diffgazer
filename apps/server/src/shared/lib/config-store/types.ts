@@ -1,4 +1,4 @@
-import type { AIProvider } from "@repo/schemas/config";
+import type { AIProvider } from "@stargazer/schemas/config";
 
 export type Theme = "auto" | "dark" | "light" | "terminal";
 

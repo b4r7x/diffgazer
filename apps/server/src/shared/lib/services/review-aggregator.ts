@@ -1,4 +1,4 @@
-import type { ReviewResult, FileReviewResult, ReviewIssue } from "@repo/schemas/review";
+import type { ReviewResult, FileReviewResult, ReviewIssue } from "@stargazer/schemas/review";
 
 export interface AggregationResult {
   result: ReviewResult;

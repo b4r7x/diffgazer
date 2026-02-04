@@ -1,4 +1,4 @@
-import type { TriageIssue, TriageSeverity } from "@repo/schemas/triage";
+import type { TriageIssue, TriageSeverity } from "@stargazer/schemas/triage";
 import type { AnnotationLevel, GitHubAnnotation, InlineComment, PRReviewResponse } from "./types.js";
 
 const severityToAnnotationLevel = (severity: TriageSeverity): AnnotationLevel => {

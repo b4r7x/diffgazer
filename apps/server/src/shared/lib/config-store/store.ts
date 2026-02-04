@@ -1,6 +1,6 @@
 import { resolveProjectRoot } from "../paths.js";
 import { SecretsStorageError } from "./errors.js";
-import type { AIProvider } from "@repo/schemas/config";
+import type { AIProvider } from "@stargazer/schemas/config";
 import {
   deleteKeyringSecret,
   isKeyringAvailable,

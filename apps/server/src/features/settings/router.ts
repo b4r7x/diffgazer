@@ -3,8 +3,8 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
-import { TrustConfigSchema } from "@repo/schemas/settings";
-import { ErrorCode } from "@repo/schemas/errors";
+import { TrustConfigSchema } from "@stargazer/schemas/settings";
+import { ErrorCode } from "@stargazer/schemas/errors";
 import {
   getSettings,
   getTrust,

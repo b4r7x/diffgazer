@@ -17,7 +17,7 @@ import {
   GLM_MODEL_INFO,
   type AIProvider,
   type ModelInfo,
-} from "@repo/schemas";
+} from "@stargazer/schemas";
 import { useModelFilter } from "../../hooks/use-model-filter";
 import { ModelSearchInput } from "./model-search-input";
 import { ModelFilterTabs, FILTERS } from "./model-filter-tabs";

@@ -2,7 +2,7 @@ import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { HTTPException } from "hono/http-exception";
 import type { ZodType } from "zod";
-import { UuidSchema } from "@repo/schemas";
+import { UuidSchema } from "@stargazer/schemas";
 import type { Result } from "./result.js";
 import { ok, err } from "./result.js";
 import { safeParseJson } from "./json.js";

@@ -12,7 +12,7 @@ import {
   type ProfileId,
   type DrilldownResult,
   type ReviewMode,
-} from "@repo/schemas";
+} from "@stargazer/schemas";
 import type { ParsedDiff } from "../diff/index.js";
 import type { Result } from "../result.js";
 import { ok } from "../result.js";

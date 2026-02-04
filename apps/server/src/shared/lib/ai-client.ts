@@ -1,7 +1,7 @@
 import type { AIClient } from "./ai/index.js";
 import { createAIClient } from "./ai/index.js";
 import { getActiveProvider, getProviderApiKey } from "./config-store/index.js";
-import { ErrorCode, type ErrorCode as ErrorCodeType } from "@repo/schemas/errors";
+import { ErrorCode, type ErrorCode as ErrorCodeType } from "@stargazer/schemas/errors";
 import type { Result } from "./result.js";
 import { ok, err } from "./result.js";
 

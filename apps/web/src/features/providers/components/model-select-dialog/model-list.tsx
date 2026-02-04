@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import type { ModelInfo } from "@repo/schemas";
+import type { ModelInfo } from "@stargazer/schemas";
 import { ModelListItem } from "./model-list-item";
 
 interface ModelListProps {

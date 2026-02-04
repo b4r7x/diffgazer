@@ -4,8 +4,8 @@ import { NavigationList, NavigationListItem } from '@/components/ui';
 import { Badge } from '@/components/ui';
 import { Input } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import { PROVIDER_CAPABILITIES } from '@repo/schemas';
-import type { ProviderFilter } from '@repo/schemas';
+import { PROVIDER_CAPABILITIES } from '@stargazer/schemas';
+import type { ProviderFilter } from '@stargazer/schemas';
 import type { ProviderWithStatus, DisplayStatus } from '../types';
 
 export type { ProviderFilter };
