@@ -1,23 +1,19 @@
 import type { z } from "zod";
 import type { AIProvider } from "@stargazer/schemas/config";
 import type { SharedErrorCode } from "@stargazer/schemas";
-import type { Result } from "../result.js";
+import type { Result } from "@stargazer/core";
 import type { AppError } from "../errors.js";
 
 export type { AIProvider };
 
-export const AI_SPECIFIC_CODES = [
-  "API_KEY_INVALID",
-  "MODEL_ERROR",
-  "NETWORK_ERROR",
-  "PARSE_ERROR",
-  "STREAM_ERROR",
-  "UNSUPPORTED_PROVIDER",
-] as const;
-
-export type AISpecificCode = (typeof AI_SPECIFIC_CODES)[number];
-
-export type AIErrorCode = SharedErrorCode | AISpecificCode;
+export type AIErrorCode =
+  | SharedErrorCode
+  | "API_KEY_INVALID"
+  | "MODEL_ERROR"
+  | "NETWORK_ERROR"
+  | "PARSE_ERROR"
+  | "STREAM_ERROR"
+  | "UNSUPPORTED_PROVIDER";
 
 export type AIError = AppError<AIErrorCode>;
 

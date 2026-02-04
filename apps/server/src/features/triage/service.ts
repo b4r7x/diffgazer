@@ -1,14 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { createGitService } from "../../shared/lib/services/git.js";
-import type { AIClient } from "../../shared/lib/ai/index.js";
+import type { AIClient } from "../../shared/lib/ai/types.js";
 import { getErrorMessage } from "../../shared/lib/errors.js";
-import { parseDiff, filterDiffByFiles } from "../../shared/lib/diff/index.js";
-import { triageReviewStream, getProfile } from "../../shared/lib/review/index.js";
-import { saveTriageReview } from "../../shared/lib/storage/index.js";
-import { enrichIssues } from "../../shared/lib/services/enrich.js";
-import { generateReport } from "../../shared/lib/services/report.js";
+import { parseDiff, filterDiffByFiles } from "../../shared/lib/diff/parser.js";
+import { triageReviewStream, getProfile } from "../../shared/lib/review/triage.js";
+import { saveTriageReview } from "../../shared/lib/storage/review-storage.js";
 import type { LensId, ProfileId } from "@stargazer/schemas/lens";
 import { ErrorCode } from "@stargazer/schemas/errors";
+import { SEVERITY_ORDER } from "@stargazer/core";
+import type { TriageIssue, TriageResult, TriageSeverity, EnrichmentData } from "@stargazer/schemas/triage";
 import type { SSEWriter } from "../../shared/lib/ai-client.js";
 import { writeSSEError } from "../../shared/lib/sse-helpers.js";
 import { createGitDiffError } from "../../shared/lib/git-diff-error.js";
@@ -48,6 +48,162 @@ async function writeStreamEvent(stream: SSEWriter, event: FullTriageStreamEvent)
     event: event.type,
     data: JSON.stringify(event),
   });
+}
+
+function severityRank(severity: TriageSeverity): number {
+  return SEVERITY_ORDER.indexOf(severity);
+}
+
+function deduplicateIssues(issues: TriageIssue[]): TriageIssue[] {
+  const seen = new Map<string, TriageIssue>();
+
+  for (const issue of issues) {
+    const key = `${issue.file}:${issue.line_start ?? 0}:${issue.title.toLowerCase().slice(0, 50)}`;
+    const existing = seen.get(key);
+
+    if (!existing || severityRank(issue.severity) < severityRank(existing.severity)) {
+      seen.set(key, issue);
+    }
+  }
+
+  return Array.from(seen.values());
+}
+
+function sortIssuesBySeverity(issues: TriageIssue[]): TriageIssue[] {
+  return [...issues].sort((a, b) => {
+    const severityDiff = severityRank(a.severity) - severityRank(b.severity);
+    if (severityDiff !== 0) return severityDiff;
+
+    const confidenceDiff = b.confidence - a.confidence;
+    if (Math.abs(confidenceDiff) > 0.01) return confidenceDiff;
+
+    return a.file.localeCompare(b.file);
+  });
+}
+
+function generateExecutiveSummary(issues: TriageIssue[], lensSummaries: string[]): string {
+  const severityCounts = issues.reduce((acc, issue) => {
+    acc[issue.severity] = (acc[issue.severity] ?? 0) + 1;
+    return acc;
+  }, {} as Record<TriageSeverity, number>);
+
+  const uniqueFiles = new Set(issues.map(i => i.file)).size;
+
+  const severityLines = Object.entries(severityCounts)
+    .sort(([a], [b]) => severityRank(a as TriageSeverity) - severityRank(b as TriageSeverity))
+    .map(([severity, count]) => `- ${severity}: ${count}`)
+    .join("\n");
+
+  const summaryParts = [
+    `Found ${issues.length} issue${issues.length !== 1 ? "s" : ""} across ${uniqueFiles} file${uniqueFiles !== 1 ? "s" : ""}.`,
+    "",
+    "Severity breakdown:",
+    severityLines,
+  ];
+
+  if (lensSummaries.length > 0) {
+    summaryParts.push("", "Lens summaries:", ...lensSummaries.map(s => `- ${s}`));
+  }
+
+  return summaryParts.join("\n");
+}
+
+function generateReport(issues: TriageIssue[], lensSummaries: string[]): TriageResult {
+  const deduplicated = deduplicateIssues(issues);
+  const sorted = sortIssuesBySeverity(deduplicated);
+  const summary = generateExecutiveSummary(sorted, lensSummaries);
+
+  return { summary, issues: sorted };
+}
+
+const CONTEXT_LINES = 5;
+
+interface EnrichGitService {
+  getBlame(file: string, line: number): Promise<{
+    author: string;
+    authorEmail: string;
+    commit: string;
+    commitDate: string;
+    summary: string;
+  } | null>;
+  getFileLines(file: string, startLine: number, endLine: number): Promise<string[]>;
+}
+
+async function enrichIssue(
+  issue: TriageIssue,
+  gitService: EnrichGitService,
+  onEvent: (event: EnrichProgressEvent) => void
+): Promise<TriageIssue> {
+  const enrichment: EnrichmentData = {
+    blame: null,
+    context: null,
+    enrichedAt: now(),
+  };
+
+  if (issue.line_start !== null && issue.line_start !== undefined) {
+    onEvent({
+      type: "enrich_progress",
+      issueId: issue.id,
+      enrichmentType: "blame",
+      status: "started",
+      timestamp: now(),
+    });
+
+    const blame = await gitService.getBlame(issue.file, issue.line_start);
+    enrichment.blame = blame;
+
+    onEvent({
+      type: "enrich_progress",
+      issueId: issue.id,
+      enrichmentType: "blame",
+      status: blame ? "complete" : "failed",
+      timestamp: now(),
+    });
+  }
+
+  if (issue.line_start !== null && issue.line_start !== undefined) {
+    onEvent({
+      type: "enrich_progress",
+      issueId: issue.id,
+      enrichmentType: "context",
+      status: "started",
+      timestamp: now(),
+    });
+
+    const startLine = Math.max(1, issue.line_start - CONTEXT_LINES);
+    const endLine = (issue.line_end ?? issue.line_start) + CONTEXT_LINES;
+    const lines = await gitService.getFileLines(issue.file, startLine, endLine);
+
+    const targetLineIndex = issue.line_start - startLine;
+    enrichment.context = {
+      beforeLines: lines.slice(0, targetLineIndex),
+      afterLines: lines.slice(targetLineIndex + 1),
+      totalContext: lines.length,
+    };
+
+    onEvent({
+      type: "enrich_progress",
+      issueId: issue.id,
+      enrichmentType: "context",
+      status: enrichment.context.totalContext > 0 ? "complete" : "failed",
+      timestamp: now(),
+    });
+  }
+
+  return { ...issue, enrichment };
+}
+
+async function enrichIssues(
+  issues: TriageIssue[],
+  gitService: EnrichGitService,
+  onEvent: (event: EnrichProgressEvent) => void
+): Promise<TriageIssue[]> {
+  const enrichPromises = issues.map((issue) => enrichIssue(issue, gitService, onEvent));
+  const enriched = await Promise.allSettled(enrichPromises);
+
+  return enriched.map((result, i) =>
+    result.status === "fulfilled" ? result.value : issues[i]!
+  );
 }
 
 // Server-specific triage options extending schema options

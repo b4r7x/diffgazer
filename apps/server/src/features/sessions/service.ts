@@ -1,9 +1,8 @@
-import type { AIClient } from "../../shared/lib/ai/index.js";
+import type { AIClient } from "../../shared/lib/ai/types.js";
 import type { Session } from "@stargazer/schemas/session";
-import { addMessage, sessionStore } from "../../shared/lib/storage/index.js";
+import { addMessage, sessionStore } from "../../shared/lib/storage/sessions.js";
 import { ErrorCode } from "@stargazer/schemas/errors";
-import type { Result } from "../../shared/lib/result.js";
-import { ok, err } from "../../shared/lib/result.js";
+import { type Result, ok, err } from "@stargazer/core";
 import { getErrorMessage } from "../../shared/lib/errors.js";
 import { escapeXml, sanitizeUnicode } from "../../shared/utils/sanitization.js";
 import { initializeAIClient, type SSEWriter } from "../../shared/lib/ai-client.js";

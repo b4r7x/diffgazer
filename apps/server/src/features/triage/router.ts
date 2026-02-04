@@ -7,9 +7,9 @@ import type { LensId, ProfileId } from "@stargazer/schemas/lens";
 import type { ReviewMode } from "@stargazer/schemas/triage-storage";
 import { errorResponse, handleStoreError, zodErrorHandler } from "../../shared/lib/response.js";
 import { getErrorMessage } from "../../shared/lib/errors.js";
-import { parseDiff } from "../../shared/lib/diff/index.js";
+import { parseDiff } from "../../shared/lib/diff/parser.js";
 import { createGitService } from "../../shared/lib/services/git.js";
-import { drilldownIssueById } from "../../shared/lib/review/index.js";
+import { drilldownIssueById } from "../../shared/lib/review/drilldown.js";
 import { writeSSEError } from "../../shared/lib/sse-helpers.js";
 import { getProjectRoot } from "../../shared/lib/request.js";
 import { isValidProjectPath } from "../../shared/lib/validation.js";
@@ -19,7 +19,7 @@ import {
   deleteTriageReview,
   getTriageReview,
   listTriageReviews,
-} from "../../shared/lib/storage/index.js";
+} from "../../shared/lib/storage/review-storage.js";
 import { DrilldownRequestSchema, TriageReviewIdParamSchema } from "./schemas.js";
 import { initializeAIClient } from "../../shared/lib/ai-client.js";
 import { streamTriageToSSE } from "./service.js";

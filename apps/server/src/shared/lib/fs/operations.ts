@@ -1,10 +1,9 @@
 import { mkdir, readFile, writeFile, unlink, rename } from "node:fs/promises";
-import type { Result } from "../result.js";
+import { type Result, ok, err } from "@stargazer/core";
 import type { AppError } from "../errors.js";
-import { ok, err } from "../result.js";
 import { isNodeError, getErrorMessage } from "../errors.js";
 
-export type FileIOErrorCode = "NOT_FOUND" | "PERMISSION_DENIED" | "READ_ERROR" | "WRITE_ERROR";
+type FileIOErrorCode = "NOT_FOUND" | "PERMISSION_DENIED" | "READ_ERROR" | "WRITE_ERROR";
 
 export type ErrorFactory<E> = (code: FileIOErrorCode, message: string, details?: string) => E;
 
@@ -34,7 +33,7 @@ export async function safeReadFile<E>(
   }
 }
 
-export interface EnsureDirectoryOptions {
+interface EnsureDirectoryOptions {
   mode?: number;
 }
 
@@ -57,7 +56,7 @@ export async function ensureDirectory<E>(
   }
 }
 
-export interface AtomicWriteOptions {
+interface AtomicWriteOptions {
   mode?: number;
 }
 

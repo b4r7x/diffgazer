@@ -42,9 +42,6 @@ importers:
         specifier: ^19.0.0
         version: 19.2.4
     devDependencies:
-      '@stargazer/tsconfig':
-        specifier: workspace:*
-        version: link:../../packages/tsconfig
       '@stargazer/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -54,6 +51,9 @@ importers:
       '@stargazer/server':
         specifier: workspace:*
         version: link:../server
+      '@stargazer/tsconfig':
+        specifier: workspace:*
+        version: link:../../packages/tsconfig
       '@types/node':
         specifier: ^22.0.0
         version: 22.19.7
@@ -87,6 +87,12 @@ importers:
       '@openrouter/ai-sdk-provider':
         specifier: ^0.4.3
         version: 0.4.6(zod@4.3.6)
+      '@stargazer/api':
+        specifier: workspace:*
+        version: link:../../packages/api
+      '@stargazer/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@stargazer/schemas':
         specifier: workspace:*
         version: link:../../packages/schemas

@@ -1,8 +1,7 @@
-import type { Result } from "../result.js";
-import { ok, err } from "../result.js";
-import type { AIClient, AIError } from "../ai/index.js";
-import type { ParsedDiff, FileDiff } from "../diff/index.js";
-import type { Lens } from "@stargazer/schemas/lens";
+import { type Result, ok, err } from "@stargazer/core";
+import type { AIClient, AIError } from "../ai/types.js";
+import type { ParsedDiff, FileDiff, DiffHunk } from "../diff/types.js";
+import type { Lens, ReviewProfile, ProfileId } from "@stargazer/schemas/lens";
 import type {
   TriageResult,
   TriageIssue,
@@ -18,11 +17,41 @@ import { AGENT_METADATA, LENS_TO_AGENT } from "@stargazer/schemas/agent-event";
 import type { StepEvent } from "@stargazer/schemas/step-event";
 import { escapeXml } from "../../utils/sanitization.js";
 import { getLenses } from "./lenses/index.js";
-import { getProfile } from "./profiles.js";
 
-export type { TriageOptions };
+const PROFILES: Record<ProfileId, ReviewProfile> = {
+  quick: {
+    id: "quick",
+    name: "Quick Review",
+    description: "Fast review focusing on critical correctness issues",
+    lenses: ["correctness"],
+    filter: { minSeverity: "high" },
+  },
+  strict: {
+    id: "strict",
+    name: "Strict Review",
+    description: "Comprehensive review covering correctness, security, and tests",
+    lenses: ["correctness", "security", "tests"],
+  },
+  perf: {
+    id: "perf",
+    name: "Performance Review",
+    description: "Performance-focused review with correctness baseline",
+    lenses: ["correctness", "performance"],
+    filter: { minSeverity: "medium" },
+  },
+  security: {
+    id: "security",
+    name: "Security Audit",
+    description: "Security-focused review for sensitive changes",
+    lenses: ["security", "correctness"],
+  },
+};
 
-export type TriageError = AIError | { code: "NO_DIFF"; message: string };
+function getProfile(id: ProfileId): ReviewProfile {
+  return PROFILES[id];
+}
+
+type TriageError = AIError | { code: "NO_DIFF"; message: string };
 
 const severityRank = (severity: TriageSeverity): number => SEVERITY_ORDER.indexOf(severity);
 
@@ -37,11 +66,11 @@ function filterIssuesBySeverity(issues: TriageIssue[], filter?: SeverityFilter):
 
 function buildTriagePrompt(lens: Lens, diff: ParsedDiff): string {
   const filesContext = diff.files
-    .map((f) => `- ${f.filePath} (${f.operation}, +${f.stats.additions}/-${f.stats.deletions})`)
+    .map((f: FileDiff) => `- ${f.filePath} (${f.operation}, +${f.stats.additions}/-${f.stats.deletions})`)
     .join("\n");
 
   const diffs = diff.files
-    .map((f) => `<code-diff file="${escapeXml(f.filePath)}">\n${escapeXml(f.rawDiff)}\n</code-diff>`)
+    .map((f: FileDiff) => `<code-diff file="${escapeXml(f.filePath)}">\n${escapeXml(f.rawDiff)}\n</code-diff>`)
     .join("\n\n");
 
   return `${lens.systemPrompt}
@@ -116,7 +145,7 @@ function sortIssuesBySeverity(issues: TriageIssue[]): TriageIssue[] {
 function extractEvidenceFromDiff(file: FileDiff, lineStart: number | null, lineEnd: number | null): EvidenceRef[] {
   if (lineStart === null) return [];
 
-  const matchingHunk = file.hunks.find((hunk) => {
+  const matchingHunk = file.hunks.find((hunk: DiffHunk) => {
     const hunkEnd = hunk.newStart + hunk.newCount - 1;
     return lineStart >= hunk.newStart && lineStart <= hunkEnd;
   });
@@ -145,7 +174,7 @@ function ensureIssueEvidence(issue: TriageIssue, diff: ParsedDiff): TriageIssue 
     return issue;
   }
 
-  const file = diff.files.find((f) => f.filePath === issue.file);
+  const file = diff.files.find((f: FileDiff) => f.filePath === issue.file);
   if (!file) {
     return {
       ...issue,
@@ -300,7 +329,7 @@ async function runLensAnalysis(
     return result;
   }
 
-  const issuesWithEvidence = result.value.issues.map((issue) => ensureIssueEvidence(issue, diff));
+  const issuesWithEvidence = result.value.issues.map((issue: TriageIssue) => ensureIssueEvidence(issue, diff));
 
   for (const issue of issuesWithEvidence) {
     onEvent({

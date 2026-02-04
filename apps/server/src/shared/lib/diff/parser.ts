@@ -1,8 +1,8 @@
 import type { FileDiff, DiffHunk, ParsedDiff, DiffOperation } from "./types.js";
 
-export type DiffLineType = "addition" | "deletion" | "hunk-header" | "file-header" | "context";
+type DiffLineType = "addition" | "deletion" | "hunk-header" | "file-header" | "context";
 
-export function classifyDiffLine(line: string): DiffLineType {
+function classifyDiffLine(line: string): DiffLineType {
   if (line.startsWith("+") && !line.startsWith("+++")) return "addition";
   if (line.startsWith("-") && !line.startsWith("---")) return "deletion";
   if (line.startsWith("@@")) return "hunk-header";

@@ -1,9 +1,7 @@
-import { access, readdir, unlink, open } from "node:fs/promises";
+import { readdir, unlink, open } from "node:fs/promises";
 import type { FileHandle } from "node:fs/promises";
-import { dirname } from "node:path";
 import type { ZodType } from "zod";
-import type { Result } from "../result.js";
-import { ok, err } from "../result.js";
+import { type Result, ok, err } from "@stargazer/core";
 import type { AppError } from "../errors.js";
 import { createError, getErrorMessage, isNodeError } from "../errors.js";
 import { safeParseJson } from "../json.js";
@@ -24,7 +22,7 @@ export type StoreErrorCode =
 
 export type StoreError = AppError<StoreErrorCode>;
 
-export const createStoreError = createError<StoreErrorCode>;
+const createStoreError = createError<StoreErrorCode>;
 
 const storeErrorFactory = createMappedErrorFactory<StoreErrorCode>(
   {
@@ -169,7 +167,7 @@ async function extractMetadataFromFile<M>(
   }
 }
 
-export interface CollectionConfig<T, M> {
+interface CollectionConfig<T, M> {
   name: string;
   dir: string;
   filePath: (id: string) => string;
@@ -285,77 +283,18 @@ export function createCollection<T, M>(config: CollectionConfig<T, M>): Collecti
   return { ensureDir, read, write, list, remove };
 }
 
-export interface DocumentConfig<T> {
-  name: string;
-  filePath: string;
-  schema: ZodType<T>;
-}
-
-export interface Document<T> {
-  exists(): Promise<boolean>;
-  read(): Promise<Result<T, StoreError>>;
-  write(item: T): Promise<Result<void, StoreError>>;
-  remove(): Promise<Result<void, StoreError>>;
-}
-
-export function createDocument<T>(config: DocumentConfig<T>): Document<T> {
-  const { name, filePath, schema } = config;
-
-  async function exists(): Promise<boolean> {
-    try {
-      await access(filePath);
-      return true;
-    } catch (error) {
-      if (isNodeError(error, "ENOENT")) return false;
-      throw error;
-    }
-  }
-
-  async function read(): Promise<Result<T, StoreError>> {
-    const readResult = await safeReadFile(filePath, name);
-    if (!readResult.ok) return readResult;
-    return parseAndValidate(
-      readResult.value,
-      schema,
-      (message) => createStoreError("PARSE_ERROR", `${name}: ${message}`),
-      (message) => createStoreError("VALIDATION_ERROR", `${name} failed validation`, message)
-    );
-  }
-
-  async function write(item: T): Promise<Result<void, StoreError>> {
-    const dir = dirname(filePath);
-    const dirResult = await ensureDirectory(dir, name);
-    if (!dirResult.ok) return dirResult;
-
-    const content = JSON.stringify(item, null, 2) + "\n";
-    return atomicWriteFile(filePath, content, name);
-  }
-
-  async function remove(): Promise<Result<void, StoreError>> {
-    try {
-      await unlink(filePath);
-      return ok(undefined);
-    } catch (error) {
-      if (isNodeError(error, "ENOENT")) {
-        return ok(undefined);
-      }
-      if (isNodeError(error, "EACCES")) {
-        return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${filePath}`));
-      }
-      return err(createStoreError("WRITE_ERROR", `Failed to delete ${name}`, getErrorMessage(error)));
-    }
-  }
-
-  return { exists, read, write, remove };
-}
+type DateFieldsOf<T> = {
+  [K in keyof T]: T[K] extends string ? K : never;
+}[keyof T];
 
 export function filterByProjectAndSort<T extends { projectPath: string }>(
   items: T[],
   projectPath: string | undefined,
-  dateField: keyof T
+  dateField: DateFieldsOf<T>
 ): T[] {
   const filtered = projectPath ? items.filter((item) => item.projectPath === projectPath) : items;
   return filtered.sort(
-    (a, b) => new Date(b[dateField] as string).getTime() - new Date(a[dateField] as string).getTime()
+    (a, b) =>
+      new Date(b[dateField] as string).getTime() - new Date(a[dateField] as string).getTime()
   );
 }

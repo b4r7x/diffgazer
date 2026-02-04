@@ -5,7 +5,7 @@ import * as path from "node:path";
 const DEFAULT_DIR_MODE = 0o700;
 const DEFAULT_FILE_MODE = 0o600;
 
-export const ensureDirSync = (dirPath: string, mode: number = DEFAULT_DIR_MODE): void => {
+const ensureDirSync = (dirPath: string, mode: number = DEFAULT_DIR_MODE): void => {
   fs.mkdirSync(dirPath, { recursive: true, mode });
 };
 

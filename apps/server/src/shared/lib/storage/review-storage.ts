@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { paths } from "./paths.js";
-import { createCollection, filterByProjectAndSort, type StoreError } from "./persistence.js";
+import { join } from "node:path";
 import {
   SavedTriageReviewSchema,
   TriageReviewMetadataSchema,
@@ -13,14 +12,19 @@ import {
   type DrilldownResult,
   type ReviewMode,
 } from "@stargazer/schemas";
-import type { ParsedDiff } from "../diff/index.js";
-import type { Result } from "../result.js";
-import { ok } from "../result.js";
+import type { ParsedDiff } from "../diff/types.js";
+import { createCollection, filterByProjectAndSort, type StoreError } from "./persistence.js";
+import { getGlobalStargazerDir } from "../paths.js";
+import { type Result, ok } from "@stargazer/core";
+
+const TRIAGE_REVIEWS_DIR = join(getGlobalStargazerDir(), "triage-reviews");
+const getTriageReviewFile = (reviewId: string): string =>
+  join(TRIAGE_REVIEWS_DIR, `${reviewId}.json`);
 
 export const triageReviewStore = createCollection<SavedTriageReview, TriageReviewMetadata>({
   name: "triage-review",
-  dir: paths.triageReviews,
-  filePath: paths.triageReviewFile,
+  dir: TRIAGE_REVIEWS_DIR,
+  filePath: getTriageReviewFile,
   schema: SavedTriageReviewSchema,
   metadataSchema: TriageReviewMetadataSchema,
   getMetadata: (review) => review.metadata,

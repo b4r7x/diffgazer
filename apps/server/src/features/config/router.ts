@@ -15,7 +15,7 @@ import {
   getProvidersStatus,
   saveConfig,
 } from "./service.js";
-import { SecretsStorageError } from "../../shared/lib/config-store/index.js";
+import { SecretsStorageError } from "../../shared/lib/config-store/errors.js";
 import { errorResponse } from "../../shared/lib/error-response.js";
 import { getProjectRoot } from "../../shared/lib/request.js";
 

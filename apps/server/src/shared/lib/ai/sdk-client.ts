@@ -11,8 +11,7 @@ import type {
   AIError,
   AIErrorCode,
 } from "./types.js";
-import type { Result } from "../result.js";
-import { ok, err } from "../result.js";
+import { type Result, ok, err } from "@stargazer/core";
 import { createError, toError, getErrorMessage } from "../errors.js";
 
 const DEFAULT_MODELS = {
