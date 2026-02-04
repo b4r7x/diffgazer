@@ -1,5 +1,5 @@
-import type { TriageIssue, EnrichmentData } from "@repo/schemas/triage";
-import type { EnrichProgressEvent } from "@repo/schemas/enrich-event";
+import type { TriageIssue, EnrichmentData } from "@stargazer/schemas/triage";
+import type { EnrichProgressEvent } from "@stargazer/schemas/enrich-event";
 
 const CONTEXT_LINES = 5; // Lines before/after to extract
 

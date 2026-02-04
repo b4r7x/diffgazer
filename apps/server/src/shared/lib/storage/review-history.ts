@@ -7,7 +7,7 @@ import {
   type ReviewHistoryMetadata,
   type ReviewGitContext,
   type ReviewResult,
-} from "@repo/schemas";
+} from "@stargazer/schemas";
 import type { Result } from "../result.js";
 import { ok } from "../result.js";
 

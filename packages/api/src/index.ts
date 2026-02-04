@@ -65,7 +65,7 @@ export {
 export { bindGit, getGitDiff, getGitStatus } from "./git.js";
 export { bindPrReview, runPrReview, type PRReviewRequest } from "./pr-review.js";
 export { bindReview, streamReview } from "./review.js";
-export { bindReviews, deleteReview, getReview, getReviewHistory } from "./reviews.js";
+export { bindReviews, deleteReview, getReview, getReviewHistory, getReviewStatus } from "./reviews.js";
 export {
   bindSessions,
   addSessionMessage,
@@ -81,7 +81,14 @@ export {
   deleteTriageReview,
   getTriageReview,
   getTriageReviews,
+  resumeTriageStream,
   runTriageDrilldown,
   streamTriage,
+  streamTriageWithEvents,
+  type ResumeTriageOptions,
   type StreamTriageOptions,
+  type StreamTriageRequest,
+  type StreamTriageResult,
+  type StreamTriageError,
+  type FullStreamTriageOptions,
 } from "./triage.js";

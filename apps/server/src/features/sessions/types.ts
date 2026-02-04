@@ -1,4 +1,4 @@
-import type { Session, SessionMessage, SessionMetadata } from "@repo/schemas/session";
+import type { Session, SessionMessage, SessionMetadata } from "@stargazer/schemas/session";
 
 export interface SessionsListResponse {
   sessions: SessionMetadata[];

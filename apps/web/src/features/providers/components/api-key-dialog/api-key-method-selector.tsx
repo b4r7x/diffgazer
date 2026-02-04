@@ -4,7 +4,7 @@ import type { RefObject } from "react";
 import { Input, Radio } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import type { FocusElement } from "./api-key-dialog";
-import type { InputMethod } from "@repo/schemas/config";
+import type { InputMethod } from "@stargazer/schemas/config";
 
 interface ApiKeyMethodSelectorProps {
   method: InputMethod;

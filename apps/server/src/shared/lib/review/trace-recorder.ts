@@ -1,4 +1,4 @@
-import type { TraceRef } from "@repo/schemas";
+import type { TraceRef } from "@stargazer/schemas";
 
 function summarizeOutput(value: unknown): string {
   if (value === null || value === undefined) {

@@ -4,7 +4,7 @@ import type { Result } from "../result.js";
 import { ok, err } from "../result.js";
 import type { AppError } from "../errors.js";
 import { createError, getErrorMessage, isNodeError } from "../errors.js";
-import { SessionEventSchema, type SessionEvent } from "@repo/schemas";
+import { SessionEventSchema, type SessionEvent } from "@stargazer/schemas";
 import {
   ensureDirectory as genericEnsureDirectory,
   createMappedErrorFactory,

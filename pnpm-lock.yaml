@@ -72,15 +72,9 @@ importers:
 
   apps/server:
     dependencies:
-      '@ai-sdk/anthropic':
-        specifier: ^3.0.23
-        version: 3.0.36(zod@4.3.6)
       '@ai-sdk/google':
         specifier: ^3.0.13
         version: 3.0.20(zod@4.3.6)
-      '@ai-sdk/openai':
-        specifier: ^3.0.18
-        version: 3.0.25(zod@4.3.6)
       '@hono/node-server':
         specifier: ^1.13.0
         version: 1.19.9(hono@4.11.7)
@@ -93,7 +87,7 @@ importers:
       '@openrouter/ai-sdk-provider':
         specifier: ^0.4.3
         version: 0.4.6(zod@4.3.6)
-      '@repo/schemas':
+      '@stargazer/schemas':
         specifier: workspace:*
         version: link:../../packages/schemas
       ai:
@@ -124,15 +118,18 @@ importers:
 
   apps/web:
     dependencies:
-      '@repo/schemas':
-        specifier: workspace:*
-        version: link:../../packages/schemas
       '@stargazer/api':
         specifier: workspace:*
         version: link:../../packages/api
+      '@stargazer/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@stargazer/hooks':
         specifier: workspace:*
         version: link:../../packages/hooks
+      '@stargazer/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
       '@tailwindcss/vite':
         specifier: ^4.1.18
         version: 4.1.18(vite@7.3.1(@types/node@22.19.7)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0))
@@ -178,6 +175,10 @@ importers:
         version: 7.3.1(@types/node@22.19.7)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)
 
   packages/api:
+    dependencies:
+      '@stargazer/core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@repo/tsconfig':
         specifier: workspace:*
@@ -190,6 +191,13 @@ importers:
         version: 5.9.3
 
   packages/core:
+    dependencies:
+      '@stargazer/schemas':
+        specifier: workspace:*
+        version: link:../schemas
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
     devDependencies:
       '@repo/tsconfig':
         specifier: workspace:*
@@ -243,12 +251,6 @@ importers:
 
 packages:
 
-  '@ai-sdk/anthropic@3.0.36':
-    resolution: {integrity: sha512-GHQccfwC0j1JltN9M47RSlBpOyHoUam0mvbYMf8zpE0UD1tzIX5sDw2m/8nRlrTz6wGuKfaDxmoC3XH7uhTrXg==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
-
   '@ai-sdk/gateway@3.0.32':
     resolution: {integrity: sha512-7clZRr07P9rpur39t1RrbIe7x8jmwnwUWI8tZs+BvAfX3NFgdSVGGIaT7bTz2pb08jmLXzTSDbrOTqAQ7uBkBQ==}
     engines: {node: '>=18'}
@@ -257,12 +259,6 @@ packages:
 
   '@ai-sdk/google@3.0.20':
     resolution: {integrity: sha512-bVGsulEr6JiipAFlclo9bjL5WaUV0iCSiiekLt+PY6pwmtJeuU2GaD9DoE3OqR8LN2W779mU13IhVEzlTupf8g==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      zod: ^3.25.76 || ^4.1.8
-
-  '@ai-sdk/openai@3.0.25':
-    resolution: {integrity: sha512-DsaN46R98+D1W3lU3fKuPU3ofacboLaHlkAwxJPgJ8eup1AJHmPK1N1y10eJJbJcF6iby8Tf/vanoZxc9JPUfw==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -1748,16 +1744,13 @@ packages:
     resolution: {integrity: sha512-UjX1ho4DI9ICUv/mrpAnzmrRe5/LXrGkS5hF6h4WDY2aup5GketWWopFzWYCqsbArXAM5wbzzdH9QzZusgGiBg==}
     engines: {node: '>=18'}
 
+  zod@3.25.76:
+    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+
   zod@4.3.6:
     resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
 
 snapshots:
-
-  '@ai-sdk/anthropic@3.0.36(zod@4.3.6)':
-    dependencies:
-      '@ai-sdk/provider': 3.0.7
-      '@ai-sdk/provider-utils': 4.0.13(zod@4.3.6)
-      zod: 4.3.6
 
   '@ai-sdk/gateway@3.0.32(zod@4.3.6)':
     dependencies:
@@ -1767,12 +1760,6 @@ snapshots:
       zod: 4.3.6
 
   '@ai-sdk/google@3.0.20(zod@4.3.6)':
-    dependencies:
-      '@ai-sdk/provider': 3.0.7
-      '@ai-sdk/provider-utils': 4.0.13(zod@4.3.6)
-      zod: 4.3.6
-
-  '@ai-sdk/openai@3.0.25(zod@4.3.6)':
     dependencies:
       '@ai-sdk/provider': 3.0.7
       '@ai-sdk/provider-utils': 4.0.13(zod@4.3.6)
@@ -3014,5 +3001,7 @@ snapshots:
       '@ai-sdk/provider-utils': 3.0.20(zod@4.3.6)
     transitivePeerDependencies:
       - zod
+
+  zod@3.25.76: {}
 
   zod@4.3.6: {}

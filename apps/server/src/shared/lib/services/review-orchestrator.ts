@@ -1,8 +1,8 @@
 import type { AIClient, StreamMetadata } from "../ai/index.js";
-import type { ReviewResult, FileReviewResult } from "@repo/schemas/review";
+import type { ReviewResult, FileReviewResult } from "@stargazer/schemas/review";
 import type { Result } from "../result.js";
 import type { AppError } from "../errors.js";
-import { ReviewIssueSchema, ScoreSchema } from "@repo/schemas/review";
+import { ReviewIssueSchema, ScoreSchema } from "@stargazer/schemas/review";
 import { getErrorMessage, createError } from "../errors.js";
 import { truncate } from "../strings.js";
 import { ok, err } from "../result.js";

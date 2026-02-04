@@ -1,6 +1,6 @@
 import type { z } from "zod";
-import type { AIProvider } from "@repo/schemas/config";
-import type { SharedErrorCode } from "@repo/schemas";
+import type { AIProvider } from "@stargazer/schemas/config";
+import type { SharedErrorCode } from "@stargazer/schemas";
 import type { Result } from "../result.js";
 import type { AppError } from "../errors.js";
 

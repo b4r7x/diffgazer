@@ -4,7 +4,7 @@ import type { ProviderStatus } from '@stargazer/api';
 import {
     AVAILABLE_PROVIDERS,
     type AIProvider,
-} from '@repo/schemas';
+} from '@stargazer/schemas';
 import type { ProviderWithStatus } from '../types';
 
 export function useProviders() {
