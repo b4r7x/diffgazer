@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
-import type { ToastItem, ToastVariant } from "@/types/ui";
+import type { ToastItem, ToastVariant } from "@stargazer/schemas/ui";
 
 export interface Toast extends Omit<ToastItem, "message"> {
   variant: ToastVariant;

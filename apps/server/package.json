@@ -19,6 +19,8 @@
     "@hono/zod-validator": "^0.7.6",
     "@napi-rs/keyring": "^1.2.0",
     "@openrouter/ai-sdk-provider": "^0.4.3",
+    "@stargazer/api": "workspace:*",
+    "@stargazer/core": "workspace:*",
     "@stargazer/schemas": "workspace:*",
     "ai": "^6.0.49",
     "hono": "^4.6.0",

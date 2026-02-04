@@ -11,6 +11,7 @@ import type {
   TriageOptions,
   SeverityFilter,
 } from "@stargazer/schemas/triage";
+import { SEVERITY_ORDER } from "@stargazer/core";
 import { TriageResultSchema } from "@stargazer/schemas/triage";
 import type { AgentStreamEvent, LensStat } from "@stargazer/schemas/agent-event";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@stargazer/schemas/agent-event";
@@ -23,16 +24,10 @@ export type { TriageOptions };
 
 export type TriageError = AIError | { code: "NO_DIFF"; message: string };
 
-const SEVERITY_ORDER: Record<TriageSeverity, number> = {
-  blocker: 0,
-  high: 1,
-  medium: 2,
-  low: 3,
-  nit: 4,
-};
+const severityRank = (severity: TriageSeverity): number => SEVERITY_ORDER.indexOf(severity);
 
 function severityMeetsMinimum(severity: TriageSeverity, minSeverity: TriageSeverity): boolean {
-  return SEVERITY_ORDER[severity] <= SEVERITY_ORDER[minSeverity];
+  return severityRank(severity) <= severityRank(minSeverity);
 }
 
 function filterIssuesBySeverity(issues: TriageIssue[], filter?: SeverityFilter): TriageIssue[] {
@@ -102,7 +97,7 @@ function deduplicateIssues(allIssues: TriageIssue[]): TriageIssue[] {
     const key = `${issue.file}:${issue.line_start}:${issue.title.toLowerCase().slice(0, 50)}`;
     const existing = seen.get(key);
 
-    if (!existing || SEVERITY_ORDER[issue.severity] < SEVERITY_ORDER[existing.severity]) {
+    if (!existing || severityRank(issue.severity) < severityRank(existing.severity)) {
       seen.set(key, issue);
     }
   }
@@ -112,7 +107,7 @@ function deduplicateIssues(allIssues: TriageIssue[]): TriageIssue[] {
 
 function sortIssuesBySeverity(issues: TriageIssue[]): TriageIssue[] {
   return [...issues].sort((a, b) => {
-    const severityDiff = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
+    const severityDiff = severityRank(a.severity) - severityRank(b.severity);
     if (severityDiff !== 0) return severityDiff;
     return a.file.localeCompare(b.file);
   });

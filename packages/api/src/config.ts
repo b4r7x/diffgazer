@@ -1,7 +1,9 @@
 import type {
   ApiClient,
+  ActivateProviderResponse,
   ConfigCheckResponse,
   ConfigResponse,
+  DeleteProviderResponse,
   DeleteConfigResponse,
   InitResponse,
   ProvidersStatusResponse,
@@ -38,15 +40,18 @@ export async function activateProvider(
   client: ApiClient,
   providerId: string,
   model?: string
-): Promise<{ provider: string; model?: string }> {
-  return client.post(`/api/config/provider/${providerId}/activate`, model ? { model } : {});
+): Promise<ActivateProviderResponse> {
+  return client.post<ActivateProviderResponse>(
+    `/api/config/provider/${providerId}/activate`,
+    model ? { model } : {}
+  );
 }
 
 export async function deleteProviderCredentials(
   client: ApiClient,
   providerId: string
-): Promise<{ deleted: boolean; provider: string }> {
-  return client.delete(`/api/config/provider/${providerId}`);
+): Promise<DeleteProviderResponse> {
+  return client.delete<DeleteProviderResponse>(`/api/config/provider/${providerId}`);
 }
 
 export async function loadInit(client: ApiClient): Promise<InitResponse> {
