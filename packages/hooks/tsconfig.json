@@ -1,5 +1,5 @@
 {
-  "extends": "@repo/tsconfig/react.json",
+  "extends": "@stargazer/tsconfig/react.json",
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",

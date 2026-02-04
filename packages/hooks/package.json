@@ -18,7 +18,7 @@
     "figlet": "^1.10.0"
   },
   "devDependencies": {
-    "@repo/tsconfig": "workspace:*",
+    "@stargazer/tsconfig": "workspace:*",
     "@types/figlet": "^1.7.0",
     "@types/react": "^19.0.0",
     "typescript": "^5.7.0"
