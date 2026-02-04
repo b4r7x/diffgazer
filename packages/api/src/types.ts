@@ -67,12 +67,14 @@ export interface ProjectInfo {
 }
 
 export type Theme = "auto" | "dark" | "light" | "terminal";
+export type SecretsStorage = "file" | "keyring";
 
 export interface SettingsConfig {
   theme: Theme;
   defaultLenses?: string[];
   defaultProfile?: string | null;
   severityThreshold?: string;
+  secretsStorage?: SecretsStorage | null;
 }
 
 export interface SaveConfigRequest {

@@ -1,6 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import type { Context } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import { activateProvider, deleteProvider, getInitState, getProvidersStatus, saveConfig } from "./service.js";
 import { getProjectRoot } from "../../shared/lib/request.js";
@@ -21,16 +22,14 @@ const activateProviderBodySchema = z.object({
   model: z.string().min(1).optional(),
 });
 
-const parseJsonOrEmptyBody = async (c: Context): Promise<unknown | null> => {
-  const rawBody = await c.req.text();
-  if (!rawBody.trim()) return {};
+const invalidBodyResponse = (c: Context): Response =>
+  c.json({ error: { message: "Invalid request body", code: "INVALID_BODY" } }, 400);
 
-  try {
-    return JSON.parse(rawBody) as unknown;
-  } catch {
-    return null;
-  }
-};
+const bodyLimitMiddleware = bodyLimit({
+  maxSize: 50 * 1024,
+  onError: (c) =>
+    c.json({ error: { message: "Request body too large", code: "PAYLOAD_TOO_LARGE" } }, 413),
+});
 
 configRouter.get("/init", (c): Response => {
   const projectRoot = getProjectRoot(c);
@@ -43,28 +42,30 @@ configRouter.get("/providers", (c): Response => {
   return c.json(data);
 });
 
-configRouter.post("/", zValidator("json", saveConfigSchema), (c): Response => {
+configRouter.post(
+  "/",
+  bodyLimitMiddleware,
+  zValidator("json", saveConfigSchema, (result, c) => {
+    if (!result.success) return invalidBodyResponse(c);
+  }),
+  (c): Response => {
   const body = c.req.valid("json");
   saveConfig(body);
   return c.json({ saved: true });
-});
+  }
+);
 
 configRouter.post(
   "/provider/:providerId/activate",
+  bodyLimitMiddleware,
   zValidator("param", providerParamSchema),
-  async (c): Promise<Response> => {
+  zValidator("json", activateProviderBodySchema, (result, c) => {
+    if (!result.success) return invalidBodyResponse(c);
+  }),
+  (c): Response => {
     const { providerId } = c.req.valid("param");
-    const payload = await parseJsonOrEmptyBody(c);
-    if (payload === null) {
-      return c.json({ error: { message: "Invalid JSON body", code: "INVALID_BODY" } }, 400);
-    }
-
-    const parsedBody = activateProviderBodySchema.safeParse(payload);
-    if (!parsedBody.success) {
-      return c.json({ error: { message: "Invalid request body", code: "INVALID_BODY" } }, 400);
-    }
-
-    const activated = activateProvider({ provider: providerId, model: parsedBody.data.model });
+    const { model } = c.req.valid("json");
+    const activated = activateProvider({ provider: providerId, model });
     if (!activated) {
       return c.json({ error: { message: "Provider not found", code: "PROVIDER_NOT_FOUND" } }, 404);
     }

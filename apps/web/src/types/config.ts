@@ -1,6 +1,7 @@
 export type {
   AIProvider,
   ProviderStatus,
+  SecretsStorage,
   SettingsConfig,
   Theme,
   TrustCapabilities,

@@ -10,12 +10,25 @@ export type MenuAction =
   | "help"
   | "quit";
 
+export type SettingsAction =
+  | "trust"
+  | "theme"
+  | "provider"
+  | "storage"
+  | "diagnostics";
+
 export interface MenuItem {
   id: MenuAction;
   label: string;
   shortcut?: string;
   variant?: "default" | "danger";
   group: "review" | "navigation" | "system";
+}
+
+export interface SettingsMenuItem {
+  id: SettingsAction;
+  label: string;
+  description: string;
 }
 
 export const MENU_ITEMS: MenuItem[] = [
@@ -28,8 +41,22 @@ export const MENU_ITEMS: MenuItem[] = [
   { id: "quit", label: "Quit", shortcut: "q", variant: "danger", group: "system" },
 ];
 
+export const SETTINGS_MENU_ITEMS: SettingsMenuItem[] = [
+  { id: "trust", label: "Trust & Permissions", description: "Manage directory trust and capabilities" },
+  { id: "theme", label: "Theme", description: "Change color theme preferences" },
+  { id: "provider", label: "Provider", description: "Select AI provider for code review" },
+  { id: "storage", label: "Secrets Storage", description: "Choose where API keys are stored" },
+  { id: "diagnostics", label: "Diagnostics", description: "Run system health checks" },
+];
+
 export const MAIN_MENU_SHORTCUTS: Shortcut[] = [
   { key: "↑/↓", label: "Select" },
   { key: "Enter", label: "Open" },
   { key: "q", label: "Quit" },
+];
+
+export const SETTINGS_SHORTCUTS: Shortcut[] = [
+  { key: "↑/↓", label: "Select" },
+  { key: "Enter", label: "Edit" },
+  { key: "Esc", label: "Back" },
 ];

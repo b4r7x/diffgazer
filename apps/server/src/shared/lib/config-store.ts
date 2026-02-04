@@ -13,12 +13,14 @@ import {
 } from "./stargazer-paths.js";
 
 export type Theme = "auto" | "dark" | "light" | "terminal";
+export type SecretsStorage = "file" | "keyring";
 
 export interface SettingsConfig {
   theme: Theme;
   defaultLenses?: string[];
   defaultProfile?: string | null;
   severityThreshold?: string;
+  secretsStorage?: SecretsStorage | null;
 }
 
 export interface ProviderStatus {
@@ -72,6 +74,7 @@ interface ProjectFile {
 
 const DEFAULT_SETTINGS: SettingsConfig = {
   theme: "auto",
+  secretsStorage: null,
 };
 
 const DEFAULT_PROVIDERS: ProviderStatus[] = [
@@ -120,7 +123,7 @@ const loadTrust = (): TrustState => {
 
 const syncProvidersWithSecrets = (
   providers: ProviderStatus[],
-  secrets: SecretsState
+  secrets: SecretsState,
 ): ProviderStatus[] => {
   const providerIds = new Set(providers.map((provider) => provider.provider));
   const nextProviders = providers.map((provider) => ({
@@ -130,7 +133,11 @@ const syncProvidersWithSecrets = (
 
   for (const providerId of Object.keys(secrets.providers)) {
     if (providerIds.has(providerId)) continue;
-    nextProviders.push({ provider: providerId, hasApiKey: true, isActive: false });
+    nextProviders.push({
+      provider: providerId,
+      hasApiKey: true,
+      isActive: false,
+    });
   }
 
   return nextProviders;
@@ -140,7 +147,10 @@ let configState: ConfigState = loadConfig();
 let secretsState: SecretsState = loadSecrets();
 let trustState: TrustState = loadTrust();
 
-configState.providers = syncProvidersWithSecrets(configState.providers, secretsState);
+configState.providers = syncProvidersWithSecrets(
+  configState.providers,
+  secretsState,
+);
 
 const persistConfig = (): void => {
   writeJsonFileSync(CONFIG_PATH, configState, 0o600);
@@ -155,7 +165,9 @@ const persistTrust = (): void => {
 };
 
 const ensureProvider = (providerId: string): ProviderStatus => {
-  const existing = configState.providers.find((provider) => provider.provider === providerId);
+  const existing = configState.providers.find(
+    (provider) => provider.provider === providerId,
+  );
   if (existing) return existing;
 
   const created: ProviderStatus = {
@@ -187,7 +199,9 @@ const readOrCreateProjectFile = (projectRoot: string): ProjectFile => {
 
 export const getSettings = (): SettingsConfig => ({ ...configState.settings });
 
-export const updateSettings = (patch: Partial<SettingsConfig>): SettingsConfig => {
+export const updateSettings = (
+  patch: Partial<SettingsConfig>,
+): SettingsConfig => {
   configState.settings = {
     ...configState.settings,
     ...patch,
@@ -197,7 +211,8 @@ export const updateSettings = (patch: Partial<SettingsConfig>): SettingsConfig =
   return getSettings();
 };
 
-export const getProviders = (): ProviderStatus[] => cloneProviders(configState.providers);
+export const getProviders = (): ProviderStatus[] =>
+  cloneProviders(configState.providers);
 
 export const getActiveProvider = (): ProviderStatus | null => {
   const active = configState.providers.find((provider) => provider.isActive);
@@ -257,7 +272,9 @@ export const activateProvider = (input: {
   model?: string;
 }): ProviderStatus | null => {
   const { provider, model } = input;
-  const existing = configState.providers.find((item) => item.provider === provider);
+  const existing = configState.providers.find(
+    (item) => item.provider === provider,
+  );
   if (!existing) return null;
 
   configState.providers = configState.providers.map((item) => {
@@ -277,7 +294,9 @@ export const activateProvider = (input: {
 };
 
 export const deleteProviderCredentials = (providerId: string): boolean => {
-  const providerExists = configState.providers.some((item) => item.provider === providerId);
+  const providerExists = configState.providers.some(
+    (item) => item.provider === providerId,
+  );
   const hadSecret = providerId in secretsState.providers;
 
   if (hadSecret) {

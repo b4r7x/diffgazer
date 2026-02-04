@@ -33,7 +33,7 @@ export async function activateProvider(
   providerId: string,
   model?: string
 ): Promise<{ provider: string; model?: string }> {
-  return client.post(`/api/config/provider/${providerId}/activate`, model ? { model } : undefined);
+  return client.post(`/api/config/provider/${providerId}/activate`, model ? { model } : {});
 }
 
 export async function deleteProviderCredentials(
