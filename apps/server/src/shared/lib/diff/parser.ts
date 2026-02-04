@@ -1,6 +1,4 @@
-import type { FileDiff, DiffHunk, ParsedDiff, DiffOperation } from "./types.js";
-
-type DiffLineType = "addition" | "deletion" | "hunk-header" | "file-header" | "context";
+import type { FileDiff, DiffHunk, ParsedDiff, DiffOperation, DiffLineType } from "./types.js";
 
 function classifyDiffLine(line: string): DiffLineType {
   if (line.startsWith("+") && !line.startsWith("+++")) return "addition";
@@ -87,31 +85,6 @@ function countChanges(hunks: DiffHunk[]): { additions: number; deletions: number
   }
 
   return { additions, deletions };
-}
-
-export function filterDiffByFiles(parsed: ParsedDiff, files: string[]): ParsedDiff {
-  if (files.length === 0) {
-    return parsed;
-  }
-
-  const normalizedFiles = new Set(files.map((f) => f.replace(/^\.\//, "")));
-
-  const filteredFiles = parsed.files.filter((file) => {
-    const normalizedPath = file.filePath.replace(/^\.\//, "");
-    return normalizedFiles.has(normalizedPath);
-  });
-
-  const totalStats = filteredFiles.reduce(
-    (acc, file) => ({
-      filesChanged: acc.filesChanged + 1,
-      additions: acc.additions + file.stats.additions,
-      deletions: acc.deletions + file.stats.deletions,
-      totalSizeBytes: acc.totalSizeBytes + file.stats.sizeBytes,
-    }),
-    { filesChanged: 0, additions: 0, deletions: 0, totalSizeBytes: 0 }
-  );
-
-  return { files: filteredFiles, totalStats };
 }
 
 export function parseDiff(diffText: string): ParsedDiff {
