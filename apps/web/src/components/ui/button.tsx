@@ -38,7 +38,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>, Va
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   { className, variant, size, bracket, children, ...props },
   ref
-): JSX.Element {
+) {
   return (
     <button
       className={cn(buttonVariants({ variant, size, className }))}

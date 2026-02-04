@@ -20,7 +20,7 @@ function getProviderDisplay(provider?: string, model?: string): string {
   return provider;
 }
 
-export function GlobalLayout({ children }: GlobalLayoutProps): JSX.Element {
+export function GlobalLayout({ children }: GlobalLayoutProps) {
   const router = useRouter();
   const canGoBack = useCanGoBack();
   const { provider, model, isConfigured, isLoading } = useConfig();

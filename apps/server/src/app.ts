@@ -29,7 +29,7 @@ export const createApp = (): Hono => {
       return c.json({ error: { message: "Forbidden" } }, 403);
     }
 
-    await next();
+    return next();
   });
 
   app.use(

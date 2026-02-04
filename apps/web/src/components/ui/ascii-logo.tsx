@@ -7,7 +7,7 @@ interface AsciiLogoProps {
   className?: string;
 }
 
-export function AsciiLogo({ text = "STARGAZER", scale = 1, className }: AsciiLogoProps): JSX.Element {
+export function AsciiLogo({ text = "STARGAZER", scale = 1, className }: AsciiLogoProps) {
   const asciiText = useFiglet(text);
   const isReady = Boolean(asciiText);
 

@@ -12,7 +12,7 @@ import {
   getProviders,
   getSettings,
   saveProviderCredentials,
-} from "../../shared/lib/config-store.js";
+} from "../../shared/lib/config-store/index.js";
 
 export const getProvidersStatus = (): ProvidersStatusResponse => {
   const providers = getProviders();

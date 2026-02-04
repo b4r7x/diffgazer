@@ -1,5 +1,5 @@
-import fs from "node:fs";
-import path from "node:path";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import {
   listJsonFilesSync,
   readJsonFileSync,
@@ -11,7 +11,7 @@ import {
   getGlobalReviewsDir,
   getProjectReviewFile,
   getProjectReviewsDir,
-} from "../../shared/lib/stargazer-paths.js";
+} from "../../shared/lib/paths.js";
 import type { ReviewHistoryMetadata, SavedReview } from "./types.js";
 
 const normalizePath = (value: string | undefined): string | null => {

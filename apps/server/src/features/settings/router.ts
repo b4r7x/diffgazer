@@ -3,7 +3,8 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
-import { getSettings, updateSettings } from "../../shared/lib/config-store.js";
+import { getSettings, SecretsStorageError, updateSettings } from "../../shared/lib/config-store/index.js";
+import { errorResponse } from "../../shared/lib/error-response.js";
 
 const settingsRouter = new Hono();
 
@@ -16,12 +17,12 @@ const settingsSchema = z.object({
 });
 
 const invalidBodyResponse = (c: Context): Response =>
-  c.json({ error: { message: "Invalid request body", code: "INVALID_BODY" } }, 400);
+  errorResponse(c, "Invalid request body", "INVALID_BODY", 400);
 
 const bodyLimitMiddleware = bodyLimit({
   maxSize: 10 * 1024,
   onError: (c) =>
-    c.json({ error: { message: "Request body too large", code: "PAYLOAD_TOO_LARGE" } }, 413),
+    errorResponse(c, "Request body too large", "PAYLOAD_TOO_LARGE", 413),
 });
 
 settingsRouter.get("/", (c): Response => {
@@ -34,11 +35,19 @@ settingsRouter.post(
   bodyLimitMiddleware,
   zValidator("json", settingsSchema, (result, c) => {
     if (!result.success) return invalidBodyResponse(c);
+    return;
   }),
   (c): Response => {
     const patch = c.req.valid("json");
-    const settings = updateSettings(patch);
-    return c.json(settings);
+    try {
+      const settings = updateSettings(patch);
+      return c.json(settings);
+    } catch (error) {
+      if (error instanceof SecretsStorageError) {
+        return errorResponse(c, error.message, error.code, 400);
+      }
+      throw error;
+    }
   }
 );
 

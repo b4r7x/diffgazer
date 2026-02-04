@@ -6,7 +6,7 @@ interface FooterProps {
   className?: string;
 }
 
-function renderShortcuts(items: Shortcut[]): JSX.Element[] {
+function renderShortcuts(items: Shortcut[]) {
   return items.map((shortcut, index) => (
     <span key={shortcut.key + shortcut.label}>
       <span>{shortcut.key}</span> <span>{shortcut.label}</span>
@@ -15,7 +15,7 @@ function renderShortcuts(items: Shortcut[]): JSX.Element[] {
   ));
 }
 
-export function Footer({ shortcuts, rightShortcuts, className = "" }: FooterProps): JSX.Element {
+export function Footer({ shortcuts, rightShortcuts, className = "" }: FooterProps) {
   return (
     <footer
       className={`bg-tui-fg text-black p-2 font-bold text-xs shrink-0 flex justify-between items-center ${className}`}

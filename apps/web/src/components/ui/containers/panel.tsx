@@ -58,7 +58,7 @@ export function PanelHeader({
   variant = "default",
   value,
   valueVariant = "default",
-}: PanelHeaderProps): JSX.Element {
+}: PanelHeaderProps) {
   const baseClasses = headerVariants[variant];
 
   if (value !== undefined) {
@@ -77,15 +77,15 @@ export function PanelContent({
   children,
   className,
   spacing = "md",
-}: PanelContentProps): JSX.Element {
+}: PanelContentProps) {
   return <div className={cn("p-4 text-sm", spacingClasses[spacing], className)}>{children}</div>;
 }
 
-export function PanelDivider({ className }: PanelDividerProps): JSX.Element {
+export function PanelDivider({ className }: PanelDividerProps) {
   return <div className={cn("my-1 border-t border-tui-border mx-4 opacity-50", className)} />;
 }
 
-export function Panel({ children, className, borderless }: PanelProps): JSX.Element {
+export function Panel({ children, className, borderless }: PanelProps) {
   return (
     <div className={cn("relative", !borderless && "border border-tui-border", className)}>
       {children}
