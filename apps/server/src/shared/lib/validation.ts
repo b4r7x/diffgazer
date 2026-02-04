@@ -1,8 +1,7 @@
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { ZodType } from "zod";
 import { UuidSchema } from "@stargazer/schemas";
-import { type Result, ok, err } from "@stargazer/core";
-import { safeParseJson } from "./json.js";
+import { type Result, ok, err, safeParseJson } from "@stargazer/core";
 import type { StoreErrorCode } from "./storage/persistence.js";
 
 export const isValidUuid = (id: string): boolean => UuidSchema.safeParse(id).success;

@@ -12,9 +12,9 @@ import {
   removeTrust,
   saveTrust,
   updateSettings,
-} from "../../shared/lib/config-store/store.js";
-import { SecretsStorageError } from "../../shared/lib/config-store/errors.js";
-import { errorResponse } from "../../shared/lib/error-response.js";
+} from "../../shared/lib/config/store.js";
+import { SecretsStorageError } from "../../shared/lib/config/errors.js";
+import { errorResponse } from "../../shared/lib/http/response.js";
 
 const settingsRouter = new Hono();
 

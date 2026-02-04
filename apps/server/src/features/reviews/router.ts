@@ -4,11 +4,10 @@ import { streamSSE } from "hono/streaming";
 import { z } from "zod";
 import { ErrorCode } from "@stargazer/schemas/errors";
 import { deleteReview, getReview, listReviews } from "./repo.js";
-import { errorResponse } from "../../shared/lib/error-response.js";
-import { getProjectRoot } from "../../shared/lib/request.js";
+import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
+import { getProjectRoot } from "../../shared/lib/http/request.js";
 import { getSession, subscribe, type ActiveSession } from "../triage/service.js";
-import { getTriageReview } from "../../shared/lib/storage/review-storage.js";
-import { zodErrorHandler } from "../../shared/lib/response.js";
+import { getTriageReview } from "../../shared/lib/storage/reviews.js";
 
 const reviewsRouter = new Hono();
 

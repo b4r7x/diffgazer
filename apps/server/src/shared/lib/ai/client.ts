@@ -10,10 +10,9 @@ import type {
   GenerateStreamOptions,
   AIError,
   AIErrorCode,
-} from "./ai/types.js";
-import { type Result, ok, err } from "@stargazer/core";
-import { createError, toError, getErrorMessage } from "./errors.js";
-import { getActiveProvider, getProviderApiKey } from "./config-store/store.js";
+} from "./types.js";
+import { type Result, ok, err, createError, toError, getErrorMessage } from "@stargazer/core";
+import { getActiveProvider, getProviderApiKey } from "../config/store.js";
 import { ErrorCode, type ErrorCode as ErrorCodeType } from "@stargazer/schemas/errors";
 
 const DEFAULT_MODELS = {
@@ -94,7 +93,7 @@ function createLanguageModel(config: AIClientConfig): LanguageModel {
 export function createAIClient(config: AIClientConfig): Result<AIClient, AIError> {
   if (!config.apiKey) {
     return err(
-      createError<AIErrorCode>("API_KEY_MISSING", `${config.provider} API key is required`)
+      createError<AIErrorCode>("API_KEY_INVALID", `${config.provider} API key is required`)
     );
   }
 

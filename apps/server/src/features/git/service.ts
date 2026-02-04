@@ -3,7 +3,7 @@ import { realpath } from "node:fs/promises";
 import { type Result, ok, err } from "@stargazer/core";
 import { ErrorCode } from "@stargazer/schemas/errors";
 import { isRelativePath } from "../../shared/lib/validation.js";
-import { createGitService } from "../../shared/lib/services/git.js";
+import { createGitService } from "../../shared/lib/git/service.js";
 import type { GitService, GitServiceError } from "./types.js";
 
 interface ResolveGitServiceOptions {

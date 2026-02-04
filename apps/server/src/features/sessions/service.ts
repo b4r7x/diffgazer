@@ -3,10 +3,10 @@ import type { Session } from "@stargazer/schemas/session";
 import { addMessage, sessionStore } from "./store.js";
 import { ErrorCode } from "@stargazer/schemas/errors";
 import { type Result, ok, err } from "@stargazer/core";
-import { getErrorMessage } from "../../shared/lib/errors.js";
+import { getErrorMessage } from "@stargazer/core";
 import { escapeXml, sanitizeUnicode } from "../../shared/utils/sanitization.js";
-import { initializeAIClient, type SSEWriter } from "../../shared/lib/ai-client.js";
-import { writeSSEChunk, writeSSEComplete, writeSSEError } from "../../shared/lib/sse-helpers.js";
+import { initializeAIClient, type SSEWriter } from "../../shared/lib/ai/client.js";
+import { writeSSEChunk, writeSSEComplete, writeSSEError } from "../../shared/lib/http/sse.js";
 import { type ChatError } from "@stargazer/schemas/chat";
 
 export type { SSEWriter };
