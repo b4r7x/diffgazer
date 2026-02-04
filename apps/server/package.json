@@ -27,7 +27,7 @@
   },
   "devDependencies": {
     "@napi-rs/keyring": "^1.1.6",
-    "@repo/tsconfig": "workspace:*",
+    "@stargazer/tsconfig": "workspace:*",
     "@types/node": "^22.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5.7.0"
