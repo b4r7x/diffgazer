@@ -19,6 +19,8 @@ const normalizePath = (value: string | undefined): string | null => {
   return path.resolve(value);
 };
 
+const migratedProjects = new Set<string>();
+
 const sortByCreatedAtDesc = (items: ReviewHistoryMetadata[]): ReviewHistoryMetadata[] =>
   [...items].sort((left, right) => {
     const leftValue = left.createdAt ?? "";
@@ -32,9 +34,13 @@ const readReviewFile = (filePath: string): SavedReview | null =>
 const migrateLegacyReviews = (projectRoot: string): void => {
   const legacyDir = getGlobalReviewsDir();
   const legacyFiles = listJsonFilesSync(legacyDir);
-  if (legacyFiles.length === 0) return;
-
   const projectRootResolved = path.resolve(projectRoot);
+
+  if (migratedProjects.has(projectRootResolved)) return;
+  if (legacyFiles.length === 0) {
+    migratedProjects.add(projectRootResolved);
+    return;
+  }
 
   for (const filePath of legacyFiles) {
     const review = readReviewFile(filePath);
@@ -48,6 +54,8 @@ const migrateLegacyReviews = (projectRoot: string): void => {
 
     writeJsonFileSync(targetFile, review, 0o600);
   }
+
+  migratedProjects.add(projectRootResolved);
 };
 
 export const listReviews = (projectRoot: string): ReviewHistoryMetadata[] => {
