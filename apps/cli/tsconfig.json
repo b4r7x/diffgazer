@@ -1,5 +1,5 @@
 {
-  "extends": "@repo/tsconfig/cli.json",
+  "extends": "@stargazer/tsconfig/cli.json",
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",

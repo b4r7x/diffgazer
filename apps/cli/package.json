@@ -33,7 +33,7 @@
     "react": "^19.0.0"
   },
   "devDependencies": {
-    "@repo/tsconfig": "workspace:*",
+    "@stargazer/tsconfig": "workspace:*",
     "@stargazer/hooks": "workspace:*",
     "@stargazer/core": "workspace:*",
     "@stargazer/server": "workspace:*",
