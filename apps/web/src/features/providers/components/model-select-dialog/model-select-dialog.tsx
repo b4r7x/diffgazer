@@ -14,8 +14,6 @@ import { useKey } from "@/hooks/keyboard";
 import { useScrollIntoView } from "@/hooks/use-scroll-into-view";
 import {
   GEMINI_MODEL_INFO,
-  OPENAI_MODEL_INFO,
-  ANTHROPIC_MODEL_INFO,
   GLM_MODEL_INFO,
   type AIProvider,
   type ModelInfo,
@@ -40,11 +38,8 @@ function getModelsForProvider(provider: AIProvider): ModelInfo[] {
   switch (provider) {
     case "gemini":
       return Object.values(GEMINI_MODEL_INFO);
-    case "openai":
-      return Object.values(OPENAI_MODEL_INFO);
-    case "anthropic":
-      return Object.values(ANTHROPIC_MODEL_INFO);
-    case "glm":
+    case "zai":
+    case "zai-coding":
       return Object.values(GLM_MODEL_INFO);
     default:
       return [];

@@ -40,11 +40,8 @@ export function HomeMenu({
   hasLastReview = false,
 }: HomeMenuProps) {
   const { review, navigation, system } = groupItems(items);
-
-  const isDisabled = (id: string): boolean => {
-    if (id === "resume-review") return !hasLastReview;
-    return !isTrusted;
-  };
+  const reviewDisabled = !isTrusted;
+  const resumeDisabled = reviewDisabled || !hasLastReview;
 
   return (
     <Panel className="w-full max-w-md lg:w-1/2 lg:max-w-lg h-fit flex flex-col">
@@ -56,11 +53,14 @@ export function HomeMenu({
           onActivate={(item) => onActivate(item.id)}
           enableNumberJump
         >
-          {review.map((item) => (
-            <MenuItem key={item.id} id={item.id} disabled={isDisabled(item.id)}>
-              {item.label}
-            </MenuItem>
-          ))}
+          {review.map((item) => {
+            const disabled = item.id === "resume-review" ? resumeDisabled : reviewDisabled;
+            return (
+              <MenuItem key={item.id} id={item.id} disabled={disabled}>
+                {item.label}
+              </MenuItem>
+            );
+          })}
           <MenuDivider />
           {navigation.map((item) => (
             <MenuItem key={item.id} id={item.id}>

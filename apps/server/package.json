@@ -14,9 +14,7 @@
     "start": "node dist/dev.js"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.23",
     "@ai-sdk/google": "^3.0.13",
-    "@ai-sdk/openai": "^3.0.18",
     "@hono/node-server": "^1.13.0",
     "@hono/zod-validator": "^0.7.6",
     "@napi-rs/keyring": "^1.2.0",

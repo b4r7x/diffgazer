@@ -13,6 +13,7 @@ import { drilldownIssueById } from "../../shared/lib/review/index.js";
 import { writeSSEError } from "../../shared/lib/sse-helpers.js";
 import { getProjectRoot } from "../../shared/lib/request.js";
 import { isValidProjectPath } from "../../shared/lib/validation.js";
+import { requireRepoAccess } from "../../shared/lib/trust-guard.js";
 import {
   addDrilldownToReview,
   deleteTriageReview,
@@ -53,7 +54,7 @@ const parseProjectPath = (
   return { ok: true, value: projectPath };
 };
 
-triageRouter.get("/stream", async (c): Promise<Response> => {
+triageRouter.get("/stream", requireRepoAccess, async (c): Promise<Response> => {
   const clientResult = initializeAIClient();
   if (!clientResult.ok) {
     return errorResponse(c, clientResult.error.message, clientResult.error.code, 500);
@@ -130,6 +131,7 @@ triageRouter.delete(
 
 triageRouter.post(
   "/reviews/:id/drilldown",
+  requireRepoAccess,
   zValidator("param", TriageReviewIdParamSchema, zodErrorHandler),
   zValidator("json", DrilldownRequestSchema, zodErrorHandler),
   async (c): Promise<Response> => {

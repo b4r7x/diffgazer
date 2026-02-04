@@ -3,10 +3,13 @@ import type { Context } from "hono";
 import { ErrorCode } from "@repo/schemas/errors";
 import { errorResponse } from "../../shared/lib/error-response.js";
 import { getProjectRoot } from "../../shared/lib/request.js";
+import { requireRepoAccess } from "../../shared/lib/trust-guard.js";
 import { resolveGitService } from "./service.js";
 import { GitDiffModeSchema, type GitDiffMode } from "./schemas.js";
 
 const gitRouter = new Hono();
+
+gitRouter.use("*", requireRepoAccess);
 
 const resolveServiceOrResponse = async (c: Context) => {
   const projectRoot = getProjectRoot(c);
