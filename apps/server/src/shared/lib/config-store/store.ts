@@ -1,5 +1,6 @@
 import { resolveProjectRoot } from "../paths.js";
 import { SecretsStorageError } from "./errors.js";
+import type { AIProvider } from "@repo/schemas/config";
 import {
   deleteKeyringSecret,
   isKeyringAvailable,
@@ -24,6 +25,7 @@ import type {
   ProviderStatus,
   SecretsStorage,
   SettingsConfig,
+  TrustConfig,
   TrustState,
   ConfigState,
   SecretsState,
@@ -78,7 +80,7 @@ const setActiveProvider = (
   });
 };
 
-const ensureProvider = (providerId: string): ProviderStatus => {
+const ensureProvider = (providerId: AIProvider): ProviderStatus => {
   const existing = configState.providers.find(
     (provider) => provider.provider === providerId,
   );
@@ -221,8 +223,29 @@ export const getProjectInfo = (projectRoot?: string): ProjectInfo => {
   };
 };
 
+export const getTrust = (projectId: string): TrustConfig | null =>
+  trustState.projects[projectId] ?? null;
+
+export const listTrustedProjects = (): TrustConfig[] =>
+  Object.values(trustState.projects);
+
+export const saveTrust = (config: TrustConfig): TrustConfig => {
+  trustState.projects[config.projectId] = config;
+  persistTrust(trustState);
+  return config;
+};
+
+export const removeTrust = (projectId: string): boolean => {
+  const existed = projectId in trustState.projects;
+  if (!existed) return false;
+
+  delete trustState.projects[projectId];
+  persistTrust(trustState);
+  return true;
+};
+
 export const saveProviderCredentials = (input: {
-  provider: string;
+  provider: AIProvider;
   apiKey: string;
   model?: string;
 }): ProviderStatus => {
@@ -248,7 +271,7 @@ export const saveProviderCredentials = (input: {
 };
 
 export const activateProvider = (input: {
-  provider: string;
+  provider: AIProvider;
   model?: string;
 }): ProviderStatus | null => {
   const { provider, model } = input;
@@ -263,7 +286,7 @@ export const activateProvider = (input: {
   return getActiveProvider();
 };
 
-export const deleteProviderCredentials = (providerId: string): boolean => {
+export const deleteProviderCredentials = (providerId: AIProvider): boolean => {
   const providerExists = configState.providers.some(
     (item) => item.provider === providerId,
   );
