@@ -1,3 +1,5 @@
+import type { AIProvider } from "@repo/schemas/config";
+
 export type Theme = "auto" | "dark" | "light" | "terminal";
 
 export type SecretsStorage = "file" | "keyring";
@@ -11,7 +13,7 @@ export interface SettingsConfig {
 }
 
 export interface ProviderStatus {
-  provider: string;
+  provider: AIProvider;
   hasApiKey: boolean;
   isActive: boolean;
   model?: string;

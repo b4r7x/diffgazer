@@ -1,5 +1,9 @@
+import type { AIProvider } from "@repo/schemas/config";
 import type {
   ActivateProviderResponse,
+  ConfigCheckResponse,
+  ConfigResponse,
+  DeleteConfigResponse,
   DeleteProviderResponse,
   InitResponse,
   ProvidersStatusResponse,
@@ -8,7 +12,9 @@ import type {
 import {
   activateProvider as activateProviderInStore,
   deleteProviderCredentials,
+  getActiveProvider,
   getProjectInfo,
+  getProviderApiKey,
   getProviders,
   getSettings,
   saveProviderCredentials,
@@ -47,8 +53,26 @@ export const saveConfig = (input: SaveConfigRequest): void => {
   });
 };
 
+export const getConfig = (): ConfigResponse | null => {
+  const active = getActiveProvider();
+  if (!active) return null;
+
+  const apiKey = getProviderApiKey(active.provider);
+  if (!apiKey) return null;
+
+  return { provider: active.provider, model: active.model };
+};
+
+export const checkConfig = (): ConfigCheckResponse => {
+  const config = getConfig();
+  if (!config) {
+    return { configured: false };
+  }
+  return { configured: true, config };
+};
+
 export const activateProvider = (input: {
-  provider: string;
+  provider: AIProvider;
   model?: string;
 }): ActivateProviderResponse | null => {
   const active = activateProviderInStore(input);
@@ -60,11 +84,22 @@ export const activateProvider = (input: {
   };
 };
 
-export const deleteProvider = (providerId: string): DeleteProviderResponse => {
+export const deleteProvider = (providerId: AIProvider): DeleteProviderResponse => {
   const deleted = deleteProviderCredentials(providerId);
 
   return {
     deleted,
     provider: providerId,
   };
+};
+
+export const deleteConfig = (): DeleteConfigResponse | null => {
+  const active = getActiveProvider();
+  if (!active) return null;
+
+  const apiKey = getProviderApiKey(active.provider);
+  if (!apiKey) return null;
+
+  const deleted = deleteProviderCredentials(active.provider);
+  return { deleted };
 };

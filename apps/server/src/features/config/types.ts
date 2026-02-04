@@ -1,18 +1,29 @@
 import type { ProjectInfo, ProviderStatus, SettingsConfig } from "../../shared/lib/config-store/index.js";
+import type { AIProvider } from "@repo/schemas/config";
 
 export interface SaveConfigRequest {
-  provider: string;
+  provider: AIProvider;
   apiKey: string;
   model?: string;
 }
 
 export interface ProvidersStatusResponse {
   providers: ProviderStatus[];
-  activeProvider?: string;
+  activeProvider?: AIProvider;
+}
+
+export interface ConfigCheckResponse {
+  configured: boolean;
+  config?: { provider: AIProvider; model?: string };
+}
+
+export interface ConfigResponse {
+  provider: AIProvider;
+  model?: string;
 }
 
 export interface InitResponse {
-  config: { provider: string; model?: string } | null;
+  config: { provider: AIProvider; model?: string } | null;
   settings: SettingsConfig;
   providers: ProviderStatus[];
   configured: boolean;
@@ -20,11 +31,15 @@ export interface InitResponse {
 }
 
 export interface ActivateProviderResponse {
-  provider: string;
+  provider: AIProvider;
   model?: string;
 }
 
 export interface DeleteProviderResponse {
   deleted: boolean;
-  provider: string;
+  provider: AIProvider;
+}
+
+export interface DeleteConfigResponse {
+  deleted: boolean;
 }

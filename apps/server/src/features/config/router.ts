@@ -3,7 +3,18 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
-import { activateProvider, deleteProvider, getInitState, getProvidersStatus, saveConfig } from "./service.js";
+import { ErrorCode } from "@repo/schemas/errors";
+import { AIProviderSchema } from "@repo/schemas/config";
+import {
+  activateProvider,
+  checkConfig,
+  deleteConfig,
+  deleteProvider,
+  getConfig,
+  getInitState,
+  getProvidersStatus,
+  saveConfig,
+} from "./service.js";
 import { SecretsStorageError } from "../../shared/lib/config-store/index.js";
 import { errorResponse } from "../../shared/lib/error-response.js";
 import { getProjectRoot } from "../../shared/lib/request.js";
@@ -11,13 +22,13 @@ import { getProjectRoot } from "../../shared/lib/request.js";
 const configRouter = new Hono();
 
 const saveConfigSchema = z.object({
-  provider: z.string().min(1),
+  provider: AIProviderSchema,
   apiKey: z.string().min(1),
   model: z.string().min(1).optional(),
 });
 
 const providerParamSchema = z.object({
-  providerId: z.string().min(1),
+  providerId: AIProviderSchema,
 });
 
 const activateProviderBodySchema = z.object({
@@ -37,6 +48,23 @@ configRouter.get("/init", (c): Response => {
   const projectRoot = getProjectRoot(c);
   const data = getInitState(projectRoot);
   return c.json(data);
+});
+
+configRouter.get("/check", (c): Response => {
+  return c.json(checkConfig());
+});
+
+configRouter.get("/", (c): Response => {
+  const config = getConfig();
+  if (!config) {
+    return errorResponse(
+      c,
+      "Configuration not found",
+      ErrorCode.CONFIG_NOT_FOUND,
+      404,
+    );
+  }
+  return c.json(config);
 });
 
 configRouter.get("/providers", (c): Response => {
@@ -62,7 +90,7 @@ configRouter.post(
       throw error;
     }
     return c.json({ saved: true });
-  }
+  },
 );
 
 configRouter.post(
@@ -71,7 +99,6 @@ configRouter.post(
   zValidator("param", providerParamSchema),
   zValidator("json", activateProviderBodySchema, (result, c) => {
     if (!result.success) return invalidBodyResponse(c);
-    return;
   }),
   (c): Response => {
     const { providerId } = c.req.valid("param");
@@ -82,20 +109,37 @@ configRouter.post(
     }
 
     return c.json(activated);
-  }
+  },
 );
 
-configRouter.delete("/provider/:providerId", zValidator("param", providerParamSchema), (c): Response => {
-  const { providerId } = c.req.valid("param");
-  try {
-    const result = deleteProvider(providerId);
-    return c.json(result);
-  } catch (error) {
-    if (error instanceof SecretsStorageError) {
-      return errorResponse(c, error.message, error.code, 400);
+configRouter.delete(
+  "/provider/:providerId",
+  zValidator("param", providerParamSchema),
+  (c): Response => {
+    const { providerId } = c.req.valid("param");
+    try {
+      const result = deleteProvider(providerId);
+      return c.json(result);
+    } catch (error) {
+      if (error instanceof SecretsStorageError) {
+        return errorResponse(c, error.message, error.code, 400);
+      }
+      throw error;
     }
-    throw error;
+  },
+);
+
+configRouter.delete("/", (c): Response => {
+  const result = deleteConfig();
+  if (!result) {
+    return errorResponse(
+      c,
+      "Configuration not found",
+      ErrorCode.CONFIG_NOT_FOUND,
+      404,
+    );
   }
+  return c.json(result);
 });
 
 export { configRouter };
