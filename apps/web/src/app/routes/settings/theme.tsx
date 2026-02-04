@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import type { Theme } from "@repo/schemas";
+import type { Theme } from "@stargazer/schemas";
 import type { WebTheme, ResolvedTheme } from "@/types/theme";
 import { Panel, PanelContent, PanelHeader, Callout } from "@/components/ui";
 import { ThemeSelectorContent } from "@/components/settings";

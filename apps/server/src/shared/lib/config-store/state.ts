@@ -10,7 +10,7 @@ import {
   getGlobalTrustPath,
   getProjectInfoPath,
 } from "../paths.js";
-import { AI_PROVIDERS, type AIProvider } from "@repo/schemas/config";
+import { AI_PROVIDERS, type AIProvider } from "@stargazer/schemas/config";
 
 const isValidAIProvider = (value: string): value is AIProvider => {
   return AI_PROVIDERS.includes(value as AIProvider);

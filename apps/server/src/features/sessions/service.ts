@@ -1,14 +1,14 @@
 import type { AIClient } from "../../shared/lib/ai/index.js";
-import type { Session } from "@repo/schemas/session";
+import type { Session } from "@stargazer/schemas/session";
 import { addMessage, sessionStore } from "../../shared/lib/storage/index.js";
-import { ErrorCode } from "@repo/schemas/errors";
+import { ErrorCode } from "@stargazer/schemas/errors";
 import type { Result } from "../../shared/lib/result.js";
 import { ok, err } from "../../shared/lib/result.js";
 import { getErrorMessage } from "../../shared/lib/errors.js";
 import { escapeXml, sanitizeUnicode } from "../../shared/utils/sanitization.js";
 import { initializeAIClient, type SSEWriter } from "../../shared/lib/ai-client.js";
 import { writeSSEChunk, writeSSEComplete, writeSSEError } from "../../shared/lib/sse-helpers.js";
-import { type ChatError } from "@repo/schemas/chat";
+import { type ChatError } from "@stargazer/schemas/chat";
 
 export type { SSEWriter };
 export type { ChatError };

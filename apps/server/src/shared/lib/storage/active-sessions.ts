@@ -1,5 +1,5 @@
-import type { FullTriageStreamEvent } from '@repo/schemas';
-import type { ReviewMode } from '@repo/schemas/triage-storage';
+import type { FullTriageStreamEvent } from '@stargazer/schemas';
+import type { ReviewMode } from '@stargazer/schemas/triage-storage';
 
 interface ActiveSession {
   reviewId: string;

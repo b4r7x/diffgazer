@@ -7,15 +7,15 @@ import { triageReviewStream, getProfile } from "../../shared/lib/review/index.js
 import { saveTriageReview } from "../../shared/lib/storage/index.js";
 import { enrichIssues } from "../../shared/lib/services/enrich.js";
 import { generateReport } from "../../shared/lib/services/report.js";
-import type { LensId, ProfileId } from "@repo/schemas/lens";
-import { ErrorCode } from "@repo/schemas/errors";
+import type { LensId, ProfileId } from "@stargazer/schemas/lens";
+import { ErrorCode } from "@stargazer/schemas/errors";
 import type { SSEWriter } from "../../shared/lib/ai-client.js";
 import { writeSSEError } from "../../shared/lib/sse-helpers.js";
 import { createGitDiffError } from "../../shared/lib/git-diff-error.js";
-import type { StepEvent, StepId, ReviewStartedEvent } from "@repo/schemas/step-event";
-import type { EnrichProgressEvent } from "@repo/schemas/enrich-event";
-import type { FullTriageStreamEvent } from "@repo/schemas";
-import type { ReviewMode } from "@repo/schemas/triage-storage";
+import type { StepEvent, StepId, ReviewStartedEvent } from "@stargazer/schemas/step-event";
+import type { EnrichProgressEvent } from "@stargazer/schemas/enrich-event";
+import type { FullTriageStreamEvent } from "@stargazer/schemas";
+import type { ReviewMode } from "@stargazer/schemas/triage-storage";
 import {
   createSession,
   addEvent,

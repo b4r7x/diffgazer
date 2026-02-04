@@ -1,7 +1,7 @@
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { StoreError } from "./storage/persistence.js";
-import { ErrorCode } from "@repo/schemas/errors";
+import { ErrorCode } from "@stargazer/schemas/errors";
 import { errorCodeToStatus } from "./validation.js";
 import type { core } from "zod";
 

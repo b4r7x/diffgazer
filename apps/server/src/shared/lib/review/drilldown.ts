@@ -4,9 +4,9 @@ import { ok, err } from "../result.js";
 import { escapeXml } from "../../utils/sanitization.js";
 import type { AIClient, AIError } from "../ai/index.js";
 import type { ParsedDiff } from "../diff/index.js";
-import type { TriageIssue, TriageResult } from "@repo/schemas/triage";
-import type { DrilldownResult } from "@repo/schemas/lens";
-import type { AgentStreamEvent } from "@repo/schemas/agent-event";
+import type { TriageIssue, TriageResult } from "@stargazer/schemas/triage";
+import type { DrilldownResult } from "@stargazer/schemas/lens";
+import type { AgentStreamEvent } from "@stargazer/schemas/agent-event";
 import { TraceRecorder } from "./trace-recorder.js";
 
 function now(): string {

@@ -1,5 +1,5 @@
 import type { Context, Next } from "hono";
-import { ErrorCode } from "@repo/schemas/errors";
+import { ErrorCode } from "@stargazer/schemas/errors";
 import { getProjectInfo } from "./config-store/index.js";
 import { getProjectRoot } from "./request.js";
 import { errorResponse } from "./response.js";

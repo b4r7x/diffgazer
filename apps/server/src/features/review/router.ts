@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
-import { ErrorCode } from "@repo/schemas/errors";
+import { ErrorCode } from "@stargazer/schemas/errors";
 import { errorResponse } from "../../shared/lib/response.js";
 import { writeSSEError } from "../../shared/lib/sse-helpers.js";
 import { getErrorMessage } from "../../shared/lib/errors.js";

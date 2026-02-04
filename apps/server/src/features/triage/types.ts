@@ -1,4 +1,4 @@
-import type { DrilldownResult, SavedTriageReview, TriageReviewMetadata } from "@repo/schemas";
+import type { DrilldownResult, SavedTriageReview, TriageReviewMetadata } from "@stargazer/schemas";
 
 export interface TriageReviewsResponse {
   reviews: TriageReviewMetadata[];

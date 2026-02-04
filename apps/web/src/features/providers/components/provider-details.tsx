@@ -1,5 +1,5 @@
 import { Badge, Button, CapabilityCard, StatusRow } from '@/components/ui';
-import { PROVIDER_CAPABILITIES } from '@repo/schemas';
+import { PROVIDER_CAPABILITIES } from '@stargazer/schemas';
 import type { ProviderWithStatus } from '../types';
 
 export interface ProviderDetailsProps {

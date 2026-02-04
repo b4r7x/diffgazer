@@ -1,4 +1,4 @@
-import { PROVIDER_ENV_VARS, type AIProvider } from "@repo/schemas/config";
+import { PROVIDER_ENV_VARS, type AIProvider } from "@stargazer/schemas/config";
 
 export { PROVIDER_ENV_VARS };
 

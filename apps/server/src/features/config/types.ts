@@ -1,5 +1,5 @@
 import type { ProjectInfo, ProviderStatus, SettingsConfig } from "../../shared/lib/config-store/index.js";
-import type { AIProvider } from "@repo/schemas/config";
+import type { AIProvider } from "@stargazer/schemas/config";
 
 export interface SaveConfigRequest {
   provider: AIProvider;

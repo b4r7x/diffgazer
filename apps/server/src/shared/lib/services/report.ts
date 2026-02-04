@@ -1,4 +1,4 @@
-import type { TriageIssue, TriageResult, TriageSeverity } from "@repo/schemas/triage";
+import type { TriageIssue, TriageResult, TriageSeverity } from "@stargazer/schemas/triage";
 
 const SEVERITY_ORDER: Record<TriageSeverity, number> = {
   blocker: 0,

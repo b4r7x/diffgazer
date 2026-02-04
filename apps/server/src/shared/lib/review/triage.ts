@@ -2,7 +2,7 @@ import type { Result } from "../result.js";
 import { ok, err } from "../result.js";
 import type { AIClient, AIError } from "../ai/index.js";
 import type { ParsedDiff, FileDiff } from "../diff/index.js";
-import type { Lens } from "@repo/schemas/lens";
+import type { Lens } from "@stargazer/schemas/lens";
 import type {
   TriageResult,
   TriageIssue,
@@ -10,11 +10,11 @@ import type {
   EvidenceRef,
   TriageOptions,
   SeverityFilter,
-} from "@repo/schemas/triage";
-import { TriageResultSchema } from "@repo/schemas/triage";
-import type { AgentStreamEvent, LensStat } from "@repo/schemas/agent-event";
-import { AGENT_METADATA, LENS_TO_AGENT } from "@repo/schemas/agent-event";
-import type { StepEvent } from "@repo/schemas/step-event";
+} from "@stargazer/schemas/triage";
+import { TriageResultSchema } from "@stargazer/schemas/triage";
+import type { AgentStreamEvent, LensStat } from "@stargazer/schemas/agent-event";
+import { AGENT_METADATA, LENS_TO_AGENT } from "@stargazer/schemas/agent-event";
+import type { StepEvent } from "@stargazer/schemas/step-event";
 import { escapeXml } from "../../utils/sanitization.js";
 import { getLenses } from "./lenses/index.js";
 import { getProfile } from "./profiles.js";

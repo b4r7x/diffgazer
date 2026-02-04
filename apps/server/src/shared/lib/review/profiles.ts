@@ -1,4 +1,4 @@
-import type { ReviewProfile, ProfileId } from "@repo/schemas/lens";
+import type { ReviewProfile, ProfileId } from "@stargazer/schemas/lens";
 
 export const quickProfile: ReviewProfile = {
   id: "quick",

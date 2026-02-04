@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { GIT_FILE_STATUS_CODES, type GitStatus, type GitStatusFiles, type GitFileEntry, type GitFileStatusCode } from "@repo/schemas/git";
-import type { ReviewMode } from "@repo/schemas/triage-storage";
+import { GIT_FILE_STATUS_CODES, type GitStatus, type GitStatusFiles, type GitFileEntry, type GitFileStatusCode } from "@stargazer/schemas/git";
+import type { ReviewMode } from "@stargazer/schemas/triage-storage";
 
 const execFileAsync = promisify(execFile);
 

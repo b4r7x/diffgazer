@@ -14,6 +14,9 @@
     "build": "tsc",
     "dev": "tsc --watch"
   },
+  "dependencies": {
+    "@stargazer/core": "workspace:*"
+  },
   "devDependencies": {
     "@repo/tsconfig": "workspace:*",
     "@types/node": "^22.0.0",

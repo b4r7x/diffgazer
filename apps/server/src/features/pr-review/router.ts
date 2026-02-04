@@ -1,7 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import type { LensId, ProfileId } from "@repo/schemas/lens";
-import type { TriageIssue } from "@repo/schemas/triage";
+import type { LensId, ProfileId } from "@stargazer/schemas/lens";
+import type { TriageIssue } from "@stargazer/schemas/triage";
 import { errorResponse, zodErrorHandler } from "../../shared/lib/response.js";
 import { initializeAIClient } from "../../shared/lib/ai-client.js";
 import { parseDiff } from "../../shared/lib/diff/index.js";

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { ModelInfo, TierFilter } from "@repo/schemas";
-import { TIER_FILTERS } from "@repo/schemas";
+import type { ModelInfo, TierFilter } from "@stargazer/schemas";
+import { TIER_FILTERS } from "@stargazer/schemas";
 
 export type { TierFilter };
 

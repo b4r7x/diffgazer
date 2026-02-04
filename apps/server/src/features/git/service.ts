@@ -2,7 +2,7 @@ import { join, sep } from "node:path";
 import { realpath } from "node:fs/promises";
 import type { Result } from "../../shared/lib/result.js";
 import { ok, err } from "../../shared/lib/result.js";
-import { ErrorCode } from "@repo/schemas/errors";
+import { ErrorCode } from "@stargazer/schemas/errors";
 import { isRelativePath } from "../../shared/lib/validation.js";
 import { createGitService } from "../../shared/lib/services/git.js";
 import type { GitService, GitServiceError } from "./types.js";

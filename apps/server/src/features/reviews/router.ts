@@ -2,7 +2,7 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { z } from "zod";
-import { ErrorCode } from "@repo/schemas/errors";
+import { ErrorCode } from "@stargazer/schemas/errors";
 import { deleteReview, getReview, listReviews } from "./repo.js";
 import { errorResponse } from "../../shared/lib/error-response.js";
 import { getProjectRoot } from "../../shared/lib/request.js";

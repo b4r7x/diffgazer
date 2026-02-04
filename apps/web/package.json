@@ -9,7 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@repo/schemas": "workspace:*",
+    "@stargazer/core": "workspace:*",
+    "@stargazer/schemas": "workspace:*",
     "@stargazer/api": "workspace:*",
     "@stargazer/hooks": "workspace:*",
     "@tanstack/react-router": "^1.151.6",

@@ -1,6 +1,6 @@
 'use client';
 
-import type { Theme } from '@repo/schemas';
+import type { Theme } from '@stargazer/schemas';
 import { RadioGroup, RadioGroupItem } from '../ui/form';
 
 export interface ThemeSelectorContentProps {
