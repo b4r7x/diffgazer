@@ -19,7 +19,7 @@ import type { AIClient, AIError } from "../../shared/lib/ai/types.js";
 import { writeSSEError } from "../../shared/lib/http/sse.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
 import { isValidProjectPath } from "../../shared/lib/validation.js";
-import { requireRepoAccess } from "../../shared/lib/middleware/trust-guard.js";
+import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
 import {
   addDrilldownToReview,
   deleteTriageReview,

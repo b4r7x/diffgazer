@@ -7,7 +7,7 @@ import { getErrorMessage } from "@stargazer/core";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
 import { initializeAIClient } from "../../shared/lib/ai/client.js";
 import { streamReviewToSSE } from "./service.js";
-import { requireRepoAccess } from "../../shared/lib/middleware/trust-guard.js";
+import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
 
 const reviewRouter = new Hono();
 
