@@ -1,4 +1,4 @@
-import { readdir, unlink, open } from "node:fs/promises";
+import { mkdir, readFile, writeFile, readdir, unlink, rename, open } from "node:fs/promises";
 import type { FileHandle } from "node:fs/promises";
 import type { ZodType } from "zod";
 import { type Result, ok, err } from "@stargazer/core";
@@ -6,12 +6,6 @@ import type { AppError } from "../errors.js";
 import { createError, getErrorMessage, isNodeError } from "../errors.js";
 import { safeParseJson } from "../json.js";
 import { isValidUuid, parseAndValidate, validateSchema } from "../validation.js";
-import {
-  safeReadFile as genericSafeReadFile,
-  atomicWriteFile as genericAtomicWriteFile,
-  ensureDirectory as genericEnsureDirectory,
-  createMappedErrorFactory,
-} from "../fs/operations.js";
 
 export type StoreErrorCode =
   | "NOT_FOUND"
@@ -24,18 +18,33 @@ export type StoreError = AppError<StoreErrorCode>;
 
 const createStoreError = createError<StoreErrorCode>;
 
-const storeErrorFactory = createMappedErrorFactory<StoreErrorCode>(
-  {
-    NOT_FOUND: "NOT_FOUND",
-    PERMISSION_DENIED: "PERMISSION_ERROR",
-    READ_ERROR: "PARSE_ERROR",
-    WRITE_ERROR: "WRITE_ERROR",
-  },
-  createError
-);
-
 async function safeReadFile(path: string, name: string): Promise<Result<string, StoreError>> {
-  return genericSafeReadFile(path, name, storeErrorFactory);
+  try {
+    const content = await readFile(path, "utf-8");
+    return ok(content);
+  } catch (error) {
+    if (isNodeError(error, "ENOENT")) {
+      return err(createStoreError("NOT_FOUND", `${name} not found: ${path}`));
+    }
+    if (isNodeError(error, "EACCES")) {
+      return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
+    }
+    return err(createStoreError("PARSE_ERROR", `Failed to read ${name}`, getErrorMessage(error)));
+  }
+}
+
+async function ensureDirectory(dirPath: string, name: string): Promise<Result<void, StoreError>> {
+  try {
+    await mkdir(dirPath, { recursive: true });
+    return ok(undefined);
+  } catch (error) {
+    if (isNodeError(error, "EACCES")) {
+      return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${dirPath}`));
+    }
+    return err(
+      createStoreError("WRITE_ERROR", `Failed to create ${name} directory`, getErrorMessage(error))
+    );
+  }
 }
 
 async function atomicWriteFile(
@@ -43,11 +52,21 @@ async function atomicWriteFile(
   content: string,
   name: string
 ): Promise<Result<void, StoreError>> {
-  return genericAtomicWriteFile(path, content, name, storeErrorFactory);
-}
+  const tempPath = path + "." + Date.now() + ".tmp";
 
-async function ensureDirectory(dirPath: string, name: string): Promise<Result<void, StoreError>> {
-  return genericEnsureDirectory(dirPath, name, storeErrorFactory);
+  try {
+    await writeFile(tempPath, content, { mode: 0o600 });
+    await rename(tempPath, path);
+    return ok(undefined);
+  } catch (error) {
+    try {
+      await unlink(tempPath);
+    } catch {}
+    if (isNodeError(error, "EACCES")) {
+      return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
+    }
+    return err(createStoreError("WRITE_ERROR", `Failed to write ${name}`, getErrorMessage(error)));
+  }
 }
 
 const CHUNK_SIZE = 4096;
