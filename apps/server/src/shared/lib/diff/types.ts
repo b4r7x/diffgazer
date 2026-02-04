@@ -2,6 +2,7 @@
 // Duplicated here to avoid circular dependency issues during server-side resolution
 
 export type DiffOperation = "add" | "modify" | "delete" | "rename";
+export type DiffLineType = "addition" | "deletion" | "hunk-header" | "file-header" | "context";
 
 export interface DiffHunk {
   oldStart: number;
