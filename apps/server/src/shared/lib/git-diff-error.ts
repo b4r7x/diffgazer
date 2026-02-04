@@ -1,4 +1,3 @@
-import { createErrorClassifier } from "./error-classifier.js";
 import { getErrorMessage } from "./errors.js";
 
 type GitDiffErrorCode =
@@ -8,6 +7,27 @@ type GitDiffErrorCode =
   | "BUFFER_EXCEEDED"
   | "NOT_A_REPOSITORY"
   | "UNKNOWN";
+
+interface ErrorRule<C> {
+  patterns: string[];
+  code: C;
+  message: string;
+}
+
+const createErrorClassifier = <C extends string>(
+  rules: ErrorRule<C>[],
+  defaultCode: C,
+  defaultMessage: (original: string) => string
+): ((error: unknown) => { code: C; message: string }) =>
+  (error) => {
+    const msg = getErrorMessage(error).toLowerCase();
+    for (const rule of rules) {
+      if (rule.patterns.some((pattern) => msg.includes(pattern))) {
+        return { code: rule.code, message: rule.message };
+      }
+    }
+    return { code: defaultCode, message: defaultMessage(getErrorMessage(error)) };
+  };
 
 const classifyGitDiffError = createErrorClassifier<GitDiffErrorCode>(
   [

@@ -1,45 +1,13 @@
-import type { AIProvider } from "@stargazer/schemas/config";
-
-export type Theme = "auto" | "dark" | "light" | "terminal";
-
-export type SecretsStorage = "file" | "keyring";
-
-export interface SettingsConfig {
-  theme: Theme;
-  defaultLenses?: string[];
-  defaultProfile?: string | null;
-  severityThreshold?: string;
-  secretsStorage?: SecretsStorage | null;
-}
-
-export interface ProviderStatus {
-  provider: AIProvider;
-  hasApiKey: boolean;
-  isActive: boolean;
-  model?: string;
-  mode?: string;
-}
-
-export interface TrustCapabilities {
-  readFiles: boolean;
-  runCommands: boolean;
-}
-
-export type TrustMode = "persistent" | "session";
-
-export interface TrustConfig {
-  projectId: string;
-  repoRoot: string;
-  trustedAt: string;
-  capabilities: TrustCapabilities;
-  trustMode: TrustMode;
-}
-
-export interface ProjectInfo {
-  path: string;
-  projectId: string;
-  trust: TrustConfig | null;
-}
+export type {
+  ProjectInfo,
+  ProviderStatus,
+  SecretsStorage,
+  SettingsConfig,
+  Theme,
+  TrustCapabilities,
+  TrustConfig,
+  TrustMode,
+} from "@stargazer/api";
 
 export interface ConfigState {
   settings: SettingsConfig;

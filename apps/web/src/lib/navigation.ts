@@ -1,4 +1,4 @@
-import type { Shortcut } from "@/types/ui";
+import type { Shortcut } from "@stargazer/schemas/ui";
 
 export type MenuAction =
   | "review-unstaged"

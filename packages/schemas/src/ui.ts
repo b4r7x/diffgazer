@@ -131,6 +131,14 @@ export const ProgressStepDataSchema = z.object({
 });
 export type ProgressStepData = z.infer<typeof ProgressStepDataSchema>;
 
+export const ReviewProgressMetricsSchema = z.object({
+  filesProcessed: z.number().nonnegative(),
+  filesTotal: z.number().nonnegative(),
+  issuesFound: z.number().nonnegative(),
+  elapsed: z.number().nonnegative(),
+});
+export type ReviewProgressMetrics = z.infer<typeof ReviewProgressMetricsSchema>;
+
 // ============================================================================
 // Analysis Types
 // ============================================================================

@@ -1,12 +1,7 @@
 import type { TriageIssue, TriageResult, TriageSeverity } from "@stargazer/schemas/triage";
+import { SEVERITY_ORDER } from "@stargazer/core";
 
-const SEVERITY_ORDER: Record<TriageSeverity, number> = {
-  blocker: 0,
-  high: 1,
-  medium: 2,
-  low: 3,
-  nit: 4,
-};
+const severityRank = (severity: TriageSeverity): number => SEVERITY_ORDER.indexOf(severity);
 
 function deduplicateIssues(issues: TriageIssue[]): TriageIssue[] {
   const seen = new Map<string, TriageIssue>();
@@ -17,7 +12,7 @@ function deduplicateIssues(issues: TriageIssue[]): TriageIssue[] {
     const existing = seen.get(key);
 
     // Keep the more severe issue
-    if (!existing || SEVERITY_ORDER[issue.severity] < SEVERITY_ORDER[existing.severity]) {
+    if (!existing || severityRank(issue.severity) < severityRank(existing.severity)) {
       seen.set(key, issue);
     }
   }
@@ -28,7 +23,7 @@ function deduplicateIssues(issues: TriageIssue[]): TriageIssue[] {
 function sortIssuesBySeverity(issues: TriageIssue[]): TriageIssue[] {
   return [...issues].sort((a, b) => {
     // Sort by severity first
-    const severityDiff = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
+    const severityDiff = severityRank(a.severity) - severityRank(b.severity);
     if (severityDiff !== 0) return severityDiff;
 
     // Then by confidence
@@ -49,7 +44,7 @@ function generateExecutiveSummary(issues: TriageIssue[], lensSummaries: string[]
   const uniqueFiles = new Set(issues.map(i => i.file)).size;
 
   const severityLines = Object.entries(severityCounts)
-    .sort(([a], [b]) => SEVERITY_ORDER[a as TriageSeverity] - SEVERITY_ORDER[b as TriageSeverity])
+    .sort(([a], [b]) => severityRank(a as TriageSeverity) - severityRank(b as TriageSeverity))
     .map(([severity, count]) => `- ${severity}: ${count}`)
     .join("\n");
 

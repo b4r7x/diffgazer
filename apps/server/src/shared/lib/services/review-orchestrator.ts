@@ -7,7 +7,6 @@ import { getErrorMessage, createError } from "../errors.js";
 import { truncate } from "../strings.js";
 import { ok, err } from "../result.js";
 import { safeParseJson } from "../json.js";
-import { chunk } from "../array.js";
 import { escapeXml } from "../../utils/sanitization.js";
 import { validateSchema } from "../validation.js";
 import { z } from "zod";
@@ -17,6 +16,16 @@ import { aggregateReviews } from "./review-aggregator.js";
 
 const DEFAULT_BATCH_SIZE = 3;
 const MAX_CONCURRENT_REVIEWS = 3;
+
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  if (size <= 0) return [];
+
+  const result: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    result.push(arr.slice(i, i + size));
+  }
+  return result;
+}
 
 export interface ChunkedReviewCallbacks {
   onFileStart: (file: string, index: number, total: number) => Promise<void>;
@@ -47,7 +56,7 @@ function createReviewBatches(
   files: FileDiff[],
   batchSize: number = DEFAULT_BATCH_SIZE
 ): FileDiff[][] {
-  return chunk(files, batchSize);
+  return chunkArray(files, batchSize);
 }
 
 async function reviewSingleFile(
