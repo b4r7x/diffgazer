@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { join } from "node:path";
 import { createGitService } from "../../shared/lib/services/git.js";
 import type { AIClient, StreamCallbacks } from "../../shared/lib/ai/types.js";
 import { getErrorMessage } from "../../shared/lib/errors.js";
@@ -5,12 +7,149 @@ import { safeParseJson } from "../../shared/lib/json.js";
 import { escapeXml, sanitizeUnicode } from "../../shared/utils/sanitization.js";
 import { validateSchema } from "../../shared/lib/validation.js";
 import { parseDiff } from "../../shared/lib/diff/parser.js";
-import { saveReview } from "../../shared/lib/storage/review-history.js";
+import {
+  createCollection,
+  filterByProjectAndSort,
+  type StoreError,
+} from "../../shared/lib/storage/persistence.js";
+import { getGlobalStargazerDir } from "../../shared/lib/paths.js";
+import {
+  SavedReviewSchema,
+  type SavedReview,
+  type ReviewHistoryMetadata,
+  type ReviewGitContext,
+} from "@stargazer/schemas";
 import { ReviewResultSchema, type ReviewResult } from "@stargazer/schemas/review";
 import { ErrorCode } from "@stargazer/schemas/errors";
 import type { SSEWriter } from "../../shared/lib/ai-client.js";
 import { writeSSEChunk, writeSSEComplete, writeSSEError } from "../../shared/lib/sse-helpers.js";
-import { createGitDiffError } from "../../shared/lib/git-diff-error.js";
+import { type Result, ok } from "@stargazer/core";
+
+type GitDiffErrorCode =
+  | "GIT_NOT_FOUND"
+  | "PERMISSION_DENIED"
+  | "TIMEOUT"
+  | "BUFFER_EXCEEDED"
+  | "NOT_A_REPOSITORY"
+  | "UNKNOWN";
+
+interface ErrorRule<C> {
+  patterns: string[];
+  code: C;
+  message: string;
+}
+
+function createErrorClassifier<C extends string>(
+  rules: ErrorRule<C>[],
+  defaultCode: C,
+  defaultMessage: (original: string) => string
+): (error: unknown) => { code: C; message: string } {
+  return (error) => {
+    const msg = getErrorMessage(error).toLowerCase();
+    for (const rule of rules) {
+      if (rule.patterns.some((pattern) => msg.includes(pattern))) {
+        return { code: rule.code, message: rule.message };
+      }
+    }
+    return { code: defaultCode, message: defaultMessage(getErrorMessage(error)) };
+  };
+}
+
+const classifyGitDiffError = createErrorClassifier<GitDiffErrorCode>(
+  [
+    {
+      patterns: ["enoent", "spawn git", "not found"],
+      code: "GIT_NOT_FOUND",
+      message: "Git is not installed or not in PATH. Please install git and try again.",
+    },
+    {
+      patterns: ["eacces", "permission denied"],
+      code: "PERMISSION_DENIED",
+      message: "Permission denied when accessing git. Check file permissions.",
+    },
+    {
+      patterns: ["etimedout", "timed out", "timeout"],
+      code: "TIMEOUT",
+      message: "Git operation timed out. The repository may be too large or the system is under heavy load.",
+    },
+    {
+      patterns: ["maxbuffer", "stdout maxbuffer"],
+      code: "BUFFER_EXCEEDED",
+      message: "Git diff output exceeded buffer limit. The changes may be too large to process.",
+    },
+    {
+      patterns: ["not a git repository", "fatal:"],
+      code: "NOT_A_REPOSITORY",
+      message: "Not a git repository. Please run this command from within a git repository.",
+    },
+  ],
+  "UNKNOWN",
+  (original) => `Failed to get git diff: ${original}`
+);
+
+function createGitDiffError(error: unknown): Error {
+  const originalMessage = getErrorMessage(error);
+  const classified = classifyGitDiffError(error);
+
+  if (classified.code === "UNKNOWN") {
+    return new Error(classified.message);
+  }
+  return new Error(`${classified.message} (Original: ${originalMessage}`);
+}
+
+const REVIEWS_DIR = join(getGlobalStargazerDir(), "reviews");
+const getReviewFile = (reviewId: string): string => join(REVIEWS_DIR, `${reviewId}.json`);
+
+const reviewStore = createCollection<SavedReview, ReviewHistoryMetadata>({
+  name: "review",
+  dir: REVIEWS_DIR,
+  filePath: getReviewFile,
+  schema: SavedReviewSchema,
+  getMetadata: (review) => review.metadata,
+  getId: (review) => review.metadata.id,
+});
+
+function countIssuesBySeverity(
+  issues: ReviewResult["issues"],
+  severity: "critical" | "warning"
+): number {
+  return issues.filter((issue) => issue.severity === severity).length;
+}
+
+async function saveReview(
+  projectPath: string,
+  staged: boolean,
+  result: ReviewResult,
+  gitContext: ReviewGitContext
+): Promise<Result<ReviewHistoryMetadata, StoreError>> {
+  const now = new Date().toISOString();
+  const metadata: ReviewHistoryMetadata = {
+    id: randomUUID(),
+    projectPath,
+    createdAt: now,
+    staged,
+    branch: gitContext.branch,
+    overallScore: result.overallScore,
+    issueCount: result.issues.length,
+    criticalCount: countIssuesBySeverity(result.issues, "critical"),
+    warningCount: countIssuesBySeverity(result.issues, "warning"),
+  };
+
+  const savedReview: SavedReview = { metadata, result, gitContext };
+  const writeResult = await reviewStore.write(savedReview);
+  if (!writeResult.ok) return writeResult;
+  return ok(metadata);
+}
+
+export async function listReviews(
+  projectPath?: string
+): Promise<Result<{ items: ReviewHistoryMetadata[]; warnings: string[] }, StoreError>> {
+  const result = await reviewStore.list();
+  if (!result.ok) return result;
+
+  const items = filterByProjectAndSort(result.value.items, projectPath, "createdAt");
+  return ok({ items, warnings: result.value.warnings });
+}
 
 const MAX_DIFF_SIZE_BYTES = 524288; // 512KB
 
