@@ -172,18 +172,11 @@ export function useReviewStream(): UseReviewStreamReturn {
     }
   }, [enqueueEvent, handleStreamError]);
 
-  // Abort the stream on real unmount. Use a mount-count ref so that
-  // Strict Mode's simulated unmount/remount cycle doesn't kill the stream.
-  const mountCountRef = useRef(0);
+  // Abort the stream on unmount
   useEffect(() => {
-    mountCountRef.current += 1;
     return () => {
-      mountCountRef.current -= 1;
-      // Only abort on true unmount (mount count drops to 0)
-      if (mountCountRef.current === 0 && abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
     };
   }, []);
 

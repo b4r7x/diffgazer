@@ -28,6 +28,25 @@ function mapSettingsTheme(theme: string): WebTheme {
   return resolveWebTheme(theme);
 }
 
+function ThemeStyleApplicator() {
+  const { settings } = useSettings();
+
+  const systemTheme = useSyncExternalStore(
+    subscribeToSystemTheme,
+    getSystemTheme,
+    () => "dark" as ResolvedTheme
+  );
+
+  const resolvedTheme = settings?.theme ? mapSettingsTheme(settings.theme) : "auto";
+  const resolved: ResolvedTheme = resolvedTheme === "auto" ? systemTheme : resolvedTheme;
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", resolved);
+  }, [resolved]);
+
+  return null;
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<WebTheme>(() => {
     if (typeof window === "undefined") return "auto";
@@ -45,10 +64,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const resolvedTheme = settings?.theme ? mapSettingsTheme(settings.theme) : theme;
   const resolved: ResolvedTheme = resolvedTheme === "auto" ? systemTheme : resolvedTheme;
 
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", resolved);
-  }, [resolved]);
-
   const setTheme = useCallback((newTheme: WebTheme) => {
     setThemeState(newTheme);
     localStorage.setItem(STORAGE_KEY, newTheme);
@@ -57,5 +72,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<ThemeContextValue>(() => ({ theme: resolvedTheme, resolved, setTheme }), [resolvedTheme, resolved, setTheme]);
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  return (
+    <ThemeContext.Provider value={value}>
+      <ThemeStyleApplicator />
+      {children}
+    </ThemeContext.Provider>
+  );
 }

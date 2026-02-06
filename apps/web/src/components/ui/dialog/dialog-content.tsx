@@ -7,6 +7,12 @@ const FOCUSABLE_SELECTOR =
 
 function useFocusTrap(containerRef: React.RefObject<HTMLDivElement | null>) {
   React.useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  React.useEffect(() => {
     const previousFocus = document.activeElement as HTMLElement | null;
     const container = containerRef.current;
     if (!container) return;
@@ -93,13 +99,14 @@ function DialogContentInner({
 
 export function DialogContent({ children, className, ...props }: DialogContentProps) {
   const { open, onOpenChange, titleId, descriptionId } = useDialogContext();
+  const handleClose = React.useCallback(() => onOpenChange(false), [onOpenChange]);
 
   if (!open) return null;
 
   return (
     <DialogContentInner
       className={className}
-      onClose={() => onOpenChange(false)}
+      onClose={handleClose}
       titleId={titleId}
       descriptionId={descriptionId}
       {...props}

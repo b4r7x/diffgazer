@@ -8,6 +8,17 @@ import { useScope, useKey, useSelectableList } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { filterIssuesBySeverity } from "@stargazer/core/review";
 
+const SHORTCUTS = [
+  { key: "j/k", label: "Select" },
+  { key: "←/→", label: "Navigate" },
+  { key: "1-4", label: "Tab" },
+];
+
+const RIGHT_SHORTCUTS = [
+  { key: "Space", label: "Toggle" },
+  { key: "Esc", label: "Back" },
+];
+
 type FocusZone = "filters" | "list" | "details";
 
 interface UseReviewResultsKeyboardOptions {
@@ -111,17 +122,7 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     });
   };
 
-  usePageFooter({
-    shortcuts: [
-      { key: "j/k", label: "Select" },
-      { key: "←/→", label: "Navigate" },
-      { key: "1-4", label: "Tab" },
-    ],
-    rightShortcuts: [
-      { key: "Space", label: "Toggle" },
-      { key: "Esc", label: "Back" },
-    ],
-  });
+  usePageFooter({ shortcuts: SHORTCUTS, rightShortcuts: RIGHT_SHORTCUTS });
 
   return {
     filteredIssues,

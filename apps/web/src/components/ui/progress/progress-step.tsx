@@ -39,7 +39,8 @@ export interface ProgressStepProps extends VariantProps<typeof progressStepVaria
   substeps?: ProgressSubstepData[];
   children?: React.ReactNode;
   isExpanded?: boolean;
-  onToggle?: () => void;
+  stepId?: string;
+  onToggle?: ((id: string) => void) | (() => void);
   className?: string;
 }
 
@@ -55,16 +56,18 @@ export function ProgressStep({
   substeps,
   children,
   isExpanded = false,
+  stepId,
   onToggle,
   className,
 }: ProgressStepProps) {
   const hasContent = Boolean(children || (substeps && substeps.length > 0));
 
-  const handleClick = () => {
+  const handleClick = React.useCallback(() => {
     if (hasContent && onToggle) {
-      onToggle();
+      if (stepId) (onToggle as (id: string) => void)(stepId);
+      else (onToggle as () => void)();
     }
-  };
+  }, [hasContent, onToggle, stepId]);
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter' || event.key === ' ') {

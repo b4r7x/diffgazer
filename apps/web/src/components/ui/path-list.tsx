@@ -12,7 +12,7 @@ export function PathList({ title, paths, labelWidth = "80px" }: PathListProps) {
       <h3 className="text-tui-violet font-bold text-xs uppercase tracking-wider">
         {title}
       </h3>
-      <div className={`grid gap-2 text-sm font-mono`} style={{ gridTemplateColumns: `${labelWidth} 1fr` }}>
+      <div className="grid gap-2 text-sm font-mono" style={{ gridTemplateColumns: `${labelWidth} 1fr` }}>
         {Object.entries(paths).map(([label, path]) => (
           <Fragment key={label}>
             <span className="text-tui-muted text-right">{label}:</span>

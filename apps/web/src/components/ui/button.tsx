@@ -43,7 +43,7 @@ export function Button({ className, variant, size, bracket, children, ref, ...pr
       ref={ref}
       {...props}
     >
-      {bracket ? `[ ${children} ]` : children}
+      {bracket ? <>[ {children} ]</> : children}
     </button>
   );
 }

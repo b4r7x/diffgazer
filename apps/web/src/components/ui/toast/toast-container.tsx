@@ -1,9 +1,10 @@
 import { cn } from "@/utils/cn";
-import { useToast } from "./toast-context";
+import { useToastData, useToastActions } from "./toast-context";
 import { Toast } from "./toast";
 
 export function ToastContainer() {
-  const { toasts, dismissingIds, dismissToast, removeToast } = useToast();
+  const { toasts, dismissingIds } = useToastData();
+  const { dismissToast, removeToast } = useToastActions();
 
   if (toasts.length === 0) return null;
 

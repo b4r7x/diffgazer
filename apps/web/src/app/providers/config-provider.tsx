@@ -270,7 +270,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     projectId: state.projectId,
     repoRoot: state.repoRoot,
     trust: state.trust,
-  }), [state]);
+  }), [state.provider, state.model, isConfigured, state.providerStatus, state.projectId, state.repoRoot, state.trust]);
 
   const actionsValue = useMemo<ConfigActionsContextValue>(() => ({
     isLoading,

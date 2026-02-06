@@ -36,16 +36,11 @@ export function getRunSummary(metadata: ReviewMetadata): React.ReactNode {
     return `Found ${issueCount} issue${issueCount === 1 ? "" : "s"}.`;
   }
 
-  return (
-    <>
-      {parts.map((part, i) => (
-        <span key={i}>
-          {i > 0 && ", "}
-          {part}
-        </span>
-      ))}
-    </>
-  );
+  return <>{parts.reduce<React.ReactNode[]>((acc, part, i) => {
+    if (i > 0) acc.push(", ");
+    acc.push(part);
+    return acc;
+  }, [])}</>;
 }
 
 export function formatDuration(durationMs: number | null | undefined): string {

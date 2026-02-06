@@ -6,10 +6,12 @@ export function useContextSnapshot(reviewId: string | null | undefined, isStream
   const [contextSnapshot, setContextSnapshot] = useState<ReviewContextResponse | null>(null);
   const contextFetchRef = useRef<string | null>(null);
 
-  // Reset snapshot state when a new streaming session begins
+  // Return null during streaming — no extra render cycle needed
+  const effectiveSnapshot = isStreaming ? null : contextSnapshot;
+
+  // Reset fetch ref when streaming starts so we can re-fetch after completion
   useEffect(() => {
     if (isStreaming) {
-      setContextSnapshot(null);
       contextFetchRef.current = null;
     }
   }, [isStreaming]);
@@ -34,5 +36,5 @@ export function useContextSnapshot(reviewId: string | null | undefined, isStream
     return () => { ignore = true; };
   }, [contextStepCompleted, isStreaming, reviewId]);
 
-  return contextSnapshot;
+  return effectiveSnapshot;
 }

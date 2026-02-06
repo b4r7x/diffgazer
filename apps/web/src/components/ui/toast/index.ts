@@ -1,2 +1,2 @@
 export { ToastContainer } from "./toast-container";
-export { ToastProvider, useToast } from "./toast-context";
+export { ToastProvider, useToast, useToastData, useToastActions } from "./toast-context";

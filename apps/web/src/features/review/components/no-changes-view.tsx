@@ -1,5 +1,6 @@
 import { useScope, useKey } from '@/hooks/keyboard';
 import { usePageFooter } from '@/hooks/use-page-footer';
+import { Button } from '@/components/ui/button';
 import type { ReviewMode } from '../types';
 
 export interface NoChangesViewProps {
@@ -48,21 +49,22 @@ export function NoChangesView({ mode, onBack, onSwitchMode }: NoChangesViewProps
         <p className="text-gray-400 font-mono text-sm mb-6">{message}</p>
         <div className="flex gap-4 justify-center">
           {onSwitchMode && (
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              bracket
+              className="border-tui-blue hover:bg-tui-blue/20"
               onClick={onSwitchMode}
-              className="px-4 py-2 border border-tui-blue text-sm font-mono hover:bg-tui-blue/20"
             >
-              [ {MESSAGES[mode].switchLabel} ]
-            </button>
+              {MESSAGES[mode].switchLabel}
+            </Button>
           )}
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            bracket
             onClick={onBack}
-            className="px-4 py-2 border border-tui-border text-sm font-mono hover:bg-tui-border/20"
           >
-            [ Back to Home ]
-          </button>
+            Back to Home
+          </Button>
         </div>
       </div>
     </div>

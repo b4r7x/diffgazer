@@ -1,4 +1,4 @@
-import { useLayoutEffect } from "react";
+import { useEffect } from "react";
 import { useFooterActions } from "@/components/layout";
 import type { Shortcut } from "@stargazer/schemas/ui";
 
@@ -15,7 +15,8 @@ export function usePageFooter({
 }: PageFooterOptions): void {
   const { setShortcuts, setRightShortcuts } = useFooterActions();
 
-  useLayoutEffect(() => {
+  // useEffect is sufficient — no DOM measurement, just context state updates
+  useEffect(() => {
     setShortcuts(shortcuts);
     setRightShortcuts(rightShortcuts);
   }, [shortcuts, rightShortcuts, setShortcuts, setRightShortcuts]);

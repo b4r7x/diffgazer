@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Menu, MenuItem } from "@/components/ui/menu";
 import { Panel, PanelHeader } from "@/components/ui/containers";
@@ -34,41 +33,39 @@ export function SettingsHubPage() {
   useScope("settings-hub");
   useKey("Escape", () => navigate({ to: "/" }));
 
-  const menuValues = useMemo<Record<SettingsAction, { value: string; valueVariant?: "default" | "success" | "success-badge" | "muted" }>>(() => {
-    const providerLabel = isConfigured && provider ? provider.toUpperCase() : "Not configured";
-    const storageLabel = settings?.secretsStorage
-      ? settings.secretsStorage.toUpperCase()
-      : "Not set";
+  const providerLabel = isConfigured && provider ? provider.toUpperCase() : "Not configured";
+  const storageLabel = settings?.secretsStorage
+    ? settings.secretsStorage.toUpperCase()
+    : "Not set";
 
-    return {
-      trust: {
-        value: isTrusted ? "Trusted" : "Not trusted",
-        valueVariant: isTrusted ? "success-badge" : "muted",
-      },
-      theme: {
-        value: theme.toUpperCase(),
-        valueVariant: "default",
-      },
-      provider: {
-        value: providerLabel,
-        valueVariant: isConfigured ? "success" : "muted",
-      },
-      storage: {
-        value: storageLabel,
-        valueVariant: settings?.secretsStorage ? "default" : "muted",
-      },
-      analysis: {
-        value: settings?.defaultLenses?.length
-          ? `${settings.defaultLenses.length} agents`
-          : "Default",
-        valueVariant: settings?.defaultLenses?.length ? "default" : "muted",
-      },
-      diagnostics: {
-        value: "Local",
-        valueVariant: "muted",
-      },
-    };
-  }, [isConfigured, provider, settings?.secretsStorage, settings?.defaultLenses?.length, theme, isTrusted]);
+  const menuValues: Record<SettingsAction, { value: string; valueVariant?: "default" | "success" | "success-badge" | "muted" }> = {
+    trust: {
+      value: isTrusted ? "Trusted" : "Not trusted",
+      valueVariant: isTrusted ? "success-badge" : "muted",
+    },
+    theme: {
+      value: theme.toUpperCase(),
+      valueVariant: "default",
+    },
+    provider: {
+      value: providerLabel,
+      valueVariant: isConfigured ? "success" : "muted",
+    },
+    storage: {
+      value: storageLabel,
+      valueVariant: settings?.secretsStorage ? "default" : "muted",
+    },
+    analysis: {
+      value: settings?.defaultLenses?.length
+        ? `${settings.defaultLenses.length} agents`
+        : "Default",
+      valueVariant: settings?.defaultLenses?.length ? "default" : "muted",
+    },
+    diagnostics: {
+      value: "Local",
+      valueVariant: "muted",
+    },
+  };
 
   const handleActivate = (item: { id: SettingsAction }) => {
     const route = SETTINGS_ROUTES[item.id];

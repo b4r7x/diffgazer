@@ -44,6 +44,7 @@ export function TrustPermissionsContent({
   const BUTTONS_COUNT = 2;
 
   useTrustFormKeyboard({
+    enabled: showActions,
     focusZone,
     buttonIndex,
     buttonsCount: BUTTONS_COUNT,

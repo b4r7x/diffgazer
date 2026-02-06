@@ -11,6 +11,7 @@ interface UseScrollIntoViewReturn {
 }
 
 export function useScrollIntoView(containerRef: RefObject<HTMLDivElement | null>): UseScrollIntoViewReturn {
+  // containerRef is a stable React ref — no need in deps
   const isItemVisible = useCallback((
     itemIndex: number,
     options: ScrollIntoViewOptions = {}

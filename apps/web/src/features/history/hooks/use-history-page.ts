@@ -2,6 +2,7 @@ import { useState, useMemo, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { HistoryFocusZone } from "@/features/history/types";
 import type { Run } from "@/features/history/types";
+import type { ReviewMetadata } from "@stargazer/schemas/review";
 import { SEVERITY_ORDER } from "@stargazer/schemas/ui";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useReviews } from "@/features/history/hooks/use-reviews";
@@ -9,19 +10,65 @@ import { useReviewDetail } from "@/features/history/hooks/use-review-detail";
 import { useHistoryKeyboard } from "@/features/history/hooks/use-history-keyboard";
 import { getDateKey, getTimestamp, getRunSummary, buildTimelineItems, formatDuration } from "@/features/history/utils";
 
-export function useHistoryPage() {
-  const navigate = useNavigate();
+function useHistoryData() {
   const { reviews, isLoading, error } = useReviews();
-  const [focusZone, setFocusZone] = useState<HistoryFocusZone>("runs");
-  const [searchQuery, setSearchQuery] = useState("");
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [selectedRunId, setSelectedRunId] = useScopedRouteState("run", reviews[0]?.id ?? null);
 
+  const selectedRun = useMemo(
+    () => reviews.find((r) => r.id === selectedRunId) ?? null,
+    [reviews, selectedRunId]
+  );
+
+  const { review: reviewDetail } = useReviewDetail(selectedRunId);
+
+  const severityCounts = selectedRun
+    ? {
+        blocker: selectedRun.blockerCount,
+        high: selectedRun.highCount,
+        medium: selectedRun.mediumCount,
+        low: selectedRun.lowCount,
+        nit: selectedRun.nitCount,
+      }
+    : null;
+
+  const duration = formatDuration(selectedRun?.durationMs);
+
+  const sortedIssues = useMemo(() => {
+    const issues = reviewDetail?.result?.issues;
+    if (!issues) return [];
+    return [...issues].sort((a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity));
+  }, [reviewDetail?.result?.issues]);
+
+  return {
+    isLoading,
+    error,
+    reviews,
+    selectedRun,
+    selectedRunId,
+    setSelectedRunId,
+    severityCounts,
+    sortedIssues,
+    duration,
+  };
+}
+
+function useHistorySelection(reviews: ReviewMetadata[]) {
   const timelineItems = useMemo(() => buildTimelineItems(reviews), [reviews]);
 
   const defaultDateId = timelineItems[0]?.id ?? "";
   const [selectedDateId, setSelectedDateId] = useScopedRouteState("date", defaultDateId);
-  const [selectedRunId, setSelectedRunId] = useScopedRouteState("run", reviews[0]?.id ?? null);
 
+  return { selectedDateId, setSelectedDateId, timelineItems };
+}
+
+function useHistorySearch() {
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  return { searchQuery, setSearchQuery, searchInputRef };
+}
+
+function useFilteredRuns(reviews: ReviewMetadata[], selectedDateId: string, searchQuery: string) {
   const filteredRuns = useMemo(() => {
     const byDate = reviews.filter((r) => getDateKey(r.createdAt) === selectedDateId);
     const query = searchQuery.trim().toLowerCase();
@@ -50,34 +97,23 @@ export function useHistoryPage() {
     [filteredRuns]
   );
 
-  const selectedRun = reviews.find((r) => r.id === selectedRunId) ?? null;
+  return { mappedRuns };
+}
 
-  const { review: reviewDetail } = useReviewDetail(selectedRunId);
+export function useHistoryPage() {
+  const navigate = useNavigate();
+  const data = useHistoryData();
+  const selection = useHistorySelection(data.reviews);
+  const search = useHistorySearch();
+  const { mappedRuns } = useFilteredRuns(data.reviews, selection.selectedDateId, search.searchQuery);
 
-  const issues = reviewDetail?.result?.issues;
-
-  const severityCounts = selectedRun
-    ? {
-        blocker: selectedRun.blockerCount,
-        high: selectedRun.highCount,
-        medium: selectedRun.mediumCount,
-        low: selectedRun.lowCount,
-        nit: selectedRun.nitCount,
-      }
-    : null;
-
-  const duration = formatDuration(selectedRun?.durationMs);
-
-  const sortedIssues = useMemo(() => {
-    if (!issues) return [];
-    return [...issues].sort((a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity));
-  }, [issues]);
+  const [focusZone, setFocusZone] = useState<HistoryFocusZone>("runs");
 
   useHistoryKeyboard({
     focusZone,
     setFocusZone,
-    selectedRunId,
-    searchInputRef,
+    selectedRunId: data.selectedRunId,
+    searchInputRef: search.searchInputRef,
   });
 
   const handleTimelineBoundary = (direction: "up" | "down") => {
@@ -85,16 +121,16 @@ export function useHistoryPage() {
   };
 
   const handleSearchEscape = () => {
-    if (searchQuery) {
-      setSearchQuery("");
+    if (search.searchQuery) {
+      search.setSearchQuery("");
     } else {
-      searchInputRef.current?.blur();
+      search.searchInputRef.current?.blur();
       setFocusZone("runs");
     }
   };
 
   const handleSearchArrowDown = () => {
-    searchInputRef.current?.blur();
+    search.searchInputRef.current?.blur();
     setFocusZone("timeline");
   };
 
@@ -105,34 +141,34 @@ export function useHistoryPage() {
   const handleRunsBoundary = (direction: "up" | "down") => {
     if (direction === "up") {
       setFocusZone("search");
-      searchInputRef.current?.focus();
+      search.searchInputRef.current?.focus();
     }
   };
 
   const handleIssueClick = () => {
-    if (selectedRunId) {
-      navigate({ to: "/review/$reviewId", params: { reviewId: selectedRunId } });
+    if (data.selectedRunId) {
+      navigate({ to: "/review/$reviewId", params: { reviewId: data.selectedRunId } });
     }
   };
 
   return {
-    isLoading,
-    error,
+    isLoading: data.isLoading,
+    error: data.error,
     focusZone,
-    searchQuery,
-    searchInputRef,
-    setSearchQuery,
+    searchQuery: search.searchQuery,
+    searchInputRef: search.searchInputRef,
+    setSearchQuery: search.setSearchQuery,
     setFocusZone,
-    timelineItems,
-    selectedDateId,
-    setSelectedDateId,
-    selectedRunId,
-    setSelectedRunId,
+    timelineItems: selection.timelineItems,
+    selectedDateId: selection.selectedDateId,
+    setSelectedDateId: selection.setSelectedDateId,
+    selectedRunId: data.selectedRunId,
+    setSelectedRunId: data.setSelectedRunId,
     mappedRuns,
-    selectedRun,
-    severityCounts,
-    sortedIssues,
-    duration,
+    selectedRun: data.selectedRun,
+    severityCounts: data.severityCounts,
+    sortedIssues: data.sortedIssues,
+    duration: data.duration,
     handleTimelineBoundary,
     handleSearchEscape,
     handleSearchArrowDown,

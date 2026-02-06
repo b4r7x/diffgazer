@@ -5,7 +5,7 @@ import { useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useToast } from "@/components/ui/toast";
 import { Panel, PanelHeader, PanelContent } from "@/components/ui/containers";
-import { TrustPermissionsContent } from "../trust-permissions-content";
+import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
 import { useConfigData } from "@/app/providers/config-provider";
 import { useTrust } from "@/hooks/use-trust";
 

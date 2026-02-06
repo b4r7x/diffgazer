@@ -1,8 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
-import type { TierFilter } from "../../hooks/use-model-filter.js";
-
-const FILTERS: TierFilter[] = ["all", "free", "paid"];
+import { TIER_FILTERS, type TierFilter } from "@/features/providers/constants";
 
 interface ModelFilterTabsProps {
   value: TierFilter;
@@ -21,7 +19,7 @@ export function ModelFilterTabs({
 }: ModelFilterTabsProps) {
   return (
     <div className="px-4 pb-2 flex gap-1.5">
-      {FILTERS.map((filter, idx) => (
+      {TIER_FILTERS.map((filter, idx) => (
         <Button
           key={filter}
           variant="toggle"
@@ -44,5 +42,3 @@ export function ModelFilterTabs({
     </div>
   );
 }
-
-export { FILTERS };

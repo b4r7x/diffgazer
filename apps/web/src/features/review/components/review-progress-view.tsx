@@ -7,7 +7,8 @@ import { ActivityLog, type LogEntryData } from './activity-log';
 import { AgentBoard } from './agent-board';
 import { ContextSnapshotPreview } from './context-snapshot-preview';
 import { ReviewMetricsFooter } from './review-metrics-footer';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type BadgeProps } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Callout } from '@/components/ui/callout';
 import { useReviewProgressKeyboard } from '../hooks/use-review-progress-keyboard';
 import type { AgentState } from '@stargazer/schemas/events';
@@ -31,6 +32,85 @@ export interface ReviewProgressViewProps {
   onCancel?: () => void;
 }
 
+interface AgentOption {
+  id: string;
+  name: string;
+  badgeLabel?: string;
+  badgeVariant?: string;
+}
+
+function AgentFilterBar({ agents, active, onChange }: { agents: AgentOption[]; active: string | null; onChange: (v: string | null) => void }) {
+  return (
+    <div className="flex items-center gap-2 pb-2">
+      <button
+        type="button"
+        onClick={() => onChange(null)}
+        className={cn(
+          'text-[10px] font-mono px-2 py-1 border',
+          active === null ? 'border-tui-blue text-tui-blue' : 'border-tui-border text-gray-500'
+        )}
+      >
+        All
+      </button>
+      {agents.map((agent) => (
+        <button
+          key={agent.id}
+          type="button"
+          onClick={() => onChange(agent.name)}
+          className={cn(
+            'text-[10px] font-mono px-2 py-1 border',
+            active === agent.name ? 'border-tui-violet text-tui-violet' : 'border-tui-border text-gray-500'
+          )}
+        >
+          <Badge variant={(agent.badgeVariant as BadgeProps['variant']) ?? 'info'} size="sm" className="mr-1">
+            {agent.badgeLabel}
+          </Badge>
+          <span>{agent.name}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ErrorDisplay({ error, isApiKeyError, onCancel }: { error: string; isApiKeyError: boolean; onCancel?: () => void }) {
+  const navigate = useNavigate();
+
+  return (
+    <div className="flex-1 flex items-center justify-center">
+      <div className="text-center p-6 max-w-md">
+        <div className="text-tui-red text-lg font-bold mb-2">
+          {isApiKeyError ? 'API Key Error' : 'Error'}
+        </div>
+        <div className="text-gray-400 font-mono text-sm mb-2">{error}</div>
+        {isApiKeyError && (
+          <div className="text-gray-500 text-sm mb-4">
+            Your API key may be invalid or expired.
+          </div>
+        )}
+        <div className={cn('flex gap-3 justify-center', !isApiKeyError && 'mt-4')}>
+          <Button
+            variant="secondary"
+            bracket
+            onClick={onCancel}
+          >
+            Back to Home
+          </Button>
+          {isApiKeyError && (
+            <Button
+              variant="outline"
+              bracket
+              className="border-tui-yellow text-tui-yellow hover:bg-tui-yellow/10"
+              onClick={() => navigate({ to: '/settings/providers' })}
+            >
+              Configure Provider
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ReviewProgressView({
   data,
   isRunning,
@@ -39,7 +119,6 @@ export function ReviewProgressView({
   onCancel,
 }: ReviewProgressViewProps) {
   const { steps, entries, agents, metrics, startTime, contextSnapshot } = data;
-  const navigate = useNavigate();
   const [expandedStepId, setExpandedStepId] = useState<string | null>(null);
   const [agentFilter, setAgentFilter] = useState<string | null>(null);
   const hasAutoExpandedReview = useRef(false);
@@ -123,34 +202,7 @@ export function ReviewProgressView({
           <span className="text-[10px] text-gray-600 font-mono">tail -f agent.log</span>
         </div>
 
-        <div className="flex items-center gap-2 pb-2">
-          <button
-            type="button"
-            onClick={() => setAgentFilter(null)}
-            className={cn(
-              'text-[10px] font-mono px-2 py-1 border',
-              agentFilter === null ? 'border-tui-blue text-tui-blue' : 'border-tui-border text-gray-500'
-            )}
-          >
-            All
-          </button>
-          {agentOptions.map((agent) => (
-            <button
-              key={agent.id}
-              type="button"
-              onClick={() => setAgentFilter(agent.name)}
-              className={cn(
-                'text-[10px] font-mono px-2 py-1 border',
-                agentFilter === agent.name ? 'border-tui-violet text-tui-violet' : 'border-tui-border text-gray-500'
-              )}
-            >
-              <Badge variant={agent.badgeVariant ?? 'info'} size="sm" className="mr-1">
-                {agent.badgeLabel}
-              </Badge>
-              <span>{agent.name}</span>
-            </button>
-          ))}
-        </div>
+        <AgentFilterBar agents={agentOptions} active={agentFilter} onChange={setAgentFilter} />
 
         {hasPartialFailure && !error && (
           <div className="pb-2">
@@ -161,37 +213,7 @@ export function ReviewProgressView({
         )}
 
         {error ? (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center p-6 max-w-md">
-              <div className="text-tui-red text-lg font-bold mb-2">
-                {isApiKeyError ? 'API Key Error' : 'Error'}
-              </div>
-              <div className="text-gray-400 font-mono text-sm mb-2">{error}</div>
-              {isApiKeyError && (
-                <div className="text-gray-500 text-sm mb-4">
-                  Your API key may be invalid or expired.
-                </div>
-              )}
-              <div className={cn('flex gap-3 justify-center', !isApiKeyError && 'mt-4')}>
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  className="px-4 py-2 border border-tui-border text-sm font-mono hover:bg-tui-border/20"
-                >
-                  [ Back to Home ]
-                </button>
-                {isApiKeyError && (
-                  <button
-                    type="button"
-                    onClick={() => navigate({ to: '/settings/providers' })}
-                    className="px-4 py-2 border border-tui-yellow text-tui-yellow text-sm font-mono hover:bg-tui-yellow/10"
-                  >
-                    [ Configure Provider ]
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+          <ErrorDisplay error={error} isApiKeyError={!!isApiKeyError} onCancel={onCancel} />
         ) : (
           <ActivityLog
             entries={filteredEntries}

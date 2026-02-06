@@ -1,6 +1,7 @@
 import { useKey } from "./use-key";
 
 interface UseTrustFormKeyboardOptions {
+  enabled?: boolean;
   focusZone: "list" | "buttons";
   buttonIndex: number;
   buttonsCount: number;
@@ -11,6 +12,7 @@ interface UseTrustFormKeyboardOptions {
 }
 
 export function useTrustFormKeyboard({
+  enabled = true,
   focusZone,
   buttonIndex,
   buttonsCount,
@@ -19,7 +21,7 @@ export function useTrustFormKeyboard({
   onSave,
   onRevoke,
 }: UseTrustFormKeyboardOptions) {
-  const isButtonsZone = focusZone === "buttons";
+  const isButtonsZone = enabled && focusZone === "buttons";
 
   useKey("ArrowLeft", () => onButtonIndexChange(Math.max(0, buttonIndex - 1)), {
     enabled: isButtonsZone,

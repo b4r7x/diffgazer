@@ -1,6 +1,7 @@
 import type { AIProvider } from '@stargazer/schemas/config';
 import { useScope, useKey } from '@/hooks/keyboard';
 import { usePageFooter } from '@/hooks/use-page-footer';
+import { Button } from '@/components/ui/button';
 
 const FOOTER_SHORTCUTS = [{ key: 'Enter', label: 'Setup Provider' }];
 const FOOTER_RIGHT_SHORTCUTS = [{ key: 'Esc', label: 'Back' }];
@@ -38,20 +39,21 @@ export function ApiKeyMissingView({
           {" "}Please configure your provider settings to continue.
         </p>
         <div className="flex gap-4 justify-center">
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            bracket
+            className="border-tui-blue hover:bg-tui-blue/20"
             onClick={onNavigateSettings}
-            className="px-4 py-2 border border-tui-blue text-sm font-mono hover:bg-tui-blue/20"
           >
-            [ Configure Provider ]
-          </button>
-          <button
-            type="button"
+            Configure Provider
+          </Button>
+          <Button
+            variant="secondary"
+            bracket
             onClick={onBack}
-            className="px-4 py-2 border border-tui-border text-sm font-mono hover:bg-tui-border/20"
           >
-            [ Back to Home ]
-          </button>
+            Back to Home
+          </Button>
         </div>
       </div>
     </div>

@@ -22,7 +22,10 @@ function TabsRoot<T extends string = string>({
 
   const value = controlledValue !== undefined ? controlledValue : uncontrolledValue;
   const handleValueChange = React.useCallback(
-    (v: string) => (onValueChange || setUncontrolledValue)(v as T),
+    (v: string) => {
+      if (onValueChange) onValueChange(v as T);
+      else setUncontrolledValue(v as T);
+    },
     [onValueChange]
   );
 

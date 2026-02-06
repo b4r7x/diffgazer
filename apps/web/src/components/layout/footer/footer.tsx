@@ -9,8 +9,8 @@ interface FooterProps {
 
 function renderShortcuts(items: Shortcut[]) {
   return items.map((shortcut, index) => (
-    <span key={shortcut.key + shortcut.label}>
-      <span>{shortcut.key}</span> <span>{shortcut.label}</span>
+    <span key={`${shortcut.key}-${shortcut.label}`}>
+      <kbd>{shortcut.key}</kbd> <span>{shortcut.label}</span>
       {index < items.length - 1 && <span className="text-gray-500">•</span>}
     </span>
   ));

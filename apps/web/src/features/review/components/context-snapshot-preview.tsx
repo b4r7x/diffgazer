@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { PanelHeader } from "@/components/ui/containers";
+import { Button } from "@/components/ui/button";
 import { downloadAsFile } from "@/utils/download";
 import type { ReviewContextResponse } from "@stargazer/api/types";
 
@@ -14,7 +15,7 @@ export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps
       preview: lines.slice(0, 10).join("\n"),
       truncated: lines.length > 10,
     };
-  }, [snapshot]);
+  }, [snapshot.text]);
 
   return (
     <div className="mb-8">
@@ -27,29 +28,32 @@ export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps
         {contextPreview.truncated ? "\n... (preview)" : ""}
       </pre>
       <div className="flex gap-2 mt-3">
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="sm"
+          bracket
           onClick={() => downloadAsFile(snapshot.text, "context.txt", "text/plain")}
-          className="px-3 py-1 border border-tui-border text-xs font-mono hover:bg-tui-selection/30"
         >
-          [ Download .txt ]
-        </button>
-        <button
-          type="button"
+          Download .txt
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          bracket
           onClick={() => downloadAsFile(snapshot.markdown, "context.md", "text/markdown")}
-          className="px-3 py-1 border border-tui-border text-xs font-mono hover:bg-tui-selection/30"
         >
-          [ Download .md ]
-        </button>
-        <button
-          type="button"
+          Download .md
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          bracket
           onClick={() =>
             downloadAsFile(JSON.stringify(snapshot.graph, null, 2), "context.json", "application/json")
           }
-          className="px-3 py-1 border border-tui-border text-xs font-mono hover:bg-tui-selection/30"
         >
-          [ Download .json ]
-        </button>
+          Download .json
+        </Button>
       </div>
     </div>
   );

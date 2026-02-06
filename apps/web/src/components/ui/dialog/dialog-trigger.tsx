@@ -12,6 +12,7 @@ export function DialogTrigger({ children, className, onClick }: DialogTriggerPro
 
   return (
     <button
+      type="button"
       className={className}
       onClick={(e) => {
         onOpenChange(true);

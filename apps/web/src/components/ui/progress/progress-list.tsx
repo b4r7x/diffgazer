@@ -26,11 +26,12 @@ export function ProgressList({
       {steps.map((step) => (
         <ProgressStep
           key={step.id}
+          stepId={step.id}
           label={step.label}
           status={step.status}
           substeps={step.substeps}
           isExpanded={expandedIds.includes(step.id)}
-          onToggle={onToggle ? () => onToggle(step.id) : undefined}
+          onToggle={onToggle}
         >
           {step.content}
         </ProgressStep>

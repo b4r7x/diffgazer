@@ -80,7 +80,6 @@ export function ModelSelectDialog({
     filterIndex,
     setFilterIndex,
     footerButtonIndex,
-    setFooterButtonIndex,
     setFocusZone,
     handleConfirm,
     handleCancel,
@@ -177,16 +176,8 @@ export function ModelSelectDialog({
 
         <DialogFooter className="justify-between">
           <DialogFooterActions
-            onCancel={() => {
-              setFocusZone("footer");
-              setFooterButtonIndex(0);
-              handleCancel();
-            }}
-            onConfirm={() => {
-              setFocusZone("footer");
-              setFooterButtonIndex(1);
-              handleConfirm();
-            }}
+            onCancel={handleCancel}
+            onConfirm={handleConfirm}
             canConfirm={filteredModels.length > 0}
             cancelFocused={focusZone === "footer" && footerButtonIndex === 0}
             confirmFocused={focusZone === "footer" && footerButtonIndex === 1}
