@@ -4,8 +4,8 @@ import { cn } from '@/utils/cn';
 import { PanelHeader } from '@/components/ui/containers';
 import { ProgressList, type ProgressStepData } from '@/components/ui/progress';
 import { ActivityLog, type LogEntryData } from './activity-log';
-import { Timer } from './timer';
-import { MetricItem } from './metric-item';
+import { AgentBoard } from './agent-board';
+import { ReviewMetricsFooter } from './review-metrics-footer';
 import { Badge } from '@/components/ui/badge';
 import { Callout } from '@/components/ui/callout';
 import { useScope, useKey } from '@/hooks/keyboard';
@@ -23,13 +23,6 @@ const PROGRESS_SHORTCUTS = [
 const PROGRESS_RIGHT_SHORTCUTS = [
   { key: 'Esc', label: 'Cancel' },
 ];
-
-const AGENT_STATUS_META = {
-  queued: { label: "WAIT", variant: "neutral", bar: "bg-tui-border" },
-  running: { label: "RUN", variant: "info", bar: "bg-tui-blue" },
-  complete: { label: "DONE", variant: "success", bar: "bg-tui-green" },
-  error: { label: "FAIL", variant: "error", bar: "bg-tui-red" },
-} as const;
 
 export interface ReviewProgressViewProps {
   mode: 'unstaged' | 'staged' | 'files';
@@ -107,8 +100,6 @@ export function ReviewProgressView({
     [agents]
   );
 
-  const agentStatusMeta = AGENT_STATUS_META;
-
   const failedAgents = useMemo(
     () => agents.filter((agent) => agent.status === "error"),
     [agents]
@@ -163,38 +154,7 @@ export function ReviewProgressView({
             />
           </div>
 
-          {agents.length > 0 && (
-            <div className="mb-8">
-              <PanelHeader variant="section-bordered">Agent Board</PanelHeader>
-              <div className="space-y-2">
-                {agents.map((agent) => {
-                  const status = agentStatusMeta[agent.status];
-                  return (
-                    <div key={agent.id} className="border border-tui-border bg-tui-selection/20 p-2">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={agent.meta.badgeVariant ?? "info"} size="sm">
-                          {agent.meta.badgeLabel}
-                        </Badge>
-                        <span className="text-sm font-bold text-tui-fg">{agent.meta.name}</span>
-                        <Badge variant={status.variant} size="sm" className="ml-auto">
-                          {status.label}
-                        </Badge>
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1 truncate">
-                        {agent.currentAction ?? "Standing by"}
-                      </div>
-                      <div className="mt-2 h-1 w-full bg-tui-border">
-                        <div
-                          className={cn("h-1 transition-all", status.bar)}
-                          style={{ width: `${Math.max(0, Math.min(100, agent.progress))}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          <AgentBoard agents={agents} />
 
           {contextSnapshot && !isRunning && (
             <div className="mb-8">
@@ -237,29 +197,7 @@ export function ReviewProgressView({
           )}
         </div>
 
-        {/* Metrics footer */}
-        <div className="shrink-0 pt-4 pb-6 border-t border-tui-border">
-          <PanelHeader variant="section-bordered">Metrics</PanelHeader>
-          <div className="space-y-3 pt-2">
-            <MetricItem
-              label="Files Processed"
-              value={metrics.filesTotal > 0
-                ? `${metrics.filesProcessed}/${metrics.filesTotal}`
-                : `${metrics.filesProcessed}/...`
-              }
-            />
-            <MetricItem
-              label="Issues Found"
-              value={metrics.issuesFound}
-              variant={metrics.issuesFound > 0 ? 'warning' : 'default'}
-            />
-            <MetricItem
-              label="Elapsed"
-              value={<Timer startTime={startTime} running={isRunning} />}
-              variant="info"
-            />
-          </div>
-        </div>
+        <ReviewMetricsFooter metrics={metrics} startTime={startTime} isRunning={isRunning} />
       </div>
 
       {/* Right Panel - Activity Log */}

@@ -7,17 +7,19 @@ export function useReviewErrorHandler() {
   const navigate = useNavigate();
 
   const handleApiError = useCallback((error: unknown) => {
-    const err = error as { status?: number; message?: string };
+    const isErrorObject = typeof error === 'object' && error !== null;
+    const status = isErrorObject && 'status' in error ? (error as { status: number }).status : undefined;
+    const errorMessage = isErrorObject && 'message' in error ? (error as { message: string }).message : undefined;
 
     const title =
-      err.status === 400 ? "Invalid Review ID" :
-      err.status === 404 ? "Review Not Found" :
+      status === 400 ? "Invalid Review ID" :
+      status === 404 ? "Review Not Found" :
       "Error Loading Review";
 
     const message =
-      err.status === 400 ? "The review ID format is invalid." :
-      err.status === 404 ? "The review session was not found or has expired." :
-      err.message || "An error occurred while loading the review.";
+      status === 400 ? "The review ID format is invalid." :
+      status === 404 ? "The review session was not found or has expired." :
+      errorMessage || "An error occurred while loading the review.";
 
     showToast({
       variant: "error",

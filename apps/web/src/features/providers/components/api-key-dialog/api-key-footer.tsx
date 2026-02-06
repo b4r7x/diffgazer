@@ -1,5 +1,3 @@
-"use client";
-
 import { DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";

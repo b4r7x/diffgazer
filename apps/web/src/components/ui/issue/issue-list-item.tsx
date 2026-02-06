@@ -1,5 +1,4 @@
 import { cn } from "@/utils/cn";
-import type { ReviewSeverity } from "@stargazer/schemas/review";
 import type { ReviewIssue } from "@stargazer/schemas/review";
 import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
 
@@ -11,8 +10,7 @@ export interface IssueListItemProps {
 }
 
 export function IssueListItem({ issue, isSelected, onClick, className }: IssueListItemProps) {
-  const severity = issue.severity as ReviewSeverity;
-  const config = SEVERITY_CONFIG[severity] ?? SEVERITY_CONFIG.medium;
+  const config = SEVERITY_CONFIG[issue.severity] ?? SEVERITY_CONFIG.medium;
 
   return (
     <button

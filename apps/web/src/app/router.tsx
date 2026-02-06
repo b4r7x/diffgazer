@@ -1,5 +1,6 @@
 import { createRoute, createRootRoute, createRouter, redirect } from "@tanstack/react-router";
 import { z } from "zod";
+import { ReviewModeSchema } from "@stargazer/schemas/review";
 import { RootLayout } from "./routes/__root";
 import { HomePage } from "./routes/home";
 import { ReviewPage } from "./routes/review";
@@ -14,7 +15,7 @@ import { ProviderSettingsPage } from "./routes/settings/providers";
 import { HelpPage } from "./routes/help";
 
 const ReviewSearchSchema = z.object({
-  mode: z.enum(["unstaged", "staged", "files"]).optional().default("unstaged"),
+  mode: ReviewModeSchema.optional().default("unstaged"),
 });
 
 export type ReviewSearch = z.infer<typeof ReviewSearchSchema>;

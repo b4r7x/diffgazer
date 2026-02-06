@@ -1,3 +1,4 @@
+import { cn } from "@/utils/cn";
 import type { Shortcut } from "./footer-context";
 
 interface FooterProps {
@@ -18,7 +19,7 @@ function renderShortcuts(items: Shortcut[]) {
 export function Footer({ shortcuts, rightShortcuts, className = "" }: FooterProps) {
   return (
     <footer
-      className={`bg-tui-fg text-black p-2 font-bold text-xs shrink-0 flex justify-between items-center ${className}`}
+      className={cn("bg-tui-fg text-black p-2 font-bold text-xs shrink-0 flex justify-between items-center", className)}
     >
       <div className="flex gap-4">{renderShortcuts(shortcuts)}</div>
       {rightShortcuts && rightShortcuts.length > 0 && (

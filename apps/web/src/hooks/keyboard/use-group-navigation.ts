@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useCallback } from "react";
 import { useKey } from "./use-key";
 
@@ -131,10 +129,7 @@ export function useGroupNavigation({
   }, { enabled });
   useKey(" ", handleSelect, { enabled });
 
-  const isFocused = useCallback(
-    (value: string) => focusedValue === value,
-    [focusedValue]
-  );
+  const isFocused = (value: string) => focusedValue === value;
 
   const focus = useCallback(
     (v: string) => {

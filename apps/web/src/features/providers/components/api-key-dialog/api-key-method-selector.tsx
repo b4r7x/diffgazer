@@ -1,5 +1,3 @@
-"use client";
-
 import type { RefObject } from "react";
 import { Input, Radio } from "@/components/ui/form";
 import { cn } from "@/utils/cn";

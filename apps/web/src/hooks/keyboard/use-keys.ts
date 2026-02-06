@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useEffectEvent } from "react";
 import { useKeyboardContext } from "./use-keyboard-context";
 
@@ -27,5 +25,5 @@ export function useKeys(
     );
 
     return () => cleanups.forEach((cleanup) => cleanup());
-  }, [register, activeScope, keysKey, options?.enabled, stableHandler]);
+  }, [register, activeScope, keysKey, options?.enabled]);
 }

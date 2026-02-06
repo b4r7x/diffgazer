@@ -44,12 +44,10 @@ export function useProviders() {
         });
     }, [statuses]);
 
-    const activeProvider = useMemo(() => {
-        return providers.find((p) => p.isActive) ?? null;
-    }, [providers]);
+    const activeProvider = providers.find((p) => p.isActive) ?? null;
 
     const saveApiKey = useCallback(
-        async (provider: AIProvider, key: string, _method: 'paste' | 'env' = 'paste') => {
+        async (provider: AIProvider, key: string) => {
             await api.saveConfig({ provider, apiKey: key });
             await fetchStatus();
         },

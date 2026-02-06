@@ -1,5 +1,3 @@
-"use client";
-
 import { useRef, useState, useEffect } from "react";
 import {
   Dialog,
@@ -39,7 +37,6 @@ export function ApiKeyDialog({
   const [focused, setFocused] = useState<FocusElement>("paste");
 
   const form = useApiKeyForm({
-    open,
     envVarName,
     onSubmit,
     onRemoveKey,

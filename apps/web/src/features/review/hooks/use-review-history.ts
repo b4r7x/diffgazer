@@ -2,7 +2,18 @@ import { useCallback, useEffect, useState } from "react";
 import type { ReviewMetadata, SavedReview } from "@stargazer/schemas/review";
 import { api } from "@/lib/api";
 
-export function useReviewHistory() {
+interface UseReviewHistoryReturn {
+  reviews: ReviewMetadata[];
+  currentReview: SavedReview | null;
+  isLoading: boolean;
+  error: string | null;
+  refresh: () => Promise<void>;
+  loadReview: (id: string) => Promise<void>;
+  removeReview: (id: string) => Promise<void>;
+  clearCurrentReview: () => void;
+}
+
+export function useReviewHistory(): UseReviewHistoryReturn {
   const [reviews, setReviews] = useState<ReviewMetadata[]>([]);
   const [currentReview, setCurrentReview] = useState<SavedReview | null>(null);
   const [isLoading, setIsLoading] = useState(false);

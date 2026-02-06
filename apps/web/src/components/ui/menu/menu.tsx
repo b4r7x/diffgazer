@@ -1,6 +1,4 @@
-"use client";
-
-import { Children, Fragment, isValidElement, type ReactNode } from "react";
+import { Children, Fragment, isValidElement, useMemo, type ReactNode } from "react";
 import { cn } from "@/utils/cn";
 import { useKey, useKeys } from "@/hooks/keyboard";
 import { MenuContext, type InternalMenuItemData, type MenuContextValue } from "./menu-context";
@@ -29,28 +27,31 @@ export function Menu({
   className,
   children,
 }: MenuProps) {
-  const items: InternalMenuItemData[] = [];
-  let itemIndex = 0;
+  const items = useMemo(() => {
+    const result: InternalMenuItemData[] = [];
+    let idx = 0;
 
-  function extractItems(node: ReactNode) {
-    Children.forEach(node, (child) => {
-      if (!isValidElement(child)) return;
-      if (child.type === Fragment) {
-        extractItems((child.props as { children?: ReactNode }).children);
-        return;
-      }
-      if (child.type === MenuItem) {
-        const props = child.props as MenuItemProps;
-        items.push({
-          id: props.id,
-          disabled: props.disabled ?? false,
-          index: itemIndex++,
-        });
-      }
-    });
-  }
+    function extract(node: ReactNode) {
+      Children.forEach(node, (child) => {
+        if (!isValidElement(child)) return;
+        if (child.type === Fragment) {
+          extract((child.props as { children?: ReactNode }).children);
+          return;
+        }
+        if (child.type === MenuItem) {
+          const props = child.props as MenuItemProps;
+          result.push({
+            id: props.id,
+            disabled: props.disabled ?? false,
+            index: idx++,
+          });
+        }
+      });
+    }
 
-  extractItems(children);
+    extract(children);
+    return result;
+  }, [children]);
 
   const findNextIndex = (start: number, direction: 1 | -1): number => {
     let index = start + direction;
@@ -101,13 +102,10 @@ export function Menu({
     { enabled: keyboardEnabled && enableNumberJump }
   );
 
-  const contextValue: MenuContextValue = {
-    selectedIndex,
-    onSelect,
-    onActivate,
-    items,
-    variant,
-  };
+  const contextValue: MenuContextValue = useMemo(
+    () => ({ selectedIndex, onSelect, onActivate, items, variant }),
+    [selectedIndex, onSelect, onActivate, items, variant]
+  );
 
   return (
     <MenuContext.Provider value={contextValue}>

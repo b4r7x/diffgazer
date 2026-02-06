@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect, useEffectEvent } from "react";
 import { useKeyboardContext } from "./use-keyboard-context";
 
@@ -21,5 +19,5 @@ export function useKey(
     if (options?.enabled === false) return;
     if (!activeScope) return;
     return register(activeScope, hotkey, stableHandler, options);
-  }, [register, activeScope, hotkey, options?.enabled, options?.allowInInput, stableHandler]);
+  }, [register, activeScope, hotkey, options?.enabled, options?.allowInInput]);
 }

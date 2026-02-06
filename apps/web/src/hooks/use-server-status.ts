@@ -1,29 +1,29 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
+type ServerState =
+  | { status: "checking" }
+  | { status: "connected" }
+  | { status: "error"; message: string };
+
 interface ServerStatus {
-  connected: boolean;
-  isChecking: boolean;
-  error: string | null;
+  state: ServerState;
   retry: () => Promise<void>;
 }
 
 export function useServerStatus(): ServerStatus {
-  const [connected, setConnected] = useState(false);
-  const [isChecking, setIsChecking] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<ServerState>({ status: "checking" });
 
   const checkHealth = useCallback(async () => {
-    setIsChecking(true);
+    setState({ status: "checking" });
     try {
       await api.request("GET", "/api/health");
-      setConnected(true);
-      setError(null);
+      setState({ status: "connected" });
     } catch (err) {
-      setConnected(false);
-      setError(err instanceof Error ? err.message : "Failed to connect to server");
-    } finally {
-      setIsChecking(false);
+      setState({
+        status: "error",
+        message: err instanceof Error ? err.message : "Failed to connect to server",
+      });
     }
   }, []);
 
@@ -33,10 +33,5 @@ export function useServerStatus(): ServerStatus {
     return () => window.clearInterval(intervalId);
   }, [checkHealth]);
 
-  return {
-    connected,
-    isChecking,
-    error,
-    retry: checkHealth,
-  };
+  return { state, retry: checkHealth };
 }

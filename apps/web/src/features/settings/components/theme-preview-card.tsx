@@ -1,5 +1,3 @@
-"use client";
-
 import { Panel, PanelHeader, PanelContent } from "@/components/ui/containers";
 import { Menu, MenuItem } from "@/components/ui/menu";
 import { Badge } from "@/components/ui/badge/badge";

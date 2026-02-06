@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useFooter } from "@/components/layout";
 import type { Shortcut } from "@stargazer/schemas/ui";
 
@@ -9,29 +9,17 @@ interface PageFooterOptions {
 
 const EMPTY_SHORTCUTS: Shortcut[] = [];
 
-function toKey(shortcuts: Shortcut[]): string {
-  return JSON.stringify(shortcuts);
-}
-
 export function usePageFooter({
   shortcuts,
   rightShortcuts = EMPTY_SHORTCUTS,
 }: PageFooterOptions): void {
   const { setShortcuts, setRightShortcuts } = useFooter();
-  const prevRef = useRef({ left: "[]", right: "[]" });
 
   useEffect(() => {
-    const leftKey = toKey(shortcuts);
-    const rightKey = toKey(rightShortcuts);
+    setShortcuts(shortcuts);
+  }, [shortcuts, setShortcuts]);
 
-    if (prevRef.current.left !== leftKey) {
-      setShortcuts(shortcuts);
-      prevRef.current.left = leftKey;
-    }
-
-    if (prevRef.current.right !== rightKey) {
-      setRightShortcuts(rightShortcuts);
-      prevRef.current.right = rightKey;
-    }
-  }, [shortcuts, rightShortcuts, setShortcuts, setRightShortcuts]);
+  useEffect(() => {
+    setRightShortcuts(rightShortcuts);
+  }, [rightShortcuts, setRightShortcuts]);
 }

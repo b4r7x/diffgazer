@@ -1,5 +1,3 @@
-'use client';
-
 import { useRef, useEffect, useState, type ReactNode } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/utils/cn';
@@ -14,19 +12,6 @@ const progressStepVariants = cva('flex items-start gap-3', {
     status: {
       completed: '',
       active: 'bg-tui-selection py-2 -mx-3 px-3 rounded border-l-2 border-tui-blue',
-      pending: '',
-    },
-  },
-  defaultVariants: {
-    status: 'pending',
-  },
-});
-
-const indicatorVariants = cva('shrink-0', {
-  variants: {
-    status: {
-      completed: '',
-      active: '',
       pending: '',
     },
   },
@@ -108,7 +93,7 @@ export function ProgressStep({
         tabIndex={hasContent ? 0 : undefined}
         role={hasContent ? 'button' : undefined}
       >
-        <span className={indicatorVariants({ status })}>
+        <span className="shrink-0">
           <Badge variant={STATUS_BADGES[status].variant} size="sm" className="min-w-[48px] justify-center">
             {STATUS_BADGES[status].label}
           </Badge>

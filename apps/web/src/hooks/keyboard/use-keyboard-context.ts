@@ -1,5 +1,3 @@
-"use client";
-
 import type { ContextType } from "react";
 import { useContext } from "react";
 import { KeyboardContext } from "@/app/providers/keyboard-provider";

@@ -1,13 +1,10 @@
-'use client';
-
 import { NavigationList, NavigationListItem } from '@/components/ui/navigation-list';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/form';
 import { cn } from '@/utils/cn';
-import { PROVIDER_CAPABILITIES, OPENROUTER_PROVIDER_ID, type ProviderFilter } from '@/features/providers/constants';
+import { PROVIDER_CAPABILITIES, OPENROUTER_PROVIDER_ID } from '@/config/constants';
+import type { ProviderFilter } from '@/features/providers/constants';
 import type { ProviderWithStatus, DisplayStatus } from '../types';
-
-export type { ProviderFilter };
 
 interface ProviderListProps {
   providers: ProviderWithStatus[];

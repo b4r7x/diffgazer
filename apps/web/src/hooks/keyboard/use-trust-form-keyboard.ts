@@ -1,5 +1,3 @@
-"use client";
-
 import { useKey } from "./use-key";
 
 interface UseTrustFormKeyboardOptions {

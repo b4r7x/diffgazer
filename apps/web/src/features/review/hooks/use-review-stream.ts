@@ -54,7 +54,15 @@ function webReviewReducer(state: WebReviewState, action: WebReviewAction): WebRe
 
 type ReviewEvent = AgentStreamEvent | StepEvent | EnrichEvent;
 
-export function useReviewStream() {
+interface UseReviewStreamReturn {
+  state: WebReviewState;
+  start: (options: StreamReviewRequest) => Promise<void>;
+  stop: () => void;
+  resume: (reviewId: string) => Promise<Result<void, StreamReviewError>>;
+  selectIssue: (issueId: string | null) => void;
+}
+
+export function useReviewStream(): UseReviewStreamReturn {
   const [state, dispatch] = useReducer(webReviewReducer, createInitialWebState());
   const abortControllerRef = useRef<AbortController | null>(null);
 

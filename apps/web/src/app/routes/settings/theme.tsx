@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import type { Theme } from "@stargazer/schemas/config";
 import type { WebTheme, ResolvedTheme } from "@/types/theme";
 import { Panel, PanelContent, PanelHeader } from "@/components/ui/containers";
 import { Callout } from "@/components/ui/callout";
@@ -40,11 +39,15 @@ export function SettingsThemePage() {
           </PanelHeader>
           <PanelContent className="flex-1 flex flex-col">
             <ThemeSelectorContent
-              value={theme as Theme}
+              value={theme}
               onChange={(v) => {
-                setTheme(v as WebTheme);
+                if (v === "terminal") return;
+                setTheme(v);
               }}
-              onFocus={(v) => setPreviewTheme(v as WebTheme)}
+              onFocus={(v) => {
+                if (v === "terminal") return;
+                setPreviewTheme(v);
+              }}
             />
             <div className="mt-auto pt-6">
               <Callout variant="info">

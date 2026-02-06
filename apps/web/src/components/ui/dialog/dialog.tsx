@@ -1,5 +1,3 @@
-'use client';
-
 import * as React from 'react';
 import { useScope, useKey } from '@/hooks/keyboard';
 import { DialogContext, type DialogContextValue } from './dialog-context';

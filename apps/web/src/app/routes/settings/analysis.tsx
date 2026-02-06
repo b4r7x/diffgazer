@@ -29,7 +29,7 @@ const LENS_OPTIONS = (Object.entries(LENS_TO_AGENT) as Array<[LensId, keyof type
 export function SettingsAnalysisPage() {
   const navigate = useNavigate();
   const [settings, setSettings] = useState<SettingsConfig | null>(null);
-  const [selectedLenses, setSelectedLenses] = useState<string[]>([]);
+  const [selectedLenses, setSelectedLenses] = useState<LensId[]>([]);
   const [contextStatus, setContextStatus] = useState<"loading" | "ready" | "missing" | "error">("loading");
   const [contextGeneratedAt, setContextGeneratedAt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -90,7 +90,7 @@ export function SettingsAnalysisPage() {
     setIsSaving(true);
     setError(null);
     try {
-      await api.saveSettings({ defaultLenses: selectedLenses as LensId[] });
+      await api.saveSettings({ defaultLenses: selectedLenses });
       navigate({ to: "/settings" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save settings");
@@ -153,7 +153,7 @@ export function SettingsAnalysisPage() {
                 </div>
                 <CheckboxGroup
                   value={selectedLenses}
-                  onValueChange={setSelectedLenses}
+                  onValueChange={(v) => setSelectedLenses(v as LensId[])}
                   variant="bullet"
                 >
                   {LENS_OPTIONS.map((lens) => (

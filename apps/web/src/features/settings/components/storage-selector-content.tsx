@@ -1,5 +1,3 @@
-'use client';
-
 import type { SecretsStorage } from '@stargazer/schemas/config';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/form';
 
