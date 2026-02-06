@@ -34,15 +34,7 @@ export function useReviews(projectPath?: string) {
   );
 
   useEffect(() => {
-    let cancelled = false;
-
-    fetchReviews().then(() => {
-      if (cancelled) return;
-    });
-
-    return () => {
-      cancelled = true;
-    };
+    fetchReviews();
   }, [fetchReviews]);
 
   return {

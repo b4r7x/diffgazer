@@ -43,6 +43,9 @@ export function useSelectableList({
     return start;
   };
 
+  // NOTE: onFocus/onBoundaryReached are called inside the state updater for atomicity.
+  // This works because useKeys wraps handlers in useEffectEvent (fresh closures),
+  // and React 18+ runs updaters synchronously within event handlers.
   const moveUp = () => {
     if (itemCount === 0) return;
     let newIndex: number | undefined;

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import type { SavedReview } from "@stargazer/schemas/review";
 import { useReviews } from "@/features/history/hooks/use-reviews";
 import { api } from "@/lib/api";
@@ -6,8 +6,6 @@ import { api } from "@/lib/api";
 export function useReviewHistory() {
   const { reviews, isLoading, error: listError, refresh, deleteReview } = useReviews();
   const [currentReview, setCurrentReview] = useState<SavedReview | null>(null);
-  const currentReviewRef = useRef(currentReview);
-  currentReviewRef.current = currentReview;
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoadingReview, setIsLoadingReview] = useState(false);
 
@@ -27,9 +25,7 @@ export function useReviewHistory() {
   const removeReview = useCallback(
     async (id: string) => {
       await deleteReview(id);
-      if (currentReviewRef.current?.metadata?.id === id) {
-        setCurrentReview(null);
-      }
+      setCurrentReview(prev => prev?.metadata?.id === id ? null : prev);
     },
     [deleteReview]
   );

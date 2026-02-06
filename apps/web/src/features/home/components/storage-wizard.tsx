@@ -2,8 +2,8 @@ import { useState } from "react";
 import type { SecretsStorage } from "@stargazer/schemas/config";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
-import { WizardLayout } from "@/features/settings/components/wizard-layout";
-import { StorageSelectorContent } from "@/features/settings/components/storage-selector-content";
+import { WizardLayout } from "@/components/shared/wizard-layout";
+import { StorageSelectorContent } from "@/components/shared/storage-selector-content";
 
 export interface StorageWizardProps {
   initialValue?: SecretsStorage;

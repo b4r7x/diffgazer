@@ -43,30 +43,23 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     contextStep?.status === "completed"
   );
 
-  const progressSteps = useMemo(
-    () => mapStepsToProgressData(state.steps, state.agents),
-    [state.steps, state.agents]
-  );
-
-  const logEntries = useMemo(
-    () => convertAgentEventsToLogEntries(state.events),
-    [state.events]
-  );
-
-  const metrics = useMemo(() => ({
-    filesProcessed: state.fileProgress.completed.size,
-    filesTotal: state.fileProgress.total || state.fileProgress.completed.size,
-    issuesFound: state.issues.length,
-  }), [state.fileProgress.completed.size, state.fileProgress.total, state.issues.length]);
-
-  const progressData = useMemo(() => ({
-    steps: progressSteps,
-    entries: logEntries,
-    agents: state.agents,
-    metrics,
-    startTime: state.startedAt ?? undefined,
-    contextSnapshot,
-  }), [progressSteps, logEntries, state.agents, metrics, state.startedAt, contextSnapshot]);
+  const progressData = useMemo(() => {
+    const steps = mapStepsToProgressData(state.steps, state.agents);
+    const entries = convertAgentEventsToLogEntries(state.events);
+    const metrics = {
+      filesProcessed: state.fileProgress.completed.size,
+      filesTotal: state.fileProgress.total || state.fileProgress.completed.size,
+      issuesFound: state.issues.length,
+    };
+    return {
+      steps,
+      entries,
+      agents: state.agents,
+      metrics,
+      startTime: state.startedAt ?? undefined,
+      contextSnapshot,
+    };
+  }, [state.steps, state.agents, state.events, state.fileProgress.completed.size, state.fileProgress.total, state.issues.length, state.startedAt, contextSnapshot]);
 
   if (loadingMessage) {
     return (

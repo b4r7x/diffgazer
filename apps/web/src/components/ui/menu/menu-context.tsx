@@ -10,7 +10,7 @@ export interface MenuContextValue {
   selectedIndex: number;
   onSelect: (index: number) => void;
   onActivate?: (item: InternalMenuItemData) => void;
-  items: InternalMenuItemData[];
+  items: Map<string, InternalMenuItemData>;
   variant: "default" | "hub";
 }
 

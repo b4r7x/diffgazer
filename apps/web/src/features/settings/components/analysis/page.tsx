@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { CheckboxGroup, CheckboxItem } from "@/components/ui/form";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { WizardLayout } from "../wizard-layout";
+import { WizardLayout } from "@/components/shared/wizard-layout";
 import { useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useSettings } from "@/hooks/use-settings";
@@ -29,7 +29,7 @@ const LENS_OPTIONS = (Object.entries(LENS_TO_AGENT) as Array<[LensId, keyof type
 
 export function SettingsAnalysisPage() {
   const navigate = useNavigate();
-  const { settings, isLoading: settingsLoading } = useSettings();
+  const { settings, isLoading } = useSettings();
   const [selectedLenses, setSelectedLenses] = useState<LensId[] | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const { contextStatus, contextGeneratedAt, isRefreshing, error, setError, handleRefreshContext } = useContextManagement();
@@ -38,8 +38,6 @@ export function SettingsAnalysisPage() {
 
   usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
   useKey("Escape", () => navigate({ to: "/settings" }));
-
-  const isLoading = settingsLoading;
 
   const hasLensSelection = effectiveLenses.length > 0;
 

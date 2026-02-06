@@ -15,12 +15,12 @@ export function useModelFilter(models: ModelInfo[]) {
     [models, tierFilter, searchQuery]
   );
 
-  const cycleTierFilter = () => {
+  const cycleTierFilter = useCallback(() => {
     setTierFilter((prev) => {
       const currentIndex = TIER_CYCLE.indexOf(prev);
       return TIER_CYCLE[(currentIndex + 1) % TIER_CYCLE.length];
     });
-  };
+  }, []);
 
   const resetFilters = useCallback(() => {
     setSearchQuery("");

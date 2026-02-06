@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/form';
 import { cn } from '@/utils/cn';
 import { PROVIDER_CAPABILITIES, OPENROUTER_PROVIDER_ID } from '@/config/constants';
-import type { ProviderFilter } from '@/features/providers/constants';
+import { PROVIDER_FILTER_LABELS, type ProviderFilter } from '@/features/providers/constants';
 import type { ProviderWithStatus, DisplayStatus } from '../types';
 
 interface ProviderListProps {
@@ -20,16 +20,6 @@ interface ProviderListProps {
   inputRef?: React.RefObject<HTMLInputElement | null>;
   focusedFilterIndex?: number;
 }
-
-const FILTERS: { value: ProviderFilter; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'configured', label: 'Configured' },
-  { value: 'needs-key', label: 'Needs Key' },
-  { value: 'free', label: 'Free' },
-  { value: 'paid', label: 'Paid' },
-];
-
-export const FILTER_VALUES: ProviderFilter[] = FILTERS.map((f) => f.value);
 
 function getStatusIndicator(status: DisplayStatus): string | undefined {
   switch (status) {
@@ -81,7 +71,7 @@ export function ProviderList({
       </div>
 
       <div className="px-3 py-2 border-b border-tui-border flex gap-1.5 flex-wrap">
-        {FILTERS.map((f, index) => (
+        {PROVIDER_FILTER_LABELS.map((f, index) => (
           <button
             key={f.value}
             type="button"

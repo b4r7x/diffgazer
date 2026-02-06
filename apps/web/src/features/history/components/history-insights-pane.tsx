@@ -65,12 +65,13 @@ export function HistoryInsightsPane({
                     </span>
                     <span className="text-gray-600 font-mono">L:{issue.line_start}</span>
                   </div>
-                  <p
-                    className="text-gray-400 truncate cursor-pointer hover:text-tui-fg"
+                  <button
+                    type="button"
+                    className="text-gray-400 truncate cursor-pointer hover:text-tui-fg text-left w-full"
                     onClick={() => onIssueClick?.(issue.id)}
                   >
                     {issue.title}
-                  </p>
+                  </button>
                 </div>
               ))}
             </div>

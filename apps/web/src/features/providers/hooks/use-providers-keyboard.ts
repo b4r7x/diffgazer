@@ -1,8 +1,7 @@
 import { useState, type RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useKey } from "@/hooks/keyboard";
-import { FILTER_VALUES } from "@/features/providers/components/provider-list";
-import type { ProviderFilter } from "@/features/providers/constants";
+import { PROVIDER_FILTER_VALUES, type ProviderFilter } from "@/features/providers/constants";
 import type { AIProvider } from "@stargazer/schemas/config";
 
 type FocusZone = "input" | "filters" | "list" | "buttons";
@@ -100,11 +99,11 @@ export function useProvidersKeyboard({
   }, { enabled: !dialogOpen && inFilters });
   useKey("ArrowLeft", () => setFilterIndex((i) => Math.max(0, i - 1)),
     { enabled: !dialogOpen && inFilters });
-  useKey("ArrowRight", () => setFilterIndex((i) => Math.min(FILTER_VALUES.length - 1, i + 1)),
+  useKey("ArrowRight", () => setFilterIndex((i) => Math.min(PROVIDER_FILTER_VALUES.length - 1, i + 1)),
     { enabled: !dialogOpen && inFilters });
-  useKey("Enter", () => setFilter(FILTER_VALUES[filterIndex]),
+  useKey("Enter", () => setFilter(PROVIDER_FILTER_VALUES[filterIndex]),
     { enabled: !dialogOpen && inFilters });
-  useKey(" ", () => setFilter(FILTER_VALUES[filterIndex]),
+  useKey(" ", () => setFilter(PROVIDER_FILTER_VALUES[filterIndex]),
     { enabled: !dialogOpen && inFilters });
 
   // List zone
@@ -140,7 +139,7 @@ export function useProvidersKeyboard({
   const handleListBoundary = (direction: "up" | "down") => {
     if (direction === "up") {
       setFocusZone("filters");
-      setFilterIndex(FILTER_VALUES.indexOf(filter));
+      setFilterIndex(PROVIDER_FILTER_VALUES.indexOf(filter));
     }
   };
 

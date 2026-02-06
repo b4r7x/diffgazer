@@ -25,7 +25,7 @@ export function Header({
         </div>
       )}
 
-      <div className="absolute top-4 right-4 text-xs">
+      <div className="absolute top-4 right-4 text-xs" aria-label={`Provider: ${providerName}, Status: ${providerStatus}`}>
         <span className="text-gray-500">●</span> {providerName} <span className="text-gray-500">•</span>{" "}
         <span className="text-gray-500 capitalize">{providerStatus}</span>
       </div>

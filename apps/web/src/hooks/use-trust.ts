@@ -13,29 +13,26 @@ export function useTrust(projectId: string | null): UseTrustResult {
   const { refresh } = useConfigActions();
   const [isLoading, setIsLoading] = useState(false);
 
-  const runWithLoading = useCallback(async (action: () => Promise<void>): Promise<void> => {
+  const save = useCallback(async (config: TrustConfig): Promise<void> => {
     setIsLoading(true);
     try {
-      await action();
+      await api.saveTrust(config);
+      await refresh(true);
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  const save = useCallback(async (config: TrustConfig): Promise<void> => {
-    await runWithLoading(async () => {
-      await api.saveTrust(config);
-      await refresh(true);
-    });
-  }, [runWithLoading, refresh]);
+  }, [refresh]);
 
   const revoke = useCallback(async (): Promise<void> => {
     if (!projectId) return;
-    await runWithLoading(async () => {
+    setIsLoading(true);
+    try {
       await api.deleteTrust(projectId);
       await refresh(true);
-    });
-  }, [runWithLoading, projectId, refresh]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [projectId, refresh]);
 
   return { save, revoke, isLoading };
 }

@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { SecretsStorage } from "@stargazer/schemas/config";
+import type { ContextInfo } from "@stargazer/schemas/ui";
 import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@/config/navigation";
 import { useKey, useScope } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
@@ -10,12 +11,11 @@ import { HomeMenu } from "@/features/home/components/home-menu";
 import { useConfigData } from "@/app/providers/config-provider";
 import { useReviewHistory } from "@/hooks/use-review-history";
 import { useToast } from "@/components/ui/toast";
-import { StorageWizard } from "./storage-wizard";
-import { TrustModal } from "./trust-modal";
-import type { ContextInfo } from "@stargazer/schemas/ui";
 import { api } from "@/lib/api";
 import { useSettings } from "@/hooks/use-settings";
-import { shutdown } from "@/features/home/hooks/shutdown";
+import { shutdown } from "@/features/home/utils/shutdown";
+import { StorageWizard } from "./storage-wizard";
+import { TrustModal } from "./trust-modal";
 
 type RouteConfig = { to: string; search?: Record<string, string> };
 
@@ -36,12 +36,10 @@ export function HomePage() {
   const search = useSearch({ strict: false });
   const { settings, refresh: refreshSettings } = useSettings();
 
-  const [wizardSaving, setWizardSaving] = useState(false);
-  const [wizardError, setWizardError] = useState<string | null>(null);
-
   const isTrusted = Boolean(trust?.capabilities.readFiles);
   const hasLastReview = reviews.length > 0;
 
+  // Show error toast for invalid review ID in search params (once only)
   const errorShownRef = useRef(false);
   useEffect(() => {
     if (search.error !== "invalid-review-id") return;
@@ -55,23 +53,12 @@ export function HomePage() {
     navigate({ to: "/", replace: true });
   }, [search.error, showToast, navigate]);
 
+  // Wizard state
+  const [wizardSaving, setWizardSaving] = useState(false);
+  const [wizardError, setWizardError] = useState<string | null>(null);
   const showWizard = settings !== null && !settings.secretsStorage;
-  const trustModalOpen = Boolean(projectId && repoRoot && trust === null);
 
-  const mostRecentReview = reviews[0];
-  const context: ContextInfo = {
-    providerName: provider,
-    providerMode: model,
-    lastRunId: mostRecentReview?.id,
-    lastRunIssueCount: mostRecentReview?.issueCount,
-    trustedDir: isTrusted ? trust?.repoRoot : undefined,
-  };
-
-  const [selectedIndex, setSelectedIndex] = useScopedRouteState("menuIndex", 0);
-
-  usePageFooter({ shortcuts: MAIN_MENU_SHORTCUTS });
-
-  const handleWizardComplete = async (choice: SecretsStorage): Promise<void> => {
+  const handleWizardComplete = useCallback(async (choice: SecretsStorage): Promise<void> => {
     setWizardSaving(true);
     setWizardError(null);
     try {
@@ -82,7 +69,22 @@ export function HomePage() {
     } finally {
       setWizardSaving(false);
     }
-  };
+  }, [refreshSettings]);
+
+  const trustModalOpen = Boolean(projectId && repoRoot && trust === null);
+
+  const mostRecentReview = reviews[0];
+  const context = useMemo<ContextInfo>(() => ({
+    providerName: provider,
+    providerMode: model,
+    lastRunId: mostRecentReview?.id,
+    lastRunIssueCount: mostRecentReview?.issueCount,
+    trustedDir: isTrusted ? trust?.repoRoot : undefined,
+  }), [provider, model, mostRecentReview?.id, mostRecentReview?.issueCount, isTrusted, trust?.repoRoot]);
+
+  const [selectedIndex, setSelectedIndex] = useScopedRouteState("menuIndex", 0);
+
+  usePageFooter({ shortcuts: MAIN_MENU_SHORTCUTS });
 
   const handleActivate = (id: string) => {
     if (id === "quit") {

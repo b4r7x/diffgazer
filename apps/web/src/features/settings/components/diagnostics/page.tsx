@@ -1,47 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useKey, useFooterNavigation } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { Panel, PanelHeader, PanelContent } from "@/components/ui/containers";
-import { PathList } from "@/components/ui/path-list";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
-import { downloadAsFile } from "@/utils/download";
-import { api } from "@/lib/api";
-import type { ReviewContextResponse } from "@stargazer/api/types";
+import { useContextManagement } from "@/features/settings/hooks/use-context-management";
 
-interface SystemDiagnostics {
-  version: string;
-  nodeVersion: string;
-  tty: boolean;
-  terminalSize: string;
-  colorSupport: string;
-  unicodeSupport: string;
-  memoryRss: string;
-  memoryHeap: string;
-  paths: {
-    config: string;
-    data: string;
-    cache: string;
-  };
-}
-
-// TODO: Replace with real data from API (currently hardcoded placeholders)
-const DIAGNOSTICS: SystemDiagnostics = {
-  version: "v1.4.2",
-  nodeVersion: "v20.5.1",
-  tty: true,
-  terminalSize: "120x40",
-  colorSupport: "24-bit",
-  unicodeSupport: "Full Support",
-  memoryRss: "42MB",
-  memoryHeap: "28MB",
-  paths: {
-    config: "~/.config/stargazer",
-    data: "~/.local/share/stargazer/runs",
-    cache: "~/.cache/stargazer/v1",
-  },
-};
+const NA = "\u2014";
 
 const FOOTER_SHORTCUTS = [
   { key: "←/→", label: "Navigate" },
@@ -49,51 +15,21 @@ const FOOTER_SHORTCUTS = [
   { key: "Esc", label: "Back" },
 ];
 
-const BUTTON_COUNT = 4;
+const BUTTON_COUNT = 1;
 
 export function DiagnosticsPage() {
   const navigate = useNavigate();
-  const [contextSnapshot, setContextSnapshot] = useState<ReviewContextResponse | null>(null);
-  const [contextStatus, setContextStatus] = useState<"loading" | "ready" | "missing" | "error">("loading");
+  const { contextStatus, contextGeneratedAt, handleRefreshContext } = useContextManagement();
+
+  const canDownloadContext = contextStatus === "ready";
 
   usePageFooter({ shortcuts: FOOTER_SHORTCUTS });
 
-  useEffect(() => {
-    let active = true;
-    setContextStatus("loading");
-    api
-      .getReviewContext()
-      .then((context) => {
-        if (!active) return;
-        setContextSnapshot(context);
-        setContextStatus("ready");
-      })
-      .catch(() => {
-        if (!active) return;
-        setContextSnapshot(null);
-        setContextStatus("missing");
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const downloadContextSnapshot = useCallback(() => {
-    if (!contextSnapshot) return;
-    downloadAsFile(contextSnapshot.text, "context.txt", "text/plain");
-    downloadAsFile(contextSnapshot.markdown, "context.md", "text/markdown");
-    downloadAsFile(JSON.stringify(contextSnapshot.graph, null, 2), "context.json", "application/json");
-  }, [contextSnapshot]);
-
-  const canDownloadContext = contextStatus === "ready" && !!contextSnapshot;
-
-  const handleButtonAction = useCallback((index: number) => {
-    // TODO: Implement actions for Print Paths (0), Export Debug Report (2), Reset UI Settings (3)
-    if (index === 1 && canDownloadContext) {
-      downloadContextSnapshot();
+  const handleButtonAction = useCallback((_index: number) => {
+    if (canDownloadContext) {
+      void handleRefreshContext();
     }
-  }, [downloadContextSnapshot, canDownloadContext]);
+  }, [canDownloadContext, handleRefreshContext]);
 
   const { focusedIndex, enterFooter } = useFooterNavigation({
     enabled: true,
@@ -110,7 +46,7 @@ export function DiagnosticsPage() {
   return (
     <div className="flex-1 flex overflow-hidden px-4 justify-center items-center">
       <Panel className="w-full max-w-2xl bg-tui-selection shadow-lg">
-        <PanelHeader value={DIAGNOSTICS.version} valueVariant="muted">
+        <PanelHeader valueVariant="muted">
           System Diagnostics
         </PanelHeader>
 
@@ -122,11 +58,7 @@ export function DiagnosticsPage() {
               <span className="text-tui-muted text-xs uppercase tracking-wider mb-1">
                 Version Info
               </span>
-              <div className="flex items-center gap-2">
-                <span className="text-tui-blue">Stargazer {DIAGNOSTICS.version}</span>
-                <span className="text-tui-border">|</span>
-                <span className="text-tui-green">Node {DIAGNOSTICS.nodeVersion}</span>
-              </div>
+              <span className="text-tui-muted">{NA}</span>
             </div>
 
             {/* Terminal Environment */}
@@ -134,17 +66,7 @@ export function DiagnosticsPage() {
               <span className="text-tui-muted text-xs uppercase tracking-wider mb-1">
                 Terminal Environment
               </span>
-              <div className="flex items-center gap-2">
-                <span>
-                  TTY <span className="text-tui-green">[{DIAGNOSTICS.tty ? "Yes" : "No"}]</span>
-                </span>
-                <span className="text-tui-border">|</span>
-                <span>{DIAGNOSTICS.terminalSize}</span>
-                <span className="text-tui-border">|</span>
-                <span>
-                  Color <span className="text-tui-violet">[{DIAGNOSTICS.colorSupport}]</span>
-                </span>
-              </div>
+              <span className="text-tui-muted">{NA}</span>
             </div>
 
             {/* Unicode Support */}
@@ -152,10 +74,7 @@ export function DiagnosticsPage() {
               <span className="text-tui-muted text-xs uppercase tracking-wider mb-1">
                 Unicode Support
               </span>
-              <div className="text-white flex items-center gap-2">
-                <span>[{DIAGNOSTICS.unicodeSupport}]</span>
-                <span className="text-xs text-tui-yellow">✔ ✖ ▲ ●</span>
-              </div>
+              <span className="text-tui-muted">{NA}</span>
             </div>
 
             {/* Memory Usage */}
@@ -163,24 +82,27 @@ export function DiagnosticsPage() {
               <span className="text-tui-muted text-xs uppercase tracking-wider mb-1">
                 Memory Usage
               </span>
-              <div className="text-white">
-                RSS: {DIAGNOSTICS.memoryRss} / Heap: {DIAGNOSTICS.memoryHeap}
-              </div>
+              <span className="text-tui-muted">{NA}</span>
             </div>
           </div>
 
           {/* Divider */}
           <div className="border-t border-tui-border border-dashed" />
 
-          {/* Storage Paths */}
-          <PathList
-            title="Storage Paths"
-            paths={{
-              Config: DIAGNOSTICS.paths.config,
-              Data: DIAGNOSTICS.paths.data,
-              Cache: DIAGNOSTICS.paths.cache,
-            }}
-          />
+          {/* Context Snapshot */}
+          <div className="space-y-2">
+            <span className="text-tui-muted text-xs uppercase tracking-wider">
+              Context Snapshot
+            </span>
+            <div className="text-sm text-tui-muted">
+              {contextStatus === "loading" && "Checking..."}
+              {contextStatus === "ready" && contextGeneratedAt && (
+                <span>Last generated: {new Date(contextGeneratedAt).toLocaleString()}</span>
+              )}
+              {contextStatus === "missing" && "Not generated yet. Generate it in Settings \u2192 Analysis."}
+              {contextStatus === "error" && "Failed to load context status."}
+            </div>
+          </div>
 
           {/* Divider */}
           <div className="border-t border-tui-border border-dashed" />
@@ -190,58 +112,18 @@ export function DiagnosticsPage() {
             <Button
               bracket
               variant="outline"
-              className={cn(
-                "transition-colors",
-                "hover:bg-tui-selection hover:text-white hover:border-tui-blue",
-                "focus:outline-none focus:ring-1 focus:ring-tui-blue",
-                focusedIndex === 0 && "ring-2 ring-tui-blue border-tui-blue"
-              )}
-            >
-              Print Paths
-            </Button>
-            <Button
-              bracket
-              variant="outline"
               disabled={!canDownloadContext}
               className={cn(
                 "transition-colors",
                 "hover:bg-tui-selection hover:text-white hover:border-tui-green",
                 "focus:outline-none focus:ring-1 focus:ring-tui-green",
-                focusedIndex === 1 && canDownloadContext && "ring-2 ring-tui-green border-tui-green"
+                focusedIndex === 0 && canDownloadContext && "ring-2 ring-tui-green border-tui-green"
               )}
+              onClick={() => void handleRefreshContext()}
             >
-              Download Context
-            </Button>
-            <Button
-              bracket
-              variant="outline"
-              className={cn(
-                "transition-colors",
-                "hover:bg-tui-selection hover:text-white hover:border-tui-green",
-                "focus:outline-none focus:ring-1 focus:ring-tui-green",
-                focusedIndex === 2 && "ring-2 ring-tui-green border-tui-green"
-              )}
-            >
-              Export Debug Report
-            </Button>
-            <Button
-              bracket
-              variant="outline"
-              className={cn(
-                "ml-auto transition-colors",
-                "hover:bg-tui-selection hover:text-tui-red hover:border-tui-red",
-                "focus:outline-none focus:ring-1 focus:ring-tui-red",
-                focusedIndex === 3 && "ring-2 ring-tui-red border-tui-red text-tui-red"
-              )}
-            >
-              Reset UI Settings
+              Refresh Context
             </Button>
           </div>
-          {contextStatus === "missing" && (
-            <div className="text-xs text-tui-muted font-mono">
-              Context snapshot not available. Run a review or generate it in Settings → Analysis.
-            </div>
-          )}
         </PanelContent>
       </Panel>
     </div>

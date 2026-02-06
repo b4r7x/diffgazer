@@ -164,16 +164,13 @@ export function CheckboxGroup<T extends string = string>({
   const toggle = React.useCallback((itemValue: string) => {
     if (disabled) return;
     const typedValue = itemValue as T;
-    setUncontrolledValue(prev => {
-      const current = isControlled ? controlledValue! : prev;
-      const newValue = current.includes(typedValue)
-        ? current.filter((v) => v !== typedValue)
-        : [...current, typedValue];
-      onValueChange?.(newValue);
-      if (!isControlled) return newValue;
-      return prev;
-    });
-  }, [disabled, isControlled, controlledValue, onValueChange]);
+    const current = isControlled ? controlledValue! : uncontrolledValue;
+    const newValue = current.includes(typedValue)
+      ? current.filter((v) => v !== typedValue)
+      : [...current, typedValue];
+    onValueChange?.(newValue);
+    if (!isControlled) setUncontrolledValue(newValue);
+  }, [disabled, isControlled, controlledValue, uncontrolledValue, onValueChange]);
 
   const handleEnterKey = (itemValue: string) => {
     if (disabled) return;

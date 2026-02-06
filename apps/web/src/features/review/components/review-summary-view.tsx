@@ -1,7 +1,6 @@
 import { AnalysisSummary, type IssuePreview } from "@/features/review/components/analysis-summary";
 import type { LensStats } from "@/features/review/components/lens-stats-table";
 import type { ReviewIssue } from "@stargazer/schemas/review";
-import { useMemo } from "react";
 import { useScope, useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { calculateSeverityCounts } from "@stargazer/core/severity";
@@ -25,17 +24,17 @@ export function ReviewSummaryView({
   onEnterReview,
   onBack,
 }: ReviewSummaryViewProps) {
-  const severityCounts = useMemo(() => calculateSeverityCounts(issues), [issues]);
+  const severityCounts = calculateSeverityCounts(issues);
 
-  const categoryCountMap = useMemo(() => issues.reduce<Record<string, number>>(
+  const categoryCountMap = issues.reduce<Record<string, number>>(
     (acc, issue) => {
       acc[issue.category] = (acc[issue.category] || 0) + 1;
       return acc;
     },
     {},
-  ), [issues]);
+  );
 
-  const lensStats: LensStats[] = useMemo(() => Object.entries(categoryCountMap).map(
+  const lensStats: LensStats[] = Object.entries(categoryCountMap).map(
     ([category, count]) => {
       const meta = CATEGORY_META[category] ?? CATEGORY_META.default;
       return {
@@ -47,25 +46,25 @@ export function ReviewSummaryView({
         change: 0,
       };
     },
-  ), [categoryCountMap]);
+  );
 
-  const topIssues: IssuePreview[] = useMemo(() => issues.slice(0, 3).map((issue) => ({
+  const topIssues: IssuePreview[] = issues.slice(0, 3).map((issue) => ({
     id: issue.id,
     title: issue.title,
     file: issue.file,
     line: issue.line_start ?? 0,
     category: issue.category,
     severity: issue.severity,
-  })), [issues]);
+  }));
 
-  const filesAnalyzed = useMemo(() => new Set(issues.map((i) => i.file)).size, [issues]);
+  const filesAnalyzed = new Set(issues.map((i) => i.file)).size;
 
-  const stats = useMemo(() => ({
+  const stats = {
     runId: reviewId ?? "unknown",
     totalIssues: issues.length,
     filesAnalyzed,
     criticalCount: severityCounts.blocker,
-  }), [reviewId, issues.length, filesAnalyzed, severityCounts.blocker]);
+  };
 
   useScope("review-summary");
   useKey("Enter", onEnterReview);

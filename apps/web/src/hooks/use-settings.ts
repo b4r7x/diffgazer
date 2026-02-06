@@ -1,83 +1,75 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import type { SettingsConfig } from "@stargazer/schemas/config";
 import { DEFAULT_TTL } from "@/config/constants";
 import { api } from "@/lib/api";
 
 let cache: { data: SettingsConfig; timestamp: number } | null = null;
 
-function getCached(): SettingsConfig | null {
+const subscribers = new Set<() => void>();
+function notify() { subscribers.forEach(fn => fn()); }
+
+function getCached(): { data: SettingsConfig; timestamp: number } | null {
   if (!cache) return null;
   if (Date.now() - cache.timestamp > DEFAULT_TTL) {
     cache = null;
     return null;
   }
-  return cache.data;
+  return cache;
 }
 
 function invalidateSettings(): void {
   cache = null;
+  notify();
 }
 
 let inflightPromise: Promise<SettingsConfig> | null = null;
 
+function triggerFetch() {
+  if (inflightPromise) return;
+  inflightPromise = api.getSettings();
+  inflightPromise
+    .then((data) => {
+      cache = { data, timestamp: Date.now() };
+      notify();
+    })
+    .catch(() => {})
+    .finally(() => {
+      inflightPromise = null;
+    });
+}
+
+function subscribe(callback: () => void) {
+  subscribers.add(callback);
+  return () => { subscribers.delete(callback); };
+}
+
+function getSnapshot() {
+  return cache;
+}
+
 export function useSettings() {
-  const [settings, setSettings] = useState<SettingsConfig | null>(() => getCached());
-  const [isLoading, setIsLoading] = useState(!cache);
-  const [error, setError] = useState<string | null>(null);
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot);
 
-  useEffect(() => {
-    const cached = getCached();
-    if (cached) {
-      setSettings(cached);
-      setIsLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    async function fetch() {
-      setIsLoading(true);
-      setError(null);
-      try {
-        if (!inflightPromise) {
-          inflightPromise = api.getSettings();
-        }
-        const data = await inflightPromise;
-        inflightPromise = null;
-        cache = { data, timestamp: Date.now() };
-        if (!cancelled) {
-          setSettings(data);
-        }
-      } catch (err) {
-        inflightPromise = null;
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load settings");
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    fetch();
-    return () => { cancelled = true; };
-  }, []);
+  if (!snapshot && !inflightPromise) {
+    triggerFetch();
+  }
 
   const refresh = useCallback(async () => {
     invalidateSettings();
-    setIsLoading(true);
-    setError(null);
     try {
       const data = await api.getSettings();
       cache = { data, timestamp: Date.now() };
-      setSettings(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load settings");
-    } finally {
-      setIsLoading(false);
+      notify();
+    } catch {
+      // refresh failed — cache stays null
     }
   }, []);
 
-  return { settings, isLoading, error, refresh, invalidate: invalidateSettings };
+  return {
+    settings: snapshot?.data ?? null,
+    isLoading: !snapshot && !getCached(),
+    error: null as string | null,
+    refresh,
+    invalidate: invalidateSettings,
+  };
 }
