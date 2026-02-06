@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import type { ReviewMetadata } from "@stargazer/schemas/review";
 
@@ -7,7 +7,7 @@ export function useReviews(projectPath?: string) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchReviews = useCallback(async () => {
+  const fetchReviews = async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -18,20 +18,17 @@ export function useReviews(projectPath?: string) {
     } finally {
       setIsLoading(false);
     }
-  }, [projectPath]);
+  };
 
-  const deleteReview = useCallback(
-    async (id: string) => {
-      try {
-        await api.deleteReview(id);
-        setReviews((prev) => prev.filter((r) => r.id !== id));
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to delete review");
-        fetchReviews();
-      }
-    },
-    [fetchReviews]
-  );
+  const deleteReview = async (id: string) => {
+    try {
+      await api.deleteReview(id);
+      setReviews((prev) => prev.filter((r) => r.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete review");
+      fetchReviews();
+    }
+  };
 
   useEffect(() => {
     fetchReviews();

@@ -24,10 +24,11 @@ export function SeverityFilterButton({
   return (
     <button
       type="button"
+      aria-pressed={isActive}
       onClick={onClick}
       className={cn(
         "px-1.5 text-xs transition-colors",
-        isActive ? config.color : "text-gray-600",
+        isActive ? config.color : "text-tui-muted",
         isFocused && "ring-1 ring-tui-blue",
         className
       )}

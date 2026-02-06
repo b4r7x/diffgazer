@@ -1,4 +1,4 @@
-import { useRef, useMemo } from "react";
+import { useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -47,7 +47,7 @@ export function ModelSelectDialog({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const listContainerRef = useRef<HTMLDivElement>(null);
 
-  const models = useMemo(() => {
+  const models = (() => {
     switch (provider) {
       case "gemini":
         return Object.values(GEMINI_MODEL_INFO);
@@ -59,7 +59,7 @@ export function ModelSelectDialog({
       default:
         return [];
     }
-  }, [provider, openRouter.models]);
+  })();
 
   const {
     searchQuery,

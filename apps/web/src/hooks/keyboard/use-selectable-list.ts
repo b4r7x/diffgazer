@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useKeys } from "./use-keys";
 
 interface UseSelectableListOptions {
@@ -33,6 +33,7 @@ export function useSelectableList({
   downKeys = DEFAULT_DOWN_KEYS,
 }: UseSelectableListOptions): UseSelectableListReturn {
   const [focusedIndex, setFocusedIndex] = useState(initialIndex);
+  const pendingCallbackRef = useRef<{ type: "focus"; index: number } | { type: "boundary"; direction: "up" | "down" } | null>(null);
 
   const findNextIndex = (start: number, direction: 1 | -1): number => {
     let index = start + direction;
@@ -43,48 +44,54 @@ export function useSelectableList({
     return start;
   };
 
-  // NOTE: onFocus/onBoundaryReached are called inside the state updater for atomicity.
-  // This works because useKeys wraps handlers in useEffectEvent (fresh closures),
-  // and React 18+ runs updaters synchronously within event handlers.
   const moveUp = () => {
     if (itemCount === 0) return;
-    let newIndex: number | undefined;
     setFocusedIndex((prev) => {
       if (prev === 0) {
         if (wrap) {
           let lastIndex = itemCount - 1;
           while (lastIndex > 0 && getDisabled(lastIndex)) lastIndex--;
-          newIndex = lastIndex;
+          pendingCallbackRef.current = { type: "focus", index: lastIndex };
           return lastIndex;
         }
-        onBoundaryReached?.("up");
+        pendingCallbackRef.current = { type: "boundary", direction: "up" };
         return prev;
       }
-      newIndex = findNextIndex(prev, -1);
-      return newIndex;
+      const next = findNextIndex(prev, -1);
+      pendingCallbackRef.current = { type: "focus", index: next };
+      return next;
     });
-    if (newIndex !== undefined) onFocus?.(newIndex);
   };
 
   const moveDown = () => {
     if (itemCount === 0) return;
-    let newIndex: number | undefined;
     setFocusedIndex((prev) => {
       if (prev === itemCount - 1) {
         if (wrap) {
           let firstIndex = 0;
           while (firstIndex < itemCount - 1 && getDisabled(firstIndex)) firstIndex++;
-          newIndex = firstIndex;
+          pendingCallbackRef.current = { type: "focus", index: firstIndex };
           return firstIndex;
         }
-        onBoundaryReached?.("down");
+        pendingCallbackRef.current = { type: "boundary", direction: "down" };
         return prev;
       }
-      newIndex = findNextIndex(prev, 1);
-      return newIndex;
+      const next = findNextIndex(prev, 1);
+      pendingCallbackRef.current = { type: "focus", index: next };
+      return next;
     });
-    if (newIndex !== undefined) onFocus?.(newIndex);
   };
+
+  useEffect(() => {
+    const pending = pendingCallbackRef.current;
+    if (!pending) return;
+    pendingCallbackRef.current = null;
+    if (pending.type === "focus") {
+      onFocus?.(pending.index);
+    } else {
+      onBoundaryReached?.(pending.direction);
+    }
+  });
 
   useKeys(upKeys, moveUp, { enabled: enabled && itemCount > 0 });
   useKeys(downKeys, moveDown, { enabled: enabled && itemCount > 0 });

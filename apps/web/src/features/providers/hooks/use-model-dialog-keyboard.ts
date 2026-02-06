@@ -115,21 +115,21 @@ export function useModelDialogKeyboard({
   const handleCancel = () => onOpenChange(false);
 
   const navigateUp = () => {
-    if (clampedSelectedIndex > 0) {
-      setSelectedIndex((prev) => prev - 1);
-    } else {
+    setSelectedIndex((prev) => {
+      if (prev > 0) return prev - 1;
       setFocusZone("filters");
       setFilterIndex(0);
-    }
+      return prev;
+    });
   };
 
   const navigateDown = () => {
-    if (clampedSelectedIndex < filteredModels.length - 1) {
-      setSelectedIndex((prev) => prev + 1);
-    } else {
+    setSelectedIndex((prev) => {
+      if (prev < filteredModels.length - 1) return prev + 1;
       setFocusZone("footer");
       setFooterButtonIndex(1);
-    }
+      return prev;
+    });
   };
 
   // List zone

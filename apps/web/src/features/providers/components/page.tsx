@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ProviderList } from "@/features/providers/components/provider-list";
 import { ProviderDetails } from "@/features/providers/components/provider-details";
@@ -45,17 +44,17 @@ export function ProvidersPage() {
 
   usePageFooter({ shortcuts: FOOTER_SHORTCUTS });
 
-  const actions = useMemo(() => ({
+  const actions = {
     onSetApiKey: () => setApiKeyDialogOpen(true),
     onSelectModel: () => setModelDialogOpen(true),
     onRemoveKey: () => { if (selectedProvider) void handleRemoveKey(selectedProvider.id); },
     onSelectProvider: () => { if (selectedProvider) void handleSelectProvider(selectedProvider.id, selectedProvider.name, selectedProvider.model); },
-  }), [selectedProvider, handleRemoveKey, handleSelectProvider, setApiKeyDialogOpen, setModelDialogOpen]);
+  };
 
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <span className="text-gray-500" role="status" aria-live="polite">Loading providers...</span>
+        <span className="text-tui-muted" role="status" aria-live="polite">Loading providers...</span>
       </div>
     );
   }
@@ -77,7 +76,7 @@ export function ProvidersPage() {
           focusedFilterIndex={focusZone === "filters" ? filterIndex : undefined}
         />
       </div>
-      <div className="w-3/5 flex flex-col bg-[#0b0e14]">
+      <div className="w-3/5 flex flex-col bg-tui-bg">
         <ProviderDetails
           provider={selectedProvider}
           actions={actions}

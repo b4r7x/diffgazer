@@ -17,6 +17,7 @@ export function useApiKeyForm({
   const [method, setMethod] = useState<InputMethod>("paste");
   const [keyValue, setKeyValue] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Parent should key this component on `open` or only mount when open=true
   // to reset state, rather than relying on a useEffect to sync props to state.
@@ -27,10 +28,13 @@ export function useApiKeyForm({
     if (!value && method === "paste") return;
 
     setIsSubmitting(true);
+    setError(null);
     try {
       await onSubmit(method, value);
       setKeyValue("");
       onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save API key");
     } finally {
       setIsSubmitting(false);
     }
@@ -39,9 +43,12 @@ export function useApiKeyForm({
   const handleRemove = async () => {
     if (isSubmitting || !onRemoveKey) return;
     setIsSubmitting(true);
+    setError(null);
     try {
       await onRemoveKey();
       onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to remove API key");
     } finally {
       setIsSubmitting(false);
     }
@@ -55,6 +62,7 @@ export function useApiKeyForm({
     keyValue,
     setKeyValue,
     isSubmitting,
+    error,
     canSubmit,
     handleSubmit,
     handleRemove,

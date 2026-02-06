@@ -34,7 +34,7 @@ export function IssueListItem({ issue, isSelected, onClick, className }: IssueLi
       </span>
       <div className="flex flex-col min-w-0">
         <span className="truncate">{issue.title}</span>
-        <span className={cn("text-[10px]", isSelected ? "opacity-80" : "text-gray-500")}>
+        <span className={cn("text-[10px]", isSelected ? "opacity-80" : "text-tui-muted")}>
           {issue.file}:{issue.line_start}
         </span>
       </div>

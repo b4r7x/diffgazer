@@ -14,7 +14,7 @@ export { REVIEW_SEVERITY as SEVERITY_ORDER };
 /**
  * Severity levels to display in histograms (excludes 'nit').
  */
-export const HISTOGRAM_SEVERITIES = REVIEW_SEVERITY.filter((s) => s !== "nit");
+export const HISTOGRAM_SEVERITIES = ["blocker", "high", "medium", "low"] as const;
 
 /**
  * Get numeric rank of a severity level (lower = more severe).

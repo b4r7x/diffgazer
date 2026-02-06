@@ -12,8 +12,15 @@ export function DiffView({ patch, className }: DiffViewProps) {
         <div
           key={i}
           className={cn(
-            line.startsWith("-") && "text-tui-red",
-            line.startsWith("+") && "text-tui-green"
+            line.startsWith("--- ") || line.startsWith("+++ ")
+              ? "text-tui-muted"
+              : line.startsWith("@@")
+                ? "text-tui-blue"
+                : line.startsWith("-")
+                  ? "text-tui-red"
+                  : line.startsWith("+")
+                    ? "text-tui-green"
+                    : undefined
           )}
         >
           {line}

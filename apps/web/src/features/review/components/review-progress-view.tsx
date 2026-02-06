@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { cn } from '@/utils/cn';
 import { PanelHeader } from '@/components/ui/containers';
@@ -156,10 +156,7 @@ export function ReviewProgressView({
   const hasPartialFailure = failedAgents.length > 0;
   const failedAgentNames = failedAgents.map((agent) => agent.meta.name).join(", ");
 
-  const filteredEntries = useMemo(
-    () => (agentFilter ? entries.filter((entry) => entry.source === agentFilter) : entries),
-    [entries, agentFilter]
-  );
+  const filteredEntries = agentFilter ? entries.filter((entry) => entry.source === agentFilter) : entries;
 
   return (
     <div className="flex flex-1 overflow-hidden px-4">

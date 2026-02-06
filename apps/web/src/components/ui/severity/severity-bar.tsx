@@ -17,10 +17,10 @@ export function SeverityBar({ label, count, max, severity, className }: Severity
 
   return (
     <div className={cn('flex items-center font-mono text-sm', className)} aria-label={`${label}: ${count}`}>
-      <span className="w-20 text-xs text-gray-500">{label}</span>
+      <span className="w-20 text-xs text-tui-muted">{label}</span>
       <div className="flex-1 flex items-center tracking-widest">
         <span className={color}>{BAR_FILLED_CHAR.repeat(filled)}</span>
-        <span className="text-gray-800">{BAR_EMPTY_CHAR.repeat(empty)}</span>
+        <span className="text-tui-border">{BAR_EMPTY_CHAR.repeat(empty)}</span>
       </div>
       <span className={cn('w-6 text-right font-bold', color)}>{count}</span>
     </div>
