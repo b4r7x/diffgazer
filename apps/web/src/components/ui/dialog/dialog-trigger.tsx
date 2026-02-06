@@ -1,25 +1,23 @@
-import * as React from 'react';
-import { useDialogContext, createClickHandler } from './dialog-context';
+import type { ReactNode, MouseEventHandler } from 'react';
+import { useDialogContext } from './dialog-context';
 
-export interface DialogTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  children: React.ReactNode;
-  asChild?: boolean;
+export interface DialogTriggerProps {
+  children: ReactNode;
+  className?: string;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
 }
 
-export function DialogTrigger({ children, asChild, ...props }: DialogTriggerProps) {
+export function DialogTrigger({ children, className, onClick }: DialogTriggerProps) {
   const { onOpenChange } = useDialogContext();
-  const handleClick = createClickHandler(() => onOpenChange(true), props.onClick);
-
-  if (asChild && React.isValidElement(children)) {
-    const childElement = children as React.ReactElement<{ onClick?: React.MouseEventHandler<HTMLElement> }>;
-    return React.cloneElement(childElement, {
-      ...props,
-      onClick: createClickHandler(() => onOpenChange(true), childElement.props.onClick),
-    } as React.HTMLAttributes<HTMLElement>);
-  }
 
   return (
-    <button {...props} onClick={handleClick}>
+    <button
+      className={className}
+      onClick={(e) => {
+        onOpenChange(true);
+        onClick?.(e);
+      }}
+    >
       {children}
     </button>
   );

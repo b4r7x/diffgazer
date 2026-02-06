@@ -1,4 +1,4 @@
-import { useState, useEffect, type RefObject } from "react";
+import { useState, type RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useKey } from "@/hooks/keyboard";
 import { FILTER_VALUES } from "@/features/providers/components/provider-list";
@@ -47,6 +47,8 @@ export function useProvidersKeyboard({
   const [filterIndex, setFilterIndex] = useState(0);
   const [buttonIndex, setButtonIndex] = useState(0);
 
+  const effectiveFocusZone = (!selectedProvider && focusZone === "buttons") ? "list" : focusZone;
+
   const canRemoveKey = selectedProvider?.hasApiKey ?? false;
   const needsOpenRouterModel = selectedProvider?.id === "openrouter" && !selectedProvider?.model;
 
@@ -70,10 +72,10 @@ export function useProvidersKeyboard({
     }
   };
 
-  const inInput = focusZone === "input";
-  const inFilters = focusZone === "filters";
-  const inList = focusZone === "list";
-  const inButtons = focusZone === "buttons";
+  const inInput = effectiveFocusZone === "input";
+  const inFilters = effectiveFocusZone === "filters";
+  const inList = effectiveFocusZone === "list";
+  const inButtons = effectiveFocusZone === "buttons";
 
   // Input zone
   useKey("ArrowDown", () => {
@@ -135,13 +137,6 @@ export function useProvidersKeyboard({
     inputRef.current?.focus();
   }, { enabled: !dialogOpen && !inInput });
 
-  // Guard: redirect to list if provider disappears while in buttons
-  useEffect(() => {
-    if (!selectedProvider && focusZone === "buttons") {
-      setFocusZone("list");
-    }
-  }, [selectedProvider, focusZone]);
-
   const handleListBoundary = (direction: "up" | "down") => {
     if (direction === "up") {
       setFocusZone("filters");
@@ -149,5 +144,5 @@ export function useProvidersKeyboard({
     }
   };
 
-  return { focusZone, filterIndex, buttonIndex, handleListBoundary };
+  return { focusZone: effectiveFocusZone, filterIndex, buttonIndex, handleListBoundary };
 }

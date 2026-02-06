@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useSettings } from '@/hooks/use-settings';
 import { LensIdSchema, type LensId } from '@stargazer/schemas/review';
 
@@ -6,10 +7,12 @@ const FALLBACK_LENSES: LensId[] = ["correctness", "security", "performance", "si
 export function useReviewSettings() {
   const { settings, isLoading } = useSettings();
 
-  const parsedLenses = settings?.defaultLenses?.filter(
-    (lens): lens is LensId => LensIdSchema.safeParse(lens).success
-  ) ?? [];
-  const defaultLenses: LensId[] = parsedLenses.length > 0 ? parsedLenses : FALLBACK_LENSES;
+  const defaultLenses = useMemo(() => {
+    const parsed = settings?.defaultLenses?.filter(
+      (lens): lens is LensId => LensIdSchema.safeParse(lens).success
+    ) ?? [];
+    return parsed.length > 0 ? parsed : FALLBACK_LENSES;
+  }, [settings?.defaultLenses]);
 
   return { settings, loading: isLoading, defaultLenses };
 }

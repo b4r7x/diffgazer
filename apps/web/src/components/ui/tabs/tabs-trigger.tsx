@@ -19,12 +19,6 @@ export function TabsTrigger({ value, children, className, disabled }: TabsTrigge
     return () => registerTrigger(value, null);
   }, [value, registerTrigger]);
 
-  const handleClick = React.useCallback(() => {
-    if (!disabled) {
-      onValueChange(value);
-    }
-  }, [disabled, onValueChange, value]);
-
   return (
     <button
       ref={ref}
@@ -34,7 +28,7 @@ export function TabsTrigger({ value, children, className, disabled }: TabsTrigge
       aria-controls={`tabpanel-${value}`}
       tabIndex={isActive ? 0 : -1}
       disabled={disabled}
-      onClick={handleClick}
+      onClick={() => !disabled && onValueChange(value)}
       className={cn(
         'px-3 py-1 text-sm font-mono transition-colors cursor-pointer',
         'border border-[--tui-border]',

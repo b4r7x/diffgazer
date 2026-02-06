@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { WebTheme, ResolvedTheme } from "@/types/theme";
 import { Panel, PanelContent, PanelHeader } from "@/components/ui/containers";
@@ -13,12 +13,9 @@ import { SETTINGS_SHORTCUTS } from "@/config/navigation";
 export function SettingsThemePage() {
   const navigate = useNavigate();
   const { theme, resolved, setTheme } = useTheme();
-  const [previewTheme, setPreviewTheme] = useState<WebTheme>(theme);
+  const [previewOverride, setPreviewOverride] = useState<WebTheme | null>(null);
 
-  useEffect(() => {
-    setPreviewTheme(theme);
-  }, [theme]);
-
+  const previewTheme = previewOverride ?? theme;
   const previewResolved: ResolvedTheme =
     previewTheme === "auto" ? resolved : previewTheme;
 
@@ -47,7 +44,7 @@ export function SettingsThemePage() {
               }}
               onFocus={(v) => {
                 if (v === "terminal") return;
-                setPreviewTheme(v);
+                setPreviewOverride(v);
               }}
             />
             <div className="mt-auto pt-6">

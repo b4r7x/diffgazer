@@ -61,27 +61,18 @@ export function SettingsHubPage() {
     };
   }, [isConfigured, provider, settings?.secretsStorage, settings?.defaultLenses?.length, theme, isTrusted]);
 
+  const settingsRoutes: Record<SettingsAction, string> = {
+    trust: "/settings/trust-permissions",
+    theme: "/settings/theme",
+    provider: "/settings/providers",
+    storage: "/settings/storage",
+    analysis: "/settings/analysis",
+    diagnostics: "/settings/diagnostics",
+  };
+
   const handleActivate = (item: { id: string }) => {
-    switch (item.id as SettingsAction) {
-      case "trust":
-        navigate({ to: "/settings/trust-permissions" });
-        break;
-      case "theme":
-        navigate({ to: "/settings/theme" });
-        break;
-      case "provider":
-        navigate({ to: "/settings/providers" });
-        break;
-      case "storage":
-        navigate({ to: "/settings/storage" });
-        break;
-      case "analysis":
-        navigate({ to: "/settings/analysis" });
-        break;
-      case "diagnostics":
-        navigate({ to: "/settings/diagnostics" });
-        break;
-    }
+    const route = settingsRoutes[item.id as SettingsAction];
+    if (route) navigate({ to: route });
   };
 
   return (

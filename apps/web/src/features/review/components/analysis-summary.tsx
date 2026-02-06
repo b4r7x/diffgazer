@@ -14,9 +14,7 @@ export interface AnalysisSummaryProps {
   lensStats: LensStats[];
   topIssues: IssuePreview[];
   onEnterReview?: () => void;
-  onExport?: () => void;
   onBack?: () => void;
-  onIssueClick?: (id: string) => void;
   className?: string;
 }
 
@@ -26,9 +24,7 @@ export function AnalysisSummary({
   lensStats,
   topIssues,
   onEnterReview,
-  onExport,
   onBack,
-  onIssueClick,
   className,
 }: AnalysisSummaryProps) {
   return (
@@ -83,7 +79,6 @@ export function AnalysisSummary({
                 line={issue.line}
                 category={issue.category}
                 severity={issue.severity}
-                onClick={() => onIssueClick?.(issue.id)}
               />
             ))}
           </div>
@@ -93,9 +88,6 @@ export function AnalysisSummary({
       <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mt-4 mb-4">
         <Button variant="success" size="lg" onClick={onEnterReview} className="w-full sm:w-auto">
           [ Enter Review Queue ]
-        </Button>
-        <Button variant="outline" size="lg" onClick={onExport} className="w-full sm:w-auto">
-          [ Export Summary ]
         </Button>
         <Button variant="ghost" size="md" onClick={onBack} className="text-gray-500">
           [ Back ]

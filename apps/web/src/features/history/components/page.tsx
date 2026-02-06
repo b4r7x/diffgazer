@@ -1,7 +1,6 @@
 import { useState, useMemo, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { FocusablePane } from "@/components/ui/focusable-pane";
-import type { ReviewResult } from "@stargazer/schemas/review";
 import type { HistoryFocusZone } from "@/features/history/types";
 import { SEVERITY_ORDER } from "@stargazer/schemas/ui";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
@@ -47,9 +46,7 @@ export function HistoryPage() {
 
   const { review: reviewDetail } = useReviewDetail(selectedRunId);
 
-  const issues = reviewDetail?.result
-    ? (reviewDetail.result as ReviewResult).issues
-    : undefined;
+  const issues = reviewDetail?.result?.issues;
 
   const severityCounts = selectedRun
     ? {

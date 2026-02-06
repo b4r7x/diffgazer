@@ -1,10 +1,15 @@
-import { useRouter } from "@tanstack/react-router";
 import { AnalysisSummary, type IssuePreview } from "@/features/review/components/analysis-summary";
 import type { LensStats } from "@/features/review/components/lens-stats-table";
 import type { ReviewIssue } from "@stargazer/schemas/review";
 import { useScope, useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { calculateSeverityCounts } from "@stargazer/core/severity";
+
+const CATEGORY_META: Record<string, { icon: string; iconColor: string }> = {
+  security: { icon: "shield", iconColor: "text-tui-red" },
+  performance: { icon: "zap", iconColor: "text-tui-yellow" },
+  default: { icon: "code", iconColor: "text-tui-blue" },
+};
 
 interface ReviewSummaryViewProps {
   issues: ReviewIssue[];
@@ -19,7 +24,6 @@ export function ReviewSummaryView({
   onEnterReview,
   onBack,
 }: ReviewSummaryViewProps) {
-  const router = useRouter();
   const severityCounts = calculateSeverityCounts(issues);
 
   const categoryCountMap = issues.reduce<Record<string, number>>(
@@ -31,24 +35,17 @@ export function ReviewSummaryView({
   );
 
   const lensStats: LensStats[] = Object.entries(categoryCountMap).map(
-    ([category, count]) => ({
-      id: category,
-      name: category.charAt(0).toUpperCase() + category.slice(1),
-      icon:
-        category === "security"
-          ? "shield"
-          : category === "performance"
-            ? "zap"
-            : "code",
-      iconColor:
-        category === "security"
-          ? "text-tui-red"
-          : category === "performance"
-            ? "text-tui-yellow"
-            : "text-tui-blue",
-      count,
-      change: 0, // Required by LensStats schema, not displayed
-    }),
+    ([category, count]) => {
+      const meta = CATEGORY_META[category] ?? CATEGORY_META.default;
+      return {
+        id: category,
+        name: category.charAt(0).toUpperCase() + category.slice(1),
+        icon: meta.icon,
+        iconColor: meta.iconColor,
+        count,
+        change: 0,
+      };
+    },
   );
 
   const topIssues: IssuePreview[] = issues.slice(0, 3).map((issue) => ({
@@ -64,7 +61,7 @@ export function ReviewSummaryView({
 
   useScope("review-summary");
   useKey("Enter", onEnterReview);
-  useKey("Escape", () => router.history.back());
+  useKey("Escape", onBack);
 
   usePageFooter({
     shortcuts: [{ key: "Enter", label: "Start Review" }],

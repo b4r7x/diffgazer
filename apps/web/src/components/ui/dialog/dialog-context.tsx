@@ -16,13 +16,3 @@ export function useDialogContext() {
   }
   return context;
 }
-
-export function createClickHandler(
-  action: () => void,
-  existingHandler?: React.MouseEventHandler<HTMLElement>
-): React.MouseEventHandler<HTMLElement> {
-  return (e) => {
-    action();
-    existingHandler?.(e);
-  };
-}

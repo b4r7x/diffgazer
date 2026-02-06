@@ -14,7 +14,7 @@ function getCached(): SettingsConfig | null {
   return cache.data;
 }
 
-export function invalidateSettings(): void {
+function invalidateSettings(): void {
   cache = null;
 }
 

@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef } from 'react';
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/cn';
 import { useKey, useKeys } from '@/hooks/keyboard';
@@ -33,10 +33,10 @@ export function Table<T extends Record<string, ReactNode>>({
     const tableRef = useRef<HTMLTableElement>(null);
     const enabled = selectedRowIndex !== undefined && !!onRowSelect;
 
-    const handleRowClick = useCallback((row: T, rowIndex: number) => {
+    const handleRowClick = (row: T, rowIndex: number) => {
         onRowSelect?.(rowIndex);
         onRowClick?.(row, rowIndex);
-    }, [onRowSelect, onRowClick]);
+    };
 
     useKeys(['j', 'ArrowDown'], () => {
         if (selectedRowIndex !== undefined && onRowSelect) {

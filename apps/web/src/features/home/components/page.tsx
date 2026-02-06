@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { SecretsStorage } from "@stargazer/schemas/config";
 import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@/config/navigation";
@@ -8,10 +8,10 @@ import { usePageFooter } from "@/hooks/use-page-footer";
 import { ContextSidebar } from "@/features/home/components/context-sidebar";
 import { HomeMenu } from "@/features/home/components/home-menu";
 import { useConfig } from "@/hooks/use-config";
-import { useReviewHistory } from "@/features/review/hooks/use-review-history";
+import { useReviewHistory } from "@/hooks/use-review-history";
 import { useToast } from "@/components/ui/toast";
-import { StorageWizard } from "@/components/storage-wizard";
-import { TrustModal } from "@/components/trust-modal";
+import { StorageWizard } from "./storage-wizard";
+import { TrustModal } from "./trust-modal";
 import type { ContextInfo } from "@stargazer/schemas/ui";
 import { api } from "@/lib/api";
 import { useSettings } from "@/hooks/use-settings";
@@ -43,8 +43,11 @@ export function HomePage() {
   const isTrusted = Boolean(trust?.capabilities.readFiles);
   const hasLastReview = reviews.length > 0;
 
+  const errorShownRef = useRef(false);
   useEffect(() => {
     if (search.error !== "invalid-review-id") return;
+    if (errorShownRef.current) return;
+    errorShownRef.current = true;
     showToast({
       variant: "error",
       title: "Invalid Review ID",

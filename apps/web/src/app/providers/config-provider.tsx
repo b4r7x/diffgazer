@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { AIProviderSchema } from "@stargazer/schemas/config";
 import type { AIProvider, ProviderStatus, TrustConfig } from "@stargazer/schemas/config";
 import { OPENROUTER_PROVIDER_ID } from "@/config/constants";
 import { DEFAULT_TTL } from "@/config/constants";
@@ -90,9 +91,6 @@ interface ConfigActionsContextValue {
   deleteProviderCredentials: (provider: AIProvider) => Promise<void>;
 }
 
-// Combined for backwards compat
-interface ConfigContextValue extends ConfigDataContextValue, ConfigActionsContextValue {}
-
 const ConfigDataContext = createContext<ConfigDataContextValue | undefined>(undefined);
 const ConfigActionsContext = createContext<ConfigActionsContextValue | undefined>(undefined);
 
@@ -139,7 +137,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
         const initData = await api.loadInit();
         const data: ConfigData = {
           provider:
-            (initData.config?.provider as AIProvider | undefined) ?? undefined,
+            AIProviderSchema.safeParse(initData.config?.provider).data,
           model: initData.config?.model,
           providers: initData.providers,
           projectId: initData.project.projectId,
@@ -191,7 +189,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       try {
         invalidateConfigCache();
         const result = await api.activateProvider(providerId, selectedModel);
-        await updateAfterAction(result.provider as AIProvider, result.model);
+        await updateAfterAction(AIProviderSchema.safeParse(result.provider).data, result.model);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to activate provider",
@@ -309,9 +307,3 @@ export function useConfigActions(): ConfigActionsContextValue {
   return context;
 }
 
-/** @deprecated Use useConfigData() and/or useConfigActions() directly */
-export function useConfigContext(): ConfigContextValue {
-  const data = useConfigData();
-  const actions = useConfigActions();
-  return useMemo(() => ({ ...data, ...actions }), [data, actions]);
-}

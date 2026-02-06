@@ -59,9 +59,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setTheme = useCallback((newTheme: WebTheme) => {
     setThemeState(newTheme);
     localStorage.setItem(STORAGE_KEY, newTheme);
-    api.saveSettings({ theme: newTheme }).catch((err) => {
-      console.error("Failed to sync theme to server:", err);
-    });
+    api.saveSettings({ theme: newTheme }).catch(() => {});
   }, []);
 
   const value = useMemo<ThemeContextValue>(() => ({ theme, resolved, setTheme }), [theme, resolved, setTheme]);

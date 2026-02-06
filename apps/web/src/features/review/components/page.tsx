@@ -7,7 +7,7 @@ import {
 import { ReviewContainer, type ReviewCompleteData } from "./review-container";
 import { ReviewSummaryView } from "./review-summary-view";
 import { ReviewResultsView } from "./review-results-view";
-import type { ReviewIssue, ReviewResult } from "@stargazer/schemas/review";
+import type { ReviewIssue } from "@stargazer/schemas/review";
 import { isApiError, useReviewErrorHandler } from "../hooks";
 import { api } from "@/lib/api";
 
@@ -72,10 +72,9 @@ export function ReviewPage() {
           handleApiError({ status: 404, message: "Review result not available" });
           return;
         }
-        const result = review.result as ReviewResult;
         dispatch({
           type: "SHOW_RESULTS",
-          reviewData: { issues: result.issues, reviewId: review.metadata.id },
+          reviewData: { issues: review.result.issues, reviewId: review.metadata.id },
         });
       } catch (error) {
         handleApiError(error);
@@ -109,11 +108,10 @@ export function ReviewPage() {
         if (controller.signal.aborted) return;
 
         if (review?.result) {
-          const result = review.result as ReviewResult;
           statusCheckDoneRef.current = true;
           dispatch({
             type: "SHOW_RESULTS",
-            reviewData: { issues: result.issues, reviewId: review.metadata.id },
+            reviewData: { issues: review.result.issues, reviewId: review.metadata.id },
           });
           return;
         }
@@ -137,33 +135,26 @@ export function ReviewPage() {
     return () => controller.abort();
   }, [params.reviewId, handleApiError]);
 
+  const loadingMessage =
+    state.phase === "checking-status" ? "Checking review..." :
+    state.phase === "loading-saved" ? "Loading review..." :
+    null;
+
+  if (loadingMessage) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div
+          className="text-gray-500 font-mono text-sm"
+          role="status"
+          aria-live="polite"
+        >
+          {loadingMessage}
+        </div>
+      </div>
+    );
+  }
+
   switch (state.phase) {
-    case "checking-status":
-      return (
-        <div className="flex flex-1 items-center justify-center">
-          <div
-            className="text-gray-500 font-mono text-sm"
-            role="status"
-            aria-live="polite"
-          >
-            Checking review...
-          </div>
-        </div>
-      );
-
-    case "loading-saved":
-      return (
-        <div className="flex flex-1 items-center justify-center">
-          <div
-            className="text-gray-500 font-mono text-sm"
-            role="status"
-            aria-live="polite"
-          >
-            Loading review...
-          </div>
-        </div>
-      );
-
     case "streaming":
       return <ReviewContainer mode={reviewMode} onComplete={handleComplete} />;
 
