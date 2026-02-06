@@ -39,4 +39,3 @@ export function ProgressList({
   );
 }
 
-export { type ProgressStatus } from './progress-step';

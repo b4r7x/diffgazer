@@ -9,21 +9,10 @@ import { ContextSnapshotPreview } from './context-snapshot-preview';
 import { ReviewMetricsFooter } from './review-metrics-footer';
 import { Badge } from '@/components/ui/badge';
 import { Callout } from '@/components/ui/callout';
-import { useScope, useKey } from '@/hooks/keyboard';
-import { usePageFooter } from '@/hooks/use-page-footer';
+import { useReviewProgressKeyboard } from '../hooks/use-review-progress-keyboard';
 import type { AgentState } from '@stargazer/schemas/events';
 import type { ReviewContextResponse } from '@stargazer/api/types';
 import type { ReviewProgressMetrics } from '../types';
-
-const PROGRESS_SHORTCUTS = [
-  { key: '←/→', label: 'Pane' },
-  { key: '↑/↓', label: 'Navigate' },
-  { key: 'Enter', label: 'View Results' },
-];
-
-const PROGRESS_RIGHT_SHORTCUTS = [
-  { key: 'Esc', label: 'Cancel' },
-];
 
 export interface ReviewProgressViewProps {
   steps: ProgressStepData[];
@@ -51,10 +40,11 @@ export function ReviewProgressView({
   onCancel,
 }: ReviewProgressViewProps) {
   const navigate = useNavigate();
-  const [focusPane, setFocusPane] = useState<'progress' | 'log'>('progress');
   const [expandedStepId, setExpandedStepId] = useState<string | null>(null);
   const [agentFilter, setAgentFilter] = useState<string | null>(null);
   const hasAutoExpandedReview = useRef(false);
+
+  const { focusPane } = useReviewProgressKeyboard({ onViewResults, onCancel });
 
   // Auto-expand review step once when it becomes active with substeps
   useEffect(() => {
@@ -75,19 +65,6 @@ export function ReviewProgressView({
   const handleStepToggle = (id: string) => {
     setExpandedStepId(prev => prev === id ? null : id);
   };
-
-  // Keyboard scope
-  useScope('review-progress');
-
-  // Pane navigation with left/right arrows
-  useKey('ArrowLeft', () => setFocusPane('progress'), { enabled: focusPane === 'log' });
-  useKey('ArrowRight', () => setFocusPane('log'), { enabled: focusPane === 'progress' });
-
-  // Action keys
-  useKey('Enter', () => onViewResults?.(), { enabled: !!onViewResults });
-  useKey('Escape', () => onCancel?.(), { enabled: !!onCancel });
-
-  usePageFooter({ shortcuts: PROGRESS_SHORTCUTS, rightShortcuts: PROGRESS_RIGHT_SHORTCUTS });
 
   const agentOptions = agents.map((agent) => ({
     id: agent.id,

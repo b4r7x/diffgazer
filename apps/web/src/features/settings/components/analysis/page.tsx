@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,26 +29,17 @@ const LENS_OPTIONS = (Object.entries(LENS_TO_AGENT) as Array<[LensId, keyof type
 export function SettingsAnalysisPage() {
   const navigate = useNavigate();
   const { settings, isLoading: settingsLoading } = useSettings();
-  const [selectedLenses, setSelectedLenses] = useState<LensId[]>([]);
-  const [lensesInitialized, setLensesInitialized] = useState(false);
+  const [selectedLenses, setSelectedLenses] = useState<LensId[] | null>(null);
   const [contextStatus, setContextStatus] = useState<"loading" | "ready" | "missing" | "error">("loading");
   const [contextGeneratedAt, setContextGeneratedAt] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const effectiveLenses = selectedLenses ?? (settings?.defaultLenses?.length ? settings.defaultLenses : LENS_OPTIONS.map(l => l.id));
+
   usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
   useKey("Escape", () => navigate({ to: "/settings" }));
-
-  // Initialize selected lenses from settings once loaded
-  useEffect(() => {
-    if (!settings || lensesInitialized) return;
-    const lenses = settings.defaultLenses && settings.defaultLenses.length > 0
-      ? settings.defaultLenses
-      : LENS_OPTIONS.map((lens) => lens.id);
-    setSelectedLenses(lenses);
-    setLensesInitialized(true);
-  }, [settings, lensesInitialized]);
 
   // Fetch review context separately (not a settings call)
   useEffect(() => {
@@ -66,12 +57,12 @@ export function SettingsAnalysisPage() {
     return () => { active = false; };
   }, []);
 
-  const isLoading = settingsLoading || !lensesInitialized;
+  const isLoading = settingsLoading;
 
-  const hasLensSelection = selectedLenses.length > 0;
+  const hasLensSelection = effectiveLenses.length > 0;
 
   const isDirty = useMemo(() => {
-    if (!settings) return false;
+    if (!settings || selectedLenses === null) return false;
     const currentLenses = settings.defaultLenses ?? [];
     return (
       currentLenses.length !== selectedLenses.length ||
@@ -84,7 +75,7 @@ export function SettingsAnalysisPage() {
     setIsSaving(true);
     setError(null);
     try {
-      await api.saveSettings({ defaultLenses: selectedLenses });
+      await api.saveSettings({ defaultLenses: effectiveLenses });
       navigate({ to: "/settings" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save settings");
@@ -146,7 +137,7 @@ export function SettingsAnalysisPage() {
                   Active Agents
                 </div>
                 <CheckboxGroup
-                  value={selectedLenses}
+                  value={effectiveLenses}
                   onValueChange={(v) => setSelectedLenses(v as LensId[])}
                   variant="bullet"
                 >

@@ -1,25 +1,23 @@
-import * as React from 'react';
-import { useDialogContext, createClickHandler } from './dialog-context';
+import type { ReactNode, MouseEventHandler } from 'react';
+import { useDialogContext } from './dialog-context';
 
-export interface DialogCloseProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  children?: React.ReactNode;
-  asChild?: boolean;
+export interface DialogCloseProps {
+  children?: ReactNode;
+  className?: string;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
 }
 
-export function DialogClose({ children, asChild, ...props }: DialogCloseProps) {
+export function DialogClose({ children, className, onClick }: DialogCloseProps) {
   const { onOpenChange } = useDialogContext();
-  const handleClick = createClickHandler(() => onOpenChange(false), props.onClick);
-
-  if (asChild && React.isValidElement(children)) {
-    const childElement = children as React.ReactElement<{ onClick?: React.MouseEventHandler<HTMLElement> }>;
-    return React.cloneElement(childElement, {
-      ...props,
-      onClick: createClickHandler(() => onOpenChange(false), childElement.props.onClick),
-    } as React.HTMLAttributes<HTMLElement>);
-  }
 
   return (
-    <button {...props} onClick={handleClick}>
+    <button
+      className={className}
+      onClick={(e) => {
+        onOpenChange(false);
+        onClick?.(e);
+      }}
+    >
       {children || '[x]'}
     </button>
   );
