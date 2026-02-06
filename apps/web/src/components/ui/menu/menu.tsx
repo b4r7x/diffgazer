@@ -12,6 +12,7 @@ export interface MenuProps {
   enableNumberJump?: boolean;
   variant?: "default" | "hub";
   className?: string;
+  "aria-label"?: string;
   children: ReactNode;
 }
 
@@ -25,6 +26,7 @@ export function Menu({
   enableNumberJump = false,
   variant = "default",
   className,
+  "aria-label": ariaLabel,
   children,
 }: MenuProps) {
   const items = useMemo(() => {
@@ -109,7 +111,7 @@ export function Menu({
 
   return (
     <MenuContext.Provider value={contextValue}>
-      <div role="listbox" className={cn("w-full relative", className)}>
+      <div role="listbox" aria-label={ariaLabel} className={cn("w-full relative", className)}>
         {children}
       </div>
     </MenuContext.Provider>

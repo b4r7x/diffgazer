@@ -16,7 +16,7 @@ export function SeverityBar({ label, count, max, severity, className }: Severity
   const empty = DEFAULT_BAR_WIDTH - filled;
 
   return (
-    <div className={cn('flex items-center font-mono text-sm', className)}>
+    <div className={cn('flex items-center font-mono text-sm', className)} aria-label={`${label}: ${count}`}>
       <span className="w-20 text-xs text-gray-500">{label}</span>
       <div className="flex-1 flex items-center tracking-widest">
         <span className={color}>{BAR_FILLED_CHAR.repeat(filled)}</span>

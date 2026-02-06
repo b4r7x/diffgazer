@@ -2,14 +2,29 @@ import { useCallback } from "react";
 import { useToast } from "@/components/ui/toast";
 import { useNavigate } from "@tanstack/react-router";
 
+interface ApiError {
+  status: number;
+  message: string;
+}
+
+export function isApiError(error: unknown): error is ApiError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    typeof (error as Record<string, unknown>).status === "number" &&
+    "message" in error &&
+    typeof (error as Record<string, unknown>).message === "string"
+  );
+}
+
 export function useReviewErrorHandler() {
   const { showToast } = useToast();
   const navigate = useNavigate();
 
   const handleApiError = useCallback((error: unknown) => {
-    const isErrorObject = typeof error === 'object' && error !== null;
-    const status = isErrorObject && 'status' in error ? (error as { status: number }).status : undefined;
-    const errorMessage = isErrorObject && 'message' in error ? (error as { message: string }).message : undefined;
+    const status = isApiError(error) ? error.status : undefined;
+    const errorMessage = isApiError(error) ? error.message : undefined;
 
     const title =
       status === 400 ? "Invalid Review ID" :

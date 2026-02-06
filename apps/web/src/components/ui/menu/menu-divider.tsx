@@ -5,5 +5,5 @@ export interface MenuDividerProps {
 }
 
 export function MenuDivider({ className }: MenuDividerProps) {
-  return <div className={cn("my-1 border-t border-tui-border mx-4 opacity-50", className)} />;
+  return <div role="separator" className={cn("my-1 border-t border-tui-border mx-4 opacity-50", className)} />;
 }

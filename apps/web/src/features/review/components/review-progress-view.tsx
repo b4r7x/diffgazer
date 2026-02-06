@@ -5,6 +5,7 @@ import { PanelHeader } from '@/components/ui/containers';
 import { ProgressList, type ProgressStepData } from '@/components/ui/progress';
 import { ActivityLog, type LogEntryData } from './activity-log';
 import { AgentBoard } from './agent-board';
+import { ContextSnapshotPreview } from './context-snapshot-preview';
 import { ReviewMetricsFooter } from './review-metrics-footer';
 import { Badge } from '@/components/ui/badge';
 import { Callout } from '@/components/ui/callout';
@@ -88,50 +89,21 @@ export function ReviewProgressView({
 
   usePageFooter({ shortcuts: PROGRESS_SHORTCUTS, rightShortcuts: PROGRESS_RIGHT_SHORTCUTS });
 
-  const agentOptions = useMemo(
-    () => agents.map((agent) => ({
-      id: agent.id,
-      name: agent.meta.name,
-      badgeLabel: agent.meta.badgeLabel,
-      badgeVariant: agent.meta.badgeVariant,
-    })),
-    [agents]
-  );
+  const agentOptions = agents.map((agent) => ({
+    id: agent.id,
+    name: agent.meta.name,
+    badgeLabel: agent.meta.badgeLabel,
+    badgeVariant: agent.meta.badgeVariant,
+  }));
 
-  const failedAgents = useMemo(
-    () => agents.filter((agent) => agent.status === "error"),
-    [agents]
-  );
-
+  const failedAgents = agents.filter((agent) => agent.status === "error");
   const hasPartialFailure = failedAgents.length > 0;
-  const failedAgentNames = useMemo(
-    () => failedAgents.map((agent) => agent.meta.name).join(", "),
-    [failedAgents]
-  );
+  const failedAgentNames = failedAgents.map((agent) => agent.meta.name).join(", ");
 
   const filteredEntries = useMemo(
     () => (agentFilter ? entries.filter((entry) => entry.source === agentFilter) : entries),
     [entries, agentFilter]
   );
-
-  const contextPreview = useMemo(() => {
-    if (!contextSnapshot) return null;
-    const lines = contextSnapshot.text.split("\n");
-    return {
-      preview: lines.slice(0, 10).join("\n"),
-      truncated: lines.length > 10,
-    };
-  }, [contextSnapshot]);
-
-  const handleDownload = (filename: string, content: string, type: string) => {
-    const blob = new Blob([content], { type });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = filename;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  };
 
   return (
     <div className="flex flex-1 overflow-hidden px-4">
@@ -155,43 +127,7 @@ export function ReviewProgressView({
           <AgentBoard agents={agents} />
 
           {contextSnapshot && !isRunning && (
-            <div className="mb-8">
-              <PanelHeader variant="section-bordered">Context Snapshot</PanelHeader>
-              <div className="text-xs text-gray-500">
-                {contextSnapshot.meta.charCount.toLocaleString()} chars
-              </div>
-              {contextPreview && (
-                <pre className="mt-3 max-h-28 overflow-auto border border-tui-border bg-tui-selection/10 p-2 text-[10px] text-gray-500">
-                  {contextPreview.preview}
-                  {contextPreview.truncated ? "\n... (preview)" : ""}
-                </pre>
-              )}
-              <div className="flex gap-2 mt-3">
-                <button
-                  type="button"
-                  onClick={() => handleDownload("context.txt", contextSnapshot.text, "text/plain")}
-                  className="px-3 py-1 border border-tui-border text-xs font-mono hover:bg-tui-selection/30"
-                >
-                  [ Download .txt ]
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDownload("context.md", contextSnapshot.markdown, "text/markdown")}
-                  className="px-3 py-1 border border-tui-border text-xs font-mono hover:bg-tui-selection/30"
-                >
-                  [ Download .md ]
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleDownload("context.json", JSON.stringify(contextSnapshot.graph, null, 2), "application/json")
-                  }
-                  className="px-3 py-1 border border-tui-border text-xs font-mono hover:bg-tui-selection/30"
-                >
-                  [ Download .json ]
-                </button>
-              </div>
-            </div>
+            <ContextSnapshotPreview snapshot={contextSnapshot} />
           )}
         </div>
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useReducer, useEffect, useCallback, useRef } from "react";
 import {
   useSearch,
   useParams,
@@ -7,36 +7,65 @@ import {
 import { ReviewContainer, type ReviewCompleteData } from "./review-container";
 import { ReviewSummaryView } from "./review-summary-view";
 import { ReviewResultsView } from "./review-results-view";
-import type { ReviewIssue, ReviewResult, ReviewMode } from "@stargazer/schemas/review";
-import { useReviewErrorHandler } from "../hooks";
+import type { ReviewIssue, ReviewResult } from "@stargazer/schemas/review";
+import { isApiError, useReviewErrorHandler } from "../hooks";
 import { api } from "@/lib/api";
-
-type ReviewView = "progress" | "summary" | "results";
 
 interface ReviewData {
   issues: ReviewIssue[];
   reviewId: string | null;
 }
 
+type ReviewState =
+  | { phase: "checking-status" }
+  | { phase: "loading-saved" }
+  | { phase: "streaming" }
+  | { phase: "summary"; reviewData: ReviewData }
+  | { phase: "results"; reviewData: ReviewData };
+
+type ReviewAction =
+  | { type: "START_CHECK" }
+  | { type: "START_LOAD_SAVED" }
+  | { type: "CHECK_DONE" }
+  | { type: "SHOW_STREAMING" }
+  | { type: "SHOW_SUMMARY"; reviewData: ReviewData }
+  | { type: "SHOW_RESULTS"; reviewData: ReviewData };
+
+function reviewReducer(_state: ReviewState, action: ReviewAction): ReviewState {
+  switch (action.type) {
+    case "START_CHECK":
+      return { phase: "checking-status" };
+    case "START_LOAD_SAVED":
+      return { phase: "loading-saved" };
+    case "CHECK_DONE":
+    case "SHOW_STREAMING":
+      return { phase: "streaming" };
+    case "SHOW_SUMMARY":
+      return { phase: "summary", reviewData: action.reviewData };
+    case "SHOW_RESULTS":
+      return { phase: "results", reviewData: action.reviewData };
+  }
+}
+
 export function ReviewPage() {
   const params = useParams({ strict: false });
   const search = useSearch({ strict: false });
-  const reviewMode: ReviewMode = (search as { mode?: ReviewMode }).mode ?? "unstaged";
-  const [view, setView] = useState<ReviewView>("progress");
-  const [reviewData, setReviewData] = useState<ReviewData>({
-    issues: [],
-    reviewId: null,
-  });
-  const [isLoadingSaved, setIsLoadingSaved] = useState(false);
-  const [isCheckingStatus, setIsCheckingStatus] = useState(!!params.reviewId);
-  const [statusCheckDone, setStatusCheckDone] = useState(false);
+  const reviewMode = search.mode ?? "unstaged";
+
+  const hasReviewId = !!params.reviewId;
+  const [state, dispatch] = useReducer(
+    reviewReducer,
+    hasReviewId ? { phase: "checking-status" as const } : { phase: "streaming" as const },
+  );
+
   const initialReviewIdRef = useRef(params.reviewId);
+  const statusCheckDoneRef = useRef(false);
   const router = useRouter();
   const { handleApiError } = useReviewErrorHandler();
 
   const handleResumeFailed = useCallback(
     async (reviewId: string) => {
-      setIsLoadingSaved(true);
+      dispatch({ type: "START_LOAD_SAVED" });
       try {
         const { review } = await api.getReview(reviewId);
         if (!review?.result) {
@@ -44,15 +73,12 @@ export function ReviewPage() {
           return;
         }
         const result = review.result as ReviewResult;
-        setReviewData({
-          issues: result.issues,
-          reviewId: review.metadata.id,
+        dispatch({
+          type: "SHOW_RESULTS",
+          reviewData: { issues: result.issues, reviewId: review.metadata.id },
         });
-        setView("results");
       } catch (error) {
         handleApiError(error);
-      } finally {
-        setIsLoadingSaved(false);
       }
     },
     [handleApiError],
@@ -64,20 +90,19 @@ export function ReviewPage() {
         handleResumeFailed(data.reviewId);
         return;
       }
-      setReviewData(data);
-      setView("summary");
+      dispatch({ type: "SHOW_SUMMARY", reviewData: data });
     },
     [handleResumeFailed],
   );
 
   useEffect(() => {
-    if (!initialReviewIdRef.current || !params.reviewId || statusCheckDone)
+    if (!initialReviewIdRef.current || !params.reviewId || statusCheckDoneRef.current)
       return;
 
     const controller = new AbortController();
 
     const checkStatus = async () => {
-      setIsCheckingStatus(true);
+      dispatch({ type: "START_CHECK" });
       try {
         const { review } = await api.getReview(params.reviewId!);
 
@@ -85,13 +110,11 @@ export function ReviewPage() {
 
         if (review?.result) {
           const result = review.result as ReviewResult;
-          setReviewData({
-            issues: result.issues,
-            reviewId: review.metadata.id,
+          statusCheckDoneRef.current = true;
+          dispatch({
+            type: "SHOW_RESULTS",
+            reviewData: { issues: result.issues, reviewId: review.metadata.id },
           });
-          setView("results");
-          setStatusCheckDone(true);
-          setIsCheckingStatus(false);
           return;
         }
 
@@ -99,24 +122,23 @@ export function ReviewPage() {
       } catch (error) {
         if (controller.signal.aborted) return;
 
-        if (typeof error === 'object' && error !== null && 'status' in error && (error as { status: number }).status === 404) {
-          setStatusCheckDone(true);
+        if (isApiError(error) && error.status === 404) {
+          statusCheckDoneRef.current = true;
+          dispatch({ type: "CHECK_DONE" });
           return;
         }
 
         handleApiError(error);
-      } finally {
-        setIsCheckingStatus(false);
       }
     };
 
     checkStatus();
 
     return () => controller.abort();
-  }, [params.reviewId, statusCheckDone, handleApiError]);
+  }, [params.reviewId, handleApiError]);
 
-  if (view === "progress") {
-    if (isLoadingSaved || isCheckingStatus) {
+  switch (state.phase) {
+    case "checking-status":
       return (
         <div className="flex flex-1 items-center justify-center">
           <div
@@ -124,29 +146,45 @@ export function ReviewPage() {
             role="status"
             aria-live="polite"
           >
-            {isCheckingStatus ? "Checking review..." : "Loading review..."}
+            Checking review...
           </div>
         </div>
       );
-    }
-    return <ReviewContainer mode={reviewMode} onComplete={handleComplete} />;
-  }
 
-  if (view === "summary") {
-    return (
-      <ReviewSummaryView
-        issues={reviewData.issues}
-        reviewId={reviewData.reviewId}
-        onEnterReview={() => setView("results")}
-        onBack={() => router.history.back()}
-      />
-    );
-  }
+    case "loading-saved":
+      return (
+        <div className="flex flex-1 items-center justify-center">
+          <div
+            className="text-gray-500 font-mono text-sm"
+            role="status"
+            aria-live="polite"
+          >
+            Loading review...
+          </div>
+        </div>
+      );
 
-  return (
-    <ReviewResultsView
-      issues={reviewData.issues}
-      reviewId={reviewData.reviewId}
-    />
-  );
+    case "streaming":
+      return <ReviewContainer mode={reviewMode} onComplete={handleComplete} />;
+
+    case "summary":
+      return (
+        <ReviewSummaryView
+          issues={state.reviewData.issues}
+          reviewId={state.reviewData.reviewId}
+          onEnterReview={() =>
+            dispatch({ type: "SHOW_RESULTS", reviewData: state.reviewData })
+          }
+          onBack={() => router.history.back()}
+        />
+      );
+
+    case "results":
+      return (
+        <ReviewResultsView
+          issues={state.reviewData.issues}
+          reviewId={state.reviewData.reviewId}
+        />
+      );
+  }
 }

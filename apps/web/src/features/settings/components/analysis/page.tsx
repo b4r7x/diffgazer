@@ -8,9 +8,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WizardLayout } from "../wizard-layout";
 import { useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
+import { useSettings } from "@/hooks/use-settings";
 import { SETTINGS_SHORTCUTS } from "@/config/navigation";
 import { api } from "@/lib/api";
-import type { SettingsConfig } from "@stargazer/schemas/config";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@stargazer/schemas/events";
 import type { LensId } from "@stargazer/schemas/review";
 
@@ -28,11 +28,11 @@ const LENS_OPTIONS = (Object.entries(LENS_TO_AGENT) as Array<[LensId, keyof type
 
 export function SettingsAnalysisPage() {
   const navigate = useNavigate();
-  const [settings, setSettings] = useState<SettingsConfig | null>(null);
+  const { settings, isLoading: settingsLoading } = useSettings();
   const [selectedLenses, setSelectedLenses] = useState<LensId[]>([]);
+  const [lensesInitialized, setLensesInitialized] = useState(false);
   const [contextStatus, setContextStatus] = useState<"loading" | "ready" | "missing" | "error">("loading");
   const [contextGeneratedAt, setContextGeneratedAt] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,39 +40,33 @@ export function SettingsAnalysisPage() {
   usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
   useKey("Escape", () => navigate({ to: "/settings" }));
 
+  // Initialize selected lenses from settings once loaded
+  useEffect(() => {
+    if (!settings || lensesInitialized) return;
+    const lenses = settings.defaultLenses && settings.defaultLenses.length > 0
+      ? settings.defaultLenses
+      : LENS_OPTIONS.map((lens) => lens.id);
+    setSelectedLenses(lenses);
+    setLensesInitialized(true);
+  }, [settings, lensesInitialized]);
+
+  // Fetch review context separately (not a settings call)
   useEffect(() => {
     let active = true;
-
-    Promise.all([api.getSettings(), api.getReviewContext().catch(() => null)])
-      .then(([data, context]) => {
+    api.getReviewContext()
+      .then((context) => {
         if (!active) return;
-        setSettings(data);
-        const lenses = data.defaultLenses && data.defaultLenses.length > 0
-          ? data.defaultLenses
-          : LENS_OPTIONS.map((lens) => lens.id);
-        setSelectedLenses(lenses);
-
-        if (context) {
-          setContextStatus("ready");
-          setContextGeneratedAt(context.meta.generatedAt);
-        } else {
-          setContextStatus("missing");
-        }
+        setContextStatus("ready");
+        setContextGeneratedAt(context.meta.generatedAt);
       })
-      .catch((err) => {
+      .catch(() => {
         if (!active) return;
-        setError(err instanceof Error ? err.message : "Failed to load settings");
-        setContextStatus("error");
-      })
-      .finally(() => {
-        if (!active) return;
-        setIsLoading(false);
+        setContextStatus("missing");
       });
-
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, []);
+
+  const isLoading = settingsLoading || !lensesInitialized;
 
   const hasLensSelection = selectedLenses.length > 0;
 

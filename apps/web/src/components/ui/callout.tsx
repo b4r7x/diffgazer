@@ -61,10 +61,11 @@ export function Callout({
   variant = "info",
   title,
   children,
+  role = "status",
   ...props
 }: CalloutProps) {
   return (
-    <div className={cn(calloutVariants({ variant }), className)} {...props}>
+    <div role={role} className={cn(calloutVariants({ variant }), className)} {...props}>
       <div className={iconVariants({ variant })}>{icons[variant!]}</div>
       <div className={textVariants({ variant })}>
         {title && <span className="font-bold block mb-1">{title}</span>}

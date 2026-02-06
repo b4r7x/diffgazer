@@ -1,5 +1,6 @@
 import { createContext, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { ResolvedTheme, ThemeContextValue, WebTheme } from "@/types/theme";
+import { useSettings } from "@/hooks/use-settings";
 import { api } from "@/lib/api";
 
 function subscribeToSystemTheme(callback: () => void): () => void {
@@ -33,6 +34,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     return resolveWebTheme(localStorage.getItem(STORAGE_KEY));
   });
 
+  const { settings } = useSettings();
+
   const systemTheme = useSyncExternalStore(
     subscribeToSystemTheme,
     getSystemTheme,
@@ -42,26 +45,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const resolved: ResolvedTheme = theme === "auto" ? systemTheme : theme;
 
   useEffect(() => {
-    let isMounted = true;
-
-    api
-      .getSettings()
-      .then((settings) => {
-        if (!isMounted) return;
-        if (settings?.theme) {
-          const webTheme = mapSettingsTheme(settings.theme);
-          setThemeState(webTheme);
-          localStorage.setItem(STORAGE_KEY, webTheme);
-        }
-      })
-      .catch(() => {
-        // Fallback: keep local storage value
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    if (settings?.theme) {
+      const webTheme = mapSettingsTheme(settings.theme);
+      setThemeState(webTheme);
+      localStorage.setItem(STORAGE_KEY, webTheme);
+    }
+  }, [settings]);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", resolved);
