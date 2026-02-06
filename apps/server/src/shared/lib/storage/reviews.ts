@@ -11,7 +11,8 @@ import {
 import { createCollection } from "./persistence.js";
 import type { StoreError, DateFieldsOf, SaveReviewOptions } from "./types.js";
 import { getGlobalStargazerDir } from "../paths.js";
-import { type Result, ok, calculateSeverityCounts } from "@stargazer/core";
+import { type Result, ok } from "@stargazer/core/result";
+import { calculateSeverityCounts } from "@stargazer/core/severity";
 
 function filterByProjectAndSort<T extends { projectPath: string }>(
   items: T[],

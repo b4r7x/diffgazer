@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { type Result, ok, err, createError } from "@stargazer/core";
+import { type Result, ok, err } from "@stargazer/core/result";
+import { createError } from "@stargazer/core/errors";
 import type { DrilldownResult, TraceRef, ReviewIssue, ReviewResult } from "@stargazer/schemas/review";
 import { ErrorCode } from "@stargazer/schemas/errors";
 import type { AgentStreamEvent } from "@stargazer/schemas/events";

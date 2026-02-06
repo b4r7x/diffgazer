@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
-import { type Result, ok, err, createError } from "@stargazer/core";
+import { type Result, ok, err } from "@stargazer/core/result";
+import { createError } from "@stargazer/core/errors";
 import type { SecretsStorageError, SecretsStorageErrorCode } from "./types.js";
 
 type KeyringModule = typeof import("@napi-rs/keyring");

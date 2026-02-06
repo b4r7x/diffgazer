@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
-import { AsciiLogo, Button } from "@/components/ui";
+import { AsciiLogo } from "@/components/ui/ascii-logo";
+import { Button } from "@/components/ui/button";
 
 type ProviderStatus = "active" | "idle" | "error";
 

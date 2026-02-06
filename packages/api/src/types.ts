@@ -1,4 +1,4 @@
-import type { AIProvider, TrustConfig } from "@stargazer/schemas/config";
+import type { TrustConfig } from "@stargazer/schemas/config";
 import type {
   ReviewMode,
   ReviewMetadata,
@@ -45,11 +45,6 @@ export interface TrustResponse {
 
 export interface TrustListResponse {
   projects: TrustConfig[];
-}
-
-export interface ActivateProviderResponse {
-  provider: AIProvider;
-  model?: string;
 }
 
 export interface ReviewContextResponse {

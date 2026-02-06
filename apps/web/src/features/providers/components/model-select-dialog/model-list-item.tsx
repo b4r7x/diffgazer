@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { ModelInfo } from "@stargazer/schemas/config";
 

@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useKey, useFooterNavigation } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { Panel, PanelHeader, PanelContent, PathList, Button } from "@/components/ui";
+import { Panel, PanelHeader, PanelContent } from "@/components/ui/containers";
+import { PathList } from "@/components/ui/path-list";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { SystemDiagnostics } from "@/types/diagnostics";
 import { api } from "@/lib/api";
-import type { ReviewContextResponse } from "@stargazer/api";
+import type { ReviewContextResponse } from "@stargazer/api/types";
 
 const DIAGNOSTICS: SystemDiagnostics = {
   version: "v1.4.2",

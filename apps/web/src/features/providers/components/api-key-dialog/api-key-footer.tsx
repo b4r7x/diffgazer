@@ -1,6 +1,7 @@
 "use client";
 
-import { DialogFooter, Button } from "@/components/ui";
+import { DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { FocusElement } from "./api-key-dialog";
 

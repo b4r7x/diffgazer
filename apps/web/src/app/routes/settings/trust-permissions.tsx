@@ -3,7 +3,8 @@ import { useNavigate } from "@tanstack/react-router";
 import type { TrustCapabilities } from "@stargazer/schemas/config";
 import { useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { useToast, Panel, PanelHeader, PanelContent } from "@/components/ui";
+import { useToast } from "@/components/ui/toast";
+import { Panel, PanelHeader, PanelContent } from "@/components/ui/containers";
 import { TrustPermissionsContent } from "@/components/settings";
 import { useConfig, useTrust } from "@/features/settings";
 

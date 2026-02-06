@@ -1,8 +1,8 @@
 import { Outlet } from "@tanstack/react-router";
-import { Button } from "@/components/ui";
+import { Button } from "@/components/ui/button";
 import { GlobalLayout } from "@/components/layout";
 import { FooterProvider } from "@/components/layout";
-import { ToastProvider } from "@/components/ui";
+import { ToastProvider } from "@/components/ui/toast";
 import { useServerStatus } from "@/hooks/use-server-status";
 
 export function RootLayout() {

@@ -1,8 +1,10 @@
-import { type Result, ok, err, createError, getErrorMessage } from "@stargazer/core";
+import { type Result, ok, err } from "@stargazer/core/result";
+import { createError, getErrorMessage } from "@stargazer/core/errors";
 import type { AIProvider } from "@stargazer/schemas/config";
 import { ErrorCode } from "@stargazer/schemas/errors";
 import type { SecretsStorageError } from "../../shared/lib/config/types.js";
 import type {
+  ActivateProviderResponse,
   ConfigCheckResponse,
   CurrentConfigResponse as ConfigResponse,
   DeleteConfigResponse,
@@ -13,7 +15,6 @@ import type {
   ProvidersStatusResponse,
   SaveConfigRequest,
 } from "@stargazer/schemas/config";
-import type { ActivateProviderResponse } from "@stargazer/api";
 import {
   activateProvider as activateProviderInStore,
   deleteProviderCredentials,

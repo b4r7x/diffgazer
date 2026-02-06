@@ -1,6 +1,6 @@
 'use client';
 
-import { formatTimestamp } from '@stargazer/core';
+import { formatTimestamp } from '@stargazer/core/format';
 import { cn } from '../../../lib/utils';
 import type { LogTagType } from '@stargazer/schemas/ui';
 import { Badge } from '../badge';

@@ -8,13 +8,13 @@ import { useConfig } from '@/features/settings/hooks/use-config';
 import { OPENROUTER_PROVIDER_ID } from '@/features/providers/constants';
 import type { SettingsConfig } from '@stargazer/schemas/config';
 import { convertAgentEventsToLogEntries } from '@stargazer/core/review';
-import type { ProgressStepData, ProgressStatus } from '@/components/ui';
+import type { ProgressStepData, ProgressStatus } from '@/components/ui/progress';
 import type { StepState, AgentState, AgentStatus } from '@stargazer/schemas/events';
 import type { ProgressSubstepData } from '@stargazer/schemas/ui';
 import type { ReviewMode } from '../types';
 import { LensIdSchema, type LensId } from '@stargazer/schemas/review';
 import type { ReviewIssue } from '@stargazer/schemas/review';
-import type { ReviewContextResponse } from '@stargazer/api';
+import type { ReviewContextResponse } from '@stargazer/api/types';
 import { api } from '@/lib/api';
 
 export interface ReviewCompleteData {

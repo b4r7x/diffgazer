@@ -1,19 +1,11 @@
 import { cn } from "@/lib/utils";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-  CodeSnippet,
-  DiffView,
-  FixPlanChecklist,
-  FocusablePane,
-  SectionHeader,
-  EmptyState,
-  IssueHeader,
-  SecurityBadge,
-  type CodeLine
-} from "@/components/ui";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { CodeSnippet, DiffView, FixPlanChecklist, type CodeLine } from "@/components/ui/review";
+import { FocusablePane } from "@/components/ui/focusable-pane";
+import { SectionHeader } from "@/components/ui/section-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { IssueHeader } from "@/components/ui/issue";
+import { SecurityBadge } from "@/components/ui/badge";
 import type { ReviewSeverity, ReviewIssue } from "@stargazer/schemas/review";
 import type { TabId } from "../types";
 

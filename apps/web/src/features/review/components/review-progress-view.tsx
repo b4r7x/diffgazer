@@ -1,12 +1,17 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { cn } from '@/lib/utils';
-import { PanelHeader, ProgressList, ActivityLog, Timer, MetricItem, Badge, Callout } from '@/components/ui';
+import { PanelHeader } from '@/components/ui/containers';
+import { ProgressList, type ProgressStepData } from '@/components/ui/progress';
+import { ActivityLog, type LogEntryData } from '@/components/ui/activity-log';
+import { Timer } from '@/components/ui/timer';
+import { MetricItem } from '@/components/ui/metric-item';
+import { Badge } from '@/components/ui/badge';
+import { Callout } from '@/components/ui/callout';
 import { useScope, useKey } from '@/hooks/keyboard';
 import { usePageFooter } from '@/hooks/use-page-footer';
-import type { ProgressStepData, LogEntryData } from '@/components/ui';
 import type { AgentState } from '@stargazer/schemas/events';
-import type { ReviewContextResponse } from '@stargazer/api';
+import type { ReviewContextResponse } from '@stargazer/api/types';
 import type { ReviewProgressMetrics } from '../types';
 
 const PROGRESS_SHORTCUTS = [

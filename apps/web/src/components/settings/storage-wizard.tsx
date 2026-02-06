@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { SecretsStorage } from "@stargazer/schemas/config";
-import { Button, Callout } from "@/components/ui";
+import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
 import { WizardLayout } from "./wizard-layout";
 import { StorageSelectorContent } from "./storage-selector-content";
 
