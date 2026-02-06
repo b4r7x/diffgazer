@@ -1,3 +1,3 @@
-import { ProvidersPage } from "@/features/providers/components/providers-page";
+import { ProvidersPage } from "@/features/providers/components/page";
 
 export { ProvidersPage as ProviderSettingsPage };

@@ -21,10 +21,6 @@ export interface PanelContentProps {
   spacing?: "none" | "sm" | "md";
 }
 
-export interface PanelDividerProps {
-  className?: string;
-}
-
 const spacingClasses: Record<NonNullable<PanelContentProps["spacing"]>, string> = {
   none: "",
   sm: "space-y-2",
@@ -79,10 +75,6 @@ export function PanelContent({
   spacing = "md",
 }: PanelContentProps) {
   return <div className={cn("p-4 text-sm", spacingClasses[spacing], className)}>{children}</div>;
-}
-
-export function PanelDivider({ className }: PanelDividerProps) {
-  return <div className={cn("my-1 border-t border-tui-border mx-4 opacity-50", className)} />;
 }
 
 export function Panel({ children, className, borderless }: PanelProps) {

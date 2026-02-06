@@ -10,7 +10,6 @@ export function useProviderManagement() {
     saveApiKey,
     removeApiKey,
     selectProvider,
-    refetch,
   } = useProviders();
   const { showToast } = useToast();
 
@@ -27,7 +26,6 @@ export function useProviderManagement() {
     setIsSubmitting(true);
     try {
       await saveApiKey(providerId, value);
-      await refetch();
       setApiKeyDialogOpen(false);
       showToast({ variant: "success", title: "API Key Saved", message: "Provider configured" });
       if (opts?.openModelDialog) {
@@ -38,14 +36,13 @@ export function useProviderManagement() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [isSubmitting, saveApiKey, refetch, showToast]);
+  }, [isSubmitting, saveApiKey, showToast]);
 
   const handleRemoveKey = useCallback(async (providerId: AIProvider) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
       await removeApiKey(providerId);
-      await refetch();
       setApiKeyDialogOpen(false);
       showToast({ variant: "success", title: "API Key Removed", message: "Provider key deleted" });
     } catch (error) {
@@ -53,7 +50,7 @@ export function useProviderManagement() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [isSubmitting, removeApiKey, refetch, showToast]);
+  }, [isSubmitting, removeApiKey, showToast]);
 
   const handleSelectProvider = useCallback(async (
     providerId: AIProvider,
@@ -69,21 +66,19 @@ export function useProviderManagement() {
     setIsSubmitting(true);
     try {
       await selectProvider(providerId, model);
-      await refetch();
       showToast({ variant: "success", title: "Provider Activated", message: `${providerName} is now active` });
     } catch (error) {
       showToast({ variant: "error", title: "Failed to Activate", message: error instanceof Error ? error.message : "Unknown error" });
     } finally {
       setIsSubmitting(false);
     }
-  }, [isSubmitting, selectProvider, refetch, showToast]);
+  }, [isSubmitting, selectProvider, showToast]);
 
   const handleSelectModel = useCallback(async (providerId: AIProvider, modelId: string) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
       await selectProvider(providerId, modelId);
-      await refetch();
       setModelDialogOpen(false);
       showToast({ variant: "success", title: "Model Selected", message: `Selected ${modelId}` });
     } catch (error) {
@@ -91,7 +86,7 @@ export function useProviderManagement() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [isSubmitting, selectProvider, refetch, showToast]);
+  }, [isSubmitting, selectProvider, showToast]);
 
   return {
     providers,

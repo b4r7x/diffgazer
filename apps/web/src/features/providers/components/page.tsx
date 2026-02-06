@@ -1,15 +1,13 @@
-import { useState, useMemo, useEffect, useRef } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import { useKey } from "@/hooks/keyboard";
-import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
+import { useState, useMemo, useRef } from "react";
 import { usePageFooter } from "@/hooks/use-page-footer";
+import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { ProviderList } from "@/features/providers/components/provider-list";
-import { FILTER_VALUES } from "@/features/providers/components/provider-list";
 import { ProviderDetails } from "@/features/providers/components/provider-details";
 import type { ProviderFilter } from "@/features/providers/constants";
 import { ApiKeyDialog } from "@/features/providers/components/api-key-dialog/api-key-dialog";
 import { ModelSelectDialog } from "@/features/providers/components/model-select-dialog/model-select-dialog";
 import { useProviderManagement } from "@/features/providers/hooks/use-provider-management";
+import { useProvidersKeyboard } from "@/features/providers/hooks/use-providers-keyboard";
 import { PROVIDER_ENV_VARS } from "@stargazer/schemas/config";
 import { PROVIDER_CAPABILITIES } from "@/config/constants";
 
@@ -21,19 +19,12 @@ const FOOTER_SHORTCUTS = [
   { key: "Esc", label: "Back" },
 ];
 
-type FocusZone = "input" | "filters" | "list" | "buttons";
-
 export function ProvidersPage() {
-  const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [selectedId, setSelectedId] = useScopedRouteState<string | null>("providerId", null);
   const [filter, setFilter] = useState<ProviderFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
-
-  const [focusZone, setFocusZone] = useState<FocusZone>("list");
-  const [filterIndex, setFilterIndex] = useState(0);
-  const [buttonIndex, setButtonIndex] = useState(0);
 
   const {
     providers,
@@ -78,118 +69,31 @@ export function ProvidersPage() {
     [filteredProviders]
   );
 
-  const selectedProvider = selectedId
-    ? providersWithStatus.find((p) => p.id === selectedId) ?? null
-    : providersWithStatus[0] ?? null;
+  const effectiveSelectedId = selectedId ?? providersWithStatus[0]?.id ?? null;
 
-  useEffect(() => {
-    if (selectedId === null && selectedProvider) {
-      setSelectedId(selectedProvider.id);
-    }
-  }, [selectedId, selectedProvider, setSelectedId]);
-
-  useEffect(() => {
-    if (focusZone === "input") {
-      inputRef.current?.focus();
-    } else {
-      inputRef.current?.blur();
-    }
-  }, [focusZone]);
-
-  const handleListBoundary = (direction: "up" | "down") => {
-    if (direction === "up") {
-      setFocusZone("filters");
-      setFilterIndex(FILTER_VALUES.indexOf(filter));
-    }
-  };
+  const selectedProvider = effectiveSelectedId
+    ? providersWithStatus.find((p) => p.id === effectiveSelectedId) ?? null
+    : null;
 
   const dialogOpen = apiKeyDialogOpen || modelDialogOpen;
-  const inInput = focusZone === "input";
-  const inFilters = focusZone === "filters";
-  const inList = focusZone === "list";
-  const inButtons = focusZone === "buttons";
-  const canRemoveKey = selectedProvider?.hasApiKey ?? false;
   const needsOpenRouterModel = selectedProvider?.id === "openrouter" && !selectedProvider?.model;
 
-  const getNextButtonIndex = (current: number, direction: 1 | -1) => {
-    const enabled = [!needsOpenRouterModel, true, canRemoveKey, true];
-    let next = current + direction;
-    while (next >= 0 && next < 4) {
-      if (enabled[next]) return next;
-      next += direction;
-    }
-    return current;
-  };
-
-  useKey("ArrowDown", () => setFocusZone("filters"),
-    { enabled: !dialogOpen && inInput, allowInInput: true });
-  useKey("Escape", () => setFocusZone("filters"),
-    { enabled: !dialogOpen && inInput, allowInInput: true });
-
-  useKey("ArrowUp", () => setFocusZone("input"),
-    { enabled: !dialogOpen && inFilters });
-  useKey("ArrowDown", () => {
-    setFocusZone("list");
-    if (filteredProviders.length > 0) {
-      setSelectedId(filteredProviders[0].id);
-    }
-  }, { enabled: !dialogOpen && inFilters });
-  useKey("ArrowLeft", () => setFilterIndex((i) => Math.max(0, i - 1)),
-    { enabled: !dialogOpen && inFilters });
-  useKey("ArrowRight", () => setFilterIndex((i) => Math.min(FILTER_VALUES.length - 1, i + 1)),
-    { enabled: !dialogOpen && inFilters });
-  useKey("Enter", () => setFilter(FILTER_VALUES[filterIndex]),
-    { enabled: !dialogOpen && inFilters });
-  useKey(" ", () => setFilter(FILTER_VALUES[filterIndex]),
-    { enabled: !dialogOpen && inFilters });
-
-  useKey("ArrowRight", () => { setFocusZone("buttons"); setButtonIndex(getNextButtonIndex(-1, 1)); },
-    { enabled: !dialogOpen && inList && !!selectedProvider });
-
-  useKey("ArrowLeft", () => {
-    if (buttonIndex === 0) {
-      setFocusZone("list");
-    } else {
-      setButtonIndex((i) => getNextButtonIndex(i, -1));
-    }
-  }, { enabled: !dialogOpen && inButtons });
-
-  useKey("ArrowRight", () => setButtonIndex((i) => getNextButtonIndex(i, 1)),
-    { enabled: !dialogOpen && inButtons });
-
-  useKey("ArrowUp", () => setButtonIndex((i) => getNextButtonIndex(i, -1)),
-    { enabled: !dialogOpen && inButtons });
-  useKey("ArrowDown", () => setButtonIndex((i) => getNextButtonIndex(i, 1)),
-    { enabled: !dialogOpen && inButtons });
-
-  useKey("Enter", () => handleButtonAction(buttonIndex),
-    { enabled: !dialogOpen && inButtons });
-  useKey(" ", () => handleButtonAction(buttonIndex),
-    { enabled: !dialogOpen && inButtons });
-
-  useKey("Escape", () => navigate({ to: "/settings" }), { enabled: !dialogOpen && !inInput });
-
-  useKey("/", () => {
-    setFocusZone("input");
-  }, { enabled: !dialogOpen && !inInput });
-
-  useEffect(() => {
-    if (!selectedProvider && focusZone === "buttons") {
-      setFocusZone("list");
-    }
-  }, [selectedProvider, focusZone]);
+  const { focusZone, filterIndex, buttonIndex, handleListBoundary } = useProvidersKeyboard({
+    selectedId: effectiveSelectedId,
+    selectedProvider,
+    filteredProviders: providersWithStatus,
+    filter,
+    setFilter,
+    setSelectedId,
+    dialogOpen,
+    inputRef,
+    onSetApiKey: () => setApiKeyDialogOpen(true),
+    onSelectModel: () => setModelDialogOpen(true),
+    onRemoveKey: handleRemoveKey,
+    onSelectProvider: handleSelectProvider,
+  });
 
   usePageFooter({ shortcuts: FOOTER_SHORTCUTS });
-
-  const handleButtonAction = (index: number) => {
-    if (!selectedProvider) return;
-    switch (index) {
-      case 0: if (!needsOpenRouterModel) void handleSelectProvider(selectedProvider.id, selectedProvider.name, selectedProvider.model); break;
-      case 1: setApiKeyDialogOpen(true); break;
-      case 2: if (selectedProvider.hasApiKey) void handleRemoveKey(selectedProvider.id); break;
-      case 3: setModelDialogOpen(true); break;
-    }
-  };
 
   if (isLoading) {
     return (
@@ -204,16 +108,16 @@ export function ProvidersPage() {
       <div className="w-2/5 flex flex-col border-r border-tui-border">
         <ProviderList
           providers={providersWithStatus}
-          selectedId={selectedId}
+          selectedId={effectiveSelectedId}
           onSelect={setSelectedId}
           filter={filter}
           onFilterChange={setFilter}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          keyboardEnabled={inList && !dialogOpen}
+          keyboardEnabled={focusZone === "list" && !dialogOpen}
           onBoundaryReached={handleListBoundary}
           inputRef={inputRef}
-          focusedFilterIndex={inFilters ? filterIndex : undefined}
+          focusedFilterIndex={focusZone === "filters" ? filterIndex : undefined}
         />
       </div>
       <div className="w-3/5 flex flex-col bg-[#0b0e14]">

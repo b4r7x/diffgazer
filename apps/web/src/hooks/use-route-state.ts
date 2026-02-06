@@ -74,27 +74,3 @@ export function useRouteState<T>(
 
   return [state, setState];
 }
-
-export function clearRouteState(scope?: string): void {
-  if (!scope) {
-    routeStateStore.clear();
-  } else {
-    const keysToDelete: string[] = [];
-    routeStateStore.forEach((_, key) => {
-      if (key.startsWith(`${scope}:`)) {
-        keysToDelete.push(key);
-      }
-    });
-    keysToDelete.forEach((key) => routeStateStore.delete(key));
-  }
-  emitChange();
-}
-
-export function clearAllRouteState(): void {
-  routeStateStore.clear();
-  emitChange();
-}
-
-export function getRouteStateSize(): number {
-  return routeStateStore.size;
-}

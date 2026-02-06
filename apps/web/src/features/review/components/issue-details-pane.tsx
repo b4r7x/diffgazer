@@ -7,7 +7,7 @@ import { FocusablePane } from "@/components/ui/focusable-pane";
 import { SectionHeader } from "@/components/ui/section-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { IssueHeader } from "./issue-header";
-import { SecurityBadge } from "./security-badge";
+
 import type { ReviewIssue } from "@stargazer/schemas/review";
 import type { TabId } from "../types";
 
@@ -114,12 +114,6 @@ function DetailsTabContent({
       <div className="mb-6">
         <SectionHeader>WHY IT MATTERS</SectionHeader>
         <p className="text-sm leading-relaxed text-gray-300">{issue.whyItMatters}</p>
-        {issue.category === "security" && (
-          <div className="mt-2 flex gap-2">
-            <SecurityBadge type="CWE" code="89" />
-            <SecurityBadge type="OWASP" code="A03" />
-          </div>
-        )}
       </div>
 
       {issue.fixPlan && issue.fixPlan.length > 0 && (

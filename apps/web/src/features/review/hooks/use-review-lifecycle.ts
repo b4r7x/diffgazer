@@ -1,0 +1,178 @@
+import { useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useParams } from '@tanstack/react-router';
+import { useReviewStream } from './use-review-stream';
+import { useReviewSettings } from './use-review-settings';
+import { useConfigContext } from '@/app/providers/config-provider';
+import { ReviewErrorCode } from '@stargazer/schemas/review';
+import type { ReviewIssue } from '@stargazer/schemas/review';
+import type { ReviewMode } from '../types';
+
+export interface ReviewCompleteData {
+  issues: ReviewIssue[];
+  reviewId: string | null;
+  resumeFailed?: boolean;
+}
+
+interface UseReviewLifecycleOptions {
+  mode: ReviewMode;
+  onComplete?: (data: ReviewCompleteData) => void;
+}
+
+export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptions) {
+  const navigate = useNavigate();
+  const params = useParams({ strict: false });
+  const { isConfigured, isLoading: configLoading, provider, model } = useConfigContext();
+  const { state, start, stop, resume } = useReviewStream();
+  const { loading: settingsLoading, defaultLenses } = useReviewSettings();
+
+  const hasStartedRef = useRef(false);
+  const hasStreamedRef = useRef(false);
+  const completeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onCompleteRef = useRef(onComplete);
+
+  // Track whether we've ever streamed
+  useEffect(() => {
+    if (state.isStreaming) {
+      hasStreamedRef.current = true;
+    }
+  }, [state.isStreaming]);
+
+  // Keep onComplete ref current
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  // Sync review ID to URL
+  useEffect(() => {
+    if (!state.reviewId) return;
+    if (params.reviewId === state.reviewId) return;
+
+    navigate({
+      to: '/review/$reviewId',
+      params: { reviewId: state.reviewId },
+      search: (prev: Record<string, unknown>) => prev,
+      replace: true,
+    });
+  }, [state.reviewId, params.reviewId, navigate]);
+
+  // Start or resume review
+  useEffect(() => {
+    if (hasStartedRef.current) return;
+    if (configLoading) return;
+    if (settingsLoading) return;
+    if (!isConfigured) return;
+    hasStartedRef.current = true;
+
+    let ignore = false;
+
+    const options = {
+      mode,
+      lenses: defaultLenses,
+    };
+
+    if (params.reviewId) {
+      resume(params.reviewId)
+        .then((result) => {
+          if (ignore) return;
+          if (result.ok) return;
+
+          if (result.error.code === ReviewErrorCode.SESSION_STALE) {
+            start(options);
+            return;
+          }
+
+          if (result.error.code === ReviewErrorCode.SESSION_NOT_FOUND) {
+            onCompleteRef.current?.({
+              issues: [],
+              reviewId: params.reviewId ?? null,
+              resumeFailed: true,
+            });
+          }
+        })
+        .catch(() => {
+          // Transport/runtime errors — hook already set error state.
+        });
+    } else {
+      if (!ignore) start(options);
+    }
+
+    return () => { ignore = true; };
+  }, [mode, start, resume, configLoading, isConfigured, params.reviewId, settingsLoading, defaultLenses]);
+
+  // Delay transition so users see final step completions before switching views
+  useEffect(() => {
+    if (!state.isStreaming && hasStreamedRef.current && !state.error) {
+      if (completeTimeoutRef.current) {
+        clearTimeout(completeTimeoutRef.current);
+      }
+
+      const reportStep = state.steps.find(s => s.id === 'report');
+      const reportCompleted = reportStep?.status === 'completed';
+      const delayMs = reportCompleted ? 2300 : 400;
+
+      completeTimeoutRef.current = setTimeout(() => {
+        onCompleteRef.current?.({ issues: state.issues, reviewId: state.reviewId });
+      }, delayMs);
+    }
+    return () => {
+      if (completeTimeoutRef.current) {
+        clearTimeout(completeTimeoutRef.current);
+      }
+    };
+  }, [state.isStreaming, state.steps, state.issues, state.reviewId, state.error]);
+
+  const handleCancel = useCallback(() => {
+    stop();
+    navigate({ to: '/' });
+  }, [stop, navigate]);
+
+  const handleViewResults = useCallback(() => {
+    if (completeTimeoutRef.current) {
+      clearTimeout(completeTimeoutRef.current);
+    }
+    stop();
+    onCompleteRef.current?.({ issues: state.issues, reviewId: state.reviewId });
+  }, [stop, state.issues, state.reviewId]);
+
+  const handleSetupProvider = useCallback(() => {
+    stop();
+    navigate({ to: '/settings/providers' });
+  }, [stop, navigate]);
+
+  const handleSwitchMode = useCallback(() => {
+    stop();
+    const newMode = mode === 'staged' ? 'unstaged' : 'staged';
+    navigate({ to: '/review', search: { mode: newMode }, replace: true });
+    hasStartedRef.current = false;
+  }, [stop, mode, navigate]);
+
+  const isNoDiffError =
+    state.error?.includes('No staged changes') ||
+    state.error?.includes('No unstaged changes');
+
+  const diffStep = state.steps.find(s => s.id === 'diff');
+  const isCheckingForChanges = state.isStreaming &&
+    diffStep?.status !== 'completed' &&
+    diffStep?.status !== 'error';
+
+  const isInitializing = !hasStartedRef.current && isConfigured && !configLoading;
+
+  const loadingMessage = configLoading || settingsLoading
+    ? 'Loading...'
+    : (isCheckingForChanges || isInitializing)
+      ? 'Checking for changes...'
+      : null;
+
+  return {
+    state,
+    isConfigured,
+    provider,
+    model,
+    loadingMessage,
+    isNoDiffError,
+    handleCancel,
+    handleViewResults,
+    handleSetupProvider,
+    handleSwitchMode,
+  };
+}

@@ -161,13 +161,13 @@ export function CheckboxGroup({
     }
   };
 
-  const toggle = (itemValue: string) => {
+  const toggle = React.useCallback((itemValue: string) => {
     if (disabled) return;
     const newValue = value.includes(itemValue)
       ? value.filter((v) => v !== itemValue)
       : [...value, itemValue];
     handleValueChange(newValue);
-  };
+  }, [disabled, value, handleValueChange]);
 
   const handleEnterKey = (itemValue: string) => {
     if (disabled) return;

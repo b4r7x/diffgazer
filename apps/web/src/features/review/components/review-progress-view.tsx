@@ -25,7 +25,6 @@ const PROGRESS_RIGHT_SHORTCUTS = [
 ];
 
 export interface ReviewProgressViewProps {
-  mode: 'unstaged' | 'staged' | 'files';
   steps: ProgressStepData[];
   entries: LogEntryData[];
   agents?: AgentState[];
@@ -39,7 +38,6 @@ export interface ReviewProgressViewProps {
 }
 
 export function ReviewProgressView({
-  mode: _mode,
   steps,
   entries,
   agents = [],

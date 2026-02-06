@@ -4,9 +4,7 @@ import { FocusablePane } from "@/components/ui/focusable-pane";
 import type { ReviewResult } from "@stargazer/schemas/review";
 import type { HistoryFocusZone } from "@/features/history/types";
 import { SEVERITY_ORDER } from "@stargazer/schemas/ui";
-import { useScope, useKey } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
-import { usePageFooter } from "@/hooks/use-page-footer";
 import { NavigationList } from "@/components/ui/navigation-list";
 import { RunAccordionItem } from "@/features/history/components/run-accordion-item";
 import { TimelineList } from "@/features/history/components/timeline-list";
@@ -14,33 +12,8 @@ import { HistoryInsightsPane } from "@/features/history/components/history-insig
 import { SearchInput } from "@/features/history/components/search-input";
 import { useReviews } from "@/features/history/hooks/use-reviews";
 import { useReviewDetail } from "@/features/history/hooks/use-review-detail";
-import { getDateKey, getTimestamp, getRunSummary, buildTimelineItems } from "@/features/history/utils";
-
-const HISTORY_FOOTER_SHORTCUTS = [
-  { key: "Tab", label: "Switch Focus" },
-  { key: "Enter", label: "Expand" },
-  { key: "o", label: "Open" },
-];
-
-const HISTORY_FOOTER_RIGHT_SHORTCUTS = [
-  { key: "r", label: "Resume" },
-  { key: "e", label: "Export" },
-  { key: "Esc", label: "Back" },
-];
-
-const FOCUS_LEFT: Record<HistoryFocusZone, HistoryFocusZone | null> = {
-  timeline: null,
-  runs: "timeline",
-  insights: "runs",
-  search: "insights",
-};
-
-const FOCUS_RIGHT: Record<HistoryFocusZone, HistoryFocusZone | null> = {
-  timeline: "runs",
-  runs: "insights",
-  insights: "search",
-  search: null,
-};
+import { useHistoryKeyboard } from "@/features/history/hooks/use-history-keyboard";
+import { getDateKey, getTimestamp, getRunSummary, buildTimelineItems, formatDuration } from "@/features/history/utils";
 
 export function HistoryPage() {
   const navigate = useNavigate();
@@ -74,7 +47,9 @@ export function HistoryPage() {
 
   const { review: reviewDetail } = useReviewDetail(selectedRunId);
 
-  const issues = (reviewDetail?.result as ReviewResult | undefined)?.issues;
+  const issues = reviewDetail?.result
+    ? (reviewDetail.result as ReviewResult).issues
+    : undefined;
 
   const severityCounts = selectedRun
     ? {
@@ -86,65 +61,20 @@ export function HistoryPage() {
       }
     : null;
 
-  const durationMs = selectedRun?.durationMs;
-  let duration = "--";
-  if (durationMs) {
-    const seconds = Math.floor(durationMs / 1000);
-    if (seconds === 0) duration = `${durationMs}ms`;
-    else if (seconds < 60) duration = `${seconds}.${Math.floor((durationMs % 1000) / 100)}s`;
-    else {
-      const minutes = Math.floor(seconds / 60);
-      duration = `${minutes}m ${seconds % 60}s`;
-    }
-  }
+  const duration = formatDuration(selectedRun?.durationMs);
 
   const sortedIssues = useMemo(() => {
     if (!issues) return [];
     return [...issues].sort((a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity));
   }, [issues]);
 
-  useScope("history");
-
-  useKey("Tab", () => {
-    const zones: HistoryFocusZone[] = ["search", "timeline", "runs", "insights"];
-    setFocusZone((prev) => zones[(zones.indexOf(prev) + 1) % zones.length]);
-  });
-
-  useKey("ArrowLeft", () => {
-    const next = FOCUS_LEFT[focusZone];
-    if (next) setFocusZone(next);
-  });
-
-  useKey("ArrowRight", () => {
-    const next = FOCUS_RIGHT[focusZone];
-    if (next) setFocusZone(next);
-  });
-
-  useKey("/", () => {
-    setFocusZone("search");
-    searchInputRef.current?.focus();
-  }, { enabled: focusZone !== "search" });
-
-  const navigateToSelectedRun = () => {
-    if (selectedRunId) {
-      navigate({ to: "/review/$reviewId", params: { reviewId: selectedRunId } });
-    }
-  };
-
-  useKey("o", navigateToSelectedRun, { enabled: focusZone === "runs" });
-  useKey(" ", navigateToSelectedRun, { enabled: focusZone === "runs" });
-
-  useKey("Escape", () => {
-    if (expandedRunId) {
-      setExpandedRunId(null);
-    } else {
-      navigate({ to: "/" });
-    }
-  });
-
-  usePageFooter({
-    shortcuts: HISTORY_FOOTER_SHORTCUTS,
-    rightShortcuts: HISTORY_FOOTER_RIGHT_SHORTCUTS
+  useHistoryKeyboard({
+    focusZone,
+    setFocusZone,
+    selectedRunId,
+    expandedRunId,
+    setExpandedRunId,
+    searchInputRef,
   });
 
   const handleTimelineBoundary = (direction: "up" | "down") => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useRef, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,8 +8,6 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import { useKey } from "@/hooks/keyboard";
-import { useScrollIntoView } from "@/hooks/use-scroll-into-view";
 import {
   GEMINI_MODEL_INFO,
   GLM_MODEL_INFO,
@@ -18,12 +16,11 @@ import {
 import { OPENROUTER_PROVIDER_ID } from "@/config/constants";
 import { useModelFilter } from "../../hooks/use-model-filter";
 import { useOpenRouterModels } from "../../hooks/use-openrouter-models";
+import { useModelDialogKeyboard } from "../../hooks/use-model-dialog-keyboard";
 import { ModelSearchInput } from "./model-search-input";
-import { ModelFilterTabs, FILTERS } from "./model-filter-tabs";
+import { ModelFilterTabs } from "./model-filter-tabs";
 import { ModelList } from "./model-list";
 import { DialogFooterActions } from "./dialog-footer-actions";
-
-type FocusZone = "search" | "filters" | "list" | "footer";
 
 interface ModelSelectDialogProps {
   open: boolean;
@@ -47,6 +44,8 @@ export function ModelSelectDialog({
   onSelect,
 }: ModelSelectDialogProps) {
   const openRouter = useOpenRouterModels(open, provider);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const listContainerRef = useRef<HTMLDivElement>(null);
 
   const models = useMemo(() => {
     switch (provider) {
@@ -61,10 +60,6 @@ export function ModelSelectDialog({
         return [];
     }
   }, [provider, openRouter.models]);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [checkedModelId, setCheckedModelId] = useState<string | undefined>(currentModel);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const listContainerRef = useRef<HTMLDivElement>(null);
 
   const {
     searchQuery,
@@ -76,144 +71,37 @@ export function ModelSelectDialog({
     resetFilters,
   } = useModelFilter(models);
 
-  const [focusZone, setFocusZone] = useState<FocusZone>("list");
-  const [filterIndex, setFilterIndex] = useState(0);
-  const [footerButtonIndex, setFooterButtonIndex] = useState(1);
-
-  const { scrollItemIntoView } = useScrollIntoView(listContainerRef);
-
-  // Reset state when dialog opens
-  useEffect(() => {
-    if (open) {
-      resetFilters();
-      setFocusZone("list");
-      setFilterIndex(0);
-      setFooterButtonIndex(1);
-      setCheckedModelId(currentModel);
-      const currentIndex = models.findIndex((m) => m.id === currentModel);
-      setSelectedIndex(currentIndex >= 0 ? currentIndex : 0);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- resetFilters and models are derived from provider, resetting on provider change is sufficient
-  }, [open, currentModel, provider]);
-
-  // Clamp selection when filtered list changes
-  useEffect(() => {
-    if (selectedIndex >= filteredModels.length && filteredModels.length > 0) {
-      setSelectedIndex(0);
-    }
-  }, [filteredModels.length, selectedIndex]);
-
-  // Auto-scroll selected item into view
-  useEffect(() => {
-    if (focusZone === "list" && filteredModels.length > 0) {
-      scrollItemIntoView(selectedIndex);
-    }
-  }, [selectedIndex, focusZone, filteredModels.length]);
-
-  const handleConfirm = () => {
-    const model = filteredModels[selectedIndex];
-    if (model) {
-      onSelect(model.id);
-      onOpenChange(false);
-    }
-  };
-
-  const handleUseCustom = () => {
-    const customId = searchQuery.trim();
-    if (!customId) return;
-    onSelect(customId);
-    onOpenChange(false);
-  };
-
-  const handleCheck = () => {
-    const model = filteredModels[selectedIndex];
-    if (model) {
-      setCheckedModelId(model.id);
-    }
-  };
-
-  const handleCancel = () => onOpenChange(false);
-
-  const navigateUp = () => {
-    if (selectedIndex > 0) {
-      setSelectedIndex((prev) => prev - 1);
-    } else {
-      setFocusZone("filters");
-      setFilterIndex(0);
-    }
-  };
-
-  const navigateDown = () => {
-    if (selectedIndex < filteredModels.length - 1) {
-      setSelectedIndex((prev) => prev + 1);
-    } else {
-      setFocusZone("footer");
-      setFooterButtonIndex(1);
-    }
-  };
-
-  // List zone
-  useKey("ArrowUp", navigateUp, { enabled: open && focusZone === "list" });
-  useKey("ArrowDown", navigateDown, { enabled: open && focusZone === "list" });
-  useKey("k", navigateUp, { enabled: open && focusZone === "list" });
-  useKey("j", navigateDown, { enabled: open && focusZone === "list" });
-  useKey(" ", handleCheck, { enabled: open && focusZone === "list" && filteredModels.length > 0 });
-  useKey("Enter", handleConfirm, { enabled: open && focusZone === "list" && filteredModels.length > 0 });
-
-  // Search zone
-  useKey("ArrowDown", () => {
-    searchInputRef.current?.blur();
-    setFocusZone("filters");
-  }, { enabled: open && focusZone === "search" });
-
-  // Filters zone
-  useKey("ArrowLeft", () => setFilterIndex((prev) => (prev > 0 ? prev - 1 : 2)), { enabled: open && focusZone === "filters" });
-  useKey("ArrowRight", () => setFilterIndex((prev) => (prev < 2 ? prev + 1 : 0)), { enabled: open && focusZone === "filters" });
-  useKey("ArrowDown", () => {
-    setFocusZone("list");
-    setSelectedIndex(0);
-  }, { enabled: open && focusZone === "filters" });
-  useKey("ArrowUp", () => {
-    setFocusZone("search");
-    searchInputRef.current?.focus();
-  }, { enabled: open && focusZone === "filters" });
-  useKey("Enter", () => setTierFilter(FILTERS[filterIndex]), { enabled: open && focusZone === "filters" });
-  useKey(" ", () => setTierFilter(FILTERS[filterIndex]), { enabled: open && focusZone === "filters" });
-
-  // Footer zone
-  useKey("ArrowLeft", () => setFooterButtonIndex(0), { enabled: open && focusZone === "footer" });
-  useKey("ArrowRight", () => setFooterButtonIndex(1), { enabled: open && focusZone === "footer" });
-  useKey("ArrowUp", () => {
-    setFocusZone("list");
-    setSelectedIndex(filteredModels.length - 1);
-  }, { enabled: open && focusZone === "footer" });
-  useKey("Enter", () => footerButtonIndex === 0 ? handleCancel() : handleConfirm(), { enabled: open && focusZone === "footer" });
-  useKey(" ", () => footerButtonIndex === 0 ? handleCancel() : handleConfirm(), { enabled: open && focusZone === "footer" });
-
-  // Global shortcuts
-  useKey("/", () => {
-    if (focusZone !== "search") {
-      setFocusZone("search");
-      searchInputRef.current?.focus();
-    }
-  }, { enabled: open });
-  useKey("f", cycleTierFilter, { enabled: open && focusZone !== "search" });
-  useKey("Escape", handleCancel, { enabled: open && focusZone !== "search" });
-
-  const handleSearchEscape = () => {
-    if (searchQuery) {
-      setSearchQuery("");
-    } else {
-      searchInputRef.current?.blur();
-      setFocusZone("list");
-      setSelectedIndex(0);
-    }
-  };
-
-  const handleSearchArrowDown = () => {
-    searchInputRef.current?.blur();
-    setFocusZone("filters");
-  };
+  const {
+    focusZone,
+    selectedIndex,
+    setSelectedIndex,
+    checkedModelId,
+    setCheckedModelId,
+    filterIndex,
+    setFilterIndex,
+    footerButtonIndex,
+    setFooterButtonIndex,
+    setFocusZone,
+    handleConfirm,
+    handleCancel,
+    handleUseCustom,
+    handleSearchEscape,
+    handleSearchArrowDown,
+  } = useModelDialogKeyboard({
+    open,
+    currentModel,
+    models,
+    filteredModels,
+    searchQuery,
+    setSearchQuery,
+    setTierFilter,
+    cycleTierFilter,
+    resetFilters,
+    searchInputRef,
+    listContainerRef,
+    onSelect,
+    onOpenChange,
+  });
 
   const emptyLabel =
     provider === OPENROUTER_PROVIDER_ID
