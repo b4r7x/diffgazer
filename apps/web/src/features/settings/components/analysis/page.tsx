@@ -32,8 +32,7 @@ export function SettingsAnalysisPage() {
   const { settings, isLoading: settingsLoading } = useSettings();
   const [selectedLenses, setSelectedLenses] = useState<LensId[] | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const { contextStatus, contextGeneratedAt, isRefreshing, handleRefreshContext } = useContextManagement(setError);
+  const { contextStatus, contextGeneratedAt, isRefreshing, error, setError, handleRefreshContext } = useContextManagement();
 
   const effectiveLenses = selectedLenses ?? (settings?.defaultLenses?.length ? settings.defaultLenses : LENS_OPTIONS.map(l => l.id));
 

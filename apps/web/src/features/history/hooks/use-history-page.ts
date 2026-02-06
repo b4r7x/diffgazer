@@ -13,7 +13,6 @@ export function useHistoryPage() {
   const navigate = useNavigate();
   const { reviews, isLoading, error } = useReviews();
   const [focusZone, setFocusZone] = useState<HistoryFocusZone>("runs");
-  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -78,8 +77,6 @@ export function useHistoryPage() {
     focusZone,
     setFocusZone,
     selectedRunId,
-    expandedRunId,
-    setExpandedRunId,
     searchInputRef,
   });
 

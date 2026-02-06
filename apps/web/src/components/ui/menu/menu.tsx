@@ -29,7 +29,7 @@ export function Menu<T extends string = string>({
   "aria-label": ariaLabel,
   children,
 }: MenuProps<T>) {
-  const items = useMemo(() => {
+  const items = (() => {
     const result: InternalMenuItemData[] = [];
     let idx = 0;
 
@@ -53,7 +53,7 @@ export function Menu<T extends string = string>({
 
     extract(children);
     return result;
-  }, [children]);
+  })();
 
   const findNextIndex = (start: number, direction: 1 | -1): number => {
     let index = start + direction;

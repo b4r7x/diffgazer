@@ -37,10 +37,12 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
     onComplete?.(data);
   });
 
-  // Track whether we've ever streamed (ref assignment during render is safe)
-  if (state.isStreaming) {
-    hasStreamedRef.current = true;
-  }
+  // Track whether we've ever streamed
+  useEffect(() => {
+    if (state.isStreaming) {
+      hasStreamedRef.current = true;
+    }
+  }, [state.isStreaming]);
 
   // Sync review ID to URL
   useEffect(() => {
@@ -99,13 +101,14 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
     return () => { ignore = true; };
   }, [mode, start, resume, configLoading, isConfigured, params.reviewId, settingsLoading, defaultLenses]);
 
-  // Keep refs to state values the completion effect needs without adding them as deps
   const stepsRef = useRef(state.steps);
   const issuesRef = useRef(state.issues);
   const reviewIdRef = useRef(state.reviewId);
-  stepsRef.current = state.steps;
-  issuesRef.current = state.issues;
-  reviewIdRef.current = state.reviewId;
+  useEffect(() => {
+    stepsRef.current = state.steps;
+    issuesRef.current = state.issues;
+    reviewIdRef.current = state.reviewId;
+  }, [state.steps, state.issues, state.reviewId]);
 
   // Delay transition so users see final step completions before switching views
   const prevIsStreamingRef = useRef(state.isStreaming);

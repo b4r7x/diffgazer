@@ -15,7 +15,7 @@ import { TrustModal } from "./trust-modal";
 import type { ContextInfo } from "@stargazer/schemas/ui";
 import { api } from "@/lib/api";
 import { useSettings } from "@/hooks/use-settings";
-import { shutdown } from "@/features/home/hooks/use-shutdown";
+import { shutdown } from "@/features/home/hooks/shutdown";
 
 type RouteConfig = { to: string; search?: Record<string, string> };
 
@@ -53,9 +53,6 @@ export function HomePage() {
       message: "The review ID format is invalid.",
     });
     navigate({ to: "/", replace: true });
-    return () => {
-      errorShownRef.current = false;
-    };
   }, [search.error, showToast, navigate]);
 
   const showWizard = settings !== null && !settings.secretsStorage;
