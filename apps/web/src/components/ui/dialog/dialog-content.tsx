@@ -99,7 +99,7 @@ function DialogContentInner({
 
 export function DialogContent({ children, className, ...props }: DialogContentProps) {
   const { open, onOpenChange, titleId, descriptionId } = useDialogContext();
-  const handleClose = React.useCallback(() => onOpenChange(false), [onOpenChange]);
+  const handleClose = () => onOpenChange(false);
 
   if (!open) return null;
 

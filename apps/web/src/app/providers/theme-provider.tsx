@@ -1,4 +1,4 @@
-import { createContext, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { ResolvedTheme, ThemeContextValue, WebTheme } from "@/types/theme";
 import { useSettings } from "@/hooks/use-settings";
 import { api } from "@/lib/api";
@@ -29,16 +29,8 @@ function mapSettingsTheme(theme: string): WebTheme {
 }
 
 function ThemeStyleApplicator() {
-  const { settings } = useSettings();
-
-  const systemTheme = useSyncExternalStore(
-    subscribeToSystemTheme,
-    getSystemTheme,
-    () => "dark" as ResolvedTheme
-  );
-
-  const resolvedTheme = settings?.theme ? mapSettingsTheme(settings.theme) : "auto";
-  const resolved: ResolvedTheme = resolvedTheme === "auto" ? systemTheme : resolvedTheme;
+  const context = useContext(ThemeContext);
+  const resolved = context?.resolved ?? "dark";
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", resolved);
@@ -64,11 +56,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const resolvedTheme = settings?.theme ? mapSettingsTheme(settings.theme) : theme;
   const resolved: ResolvedTheme = resolvedTheme === "auto" ? systemTheme : resolvedTheme;
 
-  const setTheme = useCallback((newTheme: WebTheme) => {
+  const setTheme = (newTheme: WebTheme) => {
     setThemeState(newTheme);
     localStorage.setItem(STORAGE_KEY, newTheme);
     api.saveSettings({ theme: newTheme }).catch((err) => console.error("Failed to save theme settings", err));
-  }, []);
+  };
 
   const value = useMemo<ThemeContextValue>(() => ({ theme: resolvedTheme, resolved, setTheme }), [resolvedTheme, resolved, setTheme]);
 

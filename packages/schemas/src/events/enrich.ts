@@ -6,7 +6,7 @@ export const EnrichProgressEventSchema = z.object({
   enrichmentType: z.enum(["blame", "context"]),
   status: z.enum(["started", "complete", "failed"]),
   timestamp: z.string(),
-}).passthrough();
+});
 
 export type EnrichProgressEvent = z.infer<typeof EnrichProgressEventSchema>;
 

@@ -1,5 +1,5 @@
 import type { Result } from "@stargazer/core/result";
-import { err } from "@stargazer/core/result";
+import { ok, err } from "@stargazer/core/result";
 import {
   buildReviewQueryParams,
   processReviewStream,
@@ -34,9 +34,7 @@ export async function streamReview(
   options: StreamReviewOptions = {}
 ): Promise<Response> {
   const params: Record<string, string> = {};
-  if (options.mode) {
-    params.mode = options.mode;
-  }
+  if (options.mode) params.mode = options.mode;
   if (options.files?.length) params.files = options.files.join(",");
   if (options.lenses?.length) params.lenses = options.lenses.join(",");
   if (options.profile) params.profile = options.profile;
@@ -80,16 +78,17 @@ export async function resumeReviewStream(
   try {
     response = await client.stream(`/api/review/reviews/${reviewId}/stream`, { signal });
   } catch (error) {
-    const apiError = error as ApiError;
-    if (apiError?.status === 404) {
-      return err({ code: ReviewErrorCode.SESSION_NOT_FOUND, message: apiError.message || "Session not found" });
+    const status = error instanceof Error && "status" in error ? (error as { status: number }).status : undefined;
+    const message = error instanceof Error ? error.message : String(error);
+    if (status === 404) {
+      return err({ code: ReviewErrorCode.SESSION_NOT_FOUND, message: message || "Session not found" });
     }
-    if (apiError?.status === 409) {
-      return err({ code: ReviewErrorCode.SESSION_STALE, message: apiError.message || "Session is stale" });
+    if (status === 409) {
+      return err({ code: ReviewErrorCode.SESSION_STALE, message: message || "Session is stale" });
     }
     return err({
       code: "STREAM_ERROR",
-      message: apiError?.message || "Failed to resume review stream",
+      message: message || "Failed to resume review stream",
     });
   }
 
@@ -105,7 +104,7 @@ export async function resumeReviewStream(
     return err(result.error);
   }
 
-  return { ok: true, value: undefined };
+  return ok(undefined);
 }
 
 export async function getReviews(

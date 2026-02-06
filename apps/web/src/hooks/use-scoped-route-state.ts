@@ -1,4 +1,4 @@
-import { useCallback, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { useLocation } from "@tanstack/react-router";
 
 export type SetState<T> = (value: T | ((prev: T) => T)) => void;
@@ -56,17 +56,14 @@ export function useScopedRouteState<T>(
     () => defaultValue
   );
 
-  const setState = useCallback(
-    (valueOrUpdater: T | ((prev: T) => T)) => {
-      const currentValue = getSnapshot(storageKey, defaultValue);
-      const newValue =
-        typeof valueOrUpdater === "function"
-          ? (valueOrUpdater as (prev: T) => T)(currentValue)
-          : valueOrUpdater;
-      setValue(storageKey, newValue);
-    },
-    [storageKey, defaultValue]
-  );
+  const setState = (valueOrUpdater: T | ((prev: T) => T)) => {
+    const currentValue = getSnapshot(storageKey, defaultValue);
+    const newValue =
+      typeof valueOrUpdater === "function"
+        ? (valueOrUpdater as (prev: T) => T)(currentValue)
+        : valueOrUpdater;
+    setValue(storageKey, newValue);
+  };
 
   return [state, setState];
 }

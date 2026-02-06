@@ -1,4 +1,4 @@
-import { useCallback, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { useCanGoBack, useRouter } from "@tanstack/react-router";
 import { Header } from "./header";
 import { Footer, useFooterData } from "./footer";
@@ -26,9 +26,9 @@ function ConnectedHeader() {
   const providerName = getProviderDisplay(provider, model);
   const showBack = canGoBack && router.state.location.pathname !== "/";
 
-  const onBack = useCallback(() => {
+  const onBack = () => {
     router.history.back();
-  }, [router]);
+  };
 
   return (
     <Header

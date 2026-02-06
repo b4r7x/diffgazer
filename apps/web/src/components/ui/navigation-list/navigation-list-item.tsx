@@ -51,7 +51,7 @@ export function NavigationListItem({
       <div
         className={cn(
           'w-1 shrink-0',
-          showSelection ? 'bg-tui-blue' : 'bg-transparent group-hover:bg-gray-700'
+          showSelection ? 'bg-tui-blue' : 'bg-transparent group-hover:bg-tui-muted'
         )}
       />
       <div className="flex-1 p-3">
@@ -70,7 +70,7 @@ export function NavigationListItem({
           <div className="flex gap-2 items-center">
             {badge}
             {subtitle && (
-              <span className={cn('text-[9px]', showSelection ? 'text-black/70' : 'text-gray-500')}>
+              <span className={cn('text-[9px]', showSelection ? 'text-black/70' : 'text-tui-muted')}>
                 {subtitle}
               </span>
             )}

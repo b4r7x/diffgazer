@@ -1,4 +1,5 @@
-import { useCallback } from "react";
+
+
 import { useToast } from "@/components/ui/toast";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -22,7 +23,7 @@ export function useReviewErrorHandler() {
   const { showToast } = useToast();
   const navigate = useNavigate();
 
-  const handleApiError = useCallback((error: unknown) => {
+  const handleApiError = (error: unknown) => {
     const status = isApiError(error) ? error.status : undefined;
     const errorMessage = isApiError(error) ? error.message : undefined;
 
@@ -42,7 +43,7 @@ export function useReviewErrorHandler() {
       message,
     });
     navigate({ to: "/" });
-  }, [showToast, navigate]);
+  };
 
   return {
     handleApiError,

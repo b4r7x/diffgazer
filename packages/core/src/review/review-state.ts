@@ -129,8 +129,7 @@ function updateAgents(agents: AgentState[], event: AgentStreamEvent): AgentState
 
 function updateIssues(issues: ReviewIssue[], event: AgentStreamEvent): ReviewIssue[] {
   if (event.type === "issue_found" && event.issue) {
-    // Server emits full ReviewIssue in issue_found events (see apps/server/src/features/review/service.ts)
-    return [...issues, event.issue as ReviewIssue];
+    return [...issues, event.issue];
   }
   return issues;
 }

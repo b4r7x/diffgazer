@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import type { TrustConfig } from "@stargazer/schemas/config";
 import { api } from "@/lib/api";
 import { useConfigActions } from "@/app/providers/config-provider";
@@ -13,7 +13,7 @@ export function useTrust(projectId: string | null): UseTrustResult {
   const { refresh } = useConfigActions();
   const [isLoading, setIsLoading] = useState(false);
 
-  const save = useCallback(async (config: TrustConfig): Promise<void> => {
+  const save = async (config: TrustConfig): Promise<void> => {
     setIsLoading(true);
     try {
       await api.saveTrust(config);
@@ -21,9 +21,9 @@ export function useTrust(projectId: string | null): UseTrustResult {
     } finally {
       setIsLoading(false);
     }
-  }, [refresh]);
+  };
 
-  const revoke = useCallback(async (): Promise<void> => {
+  const revoke = async (): Promise<void> => {
     if (!projectId) return;
     setIsLoading(true);
     try {
@@ -32,7 +32,7 @@ export function useTrust(projectId: string | null): UseTrustResult {
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, refresh]);
+  };
 
   return { save, revoke, isLoading };
 }

@@ -6,7 +6,7 @@ import type { ProgressSubstepData } from "@stargazer/schemas/ui";
 const substepVariants = cva("flex items-center gap-2 py-1 text-sm", {
   variants: {
     status: {
-      pending: "text-gray-600",
+      pending: "text-tui-muted",
       active: "text-tui-blue font-medium animate-pulse",
       completed: "text-tui-fg",
       error: "text-tui-red font-medium",
@@ -44,9 +44,9 @@ export function ProgressSubstep({
       </Badge>
       <span>{label}</span>
       {detail ? (
-        <span className="ml-auto text-xs text-gray-500">{detail}</span>
+        <span className="ml-auto text-xs text-tui-muted">{detail}</span>
       ) : status === "active" ? (
-        <span className="ml-auto text-xs text-gray-500">analyzing...</span>
+        <span className="ml-auto text-xs text-tui-muted">analyzing...</span>
       ) : status === "completed" ? (
         <span className="ml-auto text-xs text-tui-green">done</span>
       ) : status === "error" ? (

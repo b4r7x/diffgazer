@@ -19,13 +19,15 @@ function createMockReader(chunks: string[]): ReadableStreamDefaultReader<Uint8Ar
   };
 }
 
+const identity = (data: unknown) => data;
+
 describe("parseSSEStream", () => {
   describe("basic SSE parsing", () => {
     it("should parse single SSE event", async () => {
       const onEvent = vi.fn();
       const reader = createMockReader(['data: {"type":"message","content":"hello"}\n']);
 
-      const result = await parseSSEStream(reader, { onEvent });
+      const result = await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(result.completed).toBe(true);
       expect(onEvent).toHaveBeenCalledOnce();
@@ -40,7 +42,7 @@ describe("parseSSEStream", () => {
         'data: {"id":3}\n',
       ]);
 
-      await parseSSEStream(reader, { onEvent });
+      await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(onEvent).toHaveBeenCalledTimes(3);
       expect(onEvent).toHaveBeenNthCalledWith(1, { id: 1 });
@@ -54,7 +56,7 @@ describe("parseSSEStream", () => {
         'data: {"id":1}\ndata: {"id":2}\ndata: {"id":3}\n',
       ]);
 
-      await parseSSEStream(reader, { onEvent });
+      await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(onEvent).toHaveBeenCalledTimes(3);
       expect(onEvent).toHaveBeenNthCalledWith(1, { id: 1 });
@@ -70,7 +72,7 @@ describe("parseSSEStream", () => {
         ' across chunks"}\n',
       ]);
 
-      await parseSSEStream(reader, { onEvent });
+      await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(onEvent).toHaveBeenCalledOnce();
       expect(onEvent).toHaveBeenCalledWith({ message: "split across chunks" });
@@ -83,7 +85,7 @@ describe("parseSSEStream", () => {
         ':2}\n',
       ]);
 
-      await parseSSEStream(reader, { onEvent });
+      await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(onEvent).toHaveBeenCalledTimes(2);
       expect(onEvent).toHaveBeenNthCalledWith(1, { id: 1 });
@@ -97,7 +99,7 @@ describe("parseSSEStream", () => {
         'data: {"id":2}',
       ]);
 
-      await parseSSEStream(reader, { onEvent });
+      await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(onEvent).toHaveBeenCalledTimes(2);
       expect(onEvent).toHaveBeenNthCalledWith(1, { id: 1 });
@@ -115,7 +117,7 @@ describe("parseSSEStream", () => {
         'id: 123\n',
       ]);
 
-      await parseSSEStream(reader, { onEvent });
+      await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(onEvent).toHaveBeenCalledOnce();
       expect(onEvent).toHaveBeenCalledWith({ valid: true });
@@ -128,7 +130,7 @@ describe("parseSSEStream", () => {
         'data: {"valid":true}\n',
       ]);
 
-      await parseSSEStream(reader, { onEvent });
+      await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(onEvent).toHaveBeenCalledOnce();
       expect(onEvent).toHaveBeenCalledWith({ valid: true });
@@ -141,7 +143,7 @@ describe("parseSSEStream", () => {
         'data: {"valid":true}\n',
       ]);
 
-      await parseSSEStream(reader, { onEvent });
+      await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(onEvent).toHaveBeenCalledOnce();
       expect(onEvent).toHaveBeenCalledWith({ valid: true });
@@ -154,7 +156,7 @@ describe("parseSSEStream", () => {
         '   \n',
       ]);
 
-      await parseSSEStream(reader, { onEvent });
+      await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(onEvent).toHaveBeenCalledOnce();
     });
@@ -165,7 +167,7 @@ describe("parseSSEStream", () => {
         'data: {"incomplete":',
       ]);
 
-      await parseSSEStream(reader, { onEvent });
+      await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(onEvent).not.toHaveBeenCalled();
     });
@@ -174,7 +176,7 @@ describe("parseSSEStream", () => {
       const onEvent = vi.fn();
       const reader = createMockReader([]);
 
-      const result = await parseSSEStream(reader, { onEvent });
+      const result = await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(result.completed).toBe(true);
       expect(onEvent).not.toHaveBeenCalled();
@@ -190,6 +192,7 @@ describe("parseSSEStream", () => {
 
       const result = await parseSSEStream(reader, {
         onEvent,
+        parseEvent: identity,
         onBufferOverflow,
       });
 
@@ -203,7 +206,7 @@ describe("parseSSEStream", () => {
       const largeChunk = "x".repeat(1024 * 1024 + 1);
       const reader = createMockReader([largeChunk]);
 
-      const result = await parseSSEStream(reader, { onEvent });
+      const result = await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(result.completed).toBe(false);
       expect(reader.cancel).toHaveBeenCalledOnce();
@@ -217,6 +220,7 @@ describe("parseSSEStream", () => {
 
       const result = await parseSSEStream(reader, {
         onEvent,
+        parseEvent: identity,
         onBufferOverflow,
       });
 
@@ -237,6 +241,7 @@ describe("parseSSEStream", () => {
 
       const result = await parseSSEStream(reader, {
         onEvent,
+        parseEvent: identity,
         onBufferOverflow,
       });
 
@@ -302,13 +307,13 @@ describe("parseSSEStream", () => {
       );
     });
 
-    it("should pass raw data when parseEvent is undefined", async () => {
+    it("should pass raw data with identity parseEvent", async () => {
       const onEvent = vi.fn();
       const reader = createMockReader([
         'data: {"message":"raw","count":42}\n',
       ]);
 
-      await parseSSEStream(reader, { onEvent });
+      await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(onEvent).toHaveBeenCalledWith({ message: "raw", count: 42 });
     });
@@ -321,7 +326,7 @@ describe("parseSSEStream", () => {
         'data: {"message":"Hello 世界 🌍"}\n',
       ]);
 
-      await parseSSEStream(reader, { onEvent });
+      await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(onEvent).toHaveBeenCalledWith({ message: "Hello 世界 🌍" });
     });
@@ -332,7 +337,7 @@ describe("parseSSEStream", () => {
         'data: {"outer":{"inner":{"deep":"value"}}}\n',
       ]);
 
-      await parseSSEStream(reader, { onEvent });
+      await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(onEvent).toHaveBeenCalledWith({
         outer: { inner: { deep: "value" } },
@@ -345,7 +350,7 @@ describe("parseSSEStream", () => {
         'data: {"items":[1,2,3],"names":["a","b"]}\n',
       ]);
 
-      await parseSSEStream(reader, { onEvent });
+      await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(onEvent).toHaveBeenCalledWith({
         items: [1, 2, 3],
@@ -359,7 +364,7 @@ describe("parseSSEStream", () => {
         'data: {"message":"She said \\"hello\\""}\n',
       ]);
 
-      await parseSSEStream(reader, { onEvent });
+      await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(onEvent).toHaveBeenCalledWith({ message: 'She said "hello"' });
     });
@@ -370,7 +375,7 @@ describe("parseSSEStream", () => {
         'data: {"id":1}\n\n\ndata: {"id":2}\n',
       ]);
 
-      await parseSSEStream(reader, { onEvent });
+      await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(onEvent).toHaveBeenCalledTimes(2);
     });
@@ -382,7 +387,7 @@ describe("parseSSEStream", () => {
         'data: {"id":2}\r\n',
       ]);
 
-      await parseSSEStream(reader, { onEvent });
+      await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(onEvent).toHaveBeenCalledTimes(2);
     });
@@ -395,7 +400,7 @@ describe("parseSSEStream", () => {
         'data: {"id":3}\n',
       ]);
 
-      await parseSSEStream(reader, { onEvent });
+      await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(onEvent).toHaveBeenCalledTimes(3);
     });
@@ -407,7 +412,7 @@ describe("parseSSEStream", () => {
         `data: {"message":"${longMessage}"}`,
       ]);
 
-      await parseSSEStream(reader, { onEvent });
+      await parseSSEStream(reader, { onEvent, parseEvent: identity });
 
       expect(onEvent).toHaveBeenCalledWith({ message: longMessage });
     });

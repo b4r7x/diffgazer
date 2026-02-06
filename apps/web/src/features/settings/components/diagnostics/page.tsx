@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useKey, useFooterNavigation } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
@@ -25,11 +25,11 @@ export function DiagnosticsPage() {
 
   usePageFooter({ shortcuts: FOOTER_SHORTCUTS });
 
-  const handleButtonAction = useCallback((_index: number) => {
+  const handleButtonAction = (_index: number) => {
     if (canDownloadContext) {
       void handleRefreshContext();
     }
-  }, [canDownloadContext, handleRefreshContext]);
+  };
 
   const { focusedIndex, enterFooter } = useFooterNavigation({
     enabled: true,

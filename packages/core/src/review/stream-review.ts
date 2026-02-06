@@ -30,10 +30,6 @@ export interface StreamReviewResult {
 
 export type StreamReviewError = ReviewError | { code: "STREAM_ERROR"; message: string };
 
-export interface ReviewStreamController {
-  stop: () => void;
-}
-
 export function buildReviewQueryParams(options: StreamReviewRequest): Record<string, string> {
   const { mode = "unstaged", files, lenses, profile } = options;
   const params: Record<string, string> = {

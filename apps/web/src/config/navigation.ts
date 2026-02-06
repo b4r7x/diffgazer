@@ -18,7 +18,7 @@ export type SettingsAction =
   | "analysis"
   | "diagnostics";
 
-export interface MenuItem {
+export interface NavItem {
   id: MenuAction;
   label: string;
   shortcut?: string;
@@ -32,7 +32,7 @@ export interface SettingsMenuItem {
   description: string;
 }
 
-export const MENU_ITEMS: MenuItem[] = [
+export const MENU_ITEMS: NavItem[] = [
   { id: "review-unstaged", label: "Review Unstaged", shortcut: "r", group: "review" },
   { id: "review-staged", label: "Review Staged", shortcut: "R", group: "review" },
   { id: "resume-review", label: "Resume Last Review", shortcut: "l", group: "review" },

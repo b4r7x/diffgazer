@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import type { ToastItem, ToastVariant } from "@stargazer/schemas/ui";
 
 export interface Toast extends Omit<ToastItem, "message"> {
@@ -64,9 +64,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const dismissToast = useCallback((id: string) => dismissToastRef.current(id), []);
-  const showToast = useCallback((options: Omit<Toast, "id">) => showToastRef.current(options), []);
-  const removeToast = useCallback((id: string) => removeToastRef.current(id), []);
+  const dismissToast = (id: string) => dismissToastRef.current(id);
+  const showToast = (options: Omit<Toast, "id">) => showToastRef.current(options);
+  const removeToast = (id: string) => removeToastRef.current(id);
 
   const dataValue = useMemo(
     () => ({ toasts, dismissingIds }),

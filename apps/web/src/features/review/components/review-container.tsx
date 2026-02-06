@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { ReviewProgressView } from './review-progress-view';
 import { ApiKeyMissingView } from './api-key-missing-view';
 import { NoChangesView } from './no-changes-view';
@@ -43,7 +42,7 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     contextStep?.status === "completed"
   );
 
-  const progressData = useMemo(() => {
+  const progressData = (() => {
     const steps = mapStepsToProgressData(state.steps, state.agents);
     const entries = convertAgentEventsToLogEntries(state.events);
     const metrics = {
@@ -59,7 +58,7 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
       startTime: state.startedAt ?? undefined,
       contextSnapshot,
     };
-  }, [state.steps, state.agents, state.events, state.fileProgress.completed.size, state.fileProgress.total, state.issues.length, state.startedAt, contextSnapshot]);
+  })();
 
   if (loadingMessage) {
     return (

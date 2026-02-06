@@ -2,7 +2,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/utils/cn';
 
 export const inputVariants = cva(
-  'flex w-full bg-[--tui-bg] border border-[--tui-border] text-[--tui-fg] font-mono placeholder:text-[--tui-fg]/50 transition-colors focus:border-[--tui-blue] focus:ring-1 focus:ring-[--tui-blue] focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed',
+  'flex w-full bg-tui-bg border border-tui-border text-tui-fg font-mono placeholder:text-tui-fg/50 transition-colors focus:border-tui-blue focus:ring-1 focus:ring-tui-blue focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed',
   {
     variants: {
       size: {

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useKey } from "./use-key";
 
 type NavigationRole = "radio" | "checkbox" | "option" | "menuitem";
@@ -52,73 +52,67 @@ export function useGroupNavigation({
   const isControlled = value !== undefined;
   const focusedValue = isControlled ? value : internalValue;
 
-  const getElements = useCallback(() => {
+  const getElements = () => {
     if (!containerRef.current) return [];
     return Array.from(
       containerRef.current.querySelectorAll<HTMLElement>(
         `[role="${role}"]:not([aria-disabled="true"])`
       )
     );
-  }, [containerRef, role]);
+  };
 
-  const getFocusedIndex = useCallback(() => {
+  const getFocusedIndex = () => {
     const elements = getElements();
     if (!focusedValue) return 0;
     const idx = elements.findIndex((el) => el.dataset.value === focusedValue);
     return idx >= 0 ? idx : 0;
-  }, [getElements, focusedValue]);
+  };
 
-  const focusIndex = useCallback(
-    (index: number) => {
-      const elements = getElements();
-      const el = elements[index];
-      if (el?.dataset.value) {
-        el.scrollIntoView({ block: 'nearest' });
-        if (isControlled) {
-          onValueChange?.(el.dataset.value);
-        } else {
-          setInternalValue(el.dataset.value);
-          onFocusChange?.(el.dataset.value);
-        }
+  const focusIndex = (index: number) => {
+    const elements = getElements();
+    const el = elements[index];
+    if (el?.dataset.value) {
+      el.scrollIntoView({ block: 'nearest' });
+      if (isControlled) {
+        onValueChange?.(el.dataset.value);
+      } else {
+        setInternalValue(el.dataset.value);
+        onFocusChange?.(el.dataset.value);
       }
-    },
-    [getElements, isControlled, onValueChange, onFocusChange]
-  );
+    }
+  };
 
-  const move = useCallback(
-    (delta: 1 | -1) => {
-      const elements = getElements();
-      if (elements.length === 0) return;
+  const move = (delta: 1 | -1) => {
+    const elements = getElements();
+    if (elements.length === 0) return;
 
-      const current = getFocusedIndex();
-      let next = current + delta;
+    const current = getFocusedIndex();
+    let next = current + delta;
 
-      if (next < 0) {
-        if (wrap) {
-          next = elements.length - 1;
-        } else {
-          onBoundaryReached?.("up");
-          return;
-        }
-      } else if (next >= elements.length) {
-        if (wrap) {
-          next = 0;
-        } else {
-          onBoundaryReached?.("down");
-          return;
-        }
+    if (next < 0) {
+      if (wrap) {
+        next = elements.length - 1;
+      } else {
+        onBoundaryReached?.("up");
+        return;
       }
+    } else if (next >= elements.length) {
+      if (wrap) {
+        next = 0;
+      } else {
+        onBoundaryReached?.("down");
+        return;
+      }
+    }
 
-      focusIndex(next);
-    },
-    [getElements, getFocusedIndex, focusIndex, wrap, onBoundaryReached]
-  );
+    focusIndex(next);
+  };
 
-  const handleSelect = useCallback(() => {
+  const handleSelect = () => {
     if (focusedValue) {
       onSelect?.(focusedValue);
     }
-  }, [focusedValue, onSelect]);
+  };
 
   useKey("ArrowUp", () => move(-1), { enabled });
   useKey("ArrowDown", () => move(1), { enabled });
@@ -131,17 +125,14 @@ export function useGroupNavigation({
 
   const isFocused = (value: string) => focusedValue === value;
 
-  const focus = useCallback(
-    (v: string) => {
-      if (isControlled) {
-        onValueChange?.(v);
-      } else {
-        setInternalValue(v);
-        onFocusChange?.(v);
-      }
-    },
-    [isControlled, onValueChange, onFocusChange]
-  );
+  const focus = (v: string) => {
+    if (isControlled) {
+      onValueChange?.(v);
+    } else {
+      setInternalValue(v);
+      onFocusChange?.(v);
+    }
+  };
 
   return {
     focusedValue,

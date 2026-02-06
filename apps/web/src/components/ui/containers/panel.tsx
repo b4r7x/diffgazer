@@ -29,21 +29,21 @@ const spacingClasses: Record<NonNullable<PanelContentProps["spacing"]>, string> 
 
 const headerVariants: Record<NonNullable<PanelHeaderProps["variant"]>, string> = {
   default:
-    "bg-tui-selection text-gray-400 text-xs px-3 py-1 border-b border-tui-border font-bold uppercase tracking-wider",
+    "bg-tui-selection text-tui-muted text-xs px-3 py-1 border-b border-tui-border font-bold uppercase tracking-wider",
   subtle:
-    "bg-tui-selection/30 text-gray-500 text-xs p-2 border-b border-tui-border uppercase tracking-widest text-center",
+    "bg-tui-selection/30 text-tui-muted text-xs p-2 border-b border-tui-border uppercase tracking-widest text-center",
   floating: "absolute -top-3 left-4 bg-tui-bg px-2 text-xs text-tui-blue font-bold",
-  section: "text-gray-500 font-bold uppercase text-xs tracking-wider mb-4",
+  section: "text-tui-muted font-bold uppercase text-xs tracking-wider mb-4",
   "section-bordered":
-    "text-gray-500 font-bold uppercase text-xs tracking-wider border-b border-tui-border pb-2 mb-2",
+    "text-tui-muted font-bold uppercase text-xs tracking-wider border-b border-tui-border pb-2 mb-2",
 };
 
 const valueVariants: Record<NonNullable<PanelHeaderProps["valueVariant"]>, string> = {
-  default: "text-gray-400",
+  default: "text-tui-muted",
   success: "text-tui-green",
   "success-badge":
     "bg-tui-green/10 text-tui-green border border-tui-green px-2 py-0.5 text-xs font-bold tracking-wider rounded-sm",
-  muted: "text-gray-500",
+  muted: "text-tui-muted",
 };
 
 function getValueClasses(valueVariant: PanelHeaderProps["valueVariant"] = "default"): string {

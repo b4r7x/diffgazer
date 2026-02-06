@@ -1,9 +1,6 @@
 import { z } from "zod";
 import {
-  createDomainErrorCodes,
-  createDomainErrorSchema,
   timestampFields,
-  type SharedErrorCode,
 } from "../errors.js";
 import { SettingsConfigSchema, TrustConfigSchema } from "./settings.js";
 
@@ -181,22 +178,6 @@ export const UserConfigSchema = z
     path: ["model"],
   });
 export type UserConfig = z.infer<typeof UserConfigSchema>;
-
-export const CONFIG_SPECIFIC_CODES = [
-  "NOT_CONFIGURED",
-  "INVALID_PROVIDER",
-  "INVALID_API_KEY",
-  "CONFIG_NOT_FOUND",
-  "CONFIG_WRITE_FAILED",
-  "CONFIG_READ_FAILED",
-  "UNKNOWN",
-] as const;
-type ConfigSpecificCode = (typeof CONFIG_SPECIFIC_CODES)[number];
-
-const CONFIG_ERROR_CODES = createDomainErrorCodes(CONFIG_SPECIFIC_CODES);
-const ConfigErrorCodeSchema = z.enum(CONFIG_ERROR_CODES);
-
-const ConfigErrorSchema = createDomainErrorSchema(CONFIG_SPECIFIC_CODES);
 
 export const SaveConfigRequestSchema = z.object({
   provider: AIProviderSchema,

@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import figlet from "figlet";
 
 import bigFont from "figlet/importable-fonts/Big.js";
@@ -13,11 +12,9 @@ export function useFiglet(
   inputText: string,
   font: FigletFont = "Big",
 ): string | null {
-  return useMemo(() => {
-    try {
-      return figlet.textSync(inputText.toUpperCase(), { font });
-    } catch {
-      return null;
-    }
-  }, [inputText, font]);
+  try {
+    return figlet.textSync(inputText.toUpperCase(), { font });
+  } catch {
+    return null;
+  }
 }

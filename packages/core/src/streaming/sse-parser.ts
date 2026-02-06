@@ -5,7 +5,7 @@ const MAX_BUFFER_SIZE = 1024 * 1024;
 
 export interface SSEParserOptions<T> {
   onEvent: (data: T) => void;
-  parseEvent?: (jsonData: unknown) => T | undefined;
+  parseEvent: (jsonData: unknown) => T | undefined;
   onBufferOverflow?: () => void;
 }
 
@@ -28,15 +28,11 @@ function parseSSELine(line: string): unknown | undefined {
 function emitParsedEvent<T>(
   parsed: unknown,
   onEvent: (data: T) => void,
-  parseEvent?: (jsonData: unknown) => T | undefined
+  parseEvent: (jsonData: unknown) => T | undefined
 ): void {
-  if (parseEvent) {
-    const event = parseEvent(parsed);
-    if (event !== undefined) {
-      onEvent(event);
-    }
-  } else {
-    onEvent(parsed as T);
+  const event = parseEvent(parsed);
+  if (event !== undefined) {
+    onEvent(event);
   }
 }
 

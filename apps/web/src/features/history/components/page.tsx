@@ -35,7 +35,7 @@ export function HistoryPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col flex-1 items-center justify-center text-gray-500">
+      <div className="flex flex-col flex-1 items-center justify-center text-tui-muted">
         <span>Loading reviews...</span>
       </div>
     );
@@ -69,7 +69,7 @@ export function HistoryPage() {
           isFocused={focusZone === "timeline"}
           className="w-48 border-r border-tui-border flex flex-col shrink-0"
         >
-          <div className="p-3 text-xs text-gray-500 font-bold uppercase tracking-wider border-b border-tui-border">
+          <div className="p-3 text-xs text-tui-muted font-bold uppercase tracking-wider border-b border-tui-border">
             Timeline
           </div>
           <div className="flex-1 overflow-y-auto p-2">
@@ -82,7 +82,7 @@ export function HistoryPage() {
                 onBoundaryReached={handleTimelineBoundary}
               />
             ) : (
-              <div className="text-gray-500 text-sm p-2">No reviews yet</div>
+              <div className="text-tui-muted text-sm p-2">No reviews yet</div>
             )}
           </div>
         </FocusablePane>
@@ -91,7 +91,7 @@ export function HistoryPage() {
           isFocused={focusZone === "runs"}
           className="flex-1 min-w-0 border-r border-tui-border flex flex-col overflow-hidden"
         >
-          <div className="p-3 text-xs text-gray-500 font-bold uppercase tracking-wider border-b border-tui-border flex justify-between overflow-hidden">
+          <div className="p-3 text-xs text-tui-muted font-bold uppercase tracking-wider border-b border-tui-border flex justify-between overflow-hidden">
             <span className="truncate">Reviews</span>
             <span className="shrink-0 ml-2">Sort: Recent</span>
           </div>
@@ -115,7 +115,7 @@ export function HistoryPage() {
                 ))}
               </NavigationList>
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
+              <div className="flex items-center justify-center h-full text-tui-muted">
                 No runs for this date
               </div>
             )}

@@ -1,4 +1,4 @@
-import { useReducer, useEffect, useCallback } from "react";
+import { useReducer, useEffect } from "react";
 import {
   useSearch,
   useParams,
@@ -61,45 +61,40 @@ export function ReviewPage() {
   const router = useRouter();
   const { handleApiError } = useReviewErrorHandler();
 
-  const handleResumeFailed = useCallback(
-    async (reviewId: string) => {
-      dispatch({ type: "START_LOAD_SAVED" });
-      try {
-        const { review } = await api.getReview(reviewId);
-        if (!review?.result) {
-          handleApiError({ status: 404, message: "Review result not available" });
-          return;
-        }
-        dispatch({
-          type: "SHOW_RESULTS",
-          reviewData: { issues: review.result.issues, reviewId: review.metadata.id },
-        });
-      } catch (error) {
-        handleApiError(error);
-      }
-    },
-    [handleApiError],
-  );
-
-  const handleComplete = useCallback(
-    (data: ReviewCompleteData) => {
-      if (data.resumeFailed && data.reviewId) {
-        handleResumeFailed(data.reviewId);
+  const handleResumeFailed = async (reviewId: string) => {
+    dispatch({ type: "START_LOAD_SAVED" });
+    try {
+      const { review } = await api.getReview(reviewId);
+      if (!review?.result) {
+        handleApiError({ status: 404, message: "Review result not available" });
         return;
       }
-      dispatch({ type: "SHOW_SUMMARY", reviewData: data });
-    },
-    [handleResumeFailed],
-  );
+      dispatch({
+        type: "SHOW_RESULTS",
+        reviewData: { issues: review.result.issues, reviewId: review.metadata.id },
+      });
+    } catch (error) {
+      handleApiError(error);
+    }
+  };
+
+  const handleComplete = (data: ReviewCompleteData) => {
+    if (data.resumeFailed && data.reviewId) {
+      handleResumeFailed(data.reviewId);
+      return;
+    }
+    dispatch({ type: "SHOW_SUMMARY", reviewData: data });
+  };
 
   useEffect(() => {
     if (state.phase !== "checking-status" || !params.reviewId) return;
 
+    const reviewId = params.reviewId;
     const controller = new AbortController();
 
     const checkStatus = async () => {
       try {
-        const { review } = await api.getReview(params.reviewId!);
+        const { review } = await api.getReview(reviewId);
 
         if (controller.signal.aborted) return;
 
@@ -138,7 +133,7 @@ export function ReviewPage() {
     return (
       <div className="flex flex-1 items-center justify-center">
         <div
-          className="text-gray-500 font-mono text-sm"
+          className="text-tui-muted font-mono text-sm"
           role="status"
           aria-live="polite"
         >

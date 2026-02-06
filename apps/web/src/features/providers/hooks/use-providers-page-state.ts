@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useRef } from "react";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import type { ProviderFilter } from "@/features/providers/constants";
 import { useProviderManagement } from "@/features/providers/hooks/use-provider-management";
@@ -25,26 +25,22 @@ export function useProvidersPageState() {
     handleSelectModel,
   } = useProviderManagement();
 
-  const filteredProviders = useMemo(() => {
-    let result = providers;
+  let filteredProviders = providers;
 
-    if (filter === "configured") {
-      result = result.filter((p) => p.hasApiKey);
-    } else if (filter === "needs-key") {
-      result = result.filter((p) => !p.hasApiKey);
-    } else if (filter === "free") {
-      result = result.filter((p) => PROVIDER_CAPABILITIES[p.id]?.tier === "free" || PROVIDER_CAPABILITIES[p.id]?.tier === "mixed");
-    } else if (filter === "paid") {
-      result = result.filter((p) => PROVIDER_CAPABILITIES[p.id]?.tier === "paid");
-    }
+  if (filter === "configured") {
+    filteredProviders = filteredProviders.filter((p) => p.hasApiKey);
+  } else if (filter === "needs-key") {
+    filteredProviders = filteredProviders.filter((p) => !p.hasApiKey);
+  } else if (filter === "free") {
+    filteredProviders = filteredProviders.filter((p) => PROVIDER_CAPABILITIES[p.id]?.tier === "free" || PROVIDER_CAPABILITIES[p.id]?.tier === "mixed");
+  } else if (filter === "paid") {
+    filteredProviders = filteredProviders.filter((p) => PROVIDER_CAPABILITIES[p.id]?.tier === "paid");
+  }
 
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter((p) => p.name.toLowerCase().includes(query) || p.id.toLowerCase().includes(query));
-    }
-
-    return result;
-  }, [providers, filter, searchQuery]);
+  if (searchQuery) {
+    const query = searchQuery.toLowerCase();
+    filteredProviders = filteredProviders.filter((p) => p.name.toLowerCase().includes(query) || p.id.toLowerCase().includes(query));
+  }
 
   const effectiveSelectedId = selectedId ?? filteredProviders[0]?.id ?? null;
 

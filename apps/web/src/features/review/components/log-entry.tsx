@@ -24,7 +24,6 @@ export interface LogEntryProps
   message: React.ReactNode;
   isWarning?: boolean;
   isError?: boolean;
-  isMuted?: boolean;
 }
 
 export function LogEntry({
@@ -35,13 +34,12 @@ export function LogEntry({
   message,
   isWarning,
   isError,
-  isMuted,
   className,
 }: LogEntryProps) {
   const tagStyle = TAG_VARIANTS[tagType ?? "system"];
   return (
-    <div className={cn('font-mono text-sm leading-relaxed', isMuted && 'opacity-50', className)}>
-      <span className="text-gray-600">[{formatTimestamp(timestamp)}]</span>{' '}
+    <div className={cn('font-mono text-sm leading-relaxed', className)}>
+      <span className="text-tui-muted">[{formatTimestamp(timestamp)}]</span>{' '}
       <Badge
         variant={tagStyle.variant}
         size="sm"
@@ -52,10 +50,10 @@ export function LogEntry({
       {source && (
         <>
           <span className="font-bold text-tui-fg">{source}</span>
-          <span className="text-gray-600"> → </span>
+          <span className="text-tui-muted"> → </span>
         </>
       )}
-      <span className={cn('text-gray-400', isWarning && 'text-tui-yellow', isError && 'text-tui-red')}>
+      <span className={cn('text-tui-muted', isWarning && 'text-tui-yellow', isError && 'text-tui-red')}>
         {message}
       </span>
     </div>

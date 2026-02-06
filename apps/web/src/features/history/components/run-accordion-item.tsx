@@ -28,7 +28,7 @@ export function RunAccordionItem({
       className={cn(
         "border-b border-tui-border relative group",
         isSelected && "bg-tui-selection",
-        !isSelected && "hover:bg-white/5",
+        !isSelected && "hover:bg-tui-selection",
         className
       )}
     >
@@ -39,20 +39,28 @@ export function RunAccordionItem({
 
       {/* Header */}
       <div
+        role="button"
+        tabIndex={0}
         onClick={onSelect}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSelect();
+          }
+        }}
         className="p-3 pl-4 cursor-pointer overflow-hidden"
       >
         <div className="flex justify-between items-start mb-1 min-w-0">
           <div className="flex items-baseline gap-3 min-w-0 overflow-hidden">
-            <span className={cn("font-bold text-sm shrink-0", isSelected ? "text-tui-blue" : "text-gray-400")}>
+            <span className={cn("font-bold text-sm shrink-0", isSelected ? "text-tui-blue" : "text-tui-muted")}>
               {displayId}
             </span>
             <Badge variant="neutral" size="sm" className="shrink-0">{branch}</Badge>
-            <span className="text-xs text-gray-500 truncate">{provider}</span>
+            <span className="text-xs text-tui-muted truncate">{provider}</span>
           </div>
-          <span className="text-xs text-gray-500 shrink-0 ml-2">{timestamp}</span>
+          <span className="text-xs text-tui-muted shrink-0 ml-2">{timestamp}</span>
         </div>
-        <div className={cn("text-sm mb-2 line-clamp-2 overflow-hidden", isSelected ? "text-tui-fg" : "text-gray-400")}>
+        <div className={cn("text-sm mb-2 line-clamp-2 overflow-hidden", isSelected ? "text-tui-fg" : "text-tui-muted")}>
           {summary}
         </div>
         {/* TODO: Add Resume and Export actions when handlers are implemented */}

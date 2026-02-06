@@ -57,7 +57,7 @@ export function MenuItem({
     );
   }
 
-  let valueClasses = "text-gray-500 font-mono text-xs";
+  let valueClasses = "text-tui-muted font-mono text-xs";
   if (isSelected) {
     valueClasses = "font-mono text-xs uppercase tracking-wide";
   } else if (valueVariant === "success-badge") {

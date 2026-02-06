@@ -1,4 +1,4 @@
-import { useCallback, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import type { SettingsConfig } from "@stargazer/schemas/config";
 import { DEFAULT_TTL } from "@/config/constants";
 import { api } from "@/lib/api";
@@ -54,7 +54,7 @@ export function useSettings() {
     triggerFetch();
   }
 
-  const refresh = useCallback(async () => {
+  const refresh = async () => {
     invalidateSettings();
     try {
       const data = await api.getSettings();
@@ -63,7 +63,7 @@ export function useSettings() {
     } catch {
       // refresh failed — cache stays null
     }
-  }, []);
+  };
 
   return {
     settings: snapshot?.data ?? null,

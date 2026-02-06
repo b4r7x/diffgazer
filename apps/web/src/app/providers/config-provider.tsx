@@ -1,6 +1,5 @@
 import {
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -109,7 +108,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       (s.provider !== OPENROUTER_PROVIDER_ID || Boolean(s.model))
   );
 
-  const applyConfigData = useCallback((data: ConfigData) => {
+  const applyConfigData = (data: ConfigData) => {
     setState({
       provider: data.provider,
       model: data.model,
@@ -118,145 +117,130 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       repoRoot: data.repoRoot,
       trust: data.trust,
     });
-  }, []);
+  };
 
-  const refresh = useCallback(
-    async (invalidate = false) => {
-      if (invalidate) invalidateConfigCache();
-      setIsLoading(true);
-      setError(null);
+  const updateAfterAction = async (
+    newProvider: AIProvider | undefined,
+    newModel: string | undefined,
+  ) => {
+    const providers = await api.getProviderStatus();
+    const {
+      projectId: cachedProjectId,
+      repoRoot: cachedRepoRoot,
+      trust: cachedTrust,
+    } = stateRef.current;
+    const data: ConfigData = {
+      provider: newProvider,
+      model: newModel,
+      providers,
+      projectId: cachedProjectId,
+      repoRoot: cachedRepoRoot,
+      trust: cachedTrust,
+    };
+    applyConfigData(data);
+    setCache(data);
+  };
 
-      try {
-        const cached = getCached();
-        if (cached) {
-          applyConfigData(cached);
-          setIsLoading(false);
-          return;
-        }
+  const refresh = async (invalidate = false) => {
+    if (invalidate) invalidateConfigCache();
+    setIsLoading(true);
+    setError(null);
 
-        const initData = await api.loadInit();
-        const data: ConfigData = {
-          provider:
-            AIProviderSchema.safeParse(initData.config?.provider).data,
-          model: initData.config?.model,
-          providers: initData.providers,
-          projectId: initData.project.projectId,
-          repoRoot: initData.project.path,
-          trust: initData.project.trust,
-        };
-        applyConfigData(data);
-        setCache(data);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load configuration",
-        );
-      } finally {
+    try {
+      const cached = getCached();
+      if (cached) {
+        applyConfigData(cached);
         setIsLoading(false);
+        return;
       }
-    },
-    [applyConfigData],
-  );
 
-  const updateAfterAction = useCallback(
-    async (
-      newProvider: AIProvider | undefined,
-      newModel: string | undefined,
-    ) => {
-      const providers = await api.getProviderStatus();
-      const {
-        projectId: cachedProjectId,
-        repoRoot: cachedRepoRoot,
-        trust: cachedTrust,
-      } = stateRef.current;
+      const initData = await api.loadInit();
       const data: ConfigData = {
-        provider: newProvider,
-        model: newModel,
-        providers,
-        projectId: cachedProjectId,
-        repoRoot: cachedRepoRoot,
-        trust: cachedTrust,
+        provider:
+          AIProviderSchema.safeParse(initData.config?.provider).data,
+        model: initData.config?.model,
+        providers: initData.providers,
+        projectId: initData.project.projectId,
+        repoRoot: initData.project.path,
+        trust: initData.project.trust,
       };
       applyConfigData(data);
       setCache(data);
-    },
-    [applyConfigData],
-  );
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load configuration",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const activateProvider = useCallback(
-    async (providerId: string, selectedModel?: string) => {
-      setIsSaving(true);
-      setError(null);
-      try {
-        invalidateConfigCache();
-        const result = await api.activateProvider(providerId, selectedModel);
-        await updateAfterAction(AIProviderSchema.safeParse(result.provider).data, result.model);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to activate provider",
-        );
-        throw err;
-      } finally {
-        setIsSaving(false);
-      }
-    },
-    [updateAfterAction],
-  );
+  const activateProvider = async (providerId: string, selectedModel?: string) => {
+    setIsSaving(true);
+    setError(null);
+    try {
+      invalidateConfigCache();
+      const result = await api.activateProvider(providerId, selectedModel);
+      await updateAfterAction(AIProviderSchema.safeParse(result.provider).data, result.model);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to activate provider",
+      );
+      throw err;
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-  const saveCredentials = useCallback(
-    async (
-      providerName: AIProvider,
-      apiKey: string,
-      selectedModel?: string,
-    ) => {
-      setIsSaving(true);
-      setError(null);
-      try {
-        invalidateConfigCache();
-        await api.saveConfig({
-          provider: providerName,
-          apiKey,
-          model: selectedModel,
-        });
-        await updateAfterAction(providerName, selectedModel);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to save credentials",
-        );
-        throw err;
-      } finally {
-        setIsSaving(false);
-      }
-    },
-    [updateAfterAction],
-  );
+  const saveCredentials = async (
+    providerName: AIProvider,
+    apiKey: string,
+    selectedModel?: string,
+  ) => {
+    setIsSaving(true);
+    setError(null);
+    try {
+      invalidateConfigCache();
+      await api.saveConfig({
+        provider: providerName,
+        apiKey,
+        model: selectedModel,
+      });
+      await updateAfterAction(providerName, selectedModel);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to save credentials",
+      );
+      throw err;
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
-  const deleteProviderCredentials = useCallback(
-    async (providerName: AIProvider) => {
-      setIsSaving(true);
-      setError(null);
-      try {
-        invalidateConfigCache();
-        await api.deleteProviderCredentials(providerName);
-        const { provider: currentProvider, model: currentModel } =
-          stateRef.current;
-        const wasActive = currentProvider === providerName;
-        await updateAfterAction(
-          wasActive ? undefined : currentProvider,
-          wasActive ? undefined : currentModel,
-        );
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to delete provider credentials",
-        );
-        throw err;
-      } finally {
-        setIsSaving(false);
-      }
-    },
-    [updateAfterAction],
-  );
+  const deleteProviderCredentials = async (providerName: AIProvider) => {
+    setIsSaving(true);
+    setError(null);
+    try {
+      invalidateConfigCache();
+      await api.deleteProviderCredentials(providerName);
+      const { provider: currentProvider, model: currentModel } =
+        stateRef.current;
+      const wasActive = currentProvider === providerName;
+      await updateAfterAction(
+        wasActive ? undefined : currentProvider,
+        wasActive ? undefined : currentModel,
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to delete provider credentials",
+      );
+      throw err;
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   useEffect(() => {
     refresh();

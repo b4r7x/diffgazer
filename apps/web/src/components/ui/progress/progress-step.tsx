@@ -25,7 +25,7 @@ const labelVariants = cva('text-sm', {
     status: {
       completed: 'text-tui-fg',
       active: 'font-bold text-tui-blue',
-      pending: 'text-gray-600',
+      pending: 'text-tui-muted',
     },
   },
   defaultVariants: {
@@ -62,12 +62,12 @@ export function ProgressStep({
 }: ProgressStepProps) {
   const hasContent = Boolean(children || (substeps && substeps.length > 0));
 
-  const handleClick = React.useCallback(() => {
+  const handleClick = () => {
     if (hasContent && onToggle) {
       if (stepId) (onToggle as (id: string) => void)(stepId);
       else (onToggle as () => void)();
     }
-  }, [hasContent, onToggle, stepId]);
+  };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter' || event.key === ' ') {

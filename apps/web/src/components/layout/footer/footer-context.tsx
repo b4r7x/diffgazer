@@ -20,7 +20,6 @@ const FooterActionsContext = createContext<FooterActionsContextValue | undefined
 
 const DEFAULT_SHORTCUTS: Shortcut[] = [
   { key: "?", label: "Help" },
-  { key: "q", label: "Quit" },
 ];
 
 export function FooterProvider({ children }: { children: ReactNode }) {
