@@ -1,7 +1,6 @@
 import { resolveProjectRoot } from "../paths.js";
 import { type Result, ok, err, createError } from "@stargazer/core";
-import type { AIProvider, ProjectInfo, ProviderStatus } from "@stargazer/schemas/config";
-import type { SecretsStorage, SettingsConfig, TrustConfig } from "@stargazer/schemas/settings";
+import type { AIProvider, ProjectInfo, ProviderStatus, SecretsStorage, SettingsConfig, TrustConfig } from "@stargazer/schemas/config";
 import type { SecretsStorageError, SecretsStorageErrorCode, ConfigState, SecretsState, TrustState } from "./types.js";
 import {
   deleteKeyringSecret,
@@ -21,10 +20,6 @@ import {
   syncProvidersWithSecrets,
 } from "./state.js";
 
-const resolveSecretsStorage = (
-  storage?: SecretsStorage | null,
-): SecretsStorage => storage ?? "file";
-
 const getApiKeyName = (provider: string): string => `api_key_${provider}`;
 
 let configState: ConfigState = loadConfig();
@@ -34,7 +29,7 @@ let trustState: TrustState = loadTrust();
 configState.providers = syncProvidersWithSecrets(
   configState.providers,
   secretsState,
-  resolveSecretsStorage(configState.settings.secretsStorage),
+  configState.settings.secretsStorage ?? "file",
 );
 
 const persistFileSecrets = (): void => {
@@ -79,7 +74,7 @@ const ensureProvider = (providerId: AIProvider): ProviderStatus => {
   const created: ProviderStatus = {
     provider: providerId,
     hasApiKey:
-      resolveSecretsStorage(configState.settings.secretsStorage) === "file"
+      (configState.settings.secretsStorage ?? "file") === "file"
         ? secretsState.providers[providerId] !== undefined
         : false,
     isActive: false,
@@ -163,8 +158,8 @@ export const updateSettings = (
     ...patch,
   };
 
-  const currentStorage = resolveSecretsStorage(configState.settings.secretsStorage);
-  const nextStorage = resolveSecretsStorage(nextSettings.secretsStorage);
+  const currentStorage = (configState.settings.secretsStorage ?? "file");
+  const nextStorage = nextSettings.secretsStorage ?? "file";
 
   if (currentStorage !== nextStorage) {
     const migrateResult = migrateSecretsStorage(currentStorage, nextStorage);
@@ -195,7 +190,7 @@ export const getActiveProvider = (): ProviderStatus | null => {
 export const getProviderApiKey = (
   providerId: string
 ): Result<string | null, SecretsStorageError> => {
-  if (resolveSecretsStorage(configState.settings.secretsStorage) === "file") {
+  if ((configState.settings.secretsStorage ?? "file") === "file") {
     return ok(secretsState.providers[providerId] ?? null);
   }
 
@@ -245,7 +240,7 @@ export const saveProviderCredentials = (input: {
   model?: string;
 }): Result<ProviderStatus, SecretsStorageError> => {
   const { provider, apiKey, model } = input;
-  const storage = resolveSecretsStorage(configState.settings.secretsStorage);
+  const storage = (configState.settings.secretsStorage ?? "file");
 
   if (storage === "file") {
     secretsState.providers[provider] = apiKey;
@@ -304,7 +299,7 @@ export const deleteProviderCredentials = (
   );
   let hadSecret = false;
 
-  if (resolveSecretsStorage(configState.settings.secretsStorage) === "file") {
+  if ((configState.settings.secretsStorage ?? "file") === "file") {
     hadSecret = providerId in secretsState.providers;
     if (hadSecret) {
       delete secretsState.providers[providerId];

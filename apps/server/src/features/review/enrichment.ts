@@ -1,6 +1,5 @@
 import type { ReviewIssue, EnrichmentData } from "@stargazer/schemas/review";
-import type { EnrichProgressEvent } from "@stargazer/schemas/enrich-event";
-import { now } from "../../shared/lib/review/utils.js";
+import type { EnrichProgressEvent } from "@stargazer/schemas/events";
 
 const CONTEXT_LINES = 5;
 
@@ -23,7 +22,7 @@ async function enrichIssue(
   const enrichment: EnrichmentData = {
     blame: null,
     context: null,
-    enrichedAt: now(),
+    enrichedAt: new Date().toISOString(),
   };
 
   if (issue.line_start !== null && issue.line_start !== undefined) {
@@ -32,7 +31,7 @@ async function enrichIssue(
       issueId: issue.id,
       enrichmentType: "blame",
       status: "started",
-      timestamp: now(),
+      timestamp: new Date().toISOString(),
     });
 
     const blame = await gitService.getBlame(issue.file, issue.line_start);
@@ -43,7 +42,7 @@ async function enrichIssue(
       issueId: issue.id,
       enrichmentType: "blame",
       status: blame ? "complete" : "failed",
-      timestamp: now(),
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -53,7 +52,7 @@ async function enrichIssue(
       issueId: issue.id,
       enrichmentType: "context",
       status: "started",
-      timestamp: now(),
+      timestamp: new Date().toISOString(),
     });
 
     const startLine = Math.max(1, issue.line_start - CONTEXT_LINES);
@@ -72,7 +71,7 @@ async function enrichIssue(
       issueId: issue.id,
       enrichmentType: "context",
       status: enrichment.context.totalContext > 0 ? "complete" : "failed",
-      timestamp: now(),
+      timestamp: new Date().toISOString(),
     });
   }
 

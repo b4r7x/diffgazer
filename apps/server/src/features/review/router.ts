@@ -1,23 +1,23 @@
+import type { Context } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { ErrorCode } from "@stargazer/schemas/errors";
-import { errorResponse, handleStoreError, zodErrorHandler } from "../../shared/lib/http/response.js";
+import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
 import { createBodyLimitMiddleware } from "../../shared/middlewares/body-limit.js";
 import { getErrorMessage } from "@stargazer/core";
-import { parseDiff } from "../../shared/lib/diff/parser.js";
-import { createGitService } from "../../shared/lib/git/service.js";
 import { writeSSEError } from "../../shared/lib/http/sse.js";
-import { getProjectRoot, parseProjectPath } from "../../shared/lib/http/request.js";
+import { getProjectRoot } from "../../shared/lib/http/request.js";
 import { getProjectStargazerDir } from "../../shared/lib/paths.js";
 import { isValidProjectPath } from "../../shared/lib/validation.js";
 import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
 import {
-  addDrilldownToReview,
   deleteReview as deleteStoredReview,
   getReview as getStoredReview,
   listReviews as listStoredReviews,
 } from "../../shared/lib/storage/reviews.js";
+import type { StoreError, StoreErrorCode } from "../../shared/lib/storage/types.js";
 import {
   ContextRefreshSchema,
   DrilldownRequestSchema,
@@ -28,7 +28,55 @@ import {
 import { initializeAIClient } from "../../shared/lib/ai/client.js";
 import { streamReviewToSSE } from "./service.js";
 import { buildProjectContextSnapshot, loadContextSnapshot } from "./context.js";
-import { drilldownIssueById } from "./drilldown.js";
+import { handleDrilldownRequest } from "./drilldown.js";
+
+const parseProjectPath = (
+  c: Context,
+  options: { required?: boolean } = {}
+): { ok: true; value?: string } | { ok: false; response: Response } => {
+  const projectPath = c.req.query("projectPath");
+  if (!projectPath) {
+    if (options.required) {
+      return {
+        ok: false,
+        response: errorResponse(c, "projectPath required", ErrorCode.VALIDATION_ERROR, 400),
+      };
+    }
+    return { ok: true, value: undefined };
+  }
+
+  if (!isValidProjectPath(projectPath)) {
+    return {
+      ok: false,
+      response: errorResponse(
+        c,
+        "Invalid projectPath: contains path traversal or null bytes",
+        ErrorCode.VALIDATION_ERROR,
+        400
+      ),
+    };
+  }
+
+  return { ok: true, value: projectPath };
+};
+
+const errorCodeToStatus = (code: StoreErrorCode): ContentfulStatusCode => {
+  switch (code) {
+    case "NOT_FOUND":
+      return 404;
+    case "VALIDATION_ERROR":
+      return 400;
+    case "PERMISSION_ERROR":
+      return 403;
+    default:
+      return 500;
+  }
+};
+
+const handleStoreError = (ctx: Context, error: StoreError): Response => {
+  const status = errorCodeToStatus(error.code);
+  return errorResponse(ctx, error.message, error.code, status);
+};
 
 const reviewRouter = new Hono();
 
@@ -163,35 +211,14 @@ reviewRouter.post(
       return errorResponse(c, clientResult.error.message, clientResult.error.code, 500);
     }
 
-    const reviewResult = await getStoredReview(id);
-    if (!reviewResult.ok) return handleStoreError(c, reviewResult.error);
-
     const projectPath = getProjectRoot(c);
-    const gitService = createGitService({ cwd: projectPath });
+    const result = await handleDrilldownRequest(clientResult.value, id, issueId, projectPath);
 
-    let diff: string;
-    try {
-      diff = await gitService.getDiff(reviewResult.value.metadata.mode ?? "unstaged");
-    } catch {
-      return errorResponse(c, "Failed to retrieve git diff", ErrorCode.COMMAND_FAILED, 500);
+    if (!result.ok) {
+      return errorResponse(c, result.error.message, result.error.code, 400);
     }
 
-    const parsed = parseDiff(diff);
-    const drilldownResult = await drilldownIssueById(
-      clientResult.value,
-      issueId,
-      reviewResult.value.result,
-      parsed
-    );
-
-    if (!drilldownResult.ok) {
-      return errorResponse(c, drilldownResult.error.message, drilldownResult.error.code, 400);
-    }
-
-    const saveResult = await addDrilldownToReview(id, drilldownResult.value);
-    if (!saveResult.ok) return handleStoreError(c, saveResult.error);
-
-    return c.json({ drilldown: drilldownResult.value });
+    return c.json({ drilldown: result.value });
   }
 );
 

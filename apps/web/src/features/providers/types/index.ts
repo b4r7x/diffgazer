@@ -1,4 +1,4 @@
-import type { ProviderInfo } from '@stargazer/schemas';
+import type { ProviderInfo } from '@stargazer/schemas/config';
 
 export type DisplayStatus = 'active' | 'configured' | 'needs-key';
 

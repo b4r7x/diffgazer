@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import type { ReviewMetadata } from "@stargazer/api";
+import type { ReviewMetadata } from "@stargazer/schemas/review";
 
 export async function getReviews(projectPath?: string): Promise<ReviewMetadata[]> {
   const response = await api.getReviews(projectPath);

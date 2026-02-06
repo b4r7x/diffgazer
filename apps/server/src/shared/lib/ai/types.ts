@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import type { AIProvider } from "@stargazer/schemas/config";
-import type { SharedErrorCode } from "@stargazer/schemas";
+import type { SharedErrorCode } from "@stargazer/schemas/errors";
 import type { Result, AppError } from "@stargazer/core";
 
 export type AIErrorCode =

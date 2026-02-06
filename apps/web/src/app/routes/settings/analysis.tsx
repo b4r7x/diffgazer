@@ -16,8 +16,9 @@ import { useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { SETTINGS_SHORTCUTS } from "@/lib/navigation";
 import { api } from "@/lib/api";
-import type { SettingsConfig } from "@/types/config";
-import { AGENT_METADATA, LENS_TO_AGENT, type LensId } from "@stargazer/schemas";
+import type { SettingsConfig } from "@stargazer/schemas/config";
+import { AGENT_METADATA, LENS_TO_AGENT } from "@stargazer/schemas/events";
+import type { LensId } from "@stargazer/schemas/review";
 
 const LENS_OPTIONS = (Object.entries(LENS_TO_AGENT) as Array<[LensId, keyof typeof AGENT_METADATA]>)
   .map(([lensId, agentId]) => {

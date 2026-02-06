@@ -1,5 +1,5 @@
-import type { FullReviewStreamEvent } from "@stargazer/schemas";
-import type { ReviewMode } from "@stargazer/schemas/review-storage";
+import type { FullReviewStreamEvent } from "@stargazer/schemas/events";
+import type { ReviewMode } from "@stargazer/schemas/review";
 
 export interface ActiveSession {
   reviewId: string;

@@ -1,5 +1,4 @@
-import type { Lens } from "@stargazer/schemas/lens";
-import type { SeverityRubric } from "@stargazer/schemas/lens";
+import type { Lens, SeverityRubric } from "@stargazer/schemas/review";
 import type { ReviewIssue } from "@stargazer/schemas/review";
 import type { ParsedDiff, FileDiff } from "../diff/types.js";
 

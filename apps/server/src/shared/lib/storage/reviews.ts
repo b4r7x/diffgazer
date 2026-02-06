@@ -6,20 +6,12 @@ import {
   type SavedReview,
   type ReviewMetadata,
   type ReviewGitContext,
-  type ReviewResult,
-  type LensId,
-  type ProfileId,
   type DrilldownResult,
-  type ReviewMode,
-} from "@stargazer/schemas";
-import type { ParsedDiff } from "../diff/types.js";
-import { createCollection, type StoreError } from "./persistence.js";
+} from "@stargazer/schemas/review";
+import { createCollection } from "./persistence.js";
+import type { StoreError, DateFieldsOf, SaveReviewOptions } from "./types.js";
 import { getGlobalStargazerDir } from "../paths.js";
 import { type Result, ok, calculateSeverityCounts } from "@stargazer/core";
-
-type DateFieldsOf<T> = {
-  [K in keyof T]: T[K] extends string ? K : never;
-}[keyof T];
 
 function filterByProjectAndSort<T extends { projectPath: string }>(
   items: T[],
@@ -38,7 +30,7 @@ const REVIEWS_DIR = join(getGlobalStargazerDir(), "triage-reviews");
 const getReviewFile = (reviewId: string): string =>
   join(REVIEWS_DIR, `${reviewId}.json`);
 
-export const reviewStore = createCollection<SavedReview, ReviewMetadata>({
+const reviewStore = createCollection<SavedReview, ReviewMetadata>({
   name: "review",
   dir: REVIEWS_DIR,
   filePath: getReviewFile,
@@ -70,20 +62,6 @@ function migrateReview(review: SavedReview): boolean {
   metadata.lowCount = counts.low;
   metadata.nitCount = counts.nit;
   return true;
-}
-
-export interface SaveReviewOptions {
-  reviewId?: string;
-  projectPath: string;
-  mode: ReviewMode;
-  result: ReviewResult;
-  diff: ParsedDiff;
-  branch: string | null;
-  commit: string | null;
-  profile?: ProfileId;
-  lenses: LensId[];
-  drilldowns?: DrilldownResult[];
-  durationMs?: number;
 }
 
 export async function saveReview(

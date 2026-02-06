@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import type { ReviewSeverity } from "@stargazer/schemas/review";
-import type { ReviewIssue } from "@stargazer/schemas";
-import { SEVERITY_CONFIG } from "@stargazer/schemas/ui";
+import type { ReviewIssue } from "@stargazer/schemas/review";
+import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
 
 export interface IssueListItemProps {
   issue: ReviewIssue;

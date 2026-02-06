@@ -1,8 +1,6 @@
 import { useReducer, useCallback, useRef } from "react";
 import { streamReviewWithEvents, resumeReviewStream, type StreamReviewRequest } from "../api/review-api";
-import type { AgentStreamEvent } from "@stargazer/schemas";
-import type { EnrichEvent } from "@stargazer/schemas/enrich-event";
-import type { StepEvent } from "@stargazer/schemas/step-event";
+import type { AgentStreamEvent, EnrichEvent, StepEvent } from "@stargazer/schemas/events";
 import {
   reviewReducer,
   createInitialReviewState,

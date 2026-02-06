@@ -8,7 +8,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { AIProvider, ProviderStatus, TrustConfig } from "@/types/config";
+import type { AIProvider, ProviderStatus, TrustConfig } from "@stargazer/schemas/config";
+import { OPENROUTER_PROVIDER_ID } from "@/features/providers/constants";
 import { DEFAULT_TTL } from "@/lib/constants";
 import { api } from "@/lib/api";
 
@@ -91,7 +92,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       data.providers.some(
         (status) =>
           status.isActive &&
-          (status.provider !== "openrouter" || Boolean(status.model))
+          (status.provider !== OPENROUTER_PROVIDER_ID || Boolean(status.model))
       )
     );
     setProjectId(data.projectId);

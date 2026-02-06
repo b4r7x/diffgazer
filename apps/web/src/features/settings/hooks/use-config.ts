@@ -1,6 +1,6 @@
 import { useConfigContext } from "@/app/providers";
 import { api } from "@/lib/api";
-import type { SaveConfigRequest } from "@stargazer/api";
+import type { SaveConfigRequest } from "@stargazer/schemas/config";
 
 export function useConfig() {
   const context = useConfigContext();

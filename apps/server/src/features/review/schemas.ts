@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { LensIdSchema, ProfileIdSchema } from "@stargazer/schemas/lens";
-import { ReviewModeSchema } from "@stargazer/schemas/review-storage";
+import { LensIdSchema, ProfileIdSchema, ReviewModeSchema } from "@stargazer/schemas/review";
 
 export const ReviewIdParamSchema = z.object({
   id: z.string().uuid(),
@@ -23,7 +22,7 @@ export const parseCsvParam = (value: string | undefined | null): string[] | unde
   return items.length > 0 ? items : undefined;
 };
 
-export const CsvLensIds = z.string().transform((val) => {
+export const CsvLensIdsSchema = z.string().transform((val) => {
   const items = parseCsvParam(val);
   return items ? z.array(LensIdSchema).parse(items) : undefined;
 }).optional();
@@ -31,6 +30,6 @@ export const CsvLensIds = z.string().transform((val) => {
 export const ReviewStreamQuerySchema = z.object({
   mode: ReviewModeSchema.optional(),
   profile: ProfileIdSchema.optional(),
-  lenses: CsvLensIds,
+  lenses: CsvLensIdsSchema,
   files: z.string().optional(),
 });

@@ -6,7 +6,7 @@ import {
 } from "@tanstack/react-router";
 import { AnalysisSummary } from "@/components/ui";
 import type { LensStats, IssuePreview, SeverityFilter } from "@/components/ui";
-import type { ReviewIssue, ReviewResult } from "@stargazer/schemas";
+import type { ReviewIssue, ReviewResult } from "@stargazer/schemas/review";
 import { SEVERITY_ORDER } from "@stargazer/schemas/ui";
 import { useScope, useKey, useSelectableList } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";

@@ -35,7 +35,8 @@ gitRouter.get("/status", async (c): Promise<Response> => {
       return errorResponse(c, "Not a git repository", ErrorCode.NOT_GIT_REPO, 400);
     }
     return c.json(status);
-  } catch {
+  } catch (error) {
+    console.error("[stargazer] git status error:", error);
     return errorResponse(c, "Failed to retrieve git status", ErrorCode.COMMAND_FAILED, 500);
   }
 });
@@ -55,7 +56,8 @@ gitRouter.get("/diff", zValidator("query", GitDiffQuerySchema, zodErrorHandler),
 
     const diff = await result.service.getDiff(mode);
     return c.json({ diff, mode });
-  } catch {
+  } catch (error) {
+    console.error("[stargazer] git diff error:", error);
     return errorResponse(c, "Failed to retrieve git diff", ErrorCode.COMMAND_FAILED, 500);
   }
 });

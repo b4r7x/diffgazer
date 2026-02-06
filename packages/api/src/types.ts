@@ -1,47 +1,11 @@
-// Import shared types from schemas for local use
+import type { AIProvider, TrustConfig } from "@stargazer/schemas/config";
 import type {
-  AIProvider as _AIProvider,
-  ProviderStatus as _ProviderStatus,
-} from "@stargazer/schemas/config";
-import type { TrustConfig as _TrustConfig } from "@stargazer/schemas/settings";
-import type {
-  ReviewMode as _ReviewMode,
-  ReviewMetadata as _ReviewMetadata,
-  SavedReview as _SavedReview,
-} from "@stargazer/schemas/review-storage";
-
-// Re-export shared types from schemas (single source of truth)
-export type {
-  AIProvider,
-  ProviderStatus,
-  OpenRouterModel,
-  OpenRouterModelsResponse,
-  ProvidersStatusResponse,
-  ConfigCheckResponse,
-  SaveConfigRequest,
-  DeleteConfigResponse,
-  DeleteProviderCredentialsResponse as DeleteProviderResponse,
-  CurrentConfigResponse as ConfigResponse,
-  ProjectInfo,
-  InitResponse,
-} from "@stargazer/schemas/config";
-
-export type {
-  TrustCapabilities,
-  TrustMode,
-  TrustConfig,
-  Theme,
-  SecretsStorage,
-  SettingsConfig,
-} from "@stargazer/schemas/settings";
-
-export type {
   ReviewMode,
   ReviewMetadata,
   SavedReview,
-} from "@stargazer/schemas/review-storage";
-
-export type { GitFileEntry, GitStatus } from "@stargazer/schemas/git";
+  DrilldownResult,
+} from "@stargazer/schemas/review";
+import type { ProjectContextGraph, ProjectContextMeta } from "@stargazer/schemas/context";
 
 // API client types (unique to this package)
 export interface ApiError extends Error {
@@ -76,26 +40,17 @@ export interface ApiClient {
 
 // API response types (unique to this package - server response shapes)
 export interface TrustResponse {
-  trust: _TrustConfig;
+  trust: TrustConfig;
 }
 
 export interface TrustListResponse {
-  projects: _TrustConfig[];
+  projects: TrustConfig[];
 }
 
 export interface ActivateProviderResponse {
-  provider: _AIProvider;
+  provider: AIProvider;
   model?: string;
 }
-
-export type {
-  FileTreeNode,
-  ProjectContextGraph,
-  ProjectContextMeta,
-  ProjectContextSnapshot,
-} from "@stargazer/schemas/context";
-
-import type { ProjectContextGraph, ProjectContextMeta } from "@stargazer/schemas/context";
 
 export interface ReviewContextResponse {
   text: string;
@@ -106,26 +61,18 @@ export interface ReviewContextResponse {
 
 export interface GitDiffResponse {
   diff: string;
-  mode: _ReviewMode;
+  mode: ReviewMode;
 }
 
 export interface ReviewsResponse {
-  reviews: _ReviewMetadata[];
+  reviews: ReviewMetadata[];
   warnings?: string[];
 }
 
 export interface ReviewResponse {
-  review: _SavedReview;
+  review: SavedReview;
 }
 
 export interface DrilldownResponse {
-  drilldown: unknown;
+  drilldown: DrilldownResult;
 }
-
-export interface ReviewStreamStatus {
-  sessionActive: boolean;
-  reviewSaved: boolean;
-  isComplete: boolean;
-  startedAt?: string;
-}
-

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { TrustCapabilities } from "@/types/config";
+import type { TrustCapabilities } from "@stargazer/schemas/config";
 import {
   Dialog,
   DialogContent,

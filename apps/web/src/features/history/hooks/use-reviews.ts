@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { getReviews, deleteReview as apiDeleteReview } from "../api";
-import type { ReviewMetadata } from "@stargazer/api";
+import type { ReviewMetadata } from "@stargazer/schemas/review";
 
 export function useReviews(projectPath?: string) {
   const [reviews, setReviews] = useState<ReviewMetadata[]>([]);
