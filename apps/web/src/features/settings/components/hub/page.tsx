@@ -12,6 +12,15 @@ import { SETTINGS_MENU_ITEMS, SETTINGS_SHORTCUTS, type SettingsAction } from "@/
 
 const FOOTER_RIGHT = [{ key: "", label: "HUB-MODE" }];
 
+const SETTINGS_ROUTES: Record<SettingsAction, string> = {
+  trust: "/settings/trust-permissions",
+  theme: "/settings/theme",
+  provider: "/settings/providers",
+  storage: "/settings/storage",
+  analysis: "/settings/analysis",
+  diagnostics: "/settings/diagnostics",
+};
+
 export function SettingsHubPage() {
   const navigate = useNavigate();
   const { provider, isConfigured, trust } = useConfigData();
@@ -61,17 +70,8 @@ export function SettingsHubPage() {
     };
   }, [isConfigured, provider, settings?.secretsStorage, settings?.defaultLenses?.length, theme, isTrusted]);
 
-  const settingsRoutes: Record<SettingsAction, string> = {
-    trust: "/settings/trust-permissions",
-    theme: "/settings/theme",
-    provider: "/settings/providers",
-    storage: "/settings/storage",
-    analysis: "/settings/analysis",
-    diagnostics: "/settings/diagnostics",
-  };
-
   const handleActivate = (item: { id: SettingsAction }) => {
-    const route = settingsRoutes[item.id];
+    const route = SETTINGS_ROUTES[item.id];
     if (route) navigate({ to: route });
   };
 

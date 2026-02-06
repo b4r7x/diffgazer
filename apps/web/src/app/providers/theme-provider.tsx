@@ -42,15 +42,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     () => "dark" as ResolvedTheme
   );
 
-  const resolved: ResolvedTheme = theme === "auto" ? systemTheme : theme;
-
-  useEffect(() => {
-    if (settings?.theme) {
-      const webTheme = mapSettingsTheme(settings.theme);
-      setThemeState(webTheme);
-      localStorage.setItem(STORAGE_KEY, webTheme);
-    }
-  }, [settings?.theme]);
+  const resolvedTheme = settings?.theme ? mapSettingsTheme(settings.theme) : theme;
+  const resolved: ResolvedTheme = resolvedTheme === "auto" ? systemTheme : resolvedTheme;
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", resolved);
@@ -59,10 +52,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setTheme = useCallback((newTheme: WebTheme) => {
     setThemeState(newTheme);
     localStorage.setItem(STORAGE_KEY, newTheme);
-    api.saveSettings({ theme: newTheme }).catch(() => {});
+    api.saveSettings({ theme: newTheme }).catch((err) => console.error("Failed to save theme settings", err));
   }, []);
 
-  const value = useMemo<ThemeContextValue>(() => ({ theme, resolved, setTheme }), [theme, resolved, setTheme]);
+  const value = useMemo<ThemeContextValue>(() => ({ theme: resolvedTheme, resolved, setTheme }), [resolvedTheme, resolved, setTheme]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

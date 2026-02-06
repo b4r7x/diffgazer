@@ -45,40 +45,42 @@ export function useSelectableList({
 
   const moveUp = () => {
     if (itemCount === 0) return;
+    let newIndex: number | undefined;
     setFocusedIndex((prev) => {
       if (prev === 0) {
         if (wrap) {
           let lastIndex = itemCount - 1;
           while (lastIndex > 0 && getDisabled(lastIndex)) lastIndex--;
-          onFocus?.(lastIndex);
+          newIndex = lastIndex;
           return lastIndex;
         }
         onBoundaryReached?.("up");
         return prev;
       }
-      const newIndex = findNextIndex(prev, -1);
-      onFocus?.(newIndex);
+      newIndex = findNextIndex(prev, -1);
       return newIndex;
     });
+    if (newIndex !== undefined) onFocus?.(newIndex);
   };
 
   const moveDown = () => {
     if (itemCount === 0) return;
+    let newIndex: number | undefined;
     setFocusedIndex((prev) => {
       if (prev === itemCount - 1) {
         if (wrap) {
           let firstIndex = 0;
           while (firstIndex < itemCount - 1 && getDisabled(firstIndex)) firstIndex++;
-          onFocus?.(firstIndex);
+          newIndex = firstIndex;
           return firstIndex;
         }
         onBoundaryReached?.("down");
         return prev;
       }
-      const newIndex = findNextIndex(prev, 1);
-      onFocus?.(newIndex);
+      newIndex = findNextIndex(prev, 1);
       return newIndex;
     });
+    if (newIndex !== undefined) onFocus?.(newIndex);
   };
 
   useKeys(upKeys, moveUp, { enabled: enabled && itemCount > 0 });

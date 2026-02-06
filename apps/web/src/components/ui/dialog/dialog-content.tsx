@@ -45,7 +45,7 @@ function useFocusTrap(containerRef: React.RefObject<HTMLDivElement | null>) {
       container.removeEventListener('keydown', handleKeyDown);
       previousFocus?.focus();
     };
-  }, [containerRef]);
+  }, []);
 }
 
 export interface DialogContentProps extends React.HTMLAttributes<HTMLDivElement> {

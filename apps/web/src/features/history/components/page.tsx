@@ -109,7 +109,6 @@ export function HistoryPage() {
                     key={run.id}
                     run={run}
                     isSelected={run.id === selectedRunId}
-                    isExpanded={false}
                     onSelect={() => setSelectedRunId(run.id)}
                     onOpen={() => handleRunActivate(run.id)}
                   />

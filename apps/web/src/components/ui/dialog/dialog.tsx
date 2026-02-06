@@ -11,7 +11,10 @@ export interface DialogProps {
 export function Dialog({ open: controlledOpen, onOpenChange, children }: DialogProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
   const isOpen = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen;
-  const handleOpenChange = onOpenChange || setUncontrolledOpen;
+  const handleOpenChange = React.useCallback(
+    (open: boolean) => (onOpenChange || setUncontrolledOpen)(open),
+    [onOpenChange]
+  );
   const dialogId = React.useId();
 
   useScope('dialog', { enabled: isOpen });

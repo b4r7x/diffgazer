@@ -1,35 +1,29 @@
 import { cn } from "@/utils/cn";
 import { Badge } from "@/components/ui/badge";
-import { IssueListItem } from "@/components/ui/issue";
 import type { Run } from "@/features/history/types";
 
 export interface RunAccordionItemProps {
   run: Run;
   isSelected: boolean;
-  isExpanded: boolean;
   onSelect: () => void;
   onOpen?: () => void;
-  onIssueClick?: (issueId: string) => void;
   className?: string;
 }
 
 export function RunAccordionItem({
   run,
   isSelected,
-  isExpanded,
   onSelect,
   onOpen,
-  onIssueClick,
   className,
 }: RunAccordionItemProps) {
-  const { id, displayId, branch, provider, timestamp, summary, issues } = run;
+  const { id, displayId, branch, provider, timestamp, summary } = run;
   return (
     <div
       id={id}
       role="option"
       data-value={id}
       aria-selected={isSelected}
-      aria-expanded={isExpanded}
       onDoubleClick={onOpen}
       className={cn(
         "border-b border-tui-border relative group",
@@ -74,19 +68,6 @@ export function RunAccordionItem({
         </div>
       </div>
 
-      {/* Expanded issue list */}
-      {isExpanded && issues.length > 0 && (
-        <div className="border-t border-tui-border bg-black/30 pb-2 overflow-hidden">
-          {issues.map((issue) => (
-            <IssueListItem
-              key={issue.id}
-              issue={issue}
-              isSelected={false}
-              onClick={() => onIssueClick?.(issue.id)}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
