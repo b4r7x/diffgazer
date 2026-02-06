@@ -34,7 +34,7 @@ export function IssueDetailsPane({
 
   return (
     <FocusablePane isFocused={isFocused} className={cn("w-3/5 flex flex-col pl-4 min-h-0", className)}>
-      <Tabs value={activeTab} onValueChange={(v) => onTabChange(v as TabId)} className="flex flex-col flex-1">
+      <Tabs value={activeTab} onValueChange={onTabChange} className="flex flex-col flex-1">
         <TabsList className="border-b border-tui-border pb-2 pt-2 mb-4">
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="explain">Explain</TabsTrigger>

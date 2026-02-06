@@ -14,31 +14,31 @@ import type { AgentState } from '@stargazer/schemas/events';
 import type { ReviewContextResponse } from '@stargazer/api/types';
 import type { ReviewProgressMetrics } from '../types';
 
-export interface ReviewProgressViewProps {
+export interface ReviewProgressData {
   steps: ProgressStepData[];
   entries: LogEntryData[];
-  agents?: AgentState[];
+  agents: AgentState[];
   metrics: ReviewProgressMetrics;
-  isRunning: boolean;
-  error?: string | null;
   startTime?: Date;
   contextSnapshot?: ReviewContextResponse | null;
+}
+
+export interface ReviewProgressViewProps {
+  data: ReviewProgressData;
+  isRunning: boolean;
+  error?: string | null;
   onViewResults?: () => void;
   onCancel?: () => void;
 }
 
 export function ReviewProgressView({
-  steps,
-  entries,
-  agents = [],
-  metrics,
+  data,
   isRunning,
   error,
-  startTime,
-  contextSnapshot,
   onViewResults,
   onCancel,
 }: ReviewProgressViewProps) {
+  const { steps, entries, agents, metrics, startTime, contextSnapshot } = data;
   const navigate = useNavigate();
   const [expandedStepId, setExpandedStepId] = useState<string | null>(null);
   const [agentFilter, setAgentFilter] = useState<string | null>(null);

@@ -16,7 +16,7 @@ function getSystemTheme(): ResolvedTheme {
 
 const STORAGE_KEY = "stargazer-theme";
 
-export const ThemeContext = createContext<ThemeContextValue | null>(null);
+export const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 function resolveWebTheme(value: string | null): WebTheme {
   if (value === "dark" || value === "light" || value === "auto") return value;
@@ -50,7 +50,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       setThemeState(webTheme);
       localStorage.setItem(STORAGE_KEY, webTheme);
     }
-  }, [settings]);
+  }, [settings?.theme]);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", resolved);

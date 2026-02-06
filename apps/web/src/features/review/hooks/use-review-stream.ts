@@ -1,4 +1,4 @@
-import { useReducer, useCallback, useRef } from "react";
+import { useReducer, useCallback, useRef, useEffect } from "react";
 import { api } from "@/lib/api";
 import type { StreamReviewRequest, StreamReviewError } from "@stargazer/api/review";
 import type { AgentStreamEvent, EnrichEvent, StepEvent } from "@stargazer/schemas/events";
@@ -171,9 +171,20 @@ export function useReviewStream(): UseReviewStreamReturn {
     }
   }, [enqueueEvent, handleStreamError]);
 
-  // Note: We intentionally don't abort on cleanup to handle React Strict Mode.
-  // The stream will complete naturally or be aborted explicitly via stop().
-  // This prevents Strict Mode's simulated unmount from killing active streams.
+  // Abort the stream on real unmount. Use a mount-count ref so that
+  // Strict Mode's simulated unmount/remount cycle doesn't kill the stream.
+  const mountCountRef = useRef(0);
+  useEffect(() => {
+    mountCountRef.current += 1;
+    return () => {
+      mountCountRef.current -= 1;
+      // Only abort on true unmount (mount count drops to 0)
+      if (mountCountRef.current === 0 && abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
 
   return {
     state,

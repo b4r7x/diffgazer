@@ -3,11 +3,10 @@ import { useFiglet } from "@stargazer/hooks";
 
 interface AsciiLogoProps {
   text?: string;
-  scale?: number;
   className?: string;
 }
 
-export function AsciiLogo({ text = "STARGAZER", scale = 1, className }: AsciiLogoProps) {
+export function AsciiLogo({ text = "STARGAZER", className }: AsciiLogoProps) {
   const asciiText = useFiglet(text);
   const isReady = Boolean(asciiText);
 
@@ -18,7 +17,6 @@ export function AsciiLogo({ text = "STARGAZER", scale = 1, className }: AsciiLog
         isReady ? "leading-none" : "opacity-50",
         className
       )}
-      style={scale !== 1 ? { zoom: scale } : undefined}
       aria-label={text.toUpperCase()}
     >
       {isReady ? asciiText : text}

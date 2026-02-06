@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import { useCallback, type RefObject } from "react";
 
 interface ScrollIntoViewOptions {
   padding?: number;
@@ -11,7 +11,7 @@ interface UseScrollIntoViewReturn {
 }
 
 export function useScrollIntoView(containerRef: RefObject<HTMLDivElement | null>): UseScrollIntoViewReturn {
-  const isItemVisible = (
+  const isItemVisible = useCallback((
     itemIndex: number,
     options: ScrollIntoViewOptions = {}
   ): boolean => {
@@ -30,9 +30,9 @@ export function useScrollIntoView(containerRef: RefObject<HTMLDivElement | null>
       itemRect.top >= containerRect.top &&
       itemRect.bottom <= containerRect.bottom
     );
-  };
+  }, []);
 
-  const scrollItemIntoView = (
+  const scrollItemIntoView = useCallback((
     itemIndex: number,
     options: ScrollIntoViewOptions = {}
   ) => {
@@ -52,7 +52,7 @@ export function useScrollIntoView(containerRef: RefObject<HTMLDivElement | null>
     } else if (itemRect.bottom > containerRect.bottom - padding) {
       container.scrollTop += itemRect.bottom - containerRect.bottom + padding;
     }
-  };
+  }, []);
 
   return { isItemVisible, scrollItemIntoView };
 }

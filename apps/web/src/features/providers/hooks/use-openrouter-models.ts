@@ -1,4 +1,4 @@
-import { useReducer, useEffect } from "react";
+import { useReducer, useEffect, useRef } from "react";
 import type { ModelInfo } from "@stargazer/schemas/config";
 import { api } from "@/lib/api";
 import { OPENROUTER_PROVIDER_ID } from "@/config/constants";
@@ -41,7 +41,8 @@ interface State {
 type Action =
   | { type: "FETCH_START" }
   | { type: "FETCH_SUCCESS"; payload: { models: ModelInfo[]; total: number; compatible: number; hasParams: boolean } }
-  | { type: "FETCH_ERROR"; error: string };
+  | { type: "FETCH_ERROR"; error: string }
+  | { type: "RESET" };
 
 const initialState: State = {
   status: "idle",
@@ -60,6 +61,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, status: "loaded", ...action.payload };
     case "FETCH_ERROR":
       return { ...state, status: "error", error: action.error };
+    case "RESET":
+      return initialState;
   }
 }
 
@@ -74,6 +77,15 @@ export interface OpenRouterModelsState {
 
 export function useOpenRouterModels(open: boolean, provider: AIProvider): OpenRouterModelsState {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const prevOpenRef = useRef(open);
+
+  useEffect(() => {
+    const wasOpen = prevOpenRef.current;
+    prevOpenRef.current = open;
+    if (open && !wasOpen) {
+      dispatch({ type: "RESET" });
+    }
+  }, [open]);
 
   useEffect(() => {
     if (!open || provider !== OPENROUTER_PROVIDER_ID) return;

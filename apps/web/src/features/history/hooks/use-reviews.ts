@@ -34,8 +34,29 @@ export function useReviews(projectPath?: string) {
   );
 
   useEffect(() => {
-    fetchReviews();
-  }, [fetchReviews]);
+    let cancelled = false;
+
+    setIsLoading(true);
+    setError(null);
+
+    api.getReviews(projectPath)
+      .then((response) => {
+        if (cancelled) return;
+        setReviews(response.reviews);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Failed to fetch reviews");
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [projectPath]);
 
   return {
     reviews,

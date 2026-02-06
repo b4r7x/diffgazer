@@ -4,10 +4,10 @@ import { useKey, useKeys } from "@/hooks/keyboard";
 import { MenuContext, type InternalMenuItemData, type MenuContextValue } from "./menu-context";
 import { MenuItem, type MenuItemProps } from "./menu-item";
 
-export interface MenuProps {
+export interface MenuProps<T extends string = string> {
   selectedIndex: number;
   onSelect: (index: number) => void;
-  onActivate?: (item: { id: string; disabled: boolean; index: number }) => void;
+  onActivate?: (item: InternalMenuItemData<T>) => void;
   keyboardEnabled?: boolean;
   enableNumberJump?: boolean;
   variant?: "default" | "hub";
@@ -18,7 +18,7 @@ export interface MenuProps {
 
 const NUMBER_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
 
-export function Menu({
+export function Menu<T extends string = string>({
   selectedIndex,
   onSelect,
   onActivate,
@@ -28,7 +28,7 @@ export function Menu({
   className,
   "aria-label": ariaLabel,
   children,
-}: MenuProps) {
+}: MenuProps<T>) {
   const items = useMemo(() => {
     const result: InternalMenuItemData[] = [];
     let idx = 0;
@@ -86,7 +86,7 @@ export function Menu({
     "Enter",
     () => {
       const item = items[selectedIndex];
-      if (item && !item.disabled) onActivate?.(item);
+      if (item && !item.disabled) onActivate?.(item as InternalMenuItemData<T>);
     },
     { enabled: keyboardEnabled }
   );
@@ -98,14 +98,14 @@ export function Menu({
       const item = items[index];
       if (item && !item.disabled) {
         onSelect(index);
-        onActivate?.(item);
+        onActivate?.(item as InternalMenuItemData<T>);
       }
     },
     { enabled: keyboardEnabled && enableNumberJump }
   );
 
   const contextValue: MenuContextValue = useMemo(
-    () => ({ selectedIndex, onSelect, onActivate, items, variant }),
+    () => ({ selectedIndex, onSelect, onActivate: onActivate as MenuContextValue["onActivate"], items, variant }),
     [selectedIndex, onSelect, onActivate, items, variant]
   );
 

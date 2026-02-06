@@ -2,26 +2,26 @@ import * as React from 'react';
 import { cn } from '@/utils/cn';
 import { TabsContext } from './tabs-context';
 
-export interface TabsProps {
-  value?: string;
-  onValueChange?: (value: string) => void;
-  defaultValue?: string;
+export interface TabsProps<T extends string = string> {
+  value?: T;
+  onValueChange?: (value: T) => void;
+  defaultValue?: T;
   children: React.ReactNode;
   className?: string;
 }
 
-function TabsRoot({
+function TabsRoot<T extends string = string>({
   value: controlledValue,
   onValueChange,
-  defaultValue = '',
+  defaultValue = '' as T,
   children,
   className,
-}: TabsProps) {
+}: TabsProps<T>) {
   const [uncontrolledValue, setUncontrolledValue] = React.useState(defaultValue);
   const triggersRef = React.useRef<Map<string, HTMLButtonElement | null>>(new Map());
 
   const value = controlledValue !== undefined ? controlledValue : uncontrolledValue;
-  const handleValueChange = onValueChange || setUncontrolledValue;
+  const handleValueChange = (onValueChange || setUncontrolledValue) as (value: string) => void;
 
   const registerTrigger = React.useCallback((triggerValue: string, element: HTMLButtonElement | null) => {
     if (element) {
@@ -34,7 +34,7 @@ function TabsRoot({
   const getTriggers = React.useCallback(() => triggersRef.current, []);
 
   const contextValue = React.useMemo(
-    () => ({ value, onValueChange: handleValueChange, registerTrigger, getTriggers }),
+    () => ({ value: value as string, onValueChange: handleValueChange, registerTrigger, getTriggers }),
     [value, handleValueChange, registerTrigger, getTriggers]
   );
 
@@ -45,5 +45,4 @@ function TabsRoot({
   );
 }
 
-const Tabs = Object.assign(TabsRoot, { displayName: "Tabs" as const });
-export { Tabs };
+export { TabsRoot as Tabs };
