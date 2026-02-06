@@ -180,13 +180,15 @@ export function HistoryPage() {
                 {filteredRuns.map((run) => (
                   <RunAccordionItem
                     key={run.id}
-                    id={run.id}
-                    displayId={`#${run.id.slice(0, 4)}`}
-                    branch={run.mode === "staged" ? "Staged" : run.branch ?? "Main"}
-                    provider="AI"
-                    timestamp={getTimestamp(run.createdAt)}
-                    summary={getRunSummary(run)}
-                    issues={[]}
+                    run={{
+                      id: run.id,
+                      displayId: `#${run.id.slice(0, 4)}`,
+                      branch: run.mode === "staged" ? "Staged" : run.branch ?? "Main",
+                      provider: "AI",
+                      timestamp: getTimestamp(run.createdAt),
+                      summary: getRunSummary(run),
+                      issues: [],
+                    }}
                     isSelected={run.id === selectedRunId}
                     isExpanded={run.id === expandedRunId}
                     onSelect={() => setSelectedRunId(run.id)}

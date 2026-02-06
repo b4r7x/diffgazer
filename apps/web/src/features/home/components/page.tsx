@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import type { SecretsStorage, SettingsConfig } from "@stargazer/schemas/config";
+import type { SecretsStorage } from "@stargazer/schemas/config";
 import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@/config/navigation";
 import { useKey, useScope } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
@@ -10,9 +10,11 @@ import { HomeMenu } from "@/features/home/components/home-menu";
 import { useConfig } from "@/hooks/use-config";
 import { useReviewHistory } from "@/features/review/hooks/use-review-history";
 import { useToast } from "@/components/ui/toast";
-import { StorageWizard, TrustModal } from "@/features/settings/components";
+import { StorageWizard } from "@/components/storage-wizard";
+import { TrustModal } from "@/components/trust-modal";
 import type { ContextInfo } from "@stargazer/schemas/ui";
 import { api } from "@/lib/api";
+import { useSettings } from "@/hooks/use-settings";
 import { useShutdown } from "@/features/home/hooks/use-shutdown";
 
 type RouteConfig = { to: string; search?: Record<string, string> };
@@ -31,10 +33,10 @@ export function HomePage() {
   const { reviews } = useReviewHistory();
   const { showToast } = useToast();
   const navigate = useNavigate();
-  const search = useSearch({ strict: false }) as { error?: string };
+  const search = useSearch({ strict: false });
   const { shutdown } = useShutdown();
+  const { settings, refresh: refreshSettings } = useSettings();
 
-  const [settings, setSettings] = useState<SettingsConfig | null>(null);
   const [wizardSaving, setWizardSaving] = useState(false);
   const [wizardError, setWizardError] = useState<string | null>(null);
 
@@ -50,24 +52,6 @@ export function HomePage() {
     });
     navigate({ to: "/", replace: true });
   }, [search.error, showToast, navigate]);
-
-  useEffect(() => {
-    let active = true;
-
-    api
-      .getSettings()
-      .then((data) => {
-        if (!active) return;
-        setSettings(data);
-      })
-      .catch(() => {
-        if (!active) return;
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const showWizard = settings !== null && !settings.secretsStorage;
   const trustModalOpen = Boolean(projectId && repoRoot && trust === null);
@@ -90,9 +74,7 @@ export function HomePage() {
     setWizardError(null);
     try {
       await api.saveSettings({ secretsStorage: choice });
-      setSettings((current) =>
-        current ? { ...current, secretsStorage: choice } : current
-      );
+      await refreshSettings();
     } catch (err) {
       setWizardError(err instanceof Error ? err.message : "Failed to save settings");
     } finally {

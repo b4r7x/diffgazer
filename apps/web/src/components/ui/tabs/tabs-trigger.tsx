@@ -28,6 +28,7 @@ export function TabsTrigger({ value, children, className, disabled }: TabsTrigge
   return (
     <button
       ref={ref}
+      id={`tab-${value}`}
       role="tab"
       aria-selected={isActive}
       aria-controls={`tabpanel-${value}`}

@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import type { SecretsStorage, SettingsConfig } from "@stargazer/schemas/config";
+import type { SecretsStorage } from "@stargazer/schemas/config";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { StorageSelectorContent } from "../storage-selector-content";
 import { WizardLayout } from "../wizard-layout";
+import { useSettings } from "@/hooks/use-settings";
 import { api } from "@/lib/api";
 import { SETTINGS_SHORTCUTS } from "@/config/navigation";
 import { useKey } from "@/hooks/keyboard";
@@ -12,9 +13,9 @@ import { usePageFooter } from "@/hooks/use-page-footer";
 
 export function SettingsStoragePage() {
   const navigate = useNavigate();
-  const [settings, setSettings] = useState<SettingsConfig | null>(null);
+  const { settings, isLoading, error: settingsError } = useSettings();
   const [storageChoice, setStorageChoice] = useState<SecretsStorage | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [storageInitialized, setStorageInitialized] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,29 +23,12 @@ export function SettingsStoragePage() {
 
   useKey("Escape", () => navigate({ to: "/settings" }));
 
+  // Initialize storage choice from settings once loaded
   useEffect(() => {
-    let active = true;
-
-    api
-      .getSettings()
-      .then((data) => {
-        if (!active) return;
-        setSettings(data);
-        setStorageChoice(data.secretsStorage ?? null);
-      })
-      .catch((err) => {
-        if (!active) return;
-        setError(err instanceof Error ? err.message : "Failed to load settings");
-      })
-      .finally(() => {
-        if (!active) return;
-        setIsLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
+    if (!settings || storageInitialized) return;
+    setStorageChoice(settings.secretsStorage ?? null);
+    setStorageInitialized(true);
+  }, [settings, storageInitialized]);
 
   const isDirty = settings?.secretsStorage !== storageChoice;
 
@@ -98,7 +82,7 @@ export function SettingsStoragePage() {
             Changes will take effect immediately after saving.
           </Callout>
 
-          {error && <p className="text-tui-red text-sm">{error}</p>}
+          {(error || settingsError) && <p className="text-tui-red text-sm">{error || settingsError}</p>}
         </div>
       )}
     </WizardLayout>

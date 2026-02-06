@@ -92,6 +92,7 @@ export function ProgressStep({
         onKeyDown={handleKeyDown}
         tabIndex={hasContent ? 0 : undefined}
         role={hasContent ? 'button' : undefined}
+        aria-expanded={hasContent ? isExpanded : undefined}
       >
         <span className="shrink-0">
           <Badge variant={STATUS_BADGES[status].variant} size="sm" className="min-w-[48px] justify-center">

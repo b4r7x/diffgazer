@@ -1,76 +1,43 @@
-import { useCallback, useEffect, useState } from "react";
-import type { ReviewMetadata, SavedReview } from "@stargazer/schemas/review";
+import { useCallback, useState } from "react";
+import type { SavedReview } from "@stargazer/schemas/review";
+import { useReviews } from "@/features/history/hooks/use-reviews";
 import { api } from "@/lib/api";
 
-interface UseReviewHistoryReturn {
-  reviews: ReviewMetadata[];
-  currentReview: SavedReview | null;
-  isLoading: boolean;
-  error: string | null;
-  refresh: () => Promise<void>;
-  loadReview: (id: string) => Promise<void>;
-  removeReview: (id: string) => Promise<void>;
-  clearCurrentReview: () => void;
-}
-
-export function useReviewHistory(): UseReviewHistoryReturn {
-  const [reviews, setReviews] = useState<ReviewMetadata[]>([]);
+export function useReviewHistory() {
+  const { reviews, isLoading, error: listError, refresh, deleteReview } = useReviews();
   const [currentReview, setCurrentReview] = useState<SavedReview | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchReviews = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await api.getReviews();
-      setReviews(data.reviews);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch review history");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isLoadingReview, setIsLoadingReview] = useState(false);
 
   const loadReview = useCallback(async (id: string) => {
-    setIsLoading(true);
-    setError(null);
+    setIsLoadingReview(true);
+    setLoadError(null);
     try {
       const { review } = await api.getReview(id);
       setCurrentReview(review);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load review");
+      setLoadError(err instanceof Error ? err.message : "Failed to load review");
     } finally {
-      setIsLoading(false);
+      setIsLoadingReview(false);
     }
   }, []);
 
   const removeReview = useCallback(
     async (id: string) => {
-      try {
-        await api.deleteReview(id);
-        setReviews((prev) => prev.filter((review) => review.id !== id));
-        if (currentReview?.metadata?.id === id) {
-          setCurrentReview(null);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to delete review");
-        fetchReviews();
+      await deleteReview(id);
+      if (currentReview?.metadata?.id === id) {
+        setCurrentReview(null);
       }
     },
-    [currentReview, fetchReviews]
+    [currentReview, deleteReview]
   );
-
-  useEffect(() => {
-    fetchReviews();
-  }, [fetchReviews]);
 
   return {
     reviews,
     currentReview,
-    isLoading,
-    error,
-    refresh: fetchReviews,
+    isLoading: isLoading || isLoadingReview,
+    error: listError || loadError,
+    refresh,
     loadReview,
     removeReview,
     clearCurrentReview: () => setCurrentReview(null),

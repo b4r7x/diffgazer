@@ -6,6 +6,7 @@ import { Panel, PanelHeader, PanelContent } from "@/components/ui/containers";
 import { PathList } from "@/components/ui/path-list";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
+import { downloadAsFile } from "@/utils/download";
 import { api } from "@/lib/api";
 import type { ReviewContextResponse } from "@stargazer/api/types";
 
@@ -25,6 +26,7 @@ interface SystemDiagnostics {
   };
 }
 
+// TODO: Replace with real data from API (currently hardcoded placeholders)
 const DIAGNOSTICS: SystemDiagnostics = {
   version: "v1.4.2",
   nodeVersion: "v20.5.1",
@@ -79,36 +81,17 @@ export function DiagnosticsPage() {
 
   const downloadContextSnapshot = useCallback(() => {
     if (!contextSnapshot) return;
-    const download = (filename: string, content: string, type: string) => {
-      const blob = new Blob([content], { type });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = filename;
-      anchor.click();
-      URL.revokeObjectURL(url);
-    };
-
-    download("context.txt", contextSnapshot.text, "text/plain");
-    download("context.md", contextSnapshot.markdown, "text/markdown");
-    download("context.json", JSON.stringify(contextSnapshot.graph, null, 2), "application/json");
+    downloadAsFile(contextSnapshot.text, "context.txt", "text/plain");
+    downloadAsFile(contextSnapshot.markdown, "context.md", "text/markdown");
+    downloadAsFile(JSON.stringify(contextSnapshot.graph, null, 2), "context.json", "application/json");
   }, [contextSnapshot]);
 
   const canDownloadContext = contextStatus === "ready" && !!contextSnapshot;
 
   const handleButtonAction = useCallback((index: number) => {
-    switch (index) {
-      case 0:
-        break;
-      case 1:
-        if (canDownloadContext) {
-          downloadContextSnapshot();
-        }
-        break;
-      case 2:
-        break;
-      case 3:
-        break;
+    // TODO: Implement actions for Print Paths (0), Export Debug Report (2), Reset UI Settings (3)
+    if (index === 1 && canDownloadContext) {
+      downloadContextSnapshot();
     }
   }, [downloadContextSnapshot, canDownloadContext]);
 

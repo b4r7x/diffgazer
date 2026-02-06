@@ -74,7 +74,7 @@ export function useModelDialogKeyboard({
     setCheckedModelId(currentModel);
     const currentIndex = models.findIndex((m) => m.id === currentModel);
     setSelectedIndex(currentIndex >= 0 ? currentIndex : 0);
-  }, [open, currentModel, models]);
+  }, [open, currentModel, models, resetFilters]);
 
   // Clamp selection when filtered list changes
   useEffect(() => {
@@ -88,7 +88,7 @@ export function useModelDialogKeyboard({
     if (focusZone === "list" && filteredModels.length > 0) {
       scrollItemIntoView(selectedIndex);
     }
-  }, [selectedIndex, focusZone, filteredModels.length]);
+  }, [selectedIndex, focusZone, filteredModels.length, scrollItemIntoView]);
 
   const handleConfirm = () => {
     const model = filteredModels[selectedIndex];
