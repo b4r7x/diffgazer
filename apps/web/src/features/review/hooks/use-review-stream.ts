@@ -12,44 +12,38 @@ import {
 import { ReviewErrorCode } from "@stargazer/schemas/review";
 
 interface WebReviewState extends CoreReviewState {
-  selectedIssueId: string | null;
   reviewId: string | null;
 }
 
 type WebReviewAction =
   | CoreReviewAction
-  | { type: "SELECT_ISSUE"; issueId: string | null }
   | { type: "SET_REVIEW_ID"; reviewId: string };
 
 function createInitialWebState(): WebReviewState {
   return {
     ...createInitialReviewState(),
-    selectedIssueId: null,
     reviewId: null,
   };
 }
 
 function webReviewReducer(state: WebReviewState, action: WebReviewAction): WebReviewState {
   switch (action.type) {
-    case "SELECT_ISSUE":
-      return { ...state, selectedIssueId: action.issueId };
     case "SET_REVIEW_ID":
       return { ...state, reviewId: action.reviewId };
     case "START":
     case "RESET":
-      return { ...reviewReducer(state, action), selectedIssueId: null, reviewId: null };
+      return { ...reviewReducer(state, action), reviewId: null };
   }
 
   if (action.type === "EVENT" && action.event.type === "review_started") {
     const newState = reviewReducer(state, action);
     return {
       ...newState,
-      selectedIssueId: state.selectedIssueId,
       reviewId: action.event.reviewId,
     };
   }
 
-  return { ...reviewReducer(state, action), selectedIssueId: state.selectedIssueId, reviewId: state.reviewId };
+  return { ...reviewReducer(state, action), reviewId: state.reviewId };
 }
 
 type ReviewEvent = AgentStreamEvent | StepEvent | EnrichEvent;
@@ -59,7 +53,6 @@ interface UseReviewStreamReturn {
   start: (options: StreamReviewRequest) => Promise<void>;
   stop: () => void;
   resume: (reviewId: string) => Promise<Result<void, StreamReviewError>>;
-  selectIssue: (issueId: string | null) => void;
 }
 
 export function useReviewStream(): UseReviewStreamReturn {
@@ -141,10 +134,6 @@ export function useReviewStream(): UseReviewStreamReturn {
     }
   }, [enqueueEvent, handleStreamError]);
 
-  const selectIssue = useCallback((issueId: string | null) => {
-    dispatch({ type: "SELECT_ISSUE", issueId });
-  }, []);
-
   const resume = useCallback(async (reviewId: string): Promise<Result<void, StreamReviewError>> => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -191,6 +180,5 @@ export function useReviewStream(): UseReviewStreamReturn {
     start,
     stop,
     resume,
-    selectIssue
   };
 }

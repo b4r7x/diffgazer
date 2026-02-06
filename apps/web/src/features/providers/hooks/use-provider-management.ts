@@ -3,6 +3,23 @@ import { useToast } from "@/components/ui/toast";
 import type { AIProvider } from "@stargazer/schemas/config";
 import { useProviders } from "./use-providers";
 
+function useSubmitGuard() {
+  const isSubmittingRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const withGuard = useCallback(<T,>(fn: () => Promise<T>): Promise<T | undefined> => {
+    if (isSubmittingRef.current) return Promise.resolve(undefined);
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
+    return fn().finally(() => {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
+    });
+  }, []);
+
+  return { isSubmitting, withGuard };
+}
+
 export function useProviderManagement() {
   const {
     providers,
@@ -15,87 +32,62 @@ export function useProviderManagement() {
 
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false);
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
-  const isSubmittingRef = useRef(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { isSubmitting, withGuard } = useSubmitGuard();
 
   const handleSaveApiKey = useCallback(async (
     providerId: AIProvider,
     value: string,
     opts?: { openModelDialog?: boolean },
   ) => {
-    if (isSubmittingRef.current) return;
-    isSubmittingRef.current = true;
-    setIsSubmitting(true);
-    try {
+    await withGuard(async () => {
       await saveApiKey(providerId, value);
       setApiKeyDialogOpen(false);
       showToast({ variant: "success", title: "API Key Saved", message: "Provider configured" });
       if (opts?.openModelDialog) {
         setModelDialogOpen(true);
       }
-    } catch (error) {
+    }).catch((error) => {
       showToast({ variant: "error", title: "Failed to Save", message: error instanceof Error ? error.message : "Unknown error" });
-    } finally {
-      isSubmittingRef.current = false;
-      setIsSubmitting(false);
-    }
-  }, [saveApiKey, showToast]);
+    });
+  }, [saveApiKey, showToast, withGuard]);
 
   const handleRemoveKey = useCallback(async (providerId: AIProvider) => {
-    if (isSubmittingRef.current) return;
-    isSubmittingRef.current = true;
-    setIsSubmitting(true);
-    try {
+    await withGuard(async () => {
       await removeApiKey(providerId);
       setApiKeyDialogOpen(false);
       showToast({ variant: "success", title: "API Key Removed", message: "Provider key deleted" });
-    } catch (error) {
+    }).catch((error) => {
       showToast({ variant: "error", title: "Failed to Remove", message: error instanceof Error ? error.message : "Unknown error" });
-    } finally {
-      isSubmittingRef.current = false;
-      setIsSubmitting(false);
-    }
-  }, [removeApiKey, showToast]);
+    });
+  }, [removeApiKey, showToast, withGuard]);
 
   const handleSelectProvider = useCallback(async (
     providerId: AIProvider,
     providerName: string,
     model: string | undefined,
   ) => {
-    if (isSubmittingRef.current) return;
     if (providerId === "openrouter" && !model) {
       showToast({ variant: "error", title: "Model Required", message: "Select a model for OpenRouter first" });
       setModelDialogOpen(true);
       return;
     }
-    isSubmittingRef.current = true;
-    setIsSubmitting(true);
-    try {
+    await withGuard(async () => {
       await selectProvider(providerId, model);
       showToast({ variant: "success", title: "Provider Activated", message: `${providerName} is now active` });
-    } catch (error) {
+    }).catch((error) => {
       showToast({ variant: "error", title: "Failed to Activate", message: error instanceof Error ? error.message : "Unknown error" });
-    } finally {
-      isSubmittingRef.current = false;
-      setIsSubmitting(false);
-    }
-  }, [selectProvider, showToast]);
+    });
+  }, [selectProvider, showToast, withGuard]);
 
   const handleSelectModel = useCallback(async (providerId: AIProvider, modelId: string) => {
-    if (isSubmittingRef.current) return;
-    isSubmittingRef.current = true;
-    setIsSubmitting(true);
-    try {
+    await withGuard(async () => {
       await selectProvider(providerId, modelId);
       setModelDialogOpen(false);
       showToast({ variant: "success", title: "Model Selected", message: `Selected ${modelId}` });
-    } catch (error) {
+    }).catch((error) => {
       showToast({ variant: "error", title: "Failed to Select Model", message: error instanceof Error ? error.message : "Unknown error" });
-    } finally {
-      isSubmittingRef.current = false;
-      setIsSubmitting(false);
-    }
-  }, [selectProvider, showToast]);
+    });
+  }, [selectProvider, showToast, withGuard]);
 
   return {
     providers,

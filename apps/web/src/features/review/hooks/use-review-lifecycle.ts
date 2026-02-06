@@ -7,6 +7,9 @@ import { ReviewErrorCode } from '@stargazer/schemas/review';
 import type { ReviewIssue } from '@stargazer/schemas/review';
 import type { ReviewMode } from '../types';
 
+const REPORT_COMPLETE_DELAY_MS = 2300;
+const DEFAULT_COMPLETE_DELAY_MS = 400;
+
 export interface ReviewCompleteData {
   issues: ReviewIssue[];
   reviewId: string | null;
@@ -34,12 +37,10 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
     onComplete?.(data);
   });
 
-  // Track whether we've ever streamed
-  useEffect(() => {
-    if (state.isStreaming) {
-      hasStreamedRef.current = true;
-    }
-  }, [state.isStreaming]);
+  // Track whether we've ever streamed (ref assignment during render is safe)
+  if (state.isStreaming) {
+    hasStreamedRef.current = true;
+  }
 
   // Sync review ID to URL
   useEffect(() => {
@@ -99,15 +100,19 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
   }, [mode, start, resume, configLoading, isConfigured, params.reviewId, settingsLoading, defaultLenses]);
 
   // Delay transition so users see final step completions before switching views
+  const prevIsStreamingRef = useRef(state.isStreaming);
   useEffect(() => {
-    if (!state.isStreaming && hasStreamedRef.current && !state.error) {
+    const wasStreaming = prevIsStreamingRef.current;
+    prevIsStreamingRef.current = state.isStreaming;
+
+    if (wasStreaming && !state.isStreaming && hasStreamedRef.current && !state.error) {
       if (completeTimeoutRef.current) {
         clearTimeout(completeTimeoutRef.current);
       }
 
       const reportStep = state.steps.find(s => s.id === 'report');
       const reportCompleted = reportStep?.status === 'completed';
-      const delayMs = reportCompleted ? 2300 : 400;
+      const delayMs = reportCompleted ? REPORT_COMPLETE_DELAY_MS : DEFAULT_COMPLETE_DELAY_MS;
 
       completeTimeoutRef.current = setTimeout(() => {
         stableOnComplete({ issues: state.issues, reviewId: state.reviewId });
@@ -118,7 +123,7 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
         clearTimeout(completeTimeoutRef.current);
       }
     };
-  }, [state.isStreaming, state.steps, state.issues, state.reviewId, state.error]);
+  }, [state.isStreaming, state.error]);
 
   const handleCancel = useCallback(() => {
     stop();

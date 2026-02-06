@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
+const HEALTH_CHECK_INTERVAL_MS = 30_000;
+
 type ServerState =
   | { status: "checking" }
   | { status: "connected" }
@@ -29,7 +31,7 @@ export function useServerStatus(): ServerStatus {
 
   useEffect(() => {
     checkHealth();
-    const intervalId = window.setInterval(checkHealth, 30000);
+    const intervalId = window.setInterval(checkHealth, HEALTH_CHECK_INTERVAL_MS);
     return () => window.clearInterval(intervalId);
   }, [checkHealth]);
 

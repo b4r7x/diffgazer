@@ -6,9 +6,7 @@ import { useReviewLifecycle, type ReviewCompleteData } from '../hooks/use-review
 import { useContextSnapshot } from '../hooks/use-context-snapshot';
 import { OPENROUTER_PROVIDER_ID } from '@/config/constants';
 import { convertAgentEventsToLogEntries } from '@stargazer/core/review';
-import type { ProgressStepData, ProgressStatus } from '@/components/ui/progress';
-import type { StepState, AgentState, AgentStatus } from '@stargazer/schemas/events';
-import type { ProgressSubstepData } from '@stargazer/schemas/ui';
+import { mapStepsToProgressData } from './review-container.utils';
 import type { ReviewMode } from '../types';
 
 export type { ReviewCompleteData };
@@ -16,58 +14,6 @@ export type { ReviewCompleteData };
 export interface ReviewContainerProps {
   mode: ReviewMode;
   onComplete?: (data: ReviewCompleteData) => void;
-}
-
-function mapStepStatus(status: StepState['status']): ProgressStatus {
-  return status === 'error' ? 'pending' : status;
-}
-
-function mapAgentToSubstepStatus(agentStatus: AgentStatus): ProgressSubstepData['status'] {
-  switch (agentStatus) {
-    case 'queued': return 'pending';
-    case 'running': return 'active';
-    case 'complete': return 'completed';
-    case 'error': return 'error';
-  }
-}
-
-function truncateText(value: string, maxLength: number): string {
-  if (value.length <= maxLength) return value;
-  return value.slice(0, maxLength - 3) + '...';
-}
-
-function deriveSubstepsFromAgents(agents: AgentState[]): ProgressSubstepData[] {
-  return agents.map(agent => ({
-    id: agent.id,
-    tag: agent.meta.badgeLabel,
-    label: agent.meta.name,
-    status: mapAgentToSubstepStatus(agent.status),
-    detail: agent.status === 'running'
-      ? `${Math.round(agent.progress)}%${agent.currentAction ? ` · ${truncateText(agent.currentAction, 40)}` : ''}`
-      : agent.status === 'complete'
-        ? `${agent.issueCount} issue${agent.issueCount === 1 ? '' : 's'}`
-        : agent.status === 'error'
-          ? 'error'
-          : 'queued',
-  }));
-}
-
-function mapStepsToProgressData(
-  steps: StepState[],
-  agents: AgentState[]
-): ProgressStepData[] {
-  return steps.map(step => {
-    const substeps = step.id === 'review' && agents.length > 0
-      ? deriveSubstepsFromAgents(agents)
-      : undefined;
-
-    return {
-      id: step.id,
-      label: step.label,
-      status: mapStepStatus(step.status),
-      substeps,
-    };
-  });
 }
 
 /**

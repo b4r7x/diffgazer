@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { SecretsStorage } from "@stargazer/schemas/config";
 import { Button } from "@/components/ui/button";
@@ -15,29 +15,23 @@ export function SettingsStoragePage() {
   const navigate = useNavigate();
   const { settings, isLoading, error: settingsError } = useSettings();
   const [storageChoice, setStorageChoice] = useState<SecretsStorage | null>(null);
-  const [storageInitialized, setStorageInitialized] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const effectiveStorage = storageChoice ?? settings?.secretsStorage ?? null;
 
   usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
 
   useKey("Escape", () => navigate({ to: "/settings" }));
 
-  // Initialize storage choice from settings once loaded
-  useEffect(() => {
-    if (!settings || storageInitialized) return;
-    setStorageChoice(settings.secretsStorage ?? null);
-    setStorageInitialized(true);
-  }, [settings, storageInitialized]);
-
-  const isDirty = settings?.secretsStorage !== storageChoice;
+  const isDirty = settings?.secretsStorage !== effectiveStorage;
 
   const handleSave = async (): Promise<void> => {
-    if (!storageChoice) return;
+    if (!effectiveStorage) return;
     setIsSaving(true);
     setError(null);
     try {
-      await api.saveSettings({ secretsStorage: storageChoice });
+      await api.saveSettings({ secretsStorage: effectiveStorage });
       navigate({ to: "/settings" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save settings");
@@ -61,7 +55,7 @@ export function SettingsStoragePage() {
           <Button
             variant="success"
             onClick={handleSave}
-            disabled={isSaving || !storageChoice || !isDirty}
+            disabled={isSaving || !effectiveStorage || !isDirty}
           >
             {isSaving ? "Saving..." : "Save"}
           </Button>
@@ -73,7 +67,7 @@ export function SettingsStoragePage() {
       ) : (
         <div className="space-y-6">
           <StorageSelectorContent
-            value={storageChoice}
+            value={effectiveStorage}
             onChange={setStorageChoice}
             disabled={isSaving}
           />

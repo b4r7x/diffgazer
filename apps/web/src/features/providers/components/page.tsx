@@ -60,19 +60,10 @@ export function ProvidersPage() {
     return result;
   }, [providers, filter, searchQuery]);
 
-  const providersWithStatus = useMemo(
-    () => filteredProviders.map((p) => ({
-      ...p,
-      displayStatus: p.isActive ? "active" as const : p.hasApiKey ? "configured" as const : "needs-key" as const,
-      selectedModel: p.model,
-    })),
-    [filteredProviders]
-  );
-
-  const effectiveSelectedId = selectedId ?? providersWithStatus[0]?.id ?? null;
+  const effectiveSelectedId = selectedId ?? filteredProviders[0]?.id ?? null;
 
   const selectedProvider = effectiveSelectedId
-    ? providersWithStatus.find((p) => p.id === effectiveSelectedId) ?? null
+    ? filteredProviders.find((p) => p.id === effectiveSelectedId) ?? null
     : null;
 
   const dialogOpen = apiKeyDialogOpen || modelDialogOpen;
@@ -81,7 +72,7 @@ export function ProvidersPage() {
   const { focusZone, filterIndex, buttonIndex, handleListBoundary } = useProvidersKeyboard({
     selectedId: effectiveSelectedId,
     selectedProvider,
-    filteredProviders: providersWithStatus,
+    filteredProviders,
     filter,
     setFilter,
     setSelectedId,
@@ -107,7 +98,7 @@ export function ProvidersPage() {
     <div className="flex-1 flex overflow-hidden">
       <div className="w-2/5 flex flex-col border-r border-tui-border">
         <ProviderList
-          providers={providersWithStatus}
+          providers={filteredProviders}
           selectedId={effectiveSelectedId}
           onSelect={setSelectedId}
           filter={filter}
