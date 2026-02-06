@@ -108,7 +108,17 @@ export const ReviewResultSchema = z.object({
 });
 export type ReviewResult = z.infer<typeof ReviewResultSchema>;
 
-const REVIEW_SPECIFIC_CODES = ["NO_DIFF", "AI_ERROR", "GENERATION_FAILED"] as const;
+export const ReviewErrorCode = {
+  NO_DIFF: "NO_DIFF",
+  AI_ERROR: "AI_ERROR",
+  GENERATION_FAILED: "GENERATION_FAILED",
+  SESSION_NOT_FOUND: "SESSION_NOT_FOUND",
+  SESSION_STALE: "SESSION_STALE",
+} as const;
+
+export type ReviewErrorCode = (typeof ReviewErrorCode)[keyof typeof ReviewErrorCode];
+
+const REVIEW_SPECIFIC_CODES = Object.values(ReviewErrorCode) as [string, ...string[]];
 
 export const ReviewErrorSchema = createDomainErrorSchema(REVIEW_SPECIFIC_CODES);
 export type ReviewError = z.infer<typeof ReviewErrorSchema>;

@@ -18,7 +18,8 @@ import type { ReviewError, OrchestrationOutcome, OrchestrationOptions } from "./
 async function runWithConcurrency<T, R>(
   items: T[],
   limit: number,
-  worker: (item: T, index: number) => Promise<R>
+  worker: (item: T, index: number) => Promise<R>,
+  signal?: AbortSignal
 ): Promise<PromiseSettledResult<R>[]> {
   const results: PromiseSettledResult<R>[] = new Array(items.length);
   let nextIndex = 0;
@@ -26,6 +27,11 @@ async function runWithConcurrency<T, R>(
 
   return new Promise((resolve) => {
     const launchNext = () => {
+      if (signal?.aborted) {
+        if (active === 0) resolve(results);
+        return;
+      }
+
       if (nextIndex >= items.length && active === 0) {
         resolve(results);
         return;
@@ -107,7 +113,7 @@ export async function orchestrateReview(
           traceId,
           spanId: task.spanId,
           parentSpanId: orchestratorSpanId,
-        }, orchestrationOptions.projectContext);
+        }, orchestrationOptions.projectContext, orchestrationOptions.signal);
       } catch (error) {
         onEvent({
           type: "agent_error",
@@ -120,6 +126,7 @@ export async function orchestrateReview(
         throw error;
       }
     },
+    orchestrationOptions.signal,
   );
 
   const allIssues: ReviewIssue[] = [];

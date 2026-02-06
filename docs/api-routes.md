@@ -501,9 +501,9 @@ When not configured:
 
 ---
 
-### `GET /api/reviews/:id/stream`
+### `GET /api/review/reviews/:id/stream`
 
-**Description**: Streams triage session events for a review id (SSE).
+**Description**: Resumes an active review stream for a specific review id (SSE).
 
 **Response**: Server-Sent Events
 
@@ -524,6 +524,10 @@ data: {"type":"complete","result":{...},"reviewId":"...","durationMs":1234}
 event: error
 data: {"type":"error","error":{"message":"...","code":"AI_ERROR"}}
 ```
+
+**Errors**
+- `SESSION_NOT_FOUND` (404): no active session exists for this `reviewId`.
+- `SESSION_STALE` (409): active session exists, but repository state (`headCommit` or `statusHash`) changed. Client should start a new review.
 
 ---
 
@@ -574,4 +578,3 @@ data: {"type":"complete","result":{...}}
 event: error
 data: {"type":"error","error":{"code":"AI_ERROR","message":"..."}}
 ```
-

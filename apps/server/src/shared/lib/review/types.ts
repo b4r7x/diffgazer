@@ -32,4 +32,5 @@ export interface OrchestrationOptions {
    * When false, returns err(lastError) when all lenses fail and no issues were found.
    */
   partialOnAllFailed?: boolean;
+  signal?: AbortSignal;
 }

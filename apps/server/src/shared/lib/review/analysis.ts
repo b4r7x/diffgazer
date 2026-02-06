@@ -22,7 +22,8 @@ export async function runLensAnalysis(
   diff: ParsedDiff,
   onEvent: (event: AgentStreamEvent | StepEvent) => void,
   context: AgentRunContext,
-  projectContext?: string
+  projectContext?: string,
+  signal?: AbortSignal
 ): Promise<Result<LensResult, AIError>> {
   const agentId = LENS_TO_AGENT[lens.id];
   const agentMeta = AGENT_METADATA[agentId];
@@ -59,6 +60,7 @@ export async function runLensAnalysis(
   });
 
   for (let i = 0; i < diff.files.length; i++) {
+    if (signal?.aborted) break;
     const file = diff.files[i]!;
 
     onEvent({
@@ -161,6 +163,7 @@ export async function runLensAnalysis(
   ];
   let stageIndex = 0;
   progressTimer = setInterval(() => {
+    if (signal?.aborted) { clearInterval(progressTimer!); return; }
     const elapsedMs = Date.now() - timerStart;
     if (stageIndex >= progressStages.length) return;
     const stage = progressStages[stageIndex];
@@ -180,7 +183,7 @@ export async function runLensAnalysis(
 
   let result: Result<ReviewResult, AIError>;
   try {
-    result = await client.generate(prompt, ReviewResultSchema);
+    result = await client.generate(prompt, ReviewResultSchema, { signal });
   } finally {
     if (progressTimer) clearInterval(progressTimer);
   }

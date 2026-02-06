@@ -1,5 +1,5 @@
 import type { FullReviewStreamEvent } from "@stargazer/schemas/events";
-import type { ReviewMode } from "@stargazer/schemas/review";
+import { ReviewErrorCode, type ReviewMode } from "@stargazer/schemas/review";
 
 export interface ActiveSession {
   reviewId: string;
@@ -12,6 +12,7 @@ export interface ActiveSession {
   isComplete: boolean;
   isReady: boolean;
   subscribers: Set<(event: FullReviewStreamEvent) => void>;
+  controller: AbortController;
 }
 
 const activeSessions = new Map<string, ActiveSession>();
@@ -34,6 +35,7 @@ export function createSession(
     isComplete: false,
     isReady: false,
     subscribers: new Set(),
+    controller: new AbortController(),
   };
   activeSessions.set(reviewId, session);
   return session;
@@ -69,13 +71,41 @@ export function markComplete(reviewId: string): void {
   }
 }
 
-export function subscribe(reviewId: string, callback: (event: FullReviewStreamEvent) => void): () => void {
+export function cancelSession(reviewId: string): void {
+  const session = activeSessions.get(reviewId);
+  if (!session) return;
+
+  session.controller.abort("session_stale");
+  session.isComplete = true;
+  const cancelEvent: FullReviewStreamEvent = {
+    type: "error",
+    error: {
+      code: ReviewErrorCode.SESSION_STALE,
+      message: "Review session cancelled because repository state changed.",
+    },
+  };
+
+  session.subscribers.forEach((cb) => {
+    try {
+      cb(cancelEvent);
+    } catch (e) {
+      console.error("Subscriber callback error:", e);
+    }
+  });
+  session.subscribers.clear();
+  setTimeout(() => activeSessions.delete(reviewId), 2 * 60 * 1000);
+}
+
+export function subscribe(
+  reviewId: string,
+  callback: (event: FullReviewStreamEvent) => void
+): (() => void) | null {
   const session = activeSessions.get(reviewId);
   if (session) {
     session.subscribers.add(callback);
     return () => session.subscribers.delete(callback);
   }
-  return () => {};
+  return null;
 }
 
 export function getActiveSessionForProject(

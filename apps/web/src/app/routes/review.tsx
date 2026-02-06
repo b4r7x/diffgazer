@@ -324,8 +324,8 @@ export function ReviewPage() {
     [handleResumeFailed],
   );
 
-  // Pre-check review status before mounting ReviewContainer
-  // Uses lightweight status endpoint first, only loads full review if already saved
+  // Pre-check persisted review before mounting ReviewContainer.
+  // If not persisted (404), ReviewContainer will try active-session resume.
   useEffect(() => {
     if (!initialReviewIdRef.current || !params.reviewId || statusCheckDone)
       return;
@@ -354,6 +354,14 @@ export function ReviewPage() {
         handleApiError({ status: 404, message: "Review not found" });
       } catch (error) {
         if (controller.signal.aborted) return;
+
+        const apiError = error as { status?: number };
+        if (apiError?.status === 404) {
+          // Not persisted yet: allow ReviewContainer to attempt active-session resume.
+          setStatusCheckDone(true);
+          return;
+        }
+
         handleApiError(error);
       } finally {
         setIsCheckingStatus(false);

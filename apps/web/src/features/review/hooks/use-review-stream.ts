@@ -1,12 +1,15 @@
 import { useReducer, useCallback, useRef } from "react";
 import { streamReviewWithEvents, resumeReviewStream, type StreamReviewRequest } from "../api/review-api";
 import type { AgentStreamEvent, EnrichEvent, StepEvent } from "@stargazer/schemas/events";
+import type { Result } from "@stargazer/core/result";
 import {
   reviewReducer,
   createInitialReviewState,
   type ReviewState as CoreReviewState,
   type ReviewAction as CoreReviewAction,
 } from "@stargazer/core/review";
+import type { StreamReviewError } from "@stargazer/api/review";
+import { ReviewErrorCode } from "@stargazer/schemas/review";
 
 interface WebReviewState extends CoreReviewState {
   selectedIssueId: string | null;
@@ -134,7 +137,7 @@ export function useReviewStream() {
     dispatch({ type: "SELECT_ISSUE", issueId });
   }, []);
 
-  const resume = useCallback(async (reviewId: string) => {
+  const resume = useCallback(async (reviewId: string): Promise<Result<void, StreamReviewError>> => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -144,7 +147,6 @@ export function useReviewStream() {
 
     eventQueueRef.current = [];
     dispatch({ type: "START" });
-    dispatch({ type: "SET_REVIEW_ID", reviewId });
 
     try {
       const result = await resumeReviewStream({
@@ -157,11 +159,16 @@ export function useReviewStream() {
 
       if (result.ok) {
         dispatch({ type: "COMPLETE" });
-      } else {
+      } else if (
+        result.error.code !== ReviewErrorCode.SESSION_STALE &&
+        result.error.code !== ReviewErrorCode.SESSION_NOT_FOUND
+      ) {
         dispatch({ type: "ERROR", error: result.error.message });
       }
+      return result;
     } catch (e) {
       handleStreamError(e);
+      throw e;
     } finally {
       abortControllerRef.current = null;
     }

@@ -12,7 +12,7 @@ import type { ProgressStepData, ProgressStatus } from '@/components/ui/progress'
 import type { StepState, AgentState, AgentStatus } from '@stargazer/schemas/events';
 import type { ProgressSubstepData } from '@stargazer/schemas/ui';
 import type { ReviewMode } from '../types';
-import { LensIdSchema, type LensId } from '@stargazer/schemas/review';
+import { LensIdSchema, ReviewErrorCode, type LensId } from '@stargazer/schemas/review';
 import type { ReviewIssue } from '@stargazer/schemas/review';
 import type { ReviewContextResponse } from '@stargazer/api/types';
 import { api } from '@/lib/api';
@@ -137,14 +137,15 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
   }, [onComplete]);
 
   useEffect(() => {
-    if (state.reviewId && !params.reviewId) {
-      navigate({
-        to: '/review/$reviewId',
-        params: { reviewId: state.reviewId },
-        search: (prev: Record<string, unknown>) => prev, // Preserve query params (mode)
-        replace: true,
-      });
-    }
+    if (!state.reviewId) return;
+    if (params.reviewId === state.reviewId) return;
+
+    navigate({
+      to: '/review/$reviewId',
+      params: { reviewId: state.reviewId },
+      search: (prev: Record<string, unknown>) => prev, // Preserve query params (mode)
+      replace: true,
+    });
   }, [state.reviewId, params.reviewId, navigate]);
 
   const contextStep = state.steps.find((step) => step.id === "context");
@@ -185,15 +186,29 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     };
 
     if (params.reviewId) {
-      // Try to resume existing session
-      resume(params.reviewId).catch(() => {
-        // Resume failed - signal to parent to try loading from storage
-        onCompleteRef.current?.({
-          issues: [],
-          reviewId: params.reviewId ?? null,
-          resumeFailed: true
+      // Try to resume existing session.
+      resume(params.reviewId)
+        .then((result) => {
+          if (result.ok) return;
+
+          if (result.error.code === ReviewErrorCode.SESSION_STALE) {
+            // Repository state changed - cancel stale session and start a new review.
+            start(options);
+            return;
+          }
+
+          if (result.error.code === ReviewErrorCode.SESSION_NOT_FOUND) {
+            // Session not active anymore - let parent load from persisted storage.
+            onCompleteRef.current?.({
+              issues: [],
+              reviewId: params.reviewId ?? null,
+              resumeFailed: true,
+            });
+          }
+        })
+        .catch(() => {
+          // For transport/runtime errors, hook already set error state.
         });
-      });
     } else {
       // Start new review
       start(options);
