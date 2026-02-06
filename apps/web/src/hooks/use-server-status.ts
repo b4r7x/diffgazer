@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 
 const HEALTH_CHECK_INTERVAL_MS = 30_000;
@@ -15,25 +15,44 @@ interface ServerStatus {
 
 export function useServerStatus(): ServerStatus {
   const [state, setState] = useState<ServerState>({ status: "checking" });
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const checkHealth = useCallback(async () => {
+  const checkHealth = async () => {
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setState({ status: "checking" });
     try {
-      await api.request("GET", "/api/health");
+      await api.request("GET", "/api/health", { signal: controller.signal });
       setState({ status: "connected" });
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setState({
         status: "error",
         message: err instanceof Error ? err.message : "Failed to connect to server",
       });
     }
-  }, []);
+  };
 
   useEffect(() => {
     checkHealth();
-    const intervalId = window.setInterval(checkHealth, HEALTH_CHECK_INTERVAL_MS);
-    return () => window.clearInterval(intervalId);
-  }, [checkHealth]);
+
+    const intervalId = window.setInterval(() => {
+      if (!document.hidden) checkHealth();
+    }, HEALTH_CHECK_INTERVAL_MS);
+
+    const onVisibilityChange = () => {
+      if (!document.hidden) checkHealth();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   return { state, retry: checkHealth };
 }

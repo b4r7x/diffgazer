@@ -29,7 +29,7 @@ export function Menu<T extends string = string>({
   "aria-label": ariaLabel,
   children,
 }: MenuProps<T>) {
-  const items = useMemo(() => {
+  const items = (() => {
     const result = new Map<string, InternalMenuItemData>();
     let idx = 0;
 
@@ -54,12 +54,9 @@ export function Menu<T extends string = string>({
 
     extract(children);
     return result;
-  }, [children]);
+  })();
 
-  const itemsByIndex = useMemo(
-    () => Array.from(items.values()).sort((a, b) => a.index - b.index),
-    [items]
-  );
+  const itemsByIndex = Array.from(items.values()).sort((a, b) => a.index - b.index);
 
   const findNextIndex = (start: number, direction: 1 | -1): number => {
     let index = start + direction;

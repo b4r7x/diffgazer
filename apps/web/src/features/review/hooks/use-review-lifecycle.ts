@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef, useCallback } from 'react';
+import { useEffect, useEffectEvent, useRef } from 'react';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { useReviewStream } from './use-review-stream';
 import { useReviewSettings } from './use-review-settings';
@@ -129,30 +129,30 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
     };
   }, [state.isStreaming, state.error]);
 
-  const handleCancel = useCallback(() => {
+  const handleCancel = () => {
     stop();
     navigate({ to: '/' });
-  }, [stop, navigate]);
+  };
 
-  const handleViewResults = useCallback(() => {
+  const handleViewResults = () => {
     if (completeTimeoutRef.current) {
       clearTimeout(completeTimeoutRef.current);
     }
     stop();
     stableOnComplete({ issues: issuesRef.current, reviewId: reviewIdRef.current });
-  }, [stop]);
+  };
 
-  const handleSetupProvider = useCallback(() => {
+  const handleSetupProvider = () => {
     stop();
     navigate({ to: '/settings/providers' });
-  }, [stop, navigate]);
+  };
 
-  const handleSwitchMode = useCallback(() => {
+  const handleSwitchMode = () => {
     stop();
     const newMode = mode === 'staged' ? 'unstaged' : 'staged';
     navigate({ to: '/review', search: { mode: newMode }, replace: true });
     hasStartedRef.current = false;
-  }, [stop, mode, navigate]);
+  };
 
   const isNoDiffError =
     state.error?.includes('No staged changes') ||

@@ -1,4 +1,4 @@
-import { useReducer, useCallback, useRef, useEffect } from "react";
+import { useReducer, useRef, useEffect } from "react";
 import { api } from "@/lib/api";
 import type { StreamReviewRequest, StreamReviewError } from "@stargazer/api/review";
 import type { AgentStreamEvent, EnrichEvent, StepEvent } from "@stargazer/schemas/events";
@@ -62,17 +62,18 @@ export function useReviewStream(): UseReviewStreamReturn {
 
   const eventQueueRef = useRef<Array<{ type: 'EVENT', event: ReviewEvent }>>([]);
   const rafScheduledRef = useRef(false);
+  const rafIdRef = useRef<number | null>(null);
 
-  const handleStreamError = useCallback((error: unknown) => {
+  const handleStreamError = (error: unknown) => {
     if (error instanceof Error && error.name === "AbortError") {
       dispatch({ type: "COMPLETE" });
     } else {
       const message = error instanceof Error ? error.message : "Failed to stream";
       dispatch({ type: "ERROR", error: message });
     }
-  }, []);
+  };
 
-  const enqueueEvent = useCallback((event: ReviewEvent) => {
+  const enqueueEvent = (event: ReviewEvent) => {
     // review_started bypasses queue for immediate URL update
     if (event.type === 'review_started') {
       dispatch({ type: "EVENT", event });
@@ -83,8 +84,9 @@ export function useReviewStream(): UseReviewStreamReturn {
 
     if (!rafScheduledRef.current) {
       rafScheduledRef.current = true;
-      requestAnimationFrame(() => {
+      rafIdRef.current = requestAnimationFrame(() => {
         rafScheduledRef.current = false;
+        rafIdRef.current = null;
         const events = eventQueueRef.current;
         eventQueueRef.current = [];
         for (const action of events) {
@@ -92,17 +94,17 @@ export function useReviewStream(): UseReviewStreamReturn {
         }
       });
     }
-  }, []);
+  };
 
-  const stop = useCallback(() => {
+  const stop = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
     dispatch({ type: "COMPLETE" });
-  }, []);
+  };
 
-  const start = useCallback(async (options: StreamReviewRequest) => {
+  const start = async (options: StreamReviewRequest) => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -133,9 +135,9 @@ export function useReviewStream(): UseReviewStreamReturn {
     } finally {
       abortControllerRef.current = null;
     }
-  }, [enqueueEvent, handleStreamError]);
+  };
 
-  const resume = useCallback(async (reviewId: string): Promise<Result<void, StreamReviewError>> => {
+  const resume = async (reviewId: string): Promise<Result<void, StreamReviewError>> => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -170,13 +172,17 @@ export function useReviewStream(): UseReviewStreamReturn {
     } finally {
       abortControllerRef.current = null;
     }
-  }, [enqueueEvent, handleStreamError]);
+  };
 
-  // Abort the stream on unmount
+  // Abort the stream and cancel pending rAF on unmount
   useEffect(() => {
     return () => {
       abortControllerRef.current?.abort();
       abortControllerRef.current = null;
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
     };
   }, []);
 

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { HistoryFocusZone } from "@/features/history/types";
 import type { Run } from "@/features/history/types";
@@ -14,10 +14,7 @@ function useHistoryData() {
   const { reviews, isLoading, error } = useReviews();
   const [selectedRunId, setSelectedRunId] = useScopedRouteState("run", reviews[0]?.id ?? null);
 
-  const selectedRun = useMemo(
-    () => reviews.find((r) => r.id === selectedRunId) ?? null,
-    [reviews, selectedRunId]
-  );
+  const selectedRun = reviews.find((r) => r.id === selectedRunId) ?? null;
 
   const { review: reviewDetail } = useReviewDetail(selectedRunId);
 
@@ -33,11 +30,10 @@ function useHistoryData() {
 
   const duration = formatDuration(selectedRun?.durationMs);
 
-  const sortedIssues = useMemo(() => {
-    const issues = reviewDetail?.result?.issues;
-    if (!issues) return [];
-    return [...issues].sort((a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity));
-  }, [reviewDetail?.result?.issues]);
+  const issues = reviewDetail?.result?.issues;
+  const sortedIssues = issues
+    ? [...issues].sort((a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity))
+    : [];
 
   return {
     isLoading,
@@ -53,7 +49,7 @@ function useHistoryData() {
 }
 
 function useHistorySelection(reviews: ReviewMetadata[]) {
-  const timelineItems = useMemo(() => buildTimelineItems(reviews), [reviews]);
+  const timelineItems = buildTimelineItems(reviews);
 
   const defaultDateId = timelineItems[0]?.id ?? "";
   const [selectedDateId, setSelectedDateId] = useScopedRouteState("date", defaultDateId);
@@ -69,33 +65,26 @@ function useHistorySearch() {
 }
 
 function useFilteredRuns(reviews: ReviewMetadata[], selectedDateId: string, searchQuery: string) {
-  const filteredRuns = useMemo(() => {
-    const byDate = reviews.filter((r) => getDateKey(r.createdAt) === selectedDateId);
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return byDate;
-    return byDate.filter((r) => {
-      if (r.id.toLowerCase().includes(query)) return true;
-      if (`#${r.id.slice(0, 4)}`.toLowerCase().includes(query)) return true;
-      const branchText = r.mode === "staged" ? "staged" : (r.branch?.toLowerCase() ?? "main");
-      if (branchText.includes(query)) return true;
-      if (r.projectPath.toLowerCase().includes(query)) return true;
-      return false;
-    });
-  }, [reviews, selectedDateId, searchQuery]);
+  const byDate = reviews.filter((r) => getDateKey(r.createdAt) === selectedDateId);
+  const query = searchQuery.trim().toLowerCase();
+  const filteredRuns = !query ? byDate : byDate.filter((r) => {
+    if (r.id.toLowerCase().includes(query)) return true;
+    if (`#${r.id.slice(0, 4)}`.toLowerCase().includes(query)) return true;
+    const branchText = r.mode === "staged" ? "staged" : (r.branch?.toLowerCase() ?? "main");
+    if (branchText.includes(query)) return true;
+    if (r.projectPath.toLowerCase().includes(query)) return true;
+    return false;
+  });
 
-  const mappedRuns = useMemo<Run[]>(
-    () =>
-      filteredRuns.map((run) => ({
-        id: run.id,
-        displayId: `#${run.id.slice(0, 4)}`,
-        branch: run.mode === "staged" ? "Staged" : run.branch ?? "Main",
-        provider: "AI",
-        timestamp: getTimestamp(run.createdAt),
-        summary: getRunSummary(run),
-        issues: [],
-      })),
-    [filteredRuns]
-  );
+  const mappedRuns: Run[] = filteredRuns.map((run) => ({
+    id: run.id,
+    displayId: `#${run.id.slice(0, 4)}`,
+    branch: run.mode === "staged" ? "Staged" : run.branch ?? "Main",
+    provider: "AI",
+    timestamp: getTimestamp(run.createdAt),
+    summary: getRunSummary(run),
+    issues: [],
+  }));
 
   return { mappedRuns };
 }

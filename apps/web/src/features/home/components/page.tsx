@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { SecretsStorage } from "@stargazer/schemas/config";
 import type { ContextInfo } from "@stargazer/schemas/ui";
@@ -9,7 +9,7 @@ import { usePageFooter } from "@/hooks/use-page-footer";
 import { ContextSidebar } from "@/features/home/components/context-sidebar";
 import { HomeMenu } from "@/features/home/components/home-menu";
 import { useConfigData } from "@/app/providers/config-provider";
-import { useReviewHistory } from "@/hooks/use-review-history";
+import { useReviewHistory } from "@/features/history/hooks/use-review-history";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
 import { useSettings } from "@/hooks/use-settings";
@@ -58,7 +58,7 @@ export function HomePage() {
   const [wizardError, setWizardError] = useState<string | null>(null);
   const showWizard = settings !== null && !settings.secretsStorage;
 
-  const handleWizardComplete = useCallback(async (choice: SecretsStorage): Promise<void> => {
+  const handleWizardComplete = async (choice: SecretsStorage): Promise<void> => {
     setWizardSaving(true);
     setWizardError(null);
     try {
@@ -69,18 +69,18 @@ export function HomePage() {
     } finally {
       setWizardSaving(false);
     }
-  }, [refreshSettings]);
+  };
 
   const trustModalOpen = Boolean(projectId && repoRoot && trust === null);
 
   const mostRecentReview = reviews[0];
-  const context = useMemo<ContextInfo>(() => ({
+  const context: ContextInfo = {
     providerName: provider,
     providerMode: model,
     lastRunId: mostRecentReview?.id,
     lastRunIssueCount: mostRecentReview?.issueCount,
     trustedDir: isTrusted ? trust?.repoRoot : undefined,
-  }), [provider, model, mostRecentReview?.id, mostRecentReview?.issueCount, isTrusted, trust?.repoRoot]);
+  };
 
   const [selectedIndex, setSelectedIndex] = useScopedRouteState("menuIndex", 0);
 

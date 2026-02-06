@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,14 +41,14 @@ export function SettingsAnalysisPage() {
 
   const hasLensSelection = effectiveLenses.length > 0;
 
-  const isDirty = useMemo(() => {
+  const isDirty = (() => {
     if (!settings || selectedLenses === null) return false;
     const currentLenses = settings.defaultLenses ?? [];
     return (
       currentLenses.length !== selectedLenses.length ||
       currentLenses.some((lens) => !selectedLenses.includes(lens))
     );
-  }, [settings, selectedLenses]);
+  })();
 
   const handleSave = async () => {
     if (!hasLensSelection) return;

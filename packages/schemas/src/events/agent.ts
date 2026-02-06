@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { LensIdSchema, type LensId } from "../review/lens.js";
+import { ReviewIssueSchema } from "../review/issues.js";
 
 const AGENT_IDS = [
   "detective",
@@ -85,8 +86,6 @@ export const AGENT_STATUS = ["queued", "running", "complete", "error"] as const;
 const AgentStatusSchema = z.enum(AGENT_STATUS);
 export type AgentStatus = z.infer<typeof AgentStatusSchema>;
 
-const EventCategorySchema = z.enum(["system", "tool", "lens", "agent"]);
-
 export const FileStartEventSchema = z
   .object({
     type: z.literal("file_start"),
@@ -100,7 +99,7 @@ export const FileStartEventSchema = z
     spanId: z.string().optional(),
     parentSpanId: z.string().optional(),
   })
-  .passthrough();
+;
 
 export const FileCompleteEventSchema = z
   .object({
@@ -115,7 +114,7 @@ export const FileCompleteEventSchema = z
     spanId: z.string().optional(),
     parentSpanId: z.string().optional(),
   })
-  .passthrough();
+;
 
 export const OrchestratorStartEventSchema = z
   .object({
@@ -126,7 +125,7 @@ export const OrchestratorStartEventSchema = z
     traceId: z.string().optional(),
     spanId: z.string().optional(),
   })
-  .passthrough();
+;
 
 export const AgentQueuedEventSchema = z
   .object({
@@ -138,7 +137,7 @@ export const AgentQueuedEventSchema = z
     traceId: z.string().optional(),
     spanId: z.string().optional(),
   })
-  .passthrough();
+;
 
 export const AgentStartEventSchema = z
   .object({
@@ -148,7 +147,7 @@ export const AgentStartEventSchema = z
     traceId: z.string().optional(),
     spanId: z.string().optional(),
   })
-  .passthrough();
+;
 
 export const AgentThinkingEventSchema = z
   .object({
@@ -159,7 +158,7 @@ export const AgentThinkingEventSchema = z
     traceId: z.string().optional(),
     spanId: z.string().optional(),
   })
-  .passthrough();
+;
 
 export const AgentProgressEventSchema = z
   .object({
@@ -171,7 +170,7 @@ export const AgentProgressEventSchema = z
     traceId: z.string().optional(),
     spanId: z.string().optional(),
   })
-  .passthrough();
+;
 
 export const AgentErrorEventSchema = z
   .object({
@@ -182,7 +181,7 @@ export const AgentErrorEventSchema = z
     traceId: z.string().optional(),
     spanId: z.string().optional(),
   })
-  .passthrough();
+;
 
 export const ToolCallEventSchema = z
   .object({
@@ -195,7 +194,7 @@ export const ToolCallEventSchema = z
     spanId: z.string().optional(),
     parentSpanId: z.string().optional(),
   })
-  .passthrough();
+;
 
 export const ToolResultEventSchema = z
   .object({
@@ -208,7 +207,7 @@ export const ToolResultEventSchema = z
     spanId: z.string().optional(),
     parentSpanId: z.string().optional(),
   })
-  .passthrough();
+;
 
 export const ToolStartEventSchema = z
   .object({
@@ -221,7 +220,7 @@ export const ToolStartEventSchema = z
     spanId: z.string().optional(),
     parentSpanId: z.string().optional(),
   })
-  .passthrough();
+;
 
 export const ToolEndEventSchema = z
   .object({
@@ -236,26 +235,18 @@ export const ToolEndEventSchema = z
     spanId: z.string().optional(),
     parentSpanId: z.string().optional(),
   })
-  .passthrough();
+;
 
 export const IssueFoundEventSchema = z
   .object({
     type: z.literal("issue_found"),
     agent: AgentIdSchema,
-    issue: z
-      .object({
-        id: z.string(),
-        severity: z.string(),
-        category: z.string(),
-        title: z.string(),
-        file: z.string(),
-      })
-      .passthrough(),
+    issue: ReviewIssueSchema,
     timestamp: z.string(),
     traceId: z.string().optional(),
     spanId: z.string().optional(),
   })
-  .passthrough();
+;
 
 export const AgentCompleteEventSchema = z
   .object({
@@ -271,7 +262,7 @@ export const AgentCompleteEventSchema = z
     traceId: z.string().optional(),
     spanId: z.string().optional(),
   })
-  .passthrough();
+;
 
 export const LensStatSchema = z.object({
   lensId: LensIdSchema,
@@ -293,7 +284,7 @@ export const OrchestratorCompleteEventSchema = z
     traceId: z.string().optional(),
     spanId: z.string().optional(),
   })
-  .passthrough();
+;
 
 const AgentStreamEventSchema = z.discriminatedUnion("type", [
   OrchestratorStartEventSchema,

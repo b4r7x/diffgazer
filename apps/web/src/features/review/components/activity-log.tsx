@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/utils/cn';
 import { LogEntry } from './log-entry';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -26,14 +26,14 @@ export function ActivityLog({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isNearBottom, setIsNearBottom] = useState(true);
 
-  const handleScroll = useCallback(() => {
+  const handleScroll = () => {
     const container = scrollRef.current;
     if (!container) return;
 
     const distanceFromBottom =
       container.scrollHeight - container.scrollTop - container.clientHeight;
     setIsNearBottom(distanceFromBottom <= 50);
-  }, []);
+  };
 
   useEffect(() => {
     if (autoScroll && isNearBottom && scrollRef.current) {
@@ -62,7 +62,7 @@ export function ActivityLog({
           />
         ))}
         {showCursor && (
-          <span className="inline-block h-4 w-2 bg-tui-fg cursor-blink" />
+          <span className="inline-block h-4 w-2 bg-tui-fg cursor-blink" aria-hidden="true" />
         )}
       </div>
     </ScrollArea>

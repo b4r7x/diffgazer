@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useKey } from "./use-key";
 
 interface UseFooterNavigationOptions {
@@ -15,19 +15,19 @@ export function useFooterNavigation({
   const [inFooter, setInFooter] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(0);
 
-  const reset = useCallback((initialIndex: number = 0) => {
+  const reset = (initialIndex: number = 0) => {
     setInFooter(false);
     setFocusedIndex(initialIndex);
-  }, []);
+  };
 
-  const enterFooter = useCallback((index: number = 0) => {
+  const enterFooter = (index: number = 0) => {
     setInFooter(true);
     setFocusedIndex(index);
-  }, []);
+  };
 
-  const exitFooter = useCallback(() => {
+  const exitFooter = () => {
     setInFooter(false);
-  }, []);
+  };
 
   // ArrowUp returns to options
   useKey("ArrowUp", exitFooter, { enabled: enabled && inFooter });

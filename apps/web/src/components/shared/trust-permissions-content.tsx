@@ -73,7 +73,7 @@ export function TrustPermissionsContent({
     <div className="flex flex-col gap-6">
       {/* Directory Header */}
       <div className="border-b border-tui-border pb-3">
-        <div className="text-gray-500 text-xs mb-2 uppercase tracking-wide">
+        <div className="text-tui-muted text-xs mb-2 uppercase tracking-wide">
           Target Directory
         </div>
         <div className="flex items-center justify-between">

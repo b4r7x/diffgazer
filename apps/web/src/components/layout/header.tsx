@@ -19,15 +19,15 @@ export function Header({
     <header className="relative p-4 pb-2 shrink-0">
       {onBack && (
         <div className="absolute top-4 left-4">
-          <Button variant="ghost" size="sm" onClick={onBack} className="text-gray-500 hover:text-tui-fg">
+          <Button variant="ghost" size="sm" onClick={onBack} className="text-tui-muted hover:text-tui-fg">
             ← Back
           </Button>
         </div>
       )}
 
       <div className="absolute top-4 right-4 text-xs" aria-label={`Provider: ${providerName}, Status: ${providerStatus}`}>
-        <span className="text-gray-500">●</span> {providerName} <span className="text-gray-500">•</span>{" "}
-        <span className="text-gray-500 capitalize">{providerStatus}</span>
+        <span className="text-tui-muted">●</span> {providerName} <span className="text-tui-muted">•</span>{" "}
+        <span className="text-tui-muted capitalize">{providerStatus}</span>
       </div>
 
       <div className="flex flex-col items-center pt-4 md:pt-6">
@@ -40,7 +40,7 @@ export function Header({
           )}
         />
 
-        <div className="text-center text-gray-600 text-sm select-none">─ ✦ ─ ✧ ─</div>
+        <div className="text-center text-tui-muted text-sm select-none">─ ✦ ─ ✧ ─</div>
       </div>
     </header>
   );

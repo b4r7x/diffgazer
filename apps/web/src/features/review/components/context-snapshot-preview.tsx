@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { PanelHeader } from "@/components/ui/containers";
 import { Button } from "@/components/ui/button";
 import { downloadAsFile } from "@/utils/download";
@@ -9,13 +8,11 @@ interface ContextSnapshotPreviewProps {
 }
 
 export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps) {
-  const contextPreview = useMemo(() => {
-    const lines = snapshot.text.split("\n");
-    return {
-      preview: lines.slice(0, 10).join("\n"),
-      truncated: lines.length > 10,
-    };
-  }, [snapshot.text]);
+  const lines = snapshot.text.split("\n");
+  const contextPreview = {
+    preview: lines.slice(0, 10).join("\n"),
+    truncated: lines.length > 10,
+  };
 
   return (
     <div className="mb-8">

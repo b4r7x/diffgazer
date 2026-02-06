@@ -1,5 +1,5 @@
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
-import { createContext, useCallback, useContext, useState, useRef, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useState, useRef, useMemo, type ReactNode } from "react";
 import { cn } from "@/utils/cn";
 import { useGroupNavigation } from "@/hooks/keyboard";
 import {
@@ -137,13 +137,13 @@ function RadioGroupRoot<T extends string = string>({
   const isControlled = controlledValue !== undefined;
   const value = isControlled ? controlledValue : uncontrolledValue;
 
-  const handleValueChange = useCallback((newValue: string) => {
+  const handleValueChange = (newValue: string) => {
     if (disabled) return;
     onValueChange?.(newValue as T);
     if (!isControlled) {
       setUncontrolledValue(newValue as T);
     }
-  }, [disabled, onValueChange, isControlled]);
+  };
 
   const { isFocused } = useGroupNavigation({
     containerRef,

@@ -21,23 +21,20 @@ function TabsRoot<T extends string = string>({
   const triggersRef = React.useRef<Map<string, HTMLButtonElement | null>>(new Map());
 
   const value = controlledValue !== undefined ? controlledValue : uncontrolledValue;
-  const handleValueChange = React.useCallback(
-    (v: string) => {
-      if (onValueChange) onValueChange(v as T);
-      else setUncontrolledValue(v as T);
-    },
-    [onValueChange]
-  );
+  const handleValueChange = (v: string) => {
+    if (onValueChange) onValueChange(v as T);
+    else setUncontrolledValue(v as T);
+  };
 
-  const registerTrigger = React.useCallback((triggerValue: string, element: HTMLButtonElement | null) => {
+  const registerTrigger = (triggerValue: string, element: HTMLButtonElement | null) => {
     if (element) {
       triggersRef.current.set(triggerValue, element);
     } else {
       triggersRef.current.delete(triggerValue);
     }
-  }, []);
+  };
 
-  const getTriggers = React.useCallback(() => triggersRef.current, []);
+  const getTriggers = () => triggersRef.current;
 
   const contextValue = React.useMemo(
     () => ({ value: value as string, onValueChange: handleValueChange, registerTrigger, getTriggers }),
