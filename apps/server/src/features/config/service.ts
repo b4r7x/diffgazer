@@ -1,5 +1,6 @@
-import { type Result, ok } from "@stargazer/core";
+import { type Result, ok, err, createError, getErrorMessage } from "@stargazer/core";
 import type { AIProvider } from "@stargazer/schemas/config";
+import { ErrorCode } from "@stargazer/schemas/errors";
 import type { SecretsStorageError } from "../../shared/lib/config/types.js";
 import type {
   ActivateProviderResponse,
@@ -8,9 +9,11 @@ import type {
   DeleteConfigResponse,
   DeleteProviderResponse,
   InitResponse,
+  OpenRouterModelsResponse,
+  ProviderStatus,
   ProvidersStatusResponse,
   SaveConfigRequest,
-} from "./types.js";
+} from "@stargazer/api";
 import {
   activateProvider as activateProviderInStore,
   deleteProviderCredentials,
@@ -21,6 +24,7 @@ import {
   getSettings,
   saveProviderCredentials,
 } from "../../shared/lib/config/store.js";
+import { getOpenRouterModelsWithCache } from "../../shared/lib/ai/openrouter-models.js";
 
 export const getProvidersStatus = (): ProvidersStatusResponse => {
   const providers = getProviders();
@@ -49,14 +53,12 @@ export const getInitState = (projectRoot?: string): InitResponse => {
 
 export const saveConfig = (
   input: SaveConfigRequest
-): Result<void, SecretsStorageError> => {
-  const result = saveProviderCredentials({
+): Result<ProviderStatus, SecretsStorageError> => {
+  return saveProviderCredentials({
     provider: input.provider,
     apiKey: input.apiKey,
     model: input.model,
   });
-  if (!result.ok) return result;
-  return ok(undefined);
 };
 
 export const getConfig = (): Result<ConfigResponse | null, SecretsStorageError> => {
@@ -82,14 +84,22 @@ export const checkConfig = (): Result<ConfigCheckResponse, SecretsStorageError> 
 export const activateProvider = (input: {
   provider: AIProvider;
   model?: string;
-}): ActivateProviderResponse | null => {
-  const active = activateProviderInStore(input);
-  if (!active) return null;
+}): Result<ActivateProviderResponse, { message: string; code: string }> => {
+  const { provider, model } = input;
 
-  return {
-    provider: active.provider,
-    model: active.model,
-  };
+  if (provider === "openrouter" && !model) {
+    const existing = getProviders().find((p) => p.provider === "openrouter");
+    if (!existing?.model) {
+      return err(createError("INVALID_BODY", "Model is required for OpenRouter"));
+    }
+  }
+
+  const active = activateProviderInStore(input);
+  if (!active) {
+    return err(createError("PROVIDER_NOT_FOUND", "Provider not found"));
+  }
+
+  return ok({ provider: active.provider, model: active.model });
 };
 
 export const deleteProvider = (
@@ -105,14 +115,38 @@ export const deleteProvider = (
 };
 
 export const deleteConfig = (): Result<DeleteConfigResponse | null, SecretsStorageError> => {
-  const active = getActiveProvider();
-  if (!active) return ok(null);
+  const configResult = getConfig();
+  if (!configResult.ok) return configResult;
+  if (!configResult.value) return ok(null);
 
-  const apiKeyResult = getProviderApiKey(active.provider);
-  if (!apiKeyResult.ok) return apiKeyResult;
-  if (!apiKeyResult.value) return ok(null);
-
-  const deletedResult = deleteProviderCredentials(active.provider);
+  const deletedResult = deleteProviderCredentials(configResult.value.provider);
   if (!deletedResult.ok) return deletedResult;
   return ok({ deleted: deletedResult.value });
+};
+
+export const getOpenRouterModels = async (): Promise<
+  Result<OpenRouterModelsResponse, { message: string; code: string }>
+> => {
+  const apiKeyResult = getProviderApiKey("openrouter");
+  if (!apiKeyResult.ok) return err(apiKeyResult.error);
+  if (!apiKeyResult.value) {
+    return err(
+      createError(
+        ErrorCode.API_KEY_MISSING,
+        "OpenRouter API key is required to fetch models"
+      )
+    );
+  }
+
+  try {
+    const result = await getOpenRouterModelsWithCache(apiKeyResult.value);
+    return ok(result);
+  } catch (error) {
+    return err(
+      createError(
+        ErrorCode.INTERNAL_ERROR,
+        getErrorMessage(error, "Failed to fetch OpenRouter models")
+      )
+    );
+  }
 };

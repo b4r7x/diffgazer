@@ -7,13 +7,11 @@ import type {
   AIClient,
   AIClientConfig,
   StreamCallbacks,
-  GenerateStreamOptions,
   AIError,
   AIErrorCode,
 } from "./types.js";
 import { type Result, ok, err, createError, toError, getErrorMessage } from "@stargazer/core";
 import { getActiveProvider, getProviderApiKey } from "../config/store.js";
-import { ErrorCode, type ErrorCode as ErrorCodeType } from "@stargazer/schemas/errors";
 
 const DEFAULT_MODELS = {
   gemini: "gemini-2.5-flash",
@@ -24,8 +22,15 @@ const DEFAULT_MODELS = {
 
 const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_MAX_TOKENS = 65536;
+const DEFAULT_MAX_RETRIES = 0;
+const DEFAULT_TIMEOUT_MS = 300_000;
 
 const ERROR_RULES: Array<{ patterns: string[]; code: AIErrorCode; message: string }> = [
+  {
+    patterns: ["quota", "insufficient", "billing", "exceeded your current quota", "insufficient_quota"],
+    code: "RATE_LIMITED",
+    message: "Quota exceeded",
+  },
   {
     patterns: ["401", "api key", "invalid_api_key", "authentication"],
     code: "API_KEY_INVALID",
@@ -82,8 +87,8 @@ function createLanguageModel(config: AIClientConfig): LanguageModel {
       return zhipu(modelId);
     }
     case "openrouter": {
-      const openrouter = createOpenRouter({ apiKey });
-      return openrouter(modelId) as unknown as LanguageModel;
+      const openrouter = createOpenRouter({ apiKey, compatibility: "strict" });
+      return openrouter.chat(modelId) as unknown as LanguageModel;
     }
     default:
       throw new Error(`Unsupported provider: ${provider}`);
@@ -118,12 +123,19 @@ export function createAIClient(config: AIClientConfig): Result<AIClient, AIError
       schema: T
     ): Promise<Result<z.infer<T>, AIError>> {
       try {
+        const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+        const abortSignal =
+          timeoutMs > 0 && typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
+            ? AbortSignal.timeout(timeoutMs)
+            : undefined;
         const result = await generateObject({
           model: languageModel,
           prompt,
           schema,
           temperature: config.temperature ?? DEFAULT_TEMPERATURE,
           maxOutputTokens: config.maxTokens ?? DEFAULT_MAX_TOKENS,
+          maxRetries: config.maxRetries ?? DEFAULT_MAX_RETRIES,
+          abortSignal,
         });
 
         return ok(result.object as z.infer<T>);
@@ -134,15 +146,16 @@ export function createAIClient(config: AIClientConfig): Result<AIClient, AIError
 
     async generateStream(
       prompt: string,
-      callbacks: StreamCallbacks,
-      _options?: GenerateStreamOptions
+      callbacks: StreamCallbacks
     ): Promise<void> {
       try {
+        const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
         const result = streamText({
           model: languageModel,
           prompt,
           temperature: config.temperature ?? DEFAULT_TEMPERATURE,
           maxOutputTokens: config.maxTokens ?? DEFAULT_MAX_TOKENS,
+          timeout: timeoutMs > 0 ? { totalMs: timeoutMs, chunkMs: Math.min(5000, timeoutMs) } : undefined,
         });
 
         const chunks: string[] = [];
@@ -167,30 +180,24 @@ export function createAIClient(config: AIClientConfig): Result<AIClient, AIError
   return ok(aiClient);
 }
 
-interface AIClientError {
-  message: string;
-  code: ErrorCodeType;
-}
-
-export interface SSEWriter {
-  writeSSE: (data: { event: string; data: string }) => Promise<void>;
-}
-
-export function initializeAIClient(): Result<AIClient, AIClientError> {
+export function initializeAIClient(): Result<AIClient, AIError> {
   const activeProvider = getActiveProvider();
   if (!activeProvider) {
-    return err({ message: "AI provider not configured", code: ErrorCode.CONFIG_NOT_FOUND });
+    return err(createError<AIErrorCode>("UNSUPPORTED_PROVIDER", "AI provider not configured"));
+  }
+
+  if (activeProvider.provider === "openrouter" && !activeProvider.model) {
+    return err(createError<AIErrorCode>("MODEL_ERROR", "OpenRouter model is required"));
   }
 
   const apiKeyResult = getProviderApiKey(activeProvider.provider);
   if (!apiKeyResult.ok) {
-    return err({ message: apiKeyResult.error.message, code: ErrorCode.AI_CLIENT_ERROR });
+    return err(createError<AIErrorCode>("MODEL_ERROR", apiKeyResult.error.message));
   }
   if (!apiKeyResult.value) {
-    return err({
-      message: `API key not found for provider '${activeProvider.provider}'`,
-      code: ErrorCode.API_KEY_MISSING,
-    });
+    return err(
+      createError<AIErrorCode>("API_KEY_MISSING", `API key not found for provider '${activeProvider.provider}'`)
+    );
   }
 
   const clientResult = createAIClient({
@@ -200,7 +207,7 @@ export function initializeAIClient(): Result<AIClient, AIClientError> {
   });
 
   if (!clientResult.ok) {
-    return err({ message: clientResult.error.message, code: ErrorCode.AI_CLIENT_ERROR });
+    return err(clientResult.error);
   }
 
   return ok(clientResult.value);

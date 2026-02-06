@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils";
-import type { TriageSeverity } from "@stargazer/schemas/triage";
+import type { ReviewSeverity } from "@stargazer/schemas/review";
 import { SEVERITY_CONFIG } from "@stargazer/schemas/ui";
 
 export interface SeverityFilterButtonProps {
-  severity: TriageSeverity;
+  severity: ReviewSeverity;
   count: number;
   isActive: boolean;
   isFocused?: boolean;
@@ -27,7 +27,7 @@ export function SeverityFilterButton({
       onClick={onClick}
       className={cn(
         "px-1.5 text-xs transition-colors",
-        isActive ? config.color : config.color,
+        isActive ? config.color : "text-gray-600",
         isFocused && "ring-1 ring-tui-blue",
         className
       )}

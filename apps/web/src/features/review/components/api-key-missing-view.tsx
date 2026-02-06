@@ -9,12 +9,14 @@ export interface ApiKeyMissingViewProps {
   activeProvider?: AIProvider;
   onNavigateSettings: () => void;
   onBack: () => void;
+  missingModel?: boolean;
 }
 
 export function ApiKeyMissingView({
   activeProvider,
   onNavigateSettings,
   onBack,
+  missingModel = false,
 }: ApiKeyMissingViewProps) {
   useScope('api-key-missing');
 
@@ -27,11 +29,13 @@ export function ApiKeyMissingView({
     <div className="flex flex-1 items-center justify-center">
       <div className="text-center max-w-md p-6">
         <div className="text-tui-yellow text-lg font-bold mb-4">
-          API Key Required
+          {missingModel ? "Model Required" : "API Key Required"}
         </div>
         <p className="text-gray-400 font-mono text-sm mb-6">
-          No API key configured{activeProvider ? ` for ${activeProvider}` : ''}.
-          Please configure your provider settings to continue.
+          {missingModel
+            ? `No model selected${activeProvider ? ` for ${activeProvider}` : ''}.`
+            : `No API key configured${activeProvider ? ` for ${activeProvider}` : ''}.`}
+          {" "}Please configure your provider settings to continue.
         </p>
         <div className="flex gap-4 justify-center">
           <button

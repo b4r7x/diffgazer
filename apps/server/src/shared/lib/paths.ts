@@ -1,11 +1,28 @@
 import { homedir } from "node:os";
 import * as path from "node:path";
+import * as fs from "node:fs";
 
 export const PROJECT_ROOT_HEADER = "x-stargazer-project-root";
 
 const DEFAULT_GLOBAL_DIR = path.join(homedir(), ".stargazer");
 
 const normalizePath = (input: string): string => path.resolve(input.trim());
+
+const findGitRoot = (startPath: string): string | null => {
+  let current = startPath;
+  while (true) {
+    const gitPath = path.join(current, ".git");
+    if (fs.existsSync(gitPath)) {
+      return current;
+    }
+
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return null;
+    }
+    current = parent;
+  }
+};
 
 export const resolveProjectRoot = (options?: {
   header?: string | null;
@@ -18,10 +35,9 @@ export const resolveProjectRoot = (options?: {
   const env = options?.env?.trim();
   if (env) return normalizePath(env);
 
-  const cwd = options?.cwd?.trim();
-  if (cwd) return normalizePath(cwd);
-
-  return normalizePath(process.cwd());
+  const cwd = options?.cwd?.trim() ?? process.cwd();
+  const normalized = normalizePath(cwd);
+  return findGitRoot(normalized) ?? normalized;
 };
 
 export const getGlobalStargazerDir = (): string => {
@@ -39,20 +55,11 @@ export const getGlobalSecretsPath = (): string =>
 export const getGlobalTrustPath = (): string =>
   path.join(getGlobalStargazerDir(), "trust.json");
 
-export const getGlobalReviewsDir = (): string =>
-  path.join(getGlobalStargazerDir(), "reviews");
-
-export const getGlobalReviewFile = (reviewId: string): string =>
-  path.join(getGlobalReviewsDir(), `${reviewId}.json`);
+export const getGlobalOpenRouterModelsPath = (): string =>
+  path.join(getGlobalStargazerDir(), "openrouter-models.json");
 
 export const getProjectStargazerDir = (projectRoot: string): string =>
   path.join(projectRoot, ".stargazer");
 
 export const getProjectInfoPath = (projectRoot: string): string =>
   path.join(getProjectStargazerDir(projectRoot), "project.json");
-
-export const getProjectReviewsDir = (projectRoot: string): string =>
-  path.join(getProjectStargazerDir(projectRoot), "reviews");
-
-export const getProjectReviewFile = (projectRoot: string, reviewId: string): string =>
-  path.join(getProjectReviewsDir(projectRoot), `${reviewId}.json`);

@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
-import type { SavedTriageReview } from "@stargazer/api";
+import type { SavedReview } from "@stargazer/api";
 
 export function useReviewDetail(reviewId: string | null) {
-  const [review, setReview] = useState<SavedTriageReview | null>(null);
+  const [review, setReview] = useState<SavedReview | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -15,7 +15,7 @@ export function useReviewDetail(reviewId: string | null) {
     let cancelled = false;
     setIsLoading(true);
 
-    api.getTriageReview(reviewId)
+    api.getReview(reviewId)
       .then(({ review }) => {
         if (!cancelled) setReview(review);
       })

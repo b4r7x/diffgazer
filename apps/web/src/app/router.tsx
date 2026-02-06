@@ -4,6 +4,7 @@ import { RootLayout } from "./routes/__root";
 import { HomePage } from "./routes/home";
 import { ReviewPage } from "./routes/review";
 import { SettingsHubPage } from "./routes/settings";
+import { SettingsAnalysisPage } from "./routes/settings/analysis";
 import { SettingsDiagnosticsPage } from "./routes/settings/diagnostics";
 import { HistoryPage } from "./routes/history";
 import { SettingsStoragePage } from "./routes/settings/storage";
@@ -76,6 +77,11 @@ const routeTree = rootRoute.addChildren([
     getParentRoute: () => rootRoute,
     path: "/settings/storage",
     component: SettingsStoragePage,
+  }),
+  createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/settings/analysis",
+    component: SettingsAnalysisPage,
   }),
   createRoute({
     getParentRoute: () => rootRoute,

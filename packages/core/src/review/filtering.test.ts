@@ -5,9 +5,9 @@ import {
   filterIssuesBySeverity,
   filterIssues,
 } from "./filtering.js";
-import type { TriageIssue } from "@stargazer/schemas/triage";
+import type { ReviewIssue } from "@stargazer/schemas/review";
 
-const makeIssue = (overrides: Partial<TriageIssue>): TriageIssue => ({
+const makeIssue = (overrides: Partial<ReviewIssue>): ReviewIssue => ({
   id: "1",
   severity: "medium",
   category: "correctness",

@@ -1,3 +1,49 @@
+// Import shared types from schemas for local use
+import type {
+  AIProvider as _AIProvider,
+  ProviderStatus as _ProviderStatus,
+} from "@stargazer/schemas/config";
+import type { TrustConfig as _TrustConfig } from "@stargazer/schemas/settings";
+import type {
+  ReviewMode as _ReviewMode,
+  ReviewMetadata as _ReviewMetadata,
+  SavedReview as _SavedReview,
+} from "@stargazer/schemas/review-storage";
+
+// Re-export shared types from schemas (single source of truth)
+export type {
+  AIProvider,
+  ProviderStatus,
+  OpenRouterModel,
+  OpenRouterModelsResponse,
+  ProvidersStatusResponse,
+  ConfigCheckResponse,
+  SaveConfigRequest,
+  DeleteConfigResponse,
+  DeleteProviderCredentialsResponse as DeleteProviderResponse,
+  CurrentConfigResponse as ConfigResponse,
+  ProjectInfo,
+  InitResponse,
+} from "@stargazer/schemas/config";
+
+export type {
+  TrustCapabilities,
+  TrustMode,
+  TrustConfig,
+  Theme,
+  SecretsStorage,
+  SettingsConfig,
+} from "@stargazer/schemas/settings";
+
+export type {
+  ReviewMode,
+  ReviewMetadata,
+  SavedReview,
+} from "@stargazer/schemas/review-storage";
+
+export type { GitFileEntry, GitStatus } from "@stargazer/schemas/git";
+
+// API client types (unique to this package)
 export interface ApiError extends Error {
   status: number;
   code?: string;
@@ -28,223 +74,48 @@ export interface ApiClient {
   ) => Promise<Response>;
 }
 
-export type AIProvider =
-  | "gemini"
-  | "zai"
-  | "zai-coding"
-  | "openrouter";
-
-export interface ProviderStatus {
-  provider: AIProvider;
-  hasApiKey: boolean;
-  isActive: boolean;
-  model?: string;
-  mode?: string;
-}
-
-export interface TrustCapabilities {
-  readFiles: boolean;
-  runCommands: boolean;
-}
-
-export type TrustMode = "persistent" | "session";
-
-export interface TrustConfig {
-  projectId: string;
-  repoRoot: string;
-  trustedAt: string;
-  capabilities: TrustCapabilities;
-  trustMode: TrustMode;
-}
-
+// API response types (unique to this package - server response shapes)
 export interface TrustResponse {
-  trust: TrustConfig;
+  trust: _TrustConfig;
 }
 
 export interface TrustListResponse {
-  projects: TrustConfig[];
-}
-
-export interface ProjectInfo {
-  path: string;
-  projectId: string;
-  trust: TrustConfig | null;
-}
-
-export type Theme = "auto" | "dark" | "light" | "terminal";
-export type SecretsStorage = "file" | "keyring";
-
-export interface SettingsConfig {
-  theme: Theme;
-  defaultLenses?: string[];
-  defaultProfile?: string | null;
-  severityThreshold?: string;
-  secretsStorage?: SecretsStorage | null;
-}
-
-export interface SaveConfigRequest {
-  provider: AIProvider;
-  apiKey: string;
-  model?: string;
-}
-
-export interface ProvidersStatusResponse {
-  providers: ProviderStatus[];
-  activeProvider?: AIProvider;
-}
-
-export interface ConfigCheckResponse {
-  configured: boolean;
-  config?: { provider: AIProvider; model?: string };
-}
-
-export interface ConfigResponse {
-  provider: AIProvider;
-  model?: string;
+  projects: _TrustConfig[];
 }
 
 export interface ActivateProviderResponse {
-  provider: AIProvider;
+  provider: _AIProvider;
   model?: string;
 }
 
-export interface DeleteProviderResponse {
-  deleted: boolean;
-  provider: AIProvider;
-}
+export type {
+  FileTreeNode,
+  ProjectContextGraph,
+  ProjectContextMeta,
+  ProjectContextSnapshot,
+} from "@stargazer/schemas/context";
 
-export interface DeleteConfigResponse {
-  deleted: boolean;
-}
+import type { ProjectContextGraph, ProjectContextMeta } from "@stargazer/schemas/context";
 
-export interface InitResponse {
-  config: { provider: AIProvider; model?: string } | null;
-  settings: SettingsConfig;
-  providers: ProviderStatus[];
-  configured: boolean;
-  project: ProjectInfo;
-}
-
-export interface ReviewHistoryMetadata {
-  id: string;
-  issueCount: number;
-  projectPath?: string;
-  createdAt?: string;
-  staged?: boolean;
-  branch?: string | null;
-  overallScore?: number;
-  criticalCount?: number;
-  warningCount?: number;
-}
-
-export interface SavedReview {
-  metadata: ReviewHistoryMetadata;
-  result: unknown;
-  gitContext?: unknown;
-}
-
-export type GitDiffMode = "staged" | "unstaged" | "files";
-
-export interface GitFileEntry {
-  path: string;
-  indexStatus: string;
-  workTreeStatus: string;
-}
-
-export interface GitStatus {
-  isGitRepo: boolean;
-  branch: string | null;
-  remoteBranch: string | null;
-  ahead: number;
-  behind: number;
-  files: {
-    staged: GitFileEntry[];
-    unstaged: GitFileEntry[];
-    untracked: GitFileEntry[];
-  };
-  hasChanges: boolean;
-  conflicted: string[];
+export interface ReviewContextResponse {
+  text: string;
+  markdown: string;
+  graph: ProjectContextGraph;
+  meta: ProjectContextMeta;
 }
 
 export interface GitDiffResponse {
   diff: string;
-  mode: GitDiffMode;
+  mode: _ReviewMode;
 }
 
-export type MessageRole = "user" | "assistant" | "system";
-
-export interface SessionMessage {
-  id: string;
-  role: MessageRole;
-  content: string;
-  createdAt: string;
-}
-
-export interface SessionMetadata {
-  id: string;
-  projectPath: string;
-  title?: string;
-  createdAt: string;
-  updatedAt: string;
-  messageCount: number;
-}
-
-export interface Session {
-  metadata: SessionMetadata;
-  messages: SessionMessage[];
-}
-
-export interface SessionsListResponse {
-  sessions: SessionMetadata[];
+export interface ReviewsResponse {
+  reviews: _ReviewMetadata[];
   warnings?: string[];
 }
 
-export interface SessionResponse {
-  session: Session;
-}
-
-export interface SessionMessageResponse {
-  message: SessionMessage;
-}
-
-export interface SessionDeleteResponse {
-  existed: boolean;
-}
-
-export type ReviewMode = "staged" | "unstaged" | "files";
-
-export interface TriageReviewMetadata {
-  id: string;
-  projectPath: string;
-  createdAt: string;
-  mode: ReviewMode;
-  branch: string | null;
-  profile: string | null;
-  lenses: string[];
-  issueCount: number;
-  blockerCount: number;
-  highCount: number;
-  mediumCount: number;
-  lowCount: number;
-  nitCount: number;
-  fileCount: number;
-  durationMs?: number;
-}
-
-export interface SavedTriageReview {
-  metadata: TriageReviewMetadata;
-  result: unknown;
-  gitContext?: unknown;
-  drilldowns?: unknown[];
-}
-
-export interface TriageReviewsResponse {
-  reviews: TriageReviewMetadata[];
-  warnings?: string[];
-}
-
-export interface TriageReviewResponse {
-  review: SavedTriageReview;
+export interface ReviewResponse {
+  review: _SavedReview;
 }
 
 export interface DrilldownResponse {
@@ -258,34 +129,3 @@ export interface ReviewStreamStatus {
   startedAt?: string;
 }
 
-export type AnnotationLevel = "notice" | "warning" | "failure";
-
-export interface GitHubAnnotation {
-  path: string;
-  start_line: number;
-  end_line: number;
-  annotation_level: AnnotationLevel;
-  message: string;
-  title: string;
-}
-
-export interface InlineComment {
-  path: string;
-  line: number;
-  side: "RIGHT";
-  body: string;
-}
-
-export interface PRReviewResponse {
-  summary: string;
-  issues: Array<{
-    severity: string;
-    title: string;
-    file: string;
-    line: number;
-    message: string;
-    suggestion?: string;
-  }>;
-  annotations: GitHubAnnotation[];
-  inlineComments: InlineComment[];
-}

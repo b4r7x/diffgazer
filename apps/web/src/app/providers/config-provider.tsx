@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -86,7 +87,13 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     setProvider(data.provider);
     setModel(data.model);
     setProviderStatus(data.providers);
-    setIsConfigured(data.providers.some((status) => status.isActive));
+    setIsConfigured(
+      data.providers.some(
+        (status) =>
+          status.isActive &&
+          (status.provider !== "openrouter" || Boolean(status.model))
+      )
+    );
     setProjectId(data.projectId);
     setRepoRoot(data.repoRoot);
     setTrust(data.trust);
@@ -234,7 +241,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     refresh();
   }, [refresh]);
 
-  const value: ConfigContextValue = {
+  const value = useMemo<ConfigContextValue>(() => ({
     provider,
     model,
     isConfigured,
@@ -249,7 +256,11 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     activateProvider,
     saveCredentials,
     deleteProviderCredentials,
-  };
+  }), [
+    provider, model, isConfigured, isLoading, isSaving, error,
+    providerStatus, projectId, repoRoot, trust,
+    refresh, activateProvider, saveCredentials, deleteProviderCredentials,
+  ]);
 
   return (
     <ConfigContext.Provider value={value}>{children}</ConfigContext.Provider>

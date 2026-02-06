@@ -1,11 +1,12 @@
+import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { ErrorCode } from "@stargazer/schemas/errors";
-import { errorResponse } from "../../shared/lib/http/response.js";
+import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
 import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
 import { resolveGitService } from "./service.js";
-import { GitDiffModeSchema, type GitDiffMode } from "./schemas.js";
+import { GitDiffQuerySchema } from "./schemas.js";
 
 const gitRouter = new Hono();
 
@@ -39,19 +40,12 @@ gitRouter.get("/status", async (c): Promise<Response> => {
   }
 });
 
-gitRouter.get("/diff", async (c): Promise<Response> => {
+gitRouter.get("/diff", zValidator("query", GitDiffQuerySchema, zodErrorHandler), async (c): Promise<Response> => {
   const result = await resolveServiceOrResponse(c);
   if (!result.ok) return result.response;
 
-  const modeParam = c.req.query("mode");
-  const stagedParam = c.req.query("staged");
-  const parsedMode = modeParam ? GitDiffModeSchema.safeParse(modeParam) : null;
-  let mode: GitDiffMode = "unstaged";
-  if (parsedMode?.success) {
-    mode = parsedMode.data;
-  } else if (stagedParam === "true") {
-    mode = "staged";
-  }
+  const { mode: modeParam } = c.req.valid("query");
+  const mode = modeParam ?? "unstaged";
 
   try {
     const status = await result.service.getStatus();

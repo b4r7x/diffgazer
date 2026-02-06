@@ -24,9 +24,7 @@ describe("ErrorCode", () => {
     expect(ErrorCode.API_KEY_MISSING).toBe("API_KEY_MISSING");
     expect(ErrorCode.RATE_LIMITED).toBe("RATE_LIMITED");
     expect(ErrorCode.STREAM_ERROR).toBe("STREAM_ERROR");
-    expect(ErrorCode.SESSION_NOT_FOUND).toBe("SESSION_NOT_FOUND");
     expect(ErrorCode.CONFIG_NOT_FOUND).toBe("CONFIG_NOT_FOUND");
-    expect(ErrorCode.MESSAGE_SAVE_ERROR).toBe("MESSAGE_SAVE_ERROR");
     expect(ErrorCode.GIT_NOT_FOUND).toBe("GIT_NOT_FOUND");
     expect(ErrorCode.NOT_GIT_REPO).toBe("NOT_GIT_REPO");
     expect(ErrorCode.COMMAND_FAILED).toBe("COMMAND_FAILED");
@@ -44,9 +42,7 @@ describe("ErrorCodeSchema", () => {
     "API_KEY_MISSING",
     "RATE_LIMITED",
     "STREAM_ERROR",
-    "SESSION_NOT_FOUND",
     "CONFIG_NOT_FOUND",
-    "MESSAGE_SAVE_ERROR",
     "GIT_NOT_FOUND",
     "NOT_GIT_REPO",
     "COMMAND_FAILED",

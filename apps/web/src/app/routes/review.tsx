@@ -6,7 +6,7 @@ import {
 } from "@tanstack/react-router";
 import { AnalysisSummary } from "@/components/ui";
 import type { LensStats, IssuePreview, SeverityFilter } from "@/components/ui";
-import type { TriageIssue, TriageResult } from "@stargazer/schemas";
+import type { ReviewIssue, ReviewResult } from "@stargazer/schemas";
 import { SEVERITY_ORDER } from "@stargazer/schemas/ui";
 import { useScope, useKey, useSelectableList } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
@@ -28,12 +28,12 @@ type FocusZone = "filters" | "list" | "details";
 type ReviewView = "progress" | "summary" | "results";
 
 interface ReviewData {
-  issues: TriageIssue[];
+  issues: ReviewIssue[];
   reviewId: string | null;
 }
 
 interface ReviewSummaryViewProps {
-  issues: TriageIssue[];
+  issues: ReviewIssue[];
   reviewId: string | null;
   onEnterReview: () => void;
   onBack: () => void;
@@ -119,13 +119,13 @@ function ReviewSummaryView({
 }
 
 interface ReviewResultsViewProps {
-  issues: TriageIssue[];
+  issues: ReviewIssue[];
   reviewId: string | null;
 }
 
 function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
   const router = useRouter();
-  const [selectedIssueIndex, setSelectedIssueIndex] = useScopedRouteState(
+  const [, setSelectedIssueIndex] = useScopedRouteState(
     "issueIndex",
     0,
   );
@@ -143,14 +143,12 @@ function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
     itemCount: filteredIssues.length,
     wrap: false,
     enabled: focusZone === "list",
-    initialIndex: selectedIssueIndex,
+    initialIndex: 0,
   });
 
   useEffect(() => {
-    if (focusedIndex !== selectedIssueIndex) {
-      setSelectedIssueIndex(focusedIndex);
-    }
-  }, [focusedIndex, selectedIssueIndex, setSelectedIssueIndex]);
+    setSelectedIssueIndex(focusedIndex);
+  }, [focusedIndex, setSelectedIssueIndex]);
 
   const selectedIssue = filteredIssues[focusedIndex] ?? null;
 
@@ -289,6 +287,7 @@ export function ReviewPage() {
   // Tracks whether pre-check completed so we don't re-run it
   const [statusCheckDone, setStatusCheckDone] = useState(false);
   const initialReviewIdRef = useRef(params.reviewId);
+  const router = useRouter();
   const { handleApiError } = useReviewErrorHandler();
 
   // Called when ReviewContainer's resume attempt fails - review exists in storage but not as active session
@@ -297,8 +296,8 @@ export function ReviewPage() {
       // Pre-check already verified status, so just try to load from storage
       setIsLoadingSaved(true);
       try {
-        const { review } = await api.getTriageReview(reviewId);
-        const result = review.result as TriageResult;
+        const { review } = await api.getReview(reviewId);
+        const result = review.result as ReviewResult;
         setReviewData({
           issues: result.issues,
           reviewId: review.metadata.id,
@@ -336,22 +335,12 @@ export function ReviewPage() {
     const checkStatus = async () => {
       setIsCheckingStatus(true);
       try {
-        const status = await api.getReviewStatus(params.reviewId!);
+        const { review } = await api.getReview(params.reviewId!);
 
         if (controller.signal.aborted) return;
 
-        if (status.sessionActive) {
-          // Active session exists - let ReviewContainer handle resume
-          setStatusCheckDone(true);
-          setIsCheckingStatus(false);
-          return;
-        }
-
-        if (status.reviewSaved) {
-          // Review exists in storage - load it directly
-          const { review } = await api.getTriageReview(params.reviewId!);
-          if (controller.signal.aborted) return;
-          const result = review.result as TriageResult;
+        if (review) {
+          const result = review.result as ReviewResult;
           setReviewData({
             issues: result.issues,
             reviewId: review.metadata.id,
@@ -362,7 +351,6 @@ export function ReviewPage() {
           return;
         }
 
-        // Neither active nor saved - review doesn't exist
         handleApiError({ status: 404, message: "Review not found" });
       } catch (error) {
         if (controller.signal.aborted) return;
@@ -393,8 +381,6 @@ export function ReviewPage() {
     }
     return <ReviewContainer mode={reviewMode} onComplete={handleComplete} />;
   }
-
-  const router = useRouter();
 
   if (view === "summary") {
     return (

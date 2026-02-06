@@ -65,23 +65,28 @@ export const GEMINI_MODEL_INFO: Record<GeminiModel, ModelInfo> = {
   },
 };
 
-export const GLM_MODELS = ["glm-4.7", "glm-4.6"] as const;
+export const GLM_MODELS = ["glm-4.7", "glm-4.7-flashx", "glm-4.7-flash"] as const;
 export type GLMModel = (typeof GLM_MODELS)[number];
 
 export const GLM_MODEL_INFO: Record<GLMModel, ModelInfo> = {
   "glm-4.7": {
     id: "glm-4.7",
     name: "GLM-4.7",
-    description: "Latest GLM with 200K context, excellent for coding",
+    description: "Flagship model, highest performance for coding & reasoning",
     tier: "paid",
     recommended: true,
   },
-  "glm-4.6": {
-    id: "glm-4.6",
-    name: "GLM-4.6",
-    description: "Previous generation GLM model",
+  "glm-4.7-flashx": {
+    id: "glm-4.7-flashx",
+    name: "GLM-4.7 FlashX",
+    description: "Lightweight, high-speed and affordable",
     tier: "paid",
-    recommended: false,
+  },
+  "glm-4.7-flash": {
+    id: "glm-4.7-flash",
+    name: "GLM-4.7 Flash",
+    description: "Completely free, open-source SOTA performance",
+    tier: "free",
   },
 };
 
@@ -90,6 +95,7 @@ export const OpenRouterModelSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
   contextLength: z.number(),
+  supportedParameters: z.array(z.string()).optional(),
   pricing: z.object({
     prompt: z.string(),
     completion: z.string(),
@@ -105,6 +111,14 @@ export const OpenRouterModelCacheSchema = z.object({
 });
 
 export type OpenRouterModelCache = z.infer<typeof OpenRouterModelCacheSchema>;
+
+export const OpenRouterModelsResponseSchema = z.object({
+  models: z.array(OpenRouterModelSchema),
+  fetchedAt: z.string().datetime(),
+  cached: z.boolean(),
+});
+
+export type OpenRouterModelsResponse = z.infer<typeof OpenRouterModelsResponseSchema>;
 
 export const ProviderInfoSchema = z.object({
   id: AIProviderSchema,

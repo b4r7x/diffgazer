@@ -15,11 +15,12 @@
     "dev": "tsc --watch"
   },
   "dependencies": {
-    "@stargazer/core": "workspace:*"
+    "@stargazer/core": "workspace:*",
+    "@stargazer/schemas": "workspace:*"
   },
   "devDependencies": {
     "@stargazer/tsconfig": "workspace:*",
-    "@types/node": "^22.0.0",
-    "typescript": "^5.7.0"
+    "@types/node": "^25.2.0",
+    "typescript": "^5.9.3"
   }
 }

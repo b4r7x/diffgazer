@@ -1,11 +1,11 @@
 import { cn } from "@/lib/utils";
 import { IssueListItem, SeverityFilterGroup, FocusablePane, type SeverityFilter } from "@/components/ui";
 import { calculateSeverityCounts } from "@stargazer/core";
-import type { TriageIssue } from "@stargazer/schemas";
+import type { ReviewIssue } from "@stargazer/schemas/review";
 
 export interface IssueListPaneProps {
-  issues: TriageIssue[];
-  allIssues: TriageIssue[];
+  issues: ReviewIssue[];
+  allIssues: ReviewIssue[];
   selectedIndex: number;
   onSelectIndex: (index: number) => void;
   severityFilter: SeverityFilter;
@@ -35,7 +35,7 @@ export function IssueListPane({
   return (
     <FocusablePane
       isFocused={isFocused}
-      className={cn("w-2/5 flex flex-col border-r border-tui-border pr-4", className)}
+      className={cn("w-2/5 flex flex-col border-r border-tui-border pr-4 min-h-0", className)}
     >
       <div className="pb-4 pt-2">
         <div className="text-tui-violet font-bold mb-2">{title}</div>

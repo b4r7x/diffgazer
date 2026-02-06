@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { TriageSeveritySchema, type TriageSeverity } from "./triage.js";
+import { ReviewSeveritySchema, type ReviewSeverity } from "./review.js";
 
 // ============================================================================
 // Severity Display Constants
@@ -18,7 +18,7 @@ export const HISTOGRAM_SEVERITIES = SEVERITY_ORDER.filter((s) => s !== "nit");
 /**
  * Display labels for severity levels.
  */
-export const SEVERITY_LABELS: Record<TriageSeverity, string> = {
+export const SEVERITY_LABELS: Record<ReviewSeverity, string> = {
   blocker: "BLOCKER",
   high: "HIGH",
   medium: "MED",
@@ -29,7 +29,7 @@ export const SEVERITY_LABELS: Record<TriageSeverity, string> = {
 /**
  * Icons for severity levels.
  */
-export const SEVERITY_ICONS: Record<TriageSeverity, string> = {
+export const SEVERITY_ICONS: Record<ReviewSeverity, string> = {
   blocker: "X",
   high: "!",
   medium: "-",
@@ -40,7 +40,7 @@ export const SEVERITY_ICONS: Record<TriageSeverity, string> = {
 /**
  * Terminal colors for severity levels (for CLI/Ink).
  */
-export const SEVERITY_COLORS: Record<TriageSeverity, string> = {
+export const SEVERITY_COLORS: Record<ReviewSeverity, string> = {
   blocker: "red",
   high: "magenta",
   medium: "yellow",
@@ -49,10 +49,10 @@ export const SEVERITY_COLORS: Record<TriageSeverity, string> = {
 };
 
 // ============================================================================
-// Severity Filter (UI-specific, distinct from triage SeverityFilter)
+// Severity Filter (UI-specific, distinct from review SeverityFilter)
 // ============================================================================
 
-export type UISeverityFilter = TriageSeverity | "all";
+export type UISeverityFilter = ReviewSeverity | "all";
 
 // ============================================================================
 // Shortcuts
@@ -116,9 +116,11 @@ export type ProgressStatus = z.infer<typeof ProgressStatusSchema>;
 
 export const ProgressSubstepDataSchema = z.object({
   id: z.string(),
-  emoji: z.string(),
+  tag: z.string(),
   label: z.string(),
-  status: z.enum(["pending", "active", "completed"]),
+  status: z.enum(["pending", "active", "completed", "error"]),
+  detail: z.string().optional(),
+  progress: z.number().min(0).max(100).optional(),
 });
 export type ProgressSubstepData = z.infer<typeof ProgressSubstepDataSchema>;
 
@@ -166,7 +168,7 @@ export const IssuePreviewSchema = z.object({
   file: z.string(),
   line: z.number(),
   category: z.string(),
-  severity: TriageSeveritySchema,
+  severity: ReviewSeveritySchema,
 });
 export type IssuePreview = z.infer<typeof IssuePreviewSchema>;
 
@@ -294,7 +296,7 @@ export interface SeverityConfig {
   borderColor: string;
 }
 
-export const SEVERITY_CONFIG: Record<TriageSeverity, SeverityConfig> = {
+export const SEVERITY_CONFIG: Record<ReviewSeverity, SeverityConfig> = {
   blocker: { icon: "✖", color: "text-tui-red", label: "BLOCKER", borderColor: "border-tui-red" },
   high: { icon: "▲", color: "text-tui-yellow", label: "HIGH", borderColor: "border-tui-yellow" },
   medium: { icon: "●", color: "text-gray-400", label: "MED", borderColor: "border-gray-400" },

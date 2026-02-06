@@ -1,4 +1,4 @@
-import type { ApiClient, GitDiffMode, GitDiffResponse, GitStatus } from "./types.js";
+import type { ApiClient, ReviewMode, GitDiffResponse, GitStatus } from "./types.js";
 
 export async function getGitStatus(
   client: ApiClient,
@@ -10,14 +10,12 @@ export async function getGitStatus(
 
 export async function getGitDiff(
   client: ApiClient,
-  options: { mode?: GitDiffMode; staged?: boolean; path?: string } = {}
+  options: { mode?: ReviewMode; path?: string } = {}
 ): Promise<GitDiffResponse> {
   const params: Record<string, string> = {};
   if (options.path) params.path = options.path;
   if (options.mode) {
     params.mode = options.mode;
-  } else if (options.staged !== undefined) {
-    params.staged = String(options.staged);
   }
 
   return client.get<GitDiffResponse>("/api/git/diff", params);
@@ -25,6 +23,6 @@ export async function getGitDiff(
 
 export const bindGit = (client: ApiClient) => ({
   getGitStatus: (options?: { path?: string }) => getGitStatus(client, options),
-  getGitDiff: (options?: { mode?: GitDiffMode; staged?: boolean; path?: string }) =>
+  getGitDiff: (options?: { mode?: ReviewMode; path?: string }) =>
     getGitDiff(client, options),
 });

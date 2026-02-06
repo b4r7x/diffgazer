@@ -1,8 +1,6 @@
-import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { ZodType } from "zod";
 import { UuidSchema } from "@stargazer/schemas";
 import { type Result, ok, err, safeParseJson } from "@stargazer/core";
-import type { StoreErrorCode } from "./storage/persistence.js";
 
 export const isValidUuid = (id: string): boolean => UuidSchema.safeParse(id).success;
 
@@ -46,17 +44,4 @@ export const isValidProjectPath = (value: string): boolean => {
     return false;
   }
   return true;
-};
-
-export const errorCodeToStatus = (code: StoreErrorCode): ContentfulStatusCode => {
-  switch (code) {
-    case "NOT_FOUND":
-      return 404;
-    case "VALIDATION_ERROR":
-      return 400;
-    case "PERMISSION_ERROR":
-      return 403;
-    default:
-      return 500;
-  }
 };

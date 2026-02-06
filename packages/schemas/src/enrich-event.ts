@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-// Enrichment progress event - emitted during enrich phase
 export const EnrichProgressEventSchema = z.object({
   type: z.literal("enrich_progress"),
   issueId: z.string(),
@@ -11,7 +10,6 @@ export const EnrichProgressEventSchema = z.object({
 
 export type EnrichProgressEvent = z.infer<typeof EnrichProgressEventSchema>;
 
-// Union of all enrich events
 export const EnrichEventSchema = z.discriminatedUnion("type", [
   EnrichProgressEventSchema,
 ]);

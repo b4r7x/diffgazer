@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { getReviews, deleteReview as apiDeleteReview } from "../api";
-import type { TriageReviewMetadata } from "@stargazer/api";
+import type { ReviewMetadata } from "@stargazer/api";
 
 export function useReviews(projectPath?: string) {
-  const [reviews, setReviews] = useState<TriageReviewMetadata[]>([]);
+  const [reviews, setReviews] = useState<ReviewMetadata[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

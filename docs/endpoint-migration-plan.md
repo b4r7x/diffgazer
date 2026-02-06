@@ -1,5 +1,7 @@
 # Endpoint Migration Plan
 
+> **Note**: This migration plan may be obsolete. The endpoints described here (sessions, triage, etc.) have been migrated and consolidated under `features/review/`. The deprecated features (sessions, triage) have been removed. Consider deleting this file.
+
 This plan migrates deprecated server endpoints into the current `apps/server/src` layout, using Hono best practices and the required structure.
 
 ## Target Structure

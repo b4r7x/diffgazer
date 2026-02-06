@@ -74,12 +74,18 @@ export function SettingsHubPage() {
         value: storageLabel,
         valueVariant: settings?.secretsStorage ? "default" : "muted",
       },
+      analysis: {
+        value: settings?.defaultLenses?.length
+          ? `${settings.defaultLenses.length} agents`
+          : "Default",
+        valueVariant: settings?.defaultLenses?.length ? "default" : "muted",
+      },
       diagnostics: {
         value: "Local",
         valueVariant: "muted",
       },
     };
-  }, [isConfigured, provider, settings?.secretsStorage, theme, isTrusted]);
+  }, [isConfigured, provider, settings?.secretsStorage, settings?.defaultLenses?.length, theme, isTrusted]);
 
   const handleActivate = (item: { id: string }) => {
     switch (item.id as SettingsAction) {
@@ -94,6 +100,9 @@ export function SettingsHubPage() {
         break;
       case "storage":
         navigate({ to: "/settings/storage" });
+        break;
+      case "analysis":
+        navigate({ to: "/settings/analysis" });
         break;
       case "diagnostics":
         navigate({ to: "/settings/diagnostics" });

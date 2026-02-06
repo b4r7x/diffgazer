@@ -1,8 +1,8 @@
 import { useState, useMemo, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { FocusablePane } from "@/components/ui";
-import type { TriageReviewMetadata } from "@stargazer/api";
-import type { TriageResult } from "@stargazer/schemas";
+import type { ReviewMetadata } from "@stargazer/api";
+import type { ReviewResult } from "@stargazer/schemas";
 import type { HistoryFocusZone } from "@stargazer/schemas/history";
 import type { TimelineItem } from "@stargazer/schemas/ui";
 import { useScope, useKey } from "@/hooks/keyboard";
@@ -56,7 +56,7 @@ function getTimestamp(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 }
 
-function getRunSummary(metadata: TriageReviewMetadata): React.ReactNode {
+function getRunSummary(metadata: ReviewMetadata): React.ReactNode {
   const { blockerCount, highCount, mediumCount, lowCount, issueCount } = metadata;
 
   if (issueCount === 0) return "Passed with no issues.";
@@ -84,7 +84,7 @@ function getRunSummary(metadata: TriageReviewMetadata): React.ReactNode {
   );
 }
 
-function buildTimelineItems(reviews: TriageReviewMetadata[]): TimelineItem[] {
+function buildTimelineItems(reviews: ReviewMetadata[]): TimelineItem[] {
   const groups = new Map<string, { label: string; count: number }>();
 
   for (const review of reviews) {
@@ -134,28 +134,29 @@ export function HistoryPage() {
 
   const { review: reviewDetail } = useReviewDetail(selectedRunId);
 
-  const issues = (reviewDetail?.result as TriageResult | undefined)?.issues;
+  const issues = (reviewDetail?.result as ReviewResult | undefined)?.issues;
 
-  const severityCounts = useMemo(() => {
-    if (!selectedRun) return null;
-    return {
-      blocker: selectedRun.blockerCount,
-      high: selectedRun.highCount,
-      medium: selectedRun.mediumCount,
-      low: selectedRun.lowCount,
-      nit: selectedRun.nitCount,
-    };
-  }, [selectedRun]);
+  const severityCounts = selectedRun
+    ? {
+        blocker: selectedRun.blockerCount,
+        high: selectedRun.highCount,
+        medium: selectedRun.mediumCount,
+        low: selectedRun.lowCount,
+        nit: selectedRun.nitCount,
+      }
+    : null;
 
-  const duration = useMemo(() => {
-    const ms = selectedRun?.durationMs;
-    if (!ms) return "--";
-    const seconds = Math.floor(ms / 1000);
-    if (seconds === 0) return `${ms}ms`;
-    if (seconds < 60) return `${seconds}.${Math.floor((ms % 1000) / 100)}s`;
-    const minutes = Math.floor(seconds / 60);
-    return `${minutes}m ${seconds % 60}s`;
-  }, [selectedRun?.durationMs]);
+  const durationMs = selectedRun?.durationMs;
+  let duration = "--";
+  if (durationMs) {
+    const seconds = Math.floor(durationMs / 1000);
+    if (seconds === 0) duration = `${durationMs}ms`;
+    else if (seconds < 60) duration = `${seconds}.${Math.floor((durationMs % 1000) / 100)}s`;
+    else {
+      const minutes = Math.floor(seconds / 60);
+      duration = `${minutes}m ${seconds % 60}s`;
+    }
+  }
 
   const sortedIssues = useMemo(() => {
     if (!issues) return [];

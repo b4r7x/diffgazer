@@ -1,32 +1,27 @@
 'use client';
 
-import { cva, type VariantProps } from 'class-variance-authority';
 import { formatTimestamp } from '@stargazer/core';
 import { cn } from '../../../lib/utils';
 import type { LogTagType } from '@stargazer/schemas/ui';
+import { Badge } from '../badge';
 
 export type { LogTagType };
 
-const tagVariants = cva('font-bold', {
-  variants: {
-    tagType: {
-      system: 'text-tui-violet',
-      tool: 'text-tui-blue',
-      lens: 'text-tui-violet',
-      warning: 'text-tui-yellow',
-      error: 'text-tui-red',
-      agent: 'text-tui-violet',
-      thinking: 'text-gray-500',
-    },
-  },
-  defaultVariants: { tagType: 'system' },
-});
+const TAG_VARIANTS: Record<LogTagType, { variant: "success" | "warning" | "error" | "info" | "neutral"; className?: string }> = {
+  system: { variant: "neutral" },
+  tool: { variant: "info" },
+  lens: { variant: "info" },
+  warning: { variant: "warning" },
+  error: { variant: "error" },
+  agent: { variant: "info" },
+  thinking: { variant: "neutral", className: "opacity-70" },
+};
 
 export interface LogEntryProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, 'children'>,
-    VariantProps<typeof tagVariants> {
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, 'children'> {
   timestamp: Date | string;
   tag: string;
+  tagType?: LogTagType;
   source?: string;
   message: React.ReactNode;
   isWarning?: boolean;
@@ -45,10 +40,17 @@ export function LogEntry({
   isMuted,
   className,
 }: LogEntryProps) {
+  const tagStyle = TAG_VARIANTS[tagType ?? "system"];
   return (
     <div className={cn('font-mono text-sm leading-relaxed', isMuted && 'opacity-50', className)}>
       <span className="text-gray-600">[{formatTimestamp(timestamp)}]</span>{' '}
-      <span className={tagVariants({ tagType })}>[{tag}]</span>{' '}
+      <Badge
+        variant={tagStyle.variant}
+        size="sm"
+        className={cn("mx-1 min-w-[48px] justify-center", tagStyle.className)}
+      >
+        {tag}
+      </Badge>
       {source && (
         <>
           <span className="font-bold text-tui-fg">{source}</span>

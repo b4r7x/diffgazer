@@ -1,6 +1,10 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { registerRoutes } from "./routes.js";
+import { healthRouter } from "./features/health/router.js";
+import { configRouter } from "./features/config/router.js";
+import { settingsRouter } from "./features/settings/router.js";
+import { gitRouter } from "./features/git/router.js";
+import { reviewRouter } from "./features/review/router.js";
 
 const ALLOWED_ORIGINS = [
   "http://localhost:3001",
@@ -41,7 +45,12 @@ export const createApp = (): Hono => {
     })
   );
 
-  registerRoutes(app);
+  app.route("/", healthRouter);
+  app.route("/api", healthRouter);
+  app.route("/api/config", configRouter);
+  app.route("/api/settings", settingsRouter);
+  app.route("/api/git", gitRouter);
+  app.route("/api/review", reviewRouter);
 
   app.notFound((c) => {
     return c.json({ error: { message: "Not Found" } }, 404);

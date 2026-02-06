@@ -130,7 +130,10 @@ export function ProviderList({
                     {tierBadge}
                   </Badge>
                 }
-                subtitle={provider.defaultModel}
+                subtitle={
+                  provider.defaultModel ||
+                  (provider.id === "openrouter" ? "Select model" : undefined)
+                }
               >
                 {provider.name}
               </NavigationListItem>

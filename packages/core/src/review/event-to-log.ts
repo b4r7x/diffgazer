@@ -3,15 +3,16 @@ import { AGENT_METADATA } from "@stargazer/schemas/agent-event";
 import type { StepEvent } from "@stargazer/schemas/step-event";
 import { STEP_METADATA } from "@stargazer/schemas/step-event";
 import type { LogEntryData } from "@stargazer/schemas/ui";
+import type { EnrichEvent } from "@stargazer/schemas/enrich-event";
 
 function truncate(str: string, maxLength: number): string {
   if (str.length <= maxLength) return str;
   return str.slice(0, maxLength - 3) + "...";
 }
 
-function getAgent(agentId: AgentId): { emoji: string; name: string } {
+function getAgent(agentId: AgentId): { label: string; name: string } {
   const meta = AGENT_METADATA[agentId];
-  return { emoji: meta?.emoji ?? "🤖", name: meta?.name ?? agentId };
+  return { label: meta?.badgeLabel ?? "AGT", name: meta?.name ?? agentId };
 }
 
 function pluralize(count: number, word: string): string {
@@ -19,7 +20,7 @@ function pluralize(count: number, word: string): string {
 }
 
 function convertEventToLogEntry(
-  event: AgentStreamEvent | StepEvent,
+  event: AgentStreamEvent | StepEvent | EnrichEvent,
   index: number
 ): LogEntryData | null {
   const id = `${event.type}-${index}`;
@@ -42,7 +43,7 @@ function convertEventToLogEntry(
     return {
       id,
       timestamp,
-      tag: "✓",
+      tag: "DONE",
       tagType: "system",
       message: `${meta.label} complete`,
     };
@@ -53,7 +54,7 @@ function convertEventToLogEntry(
     return {
       id,
       timestamp,
-      tag: "ERROR",
+      tag: "FAIL",
       tagType: "error",
       message: `${meta.label} failed: ${event.error}`,
       isWarning: true,
@@ -70,7 +71,35 @@ function convertEventToLogEntry(
     };
   }
 
+  if (event.type === "enrich_progress") {
+    return {
+      id,
+      timestamp,
+      tag: "ENRICH",
+      tagType: "system",
+      message: `${event.enrichmentType} ${event.status}: ${event.issueId}`,
+    };
+  }
+
   switch (event.type) {
+    case "orchestrator_start":
+      return {
+        id,
+        timestamp,
+        tag: "ORCH",
+        tagType: "system",
+        message: `Orchestrator started (${event.agents.length} agents, concurrency ${event.concurrency})`,
+      };
+
+    case "agent_queued":
+      return {
+        id,
+        timestamp,
+        tag: "QUEUE",
+        tagType: "agent",
+        message: `${event.agent.name} queued (${event.position}/${event.total})`,
+      };
+
     case "file_start":
       return {
         id,
@@ -84,7 +113,7 @@ function convertEventToLogEntry(
       return {
         id,
         timestamp,
-        tag: "✓",
+        tag: "DONE",
         tagType: "system",
         message: `${event.file} complete`,
       };
@@ -92,34 +121,80 @@ function convertEventToLogEntry(
       return {
         id,
         timestamp,
-        tag: `${event.agent.emoji} ${event.agent.name}`,
-        tagType: "lens",
+        tag: event.agent.badgeLabel,
+        tagType: "agent",
         message: "Starting analysis...",
+        source: event.agent.name,
       };
 
     case "agent_thinking": {
-      const { emoji } = getAgent(event.agent);
-      return { id, timestamp, tag: emoji, tagType: "system", message: truncate(event.thought, 100) };
+      const { label, name } = getAgent(event.agent);
+      return { id, timestamp, tag: label, tagType: "thinking", message: truncate(event.thought, 100), source: name };
+    }
+
+    case "agent_progress": {
+      const { label, name } = getAgent(event.agent);
+      return {
+        id,
+        timestamp,
+        tag: label,
+        tagType: "agent",
+        message: `${event.progress}%${event.message ? ` — ${truncate(event.message, 80)}` : ""}`,
+        source: name,
+      };
+    }
+
+    case "agent_error": {
+      const { label, name } = getAgent(event.agent);
+      return {
+        id,
+        timestamp,
+        tag: label,
+        tagType: "error",
+        message: truncate(event.error, 120),
+        isError: true,
+        source: name,
+      };
     }
 
     case "tool_call":
-      return { id, timestamp, tag: "TOOL", tagType: "tool", message: `${event.tool}: ${truncate(event.input, 60)}`, source: event.tool };
+    case "tool_start": {
+      const { name } = getAgent(event.agent);
+      return {
+        id,
+        timestamp,
+        tag: "TOOL",
+        tagType: "tool",
+        message: `${event.tool}: ${truncate(event.input, 60)}`,
+        source: name,
+      };
+    }
 
     case "tool_result":
-      return { id, timestamp, tag: "TOOL", tagType: "tool", message: truncate(event.summary, 100), source: event.tool };
+    case "tool_end": {
+      const { name } = getAgent(event.agent);
+      return {
+        id,
+        timestamp,
+        tag: "TOOL",
+        tagType: "tool",
+        message: truncate(event.summary, 100),
+        source: name,
+      };
+    }
 
     case "issue_found": {
-      const { emoji, name } = getAgent(event.agent);
-      return { id, timestamp, tag: emoji, tagType: "warning", message: `Found: ${event.issue.title}`, isWarning: true, source: name };
+      const { label, name } = getAgent(event.agent);
+      return { id, timestamp, tag: label, tagType: "warning", message: `Found: ${event.issue.title}`, isWarning: true, source: name };
     }
 
     case "agent_complete": {
-      const { emoji, name } = getAgent(event.agent);
-      return { id, timestamp, tag: `${emoji} ${name}`, tagType: "lens", message: `Complete (${pluralize(event.issueCount, "issue")})` };
+      const { label, name } = getAgent(event.agent);
+      return { id, timestamp, tag: label, tagType: "agent", message: `Complete (${pluralize(event.issueCount, "issue")})`, source: name };
     }
 
     case "orchestrator_complete":
-      return { id, timestamp, tag: "✅", tagType: "system", message: `Review complete: ${pluralize(event.totalIssues, "issue")} found` };
+      return { id, timestamp, tag: "DONE", tagType: "system", message: `Review complete: ${pluralize(event.totalIssues, "issue")} found` };
 
     default: {
       const _exhaustive: never = event;
@@ -128,7 +203,9 @@ function convertEventToLogEntry(
   }
 }
 
-export function convertAgentEventsToLogEntries(events: (AgentStreamEvent | StepEvent)[]): LogEntryData[] {
+export function convertAgentEventsToLogEntries(
+  events: (AgentStreamEvent | StepEvent | EnrichEvent)[]
+): LogEntryData[] {
   return events
     .map(convertEventToLogEntry)
     .filter((entry): entry is LogEntryData => entry !== null);

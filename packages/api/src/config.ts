@@ -7,6 +7,7 @@ import type {
   DeleteConfigResponse,
   InitResponse,
   ProvidersStatusResponse,
+  OpenRouterModelsResponse,
   SaveConfigRequest,
   SettingsConfig,
   TrustConfig,
@@ -19,6 +20,12 @@ export async function getProviderStatus(
 ): Promise<ProvidersStatusResponse["providers"]> {
   const response = await client.get<ProvidersStatusResponse>("/api/config/providers");
   return response.providers;
+}
+
+export async function getOpenRouterModels(
+  client: ApiClient
+): Promise<OpenRouterModelsResponse> {
+  return client.get<OpenRouterModelsResponse>("/api/config/provider/openrouter/models");
 }
 
 export async function saveConfig(client: ApiClient, config: SaveConfigRequest): Promise<void> {
@@ -94,6 +101,7 @@ export async function deleteTrust(
 
 export const bindConfig = (client: ApiClient) => ({
   getProviderStatus: () => getProviderStatus(client),
+  getOpenRouterModels: () => getOpenRouterModels(client),
   saveConfig: (config: SaveConfigRequest) => saveConfig(client, config),
   getSettings: () => getSettings(client),
   saveSettings: (settings: Partial<SettingsConfig>) => saveSettings(client, settings),

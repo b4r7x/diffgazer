@@ -1,10 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import type { Context } from "hono";
-import { bodyLimit } from "hono/body-limit";
-import { z } from "zod";
-import { ErrorCode } from "@stargazer/schemas/errors";
-import { AIProviderSchema } from "@stargazer/schemas/config";
 import {
   activateProvider,
   checkConfig,
@@ -12,36 +7,19 @@ import {
   deleteProvider,
   getConfig,
   getInitState,
+  getOpenRouterModels,
   getProvidersStatus,
   saveConfig,
 } from "./service.js";
-import { errorResponse } from "../../shared/lib/http/response.js";
+import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
+import { createBodyLimitMiddleware } from "../../shared/middlewares/body-limit.js";
+import { ErrorCode } from "@stargazer/schemas/errors";
+import { saveConfigSchema, providerParamSchema, activateProviderBodySchema } from "./schemas.js";
 
 const configRouter = new Hono();
 
-const saveConfigSchema = z.object({
-  provider: AIProviderSchema,
-  apiKey: z.string().min(1),
-  model: z.string().min(1).optional(),
-});
-
-const providerParamSchema = z.object({
-  providerId: AIProviderSchema,
-});
-
-const activateProviderBodySchema = z.object({
-  model: z.string().min(1).optional(),
-});
-
-const invalidBodyResponse = (c: Context): Response =>
-  errorResponse(c, "Invalid request body", "INVALID_BODY", 400);
-
-const bodyLimitMiddleware = bodyLimit({
-  maxSize: 50 * 1024,
-  onError: (c) =>
-    errorResponse(c, "Request body too large", "PAYLOAD_TOO_LARGE", 413),
-});
+const bodyLimitMiddleware = createBodyLimitMiddleware(50);
 
 configRouter.get("/init", (c): Response => {
   const projectRoot = getProjectRoot(c);
@@ -78,20 +56,26 @@ configRouter.get("/providers", (c): Response => {
   return c.json(data);
 });
 
+configRouter.get("/provider/openrouter/models", async (c): Promise<Response> => {
+  const result = await getOpenRouterModels();
+  if (!result.ok) {
+    const status = result.error.code === ErrorCode.API_KEY_MISSING ? 400 : 500;
+    return errorResponse(c, result.error.message, result.error.code, status);
+  }
+  return c.json(result.value);
+});
+
 configRouter.post(
   "/",
   bodyLimitMiddleware,
-  zValidator("json", saveConfigSchema, (result, c) => {
-    if (!result.success) return invalidBodyResponse(c);
-    return;
-  }),
+  zValidator("json", saveConfigSchema, zodErrorHandler),
   (c): Response => {
     const body = c.req.valid("json");
     const result = saveConfig(body);
     if (!result.ok) {
       return errorResponse(c, result.error.message, result.error.code, 400);
     }
-    return c.json({ saved: true });
+    return c.json(result.value);
   },
 );
 
@@ -99,19 +83,16 @@ configRouter.post(
   "/provider/:providerId/activate",
   bodyLimitMiddleware,
   zValidator("param", providerParamSchema),
-  zValidator("json", activateProviderBodySchema, (result, c) => {
-    if (!result.success) return invalidBodyResponse(c);
-    return;
-  }),
+  zValidator("json", activateProviderBodySchema, zodErrorHandler),
   (c): Response => {
     const { providerId } = c.req.valid("param");
     const { model } = c.req.valid("json");
-    const activated = activateProvider({ provider: providerId, model });
-    if (!activated) {
-      return errorResponse(c, "Provider not found", "PROVIDER_NOT_FOUND", 404);
+    const result = activateProvider({ provider: providerId, model });
+    if (!result.ok) {
+      const status = result.error.code === "PROVIDER_NOT_FOUND" ? 404 : 400;
+      return errorResponse(c, result.error.message, result.error.code, status);
     }
-
-    return c.json(activated);
+    return c.json(result.value);
   },
 );
 

@@ -1,22 +1,22 @@
 // Browser-safe review exports only
-// Server-only code (triage, drilldown, lenses, profiles, trace-recorder) has been moved to apps/server/src/review/
+// Server-only code (drilldown, lenses, profiles, trace-recorder) has been moved to apps/server/src/review/
 
 export { calculateAgentActivity, createInitialAgentActivityState, type AgentActivityState } from "./agent-activity.js";
 export {
-  triageReducer,
-  createInitialTriageState,
-  type TriageState,
-  type TriageAction,
-} from "./triage-state.js";
+  reviewReducer,
+  createInitialReviewState,
+  type ReviewState,
+  type ReviewAction,
+} from "./review-state.js";
 export {
-  buildTriageQueryParams,
-  processTriageStream,
-  type StreamTriageRequest,
-  type StreamTriageOptions,
-  type StreamTriageResult,
-  type StreamTriageError,
-  type TriageStreamController,
-} from "./stream-triage.js";
+  buildReviewQueryParams,
+  processReviewStream,
+  type StreamReviewRequest,
+  type StreamReviewOptions,
+  type StreamReviewResult,
+  type StreamReviewError,
+  type ReviewStreamController,
+} from "./stream-review.js";
 export {
   issueMatchesPattern,
   filterIssuesByPattern,

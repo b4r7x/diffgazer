@@ -127,6 +127,30 @@ When not configured:
 
 ---
 
+### `GET /api/config/provider/openrouter/models`
+
+**Description**: Returns available OpenRouter models (cached server-side).
+
+**Response**
+```json
+{
+  "models": [
+    {
+      "id": "openai/gpt-4o",
+      "name": "GPT-4o",
+      "description": "OpenAI's latest flagship model.",
+      "contextLength": 128000,
+      "pricing": { "prompt": "0.000005", "completion": "0.000015" },
+      "isFree": false
+    }
+  ],
+  "fetchedAt": "2026-02-05T12:00:00.000Z",
+  "cached": false
+}
+```
+
+---
+
 ### `POST /api/config`
 
 **Description**: Save API credentials and optionally a model; also activates the provider.
@@ -408,187 +432,6 @@ When not configured:
 
 ---
 
-## Sessions
-
-### `GET /api/sessions`
-
-**Description**: Lists saved chat sessions.
-
-**Query Params**
-- `projectPath` (optional): filter sessions by project path.
-
-**Response**
-```json
-{
-  "sessions": [
-    {
-      "id": "uuid",
-      "projectPath": "/path/to/project",
-      "title": "Review session",
-      "createdAt": "2026-02-04T12:00:00.000Z",
-      "updatedAt": "2026-02-04T12:05:00.000Z",
-      "messageCount": 2
-    }
-  ],
-  "warnings": []
-}
-```
-
----
-
-### `GET /api/sessions/last`
-
-**Description**: Returns the most recent session for a project.
-
-**Query Params**
-- `projectPath` (required): project path.
-
-**Response**
-```json
-{
-  "session": {
-    "metadata": {
-      "id": "uuid",
-      "projectPath": "/path/to/project",
-      "title": "Review session",
-      "createdAt": "2026-02-04T12:00:00.000Z",
-      "updatedAt": "2026-02-04T12:05:00.000Z",
-      "messageCount": 2
-    },
-    "messages": []
-  }
-}
-```
-
-**Errors**
-- `VALIDATION_ERROR` (400) when `projectPath` is missing or invalid.
-- `NOT_FOUND` (404) when no sessions exist.
-
----
-
-### `POST /api/sessions`
-
-**Description**: Creates a new session.
-
-**Request Body**
-```json
-{
-  "projectPath": "/path/to/project",
-  "title": "Review session"
-}
-```
-
-**Response**
-```json
-{
-  "session": {
-    "metadata": {
-      "id": "uuid",
-      "projectPath": "/path/to/project",
-      "title": "Review session",
-      "createdAt": "2026-02-04T12:00:00.000Z",
-      "updatedAt": "2026-02-04T12:00:00.000Z",
-      "messageCount": 0
-    },
-    "messages": []
-  }
-}
-```
-
----
-
-### `GET /api/sessions/:id`
-
-**Description**: Returns a session by id.
-
-**Response**
-```json
-{
-  "session": {
-    "metadata": {
-      "id": "uuid",
-      "projectPath": "/path/to/project",
-      "title": "Review session",
-      "createdAt": "2026-02-04T12:00:00.000Z",
-      "updatedAt": "2026-02-04T12:05:00.000Z",
-      "messageCount": 2
-    },
-    "messages": [
-      {
-        "id": "uuid",
-        "role": "user",
-        "content": "Why is this code vulnerable?",
-        "createdAt": "2026-02-04T12:02:00.000Z"
-      }
-    ]
-  }
-}
-```
-
----
-
-### `POST /api/sessions/:id/messages`
-
-**Description**: Adds a message to a session.
-
-**Request Body**
-```json
-{
-  "role": "user",
-  "content": "Review this code"
-}
-```
-
-**Response**
-```json
-{
-  "message": {
-    "id": "uuid",
-    "role": "user",
-    "content": "Review this code",
-    "createdAt": "2026-02-04T12:02:00.000Z"
-  }
-}
-```
-
----
-
-### `DELETE /api/sessions/:id`
-
-**Description**: Deletes a session.
-
-**Response**
-```json
-{ "existed": true }
-```
-
----
-
-### `POST /api/sessions/:id/chat`
-
-**Description**: Streams a chat response for a session (SSE).
-
-**Request Body**
-```json
-{ "message": "Why is this code vulnerable?" }
-```
-
-**Response**: Server-Sent Events
-
-Event types:
-```
-event: chunk
-data: {"type":"chunk","content":"The code is vulnerable because..."}
-
-event: complete
-data: {"type":"complete","content":"...","truncated":false}
-
-event: error
-data: {"type":"error","error":{"code":"AI_ERROR","message":"..."}}
-```
-
----
-
 ## Reviews
 
 ### `GET /api/reviews`
@@ -732,177 +575,3 @@ event: error
 data: {"type":"error","error":{"code":"AI_ERROR","message":"..."}}
 ```
 
----
-
-## Triage
-
-### `GET /api/triage/stream`
-
-**Description**: Streams a triage review (SSE).
-
-**Query Params**
-- `mode` (optional): `staged` or `unstaged`. Default `unstaged`.
-- `staged` (optional): legacy boolean flag, ignored when `mode` is present.
-- `lenses` (optional): comma-separated lens IDs.
-- `profile` (optional): profile ID.
-- `files` (optional): comma-separated file paths.
-
-**Response**: Server-Sent Events
-
-Event types include:
-```
-event: review_started
-data: {"type":"review_started","reviewId":"...","filesTotal":3,"timestamp":"..."}
-
-event: step_start
-data: {"type":"step_start","step":"diff","timestamp":"..."}
-
-event: agent_start
-data: {"type":"agent_start","agent":{...},"timestamp":"..."}
-
-event: issue_found
-data: {"type":"issue_found","agent":"detective","issue":{...},"timestamp":"..."}
-
-event: complete
-data: {"type":"complete","result":{...},"reviewId":"...","durationMs":1234}
-
-event: error
-data: {"type":"error","error":{"message":"...","code":"AI_ERROR"}}
-```
-
----
-
-### `GET /api/triage/reviews`
-
-**Description**: Lists triage reviews.
-
-**Query Params**
-- `projectPath` (optional): filter by project path.
-
-**Response**
-```json
-{
-  "reviews": [
-    {
-      "id": "uuid",
-      "projectPath": "/path/to/project",
-      "mode": "unstaged",
-      "issueCount": 3,
-      "lenses": ["correctness", "security"],
-      "profile": "strict",
-      "createdAt": "2026-02-04T12:00:00.000Z"
-    }
-  ],
-  "warnings": []
-}
-```
-
----
-
-### `GET /api/triage/reviews/:id`
-
-**Description**: Returns a triage review by id.
-
-**Response**
-```json
-{
-  "review": {
-    "metadata": { "id": "uuid", "projectPath": "/path/to/project" },
-    "result": { "summary": "...", "issues": [] },
-    "gitContext": { "branch": "main", "commit": "..." },
-    "drilldowns": []
-  }
-}
-```
-
----
-
-### `DELETE /api/triage/reviews/:id`
-
-**Description**: Deletes a triage review.
-
-**Response**
-```json
-{ "existed": true }
-```
-
----
-
-### `POST /api/triage/reviews/:id/drilldown`
-
-**Description**: Runs drilldown analysis for a triage issue.
-
-**Request Body**
-```json
-{ "issueId": "issue-id" }
-```
-
-**Response**
-```json
-{
-  "drilldown": {
-    "issueId": "issue-id",
-    "detailedAnalysis": "...",
-    "rootCause": "...",
-    "impact": "...",
-    "suggestedFix": "...",
-    "patch": null,
-    "relatedIssues": [],
-    "references": []
-  }
-}
-```
-
----
-
-## PR Review
-
-### `POST /api/pr-review`
-
-**Description**: Runs a review on a PR diff and returns GitHub-friendly annotations.
-
-**Request Body**
-```json
-{
-  "diff": "diff --git a/src/app.ts...",
-  "lenses": ["correctness", "security"],
-  "profile": "strict",
-  "baseRef": "main",
-  "headRef": "feature/new-feature"
-}
-```
-
-**Response**
-```json
-{
-  "summary": "Found 3 issues: 1 high, 2 medium...",
-  "issues": [
-    {
-      "severity": "high",
-      "title": "SQL injection vulnerability",
-      "file": "src/db.ts",
-      "line": 42,
-      "message": "User input is not sanitized...",
-      "suggestion": "Use parameterized queries..."
-    }
-  ],
-  "annotations": [
-    {
-      "path": "src/db.ts",
-      "start_line": 42,
-      "end_line": 42,
-      "annotation_level": "failure",
-      "message": "User input is not sanitized...",
-      "title": "[HIGH] SQL injection vulnerability"
-    }
-  ],
-  "inlineComments": [
-    {
-      "path": "src/db.ts",
-      "line": 42,
-      "side": "RIGHT",
-      "body": "**HIGH**: SQL injection vulnerability\\n\\n..."
-    }
-  ]
-}
-```

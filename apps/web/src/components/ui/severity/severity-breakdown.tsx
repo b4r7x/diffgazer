@@ -1,10 +1,10 @@
 import type { SeverityCounts } from '@stargazer/schemas/ui';
-import type { TriageSeverity } from '@stargazer/schemas/triage';
+import type { ReviewSeverity } from '@stargazer/schemas/review';
 import { SEVERITY_ORDER } from '@stargazer/schemas/ui';
 import { SeverityBar } from './severity-bar';
 import { cn } from '../../../lib/utils';
 
-const SEVERITY_LABELS: Record<TriageSeverity, string> = {
+const SEVERITY_LABELS: Record<ReviewSeverity, string> = {
   blocker: "Blocker",
   high: "High",
   medium: "Medium",

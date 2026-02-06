@@ -1,7 +1,8 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { GIT_FILE_STATUS_CODES, type GitStatus, type GitStatusFiles, type GitFileEntry, type GitFileStatusCode } from "@stargazer/schemas/git";
-import type { ReviewMode } from "@stargazer/schemas/triage-storage";
+import type { GitBlameInfo } from "@stargazer/schemas/review";
+import type { ReviewMode } from "@stargazer/schemas/review-storage";
 
 const execFileAsync = promisify(execFile);
 
@@ -23,14 +24,6 @@ interface BranchInfo {
   remoteBranch: string | null;
   ahead: number;
   behind: number;
-}
-
-interface GitBlameResult {
-  author: string;
-  authorEmail: string;
-  commit: string;
-  commitDate: string;
-  summary: string;
 }
 
 function parseBranchLine(line: string): BranchInfo {
@@ -150,11 +143,13 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
 
   async function getDiff(mode: ReviewMode = "unstaged"): Promise<string> {
     const args = mode === "staged" ? ["diff", "--cached"] : ["diff"];
+    // "files" mode falls through to unstaged diff intentionally —
+    // file filtering is applied after diff retrieval by the caller.
     const { stdout } = await execFileAsync("git", args, { cwd, timeout, maxBuffer: GIT_DIFF_MAX_BUFFER });
     return stdout;
   }
 
-  async function getBlame(file: string, line: number): Promise<GitBlameResult | null> {
+  async function getBlame(file: string, line: number): Promise<GitBlameInfo | null> {
     try {
       const args = ["blame", "-L", `${line},${line}`, "--porcelain", file];
       const { stdout } = await execFileAsync("git", args, { cwd, timeout });

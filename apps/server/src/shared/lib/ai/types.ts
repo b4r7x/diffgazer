@@ -3,8 +3,6 @@ import type { AIProvider } from "@stargazer/schemas/config";
 import type { SharedErrorCode } from "@stargazer/schemas";
 import type { Result, AppError } from "@stargazer/core";
 
-export type { AIProvider };
-
 export type AIErrorCode =
   | SharedErrorCode
   | "API_KEY_INVALID"
@@ -27,16 +25,14 @@ export interface StreamCallbacks {
   onError: (error: Error) => void | Promise<void>;
 }
 
-export interface GenerateStreamOptions {
-  responseSchema?: Record<string, unknown>;
-}
-
 export interface AIClientConfig {
   apiKey: string;
   provider: AIProvider;
   model?: string;
   temperature?: number;
   maxTokens?: number;
+  maxRetries?: number;
+  timeoutMs?: number;
 }
 
 export interface AIClient {
@@ -44,7 +40,6 @@ export interface AIClient {
   generate<T extends z.ZodType>(prompt: string, schema: T): Promise<Result<z.infer<T>, AIError>>;
   generateStream(
     prompt: string,
-    callbacks: StreamCallbacks,
-    options?: GenerateStreamOptions
+    callbacks: StreamCallbacks
   ): Promise<void>;
 }

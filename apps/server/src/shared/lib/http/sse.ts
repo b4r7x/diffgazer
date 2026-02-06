@@ -1,4 +1,6 @@
-import type { SSEWriter } from "../ai/client.js";
+export interface SSEWriter {
+  writeSSE: (data: { event: string; data: string }) => Promise<void>;
+}
 
 export const writeSSEChunk = async (stream: SSEWriter, content: string): Promise<void> => {
   await stream.writeSSE({

@@ -14,24 +14,24 @@
     "start": "node dist/dev.js"
   },
   "dependencies": {
-    "@ai-sdk/google": "^3.0.13",
-    "@hono/node-server": "^1.13.0",
+    "@ai-sdk/google": "^3.0.21",
+    "@hono/node-server": "^1.19.9",
     "@hono/zod-validator": "^0.7.6",
     "@napi-rs/keyring": "^1.2.0",
-    "@openrouter/ai-sdk-provider": "^0.4.3",
+    "@openrouter/ai-sdk-provider": "^2.1.1",
     "@stargazer/api": "workspace:*",
     "@stargazer/core": "workspace:*",
     "@stargazer/schemas": "workspace:*",
-    "ai": "^6.0.49",
-    "hono": "^4.6.0",
-    "zhipu-ai-provider": "^0.2.1",
-    "zod": "^4.3.5"
+    "ai": "^6.0.71",
+    "hono": "^4.11.7",
+    "zhipu-ai-provider": "^0.2.2",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@napi-rs/keyring": "^1.1.6",
     "@stargazer/tsconfig": "workspace:*",
-    "@types/node": "^22.0.0",
+    "@types/node": "^25.2.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.9.3"
   }
 }

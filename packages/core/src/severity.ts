@@ -1,8 +1,8 @@
-import type { TriageSeverity } from "@stargazer/schemas/triage";
+import type { ReviewSeverity } from "@stargazer/schemas/review";
 import type { SeverityCounts } from "@stargazer/schemas/ui";
 
 // Re-export display constants from @stargazer/schemas for backwards compatibility
-export {
+import {
   SEVERITY_ORDER,
   SEVERITY_LABELS,
   SEVERITY_ICONS,
@@ -10,10 +10,12 @@ export {
   HISTOGRAM_SEVERITIES,
 } from "@stargazer/schemas/ui";
 
+export { SEVERITY_ORDER, SEVERITY_LABELS, SEVERITY_ICONS, SEVERITY_COLORS, HISTOGRAM_SEVERITIES };
+
 export type { SeverityCounts };
 
 interface HasSeverity {
-  severity: TriageSeverity;
+  severity: ReviewSeverity;
 }
 
 /**
@@ -34,3 +36,6 @@ export function calculateSeverityCounts<T extends HasSeverity>(issues: T[]): Sev
 
   return counts;
 }
+
+export const severityRank = (severity: ReviewSeverity): number =>
+  SEVERITY_ORDER.indexOf(severity);

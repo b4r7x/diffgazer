@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { ReviewContainer } from './review-container';
-import { useTriageStream } from '../hooks/use-triage-stream';
+import { useReviewStream } from '../hooks/use-review-stream';
 import { useConfig } from '@/features/settings/hooks/use-config';
 import { useNavigate, useParams } from '@tanstack/react-router';
 
-vi.mock('../hooks/use-triage-stream');
+vi.mock('../hooks/use-review-stream');
 vi.mock('@/features/settings/hooks/use-config');
 vi.mock('@tanstack/react-router');
 vi.mock('./review-progress-view', () => ({
@@ -19,14 +19,14 @@ vi.mock('./api-key-missing-view', () => ({
   ApiKeyMissingView: () => <div data-testid="api-key-missing-view">API Key Missing</div>,
 }));
 
-const mockUseTriageStream = vi.mocked(useTriageStream);
+const mockUseReviewStream = vi.mocked(useReviewStream);
 const mockUseConfig = vi.mocked(useConfig);
 const mockUseNavigate = vi.mocked(useNavigate);
 const mockUseParams = vi.mocked(useParams);
 
 const createMockState = (overrides = {}) => ({
   steps: [
-    { id: 'triage', label: 'Triage', status: 'pending' as const },
+    { id: 'review', label: 'Review', status: 'pending' as const },
     { id: 'report', label: 'Report', status: 'pending' as const },
   ],
   agents: [],
@@ -51,7 +51,7 @@ describe('ReviewContainer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockUseTriageStream.mockReturnValue({
+    mockUseReviewStream.mockReturnValue({
       state: createMockState(),
       start: mockStart,
       stop: mockStop,
@@ -72,7 +72,7 @@ describe('ReviewContainer', () => {
   describe('ReviewProgressView startTime prop', () => {
     it('passes state.startedAt to ReviewProgressView when available', async () => {
       const startTime = new Date('2024-01-01T10:00:00Z');
-      mockUseTriageStream.mockReturnValue({
+      mockUseReviewStream.mockReturnValue({
         state: createMockState({ startedAt: startTime, isStreaming: true }),
         start: mockStart,
         stop: mockStop,
@@ -97,7 +97,7 @@ describe('ReviewContainer', () => {
     });
 
     it('passes undefined when state.startedAt is null', async () => {
-      mockUseTriageStream.mockReturnValue({
+      mockUseReviewStream.mockReturnValue({
         state: createMockState({ startedAt: null, isStreaming: true }),
         start: mockStart,
         stop: mockStop,
@@ -124,7 +124,7 @@ describe('ReviewContainer', () => {
       // Create a start time 5 seconds ago
       const startTime = new Date(Date.now() - 5000);
 
-      mockUseTriageStream.mockReturnValue({
+      mockUseReviewStream.mockReturnValue({
         state: createMockState({ startedAt: startTime, isStreaming: true }),
         start: mockStart,
         stop: mockStop,
@@ -227,7 +227,7 @@ describe('ReviewContainer', () => {
         completed: new Set(['file1.ts', 'file2.ts', 'file3.ts']),
       };
 
-      mockUseTriageStream.mockReturnValue({
+      mockUseReviewStream.mockReturnValue({
         state: createMockState({ issues, fileProgress, isStreaming: true }),
         start: mockStart,
         stop: mockStop,
@@ -317,11 +317,11 @@ describe('ReviewContainer', () => {
     it('calls onComplete after 400ms delay when report step NOT completed', async () => {
       const mockOnCompleteForDelay = vi.fn();
 
-      mockUseTriageStream.mockReturnValue({
+      mockUseReviewStream.mockReturnValue({
         state: createMockState({
           isStreaming: false,
           steps: [
-            { id: 'triage', label: 'Triage', status: 'completed' as const },
+            { id: 'review', label: 'Review', status: 'completed' as const },
             { id: 'report', label: 'Report', status: 'active' as const },
           ],
           reviewId: 'review-123',
@@ -340,11 +340,11 @@ describe('ReviewContainer', () => {
       );
 
       // Simulate streaming state to trigger hasStreamed tracking
-      mockUseTriageStream.mockReturnValue({
+      mockUseReviewStream.mockReturnValue({
         state: createMockState({
           isStreaming: true,
           steps: [
-            { id: 'triage', label: 'Triage', status: 'completed' as const },
+            { id: 'review', label: 'Review', status: 'completed' as const },
             { id: 'report', label: 'Report', status: 'active' as const },
           ],
           reviewId: 'review-123',
@@ -357,11 +357,11 @@ describe('ReviewContainer', () => {
       rerender(<ReviewContainer mode="unstaged" onComplete={mockOnCompleteForDelay} />);
 
       // End streaming with report NOT completed
-      mockUseTriageStream.mockReturnValue({
+      mockUseReviewStream.mockReturnValue({
         state: createMockState({
           isStreaming: false,
           steps: [
-            { id: 'triage', label: 'Triage', status: 'completed' as const },
+            { id: 'review', label: 'Review', status: 'completed' as const },
             { id: 'report', label: 'Report', status: 'active' as const },
           ],
           reviewId: 'review-123',
@@ -396,11 +396,11 @@ describe('ReviewContainer', () => {
     it('calls onComplete after 2300ms delay when report step IS completed', async () => {
       const mockOnCompleteForReportDelay = vi.fn();
 
-      mockUseTriageStream.mockReturnValue({
+      mockUseReviewStream.mockReturnValue({
         state: createMockState({
           isStreaming: false,
           steps: [
-            { id: 'triage', label: 'Triage', status: 'completed' as const },
+            { id: 'review', label: 'Review', status: 'completed' as const },
             { id: 'report', label: 'Report', status: 'completed' as const },
           ],
           reviewId: 'review-123',
@@ -419,11 +419,11 @@ describe('ReviewContainer', () => {
       );
 
       // Simulate streaming state
-      mockUseTriageStream.mockReturnValue({
+      mockUseReviewStream.mockReturnValue({
         state: createMockState({
           isStreaming: true,
           steps: [
-            { id: 'triage', label: 'Triage', status: 'completed' as const },
+            { id: 'review', label: 'Review', status: 'completed' as const },
             { id: 'report', label: 'Report', status: 'active' as const },
           ],
           reviewId: 'review-123',
@@ -436,11 +436,11 @@ describe('ReviewContainer', () => {
       rerender(<ReviewContainer mode="unstaged" onComplete={mockOnCompleteForReportDelay} />);
 
       // End streaming with report completed
-      mockUseTriageStream.mockReturnValue({
+      mockUseReviewStream.mockReturnValue({
         state: createMockState({
           isStreaming: false,
           steps: [
-            { id: 'triage', label: 'Triage', status: 'completed' as const },
+            { id: 'review', label: 'Review', status: 'completed' as const },
             { id: 'report', label: 'Report', status: 'completed' as const },
           ],
           reviewId: 'review-123',
@@ -477,11 +477,11 @@ describe('ReviewContainer', () => {
     it('clears timeout on unmount', async () => {
       const mockOnCompleteForUnmount = vi.fn();
 
-      mockUseTriageStream.mockReturnValue({
+      mockUseReviewStream.mockReturnValue({
         state: createMockState({
           isStreaming: false,
           steps: [
-            { id: 'triage', label: 'Triage', status: 'completed' as const },
+            { id: 'review', label: 'Review', status: 'completed' as const },
             { id: 'report', label: 'Report', status: 'active' as const },
           ],
           reviewId: 'review-123',
@@ -500,11 +500,11 @@ describe('ReviewContainer', () => {
       );
 
       // Simulate streaming
-      mockUseTriageStream.mockReturnValue({
+      mockUseReviewStream.mockReturnValue({
         state: createMockState({
           isStreaming: true,
           steps: [
-            { id: 'triage', label: 'Triage', status: 'completed' as const },
+            { id: 'review', label: 'Review', status: 'completed' as const },
             { id: 'report', label: 'Report', status: 'active' as const },
           ],
           reviewId: 'review-123',
@@ -517,11 +517,11 @@ describe('ReviewContainer', () => {
       rerender(<ReviewContainer mode="unstaged" onComplete={mockOnCompleteForUnmount} />);
 
       // Stop streaming (starts timeout)
-      mockUseTriageStream.mockReturnValue({
+      mockUseReviewStream.mockReturnValue({
         state: createMockState({
           isStreaming: false,
           steps: [
-            { id: 'triage', label: 'Triage', status: 'completed' as const },
+            { id: 'review', label: 'Review', status: 'completed' as const },
             { id: 'report', label: 'Report', status: 'active' as const },
           ],
           reviewId: 'review-123',

@@ -114,9 +114,10 @@ export function ProviderSettingsPage() {
   const inList = focusZone === 'list';
   const inButtons = focusZone === 'buttons';
   const canRemoveKey = selectedProvider?.hasApiKey ?? false;
+  const needsOpenRouterModel = selectedProvider?.id === 'openrouter' && !selectedProvider?.model;
 
   const getNextButtonIndex = (current: number, direction: 1 | -1) => {
-    const enabled = [true, true, canRemoveKey, true];
+    const enabled = [!needsOpenRouterModel, true, canRemoveKey, true];
     let next = current + direction;
     while (next >= 0 && next < 4) {
       if (enabled[next]) return next;
@@ -147,7 +148,7 @@ export function ProviderSettingsPage() {
   useKey(' ', () => setFilter(FILTER_VALUES[filterIndex]),
     { enabled: !dialogOpen && inFilters });
 
-  useKey('ArrowRight', () => { setFocusZone('buttons'); setButtonIndex(0); },
+  useKey('ArrowRight', () => { setFocusZone('buttons'); setButtonIndex(getNextButtonIndex(-1, 1)); },
     { enabled: !dialogOpen && inList && !!selectedProvider });
 
   useKey('ArrowLeft', () => {
@@ -188,7 +189,7 @@ export function ProviderSettingsPage() {
   const handleButtonAction = (index: number) => {
     if (!selectedProvider) return;
     switch (index) {
-      case 0: handleSelectProvider(); break;
+      case 0: if (!needsOpenRouterModel) handleSelectProvider(); break;
       case 1: setApiKeyDialogOpen(true); break;
       case 2: if (selectedProvider.hasApiKey) handleRemoveKey(); break;
       case 3: setModelDialogOpen(true); break;
@@ -203,6 +204,9 @@ export function ProviderSettingsPage() {
       await refetch();
       setApiKeyDialogOpen(false);
       showToast({ variant: 'success', title: 'API Key Saved', message: 'Provider configured' });
+      if (selectedProvider.id === 'openrouter' && !selectedProvider.model) {
+        setModelDialogOpen(true);
+      }
     } catch (error) {
       showToast({ variant: 'error', title: 'Failed to Save', message: error instanceof Error ? error.message : 'Unknown error' });
     } finally {
@@ -227,6 +231,11 @@ export function ProviderSettingsPage() {
 
   const handleSelectProvider = async () => {
     if (!selectedProvider || isSubmitting) return;
+    if (selectedProvider.id === 'openrouter' && !selectedProvider.model) {
+      showToast({ variant: 'error', title: 'Model Required', message: 'Select a model for OpenRouter first' });
+      setModelDialogOpen(true);
+      return;
+    }
     setIsSubmitting(true);
     try {
       await selectProvider(selectedProvider.id, selectedProvider.model);
@@ -286,6 +295,7 @@ export function ProviderSettingsPage() {
           onSelectModel={() => setModelDialogOpen(true)}
           onRemoveKey={handleRemoveKey}
           onSelectProvider={handleSelectProvider}
+          disableSelectProvider={needsOpenRouterModel}
           focusedButtonIndex={focusZone === 'buttons' && selectedProvider ? buttonIndex : undefined}
           isFocused={focusZone === 'buttons' && !!selectedProvider}
         />

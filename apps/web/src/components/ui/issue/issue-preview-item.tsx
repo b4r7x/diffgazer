@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { TriageSeverity } from '@stargazer/schemas/triage';
+import type { ReviewSeverity } from '@stargazer/schemas/review';
 import { SEVERITY_CONFIG } from '@stargazer/schemas/ui';
 
 export interface IssuePreviewItemProps {
@@ -7,7 +7,7 @@ export interface IssuePreviewItemProps {
   file: string;
   line: number;
   category: string;
-  severity: TriageSeverity;
+  severity: ReviewSeverity;
   onClick?: () => void;
   className?: string;
 }

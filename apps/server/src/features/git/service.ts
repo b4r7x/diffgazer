@@ -1,10 +1,11 @@
 import { join, sep } from "node:path";
 import { realpath } from "node:fs/promises";
-import { type Result, ok, err } from "@stargazer/core";
+import { type Result, type AppError, ok, err } from "@stargazer/core";
 import { ErrorCode } from "@stargazer/schemas/errors";
 import { isRelativePath } from "../../shared/lib/validation.js";
 import { createGitService } from "../../shared/lib/git/service.js";
-import type { GitService, GitServiceError } from "./types.js";
+
+type GitService = ReturnType<typeof createGitService>;
 
 interface ResolveGitServiceOptions {
   basePath: string;
@@ -13,7 +14,7 @@ interface ResolveGitServiceOptions {
 
 export const resolveGitService = async (
   options: ResolveGitServiceOptions
-): Promise<Result<GitService, GitServiceError>> => {
+): Promise<Result<GitService, AppError>> => {
   const { basePath, relativePath } = options;
 
   if (relativePath && !isRelativePath(relativePath)) {
