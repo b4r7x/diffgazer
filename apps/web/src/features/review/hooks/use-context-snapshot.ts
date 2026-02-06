@@ -19,14 +19,18 @@ export function useContextSnapshot(reviewId: string | null | undefined, isStream
     if (!contextStepCompleted && isStreaming) return;
 
     contextFetchRef.current = reviewId;
+    let ignore = false;
+
     api
       .getReviewContext()
       .then((data) => {
-        setContextSnapshot(data);
+        if (!ignore) setContextSnapshot(data);
       })
       .catch(() => {
-        setContextSnapshot(null);
+        if (!ignore) setContextSnapshot(null);
       });
+
+    return () => { ignore = true; };
   }, [contextStepCompleted, isStreaming, reviewId]);
 
   return contextSnapshot;

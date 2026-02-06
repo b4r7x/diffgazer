@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useRef, useMemo, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useState, useRef, useMemo, type ReactNode } from "react";
 import { cn } from "@/utils/cn";
 import { useGroupNavigation } from "@/hooks/keyboard";
 import {
@@ -126,13 +126,13 @@ function RadioGroupRoot({
   const isControlled = controlledValue !== undefined;
   const value = isControlled ? controlledValue : uncontrolledValue;
 
-  const handleValueChange = (newValue: string) => {
+  const handleValueChange = useCallback((newValue: string) => {
     if (disabled) return;
     onValueChange?.(newValue);
     if (!isControlled) {
       setUncontrolledValue(newValue);
     }
-  };
+  }, [disabled, onValueChange, isControlled]);
 
   const { isFocused } = useGroupNavigation({
     containerRef,

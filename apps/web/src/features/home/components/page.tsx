@@ -7,7 +7,7 @@ import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ContextSidebar } from "@/features/home/components/context-sidebar";
 import { HomeMenu } from "@/features/home/components/home-menu";
-import { useConfig } from "@/features/settings";
+import { useConfig } from "@/hooks/use-config";
 import { useReviewHistory } from "@/features/review/hooks/use-review-history";
 import { useToast } from "@/components/ui/toast";
 import { StorageWizard, TrustModal } from "@/features/settings/components";

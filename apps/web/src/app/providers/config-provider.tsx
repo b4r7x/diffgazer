@@ -83,17 +83,22 @@ const initialConfigState: ConfigState = {
   trust: null,
 };
 
-interface ConfigContextValue {
+// Stable data context — changes only when config data itself changes
+interface ConfigDataContextValue {
   provider?: AIProvider;
   model?: string;
   isConfigured: boolean;
-  isLoading: boolean;
-  isSaving: boolean;
-  error: string | null;
   providerStatus: ProviderStatus[];
   projectId: string | null;
   repoRoot: string | null;
   trust: TrustConfig | null;
+}
+
+// Volatile actions context — changes with loading/saving state
+interface ConfigActionsContextValue {
+  isLoading: boolean;
+  isSaving: boolean;
+  error: string | null;
   refresh: (invalidate?: boolean) => Promise<void>;
   activateProvider: (providerId: string, model?: string) => Promise<void>;
   saveCredentials: (
@@ -104,7 +109,11 @@ interface ConfigContextValue {
   deleteProviderCredentials: (provider: AIProvider) => Promise<void>;
 }
 
-const ConfigContext = createContext<ConfigContextValue | undefined>(undefined);
+// Combined for backwards compat
+interface ConfigContextValue extends ConfigDataContextValue, ConfigActionsContextValue {}
+
+const ConfigDataContext = createContext<ConfigDataContextValue | undefined>(undefined);
+const ConfigActionsContext = createContext<ConfigActionsContextValue | undefined>(undefined);
 
 export function ConfigProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(configReducer, initialConfigState);
@@ -267,35 +276,53 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     refresh();
   }, [refresh]);
 
-  const value = useMemo<ConfigContextValue>(() => ({
+  const dataValue = useMemo<ConfigDataContextValue>(() => ({
     provider: state.provider,
     model: state.model,
     isConfigured,
-    isLoading,
-    isSaving,
-    error,
     providerStatus: state.providerStatus,
     projectId: state.projectId,
     repoRoot: state.repoRoot,
     trust: state.trust,
+  }), [state, isConfigured]);
+
+  const actionsValue = useMemo<ConfigActionsContextValue>(() => ({
+    isLoading,
+    isSaving,
+    error,
     refresh,
     activateProvider,
     saveCredentials,
     deleteProviderCredentials,
-  }), [
-    state, isConfigured, isLoading, isSaving, error,
-    refresh, activateProvider, saveCredentials, deleteProviderCredentials,
-  ]);
+  }), [isLoading, isSaving, error, refresh, activateProvider, saveCredentials, deleteProviderCredentials]);
 
   return (
-    <ConfigContext.Provider value={value}>{children}</ConfigContext.Provider>
+    <ConfigDataContext.Provider value={dataValue}>
+      <ConfigActionsContext.Provider value={actionsValue}>
+        {children}
+      </ConfigActionsContext.Provider>
+    </ConfigDataContext.Provider>
   );
 }
 
-export function useConfigContext(): ConfigContextValue {
-  const context = useContext(ConfigContext);
+export function useConfigData(): ConfigDataContextValue {
+  const context = useContext(ConfigDataContext);
   if (context === undefined) {
-    throw new Error("useConfigContext must be used within a ConfigProvider");
+    throw new Error("useConfigData must be used within a ConfigProvider");
   }
   return context;
+}
+
+export function useConfigActions(): ConfigActionsContextValue {
+  const context = useContext(ConfigActionsContext);
+  if (context === undefined) {
+    throw new Error("useConfigActions must be used within a ConfigProvider");
+  }
+  return context;
+}
+
+export function useConfigContext(): ConfigContextValue {
+  const data = useConfigData();
+  const actions = useConfigActions();
+  return useMemo(() => ({ ...data, ...actions }), [data, actions]);
 }

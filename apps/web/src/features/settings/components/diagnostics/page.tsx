@@ -126,7 +126,7 @@ export function DiagnosticsPage() {
 
   return (
     <div className="flex-1 flex overflow-hidden px-4 justify-center items-center">
-      <Panel className="w-full max-w-2xl bg-[#161b22] shadow-lg">
+      <Panel className="w-full max-w-2xl bg-tui-selection shadow-lg">
         <PanelHeader value={DIAGNOSTICS.version} valueVariant="muted">
           System Diagnostics
         </PanelHeader>

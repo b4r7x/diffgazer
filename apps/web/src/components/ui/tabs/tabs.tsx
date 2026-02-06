@@ -1,9 +1,6 @@
 import * as React from 'react';
 import { cn } from '@/utils/cn';
 import { TabsContext } from './tabs-context';
-import { TabsList } from './tabs-list';
-import { TabsTrigger } from './tabs-trigger';
-import { TabsContent } from './tabs-content';
 
 export interface TabsProps {
   value?: string;
@@ -48,8 +45,4 @@ function TabsRoot({
   );
 }
 
-export const Tabs = Object.assign(TabsRoot, {
-  List: TabsList,
-  Trigger: TabsTrigger,
-  Content: TabsContent,
-});
+export { TabsRoot as Tabs };

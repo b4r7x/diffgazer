@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, type ReactNode } from 'react';
+import { useRef, useLayoutEffect, useState, type ReactNode } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/utils/cn';
 import { Badge } from '@/components/ui/badge';
@@ -62,7 +62,7 @@ export function ProgressStep({
   const [contentHeight, setContentHeight] = useState(0);
   const hasContent = Boolean(children || (substeps && substeps.length > 0));
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (contentRef.current) {
       setContentHeight(contentRef.current.scrollHeight);
     }

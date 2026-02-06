@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { IssueListPane } from "@/features/review/components/issue-list-pane";
 import { IssueDetailsPane } from "@/features/review/components/issue-details-pane";
@@ -7,7 +7,6 @@ import type { ReviewIssue } from "@stargazer/schemas/review";
 import type { IssueTab as TabId } from "@stargazer/schemas/ui";
 import { SEVERITY_ORDER } from "@stargazer/schemas/ui";
 import { useScope, useKey, useSelectableList } from "@/hooks/keyboard";
-import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { filterIssuesBySeverity } from "@stargazer/core/review";
 
@@ -20,10 +19,6 @@ interface ReviewResultsViewProps {
 
 export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) {
   const router = useRouter();
-  const [, setSelectedIssueIndex] = useScopedRouteState(
-    "issueIndex",
-    0,
-  );
   const [activeTab, setActiveTab] = useState<TabId>("details");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
@@ -40,10 +35,6 @@ export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) 
     enabled: focusZone === "list",
     initialIndex: 0,
   });
-
-  useEffect(() => {
-    setSelectedIssueIndex(focusedIndex);
-  }, [focusedIndex, setSelectedIssueIndex]);
 
   const selectedIssue = filteredIssues[focusedIndex] ?? null;
 
