@@ -1,10 +1,7 @@
-"use client";
-
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { InputMethod } from "@/features/providers/constants";
 
 interface UseApiKeyFormOptions {
-  open: boolean;
   envVarName: string;
   onSubmit: (method: InputMethod, value: string) => Promise<void>;
   onRemoveKey?: () => Promise<void>;
@@ -12,7 +9,6 @@ interface UseApiKeyFormOptions {
 }
 
 export function useApiKeyForm({
-  open,
   envVarName,
   onSubmit,
   onRemoveKey,
@@ -22,12 +18,8 @@ export function useApiKeyForm({
   const [keyValue, setKeyValue] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (open) {
-      setKeyValue("");
-      setMethod("paste");
-    }
-  }, [open]);
+  // Parent should key this component on `open` or only mount when open=true
+  // to reset state, rather than relying on a useEffect to sync props to state.
 
   const handleSubmit = async () => {
     if (isSubmitting) return;

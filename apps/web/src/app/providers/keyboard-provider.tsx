@@ -1,6 +1,4 @@
-"use client";
-
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { isInputElement, matchesHotkey } from "@/app/providers/keyboard-utils";
 
 type Handler = () => void;
@@ -26,7 +24,7 @@ export const KeyboardContext = createContext<KeyboardContextValue | null>(null);
 
 export function KeyboardProvider({ children }: { children: ReactNode }) {
   const [scopeStack, setScopeStack] = useState<string[]>(["global"]);
-  const [handlers] = useState(() => new Map<string, HandlerMap>());
+  const handlers = useRef(new Map<string, HandlerMap>());
 
   const activeScope = scopeStack[scopeStack.length - 1] ?? null;
 
@@ -43,7 +41,7 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
     function onKeyDown(event: KeyboardEvent) {
       if (!activeScope) return;
 
-      const scopeHandlers = handlers.get(activeScope);
+      const scopeHandlers = handlers.current.get(activeScope);
       if (!scopeHandlers) return;
 
       const isInput = isInputElement(event.target);
@@ -60,15 +58,15 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeScope, handlers]);
+  }, [activeScope]);
 
   const register = useCallback(
     (scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => {
-      if (!handlers.has(scope)) handlers.set(scope, new Map());
-      handlers.get(scope)!.set(hotkey, { handler, options });
-      return () => handlers.get(scope)?.delete(hotkey);
+      if (!handlers.current.has(scope)) handlers.current.set(scope, new Map());
+      handlers.current.get(scope)!.set(hotkey, { handler, options });
+      return () => handlers.current.get(scope)?.delete(hotkey);
     },
-    [handlers]
+    []
   );
 
   const contextValue = useMemo(
@@ -79,10 +77,3 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
   return <KeyboardContext.Provider value={contextValue}>{children}</KeyboardContext.Provider>;
 }
 
-export function useKeyboard(): KeyboardContextValue {
-  const ctx = useContext(KeyboardContext);
-  if (!ctx) {
-    throw new Error("useKeyboard must be used within KeyboardProvider");
-  }
-  return ctx;
-}

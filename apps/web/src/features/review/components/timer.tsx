@@ -1,5 +1,3 @@
-'use client';
-
 import { formatTime } from '@stargazer/core/format';
 import { useTimer } from '@stargazer/hooks';
 import { cn } from '@/utils/cn';

@@ -1,21 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { ReviewProgressView } from './review-progress-view';
 import { ApiKeyMissingView } from './api-key-missing-view';
 import { NoChangesView } from './no-changes-view';
 import { useReviewStream } from '../hooks/use-review-stream';
-import { useConfig } from '@/features/settings/hooks/use-config';
-import { OPENROUTER_PROVIDER_ID } from '@/features/providers/constants';
-import type { SettingsConfig } from '@stargazer/schemas/config';
+import { useReviewSettings } from '../hooks/use-review-settings';
+import { useContextSnapshot } from '../hooks/use-context-snapshot';
+import { useConfigContext } from '@/app/providers/config-provider';
+import { OPENROUTER_PROVIDER_ID } from '@/config/constants';
 import { convertAgentEventsToLogEntries } from '@stargazer/core/review';
 import type { ProgressStepData, ProgressStatus } from '@/components/ui/progress';
 import type { StepState, AgentState, AgentStatus } from '@stargazer/schemas/events';
 import type { ProgressSubstepData } from '@stargazer/schemas/ui';
 import type { ReviewMode } from '../types';
-import { LensIdSchema, ReviewErrorCode, type LensId } from '@stargazer/schemas/review';
+import { ReviewErrorCode } from '@stargazer/schemas/review';
 import type { ReviewIssue } from '@stargazer/schemas/review';
-import type { ReviewContextResponse } from '@stargazer/api/types';
-import { api } from '@/lib/api';
 
 export interface ReviewCompleteData {
   issues: ReviewIssue[];
@@ -88,47 +87,26 @@ function mapStepsToProgressData(
  */
 export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
   const navigate = useNavigate();
-  const params = useParams({ strict: false }) as { reviewId?: string };
-  const { isConfigured, isLoading: configLoading, provider, model } = useConfig();
+  const params = useParams({ strict: false });
+  const { isConfigured, isLoading: configLoading, provider, model } = useConfigContext();
   const { state, start, stop, resume } = useReviewStream();
-  const [settings, setSettings] = useState<SettingsConfig | null>(null);
-  const [settingsLoading, setSettingsLoading] = useState(true);
-  const [contextSnapshot, setContextSnapshot] = useState<ReviewContextResponse | null>(null);
+  const { loading: settingsLoading, defaultLenses } = useReviewSettings();
+
+  const contextStep = state.steps.find((step) => step.id === "context");
+  const contextSnapshot = useContextSnapshot(
+    state.reviewId,
+    state.isStreaming,
+    contextStep?.status === "completed"
+  );
 
   const hasStartedRef = useRef(false);
   const hasStreamedRef = useRef(false);
   const completeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onCompleteRef = useRef(onComplete);
-  const contextFetchRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-
-    api
-      .getSettings()
-      .then((data) => {
-        if (!active) return;
-        setSettings(data);
-      })
-      .catch(() => {
-        if (!active) return;
-        setSettings(null);
-      })
-      .finally(() => {
-        if (!active) return;
-        setSettingsLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (state.isStreaming) {
       hasStreamedRef.current = true;
-      setContextSnapshot(null);
-      contextFetchRef.current = null;
     }
   }, [state.isStreaming]);
 
@@ -148,24 +126,6 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     });
   }, [state.reviewId, params.reviewId, navigate]);
 
-  const contextStep = state.steps.find((step) => step.id === "context");
-
-  useEffect(() => {
-    if (!state.reviewId) return;
-    if (contextFetchRef.current === state.reviewId) return;
-    if (contextStep?.status !== "completed" && state.isStreaming) return;
-
-    contextFetchRef.current = state.reviewId;
-    api
-      .getReviewContext()
-      .then((data) => {
-        setContextSnapshot(data);
-      })
-      .catch(() => {
-        setContextSnapshot(null);
-      });
-  }, [contextStep?.status, state.isStreaming, state.reviewId]);
-
   // Router's beforeLoad already validates UUID format, so we can trust params.reviewId
   useEffect(() => {
     if (hasStartedRef.current) return;
@@ -173,12 +133,6 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     if (settingsLoading) return;
     if (!isConfigured) return;
     hasStartedRef.current = true;
-
-    const fallbackLenses: LensId[] = ["correctness", "security", "performance", "simplicity", "tests"];
-    const parsedLenses = settings?.defaultLenses?.filter(
-      (lens): lens is LensId => LensIdSchema.safeParse(lens).success
-    ) ?? [];
-    const defaultLenses: LensId[] = parsedLenses.length > 0 ? parsedLenses : fallbackLenses;
 
     const options = {
       mode,
@@ -213,7 +167,7 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
       // Start new review
       start(options);
     }
-  }, [mode, start, resume, configLoading, isConfigured, params.reviewId, settingsLoading, settings?.defaultLenses]);
+  }, [mode, start, resume, configLoading, isConfigured, params.reviewId, settingsLoading, defaultLenses]);
 
   // Delay transition so users see final step completions before switching views
   useEffect(() => {

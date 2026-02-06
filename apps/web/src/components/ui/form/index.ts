@@ -10,7 +10,6 @@ export {
 
 export {
   Input,
-  inputVariants,
   type InputProps,
 } from './input';
 
@@ -22,13 +21,3 @@ export {
   type RadioGroupProps,
   type RadioGroupItemProps,
 } from './radio-group';
-
-export {
-  selectableItemVariants,
-  selectableItemContainerVariants,
-  selectableItemIndicatorVariants,
-  selectableItemLabelVariants,
-  selectableItemDescriptionVariants,
-  type SelectableItemSize,
-  type SelectableItemVariants,
-} from './selectable-item';

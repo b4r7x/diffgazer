@@ -1,4 +1,3 @@
-export { DialogContext, useDialogContext, createClickHandler, type DialogContextValue } from './dialog-context';
 export { Dialog, type DialogProps } from './dialog';
 export { DialogTrigger, type DialogTriggerProps } from './dialog-trigger';
 export { DialogContent, type DialogContentProps } from './dialog-content';

@@ -1,5 +1,3 @@
-'use client';
-
 import { RadioGroup, RadioGroupItem, Input } from '@/components/ui/form';
 
 const PROVIDERS = [
