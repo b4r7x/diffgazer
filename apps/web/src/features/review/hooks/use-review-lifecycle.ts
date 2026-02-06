@@ -1,8 +1,8 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useEffectEvent, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { useReviewStream } from './use-review-stream';
 import { useReviewSettings } from './use-review-settings';
-import { useConfigContext } from '@/app/providers/config-provider';
+import { useConfigData, useConfigActions } from '@/app/providers/config-provider';
 import { ReviewErrorCode } from '@stargazer/schemas/review';
 import type { ReviewIssue } from '@stargazer/schemas/review';
 import type { ReviewMode } from '../types';
@@ -21,14 +21,18 @@ interface UseReviewLifecycleOptions {
 export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptions) {
   const navigate = useNavigate();
   const params = useParams({ strict: false });
-  const { isConfigured, isLoading: configLoading, provider, model } = useConfigContext();
+  const { isConfigured, provider, model } = useConfigData();
+  const { isLoading: configLoading } = useConfigActions();
   const { state, start, stop, resume } = useReviewStream();
   const { loading: settingsLoading, defaultLenses } = useReviewSettings();
 
   const hasStartedRef = useRef(false);
   const hasStreamedRef = useRef(false);
   const completeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const onCompleteRef = useRef(onComplete);
+
+  const stableOnComplete = useEffectEvent((data: ReviewCompleteData) => {
+    onComplete?.(data);
+  });
 
   // Track whether we've ever streamed
   useEffect(() => {
@@ -36,11 +40,6 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
       hasStreamedRef.current = true;
     }
   }, [state.isStreaming]);
-
-  // Keep onComplete ref current
-  useEffect(() => {
-    onCompleteRef.current = onComplete;
-  }, [onComplete]);
 
   // Sync review ID to URL
   useEffect(() => {
@@ -82,7 +81,7 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
           }
 
           if (result.error.code === ReviewErrorCode.SESSION_NOT_FOUND) {
-            onCompleteRef.current?.({
+            stableOnComplete({
               issues: [],
               reviewId: params.reviewId ?? null,
               resumeFailed: true,
@@ -111,7 +110,7 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
       const delayMs = reportCompleted ? 2300 : 400;
 
       completeTimeoutRef.current = setTimeout(() => {
-        onCompleteRef.current?.({ issues: state.issues, reviewId: state.reviewId });
+        stableOnComplete({ issues: state.issues, reviewId: state.reviewId });
       }, delayMs);
     }
     return () => {
@@ -131,7 +130,7 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
       clearTimeout(completeTimeoutRef.current);
     }
     stop();
-    onCompleteRef.current?.({ issues: state.issues, reviewId: state.reviewId });
+    stableOnComplete({ issues: state.issues, reviewId: state.reviewId });
   }, [stop, state.issues, state.reviewId]);
 
   const handleSetupProvider = useCallback(() => {

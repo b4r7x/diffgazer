@@ -47,7 +47,7 @@ export function ReviewSummaryView({
             ? "text-tui-yellow"
             : "text-tui-blue",
       count,
-      change: 0,
+      change: 0, // Required by LensStats schema, not displayed
     }),
   );
 

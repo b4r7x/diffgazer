@@ -1,3 +1,4 @@
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createContext, useCallback, useContext, useState, useRef, useMemo, type ReactNode } from "react";
 import { cn } from "@/utils/cn";
 import { useGroupNavigation } from "@/hooks/keyboard";
@@ -39,13 +40,23 @@ export function Radio({
     }
   };
 
+  const handleKeyDown = (e: ReactKeyboardEvent) => {
+    if (disabled) return;
+    if (e.key === " " || e.key === "Enter") {
+      e.preventDefault();
+      onCheckedChange?.(!checked);
+    }
+  };
+
   return (
     <div
       role="radio"
       data-value={dataValue}
       aria-checked={checked}
       aria-disabled={disabled}
+      tabIndex={disabled ? -1 : 0}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
       className={cn(
         selectableItemVariants({ focused, disabled }),
         selectableItemContainerVariants(),
@@ -215,5 +226,5 @@ function RadioGroupItem({
   );
 }
 
-export const RadioGroup = RadioGroupRoot;
-export { RadioGroupItem };
+const RadioGroup = Object.assign(RadioGroupRoot, { displayName: "RadioGroup" as const });
+export { RadioGroup, RadioGroupItem };

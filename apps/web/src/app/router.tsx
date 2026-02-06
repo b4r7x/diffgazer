@@ -14,6 +14,12 @@ import { TrustPermissionsPage } from "./routes/settings/trust-permissions";
 import { ProviderSettingsPage } from "./routes/settings/providers";
 import { HelpPage } from "./routes/help";
 
+const HomeSearchSchema = z.object({
+  error: z.string().optional(),
+});
+
+export type HomeSearch = z.infer<typeof HomeSearchSchema>;
+
 const ReviewSearchSchema = z.object({
   mode: ReviewModeSchema.optional().default("unstaged"),
 });
@@ -31,6 +37,7 @@ const routeTree = rootRoute.addChildren([
     getParentRoute: () => rootRoute,
     path: "/",
     component: HomePage,
+    validateSearch: HomeSearchSchema,
   }),
   createRoute({
     getParentRoute: () => rootRoute,

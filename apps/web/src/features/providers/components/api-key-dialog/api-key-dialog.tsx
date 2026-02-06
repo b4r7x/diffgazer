@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -42,10 +42,6 @@ export function ApiKeyDialog({
     onRemoveKey,
     onOpenChange,
   });
-
-  useEffect(() => {
-    if (open) setFocused("paste");
-  }, [open]);
 
   const footerElements: FocusElement[] = onRemoveKey
     ? ["cancel", "confirm", "remove"]
@@ -112,7 +108,7 @@ export function ApiKeyDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg border border-tui-border shadow-2xl">
+      <DialogContent key={String(open)} className="max-w-lg border border-tui-border shadow-2xl">
         <DialogHeader className="bg-tui-selection/50">
           <DialogTitle className="text-tui-blue tracking-wide">
             {providerName} API Key

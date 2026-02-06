@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { api } from '@/lib/api';
-import type { ProviderStatus } from '@stargazer/schemas/config';
+import { useCallback, useMemo } from 'react';
+import { useConfigData, useConfigActions } from '@/app/providers/config-provider';
 import {
     AVAILABLE_PROVIDERS,
     type AIProvider,
@@ -8,30 +7,12 @@ import {
 import type { ProviderWithStatus } from '../types';
 
 export function useProviders() {
-    const [statuses, setStatuses] = useState<ProviderStatus[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<Error | null>(null);
-
-    const fetchStatus = useCallback(async () => {
-        setIsLoading(true);
-        try {
-            const data = await api.getProviderStatus();
-            setStatuses(data);
-            setError(null);
-        } catch (e) {
-            setError(e instanceof Error ? e : new Error(String(e)));
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        fetchStatus();
-    }, [fetchStatus]);
+    const { providerStatus } = useConfigData();
+    const { isLoading, refresh, saveCredentials, deleteProviderCredentials, activateProvider } = useConfigActions();
 
     const providers: ProviderWithStatus[] = useMemo(() => {
         return AVAILABLE_PROVIDERS.map((provider) => {
-            const status = statuses.find((s) => s.provider === provider.id);
+            const status = providerStatus.find((s) => s.provider === provider.id);
             const hasApiKey = status?.hasApiKey ?? false;
             const isActive = status?.isActive ?? false;
             return {
@@ -42,40 +23,37 @@ export function useProviders() {
                 displayStatus: isActive ? 'active' : hasApiKey ? 'configured' : 'needs-key',
             };
         });
-    }, [statuses]);
+    }, [providerStatus]);
 
     const activeProvider = providers.find((p) => p.isActive) ?? null;
 
     const saveApiKey = useCallback(
         async (provider: AIProvider, key: string) => {
-            await api.saveConfig({ provider, apiKey: key });
-            await fetchStatus();
+            await saveCredentials(provider, key);
         },
-        [fetchStatus]
+        [saveCredentials]
     );
 
     const removeApiKey = useCallback(
         async (provider: AIProvider) => {
-            await api.deleteProviderCredentials(provider);
-            await fetchStatus();
+            await deleteProviderCredentials(provider);
         },
-        [fetchStatus]
+        [deleteProviderCredentials]
     );
 
     const selectProvider = useCallback(
         async (provider: AIProvider, model?: string) => {
-            await api.activateProvider(provider, model);
-            await fetchStatus();
+            await activateProvider(provider, model);
         },
-        [fetchStatus]
+        [activateProvider]
     );
 
     return {
         providers,
         activeProvider,
         isLoading,
-        error,
-        refetch: fetchStatus,
+        error: null,
+        refetch: () => refresh(true),
         saveApiKey,
         removeApiKey,
         selectProvider,

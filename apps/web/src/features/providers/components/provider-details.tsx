@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SectionHeader } from '@/components/ui/section-header';
 import { CapabilityCard } from './capability-card';
 import { StatusRow } from '@/components/ui/status-row';
 import { PROVIDER_CAPABILITIES, OPENROUTER_PROVIDER_ID } from '@/config/constants';
@@ -14,14 +15,6 @@ export interface ProviderDetailsProps {
   disableSelectProvider?: boolean;
   focusedButtonIndex?: number;
   isFocused?: boolean;
-}
-
-function SectionHeader({ children }: { children: React.ReactNode }) {
-  return (
-    <h3 className="text-xs font-bold text-tui-violet uppercase mb-4 tracking-widest flex items-center">
-      {children} <span className="ml-2 flex-1 h-px bg-tui-border" />
-    </h3>
-  );
 }
 
 export function ProviderDetails({
@@ -69,7 +62,7 @@ export function ProviderDetails({
 
       {/* Capabilities */}
       <section className="mb-6">
-        <SectionHeader>Capabilities</SectionHeader>
+        <SectionHeader className="text-tui-violet mb-4 tracking-widest flex items-center">Capabilities <span className="ml-2 flex-1 h-px bg-tui-border" /></SectionHeader>
         <div className="grid grid-cols-2 gap-4">
           <CapabilityCard label="Tool Calling" value={capabilities.toolCalling} />
           <CapabilityCard label="JSON Mode" value={capabilities.jsonMode} />
@@ -80,7 +73,7 @@ export function ProviderDetails({
 
       {/* Cost Tier */}
       <section className="mb-6">
-        <SectionHeader>Cost Tier</SectionHeader>
+        <SectionHeader className="text-tui-violet mb-4 tracking-widest flex items-center">Cost Tier <span className="ml-2 flex-1 h-px bg-tui-border" /></SectionHeader>
         <div className="border-l-2 border-tui-green pl-4">
           <p className="text-xs text-gray-400 leading-relaxed">
             {capabilities.costDescription}
@@ -90,7 +83,7 @@ export function ProviderDetails({
 
       {/* Status Rows */}
       <section className="mb-6">
-        <SectionHeader>Status</SectionHeader>
+        <SectionHeader className="text-tui-violet mb-4 tracking-widest flex items-center">Status <span className="ml-2 flex-1 h-px bg-tui-border" /></SectionHeader>
         <StatusRow
           label="API Key Status"
           value={

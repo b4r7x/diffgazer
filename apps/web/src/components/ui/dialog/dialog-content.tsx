@@ -2,23 +2,76 @@ import * as React from 'react';
 import { cn } from '@/utils/cn';
 import { useDialogContext } from './dialog-context';
 
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function useFocusTrap(containerRef: React.RefObject<HTMLDivElement | null>) {
+  React.useEffect(() => {
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Auto-focus first focusable element
+    const focusables = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+    if (focusables.length > 0) {
+      focusables[0].focus();
+    } else {
+      container.focus();
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const focusableEls = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+      if (focusableEls.length === 0) return;
+
+      const first = focusableEls[0];
+      const last = focusableEls[focusableEls.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    container.addEventListener('keydown', handleKeyDown);
+    return () => {
+      container.removeEventListener('keydown', handleKeyDown);
+      previousFocus?.focus();
+    };
+  }, [containerRef]);
+}
+
 export interface DialogContentProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
 }
 
-export function DialogContent({ children, className, ...props }: DialogContentProps) {
-  const { open, onOpenChange, titleId, descriptionId } = useDialogContext();
-
-  if (!open) return null;
+function DialogContentInner({
+  children,
+  className,
+  onClose,
+  titleId,
+  descriptionId,
+  ...props
+}: DialogContentProps & { onClose: () => void; titleId: string; descriptionId: string }) {
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  useFocusTrap(contentRef);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 lg:p-12">
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={() => onOpenChange(false)}
+        onClick={onClose}
         aria-hidden="true"
       />
       <div
+        ref={contentRef}
         className={cn(
           'relative w-full max-w-2xl max-h-[90vh] flex flex-col',
           'bg-tui-bg text-tui-fg',
@@ -35,5 +88,23 @@ export function DialogContent({ children, className, ...props }: DialogContentPr
         {children}
       </div>
     </div>
+  );
+}
+
+export function DialogContent({ children, className, ...props }: DialogContentProps) {
+  const { open, onOpenChange, titleId, descriptionId } = useDialogContext();
+
+  if (!open) return null;
+
+  return (
+    <DialogContentInner
+      className={className}
+      onClose={() => onOpenChange(false)}
+      titleId={titleId}
+      descriptionId={descriptionId}
+      {...props}
+    >
+      {children}
+    </DialogContentInner>
   );
 }

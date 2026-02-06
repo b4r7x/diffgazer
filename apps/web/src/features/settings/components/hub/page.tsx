@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import type { SettingsConfig } from "@stargazer/schemas/config";
 import { Menu, MenuItem } from "@/components/ui/menu";
 import { Panel, PanelHeader } from "@/components/ui/containers";
 import { useConfig } from "@/hooks/use-config";
@@ -8,7 +7,7 @@ import { useScope, useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useTheme } from "@/hooks/use-theme";
-import { api } from "@/lib/api";
+import { useSettings } from "@/hooks/use-settings";
 import { SETTINGS_MENU_ITEMS, SETTINGS_SHORTCUTS, type SettingsAction } from "@/config/navigation";
 
 const FOOTER_RIGHT = [{ key: "", label: "HUB-MODE" }];
@@ -19,33 +18,12 @@ export function SettingsHubPage() {
   const { theme } = useTheme();
   const [selectedIndex, setSelectedIndex] = useScopedRouteState("menuIndex", 0);
   const isTrusted = Boolean(trust?.capabilities.readFiles);
-
-  const [settings, setSettings] = useState<SettingsConfig | null>(null);
-  const [settingsError, setSettingsError] = useState<string | null>(null);
+  const { settings, error: settingsError } = useSettings();
 
   usePageFooter({ shortcuts: SETTINGS_SHORTCUTS, rightShortcuts: FOOTER_RIGHT });
 
   useScope("settings-hub");
   useKey("Escape", () => navigate({ to: "/" }));
-
-  useEffect(() => {
-    let active = true;
-
-    api
-      .getSettings()
-      .then((data) => {
-        if (!active) return;
-        setSettings(data);
-      })
-      .catch((err) => {
-        if (!active) return;
-        setSettingsError(err instanceof Error ? err.message : "Failed to load settings");
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const menuValues = useMemo<Record<SettingsAction, { value: string; valueVariant?: "default" | "success" | "success-badge" | "muted" }>>(() => {
     const providerLabel = isConfigured && provider ? provider.toUpperCase() : "Not configured";

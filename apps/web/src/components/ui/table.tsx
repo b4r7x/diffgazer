@@ -85,6 +85,7 @@ export function Table<T extends Record<string, ReactNode>>({
                             <tr
                                 // Using index as fallback is acceptable since getRowKey is the expected pattern for stable keys
                                 key={getRowKey ? getRowKey(row, rowIndex) : rowIndex}
+                                aria-selected={isSelected}
                                 className={cn(
                                     'cursor-pointer transition-colors',
                                     isSelected

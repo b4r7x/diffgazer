@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { TrustCapabilities } from "@stargazer/schemas/config";
 import {
   Dialog,
@@ -10,8 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { TrustPermissionsContent } from "./trust-permissions-content";
-import { useTrust } from "../hooks/use-trust";
+import { TrustPermissionsContent } from "@/features/settings/components/trust-permissions-content";
+import { useTrust } from "@/hooks/use-trust";
 
 export interface TrustModalProps {
   isOpen: boolean;
@@ -41,12 +41,6 @@ export function TrustModal({
   const hasRepoAccess = capabilities.readFiles;
   const actionLabel = getActionLabel(isLoading, hasRepoAccess);
 
-  useEffect(() => {
-    if (isOpen) {
-      setCapabilities(DEFAULT_CAPABILITIES);
-    }
-  }, [isOpen]);
-
   async function handleTrust(): Promise<void> {
     if (isLoading) return;
     try {
@@ -68,7 +62,7 @@ export function TrustModal({
 
   return (
     <Dialog open={isOpen}>
-      <DialogContent className="max-w-lg">
+      <DialogContent key={String(isOpen)} className="max-w-lg">
         <DialogHeader className="bg-tui-selection/50">
           <DialogTitle className="text-tui-blue tracking-wide">
             Trust This Repository?

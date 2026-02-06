@@ -4,7 +4,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useReducer,
   useRef,
   useState,
   type ReactNode,
@@ -47,7 +46,6 @@ export function invalidateConfigCache(): void {
   configCache = null;
 }
 
-// Reducer for related config state
 interface ConfigState {
   provider?: AIProvider;
   model?: string;
@@ -55,23 +53,6 @@ interface ConfigState {
   projectId: string | null;
   repoRoot: string | null;
   trust: TrustConfig | null;
-}
-
-type ConfigAction =
-  | { type: "SET_CONFIG"; data: ConfigData };
-
-function configReducer(_state: ConfigState, action: ConfigAction): ConfigState {
-  switch (action.type) {
-    case "SET_CONFIG":
-      return {
-        provider: action.data.provider,
-        model: action.data.model,
-        providerStatus: action.data.providers,
-        projectId: action.data.projectId,
-        repoRoot: action.data.repoRoot,
-        trust: action.data.trust,
-      };
-  }
 }
 
 const initialConfigState: ConfigState = {
@@ -116,7 +97,7 @@ const ConfigDataContext = createContext<ConfigDataContextValue | undefined>(unde
 const ConfigActionsContext = createContext<ConfigActionsContextValue | undefined>(undefined);
 
 export function ConfigProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(configReducer, initialConfigState);
+  const [state, setState] = useState(initialConfigState);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -131,7 +112,14 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   );
 
   const applyConfigData = useCallback((data: ConfigData) => {
-    dispatch({ type: "SET_CONFIG", data });
+    setState({
+      provider: data.provider,
+      model: data.model,
+      providerStatus: data.providers,
+      projectId: data.projectId,
+      repoRoot: data.repoRoot,
+      trust: data.trust,
+    });
   }, []);
 
   const refresh = useCallback(
@@ -321,6 +309,7 @@ export function useConfigActions(): ConfigActionsContextValue {
   return context;
 }
 
+/** @deprecated Use useConfigData() and/or useConfigActions() directly */
 export function useConfigContext(): ConfigContextValue {
   const data = useConfigData();
   const actions = useConfigActions();

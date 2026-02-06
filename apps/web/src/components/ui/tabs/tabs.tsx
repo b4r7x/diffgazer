@@ -45,4 +45,5 @@ function TabsRoot({
   );
 }
 
-export { TabsRoot as Tabs };
+const Tabs = Object.assign(TabsRoot, { displayName: "Tabs" as const });
+export { Tabs };

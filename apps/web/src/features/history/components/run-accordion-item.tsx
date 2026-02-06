@@ -1,17 +1,10 @@
-import type { ReactNode } from "react";
 import { cn } from "@/utils/cn";
 import { Badge } from "@/components/ui/badge";
 import { IssueListItem } from "@/components/ui/issue";
-import type { ReviewIssue } from "@stargazer/schemas/review";
+import type { Run } from "@/features/history/types";
 
 export interface RunAccordionItemProps {
-  id: string;
-  displayId: string;
-  branch: string;
-  provider: string;
-  timestamp: string;
-  summary: ReactNode;
-  issues: ReviewIssue[];
+  run: Run;
   isSelected: boolean;
   isExpanded: boolean;
   onSelect: () => void;
@@ -21,13 +14,7 @@ export interface RunAccordionItemProps {
 }
 
 export function RunAccordionItem({
-  id,
-  displayId,
-  branch,
-  provider,
-  timestamp,
-  summary,
-  issues,
+  run,
   isSelected,
   isExpanded,
   onSelect,
@@ -35,6 +22,7 @@ export function RunAccordionItem({
   onIssueClick,
   className,
 }: RunAccordionItemProps) {
+  const { id, displayId, branch, provider, timestamp, summary, issues } = run;
   return (
     <div
       id={id}

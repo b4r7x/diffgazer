@@ -8,24 +8,13 @@ export interface LensStatsTableProps {
   className?: string;
 }
 
-function ChangeIndicator({ change }: { change: number }) {
-  if (change > 0) {
-    return <span className="text-tui-red text-xs">▲ {change}</span>;
-  }
-  if (change < 0) {
-    return <span className="text-tui-green text-xs">▼ {Math.abs(change)}</span>;
-  }
-  return <span className="text-gray-500 text-xs">─</span>;
-}
-
 export function LensStatsTable({ lenses, className }: LensStatsTableProps) {
   return (
     <table className={cn('w-full text-sm text-left border-collapse', className)}>
       <thead>
         <tr className="text-gray-500 border-b border-gray-800 text-xs uppercase">
           <th className="pb-2 font-normal pl-2">Lens</th>
-          <th className="pb-2 font-normal text-right">Count</th>
-          <th className="pb-2 font-normal text-right pr-2">Change</th>
+          <th className="pb-2 font-normal text-right pr-2">Count</th>
         </tr>
       </thead>
       <tbody className="text-gray-300">
@@ -43,10 +32,7 @@ export function LensStatsTable({ lenses, className }: LensStatsTableProps) {
               </span>
               {lens.name}
             </td>
-            <td className="py-3 text-right font-bold">{lens.count}</td>
-            <td className="py-3 text-right pr-2">
-              <ChangeIndicator change={lens.change} />
-            </td>
+            <td className="py-3 text-right font-bold pr-2">{lens.count}</td>
           </tr>
         ))}
       </tbody>

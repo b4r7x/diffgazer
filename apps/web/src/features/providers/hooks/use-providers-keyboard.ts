@@ -1,4 +1,4 @@
-import { useState, type RefObject } from "react";
+import { useState, useEffect, type RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useKey } from "@/hooks/keyboard";
 import { FILTER_VALUES } from "@/features/providers/components/provider-list";
@@ -136,9 +136,11 @@ export function useProvidersKeyboard({
   }, { enabled: !dialogOpen && !inInput });
 
   // Guard: redirect to list if provider disappears while in buttons
-  if (!selectedProvider && focusZone === "buttons") {
-    setFocusZone("list");
-  }
+  useEffect(() => {
+    if (!selectedProvider && focusZone === "buttons") {
+      setFocusZone("list");
+    }
+  }, [selectedProvider, focusZone]);
 
   const handleListBoundary = (direction: "up" | "down") => {
     if (direction === "up") {

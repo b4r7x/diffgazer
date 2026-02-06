@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { TrustConfig } from "@stargazer/schemas/config";
 import { api } from "@/lib/api";
-import { useConfigContext } from "@/app/providers";
+import { useConfigActions } from "@/app/providers/config-provider";
 
 interface UseTrustResult {
   save: (config: TrustConfig) => Promise<void>;
@@ -10,7 +10,7 @@ interface UseTrustResult {
 }
 
 export function useTrust(projectId: string | null): UseTrustResult {
-  const { refresh } = useConfigContext();
+  const { refresh } = useConfigActions();
   const [isLoading, setIsLoading] = useState(false);
 
   const runWithLoading = async (action: () => Promise<void>): Promise<void> => {
