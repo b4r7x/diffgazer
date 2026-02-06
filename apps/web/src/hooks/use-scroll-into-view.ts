@@ -5,7 +5,12 @@ interface ScrollIntoViewOptions {
   itemSelector?: string;
 }
 
-export function useScrollIntoView(containerRef: RefObject<HTMLDivElement | null>) {
+interface UseScrollIntoViewReturn {
+  isItemVisible: (itemIndex: number, options?: ScrollIntoViewOptions) => boolean;
+  scrollItemIntoView: (itemIndex: number, options?: ScrollIntoViewOptions) => void;
+}
+
+export function useScrollIntoView(containerRef: RefObject<HTMLDivElement | null>): UseScrollIntoViewReturn {
   const isItemVisible = (
     itemIndex: number,
     options: ScrollIntoViewOptions = {}

@@ -8,7 +8,7 @@ import { SectionHeader } from "@/components/ui/section-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { IssueHeader } from "./issue-header";
 import { SecurityBadge } from "./security-badge";
-import type { ReviewSeverity, ReviewIssue } from "@stargazer/schemas/review";
+import type { ReviewIssue } from "@stargazer/schemas/review";
 import type { TabId } from "../types";
 
 export interface IssueDetailsPaneProps {
@@ -47,7 +47,7 @@ export function IssueDetailsPane({
             <>
               <IssueHeader
                 title={issue.title}
-                severity={issue.severity as ReviewSeverity}
+                severity={issue.severity}
                 file={issue.file}
                 line={issue.line_start ?? 0}
               />
@@ -67,9 +67,9 @@ export function IssueDetailsPane({
                 <TraceTabContent issue={issue} />
               </TabsContent>
 
-              {hasPatch && (
+              {hasPatch && issue.suggested_patch && (
                 <TabsContent value="patch" className="mt-0">
-                  <DiffView patch={issue.suggested_patch!} />
+                  <DiffView patch={issue.suggested_patch} />
                 </TabsContent>
               )}
             </>

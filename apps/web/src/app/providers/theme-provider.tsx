@@ -1,5 +1,3 @@
-"use client";
-
 import { createContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { ResolvedTheme, ThemeContextValue, WebTheme } from "@/types/theme";
 import { api } from "@/lib/api";

@@ -1,5 +1,5 @@
 # Project Context Snapshot
-Generated: 2026-02-06T09:58:09.759Z
+Generated: 2026-02-06T12:58:37.440Z
 Root: /Users/voitz/Projects/stargazer/apps/cli
 
 ## Project Info

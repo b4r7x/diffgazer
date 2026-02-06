@@ -1,4 +1,3 @@
-import { forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 
 interface ModelSearchInputProps {
@@ -9,15 +8,19 @@ interface ModelSearchInputProps {
   onArrowDown: () => void;
   showCustomAction?: boolean;
   onUseCustom?: () => void;
+  ref?: React.Ref<HTMLInputElement>;
 }
 
-export const ModelSearchInput = forwardRef<
-  HTMLInputElement,
-  ModelSearchInputProps
->(function ModelSearchInput(
-  { value, onChange, onFocus, onEscape, onArrowDown, showCustomAction, onUseCustom },
-  ref
-) {
+export function ModelSearchInput({
+  value,
+  onChange,
+  onFocus,
+  onEscape,
+  onArrowDown,
+  showCustomAction,
+  onUseCustom,
+  ref,
+}: ModelSearchInputProps) {
   const canUseCustom = Boolean(value.trim());
 
   return (
@@ -70,4 +73,4 @@ export const ModelSearchInput = forwardRef<
       )}
     </div>
   );
-});
+}

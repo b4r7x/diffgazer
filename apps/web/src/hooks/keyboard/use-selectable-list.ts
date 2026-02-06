@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { useKeys } from "./use-keys";
 
@@ -47,38 +45,40 @@ export function useSelectableList({
 
   const moveUp = () => {
     if (itemCount === 0) return;
-    if (focusedIndex === 0) {
-      if (wrap) {
-        let lastIndex = itemCount - 1;
-        while (lastIndex > 0 && getDisabled(lastIndex)) lastIndex--;
-        setFocusedIndex(lastIndex);
-        onFocus?.(lastIndex);
-      } else {
+    setFocusedIndex((prev) => {
+      if (prev === 0) {
+        if (wrap) {
+          let lastIndex = itemCount - 1;
+          while (lastIndex > 0 && getDisabled(lastIndex)) lastIndex--;
+          onFocus?.(lastIndex);
+          return lastIndex;
+        }
         onBoundaryReached?.("up");
+        return prev;
       }
-      return;
-    }
-    const newIndex = findNextIndex(focusedIndex, -1);
-    setFocusedIndex(newIndex);
-    onFocus?.(newIndex);
+      const newIndex = findNextIndex(prev, -1);
+      onFocus?.(newIndex);
+      return newIndex;
+    });
   };
 
   const moveDown = () => {
     if (itemCount === 0) return;
-    if (focusedIndex === itemCount - 1) {
-      if (wrap) {
-        let firstIndex = 0;
-        while (firstIndex < itemCount - 1 && getDisabled(firstIndex)) firstIndex++;
-        setFocusedIndex(firstIndex);
-        onFocus?.(firstIndex);
-      } else {
+    setFocusedIndex((prev) => {
+      if (prev === itemCount - 1) {
+        if (wrap) {
+          let firstIndex = 0;
+          while (firstIndex < itemCount - 1 && getDisabled(firstIndex)) firstIndex++;
+          onFocus?.(firstIndex);
+          return firstIndex;
+        }
         onBoundaryReached?.("down");
+        return prev;
       }
-      return;
-    }
-    const newIndex = findNextIndex(focusedIndex, 1);
-    setFocusedIndex(newIndex);
-    onFocus?.(newIndex);
+      const newIndex = findNextIndex(prev, 1);
+      onFocus?.(newIndex);
+      return newIndex;
+    });
   };
 
   useKeys(upKeys, moveUp, { enabled: enabled && itemCount > 0 });

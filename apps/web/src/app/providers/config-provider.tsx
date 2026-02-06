@@ -4,12 +4,13 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
   type ReactNode,
 } from "react";
 import type { AIProvider, ProviderStatus, TrustConfig } from "@stargazer/schemas/config";
-import { OPENROUTER_PROVIDER_ID } from "@/features/providers/constants";
+import { OPENROUTER_PROVIDER_ID } from "@/config/constants";
 import { DEFAULT_TTL } from "@/config/constants";
 import { api } from "@/lib/api";
 
@@ -46,6 +47,42 @@ export function invalidateConfigCache(): void {
   configCache = null;
 }
 
+// Reducer for related config state
+interface ConfigState {
+  provider?: AIProvider;
+  model?: string;
+  providerStatus: ProviderStatus[];
+  projectId: string | null;
+  repoRoot: string | null;
+  trust: TrustConfig | null;
+}
+
+type ConfigAction =
+  | { type: "SET_CONFIG"; data: ConfigData };
+
+function configReducer(_state: ConfigState, action: ConfigAction): ConfigState {
+  switch (action.type) {
+    case "SET_CONFIG":
+      return {
+        provider: action.data.provider,
+        model: action.data.model,
+        providerStatus: action.data.providers,
+        projectId: action.data.projectId,
+        repoRoot: action.data.repoRoot,
+        trust: action.data.trust,
+      };
+  }
+}
+
+const initialConfigState: ConfigState = {
+  provider: undefined,
+  model: undefined,
+  providerStatus: [],
+  projectId: null,
+  repoRoot: null,
+  trust: null,
+};
+
 interface ConfigContextValue {
   provider?: AIProvider;
   model?: string;
@@ -70,34 +107,22 @@ interface ConfigContextValue {
 const ConfigContext = createContext<ConfigContextValue | undefined>(undefined);
 
 export function ConfigProvider({ children }: { children: ReactNode }) {
-  const [provider, setProvider] = useState<AIProvider | undefined>();
-  const [model, setModel] = useState<string | undefined>();
-  const [isConfigured, setIsConfigured] = useState(false);
+  const [state, dispatch] = useReducer(configReducer, initialConfigState);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [providerStatus, setProviderStatus] = useState<ProviderStatus[]>([]);
-  const [projectId, setProjectId] = useState<string | null>(null);
-  const [repoRoot, setRepoRoot] = useState<string | null>(null);
-  const [trust, setTrust] = useState<TrustConfig | null>(null);
 
-  const stateRef = useRef({ provider, model, projectId, repoRoot, trust });
-  stateRef.current = { provider, model, projectId, repoRoot, trust };
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  const isConfigured = state.providerStatus.some(
+    (s) =>
+      s.isActive &&
+      (s.provider !== OPENROUTER_PROVIDER_ID || Boolean(s.model))
+  );
 
   const applyConfigData = useCallback((data: ConfigData) => {
-    setProvider(data.provider);
-    setModel(data.model);
-    setProviderStatus(data.providers);
-    setIsConfigured(
-      data.providers.some(
-        (status) =>
-          status.isActive &&
-          (status.provider !== OPENROUTER_PROVIDER_ID || Boolean(status.model))
-      )
-    );
-    setProjectId(data.projectId);
-    setRepoRoot(data.repoRoot);
-    setTrust(data.trust);
+    dispatch({ type: "SET_CONFIG", data });
   }, []);
 
   const refresh = useCallback(
@@ -243,23 +268,22 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const value = useMemo<ConfigContextValue>(() => ({
-    provider,
-    model,
+    provider: state.provider,
+    model: state.model,
     isConfigured,
     isLoading,
     isSaving,
     error,
-    providerStatus,
-    projectId,
-    repoRoot,
-    trust,
+    providerStatus: state.providerStatus,
+    projectId: state.projectId,
+    repoRoot: state.repoRoot,
+    trust: state.trust,
     refresh,
     activateProvider,
     saveCredentials,
     deleteProviderCredentials,
   }), [
-    provider, model, isConfigured, isLoading, isSaving, error,
-    providerStatus, projectId, repoRoot, trust,
+    state, isConfigured, isLoading, isSaving, error,
     refresh, activateProvider, saveCredentials, deleteProviderCredentials,
   ]);
 
