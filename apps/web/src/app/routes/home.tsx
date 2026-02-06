@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { SecretsStorage, SettingsConfig } from "@stargazer/schemas/config";
-import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@/lib/navigation";
+import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@/config/navigation";
 import { useKey, useScope } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
@@ -9,8 +9,7 @@ import { ContextSidebar, HomeMenu } from "@/features/home";
 import { useConfig } from "@/features/settings";
 import { useReviewHistory } from "@/features/review/hooks/use-review-history";
 import { useToast } from "@/components/ui/toast";
-import { StorageWizard } from "@/components/settings";
-import { TrustModal } from "@/components/modals/trust-modal";
+import { StorageWizard, TrustModal } from "@/features/settings/components";
 import type { ContextInfo } from "@stargazer/schemas/ui";
 import { api } from "@/lib/api";
 

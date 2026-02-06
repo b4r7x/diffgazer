@@ -2,7 +2,7 @@
 
 import type { RefObject } from "react";
 import { Input, Radio } from "@/components/ui/form";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/cn";
 import type { FocusElement } from "./api-key-dialog";
 import type { InputMethod } from "@/features/providers/constants";
 

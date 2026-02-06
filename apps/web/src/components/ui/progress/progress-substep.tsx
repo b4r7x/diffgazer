@@ -1,5 +1,5 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/cn";
 import { Badge } from "@/components/ui/badge";
 import type { ProgressSubstepData } from "@stargazer/schemas/ui";
 

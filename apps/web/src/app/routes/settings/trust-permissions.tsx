@@ -5,7 +5,7 @@ import { useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useToast } from "@/components/ui/toast";
 import { Panel, PanelHeader, PanelContent } from "@/components/ui/containers";
-import { TrustPermissionsContent } from "@/components/settings";
+import { TrustPermissionsContent } from "@/features/settings/components";
 import { useConfig, useTrust } from "@/features/settings";
 
 const FOOTER_SHORTCUTS = [

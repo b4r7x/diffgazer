@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState, type ReactNode } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '../../../lib/utils';
+import { cn } from '@/utils/cn';
 import { Badge } from '@/components/ui/badge';
 import { ProgressSubstep } from './progress-substep';
 import type { ProgressStatus, ProgressSubstepData } from '@stargazer/schemas/ui';

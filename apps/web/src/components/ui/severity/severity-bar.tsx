@@ -1,4 +1,4 @@
-import { cn } from '../../../lib/utils';
+import { cn } from '@/utils/cn';
 import type { ReviewSeverity } from '@stargazer/schemas/review';
 import { BAR_FILLED_CHAR, BAR_EMPTY_CHAR, DEFAULT_BAR_WIDTH, SEVERITY_CONFIG } from './constants';
 

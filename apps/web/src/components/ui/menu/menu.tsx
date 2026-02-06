@@ -1,7 +1,7 @@
 "use client";
 
 import { Children, Fragment, isValidElement, type ReactNode } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/cn";
 import { useKey, useKeys } from "@/hooks/keyboard";
 import { MenuContext, type InternalMenuItemData, type MenuContextValue } from "./menu-context";
 import { MenuItem, type MenuItemProps } from "./menu-item";

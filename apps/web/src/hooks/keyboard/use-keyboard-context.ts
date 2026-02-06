@@ -2,7 +2,7 @@
 
 import type { ContextType } from "react";
 import { useContext } from "react";
-import { KeyboardContext } from "@/components/keyboard/keyboard-provider";
+import { KeyboardContext } from "@/app/providers/keyboard-provider";
 
 type KeyboardContextValue = NonNullable<ContextType<typeof KeyboardContext>>;
 
