@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/cn";
 import type { TierFilter } from "../../hooks/use-model-filter.js";
 
 const FILTERS: TierFilter[] = ["all", "free", "paid"];

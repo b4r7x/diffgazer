@@ -1,11 +1,11 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/cn';
 import { PanelHeader } from '@/components/ui/containers';
 import { ProgressList, type ProgressStepData } from '@/components/ui/progress';
-import { ActivityLog, type LogEntryData } from '@/components/ui/activity-log';
-import { Timer } from '@/components/ui/timer';
-import { MetricItem } from '@/components/ui/metric-item';
+import { ActivityLog, type LogEntryData } from './activity-log';
+import { Timer } from './timer';
+import { MetricItem } from './metric-item';
 import { Badge } from '@/components/ui/badge';
 import { Callout } from '@/components/ui/callout';
 import { useScope, useKey } from '@/hooks/keyboard';

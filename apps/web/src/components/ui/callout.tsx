@@ -1,5 +1,5 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/cn";
 
 const calloutVariants = cva(
   "relative border font-mono p-4 flex gap-4 items-start",

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useRef, useMemo, type ReactNode } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/cn";
 import { useGroupNavigation } from "@/hooks/keyboard";
 import {
   selectableItemVariants,

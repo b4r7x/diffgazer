@@ -1,5 +1,5 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/cn";
 import type { Toast as ToastType } from "./toast-context";
 
 const toastVariants = cva("w-full border border-tui-border bg-tui-bg shadow-2xl", {

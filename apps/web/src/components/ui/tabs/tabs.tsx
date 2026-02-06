@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { cn } from '../../../lib/utils';
+import { cn } from '@/utils/cn';
 import { TabsContext } from './tabs-context';
 import { TabsList } from './tabs-list';
 import { TabsTrigger } from './tabs-trigger';

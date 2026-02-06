@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/cn";
 import type { ModelInfo } from "@stargazer/schemas/config";
 
 interface ModelListItemProps {

@@ -5,8 +5,8 @@ import { usePageFooter } from "@/hooks/use-page-footer";
 import { Panel, PanelHeader, PanelContent } from "@/components/ui/containers";
 import { PathList } from "@/components/ui/path-list";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import type { SystemDiagnostics } from "@/types/diagnostics";
+import { cn } from "@/utils/cn";
+import type { SystemDiagnostics } from "@/features/settings/types";
 import { api } from "@/lib/api";
 import type { ReviewContextResponse } from "@stargazer/api/types";
 
