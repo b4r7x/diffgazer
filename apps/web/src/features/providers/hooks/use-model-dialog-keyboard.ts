@@ -79,23 +79,22 @@ export function useModelDialogKeyboard({
     setSelectedIndex(currentIndex >= 0 ? currentIndex : 0);
   }, [open, currentModel, models, resetFilters]);
 
-  // Clamp selection when filtered list changes
-  useEffect(() => {
-    if (selectedIndex >= filteredModels.length && filteredModels.length > 0) {
-      setSelectedIndex(0);
-    }
-  }, [filteredModels.length, selectedIndex]);
+  // Clamp selection when filtered list shrinks
+  const clampedSelectedIndex =
+    filteredModels.length > 0 && selectedIndex >= filteredModels.length
+      ? 0
+      : selectedIndex;
 
   // Auto-scroll selected item into view
   useEffect(() => {
     if (focusZone === "list" && filteredModels.length > 0) {
-      scrollItemIntoView(selectedIndex);
+      scrollItemIntoView(clampedSelectedIndex);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedIndex, focusZone, filteredModels.length]);
+  }, [clampedSelectedIndex, focusZone, filteredModels.length]);
 
   const handleConfirm = () => {
-    const model = filteredModels[selectedIndex];
+    const model = filteredModels[clampedSelectedIndex];
     if (model) {
       onSelect(model.id);
       onOpenChange(false);
@@ -110,7 +109,7 @@ export function useModelDialogKeyboard({
   };
 
   const handleCheck = () => {
-    const model = filteredModels[selectedIndex];
+    const model = filteredModels[clampedSelectedIndex];
     if (model) {
       setCheckedModelId(model.id);
     }
@@ -119,7 +118,7 @@ export function useModelDialogKeyboard({
   const handleCancel = () => onOpenChange(false);
 
   const navigateUp = () => {
-    if (selectedIndex > 0) {
+    if (clampedSelectedIndex > 0) {
       setSelectedIndex((prev) => prev - 1);
     } else {
       setFocusZone("filters");
@@ -128,7 +127,7 @@ export function useModelDialogKeyboard({
   };
 
   const navigateDown = () => {
-    if (selectedIndex < filteredModels.length - 1) {
+    if (clampedSelectedIndex < filteredModels.length - 1) {
       setSelectedIndex((prev) => prev + 1);
     } else {
       setFocusZone("footer");
@@ -201,7 +200,7 @@ export function useModelDialogKeyboard({
 
   return {
     focusZone,
-    selectedIndex,
+    selectedIndex: clampedSelectedIndex,
     setSelectedIndex,
     checkedModelId,
     setCheckedModelId,

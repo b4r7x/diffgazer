@@ -1,4 +1,4 @@
-import { useRef, useLayoutEffect, useState, type ReactNode } from 'react';
+import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/utils/cn';
 import { Badge } from '@/components/ui/badge';
@@ -37,7 +37,7 @@ export interface ProgressStepProps extends VariantProps<typeof progressStepVaria
   label: string;
   status: ProgressStatus;
   substeps?: ProgressSubstepData[];
-  children?: ReactNode;
+  children?: React.ReactNode;
   isExpanded?: boolean;
   onToggle?: () => void;
   className?: string;
@@ -58,15 +58,7 @@ export function ProgressStep({
   onToggle,
   className,
 }: ProgressStepProps) {
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [contentHeight, setContentHeight] = useState(0);
   const hasContent = Boolean(children || (substeps && substeps.length > 0));
-
-  useLayoutEffect(() => {
-    if (contentRef.current) {
-      setContentHeight(contentRef.current.scrollHeight);
-    }
-  }, [children, substeps, isExpanded]);
 
   const handleClick = () => {
     if (hasContent && onToggle) {
@@ -103,18 +95,20 @@ export function ProgressStep({
       </div>
       {hasContent && (
         <div
-          style={{ height: isExpanded ? contentHeight : 0 }}
-          className="overflow-hidden transition-[height] duration-200 ease-in-out"
+          className="grid transition-[grid-template-rows] duration-200 ease-in-out"
+          style={{ gridTemplateRows: isExpanded ? '1fr' : '0fr' }}
         >
-          <div ref={contentRef} className="pt-2 pl-7">
-            {substeps && substeps.length > 0 && (
-              <div className="space-y-1 mb-2">
-                {substeps.map((substep) => (
-                  <ProgressSubstep key={substep.id} {...substep} />
-                ))}
-              </div>
-            )}
-            {children}
+          <div className="overflow-hidden">
+            <div className="pt-2 pl-7">
+              {substeps && substeps.length > 0 && (
+                <div className="space-y-1 mb-2">
+                  {substeps.map((substep) => (
+                    <ProgressSubstep key={substep.id} {...substep} />
+                  ))}
+                </div>
+              )}
+              {children}
+            </div>
           </div>
         </div>
       )}

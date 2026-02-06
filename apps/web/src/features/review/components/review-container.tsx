@@ -59,6 +59,15 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     issuesFound: state.issues.length,
   }), [state.fileProgress.completed.size, state.fileProgress.total, state.issues.length]);
 
+  const progressData = useMemo(() => ({
+    steps: progressSteps,
+    entries: logEntries,
+    agents: state.agents,
+    metrics,
+    startTime: state.startedAt ?? undefined,
+    contextSnapshot,
+  }), [progressSteps, logEntries, state.agents, metrics, state.startedAt, contextSnapshot]);
+
   if (loadingMessage) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -90,15 +99,6 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
       />
     );
   }
-
-  const progressData = useMemo(() => ({
-    steps: progressSteps,
-    entries: logEntries,
-    agents: state.agents,
-    metrics,
-    startTime: state.startedAt ?? undefined,
-    contextSnapshot,
-  }), [progressSteps, logEntries, state.agents, metrics, state.startedAt, contextSnapshot]);
 
   return (
     <ReviewProgressView

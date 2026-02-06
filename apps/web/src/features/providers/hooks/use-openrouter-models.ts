@@ -82,14 +82,15 @@ export function useOpenRouterModels(open: boolean, provider: AIProvider): OpenRo
   useEffect(() => {
     const wasOpen = prevOpenRef.current;
     prevOpenRef.current = open;
-    if (open && !wasOpen) {
+
+    if (!open || provider !== OPENROUTER_PROVIDER_ID) return;
+
+    // Reset and fetch when dialog opens (false -> true transition)
+    if (!wasOpen) {
       dispatch({ type: "RESET" });
     }
-  }, [open]);
 
-  useEffect(() => {
-    if (!open || provider !== OPENROUTER_PROVIDER_ID) return;
-    if (state.status !== "idle") return;
+    if (wasOpen && state.status !== "idle") return;
 
     let ignore = false;
     dispatch({ type: "FETCH_START" });

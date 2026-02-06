@@ -103,7 +103,7 @@ export function DiagnosticsPage() {
 
   useEffect(() => {
     enterFooter(0);
-  }, []);
+  }, [enterFooter]);
 
   useKey("Escape", () => navigate({ to: "/settings" }));
 

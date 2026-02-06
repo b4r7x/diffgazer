@@ -21,7 +21,10 @@ function TabsRoot<T extends string = string>({
   const triggersRef = React.useRef<Map<string, HTMLButtonElement | null>>(new Map());
 
   const value = controlledValue !== undefined ? controlledValue : uncontrolledValue;
-  const handleValueChange = (onValueChange || setUncontrolledValue) as (value: string) => void;
+  const handleValueChange = React.useCallback(
+    (v: string) => (onValueChange || setUncontrolledValue)(v as T),
+    [onValueChange]
+  );
 
   const registerTrigger = React.useCallback((triggerValue: string, element: HTMLButtonElement | null) => {
     if (element) {

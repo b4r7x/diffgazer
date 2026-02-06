@@ -43,7 +43,8 @@ function webReviewReducer(state: WebReviewState, action: WebReviewAction): WebRe
     };
   }
 
-  return { ...reviewReducer(state, action), reviewId: state.reviewId };
+  const next = reviewReducer(state, action);
+  return next === state ? state : { ...next, reviewId: state.reviewId };
 }
 
 type ReviewEvent = AgentStreamEvent | StepEvent | EnrichEvent;

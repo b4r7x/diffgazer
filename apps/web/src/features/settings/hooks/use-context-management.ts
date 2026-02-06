@@ -7,14 +7,16 @@ interface ContextManagement {
   contextStatus: ContextStatus;
   contextGeneratedAt: string | null;
   isRefreshing: boolean;
-  handleRefreshContext: () => Promise<void>;
+  error: string | null;
   setError: (error: string | null) => void;
+  handleRefreshContext: () => Promise<void>;
 }
 
-export function useContextManagement(setError: (error: string | null) => void): ContextManagement {
+export function useContextManagement(): ContextManagement {
   const [contextStatus, setContextStatus] = useState<ContextStatus>("loading");
   const [contextGeneratedAt, setContextGeneratedAt] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -46,5 +48,5 @@ export function useContextManagement(setError: (error: string | null) => void): 
     }
   };
 
-  return { contextStatus, contextGeneratedAt, isRefreshing, handleRefreshContext, setError };
+  return { contextStatus, contextGeneratedAt, isRefreshing, error, setError, handleRefreshContext };
 }

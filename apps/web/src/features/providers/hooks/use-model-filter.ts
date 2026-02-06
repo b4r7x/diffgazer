@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import type { ModelInfo } from "@stargazer/schemas/config";
 import { TIER_FILTERS, type TierFilter } from "@/features/providers/constants";
 
@@ -10,7 +10,10 @@ export function useModelFilter(models: ModelInfo[]) {
   const [searchQuery, setSearchQuery] = useState("");
   const [tierFilter, setTierFilter] = useState<TierFilter>("all");
 
-  const filteredModels = filterModels(models, tierFilter, searchQuery);
+  const filteredModels = useMemo(
+    () => filterModels(models, tierFilter, searchQuery),
+    [models, tierFilter, searchQuery]
+  );
 
   const cycleTierFilter = () => {
     setTierFilter((prev) => {
@@ -19,10 +22,10 @@ export function useModelFilter(models: ModelInfo[]) {
     });
   };
 
-  const resetFilters = () => {
+  const resetFilters = useCallback(() => {
     setSearchQuery("");
     setTierFilter("all");
-  };
+  }, []);
 
   return {
     searchQuery,

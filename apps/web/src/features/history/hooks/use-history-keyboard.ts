@@ -34,8 +34,6 @@ interface UseHistoryKeyboardOptions {
   focusZone: HistoryFocusZone;
   setFocusZone: (zone: HistoryFocusZone) => void;
   selectedRunId: string | null;
-  expandedRunId: string | null;
-  setExpandedRunId: (id: string | null) => void;
   searchInputRef: RefObject<HTMLInputElement | null>;
 }
 
@@ -43,8 +41,6 @@ export function useHistoryKeyboard({
   focusZone,
   setFocusZone,
   selectedRunId,
-  expandedRunId,
-  setExpandedRunId,
   searchInputRef,
 }: UseHistoryKeyboardOptions) {
   const navigate = useNavigate();
@@ -81,11 +77,7 @@ export function useHistoryKeyboard({
   useKey(" ", navigateToSelectedRun, { enabled: focusZone === "runs" });
 
   useKey("Escape", () => {
-    if (expandedRunId) {
-      setExpandedRunId(null);
-    } else {
-      navigate({ to: "/" });
-    }
+    navigate({ to: "/" });
   });
 
   usePageFooter({
