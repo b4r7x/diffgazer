@@ -1,9 +1,21 @@
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import type { StoreError } from "../storage/persistence.js";
+import type { StoreError, StoreErrorCode } from "../storage/persistence.js";
 import { ErrorCode } from "@stargazer/schemas/errors";
-import { errorCodeToStatus } from "../validation.js";
 import type { core } from "zod";
+
+const errorCodeToStatus = (code: StoreErrorCode): ContentfulStatusCode => {
+  switch (code) {
+    case "NOT_FOUND":
+      return 404;
+    case "VALIDATION_ERROR":
+      return 400;
+    case "PERMISSION_ERROR":
+      return 403;
+    default:
+      return 500;
+  }
+};
 
 export const errorResponse = (
   ctx: Context,

@@ -1,12 +1,12 @@
 import { cn } from '../../../lib/utils';
-import type { TriageSeverity } from '@stargazer/schemas/triage';
+import type { ReviewSeverity } from '@stargazer/schemas/review';
 import { BAR_FILLED_CHAR, BAR_EMPTY_CHAR, DEFAULT_BAR_WIDTH, SEVERITY_CONFIG } from '@stargazer/schemas/ui';
 
 export interface SeverityBarProps {
   label: string;
   count: number;
   max: number;
-  severity: TriageSeverity;
+  severity: ReviewSeverity;
   className?: string;
 }
 

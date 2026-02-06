@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState, type ReactNode } from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../../lib/utils';
+import { Badge } from '@/components/ui/badge';
 import { ProgressSubstep } from './progress-substep';
 import type { ProgressStatus, ProgressSubstepData } from '@stargazer/schemas/ui';
 
@@ -21,12 +22,12 @@ const progressStepVariants = cva('flex items-start gap-3', {
   },
 });
 
-const indicatorVariants = cva('font-mono text-sm shrink-0 w-4 text-center', {
+const indicatorVariants = cva('shrink-0', {
   variants: {
     status: {
-      completed: 'text-tui-green',
-      active: 'text-tui-blue',
-      pending: 'text-gray-600',
+      completed: '',
+      active: '',
+      pending: '',
     },
   },
   defaultVariants: {
@@ -57,10 +58,10 @@ export interface ProgressStepProps extends VariantProps<typeof progressStepVaria
   className?: string;
 }
 
-const STATUS_INDICATORS: Record<ProgressStatus, string> = {
-  completed: '✓',
-  active: '▶',
-  pending: '○',
+const STATUS_BADGES: Record<ProgressStatus, { label: string; variant: "success" | "info" | "neutral" }> = {
+  completed: { label: "DONE", variant: "success" },
+  active: { label: "RUN", variant: "info" },
+  pending: { label: "WAIT", variant: "neutral" },
 };
 
 export function ProgressStep({
@@ -108,7 +109,9 @@ export function ProgressStep({
         role={hasContent ? 'button' : undefined}
       >
         <span className={indicatorVariants({ status })}>
-          {STATUS_INDICATORS[status]}
+          <Badge variant={STATUS_BADGES[status].variant} size="sm" className="min-w-[48px] justify-center">
+            {STATUS_BADGES[status].label}
+          </Badge>
         </span>
         <span className={labelVariants({ status })}>{label}</span>
       </div>

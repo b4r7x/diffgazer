@@ -1,142 +1,353 @@
 import { describe, it, expect } from "vitest";
 import {
-  REVIEW_SEVERITY,
-  REVIEW_CATEGORY,
   ReviewSeveritySchema,
   ReviewCategorySchema,
   ReviewIssueSchema,
   ReviewResultSchema,
-  FileReviewResultSchema,
   ReviewErrorCodeSchema,
   ReviewErrorSchema,
   ReviewStreamEventSchema,
-  ScoreSchema,
+  REVIEW_SEVERITY,
+  REVIEW_CATEGORY,
+  REVIEW_SPECIFIC_CODES,
 } from "./review.js";
-import { createValidIssue } from "../__test__/testing.js";
+import { VALID_UUID } from "../__test__/testing.js";
 
-describe("ScoreSchema", () => {
-  it.each([
-    [0, true],
-    [5, true],
-    [10, true],
-    [7.5, true],
-    [null, true],
-    [-1, false],
-    [-0.1, false],
-    [11, false],
-    [10.1, false],
-  ])("validates score %s as %s", (score, expected) => {
-    expect(ScoreSchema.safeParse(score).success).toBe(expected);
-  });
-});
+function createBaseIssue(overrides: Record<string, unknown> = {}) {
+  return {
+    id: VALID_UUID,
+    severity: "high" as const,
+    category: "correctness" as const,
+    title: "Potential null pointer dereference",
+    file: "src/utils/parser.ts",
+    line_start: 42,
+    line_end: 45,
+    rationale: "The variable 'data' may be null when accessed",
+    recommendation: "Add null check before accessing data properties",
+    suggested_patch: "if (data !== null) { ... }",
+    confidence: 0.85,
+    symptom: "Accessing potentially null variable",
+    whyItMatters: "Could cause runtime crash when data is undefined",
+    evidence: [
+      {
+        type: "code",
+        title: "Code at src/utils/parser.ts:42",
+        sourceId: "src/utils/parser.ts:42-45",
+        file: "src/utils/parser.ts",
+        range: { start: 42, end: 45 },
+        excerpt: "data.property",
+      },
+    ],
+    ...overrides,
+  };
+}
 
 describe("ReviewSeveritySchema", () => {
-  it.each(REVIEW_SEVERITY)("accepts valid severity: %s", (severity) => {
-    expect(ReviewSeveritySchema.safeParse(severity).success).toBe(true);
-  });
+  it.each([...REVIEW_SEVERITY])(
+    "accepts valid severity: %s",
+    (severity) => {
+      const result = ReviewSeveritySchema.safeParse(severity);
+      expect(result.success).toBe(true);
+    }
+  );
 
-  it.each(["error", "info", "high", "low", ""])("rejects invalid severity: %s", (severity) => {
-    expect(ReviewSeveritySchema.safeParse(severity).success).toBe(false);
-  });
+  it.each(["critical", "info", "minor", "", "BLOCKER"])(
+    "rejects invalid severity: %s",
+    (severity) => {
+      const result = ReviewSeveritySchema.safeParse(severity);
+      expect(result.success).toBe(false);
+    }
+  );
 });
 
 describe("ReviewCategorySchema", () => {
-  it.each(REVIEW_CATEGORY)("accepts valid category: %s", (category) => {
-    expect(ReviewCategorySchema.safeParse(category).success).toBe(true);
-  });
+  it.each([...REVIEW_CATEGORY])(
+    "accepts valid category: %s",
+    (category) => {
+      const result = ReviewCategorySchema.safeParse(category);
+      expect(result.success).toBe(true);
+    }
+  );
 
-  it.each(["bug", "feature", "refactor", "test", ""])("rejects invalid category: %s", (category) => {
-    expect(ReviewCategorySchema.safeParse(category).success).toBe(false);
-  });
+  it.each(["bug", "feature", "documentation", "", "SECURITY"])(
+    "rejects invalid category: %s",
+    (category) => {
+      const result = ReviewCategorySchema.safeParse(category);
+      expect(result.success).toBe(false);
+    }
+  );
 });
 
 describe("ReviewIssueSchema", () => {
+  it("accepts valid issue with all required fields", () => {
+    const result = ReviewIssueSchema.safeParse(createBaseIssue());
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts issue with nullable fields set to null", () => {
+    const result = ReviewIssueSchema.safeParse(
+      createBaseIssue({
+        line_start: null,
+        line_end: null,
+        suggested_patch: null,
+      })
+    );
+    expect(result.success).toBe(true);
+  });
+
   it.each([
-    [{}, true],
-    [{ file: "src/app.ts", line: 100 }, true],
-    [{ file: "src/app.ts", line: null }, true],
-    [{ file: null, line: null }, true],
-    [{ suggestion: null }, true],
-    [{ file: null, line: 42 }, false],
-    [{ severity: "invalid" }, false],
-    [{ category: "invalid" }, false],
-  ])("validates issue with %o as %s", (overrides, expected) => {
-    expect(ReviewIssueSchema.safeParse(createValidIssue(overrides)).success).toBe(expected);
+    ["blocker", "blocker"],
+    ["high", "high"],
+    ["medium", "medium"],
+    ["low", "low"],
+    ["nit", "nit"],
+  ])("accepts all severity levels: %s", (_, severity) => {
+    const result = ReviewIssueSchema.safeParse(createBaseIssue({ severity }));
+    expect(result.success).toBe(true);
   });
 
-  it("provides correct error message for line without file", () => {
-    const result = ReviewIssueSchema.safeParse(createValidIssue({ file: null, line: 42 }));
-    expect(result.error?.issues[0]?.message).toBe("Line number requires a file to be specified");
+  it.each([
+    ["correctness", "correctness"],
+    ["security", "security"],
+    ["performance", "performance"],
+    ["api", "api"],
+    ["tests", "tests"],
+    ["readability", "readability"],
+    ["style", "style"],
+  ])("accepts all category types: %s", (_, category) => {
+    const result = ReviewIssueSchema.safeParse(createBaseIssue({ category }));
+    expect(result.success).toBe(true);
   });
 
-  it("rejects issue with missing required fields", () => {
-    expect(ReviewIssueSchema.safeParse({ severity: "warning", category: "logic" }).success).toBe(false);
+  it.each([
+    ["confidence at minimum boundary", 0],
+    ["confidence at maximum boundary", 1],
+    ["confidence in valid range", 0.5],
+  ])("accepts %s", (_, confidence) => {
+    const result = ReviewIssueSchema.safeParse(createBaseIssue({ confidence }));
+    expect(result.success).toBe(true);
+  });
+
+  it.each([
+    ["confidence below minimum", -0.1],
+    ["confidence above maximum", 1.1],
+    ["confidence way above maximum", 2.0],
+  ])("rejects issue with %s", (_, confidence) => {
+    const result = ReviewIssueSchema.safeParse(createBaseIssue({ confidence }));
+    expect(result.success).toBe(false);
+  });
+
+  it.each([
+    ["missing id", { id: undefined }],
+    ["missing severity", { severity: undefined }],
+    ["missing category", { category: undefined }],
+    ["missing title", { title: undefined }],
+    ["missing file", { file: undefined }],
+    ["missing rationale", { rationale: undefined }],
+    ["missing recommendation", { recommendation: undefined }],
+    ["missing confidence", { confidence: undefined }],
+  ])("rejects issue with %s", (_, overrides) => {
+    const result = ReviewIssueSchema.safeParse(createBaseIssue(overrides));
+    expect(result.success).toBe(false);
+  });
+
+  it.each([
+    ["empty id", { id: "" }],
+    ["empty title", { title: "" }],
+    ["empty file", { file: "" }],
+    ["empty rationale", { rationale: "" }],
+    ["empty recommendation", { recommendation: "" }],
+  ])("accepts issue with %s", (_, overrides) => {
+    const result = ReviewIssueSchema.safeParse(createBaseIssue(overrides));
+    expect(result.success).toBe(true);
   });
 });
 
 describe("ReviewResultSchema", () => {
-  it.each([
-    [{ summary: "Code review completed", issues: [createValidIssue()], overallScore: 8 }, true],
-    [{ summary: "No issues found", issues: [], overallScore: 10 }, true],
-    [{ summary: "Review completed", issues: [], overallScore: null }, true],
-    [{ summary: "Review", issues: [createValidIssue({ file: null, line: 42 })], overallScore: 5 }, false],
-    [{ summary: "Review", issues: [], overallScore: 15 }, false],
-  ])("validates result %o as %s", (data, expected) => {
-    expect(ReviewResultSchema.safeParse(data).success).toBe(expected);
+  it("accepts valid result with issues", () => {
+    const result = ReviewResultSchema.safeParse({
+      summary: "Found 2 issues requiring attention",
+      issues: [createBaseIssue(), createBaseIssue({ id: "issue-2" })],
+    });
+    expect(result.success).toBe(true);
   });
-});
 
-describe("FileReviewResultSchema", () => {
+  it("accepts valid result with empty issues array", () => {
+    const result = ReviewResultSchema.safeParse({
+      summary: "No issues found",
+      issues: [],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts result with empty summary string", () => {
+    const result = ReviewResultSchema.safeParse({
+      summary: "",
+      issues: [],
+    });
+    expect(result.success).toBe(true);
+  });
+
   it.each([
-    [{ filePath: "src/index.ts", summary: "File review completed", issues: [createValidIssue()], score: 7 }, true],
-    [{ filePath: "src/index.ts", summary: "Raw AI output", issues: [], score: null, parseError: true, parseErrorMessage: "Invalid JSON" }, true],
-    [{ filePath: "src/index.ts", summary: "File review", issues: [createValidIssue({ file: null, line: 42 })], score: 5 }, false],
-  ])("validates file review result %o as %s", (data, expected) => {
-    expect(FileReviewResultSchema.safeParse(data).success).toBe(expected);
+    ["missing summary", { issues: [] }],
+    ["missing issues", { summary: "Summary" }],
+  ])("rejects result with %s", (_, partial) => {
+    const result = ReviewResultSchema.safeParse(partial);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects result with invalid issue in array", () => {
+    const result = ReviewResultSchema.safeParse({
+      summary: "Found issues",
+      issues: [createBaseIssue(), { id: "invalid" }],
+    });
+    expect(result.success).toBe(false);
   });
 });
 
 describe("ReviewErrorCodeSchema", () => {
-  it.each(["NO_DIFF", "AI_ERROR", "INTERNAL_ERROR", "API_KEY_MISSING", "RATE_LIMITED"] as const)(
-    "accepts valid error code: %s",
+  it.each(REVIEW_SPECIFIC_CODES)("accepts review-specific code: %s", (code) => {
+    const result = ReviewErrorCodeSchema.safeParse(code);
+    expect(result.success).toBe(true);
+  });
+
+  it.each(["INTERNAL_ERROR", "API_KEY_MISSING", "RATE_LIMITED"])(
+    "accepts shared error code: %s",
     (code) => {
-      expect(ReviewErrorCodeSchema.safeParse(code).success).toBe(true);
+      const result = ReviewErrorCodeSchema.safeParse(code);
+      expect(result.success).toBe(true);
     }
   );
 
-  it.each(["UNKNOWN", "INVALID_CODE", ""])("rejects invalid error code: %s", (code) => {
-    expect(ReviewErrorCodeSchema.safeParse(code).success).toBe(false);
-  });
+  it.each(["INVALID_CODE", "NOT_A_CODE", ""])(
+    "rejects invalid code: %s",
+    (code) => {
+      const result = ReviewErrorCodeSchema.safeParse(code);
+      expect(result.success).toBe(false);
+    }
+  );
 });
 
 describe("ReviewErrorSchema", () => {
+  it("accepts valid error with review-specific code", () => {
+    const result = ReviewErrorSchema.safeParse({
+      message: "No diff found to analyze",
+      code: "NO_DIFF",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid error with shared code", () => {
+    const result = ReviewErrorSchema.safeParse({
+      message: "Internal server error",
+      code: "INTERNAL_ERROR",
+    });
+    expect(result.success).toBe(true);
+  });
+
   it.each([
-    [{ message: "No diff found", code: "NO_DIFF" }, true],
-    [{ code: "NO_DIFF" }, false],
-    [{ message: "Error message" }, false],
-  ])("validates error %o as %s", (data, expected) => {
-    expect(ReviewErrorSchema.safeParse(data).success).toBe(expected);
+    ["missing message", { code: "NO_DIFF" }],
+    ["missing code", { message: "Error occurred" }],
+  ])("rejects error with %s", (_, partial) => {
+    const result = ReviewErrorSchema.safeParse(partial);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects error with invalid code", () => {
+    const result = ReviewErrorSchema.safeParse({
+      message: "Error occurred",
+      code: "INVALID_CODE",
+    });
+    expect(result.success).toBe(false);
   });
 });
 
 describe("ReviewStreamEventSchema", () => {
-  it.each([
-    ["chunk", { type: "chunk", content: "Some streaming content" }, true],
-    ["complete", { type: "complete", result: { summary: "Review completed", issues: [], overallScore: 8 } }, true],
-    ["error", { type: "error", error: { message: "AI service unavailable", code: "AI_ERROR" } }, true],
-    ["invalid type", { type: "invalid", data: "some data" }, false],
-    ["invalid nested issue", { type: "complete", result: { summary: "Review", issues: [createValidIssue({ file: null, line: 42 })], overallScore: 8 } }, false],
-  ])("validates %s event as %s", (_label, data, expected) => {
-    expect(ReviewStreamEventSchema.safeParse(data).success).toBe(expected);
-  });
-
-  it("strips extra fields from events", () => {
+  it("accepts chunk event", () => {
     const result = ReviewStreamEventSchema.safeParse({
-      type: "complete",
-      result: { summary: "Review completed", issues: [], overallScore: 8 },
-      extraField: "should be stripped",
+      type: "chunk",
+      content: "Processing file src/utils/parser.ts...",
     });
     expect(result.success).toBe(true);
-    expect("extraField" in result.data!).toBe(false);
+  });
+
+  it("accepts lens_start event", () => {
+    const result = ReviewStreamEventSchema.safeParse({
+      type: "lens_start",
+      lens: "correctness",
+      index: 0,
+      total: 3,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts lens_complete event", () => {
+    const result = ReviewStreamEventSchema.safeParse({
+      type: "lens_complete",
+      lens: "security",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts complete event", () => {
+    const result = ReviewStreamEventSchema.safeParse({
+      type: "complete",
+      result: {
+        summary: "Analysis complete",
+        issues: [createBaseIssue()],
+      },
+      reviewId: VALID_UUID,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts error event", () => {
+    const result = ReviewStreamEventSchema.safeParse({
+      type: "error",
+      error: {
+        message: "AI generation failed",
+        code: "GENERATION_FAILED",
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects event with invalid type", () => {
+    const result = ReviewStreamEventSchema.safeParse({
+      type: "invalid",
+      content: "test",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it.each([
+    ["chunk without content", { type: "chunk" }],
+    ["lens_start without lens", { type: "lens_start", index: 0, total: 3 }],
+    ["lens_start without index", { type: "lens_start", lens: "correctness", total: 3 }],
+    ["lens_start without total", { type: "lens_start", lens: "correctness", index: 0 }],
+    ["lens_complete without lens", { type: "lens_complete" }],
+    ["complete without result", { type: "complete", reviewId: VALID_UUID }],
+    ["complete without reviewId", { type: "complete", result: { summary: "Done", issues: [] } }],
+    ["error without error", { type: "error" }],
+  ])("rejects %s", (_, event) => {
+    const result = ReviewStreamEventSchema.safeParse(event);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects chunk event with empty content", () => {
+    const result = ReviewStreamEventSchema.safeParse({
+      type: "chunk",
+      content: "",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects complete event with invalid result", () => {
+    const result = ReviewStreamEventSchema.safeParse({
+      type: "complete",
+      result: { summary: "Done" },
+      reviewId: VALID_UUID,
+    });
+    expect(result.success).toBe(false);
   });
 });

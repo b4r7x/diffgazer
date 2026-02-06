@@ -1,29 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { useReviewDetail } from "./use-review-detail";
-import * as apiModule from "@stargazer/api";
-
-/**
- * useReviewDetail Hook Tests
- *
- * Fix 4: New hook fetches full review data for history insights
- * Location: apps/web/src/features/history/hooks/use-review-detail.ts
- */
-
-vi.mock("@stargazer/api", () => ({
-  getTriageReview: vi.fn(),
-}));
+import { api } from "@/lib/api";
 
 vi.mock("@/lib/api", () => ({
   api: {
-    get: vi.fn(),
-    post: vi.fn(),
-    delete: vi.fn(),
-    stream: vi.fn(),
+    getReview: vi.fn(),
   },
 }));
 
-const mockGetTriageReview = vi.mocked(apiModule.getTriageReview);
+const mockGetReview = vi.mocked(api.getReview);
 
 describe("useReviewDetail", () => {
   const mockReview = {
@@ -86,7 +72,7 @@ describe("useReviewDetail", () => {
 
   describe("Fetching Review", () => {
     it("fetches review when reviewId is provided", async () => {
-      mockGetTriageReview.mockResolvedValueOnce({ review: mockReview as any });
+      mockGetReview.mockResolvedValueOnce({ review: mockReview as any });
 
       const { result } = renderHook(() => useReviewDetail("test-123"));
 
@@ -98,11 +84,11 @@ describe("useReviewDetail", () => {
       });
 
       expect(result.current.review).toEqual(mockReview);
-      expect(mockGetTriageReview).toHaveBeenCalledTimes(1);
+      expect(mockGetReview).toHaveBeenCalledTimes(1);
     });
 
     it("sets isLoading to true while fetching", () => {
-      mockGetTriageReview.mockImplementation(
+      mockGetReview.mockImplementation(
         () => new Promise((resolve) => setTimeout(resolve, 100))
       );
 
@@ -112,7 +98,7 @@ describe("useReviewDetail", () => {
     });
 
     it("sets isLoading to false after fetch completes", async () => {
-      mockGetTriageReview.mockResolvedValueOnce({ review: mockReview as any });
+      mockGetReview.mockResolvedValueOnce({ review: mockReview as any });
 
       const { result } = renderHook(() => useReviewDetail("test-789"));
 
@@ -122,7 +108,7 @@ describe("useReviewDetail", () => {
     });
 
     it("returns fetched review data", async () => {
-      mockGetTriageReview.mockResolvedValueOnce({ review: mockReview as any });
+      mockGetReview.mockResolvedValueOnce({ review: mockReview as any });
 
       const { result } = renderHook(() => useReviewDetail("test-abc"));
 
@@ -137,7 +123,7 @@ describe("useReviewDetail", () => {
 
   describe("Error Handling", () => {
     it("sets review to null on error", async () => {
-      mockGetTriageReview.mockRejectedValueOnce(new Error("Not found"));
+      mockGetReview.mockRejectedValueOnce(new Error("Not found"));
 
       const { result } = renderHook(() => useReviewDetail("not-found"));
 
@@ -149,7 +135,7 @@ describe("useReviewDetail", () => {
     });
 
     it("sets isLoading to false after error", async () => {
-      mockGetTriageReview.mockRejectedValueOnce(new Error("Server error"));
+      mockGetReview.mockRejectedValueOnce(new Error("Server error"));
 
       const { result } = renderHook(() => useReviewDetail("error-test"));
 
@@ -159,7 +145,7 @@ describe("useReviewDetail", () => {
     });
 
     it("handles 404 errors gracefully", async () => {
-      mockGetTriageReview.mockRejectedValueOnce({ status: 404, message: "Not found" });
+      mockGetReview.mockRejectedValueOnce({ status: 404, message: "Not found" });
 
       const { result } = renderHook(() => useReviewDetail("missing-review"));
 
@@ -172,7 +158,7 @@ describe("useReviewDetail", () => {
 
   describe("reviewId Changes", () => {
     it("fetches new review when reviewId changes", async () => {
-      mockGetTriageReview.mockResolvedValue({ review: mockReview as any });
+      mockGetReview.mockResolvedValue({ review: mockReview as any });
 
       const { result, rerender } = renderHook(
         ({ id }) => useReviewDetail(id),
@@ -183,18 +169,18 @@ describe("useReviewDetail", () => {
         expect(result.current.isLoading).toBe(false);
       });
 
-      expect(mockGetTriageReview).toHaveBeenCalledTimes(1);
+      expect(mockGetReview).toHaveBeenCalledTimes(1);
 
       // Change reviewId
       rerender({ id: "review-2" });
 
       await waitFor(() => {
-        expect(mockGetTriageReview).toHaveBeenCalledTimes(2);
+        expect(mockGetReview).toHaveBeenCalledTimes(2);
       });
     });
 
     it("clears review when reviewId becomes null", async () => {
-      mockGetTriageReview.mockResolvedValueOnce({ review: mockReview as any });
+      mockGetReview.mockResolvedValueOnce({ review: mockReview as any });
 
       const { result, rerender } = renderHook(
         ({ id }) => useReviewDetail(id),
@@ -220,13 +206,13 @@ describe("useReviewDetail", () => {
 
       rerender({ id: null });
 
-      expect(mockGetTriageReview).not.toHaveBeenCalled();
+      expect(mockGetReview).not.toHaveBeenCalled();
     });
   });
 
   describe("Cleanup and Cancellation", () => {
     it("prevents state updates after unmount", async () => {
-      mockGetTriageReview.mockImplementation(
+      mockGetReview.mockImplementation(
         () => new Promise((resolve) => setTimeout(() => resolve({ review: mockReview as any }), 50))
       );
 
@@ -245,7 +231,7 @@ describe("useReviewDetail", () => {
     it("cancels pending request when reviewId changes", async () => {
       let firstResolveFn: ((value: any) => void) | null = null;
 
-      mockGetTriageReview.mockImplementation(
+      mockGetReview.mockImplementation(
         () =>
           new Promise((resolve) => {
             firstResolveFn = resolve;
@@ -258,11 +244,11 @@ describe("useReviewDetail", () => {
       );
 
       // Change reviewId before first request completes
-      mockGetTriageReview.mockResolvedValueOnce({ review: mockReview as any });
+      mockGetReview.mockResolvedValueOnce({ review: mockReview as any });
       rerender({ id: "review-second" });
 
       await waitFor(() => {
-        expect(mockGetTriageReview).toHaveBeenCalledTimes(2);
+        expect(mockGetReview).toHaveBeenCalledTimes(2);
       });
 
       // Complete first request (should be cancelled)
@@ -272,12 +258,12 @@ describe("useReviewDetail", () => {
 
       // Second request's result should be used
       await waitFor(() => {
-        expect(mockGetTriageReview).toHaveBeenCalledTimes(2);
+        expect(mockGetReview).toHaveBeenCalledTimes(2);
       });
     });
 
     it("handles cleanup when component unmounts during fetch", async () => {
-      mockGetTriageReview.mockImplementation(
+      mockGetReview.mockImplementation(
         () => new Promise((resolve) => setTimeout(() => resolve({ review: mockReview as any }), 100))
       );
 
@@ -294,7 +280,7 @@ describe("useReviewDetail", () => {
 
   describe("Integration with History Page", () => {
     it("provides review data for insights panel", async () => {
-      mockGetTriageReview.mockResolvedValueOnce({ review: mockReview as any });
+      mockGetReview.mockResolvedValueOnce({ review: mockReview as any });
 
       const { result } = renderHook(() => useReviewDetail("insights-test"));
 
@@ -308,7 +294,7 @@ describe("useReviewDetail", () => {
     });
 
     it("returns null review for non-existent reviews", async () => {
-      mockGetTriageReview.mockRejectedValueOnce(new Error("Not found"));
+      mockGetReview.mockRejectedValueOnce(new Error("Not found"));
 
       const { result } = renderHook(() => useReviewDetail("nonexistent"));
 

@@ -2,11 +2,11 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HistoryInsightsPane } from "./history-insights-pane";
-import type { TriageIssue } from "@stargazer/schemas";
+import type { ReviewIssue } from "@stargazer/schemas";
 import type { SeverityCounts } from "@stargazer/schemas/ui";
 
 describe("HistoryInsightsPane - Severity Breakdown Section", () => {
-  const mockIssues: TriageIssue[] = [
+  const mockIssues: ReviewIssue[] = [
     {
       id: "issue-1",
       title: "Memory leak in useEffect",
@@ -36,6 +36,7 @@ describe("HistoryInsightsPane - Severity Breakdown Section", () => {
     high: 2,
     medium: 3,
     low: 4,
+    nit: 0,
   };
 
   const defaultProps = {
@@ -61,7 +62,7 @@ describe("HistoryInsightsPane - Severity Breakdown Section", () => {
 });
 
 describe("HistoryInsightsPane - Issues Section", () => {
-  const mockIssues: TriageIssue[] = [
+  const mockIssues: ReviewIssue[] = [
     {
       id: "issue-1",
       title: "Memory leak in useEffect",
@@ -288,7 +289,7 @@ describe("HistoryInsightsPane - Component Interface", () => {
   it("accepts all optional props", () => {
     const props = {
       runId: "test-run",
-      severityCounts: { blocker: 1, high: 2, medium: 3, low: 4 },
+      severityCounts: { blocker: 1, high: 2, medium: 3, low: 4, nit: 0 },
       issues: [],
       duration: "1m 30s",
       onIssueClick: vi.fn(),

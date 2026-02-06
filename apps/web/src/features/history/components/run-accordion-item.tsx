@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Badge, IssueListItem } from "@/components/ui";
-import type { TriageIssue } from "@stargazer/schemas";
+import type { ReviewIssue } from "@stargazer/schemas";
 
 export interface RunAccordionItemProps {
   id: string;
@@ -10,7 +10,7 @@ export interface RunAccordionItemProps {
   provider: string;
   timestamp: string;
   summary: ReactNode;
-  issues: TriageIssue[];
+  issues: ReviewIssue[];
   isSelected: boolean;
   isExpanded: boolean;
   onSelect: () => void;

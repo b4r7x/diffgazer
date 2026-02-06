@@ -1,82 +1,30 @@
 import { randomUUID } from "node:crypto";
-import * as fs from "node:fs";
-import * as path from "node:path";
 import {
   getGlobalConfigPath,
   getGlobalSecretsPath,
   getGlobalTrustPath,
   getProjectInfoPath,
 } from "../paths.js";
-import { AI_PROVIDERS, type AIProvider } from "@stargazer/schemas/config";
-
-const DEFAULT_DIR_MODE = 0o700;
-const DEFAULT_FILE_MODE = 0o600;
-
-const ensureDirSync = (dirPath: string, mode: number = DEFAULT_DIR_MODE): void => {
-  fs.mkdirSync(dirPath, { recursive: true, mode });
-};
-
-const readJsonFileSync = <T>(filePath: string): T | null => {
-  try {
-    const content = fs.readFileSync(filePath, "utf-8");
-    return JSON.parse(content) as T;
-  } catch (error) {
-    if (error instanceof Error && "code" in error) {
-      const code = (error as NodeJS.ErrnoException).code;
-      if (code === "ENOENT") return null;
-    }
-
-    console.warn(`[stargazer] Failed to read JSON file: ${filePath}`);
-    return null;
-  }
-};
-
-const writeJsonFileSync = (
-  filePath: string,
-  data: unknown,
-  mode: number = DEFAULT_FILE_MODE
-): void => {
-  const dir = path.dirname(filePath);
-  ensureDirSync(dir, DEFAULT_DIR_MODE);
-
-  const tempPath = `${filePath}.${randomUUID()}.tmp`;
-  const content = `${JSON.stringify(data, null, 2)}\n`;
-
-  fs.writeFileSync(tempPath, content, { mode });
-  fs.renameSync(tempPath, filePath);
-};
-
-const removeFileSync = (filePath: string): boolean => {
-  try {
-    fs.unlinkSync(filePath);
-    return true;
-  } catch (error) {
-    if (error instanceof Error && "code" in error) {
-      const code = (error as NodeJS.ErrnoException).code;
-      if (code === "ENOENT") return false;
-    }
-
-    throw error;
-  }
-};
+import { readJsonFileSync, writeJsonFileSync, removeFileSync } from "../fs.js";
+import { AI_PROVIDERS, type AIProvider, type ProviderStatus } from "@stargazer/schemas/config";
+import type { SettingsConfig, SecretsStorage, TrustCapabilities } from "@stargazer/schemas/settings";
+import type {
+  ConfigState,
+  ProjectFile,
+  SecretsState,
+  TrustState,
+} from "./types.js";
 
 const isValidAIProvider = (value: string): value is AIProvider => {
   return AI_PROVIDERS.includes(value as AIProvider);
 };
-import type {
-  ConfigState,
-  ProjectFile,
-  ProviderStatus,
-  SecretsState,
-  SettingsConfig,
-  SecretsStorage,
-  TrustCapabilities,
-  TrustState,
-} from "./types.js";
 
 export const DEFAULT_SETTINGS: SettingsConfig = {
   theme: "auto",
   secretsStorage: null,
+  defaultLenses: ["correctness", "security", "performance", "simplicity", "tests"],
+  defaultProfile: null,
+  severityThreshold: "low",
 };
 
 export const DEFAULT_PROVIDERS: ProviderStatus[] = [
@@ -105,7 +53,7 @@ const normalizeProviders = (providers: ProviderStatus[]): ProviderStatus[] => {
 
 export const loadConfig = (): ConfigState => {
   const stored = readJsonFileSync<ConfigState>(CONFIG_PATH);
-  const settings = stored?.settings ?? DEFAULT_SETTINGS;
+  const settings = { ...DEFAULT_SETTINGS, ...(stored?.settings ?? {}) };
   const providers = normalizeProviders(stored?.providers ?? DEFAULT_PROVIDERS);
 
   return {

@@ -1,10 +1,10 @@
 import { cn } from "@/lib/utils";
-import type { TriageSeverity } from "@stargazer/schemas/triage";
+import type { ReviewSeverity } from "@stargazer/schemas/review";
 import { SEVERITY_CONFIG } from "@stargazer/schemas/ui";
 
 export interface IssueHeaderProps {
   title: string;
-  severity: TriageSeverity;
+  severity: ReviewSeverity;
   file: string;
   line: number;
   className?: string;

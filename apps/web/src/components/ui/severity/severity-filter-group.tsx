@@ -1,12 +1,12 @@
 import { cn } from "@/lib/utils";
-import type { TriageSeverity } from "@stargazer/schemas/triage";
+import type { ReviewSeverity } from "@stargazer/schemas/review";
 import { type UISeverityFilter, SEVERITY_ORDER } from "@stargazer/schemas/ui";
 import { SeverityFilterButton } from "./severity-filter-button";
 
 export type SeverityFilter = UISeverityFilter;
 
 export interface SeverityFilterGroupProps {
-  counts: Record<TriageSeverity, number>;
+  counts: Record<ReviewSeverity, number>;
   activeFilter: SeverityFilter;
   onFilterChange: (filter: SeverityFilter) => void;
   isFocused?: boolean;

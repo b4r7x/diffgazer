@@ -1,6 +1,3 @@
-// Types for diff parsing - canonical source in packages/core/src/diff/types.ts
-// Duplicated here to avoid circular dependency issues during server-side resolution
-
 export type DiffOperation = "add" | "modify" | "delete" | "rename";
 export type DiffLineType = "addition" | "deletion" | "hunk-header" | "file-header" | "context";
 

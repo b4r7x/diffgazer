@@ -1,17 +1,17 @@
 import { cn } from "@/lib/utils";
-import type { TriageSeverity } from "@stargazer/schemas/triage";
-import type { TriageIssue } from "@stargazer/schemas";
+import type { ReviewSeverity } from "@stargazer/schemas/review";
+import type { ReviewIssue } from "@stargazer/schemas";
 import { SEVERITY_CONFIG } from "@stargazer/schemas/ui";
 
 export interface IssueListItemProps {
-  issue: TriageIssue;
+  issue: ReviewIssue;
   isSelected: boolean;
   onClick: () => void;
   className?: string;
 }
 
 export function IssueListItem({ issue, isSelected, onClick, className }: IssueListItemProps) {
-  const severity = issue.severity as TriageSeverity;
+  const severity = issue.severity as ReviewSeverity;
   const config = SEVERITY_CONFIG[severity] ?? SEVERITY_CONFIG.medium;
 
   return (

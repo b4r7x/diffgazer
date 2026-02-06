@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { ReviewModeSchema } from "@stargazer/schemas/review-storage";
 
-export const GitDiffModeSchema = z.enum(["staged", "unstaged", "files"]);
-export type GitDiffMode = z.infer<typeof GitDiffModeSchema>;
+export const GitDiffQuerySchema = z.object({
+  mode: ReviewModeSchema.optional(),
+  path: z.string().optional(),
+});
