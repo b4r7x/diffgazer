@@ -25,7 +25,7 @@ export function MenuItem({
 }: MenuItemProps) {
   const { selectedIndex, onSelect, onActivate, items, variant: menuVariant } = useMenuContext();
 
-  const itemData = items.find((item) => item.id === id);
+  const itemData = items.get(id);
   if (!itemData) return null;
 
   const isSelected = itemData.index === selectedIndex;

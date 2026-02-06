@@ -34,7 +34,7 @@ export function NavigationListItem({
 
   return (
     <div
-      id={id}
+      id={`navlist-${id}`}
       role="option"
       data-value={id}
       aria-selected={isSelected}

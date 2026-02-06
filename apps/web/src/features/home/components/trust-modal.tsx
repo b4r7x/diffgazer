@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { TrustPermissionsContent } from "@/features/settings/components/trust-permissions-content";
+import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
 import { useTrust } from "@/hooks/use-trust";
 
 export interface TrustModalProps {

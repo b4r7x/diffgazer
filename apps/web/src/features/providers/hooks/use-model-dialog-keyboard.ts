@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef, type RefObject } from "react";
+import { useState, useEffect, type RefObject } from "react";
 import type { ModelInfo } from "@stargazer/schemas/config";
 import { useKey } from "@/hooks/keyboard";
 import { useScrollIntoView } from "@/hooks/use-scroll-into-view";
-import type { TierFilter } from "@/features/providers/constants";
-import { FILTERS } from "@/features/providers/components/model-select-dialog/model-filter-tabs";
+import { TIER_FILTERS, type TierFilter } from "@/features/providers/constants";
 
 type FocusZone = "search" | "filters" | "list" | "footer";
 
@@ -63,13 +62,11 @@ export function useModelDialogKeyboard({
   const [footerButtonIndex, setFooterButtonIndex] = useState(1);
 
   const { scrollItemIntoView } = useScrollIntoView(listContainerRef);
-  const prevOpenRef = useRef(open);
 
-  // Reset state when dialog opens (false -> true transition only)
+  // Reset all state when dialog opens — intentionally omit deps other than `open`
+  // to run exactly once per open transition, not on every model/filter change
   useEffect(() => {
-    const wasOpen = prevOpenRef.current;
-    prevOpenRef.current = open;
-    if (!open || wasOpen) return;
+    if (!open) return;
     resetFilters();
     setFocusZone("list");
     setFilterIndex(0);
@@ -77,7 +74,8 @@ export function useModelDialogKeyboard({
     setCheckedModelId(currentModel);
     const currentIndex = models.findIndex((m) => m.id === currentModel);
     setSelectedIndex(currentIndex >= 0 ? currentIndex : 0);
-  }, [open, currentModel, models, resetFilters]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset once per dialog open, not on data changes
+  }, [open]);
 
   // Clamp selection when filtered list shrinks
   const clampedSelectedIndex =
@@ -90,8 +88,7 @@ export function useModelDialogKeyboard({
     if (focusZone === "list" && filteredModels.length > 0) {
       scrollItemIntoView(clampedSelectedIndex);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clampedSelectedIndex, focusZone, filteredModels.length]);
+  }, [clampedSelectedIndex, focusZone, filteredModels.length, scrollItemIntoView]);
 
   const handleConfirm = () => {
     const model = filteredModels[clampedSelectedIndex];
@@ -160,8 +157,8 @@ export function useModelDialogKeyboard({
     setFocusZone("search");
     searchInputRef.current?.focus();
   }, { enabled: open && focusZone === "filters" });
-  useKey("Enter", () => setTierFilter(FILTERS[filterIndex]), { enabled: open && focusZone === "filters" });
-  useKey(" ", () => setTierFilter(FILTERS[filterIndex]), { enabled: open && focusZone === "filters" });
+  useKey("Enter", () => setTierFilter(TIER_FILTERS[filterIndex]), { enabled: open && focusZone === "filters" });
+  useKey(" ", () => setTierFilter(TIER_FILTERS[filterIndex]), { enabled: open && focusZone === "filters" });
 
   // Footer zone
   useKey("ArrowLeft", () => setFooterButtonIndex(0), { enabled: open && focusZone === "footer" });

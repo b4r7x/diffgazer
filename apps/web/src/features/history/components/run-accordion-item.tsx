@@ -55,17 +55,7 @@ export function RunAccordionItem({
         <div className={cn("text-sm mb-2 line-clamp-2 overflow-hidden", isSelected ? "text-tui-fg" : "text-gray-400")}>
           {summary}
         </div>
-        <div className={cn(
-          "flex gap-4 text-xs font-mono text-gray-500",
-          !isSelected && "opacity-0 group-hover:opacity-100 transition-opacity"
-        )}>
-          <span className="hover:text-tui-violet cursor-pointer">
-            <span className="text-tui-violet">[r]</span> Resume
-          </span>
-          <span className="hover:text-tui-blue cursor-pointer">
-            <span className="text-tui-blue">[e]</span> Export
-          </span>
-        </div>
+        {/* TODO: Add Resume and Export actions when handlers are implemented */}
       </div>
 
     </div>

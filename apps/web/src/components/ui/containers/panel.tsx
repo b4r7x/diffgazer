@@ -38,13 +38,16 @@ const headerVariants: Record<NonNullable<PanelHeaderProps["variant"]>, string> =
     "text-gray-500 font-bold uppercase text-xs tracking-wider border-b border-tui-border pb-2 mb-2",
 };
 
+const valueVariants: Record<NonNullable<PanelHeaderProps["valueVariant"]>, string> = {
+  default: "text-gray-400",
+  success: "text-tui-green",
+  "success-badge":
+    "bg-tui-green/10 text-tui-green border border-tui-green px-2 py-0.5 text-xs font-bold tracking-wider rounded-sm",
+  muted: "text-gray-500",
+};
+
 function getValueClasses(valueVariant: PanelHeaderProps["valueVariant"] = "default"): string {
-  if (valueVariant === "success-badge") {
-    return "bg-tui-green/10 text-tui-green border border-tui-green px-2 py-0.5 text-xs font-bold tracking-wider rounded-sm";
-  }
-  if (valueVariant === "success") return "text-tui-green";
-  if (valueVariant === "muted") return "text-gray-500";
-  return "text-gray-400";
+  return valueVariants[valueVariant];
 }
 
 export function PanelHeader({

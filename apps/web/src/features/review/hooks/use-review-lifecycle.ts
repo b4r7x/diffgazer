@@ -37,13 +37,6 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
     onComplete?.(data);
   });
 
-  // Track whether we've ever streamed
-  useEffect(() => {
-    if (state.isStreaming) {
-      hasStreamedRef.current = true;
-    }
-  }, [state.isStreaming]);
-
   // Sync review ID to URL
   useEffect(() => {
     if (!state.reviewId) return;
@@ -64,6 +57,7 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
     if (settingsLoading) return;
     if (!isConfigured) return;
     hasStartedRef.current = true;
+    hasStreamedRef.current = true;
 
     let ignore = false;
 
@@ -101,14 +95,13 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
     return () => { ignore = true; };
   }, [mode, start, resume, configLoading, isConfigured, params.reviewId, settingsLoading, defaultLenses]);
 
+  // Render-phase ref assignments (no effect needed)
   const stepsRef = useRef(state.steps);
   const issuesRef = useRef(state.issues);
   const reviewIdRef = useRef(state.reviewId);
-  useEffect(() => {
-    stepsRef.current = state.steps;
-    issuesRef.current = state.issues;
-    reviewIdRef.current = state.reviewId;
-  }, [state.steps, state.issues, state.reviewId]);
+  stepsRef.current = state.steps;
+  issuesRef.current = state.issues;
+  reviewIdRef.current = state.reviewId;
 
   // Delay transition so users see final step completions before switching views
   const prevIsStreamingRef = useRef(state.isStreaming);

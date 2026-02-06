@@ -38,14 +38,8 @@ export function SettingsThemePage() {
           <PanelContent className="flex-1 flex flex-col">
             <ThemeSelectorContent
               value={theme}
-              onChange={(v) => {
-                if (v === "terminal") return;
-                setTheme(v);
-              }}
-              onFocus={(v) => {
-                if (v === "terminal") return;
-                setPreviewOverride(v);
-              }}
+              onChange={(v) => setTheme(v as WebTheme)}
+              onFocus={(v) => setPreviewOverride(v as WebTheme)}
             />
             <div className="mt-auto pt-6">
               <Callout variant="info">

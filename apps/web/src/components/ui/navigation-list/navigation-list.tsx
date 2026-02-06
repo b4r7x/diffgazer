@@ -26,7 +26,7 @@ export function NavigationList({
 }: NavigationListRootProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { focusedValue } = useGroupNavigation({
+  useGroupNavigation({
     containerRef,
     role: 'option',
     value: selectedId,
@@ -47,7 +47,7 @@ export function NavigationList({
       <div
         ref={containerRef}
         role="listbox"
-        aria-activedescendant={focusedValue ?? undefined}
+        aria-activedescendant={selectedId ? `navlist-${selectedId}` : undefined}
         className={cn('w-full', className)}
       >
         {children}

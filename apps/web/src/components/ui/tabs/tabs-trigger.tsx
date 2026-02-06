@@ -33,7 +33,7 @@ export function TabsTrigger({ value, children, className, disabled }: TabsTrigge
         'px-3 py-1 text-sm font-mono transition-colors cursor-pointer',
         'border border-[--tui-border]',
         'focus:outline-none focus:ring-1 focus:ring-[--tui-primary]',
-        isActive && 'bg-blue-600 text-white border-blue-600',
+        isActive && 'bg-tui-blue text-black border-tui-blue',
         !isActive && !disabled && 'bg-[--tui-bg] text-[--tui-fg] hover:bg-[--tui-selection]',
         disabled && 'opacity-50 cursor-not-allowed',
         className

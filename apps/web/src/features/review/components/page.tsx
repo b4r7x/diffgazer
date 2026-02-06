@@ -1,4 +1,4 @@
-import { useReducer, useEffect, useCallback, useRef } from "react";
+import { useReducer, useEffect, useCallback } from "react";
 import {
   useSearch,
   useParams,
@@ -58,8 +58,6 @@ export function ReviewPage() {
     hasReviewId ? { phase: "checking-status" as const } : { phase: "streaming" as const },
   );
 
-  const initialReviewIdRef = useRef(params.reviewId);
-  const statusCheckDoneRef = useRef(false);
   const router = useRouter();
   const { handleApiError } = useReviewErrorHandler();
 
@@ -95,20 +93,17 @@ export function ReviewPage() {
   );
 
   useEffect(() => {
-    if (!initialReviewIdRef.current || !params.reviewId || statusCheckDoneRef.current)
-      return;
+    if (state.phase !== "checking-status" || !params.reviewId) return;
 
     const controller = new AbortController();
 
     const checkStatus = async () => {
-      dispatch({ type: "START_CHECK" });
       try {
         const { review } = await api.getReview(params.reviewId!);
 
         if (controller.signal.aborted) return;
 
         if (review?.result) {
-          statusCheckDoneRef.current = true;
           dispatch({
             type: "SHOW_RESULTS",
             reviewData: { issues: review.result.issues, reviewId: review.metadata.id },
@@ -121,7 +116,6 @@ export function ReviewPage() {
         if (controller.signal.aborted) return;
 
         if (isApiError(error) && error.status === 404) {
-          statusCheckDoneRef.current = true;
           dispatch({ type: "CHECK_DONE" });
           return;
         }
@@ -133,7 +127,7 @@ export function ReviewPage() {
     checkStatus();
 
     return () => controller.abort();
-  }, [params.reviewId, handleApiError]);
+  }, [state.phase, params.reviewId, handleApiError]);
 
   const loadingMessage =
     state.phase === "checking-status" ? "Checking review..." :
