@@ -10,6 +10,7 @@ import type {
   StoreErrorCode,
 } from "../../shared/lib/storage/types.js";
 import type { TraceRef } from "@stargazer/schemas/review";
+import type { ReviewAbort } from "./types.js";
 
 export const parseProjectPath = (
   c: Context,
@@ -63,6 +64,27 @@ export const handleStoreError = (ctx: Context, error: StoreError): Response => {
   const status = errorCodeToStatus(error.code);
   return errorResponse(ctx, error.message, error.code, status);
 };
+
+export function reviewAbort(
+  message: string,
+  code: string,
+  step?: ReviewAbort["step"],
+): ReviewAbort {
+  return { kind: "review_abort", message, code, step };
+}
+
+export function isReviewAbort(error: unknown): error is ReviewAbort {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const candidate = error as Partial<ReviewAbort>;
+  return (
+    candidate.kind === "review_abort" &&
+    typeof candidate.message === "string" &&
+    typeof candidate.code === "string"
+  );
+}
 
 export function summarizeOutput(value: unknown): string {
   if (value === null || value === undefined) {

@@ -26,7 +26,12 @@ import { orchestrateReview } from "../../shared/lib/review/orchestrate.js";
 import { buildProjectContextSnapshot } from "./context.js";
 import { enrichIssues } from "./enrichment.js";
 import type { createGitService } from "../../shared/lib/git/service.js";
-import type { EmitFn, ResolvedConfig, ReviewOutcome } from "./types.js";
+import { reviewAbort } from "./utils.js";
+import {
+  type EmitFn,
+  type ResolvedConfig,
+  type ReviewOutcome,
+} from "./types.js";
 
 export const MAX_DIFF_SIZE_BYTES = 524288; // 512KB
 export const MAX_AGENT_CONCURRENCY = 1;
@@ -103,18 +108,6 @@ export function filterDiffByFiles(
   return { files: filteredFiles, totalStats };
 }
 
-/**
- * Thrown to short-circuit the review pipeline. Caught by the orchestrator
- * to emit the appropriate SSE error event and mark the session complete.
- */
-export class ReviewAbort {
-  constructor(
-    readonly message: string,
-    readonly code: string,
-    readonly step?: StepId,
-  ) {}
-}
-
 export async function resolveGitDiff(params: {
   gitService: ReturnType<typeof createGitService>;
   mode: ReviewMode;
@@ -130,7 +123,7 @@ export async function resolveGitDiff(params: {
   try {
     diff = await gitService.getDiff(mode);
   } catch (error: unknown) {
-    throw new ReviewAbort(
+    throw reviewAbort(
       createGitDiffError(error).message,
       ErrorCode.GIT_NOT_FOUND,
       "diff",
@@ -142,7 +135,7 @@ export async function resolveGitDiff(params: {
       mode === "staged"
         ? "No staged changes found. Use 'git add' to stage files, or review unstaged changes instead."
         : "No unstaged changes found. Make some edits first, or review staged changes instead.";
-    throw new ReviewAbort(errorMessage, "NO_DIFF", "diff");
+    throw reviewAbort(errorMessage, "NO_DIFF", "diff");
   }
 
   let parsed = parseDiff(diff);
@@ -159,7 +152,7 @@ export async function resolveGitDiff(params: {
   if (files && files.length > 0) {
     parsed = filterDiffByFiles(parsed, files);
     if (parsed.files.length === 0) {
-      throw new ReviewAbort(
+      throw reviewAbort(
         `None of the specified files have ${mode} changes`,
         "NO_DIFF",
       );
@@ -169,7 +162,7 @@ export async function resolveGitDiff(params: {
   if (parsed.totalStats.totalSizeBytes > MAX_DIFF_SIZE_BYTES) {
     const sizeMB = (parsed.totalStats.totalSizeBytes / 1024 / 1024).toFixed(2);
     const maxMB = (MAX_DIFF_SIZE_BYTES / 1024 / 1024).toFixed(2);
-    throw new ReviewAbort(
+    throw reviewAbort(
       `Diff too large (${sizeMB}MB exceeds ${maxMB}MB limit). Try reviewing fewer files or use file filtering.`,
       ErrorCode.VALIDATION_ERROR,
     );
@@ -235,7 +228,7 @@ export async function executeReview(params: {
   );
 
   if (!result.ok) {
-    throw new ReviewAbort(result.error.message, "AI_ERROR", "review");
+    throw reviewAbort(result.error.message, "AI_ERROR", "review");
   }
 
   await emit(stepComplete("review"));
@@ -306,7 +299,7 @@ export async function finalizeReview(params: {
   });
 
   if (!saveResult.ok) {
-    throw new ReviewAbort(saveResult.error.message, ErrorCode.INTERNAL_ERROR);
+    throw reviewAbort(saveResult.error.message, ErrorCode.INTERNAL_ERROR);
   }
 
   return finalResult;

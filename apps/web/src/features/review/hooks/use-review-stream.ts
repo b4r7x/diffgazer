@@ -1,5 +1,6 @@
 import { useReducer, useCallback, useRef } from "react";
-import { streamReviewWithEvents, resumeReviewStream, type StreamReviewRequest } from "../api/review-api";
+import { api } from "@/lib/api";
+import type { StreamReviewRequest, StreamReviewError } from "@stargazer/api/review";
 import type { AgentStreamEvent, EnrichEvent, StepEvent } from "@stargazer/schemas/events";
 import type { Result } from "@stargazer/core/result";
 import {
@@ -8,7 +9,6 @@ import {
   type ReviewState as CoreReviewState,
   type ReviewAction as CoreReviewAction,
 } from "@stargazer/core/review";
-import type { StreamReviewError } from "@stargazer/api/review";
 import { ReviewErrorCode } from "@stargazer/schemas/review";
 
 interface WebReviewState extends CoreReviewState {
@@ -112,7 +112,7 @@ export function useReviewStream() {
     dispatch({ type: "START" });
 
     try {
-      const result = await streamReviewWithEvents({
+      const result = await api.streamReviewWithEvents({
         ...options,
         signal: abortController.signal,
         onAgentEvent: enqueueEvent,
@@ -149,7 +149,7 @@ export function useReviewStream() {
     dispatch({ type: "START" });
 
     try {
-      const result = await resumeReviewStream({
+      const result = await api.resumeReviewStream({
         reviewId,
         signal: abortController.signal,
         onAgentEvent: enqueueEvent,

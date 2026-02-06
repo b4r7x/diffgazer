@@ -23,8 +23,9 @@ import {
   resolveReviewConfig,
   executeReview,
   finalizeReview,
-  ReviewAbort,
 } from "./pipeline.js";
+import { isReviewAbort } from "./utils.js";
+import type { ReviewAbort } from "./types.js";
 
 function stepError(step: StepId, error: string): { type: "step_error"; step: StepId; error: string; timestamp: string } {
   return { type: "step_error", step, error, timestamp: new Date().toISOString() };
@@ -35,6 +36,74 @@ async function writeStreamEvent(stream: SSEWriter, event: FullReviewStreamEvent)
     event: event.type,
     data: JSON.stringify(event),
   });
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+async function writeSSEErrorSafely(
+  stream: SSEWriter,
+  message: string,
+  code: string
+): Promise<boolean> {
+  try {
+    await writeSSEError(stream, message, code);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function handleReviewAbortError(
+  error: ReviewAbort,
+  emit: EmitFn,
+  stream: SSEWriter,
+  reviewId: string
+): Promise<void> {
+  const tasks: Promise<unknown>[] = [writeSSEError(stream, error.message, error.code)];
+  if (error.step) {
+    tasks.unshift(emit(stepError(error.step, error.message)));
+  }
+  await Promise.allSettled(tasks);
+  markComplete(reviewId);
+}
+
+async function handleUnexpectedError(
+  error: unknown,
+  stream: SSEWriter,
+  reviewId: string
+): Promise<void> {
+  markComplete(reviewId);
+  deleteSession(reviewId);
+
+  const didWriteError = await writeSSEErrorSafely(
+    stream,
+    getErrorMessage(error),
+    ErrorCode.INTERNAL_ERROR
+  );
+
+  if (!didWriteError) {
+    throw error;
+  }
+}
+
+async function handleReviewFailure(
+  error: unknown,
+  emit: EmitFn,
+  stream: SSEWriter,
+  reviewId: string
+): Promise<void> {
+  if (isAbortError(error)) {
+    return;
+  }
+
+  if (isReviewAbort(error)) {
+    await handleReviewAbortError(error, emit, stream, reviewId);
+    return;
+  }
+
+  await handleUnexpectedError(error, stream, reviewId);
 }
 
 export async function streamActiveSessionToSSE(
@@ -151,28 +220,6 @@ export async function streamReviewToSSE(
     });
     markComplete(reviewId);
   } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      return;
-    }
-
-    if (error instanceof ReviewAbort) {
-      try {
-        if (error.step) {
-          await emit(stepError(error.step, error.message));
-        }
-        await writeSSEError(stream, error.message, error.code);
-        markComplete(reviewId);
-      } catch {
-      }
-      return;
-    }
-
-    markComplete(reviewId);
-    deleteSession(reviewId);
-    try {
-      await writeSSEError(stream, getErrorMessage(error), ErrorCode.INTERNAL_ERROR);
-    } catch {
-      throw error;
-    }
+    await handleReviewFailure(error, emit, stream, reviewId);
   }
 }
