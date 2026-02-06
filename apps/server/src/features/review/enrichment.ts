@@ -4,20 +4,27 @@ import type { EnrichProgressEvent } from "@stargazer/schemas/events";
 const CONTEXT_LINES = 5;
 
 export interface EnrichGitService {
-  getBlame(file: string, line: number): Promise<{
+  getBlame(
+    file: string,
+    line: number,
+  ): Promise<{
     author: string;
     authorEmail: string;
     commit: string;
     commitDate: string;
     summary: string;
   } | null>;
-  getFileLines(file: string, startLine: number, endLine: number): Promise<string[]>;
+  getFileLines(
+    file: string,
+    startLine: number,
+    endLine: number,
+  ): Promise<string[]>;
 }
 
 async function enrichIssue(
   issue: ReviewIssue,
   gitService: EnrichGitService,
-  onEvent: (event: EnrichProgressEvent) => void
+  onEvent: (event: EnrichProgressEvent) => void,
 ): Promise<ReviewIssue> {
   const enrichment: EnrichmentData = {
     blame: null,
@@ -81,12 +88,16 @@ async function enrichIssue(
 export async function enrichIssues(
   issues: ReviewIssue[],
   gitService: EnrichGitService,
-  onEvent: (event: EnrichProgressEvent) => void
+  onEvent: (event: EnrichProgressEvent) => void,
+  signal?: AbortSignal,
 ): Promise<ReviewIssue[]> {
-  const enrichPromises = issues.map((issue) => enrichIssue(issue, gitService, onEvent));
+  if (signal?.aborted) return issues;
+  const enrichPromises = issues.map((issue) =>
+    enrichIssue(issue, gitService, onEvent),
+  );
   const enriched = await Promise.allSettled(enrichPromises);
 
   return enriched.map((result, i) =>
-    result.status === "fulfilled" ? result.value : issues[i]!
+    result.status === "fulfilled" ? result.value : issues[i]!,
   );
 }

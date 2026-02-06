@@ -119,14 +119,20 @@ export function createAIClient(config: AIClientConfig): Result<AIClient, AIError
 
     async generate<T extends z.ZodType>(
       prompt: string,
-      schema: T
+      schema: T,
+      options?: { signal?: AbortSignal }
     ): Promise<Result<z.infer<T>, AIError>> {
       try {
         const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-        const abortSignal =
+        const timeoutSignal =
           timeoutMs > 0 && typeof AbortSignal !== "undefined" && "timeout" in AbortSignal
             ? AbortSignal.timeout(timeoutMs)
             : undefined;
+        const externalSignal = options?.signal;
+        const abortSignal =
+          timeoutSignal && externalSignal
+            ? AbortSignal.any([timeoutSignal, externalSignal])
+            : timeoutSignal ?? externalSignal;
         const result = await generateObject({
           model: languageModel,
           prompt,

@@ -1,7 +1,11 @@
-import { z } from "zod";
 import { type Result, ok, err } from "@stargazer/core/result";
 import { createError } from "@stargazer/core/errors";
-import type { DrilldownResult, TraceRef, ReviewIssue, ReviewResult } from "@stargazer/schemas/review";
+import type {
+  DrilldownResult,
+  TraceRef,
+  ReviewIssue,
+  ReviewResult,
+} from "@stargazer/schemas/review";
 import { ErrorCode } from "@stargazer/schemas/errors";
 import type { AgentStreamEvent } from "@stargazer/schemas/events";
 import type { AIClient, AIError } from "../../shared/lib/ai/types.js";
@@ -12,67 +16,11 @@ import {
   addDrilldownToReview,
   getReview as getStoredReview,
 } from "../../shared/lib/storage/reviews.js";
-import type { StoreError } from "../../shared/lib/storage/types.js";
 import { buildDrilldownPrompt } from "../../shared/lib/review/prompts.js";
-
-export type DrilldownError = AIError | { code: "ISSUE_NOT_FOUND"; message: string };
-
-export const DrilldownResponseSchema = z.object({
-  detailedAnalysis: z.string(),
-  rootCause: z.string(),
-  impact: z.string(),
-  suggestedFix: z.string(),
-  patch: z.string().nullable(),
-  relatedIssues: z.array(z.string()),
-  references: z.array(z.string()),
-});
-
-type DrilldownResponse = z.infer<typeof DrilldownResponseSchema>;
-
-export function summarizeOutput(value: unknown): string {
-  if (value === null || value === undefined) {
-    return String(value);
-  }
-
-  if (typeof value === "string") {
-    const lines = value.split("\n").length;
-    const chars = value.length;
-    if (chars > 100) {
-      return `${chars} chars, ${lines} lines`;
-    }
-    return value;
-  }
-
-  if (Array.isArray(value)) {
-    return `Array[${value.length}]`;
-  }
-
-  if (typeof value === "object") {
-    const keys = Object.keys(value);
-    return `Object{${keys.slice(0, 3).join(", ")}${keys.length > 3 ? ", ..." : ""}}`;
-  }
-
-  return String(value);
-}
-
-export async function recordTrace<T>(
-  steps: TraceRef[],
-  toolName: string,
-  inputSummary: string,
-  fn: () => Promise<T>
-): Promise<T> {
-  const step = steps.length + 1;
-  const timestamp = new Date().toISOString();
-  const result = await fn();
-  steps.push({
-    step,
-    tool: toolName,
-    inputSummary,
-    outputSummary: summarizeOutput(result),
-    timestamp,
-  });
-  return result;
-}
+import { DrilldownResponseSchema } from "./schemas.js";
+import type { DrilldownResponse } from "./schemas.js";
+import type { DrilldownError, HandleDrilldownError } from "./types.js";
+import { recordTrace } from "./utils.js";
 
 interface DrilldownOptions {
   traceSteps?: TraceRef[];
@@ -84,12 +32,14 @@ export async function drilldownIssue(
   issue: ReviewIssue,
   diff: ParsedDiff,
   allIssues: ReviewIssue[] = [],
-  options?: DrilldownOptions
+  options?: DrilldownOptions,
 ): Promise<Result<DrilldownResult, DrilldownError>> {
   const steps: TraceRef[] = options?.traceSteps ?? [];
   const onEvent = options?.onEvent ?? (() => {});
 
-  const targetFile = diff.files.find((f: FileDiff) => f.filePath === issue.file);
+  const targetFile = diff.files.find(
+    (f: FileDiff) => f.filePath === issue.file,
+  );
   if (targetFile) {
     const lineCount = targetFile.rawDiff.split("\n").length;
     const startLine = issue.line_start ?? targetFile.hunks[0]?.newStart ?? 1;
@@ -118,7 +68,7 @@ export async function drilldownIssue(
     steps,
     "generateAnalysis",
     `issue analysis: ${issue.id} - ${issue.title}`,
-    () => client.generate(prompt, DrilldownResponseSchema)
+    () => client.generate(prompt, DrilldownResponseSchema),
   );
 
   if (!result.ok) {
@@ -140,27 +90,25 @@ export async function drilldownIssueById(
   issueId: string,
   reviewResult: ReviewResult,
   diff: ParsedDiff,
-  options?: DrilldownOptions
+  options?: DrilldownOptions,
 ): Promise<Result<DrilldownResult, DrilldownError>> {
   const issue = reviewResult.issues.find((i) => i.id === issueId);
 
   if (!issue) {
-    return err({ code: "ISSUE_NOT_FOUND", message: `Issue with ID "${issueId}" not found` });
+    return err({
+      code: "ISSUE_NOT_FOUND",
+      message: `Issue with ID "${issueId}" not found`,
+    });
   }
 
   return drilldownIssue(client, issue, diff, reviewResult.issues, options);
 }
 
-export type HandleDrilldownError =
-  | DrilldownError
-  | StoreError
-  | { code: typeof ErrorCode.COMMAND_FAILED; message: string };
-
 export async function handleDrilldownRequest(
   client: AIClient,
   reviewId: string,
   issueId: string,
-  projectPath: string
+  projectPath: string,
 ): Promise<Result<DrilldownResult, HandleDrilldownError>> {
   const reviewResult = await getStoredReview(reviewId);
   if (!reviewResult.ok) return reviewResult;
@@ -169,9 +117,13 @@ export async function handleDrilldownRequest(
 
   let diff: string;
   try {
-    diff = await gitService.getDiff(reviewResult.value.metadata.mode ?? "unstaged");
+    diff = await gitService.getDiff(
+      reviewResult.value.metadata.mode ?? "unstaged",
+    );
   } catch {
-    return err(createError(ErrorCode.COMMAND_FAILED, "Failed to retrieve git diff"));
+    return err(
+      createError(ErrorCode.COMMAND_FAILED, "Failed to retrieve git diff"),
+    );
   }
 
   const parsed = parseDiff(diff);
@@ -179,12 +131,15 @@ export async function handleDrilldownRequest(
     client,
     issueId,
     reviewResult.value.result,
-    parsed
+    parsed,
   );
 
   if (!drilldownResult.ok) return drilldownResult;
 
-  const saveResult = await addDrilldownToReview(reviewId, drilldownResult.value);
+  const saveResult = await addDrilldownToReview(
+    reviewId,
+    drilldownResult.value,
+  );
   if (!saveResult.ok) return saveResult;
 
   return drilldownResult;
