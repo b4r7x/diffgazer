@@ -82,9 +82,9 @@ export function Radio({
   );
 }
 
-interface RadioGroupContextType {
-  value?: string;
-  onValueChange: (value: string) => void;
+interface RadioGroupContextType<T extends string = string> {
+  value?: T;
+  onValueChange: (value: T) => void;
   disabled: boolean;
   size: SelectableItemSize;
   isFocused: (value: string) => boolean;
@@ -103,11 +103,11 @@ function useRadioGroupContext() {
   return context;
 }
 
-export interface RadioGroupProps {
-  value?: string;
-  defaultValue?: string;
-  onValueChange?: (value: string) => void;
-  onFocus?: (value: string) => void;
+export interface RadioGroupProps<T extends string = string> {
+  value?: T;
+  defaultValue?: T;
+  onValueChange?: (value: T) => void;
+  onFocus?: (value: T) => void;
   onFocusZoneEnter?: () => void;
   orientation?: "vertical" | "horizontal";
   disabled?: boolean;
@@ -118,7 +118,7 @@ export interface RadioGroupProps {
   onBoundaryReached?: (direction: "up" | "down") => void;
 }
 
-function RadioGroupRoot({
+function RadioGroupRoot<T extends string = string>({
   value: controlledValue,
   defaultValue,
   onValueChange,
@@ -131,7 +131,7 @@ function RadioGroupRoot({
   children,
   wrap = true,
   onBoundaryReached,
-}: RadioGroupProps) {
+}: RadioGroupProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
   const isControlled = controlledValue !== undefined;
@@ -139,9 +139,9 @@ function RadioGroupRoot({
 
   const handleValueChange = useCallback((newValue: string) => {
     if (disabled) return;
-    onValueChange?.(newValue);
+    onValueChange?.(newValue as T);
     if (!isControlled) {
-      setUncontrolledValue(newValue);
+      setUncontrolledValue(newValue as T);
     }
   }, [disabled, onValueChange, isControlled]);
 
@@ -149,7 +149,7 @@ function RadioGroupRoot({
     containerRef,
     role: "radio",
     onSelect: handleValueChange,
-    onFocusChange: onFocus,
+    onFocusChange: onFocus as ((value: string) => void) | undefined,
     wrap,
     onBoundaryReached,
     enabled: !disabled,
@@ -226,5 +226,4 @@ function RadioGroupItem({
   );
 }
 
-const RadioGroup = Object.assign(RadioGroupRoot, { displayName: "RadioGroup" as const });
-export { RadioGroup, RadioGroupItem };
+export { RadioGroupRoot as RadioGroup, RadioGroupItem };

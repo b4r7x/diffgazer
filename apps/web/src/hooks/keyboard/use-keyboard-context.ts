@@ -6,7 +6,7 @@ type KeyboardContextValue = NonNullable<ContextType<typeof KeyboardContext>>;
 
 export function useKeyboardContext(): KeyboardContextValue {
   const ctx = useContext(KeyboardContext);
-  if (!ctx) {
+  if (ctx === undefined) {
     throw new Error("useKeyboardContext must be used within KeyboardProvider");
   }
   return ctx;

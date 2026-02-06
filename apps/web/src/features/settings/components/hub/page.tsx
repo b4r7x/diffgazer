@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Menu, MenuItem } from "@/components/ui/menu";
 import { Panel, PanelHeader } from "@/components/ui/containers";
-import { useConfig } from "@/hooks/use-config";
+import { useConfigData } from "@/app/providers/config-provider";
 import { useScope, useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
@@ -14,7 +14,7 @@ const FOOTER_RIGHT = [{ key: "", label: "HUB-MODE" }];
 
 export function SettingsHubPage() {
   const navigate = useNavigate();
-  const { provider, isConfigured, trust } = useConfig();
+  const { provider, isConfigured, trust } = useConfigData();
   const { theme } = useTheme();
   const [selectedIndex, setSelectedIndex] = useScopedRouteState("menuIndex", 0);
   const isTrusted = Boolean(trust?.capabilities.readFiles);
@@ -70,8 +70,8 @@ export function SettingsHubPage() {
     diagnostics: "/settings/diagnostics",
   };
 
-  const handleActivate = (item: { id: string }) => {
-    const route = settingsRoutes[item.id as SettingsAction];
+  const handleActivate = (item: { id: SettingsAction }) => {
+    const route = settingsRoutes[item.id];
     if (route) navigate({ to: route });
   };
 

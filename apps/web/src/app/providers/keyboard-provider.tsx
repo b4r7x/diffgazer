@@ -20,7 +20,7 @@ interface KeyboardContextValue {
   register: (scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => () => void;
 }
 
-export const KeyboardContext = createContext<KeyboardContextValue | null>(null);
+export const KeyboardContext = createContext<KeyboardContextValue | undefined>(undefined);
 
 export function KeyboardProvider({ children }: { children: ReactNode }) {
   const [scopeStack, setScopeStack] = useState<string[]>(["global"]);
@@ -62,8 +62,9 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(
     (scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => {
-      if (!handlers.current.has(scope)) handlers.current.set(scope, new Map());
-      handlers.current.get(scope)!.set(hotkey, { handler, options });
+      const scopeHandlers = handlers.current.get(scope) ?? new Map<string, HandlerEntry>();
+      if (!handlers.current.has(scope)) handlers.current.set(scope, scopeHandlers);
+      scopeHandlers.set(hotkey, { handler, options });
       return () => handlers.current.get(scope)?.delete(hotkey);
     },
     []

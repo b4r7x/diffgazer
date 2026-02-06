@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { usePageFooter } from "@/hooks/use-page-footer";
 import { useSettings } from "@/hooks/use-settings";
 import { SETTINGS_SHORTCUTS } from "@/config/navigation";
 import { api } from "@/lib/api";
+import { useContextManagement } from "../../hooks/use-context-management";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@stargazer/schemas/events";
 import type { LensId } from "@stargazer/schemas/review";
 
@@ -30,32 +31,14 @@ export function SettingsAnalysisPage() {
   const navigate = useNavigate();
   const { settings, isLoading: settingsLoading } = useSettings();
   const [selectedLenses, setSelectedLenses] = useState<LensId[] | null>(null);
-  const [contextStatus, setContextStatus] = useState<"loading" | "ready" | "missing" | "error">("loading");
-  const [contextGeneratedAt, setContextGeneratedAt] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { contextStatus, contextGeneratedAt, isRefreshing, handleRefreshContext } = useContextManagement(setError);
 
   const effectiveLenses = selectedLenses ?? (settings?.defaultLenses?.length ? settings.defaultLenses : LENS_OPTIONS.map(l => l.id));
 
   usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
   useKey("Escape", () => navigate({ to: "/settings" }));
-
-  // Fetch review context separately (not a settings call)
-  useEffect(() => {
-    let active = true;
-    api.getReviewContext()
-      .then((context) => {
-        if (!active) return;
-        setContextStatus("ready");
-        setContextGeneratedAt(context.meta.generatedAt);
-      })
-      .catch(() => {
-        if (!active) return;
-        setContextStatus("missing");
-      });
-    return () => { active = false; };
-  }, []);
 
   const isLoading = settingsLoading;
 
@@ -80,21 +63,6 @@ export function SettingsAnalysisPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save settings");
       setIsSaving(false);
-    }
-  };
-
-  const handleRefreshContext = async () => {
-    setIsRefreshing(true);
-    setError(null);
-    try {
-      const refreshed = await api.refreshReviewContext({ force: true });
-      setContextStatus("ready");
-      setContextGeneratedAt(refreshed.meta.generatedAt);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to refresh context");
-      setContextStatus("error");
-    } finally {
-      setIsRefreshing(false);
     }
   };
 
@@ -138,7 +106,7 @@ export function SettingsAnalysisPage() {
                 </div>
                 <CheckboxGroup
                   value={effectiveLenses}
-                  onValueChange={(v) => setSelectedLenses(v as LensId[])}
+                  onValueChange={setSelectedLenses}
                   variant="bullet"
                 >
                   {LENS_OPTIONS.map((lens) => (

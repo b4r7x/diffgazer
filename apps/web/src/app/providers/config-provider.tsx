@@ -43,7 +43,7 @@ function setCache(data: ConfigData): void {
   configCache = { data, timestamp: Date.now() };
 }
 
-export function invalidateConfigCache(): void {
+function invalidateConfigCache(): void {
   configCache = null;
 }
 

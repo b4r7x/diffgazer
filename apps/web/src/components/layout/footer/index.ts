@@ -1,2 +1,2 @@
 export { Footer } from "./footer";
-export { FooterProvider, useFooter } from "./footer-context";
+export { FooterProvider, useFooter, useFooterData, useFooterActions } from "./footer-context";

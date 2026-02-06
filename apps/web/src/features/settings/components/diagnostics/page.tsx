@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useKey, useFooterNavigation } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
@@ -101,11 +101,9 @@ export function DiagnosticsPage() {
     onAction: handleButtonAction,
   });
 
-  const footerInitRef = useRef(false);
-  if (!footerInitRef.current) {
-    footerInitRef.current = true;
+  useEffect(() => {
     enterFooter(0);
-  }
+  }, []);
 
   useKey("Escape", () => navigate({ to: "/settings" }));
 
