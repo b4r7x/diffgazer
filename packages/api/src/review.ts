@@ -8,9 +8,10 @@ import {
   type StreamReviewResult,
   type StreamReviewError,
 } from "@stargazer/core/review";
-import type { ReviewMode } from "@stargazer/schemas/review";
+import { ReviewErrorCode, type ReviewMode } from "@stargazer/schemas/review";
 import type {
   ApiClient,
+  ApiError,
   ReviewContextResponse,
   ReviewsResponse,
   ReviewResponse,
@@ -75,10 +76,21 @@ export async function resumeReviewStream(
 ): Promise<Result<void, StreamReviewError>> {
   const { reviewId, signal, ...handlers } = options;
 
-  const response = await client.stream(`/api/review/${reviewId}/stream`, { signal });
-
-  if (!response.ok) {
-    return err({ code: "NOT_FOUND", message: "Session not found" });
+  let response: Response;
+  try {
+    response = await client.stream(`/api/review/reviews/${reviewId}/stream`, { signal });
+  } catch (error) {
+    const apiError = error as ApiError;
+    if (apiError?.status === 404) {
+      return err({ code: ReviewErrorCode.SESSION_NOT_FOUND, message: apiError.message || "Session not found" });
+    }
+    if (apiError?.status === 409) {
+      return err({ code: ReviewErrorCode.SESSION_STALE, message: apiError.message || "Session is stale" });
+    }
+    return err({
+      code: "STREAM_ERROR",
+      message: apiError?.message || "Failed to resume review stream",
+    });
   }
 
   const reader = response.body?.getReader();

@@ -47,9 +47,19 @@ describe('ReviewContainer', () => {
   const mockResume = vi.fn();
   const mockNavigate = vi.fn();
   const mockOnComplete = vi.fn();
+  const resumeOk = { ok: true as const, value: undefined };
+  const resumeNotFound = {
+    ok: false as const,
+    error: { code: "SESSION_NOT_FOUND", message: "Session not found" },
+  };
+  const resumeStale = {
+    ok: false as const,
+    error: { code: "SESSION_STALE", message: "Session stale" },
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockResume.mockResolvedValue(resumeOk);
 
     mockUseReviewStream.mockReturnValue({
       state: createMockState(),
@@ -159,7 +169,7 @@ describe('ReviewContainer', () => {
       );
 
       await waitFor(() => {
-        expect(mockStart).toHaveBeenCalledWith({ mode: "unstaged" });
+        expect(mockStart).toHaveBeenCalledWith(expect.objectContaining({ mode: "unstaged" }));
       });
     });
 
@@ -176,6 +186,33 @@ describe('ReviewContainer', () => {
 
       await waitFor(() => {
         expect(mockResume).toHaveBeenCalledWith(reviewId);
+      });
+    });
+
+    it('updates URL when state reviewId differs from route param', async () => {
+      mockUseParams.mockReturnValue({ reviewId: 'old-review-id' });
+      mockUseReviewStream.mockReturnValue({
+        state: createMockState({ reviewId: 'new-review-id' }),
+        start: mockStart,
+        stop: mockStop,
+        resume: mockResume,
+        selectIssue: vi.fn(),
+      });
+
+      render(
+        <ReviewContainer
+          mode="unstaged"
+          onComplete={mockOnComplete}
+        />
+      );
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith({
+          to: '/review/$reviewId',
+          params: { reviewId: 'new-review-id' },
+          search: expect.any(Function),
+          replace: true,
+        });
       });
     });
 
@@ -262,7 +299,7 @@ describe('ReviewContainer', () => {
       );
 
       await waitFor(() => {
-        expect(mockStart).toHaveBeenCalledWith({ mode: "staged" });
+        expect(mockStart).toHaveBeenCalledWith(expect.objectContaining({ mode: "staged" }));
       });
     });
 
@@ -275,7 +312,7 @@ describe('ReviewContainer', () => {
       );
 
       await waitFor(() => {
-        expect(mockStart).toHaveBeenCalledWith({ mode: "unstaged" });
+        expect(mockStart).toHaveBeenCalledWith(expect.objectContaining({ mode: "unstaged" }));
       });
     });
 
@@ -560,13 +597,13 @@ describe('ReviewContainer', () => {
       );
 
       expect(mockResume).not.toHaveBeenCalled();
-      expect(mockStart).toHaveBeenCalledWith({ mode: "unstaged" });
+      expect(mockStart).toHaveBeenCalledWith(expect.objectContaining({ mode: "unstaged" }));
     });
 
     it('calls resume when reviewId exists in params', async () => {
       const reviewId = 'valid-uuid-123';
       mockUseParams.mockReturnValue({ reviewId });
-      mockResume.mockResolvedValueOnce(undefined);
+      mockResume.mockResolvedValueOnce(resumeOk);
 
       render(
         <ReviewContainer
@@ -582,10 +619,10 @@ describe('ReviewContainer', () => {
       expect(mockStart).not.toHaveBeenCalled();
     });
 
-    it('calls onComplete with resumeFailed when resume fails', async () => {
+    it('calls onComplete with resumeFailed when session is not found', async () => {
       const reviewId = 'failed-resume-uuid';
       mockUseParams.mockReturnValue({ reviewId });
-      mockResume.mockRejectedValueOnce(new Error('Resume failed'));
+      mockResume.mockResolvedValueOnce(resumeNotFound);
 
       render(
         <ReviewContainer
@@ -603,10 +640,10 @@ describe('ReviewContainer', () => {
       });
     });
 
-    it('does not retry start after resume fails', async () => {
+    it('does not retry start after session not found', async () => {
       const reviewId = 'failed-uuid';
       mockUseParams.mockReturnValue({ reviewId });
-      mockResume.mockRejectedValueOnce(new Error('Resume failed'));
+      mockResume.mockResolvedValueOnce(resumeNotFound);
 
       render(
         <ReviewContainer
@@ -620,6 +657,27 @@ describe('ReviewContainer', () => {
       });
 
       expect(mockStart).not.toHaveBeenCalled();
+    });
+
+    it('starts a new review when session is stale', async () => {
+      const reviewId = 'stale-uuid';
+      mockUseParams.mockReturnValue({ reviewId });
+      mockResume.mockResolvedValueOnce(resumeStale);
+
+      render(
+        <ReviewContainer
+          mode="unstaged"
+          onComplete={mockOnComplete}
+        />
+      );
+
+      await waitFor(() => {
+        expect(mockResume).toHaveBeenCalledWith(reviewId);
+      });
+
+      await waitFor(() => {
+        expect(mockStart).toHaveBeenCalledWith(expect.objectContaining({ mode: "unstaged" }));
+      });
     });
   });
 
@@ -713,7 +771,7 @@ describe('ReviewContainer', () => {
       // Router's beforeLoad validates UUID format, so component doesn't need to
       const reviewId = 'valid-uuid-from-router';
       mockUseParams.mockReturnValue({ reviewId });
-      mockResume.mockResolvedValueOnce(undefined);
+      mockResume.mockResolvedValueOnce(resumeOk);
 
       render(
         <ReviewContainer
@@ -734,7 +792,7 @@ describe('ReviewContainer', () => {
       // Component doesn't validate format - trusts router did it
       const reviewId = 'any-uuid-router-approved';
       mockUseParams.mockReturnValue({ reviewId });
-      mockResume.mockRejectedValueOnce(new Error('Session not found'));
+      mockResume.mockResolvedValueOnce(resumeNotFound);
 
       render(
         <ReviewContainer
