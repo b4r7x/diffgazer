@@ -1,4 +1,5 @@
 import type {
+  ActivateProviderResponse,
   ConfigCheckResponse,
   CurrentConfigResponse as ConfigResponse,
   DeleteProviderCredentialsResponse as DeleteProviderResponse,
@@ -10,7 +11,7 @@ import type {
   SettingsConfig,
   TrustConfig,
 } from "@stargazer/schemas/config";
-import type { ApiClient, ActivateProviderResponse, TrustListResponse, TrustResponse } from "./types.js";
+import type { ApiClient, TrustListResponse, TrustResponse } from "./types.js";
 
 export async function getProviderStatus(
   client: ApiClient

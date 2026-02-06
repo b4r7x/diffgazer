@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { TrustCapabilities } from "@stargazer/schemas/config";
-import { Badge, Callout, Button } from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
+import { Callout } from "@/components/ui/callout";
+import { Button } from "@/components/ui/button";
 import { CheckboxGroup, CheckboxItem } from "@/components/ui/form";
 import { useTrustFormKeyboard } from "@/hooks/keyboard";
 import { cn } from "@/lib/utils";

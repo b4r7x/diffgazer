@@ -1,5 +1,5 @@
-import type { Result } from "@stargazer/core";
-import { err } from "@stargazer/core";
+import type { Result } from "@stargazer/core/result";
+import { err } from "@stargazer/core/result";
 import {
   buildReviewQueryParams,
   processReviewStream,

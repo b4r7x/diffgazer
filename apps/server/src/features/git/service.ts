@@ -1,6 +1,7 @@
 import { join, sep } from "node:path";
 import { realpath } from "node:fs/promises";
-import { type Result, type AppError, ok, err } from "@stargazer/core";
+import { type Result, ok, err } from "@stargazer/core/result";
+import type { AppError } from "@stargazer/core/errors";
 import { ErrorCode } from "@stargazer/schemas/errors";
 import { createGitService } from "../../shared/lib/git/service.js";
 

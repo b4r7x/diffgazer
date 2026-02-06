@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useCanGoBack, useRouter } from "@tanstack/react-router";
 import { Header } from "./header";
 import { Footer, useFooter } from "./footer";
-import { ToastContainer } from "@/components/ui";
+import { ToastContainer } from "@/components/ui/toast";
 import { useConfig } from "@/features/settings";
 
 interface GlobalLayoutProps {

@@ -7,9 +7,9 @@ import {
   DialogTitle,
   DialogBody,
   DialogFooter,
-  Button,
-  useToast,
-} from "@/components/ui";
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { TrustPermissionsContent } from "@/components/settings";
 import { useTrust } from "@/features/settings";
 

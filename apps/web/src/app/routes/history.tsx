@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { FocusablePane } from "@/components/ui";
+import { FocusablePane } from "@/components/ui/focusable-pane";
 import type { ReviewMetadata } from "@stargazer/schemas/review";
 import type { ReviewResult } from "@stargazer/schemas/review";
 import type { HistoryFocusZone } from "@/features/history/types";

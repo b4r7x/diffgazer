@@ -1,4 +1,4 @@
-import { SEVERITY_ORDER, severityRank } from "@stargazer/core";
+import { SEVERITY_ORDER, severityRank } from "@stargazer/core/severity";
 import type {
   ReviewIssue,
   ReviewSeverity,

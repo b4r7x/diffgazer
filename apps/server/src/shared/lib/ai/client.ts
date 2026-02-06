@@ -10,7 +10,8 @@ import type {
   AIError,
   AIErrorCode,
 } from "./types.js";
-import { type Result, ok, err, createError, toError, getErrorMessage } from "@stargazer/core";
+import { type Result, ok, err } from "@stargazer/core/result";
+import { createError, toError, getErrorMessage } from "@stargazer/core/errors";
 import { AVAILABLE_PROVIDERS, type AIProvider } from "@stargazer/schemas/config";
 import { getActiveProvider, getProviderApiKey } from "../config/store.js";
 

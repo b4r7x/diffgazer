@@ -1,4 +1,4 @@
-import { Panel, PanelContent, PanelHeader } from "@/components/ui";
+import { Panel, PanelContent, PanelHeader } from "@/components/ui/containers";
 
 export function HelpPage() {
   return (

@@ -1,4 +1,5 @@
-import { Menu, MenuDivider, MenuItem, Panel, PanelHeader } from "@/components/ui";
+import { Menu, MenuDivider, MenuItem } from "@/components/ui/menu";
+import { Panel, PanelHeader } from "@/components/ui/containers";
 
 export interface MenuItemDefinition {
   id: string;

@@ -9,7 +9,7 @@ import {
   DialogBody,
   DialogFooter,
   DialogClose,
-} from "@/components/ui";
+} from "@/components/ui/dialog";
 import { useKey } from "@/hooks/keyboard";
 import { useScrollIntoView } from "@/hooks/use-scroll-into-view";
 import {

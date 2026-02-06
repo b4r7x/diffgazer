@@ -1,6 +1,8 @@
 import { cn } from "@/lib/utils";
-import { IssueListItem, SeverityFilterGroup, FocusablePane, type SeverityFilter } from "@/components/ui";
-import { calculateSeverityCounts } from "@stargazer/core";
+import { IssueListItem } from "@/components/ui/issue";
+import { SeverityFilterGroup, type SeverityFilter } from "@/components/ui/severity";
+import { FocusablePane } from "@/components/ui/focusable-pane";
+import { calculateSeverityCounts } from "@stargazer/core/severity";
 import type { ReviewIssue } from "@stargazer/schemas/review";
 
 export interface IssueListPaneProps {
