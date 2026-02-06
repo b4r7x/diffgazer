@@ -1,15 +1,3 @@
-export * from "./agent-event.js";
-export * from "./enrich-event.js";
-export * from "./config.js";
-export * from "./errors.js";
-export * from "./git.js";
-export * from "./history.js";
-export * from "./lens.js";
-export * from "./port.js";
-export * from "./review.js";
-export * from "./review-storage.js";
-export * from "./settings.js";
-export * from "./step-event.js";
-export * from "./full-review-stream-event.js";
-export * from "./ui.js";
-export * from "./context.js";
+// Deep imports are required: import from "@stargazer/schemas/<module>"
+// e.g. import { ReviewIssue } from "@stargazer/schemas/review"
+// See package.json "exports" for available paths.

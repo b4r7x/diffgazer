@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import type { SecretsStorage, SettingsConfig } from "@/types/config";
+import type { SecretsStorage, SettingsConfig } from "@stargazer/schemas/config";
 import { Button, Callout } from "@/components/ui";
 import { StorageSelectorContent, WizardLayout } from "@/components/settings";
 import { api } from "@/lib/api";

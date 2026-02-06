@@ -6,8 +6,7 @@ import {
   getProjectInfoPath,
 } from "../paths.js";
 import { readJsonFileSync, writeJsonFileSync, removeFileSync } from "../fs.js";
-import { AI_PROVIDERS, type AIProvider, type ProviderStatus } from "@stargazer/schemas/config";
-import type { SettingsConfig, SecretsStorage, TrustCapabilities } from "@stargazer/schemas/settings";
+import { AI_PROVIDERS, type AIProvider, type ProviderStatus, type SettingsConfig, type SecretsStorage, type TrustCapabilities } from "@stargazer/schemas/config";
 import type {
   ConfigState,
   ProjectFile,
@@ -27,19 +26,15 @@ export const DEFAULT_SETTINGS: SettingsConfig = {
   severityThreshold: "low",
 };
 
-export const DEFAULT_PROVIDERS: ProviderStatus[] = [
-  { provider: "gemini", hasApiKey: false, isActive: false },
-  { provider: "zai", hasApiKey: false, isActive: false },
-  { provider: "zai-coding", hasApiKey: false, isActive: false },
-  { provider: "openrouter", hasApiKey: false, isActive: false },
-];
+export const DEFAULT_PROVIDERS: ProviderStatus[] = AI_PROVIDERS.map((id) => ({
+  provider: id,
+  hasApiKey: false,
+  isActive: false,
+}));
 
 const CONFIG_PATH = getGlobalConfigPath();
 const SECRETS_PATH = getGlobalSecretsPath();
 const TRUST_PATH = getGlobalTrustPath();
-
-const cloneProviders = (providers: ProviderStatus[]): ProviderStatus[] =>
-  providers.map((provider) => ({ ...provider }));
 
 const normalizeProviders = (providers: ProviderStatus[]): ProviderStatus[] => {
   const valid = providers.filter((provider) => isValidAIProvider(provider.provider));
@@ -58,7 +53,7 @@ export const loadConfig = (): ConfigState => {
 
   return {
     settings: { ...settings },
-    providers: cloneProviders(providers),
+    providers: providers.map((p) => ({ ...p })),
   };
 };
 
@@ -123,7 +118,7 @@ export const syncProvidersWithSecrets = (
   storage: SecretsStorage,
 ): ProviderStatus[] => {
   if (storage !== "file") {
-    return cloneProviders(providers);
+    return providers.map((p) => ({ ...p }));
   }
 
   const providerIds = new Set(providers.map((provider) => provider.provider));

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { InputMethod } from "@stargazer/schemas/config";
+import type { InputMethod } from "@/features/providers/constants";
 
 interface UseApiKeyFormOptions {
   open: boolean;

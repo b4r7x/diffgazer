@@ -5,14 +5,15 @@ import { ApiKeyMissingView } from './api-key-missing-view';
 import { NoChangesView } from './no-changes-view';
 import { useReviewStream } from '../hooks/use-review-stream';
 import { useConfig } from '@/features/settings/hooks/use-config';
-import type { SettingsConfig } from '@/types/config';
+import { OPENROUTER_PROVIDER_ID } from '@/features/providers/constants';
+import type { SettingsConfig } from '@stargazer/schemas/config';
 import { convertAgentEventsToLogEntries } from '@stargazer/core/review';
 import type { ProgressStepData, ProgressStatus } from '@/components/ui';
-import type { StepState } from '@stargazer/schemas/step-event';
-import type { AgentState, AgentStatus } from '@stargazer/schemas/agent-event';
+import type { StepState, AgentState, AgentStatus } from '@stargazer/schemas/events';
 import type { ProgressSubstepData } from '@stargazer/schemas/ui';
 import type { ReviewMode } from '../types';
-import { LensIdSchema, type ReviewIssue, type LensId } from '@stargazer/schemas';
+import { LensIdSchema, type LensId } from '@stargazer/schemas/review';
+import type { ReviewIssue } from '@stargazer/schemas/review';
 import type { ReviewContextResponse } from '@stargazer/api';
 import { api } from '@/lib/api';
 
@@ -293,7 +294,7 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
   }
 
   if (!isConfigured) {
-    const missingModel = provider === "openrouter" && !model;
+    const missingModel = provider === OPENROUTER_PROVIDER_ID && !model;
     return (
       <ApiKeyMissingView
         activeProvider={provider}

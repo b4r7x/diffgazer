@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Badge, IssueListItem } from "@/components/ui";
-import type { ReviewIssue } from "@stargazer/schemas";
+import type { ReviewIssue } from "@stargazer/schemas/review";
 
 export interface RunAccordionItemProps {
   id: string;

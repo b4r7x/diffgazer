@@ -8,9 +8,9 @@ import {
   type StreamReviewResult,
   type StreamReviewError,
 } from "@stargazer/core/review";
+import type { ReviewMode } from "@stargazer/schemas/review";
 import type {
   ApiClient,
-  ReviewMode,
   ReviewContextResponse,
   ReviewsResponse,
   ReviewResponse,

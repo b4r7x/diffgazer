@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 const DEFAULT_DIR_MODE = 0o700;
 const DEFAULT_FILE_MODE = 0o600;
 
-export const ensureDirSync = (dirPath: string, mode: number = DEFAULT_DIR_MODE): void => {
+const ensureDirSync = (dirPath: string, mode: number = DEFAULT_DIR_MODE): void => {
   fs.mkdirSync(dirPath, { recursive: true, mode });
 };
 
@@ -48,14 +48,17 @@ export const removeFileSync = (filePath: string): boolean => {
   }
 };
 
-export async function readJsonFile<T>(filePath: string): Promise<T | null> {
+export async function atomicWriteFile(
+  filePath: string,
+  content: string,
+  mode: number = DEFAULT_FILE_MODE
+): Promise<void> {
+  const tempPath = `${filePath}.${Date.now()}.tmp`;
   try {
-    const content = await fs.promises.readFile(filePath, "utf-8");
-    return JSON.parse(content) as T;
+    await fs.promises.writeFile(tempPath, content, { mode });
+    await fs.promises.rename(tempPath, filePath);
   } catch (error) {
-    if (error instanceof Error && "code" in error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
-    }
-    return null;
+    try { await fs.promises.unlink(tempPath); } catch {}
+    throw error;
   }
 }

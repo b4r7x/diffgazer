@@ -1,11 +1,17 @@
 import { z } from "zod";
-import { type Result, ok, err } from "@stargazer/core";
-import type { DrilldownResult } from "@stargazer/schemas/lens";
-import type { TraceRef, ReviewIssue, ReviewResult } from "@stargazer/schemas/review";
-import type { AgentStreamEvent } from "@stargazer/schemas/agent-event";
+import { type Result, ok, err, createError } from "@stargazer/core";
+import type { DrilldownResult, TraceRef, ReviewIssue, ReviewResult } from "@stargazer/schemas/review";
+import { ErrorCode } from "@stargazer/schemas/errors";
+import type { AgentStreamEvent } from "@stargazer/schemas/events";
 import type { AIClient, AIError } from "../../shared/lib/ai/types.js";
 import type { FileDiff, ParsedDiff } from "../../shared/lib/diff/types.js";
-import { now } from "../../shared/lib/review/utils.js";
+import { parseDiff } from "../../shared/lib/diff/parser.js";
+import { createGitService } from "../../shared/lib/git/service.js";
+import {
+  addDrilldownToReview,
+  getReview as getStoredReview,
+} from "../../shared/lib/storage/reviews.js";
+import type { StoreError } from "../../shared/lib/storage/types.js";
 import { buildDrilldownPrompt } from "../../shared/lib/review/prompts.js";
 
 export type DrilldownError = AIError | { code: "ISSUE_NOT_FOUND"; message: string };
@@ -93,7 +99,7 @@ export async function drilldownIssue(
       agent: "detective",
       tool: "readFileContext",
       input: `${targetFile.filePath}:${startLine}-${endLine}`,
-      timestamp: now(),
+      timestamp: new Date().toISOString(),
     });
 
     onEvent({
@@ -101,7 +107,7 @@ export async function drilldownIssue(
       agent: "detective",
       tool: "readFileContext",
       summary: `Read ${lineCount} lines from ${targetFile.filePath}`,
-      timestamp: now(),
+      timestamp: new Date().toISOString(),
     });
   }
 
@@ -142,4 +148,43 @@ export async function drilldownIssueById(
   }
 
   return drilldownIssue(client, issue, diff, reviewResult.issues, options);
+}
+
+export type HandleDrilldownError =
+  | DrilldownError
+  | StoreError
+  | { code: typeof ErrorCode.COMMAND_FAILED; message: string };
+
+export async function handleDrilldownRequest(
+  client: AIClient,
+  reviewId: string,
+  issueId: string,
+  projectPath: string
+): Promise<Result<DrilldownResult, HandleDrilldownError>> {
+  const reviewResult = await getStoredReview(reviewId);
+  if (!reviewResult.ok) return reviewResult;
+
+  const gitService = createGitService({ cwd: projectPath });
+
+  let diff: string;
+  try {
+    diff = await gitService.getDiff(reviewResult.value.metadata.mode ?? "unstaged");
+  } catch {
+    return err(createError(ErrorCode.COMMAND_FAILED, "Failed to retrieve git diff"));
+  }
+
+  const parsed = parseDiff(diff);
+  const drilldownResult = await drilldownIssueById(
+    client,
+    issueId,
+    reviewResult.value.result,
+    parsed
+  );
+
+  if (!drilldownResult.ok) return drilldownResult;
+
+  const saveResult = await addDrilldownToReview(reviewId, drilldownResult.value);
+  if (!saveResult.ok) return saveResult;
+
+  return drilldownResult;
 }

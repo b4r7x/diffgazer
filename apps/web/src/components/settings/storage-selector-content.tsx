@@ -1,6 +1,6 @@
 'use client';
 
-import type { SecretsStorage } from '@/types/config';
+import type { SecretsStorage } from '@stargazer/schemas/config';
 import { RadioGroup, RadioGroupItem } from '../ui/form';
 
 export interface StorageSelectorContentProps {

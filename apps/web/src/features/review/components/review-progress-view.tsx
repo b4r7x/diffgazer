@@ -5,7 +5,7 @@ import { PanelHeader, ProgressList, ActivityLog, Timer, MetricItem, Badge, Callo
 import { useScope, useKey } from '@/hooks/keyboard';
 import { usePageFooter } from '@/hooks/use-page-footer';
 import type { ProgressStepData, LogEntryData } from '@/components/ui';
-import type { AgentState } from '@stargazer/schemas/agent-event';
+import type { AgentState } from '@stargazer/schemas/events';
 import type { ReviewContextResponse } from '@stargazer/api';
 import type { ReviewProgressMetrics } from '../types';
 

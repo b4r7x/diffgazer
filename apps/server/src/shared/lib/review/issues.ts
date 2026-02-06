@@ -7,7 +7,7 @@ import type {
 } from "@stargazer/schemas/review";
 import type { ParsedDiff, FileDiff, DiffHunk } from "../diff/types.js";
 
-export function severityMeetsMinimum(severity: ReviewSeverity, minSeverity: ReviewSeverity): boolean {
+function severityMeetsMinimum(severity: ReviewSeverity, minSeverity: ReviewSeverity): boolean {
   return severityRank(severity) <= severityRank(minSeverity);
 }
 
@@ -43,7 +43,7 @@ export function sortIssuesBySeverity(issues: ReviewIssue[]): ReviewIssue[] {
   });
 }
 
-export function extractEvidenceFromDiff(file: FileDiff, lineStart: number | null, lineEnd: number | null): EvidenceRef[] {
+function extractEvidenceFromDiff(file: FileDiff, lineStart: number | null, lineEnd: number | null): EvidenceRef[] {
   if (lineStart === null) return [];
 
   const matchingHunk = file.hunks.find((hunk: DiffHunk) => {

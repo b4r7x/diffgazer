@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { ReviewMetadata, SavedReview } from "@stargazer/api";
+import type { ReviewMetadata, SavedReview } from "@stargazer/schemas/review";
 import { api } from "@/lib/api";
 
 export function useReviewHistory() {
@@ -13,7 +13,7 @@ export function useReviewHistory() {
     setError(null);
     try {
       const data = await api.getReviews();
-      setReviews(data.reviews as unknown as ReviewMetadata[]);
+      setReviews(data.reviews);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch review history");
     } finally {

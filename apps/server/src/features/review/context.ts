@@ -2,9 +2,19 @@ import { readFile, writeFile, mkdir, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import type { FileTreeNode, ProjectContextGraph, ProjectContextMeta, ProjectContextSnapshot } from "@stargazer/schemas/context";
-import { readJsonFile } from "../../shared/lib/fs.js";
-import { now } from "../../shared/lib/review/utils.js";
 import { createGitService } from "../../shared/lib/git/service.js";
+
+async function readJsonFile<T>(filePath: string): Promise<T | null> {
+  try {
+    const content = await readFile(filePath, "utf-8");
+    return JSON.parse(content) as T;
+  } catch (error) {
+    if (error instanceof Error && "code" in error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    }
+    return null;
+  }
+}
 
 type WorkspacePackage = {
   name: string;
@@ -186,7 +196,7 @@ export async function buildProjectContextSnapshot(
 
   const markdownSections: string[] = [];
   markdownSections.push(`# Project Context Snapshot`);
-  markdownSections.push(`Generated: ${now()}`);
+  markdownSections.push(`Generated: ${new Date().toISOString()}`);
   markdownSections.push(`Root: ${projectPath}`);
   markdownSections.push("");
   markdownSections.push("## Project Info");
@@ -216,7 +226,7 @@ export async function buildProjectContextSnapshot(
   const rawMarkdown = markdownSections.join("\n");
 
   const graph: ProjectContextGraph = {
-    generatedAt: now(),
+    generatedAt: new Date().toISOString(),
     root: projectPath,
     packages: packages.map((pkg) => ({
       name: pkg.name,
@@ -232,7 +242,7 @@ export async function buildProjectContextSnapshot(
   };
 
   const meta: ProjectContextMeta = {
-    generatedAt: now(),
+    generatedAt: new Date().toISOString(),
     root: projectPath,
     statusHash: currentHash,
     charCount: rawMarkdown.length,

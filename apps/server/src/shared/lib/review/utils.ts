@@ -1,8 +1,4 @@
-import type { Lens } from "@stargazer/schemas/lens";
-
-export function now(): string {
-  return new Date().toISOString();
-}
+import type { Lens } from "@stargazer/schemas/review";
 
 export function estimateTokens(text: string): number {
   if (!text) return 0;

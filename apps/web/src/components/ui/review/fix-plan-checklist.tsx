@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { FixPlanStep } from "@stargazer/schemas";
+import type { FixPlanStep } from "@stargazer/schemas/review";
 
 export interface FixPlanChecklistProps {
   steps: FixPlanStep[];

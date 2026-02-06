@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HistoryInsightsPane } from "./history-insights-pane";
-import type { ReviewIssue } from "@stargazer/schemas";
+import type { ReviewIssue } from "@stargazer/schemas/review";
 import type { SeverityCounts } from "@stargazer/schemas/ui";
 
 describe("HistoryInsightsPane - Severity Breakdown Section", () => {

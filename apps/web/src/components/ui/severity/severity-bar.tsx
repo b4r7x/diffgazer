@@ -1,6 +1,6 @@
 import { cn } from '../../../lib/utils';
 import type { ReviewSeverity } from '@stargazer/schemas/review';
-import { BAR_FILLED_CHAR, BAR_EMPTY_CHAR, DEFAULT_BAR_WIDTH, SEVERITY_CONFIG } from '@stargazer/schemas/ui';
+import { BAR_FILLED_CHAR, BAR_EMPTY_CHAR, DEFAULT_BAR_WIDTH, SEVERITY_CONFIG } from './constants';
 
 export interface SeverityBarProps {
   label: string;

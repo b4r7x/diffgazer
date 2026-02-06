@@ -3,17 +3,17 @@ import type { AIProvider } from "@stargazer/schemas/config";
 import { ErrorCode } from "@stargazer/schemas/errors";
 import type { SecretsStorageError } from "../../shared/lib/config/types.js";
 import type {
-  ActivateProviderResponse,
   ConfigCheckResponse,
-  ConfigResponse,
+  CurrentConfigResponse as ConfigResponse,
   DeleteConfigResponse,
-  DeleteProviderResponse,
+  DeleteProviderCredentialsResponse as DeleteProviderResponse,
   InitResponse,
   OpenRouterModelsResponse,
   ProviderStatus,
   ProvidersStatusResponse,
   SaveConfigRequest,
-} from "@stargazer/api";
+} from "@stargazer/schemas/config";
+import type { ActivateProviderResponse } from "@stargazer/api";
 import {
   activateProvider as activateProviderInStore,
   deleteProviderCredentials,

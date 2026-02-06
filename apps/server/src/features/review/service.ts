@@ -6,7 +6,7 @@ import { getErrorMessage } from "@stargazer/core";
 import { parseDiff } from "../../shared/lib/diff/parser.js";
 import type { ParsedDiff } from "../../shared/lib/diff/types.js";
 import { saveReview } from "../../shared/lib/storage/reviews.js";
-import type { LensId, ProfileId } from "@stargazer/schemas/lens";
+import type { LensId, ProfileId, ReviewMode } from "@stargazer/schemas/review";
 import { ErrorCode } from "@stargazer/schemas/errors";
 import type {
   ReviewIssue,
@@ -14,13 +14,9 @@ import type {
   ReviewSeverity,
 } from "@stargazer/schemas/review";
 import { writeSSEError, type SSEWriter } from "../../shared/lib/http/sse.js";
-import type { StepEvent, StepId, ReviewStartedEvent } from "@stargazer/schemas/step-event";
-import type { EnrichProgressEvent } from "@stargazer/schemas/enrich-event";
-import type { FullReviewStreamEvent } from "@stargazer/schemas";
-import type { ReviewMode } from "@stargazer/schemas/review-storage";
+import type { StepEvent, StepId, ReviewStartedEvent, EnrichProgressEvent, FullReviewStreamEvent } from "@stargazer/schemas/events";
 import { getSettings } from "../../shared/lib/config/store.js";
 import { getProfile } from "../../shared/lib/review/profiles.js";
-import { now } from "../../shared/lib/review/utils.js";
 import { severityRank } from "@stargazer/core";
 import { orchestrateReview } from "../../shared/lib/review/orchestrate.js";
 import {
@@ -45,15 +41,15 @@ const MAX_AGENT_CONCURRENCY = 1;
 // ============= SSE Helpers =============
 
 function stepStart(step: StepId): StepEvent {
-  return { type: "step_start", step, timestamp: now() };
+  return { type: "step_start", step, timestamp: new Date().toISOString() };
 }
 
 function stepComplete(step: StepId): StepEvent {
-  return { type: "step_complete", step, timestamp: now() };
+  return { type: "step_complete", step, timestamp: new Date().toISOString() };
 }
 
 function stepError(step: StepId, error: string): StepEvent {
-  return { type: "step_error", step, error, timestamp: now() };
+  return { type: "step_error", step, error, timestamp: new Date().toISOString() };
 }
 
 async function writeStreamEvent(stream: SSEWriter, event: FullReviewStreamEvent): Promise<void> {
@@ -174,7 +170,7 @@ async function resolveGitDiff(params: {
     type: "review_started",
     reviewId,
     filesTotal: parsed.files.length,
-    timestamp: now(),
+    timestamp: new Date().toISOString(),
   } satisfies ReviewStartedEvent);
 
   if (files && files.length > 0) {

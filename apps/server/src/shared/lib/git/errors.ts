@@ -1,17 +1,7 @@
 import { getErrorMessage } from "@stargazer/core";
+import type { GitDiffErrorCode, ClassifiedError } from "./types.js";
 
-export type GitDiffErrorCode =
-  | "GIT_NOT_FOUND"
-  | "PERMISSION_DENIED"
-  | "TIMEOUT"
-  | "BUFFER_EXCEEDED"
-  | "NOT_A_REPOSITORY"
-  | "UNKNOWN";
-
-interface ClassifiedError {
-  code: GitDiffErrorCode;
-  message: string;
-}
+export type { GitDiffErrorCode } from "./types.js";
 
 const rules: Array<{ patterns: string[]; code: GitDiffErrorCode; message: string }> = [
   {

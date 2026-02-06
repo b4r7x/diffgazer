@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { ReviewSeverity } from "@stargazer/schemas/review";
-import { SEVERITY_CONFIG } from "@stargazer/schemas/ui";
+import { SEVERITY_CONFIG } from "./constants";
 
 export interface SeverityFilterButtonProps {
   severity: ReviewSeverity;

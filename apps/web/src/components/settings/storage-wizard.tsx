@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { SecretsStorage } from "@/types/config";
+import type { SecretsStorage } from "@stargazer/schemas/config";
 import { Button, Callout } from "@/components/ui";
 import { WizardLayout } from "./wizard-layout";
 import { StorageSelectorContent } from "./storage-selector-content";

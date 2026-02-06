@@ -15,7 +15,8 @@ import {
   FILTER_VALUES,
 } from '@/features/providers/components';
 import { useProviders } from '@/features/providers/hooks';
-import { PROVIDER_ENV_VARS, PROVIDER_CAPABILITIES } from '@stargazer/schemas';
+import { PROVIDER_ENV_VARS } from '@stargazer/schemas/config';
+import { PROVIDER_CAPABILITIES } from '@/features/providers/constants';
 
 const FOOTER_SHORTCUTS = [
   { key: '↑/↓', label: 'Navigate' },

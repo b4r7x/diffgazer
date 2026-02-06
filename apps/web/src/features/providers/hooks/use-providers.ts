@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '@/lib/api';
-import type { ProviderStatus } from '@stargazer/api';
+import type { ProviderStatus } from '@stargazer/schemas/config';
 import {
     AVAILABLE_PROVIDERS,
     type AIProvider,
-} from '@stargazer/schemas';
+} from '@stargazer/schemas/config';
 import type { ProviderWithStatus } from '../types';
 
 export function useProviders() {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { TrustConfig } from "@/types/config";
+import type { TrustConfig } from "@stargazer/schemas/config";
 import { api } from "@/lib/api";
 import { useConfigContext } from "@/app/providers";
 

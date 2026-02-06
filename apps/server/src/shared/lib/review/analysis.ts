@@ -1,33 +1,20 @@
 import { randomUUID } from "node:crypto";
-import type { Lens } from "@stargazer/schemas/lens";
+import type { Lens } from "@stargazer/schemas/review";
 import type {
   ReviewIssue,
   ReviewResult,
 } from "@stargazer/schemas/review";
 import { ReviewResultSchema } from "@stargazer/schemas/review";
-import type { AgentStreamEvent } from "@stargazer/schemas/agent-event";
-import { AGENT_METADATA, LENS_TO_AGENT } from "@stargazer/schemas/agent-event";
-import type { StepEvent } from "@stargazer/schemas/step-event";
+import type { AgentStreamEvent, StepEvent } from "@stargazer/schemas/events";
+import { AGENT_METADATA, LENS_TO_AGENT } from "@stargazer/schemas/events";
 import type { AIClient, AIError } from "../ai/types.js";
 import type { ParsedDiff } from "../diff/types.js";
 import type { Result } from "@stargazer/core";
 import { ok } from "@stargazer/core";
 import { ensureIssueEvidence } from "./issues.js";
-import { now, estimateTokens, getThinkingMessage } from "./utils.js";
+import { estimateTokens, getThinkingMessage } from "./utils.js";
 import { buildReviewPrompt } from "./prompts.js";
-
-export interface LensResult {
-  lensId: Lens["id"];
-  lensName: string;
-  summary: string;
-  issues: ReviewIssue[];
-}
-
-export interface AgentRunContext {
-  traceId: string;
-  spanId: string;
-  parentSpanId: string;
-}
+import type { LensResult, AgentRunContext } from "./types.js";
 
 export async function runLensAnalysis(
   client: AIClient,
@@ -47,7 +34,7 @@ export async function runLensAnalysis(
   onEvent({
     type: "agent_start",
     agent: agentMeta,
-    timestamp: now(),
+    timestamp: new Date().toISOString(),
     traceId,
     spanId,
   });
@@ -56,7 +43,7 @@ export async function runLensAnalysis(
     type: "agent_thinking",
     agent: agentId,
     thought: getThinkingMessage(lens),
-    timestamp: now(),
+    timestamp: new Date().toISOString(),
     traceId,
     spanId,
   });
@@ -66,7 +53,7 @@ export async function runLensAnalysis(
     agent: agentId,
     progress: 15,
     message: `Gathering context (${diff.files.length} files)`,
-    timestamp: now(),
+    timestamp: new Date().toISOString(),
     traceId,
     spanId,
   });
@@ -79,7 +66,7 @@ export async function runLensAnalysis(
       file: file.filePath,
       index: i,
       total: diff.files.length,
-      timestamp: now(),
+      timestamp: new Date().toISOString(),
       agent: agentId,
       scope: "agent",
       traceId,
@@ -98,7 +85,7 @@ export async function runLensAnalysis(
       agent: agentId,
       tool: "readFileContext",
       input: `${file.filePath}:${startLine}-${endLine}`,
-      timestamp: now(),
+      timestamp: new Date().toISOString(),
       traceId,
       spanId: toolSpanId,
       parentSpanId: spanId,
@@ -110,7 +97,7 @@ export async function runLensAnalysis(
       tool: "readFileContext",
       summary: `Read ${lineCount} lines from ${file.filePath}`,
       status: "success",
-      timestamp: now(),
+      timestamp: new Date().toISOString(),
       traceId,
       spanId: toolSpanId,
       parentSpanId: spanId,
@@ -121,7 +108,7 @@ export async function runLensAnalysis(
       file: file.filePath,
       index: i,
       total: diff.files.length,
-      timestamp: now(),
+      timestamp: new Date().toISOString(),
       agent: agentId,
       scope: "agent",
       traceId,
@@ -137,7 +124,7 @@ export async function runLensAnalysis(
       agent: agentId,
       progress,
       message: `Scanned ${i + 1}/${diff.files.length} files`,
-      timestamp: now(),
+      timestamp: new Date().toISOString(),
       traceId,
       spanId,
     });
@@ -147,7 +134,7 @@ export async function runLensAnalysis(
     type: "agent_thinking",
     agent: agentId,
     thought: `Analyzing ${diff.files.length} file${diff.files.length !== 1 ? "s" : ""} for ${lens.name.toLowerCase()} issues...`,
-    timestamp: now(),
+    timestamp: new Date().toISOString(),
     traceId,
     spanId,
   });
@@ -157,7 +144,7 @@ export async function runLensAnalysis(
     agent: agentId,
     progress: 60,
     message: "Dispatching to model",
-    timestamp: now(),
+    timestamp: new Date().toISOString(),
     traceId,
     spanId,
   });
@@ -184,7 +171,7 @@ export async function runLensAnalysis(
         agent: agentId,
         progress: stage.progress,
         message: stage.message,
-        timestamp: now(),
+        timestamp: new Date().toISOString(),
         traceId,
         spanId,
       });
@@ -204,7 +191,7 @@ export async function runLensAnalysis(
       type: "agent_error",
       agent: agentId,
       error: errorLabel,
-      timestamp: now(),
+      timestamp: new Date().toISOString(),
       traceId,
       spanId,
     });
@@ -218,7 +205,7 @@ export async function runLensAnalysis(
       type: "issue_found",
       agent: agentId,
       issue,
-      timestamp: now(),
+      timestamp: new Date().toISOString(),
       traceId,
       spanId,
     });
@@ -229,7 +216,7 @@ export async function runLensAnalysis(
     agent: agentId,
     progress: 90,
     message: `Found ${issuesWithEvidence.length} issue${issuesWithEvidence.length === 1 ? "" : "s"}`,
-    timestamp: now(),
+    timestamp: new Date().toISOString(),
     traceId,
     spanId,
   });
@@ -238,7 +225,7 @@ export async function runLensAnalysis(
     type: "agent_complete",
     agent: agentId,
     issueCount: issuesWithEvidence.length,
-    timestamp: now(),
+    timestamp: new Date().toISOString(),
     durationMs: Date.now() - startedAt,
     promptChars: prompt.length,
     outputChars: JSON.stringify(result.value).length,

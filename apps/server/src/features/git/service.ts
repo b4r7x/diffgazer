@@ -2,8 +2,17 @@ import { join, sep } from "node:path";
 import { realpath } from "node:fs/promises";
 import { type Result, type AppError, ok, err } from "@stargazer/core";
 import { ErrorCode } from "@stargazer/schemas/errors";
-import { isRelativePath } from "../../shared/lib/validation.js";
 import { createGitService } from "../../shared/lib/git/service.js";
+
+const isRelativePath = (value: string): boolean => {
+  if (value.startsWith("/") || value.startsWith("\\") || /^[a-zA-Z]:/.test(value)) {
+    return false;
+  }
+  if (value.includes("..") || value.includes("\0")) {
+    return false;
+  }
+  return true;
+};
 
 type GitService = ReturnType<typeof createGitService>;
 

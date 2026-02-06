@@ -1,14 +1,7 @@
-import type { AgentStreamEvent, AgentId } from "@stargazer/schemas/agent-event";
-import { AGENT_METADATA } from "@stargazer/schemas/agent-event";
-import type { StepEvent } from "@stargazer/schemas/step-event";
-import { STEP_METADATA } from "@stargazer/schemas/step-event";
+import type { AgentStreamEvent, AgentId, StepEvent, EnrichEvent } from "@stargazer/schemas/events";
+import { AGENT_METADATA, STEP_METADATA } from "@stargazer/schemas/events";
 import type { LogEntryData } from "@stargazer/schemas/ui";
-import type { EnrichEvent } from "@stargazer/schemas/enrich-event";
-
-function truncate(str: string, maxLength: number): string {
-  if (str.length <= maxLength) return str;
-  return str.slice(0, maxLength - 3) + "...";
-}
+import { truncate } from "../strings.js";
 
 function getAgent(agentId: AgentId): { label: string; name: string } {
   const meta = AGENT_METADATA[agentId];

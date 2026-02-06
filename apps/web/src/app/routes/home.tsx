@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import type { SecretsStorage, SettingsConfig } from "@/types/config";
+import type { SecretsStorage, SettingsConfig } from "@stargazer/schemas/config";
 import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@/lib/navigation";
 import { useKey, useScope } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
