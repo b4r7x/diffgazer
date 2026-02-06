@@ -9,11 +9,13 @@ interface ModelListProps {
   isFocused: boolean;
   onSelect: (index: number) => void;
   onConfirm: () => void;
+  isLoading?: boolean;
+  emptyLabel?: string;
 }
 
 export const ModelList = forwardRef<HTMLDivElement, ModelListProps>(
   function ModelList(
-    { models, selectedIndex, currentModelId, isFocused, onSelect, onConfirm },
+    { models, selectedIndex, currentModelId, isFocused, onSelect, onConfirm, isLoading, emptyLabel },
     ref
   ) {
     if (models.length === 0) {
@@ -25,7 +27,7 @@ export const ModelList = forwardRef<HTMLDivElement, ModelListProps>(
           className="px-4 py-2 max-h-60 overflow-y-auto scrollbar-thin"
         >
           <div className="text-center text-gray-500 py-8 text-sm">
-            No models match your search
+            {isLoading ? "Loading models..." : emptyLabel ?? "No models match your search"}
           </div>
         </div>
       );

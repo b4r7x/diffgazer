@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // Step IDs match the workflow phases
-export const STEP_IDS = ["diff", "triage", "enrich", "report"] as const;
+export const STEP_IDS = ["diff", "context", "review", "enrich", "report"] as const;
 export const StepIdSchema = z.enum(STEP_IDS);
 export type StepId = z.infer<typeof StepIdSchema>;
 
@@ -9,15 +9,15 @@ export const STEP_STATUS = ["pending", "active", "completed", "error"] as const;
 export const StepStatusSchema = z.enum(STEP_STATUS);
 export type StepStatus = z.infer<typeof StepStatusSchema>;
 
-// Metadata for each step (labels, descriptions)
 export const STEP_METADATA: Record<StepId, { label: string; description: string }> = {
   diff: { label: "Collect diff", description: "Gathering code changes" },
-  triage: { label: "Triage issues", description: "Analyzing with lenses" },
+  context: { label: "Project context", description: "Building repo graph and summary" },
+  review: { label: "Review issues", description: "Analyzing with lenses" },
   enrich: { label: "Enrich context", description: "Adding git blame and context" },
   report: { label: "Generate report", description: "Synthesizing final report" },
 };
 
-// Step events emitted during triage
+// Step events emitted during review
 export const StepStartEventSchema = z.object({
   type: z.literal("step_start"),
   step: StepIdSchema,
@@ -64,7 +64,6 @@ export const StepStateSchema = z.object({
 });
 export type StepState = z.infer<typeof StepStateSchema>;
 
-// Helper to create initial steps array
 export function createInitialSteps(): StepState[] {
   return STEP_IDS.map((id) => ({
     id,
@@ -73,7 +72,6 @@ export function createInitialSteps(): StepState[] {
   }));
 }
 
-// Type guard for step events
 export function isStepEvent(event: unknown): event is StepEvent {
   if (!event || typeof event !== "object") return false;
   const type = (event as { type?: string }).type;

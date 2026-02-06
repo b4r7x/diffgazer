@@ -1,7 +1,8 @@
 import { resolveProjectRoot } from "../paths.js";
 import { type Result, ok, err, createError } from "@stargazer/core";
-import type { SecretsStorageError, SecretsStorageErrorCode } from "./types.js";
-import type { AIProvider } from "@stargazer/schemas/config";
+import type { AIProvider, ProjectInfo, ProviderStatus } from "@stargazer/schemas/config";
+import type { SecretsStorage, SettingsConfig, TrustConfig } from "@stargazer/schemas/settings";
+import type { SecretsStorageError, SecretsStorageErrorCode, ConfigState, SecretsState, TrustState } from "./types.js";
 import {
   deleteKeyringSecret,
   isKeyringAvailable,
@@ -19,16 +20,6 @@ import {
   removeSecretsFile,
   syncProvidersWithSecrets,
 } from "./state.js";
-import type {
-  ProjectInfo,
-  ProviderStatus,
-  SecretsStorage,
-  SettingsConfig,
-  TrustConfig,
-  TrustState,
-  ConfigState,
-  SecretsState,
-} from "./types.js";
 
 const resolveSecretsStorage = (
   storage?: SecretsStorage | null,
@@ -269,7 +260,20 @@ export const saveProviderCredentials = (input: {
   }
 
   ensureProvider(provider);
-  setActiveProvider(provider, { model, hasApiKey: true });
+
+  if (provider === "openrouter" && !model) {
+    configState.providers = configState.providers.map((item) => {
+      if (item.provider !== provider) return item;
+      const hasModel = Boolean(item.model);
+      return {
+        ...item,
+        hasApiKey: true,
+        isActive: hasModel ? item.isActive : false,
+      };
+    });
+  } else {
+    setActiveProvider(provider, { model, hasApiKey: true });
+  }
 
   persistConfig(configState);
   return ok(getActiveProvider() ?? { ...ensureProvider(provider) });
@@ -284,6 +288,7 @@ export const activateProvider = (input: {
     (item) => item.provider === provider,
   );
   if (!existing) return null;
+  if (provider === "openrouter" && !model && !existing.model) return null;
 
   setActiveProvider(provider, { model, preserveModel: true });
 

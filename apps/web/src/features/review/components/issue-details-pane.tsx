@@ -14,12 +14,11 @@ import {
   SecurityBadge,
   type CodeLine
 } from "@/components/ui";
-import type { TriageSeverity } from "@stargazer/schemas/triage";
-import type { TriageIssue } from "@stargazer/schemas";
+import type { ReviewSeverity, ReviewIssue } from "@stargazer/schemas/review";
 import type { TabId } from "../types";
 
 export interface IssueDetailsPaneProps {
-  issue: TriageIssue | null;
+  issue: ReviewIssue | null;
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
   completedSteps: Set<number>;
@@ -40,7 +39,7 @@ export function IssueDetailsPane({
   const hasPatch = !!issue?.suggested_patch;
 
   return (
-    <FocusablePane isFocused={isFocused} className={cn("w-3/5 flex flex-col pl-4", className)}>
+    <FocusablePane isFocused={isFocused} className={cn("w-3/5 flex flex-col pl-4 min-h-0", className)}>
       <Tabs value={activeTab} onValueChange={(v) => onTabChange(v as TabId)} className="flex flex-col flex-1">
         <TabsList className="border-b border-tui-border pb-2 pt-2 mb-4">
           <TabsTrigger value="details">Details</TabsTrigger>
@@ -54,7 +53,7 @@ export function IssueDetailsPane({
             <>
               <IssueHeader
                 title={issue.title}
-                severity={issue.severity as TriageSeverity}
+                severity={issue.severity as ReviewSeverity}
                 file={issue.file}
                 line={issue.line_start ?? 0}
               />
@@ -94,7 +93,7 @@ function DetailsTabContent({
   completedSteps,
   onToggleStep,
 }: {
-  issue: TriageIssue;
+  issue: ReviewIssue;
   completedSteps: Set<number>;
   onToggleStep: (step: number) => void;
 }) {
@@ -143,7 +142,7 @@ function DetailsTabContent({
   );
 }
 
-function TraceTabContent({ issue }: { issue: TriageIssue }) {
+function TraceTabContent({ issue }: { issue: ReviewIssue }) {
   if (!issue.trace || issue.trace.length === 0) {
     return <EmptyState message="No trace data available for this issue." variant="inline" />;
   }

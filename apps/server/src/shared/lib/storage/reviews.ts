@@ -1,57 +1,58 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import {
-  SavedTriageReviewSchema,
-  TriageReviewMetadataSchema,
-  type SavedTriageReview,
-  type TriageReviewMetadata,
-  type TriageGitContext,
-  type TriageResult,
+  SavedReviewSchema,
+  ReviewMetadataSchema,
+  type SavedReview,
+  type ReviewMetadata,
+  type ReviewGitContext,
+  type ReviewResult,
   type LensId,
   type ProfileId,
   type DrilldownResult,
   type ReviewMode,
 } from "@stargazer/schemas";
 import type { ParsedDiff } from "../diff/types.js";
-import { createCollection, filterByProjectAndSort, type StoreError } from "./persistence.js";
+import { createCollection, type StoreError } from "./persistence.js";
 import { getGlobalStargazerDir } from "../paths.js";
-import { type Result, ok } from "@stargazer/core";
+import { type Result, ok, calculateSeverityCounts } from "@stargazer/core";
 
-const TRIAGE_REVIEWS_DIR = join(getGlobalStargazerDir(), "triage-reviews");
-const getTriageReviewFile = (reviewId: string): string =>
-  join(TRIAGE_REVIEWS_DIR, `${reviewId}.json`);
+type DateFieldsOf<T> = {
+  [K in keyof T]: T[K] extends string ? K : never;
+}[keyof T];
 
-export const triageReviewStore = createCollection<SavedTriageReview, TriageReviewMetadata>({
-  name: "triage-review",
-  dir: TRIAGE_REVIEWS_DIR,
-  filePath: getTriageReviewFile,
-  schema: SavedTriageReviewSchema,
-  metadataSchema: TriageReviewMetadataSchema,
+function filterByProjectAndSort<T extends { projectPath: string }>(
+  items: T[],
+  projectPath: string | undefined,
+  dateField: DateFieldsOf<T>
+): T[] {
+  const filtered = projectPath ? items.filter((item) => item.projectPath === projectPath) : items;
+  return filtered.sort(
+    (a, b) =>
+      new Date(b[dateField] as string).getTime() - new Date(a[dateField] as string).getTime()
+  );
+}
+
+// Legacy on-disk directory name kept as "triage-reviews" to avoid data migration
+const REVIEWS_DIR = join(getGlobalStargazerDir(), "triage-reviews");
+const getReviewFile = (reviewId: string): string =>
+  join(REVIEWS_DIR, `${reviewId}.json`);
+
+export const reviewStore = createCollection<SavedReview, ReviewMetadata>({
+  name: "review",
+  dir: REVIEWS_DIR,
+  filePath: getReviewFile,
+  schema: SavedReviewSchema,
+  metadataSchema: ReviewMetadataSchema,
   getMetadata: (review) => review.metadata,
   getId: (review) => review.metadata.id,
 });
-
-type SeverityCounts = {
-  blocker: number;
-  high: number;
-  medium: number;
-  low: number;
-  nit: number;
-};
-
-function countSeverities(issues: TriageResult["issues"]): SeverityCounts {
-  const counts: SeverityCounts = { blocker: 0, high: 0, medium: 0, low: 0, nit: 0 };
-  for (const issue of issues) {
-    counts[issue.severity]++;
-  }
-  return counts;
-}
 
 /**
  * Migrates a review by recalculating severity counts from issues.
  * Returns true if migration was applied.
  */
-function migrateReview(review: SavedTriageReview): boolean {
+function migrateReview(review: SavedReview): boolean {
   const { metadata } = review;
   const { issues } = review.result;
 
@@ -62,7 +63,7 @@ function migrateReview(review: SavedTriageReview): boolean {
 
   if (totalCounted > 0 || metadata.issueCount === 0) return false;
 
-  const counts = countSeverities(issues);
+  const counts = calculateSeverityCounts(issues);
   metadata.blockerCount = counts.blocker;
   metadata.highCount = counts.high;
   metadata.mediumCount = counts.medium;
@@ -71,11 +72,11 @@ function migrateReview(review: SavedTriageReview): boolean {
   return true;
 }
 
-export interface SaveTriageReviewOptions {
+export interface SaveReviewOptions {
   reviewId?: string;
   projectPath: string;
   mode: ReviewMode;
-  result: TriageResult;
+  result: ReviewResult;
   diff: ParsedDiff;
   branch: string | null;
   commit: string | null;
@@ -85,12 +86,12 @@ export interface SaveTriageReviewOptions {
   durationMs?: number;
 }
 
-export async function saveTriageReview(
-  options: SaveTriageReviewOptions
-): Promise<Result<TriageReviewMetadata, StoreError>> {
+export async function saveReview(
+  options: SaveReviewOptions
+): Promise<Result<ReviewMetadata, StoreError>> {
   const now = new Date().toISOString();
 
-  const gitContext: TriageGitContext = {
+  const gitContext: ReviewGitContext = {
     branch: options.branch,
     commit: options.commit,
     fileCount: options.diff.totalStats.filesChanged,
@@ -98,9 +99,9 @@ export async function saveTriageReview(
     deletions: options.diff.totalStats.deletions,
   };
 
-  const severityCounts = countSeverities(options.result.issues);
+  const severityCounts = calculateSeverityCounts(options.result.issues);
 
-  const metadata: TriageReviewMetadata = {
+  const metadata: ReviewMetadata = {
     id: options.reviewId ?? randomUUID(),
     projectPath: options.projectPath,
     createdAt: now,
@@ -118,14 +119,14 @@ export async function saveTriageReview(
     durationMs: options.durationMs,
   };
 
-  const savedReview: SavedTriageReview = {
+  const savedReview: SavedReview = {
     metadata,
     result: options.result,
     gitContext,
     drilldowns: options.drilldowns ?? [],
   };
 
-  const writeResult = await triageReviewStore.write(savedReview);
+  const writeResult = await reviewStore.write(savedReview);
   if (!writeResult.ok) return writeResult;
   return ok(metadata);
 }
@@ -134,7 +135,7 @@ export async function addDrilldownToReview(
   reviewId: string,
   drilldown: DrilldownResult
 ): Promise<Result<void, StoreError>> {
-  const readResult = await triageReviewStore.read(reviewId);
+  const readResult = await reviewStore.read(reviewId);
   if (!readResult.ok) return readResult;
 
   const review = readResult.value;
@@ -146,13 +147,13 @@ export async function addDrilldownToReview(
     review.drilldowns.push(drilldown);
   }
 
-  return triageReviewStore.write(review);
+  return reviewStore.write(review);
 }
 
-export async function listTriageReviews(
+export async function listReviews(
   projectPath?: string
-): Promise<Result<{ items: TriageReviewMetadata[]; warnings: string[] }, StoreError>> {
-  const result = await triageReviewStore.list();
+): Promise<Result<{ items: ReviewMetadata[]; warnings: string[] }, StoreError>> {
+  const result = await reviewStore.list();
   if (!result.ok) return result;
 
   const items = filterByProjectAndSort(result.value.items, projectPath, "createdAt");
@@ -164,12 +165,12 @@ export async function listTriageReviews(
         metadata.blockerCount + metadata.highCount + metadata.mediumCount + metadata.lowCount + metadata.nitCount;
 
       if (totalCounted === 0 && metadata.issueCount > 0) {
-        const reviewResult = await triageReviewStore.read(metadata.id);
+        const reviewResult = await reviewStore.read(metadata.id);
         if (!reviewResult.ok) return metadata;
 
         const review = reviewResult.value;
         if (migrateReview(review)) {
-          triageReviewStore.write(review).catch(() => {});
+          reviewStore.write(review).catch(() => {});
           return review.metadata;
         }
       }
@@ -181,23 +182,23 @@ export async function listTriageReviews(
   return ok({ items: migratedItems, warnings: result.value.warnings });
 }
 
-export async function getTriageReview(
+export async function getReview(
   reviewId: string
-): Promise<Result<SavedTriageReview, StoreError>> {
-  const result = await triageReviewStore.read(reviewId);
+): Promise<Result<SavedReview, StoreError>> {
+  const result = await reviewStore.read(reviewId);
   if (!result.ok) return result;
 
   const review = result.value;
   if (migrateReview(review)) {
     // Persist migrated data in background (fire and forget)
-    triageReviewStore.write(review).catch(() => {});
+    reviewStore.write(review).catch(() => {});
   }
 
   return ok(review);
 }
 
-export async function deleteTriageReview(
+export async function deleteReview(
   reviewId: string
 ): Promise<Result<{ existed: boolean }, StoreError>> {
-  return triageReviewStore.remove(reviewId);
+  return reviewStore.remove(reviewId);
 }

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { TriageIssueSchema } from "./triage.js";
+import { ReviewIssueSchema } from "./review.js";
 
 // ============================================================================
 // History Tab Types
@@ -29,7 +29,7 @@ export const HistoryRunSchema = z.object({
   provider: z.string(),
   timestamp: z.string(),
   summary: z.string(),
-  issues: z.array(TriageIssueSchema),
+  issues: z.array(ReviewIssueSchema),
   issueCount: z.number(),
   criticalCount: z.number(),
   warningCount: z.number(),

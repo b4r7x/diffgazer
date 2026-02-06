@@ -62,7 +62,7 @@ describe("GLM_MODELS", () => {
   );
 
   it("GLM_MODELS has expected models", () => {
-    expect(GLM_MODELS).toEqual(["glm-4.7", "glm-4.6"]);
+    expect(GLM_MODELS).toEqual(["glm-4.7", "glm-4.7-flashx", "glm-4.7-flash"]);
   });
 });
 
@@ -188,7 +188,7 @@ describe("ProviderInfoSchema", () => {
       id: "zai",
       name: "Z.AI",
       defaultModel: "glm-4.7",
-      models: ["glm-4.7", "glm-4.6"],
+      models: ["glm-4.7", "glm-4.7-flashx", "glm-4.7-flash"],
     });
     expect(result.success).toBe(true);
   });
@@ -198,7 +198,7 @@ describe("ProviderInfoSchema", () => {
       id: "zai-coding",
       name: "Z.AI Coding Plan",
       defaultModel: "glm-4.7",
-      models: ["glm-4.7", "glm-4.6"],
+      models: ["glm-4.7", "glm-4.7-flashx", "glm-4.7-flash"],
     });
     expect(result.success).toBe(true);
   });
@@ -254,7 +254,7 @@ describe("UserConfigSchema", () => {
 
   it("accepts valid z.ai coding config", () => {
     const result = UserConfigSchema.safeParse(
-      createBaseUserConfig({ provider: "zai-coding", model: "glm-4.6" })
+      createBaseUserConfig({ provider: "zai-coding", model: "glm-4.7-flash" })
     );
     expect(result.success).toBe(true);
   });
@@ -395,7 +395,7 @@ describe("SaveConfigRequestSchema", () => {
 
   it("accepts valid z.ai coding request", () => {
     const result = SaveConfigRequestSchema.safeParse(
-      createBaseSaveConfigRequest({ provider: "zai-coding", model: "glm-4.6" })
+      createBaseSaveConfigRequest({ provider: "zai-coding", model: "glm-4.7-flash" })
     );
     expect(result.success).toBe(true);
   });

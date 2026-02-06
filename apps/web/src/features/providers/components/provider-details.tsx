@@ -8,6 +8,7 @@ export interface ProviderDetailsProps {
   onSelectModel: () => void;
   onRemoveKey: () => void;
   onSelectProvider: () => void;
+  disableSelectProvider?: boolean;
   focusedButtonIndex?: number;
   isFocused?: boolean;
 }
@@ -26,6 +27,7 @@ export function ProviderDetails({
   onSelectModel,
   onRemoveKey,
   onSelectProvider,
+  disableSelectProvider = false,
   focusedButtonIndex,
   isFocused = false,
 }: ProviderDetailsProps) {
@@ -102,7 +104,11 @@ export function ProviderDetails({
             provider.model ? (
               <span className="text-tui-fg">{provider.model}</span>
             ) : (
-              <span className="text-gray-500">{provider.defaultModel} (default)</span>
+              <span className="text-gray-500">
+                {provider.id === "openrouter"
+                  ? "Model required"
+                  : `${provider.defaultModel} (default)`}
+              </span>
             )
           }
         />
@@ -112,7 +118,7 @@ export function ProviderDetails({
       <section className="mt-auto">
         <div className="flex flex-wrap gap-3 pt-4">
           {[
-            { action: onSelectProvider, label: 'Select Provider', variant: 'primary' as const },
+            { action: onSelectProvider, label: 'Select Provider', variant: 'primary' as const, disabled: disableSelectProvider },
             { action: onSetApiKey, label: 'Set API Key', variant: 'secondary' as const },
             { action: onRemoveKey, label: 'Remove Key', variant: 'destructive' as const, disabled: !provider.hasApiKey },
             { action: onSelectModel, label: 'Select Model...', variant: 'link' as const },

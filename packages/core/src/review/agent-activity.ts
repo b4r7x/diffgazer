@@ -18,6 +18,9 @@ function createInitialAgentState(agentId: AgentId): AgentState {
     issueCount: 0,
     currentAction: undefined,
     lastToolCall: undefined,
+    error: undefined,
+    startedAt: undefined,
+    completedAt: undefined,
   };
 }
 
@@ -29,6 +32,8 @@ function calculateProgress(agents: AgentState[]): number {
 
   for (const agent of agents) {
     if (agent.status === "complete") {
+      total += sharePerAgent;
+    } else if (agent.status === "error") {
       total += sharePerAgent;
     } else if (agent.status === "running") {
       total += sharePerAgent * 0.5;
@@ -63,6 +68,16 @@ export function calculateAgentActivity(events: AgentStreamEvent[]): AgentActivit
 
   for (const event of events) {
     switch (event.type) {
+      case "agent_queued": {
+        const agentId = event.agent.id;
+        const existing = agentMap.get(agentId);
+        agentMap.set(agentId, {
+          ...(existing ?? createInitialAgentState(agentId)),
+          meta: event.agent,
+          status: "queued",
+        });
+        break;
+      }
       case "agent_start": {
         const agentId = event.agent.id;
         const existing = agentMap.get(agentId);
@@ -70,6 +85,7 @@ export function calculateAgentActivity(events: AgentStreamEvent[]): AgentActivit
           ...(existing ?? createInitialAgentState(agentId)),
           meta: event.agent,
           status: "running",
+          startedAt: event.timestamp,
         });
         break;
       }
@@ -85,7 +101,20 @@ export function calculateAgentActivity(events: AgentStreamEvent[]): AgentActivit
         break;
       }
 
-      case "tool_call": {
+      case "agent_progress": {
+        const existing = agentMap.get(event.agent);
+        if (existing) {
+          agentMap.set(event.agent, {
+            ...existing,
+            progress: event.progress,
+            currentAction: event.message ?? existing.currentAction,
+          });
+        }
+        break;
+      }
+
+      case "tool_call":
+      case "tool_start": {
         const existing = agentMap.get(event.agent);
         if (existing) {
           agentMap.set(event.agent, {
@@ -97,7 +126,8 @@ export function calculateAgentActivity(events: AgentStreamEvent[]): AgentActivit
         break;
       }
 
-      case "tool_result": {
+      case "tool_result":
+      case "tool_end": {
         const existing = agentMap.get(event.agent);
         if (existing) {
           agentMap.set(event.agent, {
@@ -120,6 +150,21 @@ export function calculateAgentActivity(events: AgentStreamEvent[]): AgentActivit
         break;
       }
 
+      case "agent_error": {
+        const existing = agentMap.get(event.agent);
+        if (existing) {
+          agentMap.set(event.agent, {
+            ...existing,
+            status: "error",
+            error: event.error,
+            currentAction: "Failed",
+            progress: 100,
+            completedAt: event.timestamp,
+          });
+        }
+        break;
+      }
+
       case "agent_complete": {
         const existing = agentMap.get(event.agent);
         if (existing) {
@@ -129,6 +174,7 @@ export function calculateAgentActivity(events: AgentStreamEvent[]): AgentActivit
             progress: 100,
             currentAction: undefined,
             issueCount: event.issueCount,
+            completedAt: event.timestamp,
           });
         }
         break;

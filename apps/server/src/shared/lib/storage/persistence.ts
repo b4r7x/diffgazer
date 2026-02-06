@@ -302,18 +302,3 @@ export function createCollection<T, M>(config: CollectionConfig<T, M>): Collecti
   return { ensureDir, read, write, list, remove };
 }
 
-type DateFieldsOf<T> = {
-  [K in keyof T]: T[K] extends string ? K : never;
-}[keyof T];
-
-export function filterByProjectAndSort<T extends { projectPath: string }>(
-  items: T[],
-  projectPath: string | undefined,
-  dateField: DateFieldsOf<T>
-): T[] {
-  const filtered = projectPath ? items.filter((item) => item.projectPath === projectPath) : items;
-  return filtered.sort(
-    (a, b) =>
-      new Date(b[dateField] as string).getTime() - new Date(a[dateField] as string).getTime()
-  );
-}

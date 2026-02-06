@@ -4,7 +4,8 @@ import {
   createDomainErrorSchema,
   type SharedErrorCode,
 } from "./errors.js";
-import { TriageIssueSchema, TraceRefSchema, SeverityFilterSchema } from "./triage.js";
+import { ReviewIssueSchema, TraceRefSchema, SeverityFilterSchema } from "./review.js";
+export { SeverityFilterSchema, type SeverityFilter } from "./review.js";
 
 export const LENS_IDS = [
   "correctness",
@@ -50,7 +51,7 @@ export type ReviewProfile = z.infer<typeof ReviewProfileSchema>;
 
 export const DrilldownResultSchema = z.object({
   issueId: z.string(),
-  issue: TriageIssueSchema,
+  issue: ReviewIssueSchema,
   detailedAnalysis: z.string(),
   rootCause: z.string(),
   impact: z.string(),

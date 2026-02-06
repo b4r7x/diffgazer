@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,7 @@ import {
   type AIProvider,
   type ModelInfo,
 } from "@stargazer/schemas";
+import { api } from "@/lib/api";
 import { useModelFilter } from "../../hooks/use-model-filter";
 import { ModelSearchInput } from "./model-search-input";
 import { ModelFilterTabs, FILTERS } from "./model-filter-tabs";
@@ -34,16 +35,27 @@ interface ModelSelectDialogProps {
   onSelect: (modelId: string) => void;
 }
 
-function getModelsForProvider(provider: AIProvider): ModelInfo[] {
-  switch (provider) {
-    case "gemini":
-      return Object.values(GEMINI_MODEL_INFO);
-    case "zai":
-    case "zai-coding":
-      return Object.values(GLM_MODEL_INFO);
-    default:
-      return [];
-  }
+function isOpenRouterCompatible(model: {
+  supportedParameters?: string[];
+}): boolean {
+  const params = model.supportedParameters ?? [];
+  return params.includes("response_format") || params.includes("structured_outputs");
+}
+
+function mapOpenRouterModels(
+  models: Array<{
+    id: string;
+    name: string;
+    description?: string;
+    isFree: boolean;
+  }>
+): ModelInfo[] {
+  return models.map((model) => ({
+    id: model.id,
+    name: model.name || model.id,
+    description: model.description ?? model.id,
+    tier: model.isFree ? "free" : "paid",
+  }));
 }
 
 const FOOTER_HINTS = [
@@ -59,7 +71,27 @@ export function ModelSelectDialog({
   currentModel,
   onSelect,
 }: ModelSelectDialogProps) {
-  const models = getModelsForProvider(provider);
+  const [openRouterModels, setOpenRouterModels] = useState<ModelInfo[]>([]);
+  const [openRouterLoading, setOpenRouterLoading] = useState(false);
+  const [openRouterError, setOpenRouterError] = useState<string | null>(null);
+  const [openRouterTotal, setOpenRouterTotal] = useState(0);
+  const [openRouterCompatible, setOpenRouterCompatible] = useState(0);
+  const [openRouterFetched, setOpenRouterFetched] = useState(false);
+  const [openRouterHasParams, setOpenRouterHasParams] = useState(false);
+
+  const models = useMemo(() => {
+    switch (provider) {
+      case "gemini":
+        return Object.values(GEMINI_MODEL_INFO);
+      case "zai":
+      case "zai-coding":
+        return Object.values(GLM_MODEL_INFO);
+      case "openrouter":
+        return openRouterModels;
+      default:
+        return [];
+    }
+  }, [provider, openRouterModels]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [checkedModelId, setCheckedModelId] = useState<string | undefined>(currentModel);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -81,6 +113,38 @@ export function ModelSelectDialog({
 
   const { scrollItemIntoView } = useScrollIntoView(listContainerRef);
 
+  useEffect(() => {
+    if (!open || provider !== "openrouter") return;
+    if (openRouterFetched || openRouterLoading) return;
+
+    setOpenRouterLoading(true);
+    setOpenRouterError(null);
+    api
+      .getOpenRouterModels()
+      .then((response) => {
+        const withParams = response.models.filter(
+          (model) => (model.supportedParameters?.length ?? 0) > 0
+        );
+        const hasParams = withParams.length > 0;
+        const compatibleModels = hasParams
+          ? response.models.filter(isOpenRouterCompatible)
+          : response.models;
+
+        setOpenRouterTotal(response.models.length);
+        setOpenRouterHasParams(hasParams);
+        setOpenRouterCompatible(compatibleModels.length);
+        const mapped = mapOpenRouterModels(compatibleModels);
+        setOpenRouterModels(mapped);
+      })
+      .catch((error) => {
+        setOpenRouterError(error instanceof Error ? error.message : "Failed to load models");
+      })
+      .finally(() => {
+        setOpenRouterLoading(false);
+        setOpenRouterFetched(true);
+      });
+  }, [open, provider, openRouterFetched, openRouterLoading]);
+
   // Reset state when dialog opens
   useEffect(() => {
     if (open) {
@@ -92,6 +156,7 @@ export function ModelSelectDialog({
       const currentIndex = models.findIndex((m) => m.id === currentModel);
       setSelectedIndex(currentIndex >= 0 ? currentIndex : 0);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- resetFilters and models are derived from provider, resetting on provider change is sufficient
   }, [open, currentModel, provider]);
 
   // Clamp selection when filtered list changes
@@ -114,6 +179,13 @@ export function ModelSelectDialog({
       onSelect(model.id);
       onOpenChange(false);
     }
+  };
+
+  const handleUseCustom = () => {
+    const customId = searchQuery.trim();
+    if (!customId) return;
+    onSelect(customId);
+    onOpenChange(false);
   };
 
   const handleCheck = () => {
@@ -206,6 +278,22 @@ export function ModelSelectDialog({
     setFocusZone("filters");
   };
 
+  const emptyLabel =
+    provider === "openrouter"
+      ? openRouterError ?? "No models match your search"
+      : "No models match your search";
+  const showCompatibilityNote =
+    provider === "openrouter" &&
+    openRouterTotal > 0 &&
+    openRouterCompatible < openRouterTotal;
+  const compatibilityLabel = showCompatibilityNote
+    ? `Showing ${openRouterCompatible}/${openRouterTotal} models that support structured outputs.`
+    : openRouterTotal > 0
+      ? openRouterHasParams
+        ? "Showing models that support structured outputs."
+        : "Compatibility unknown; showing all models."
+      : "No models available.";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg border border-tui-border shadow-2xl">
@@ -222,6 +310,8 @@ export function ModelSelectDialog({
             onFocus={() => setFocusZone("search")}
             onEscape={handleSearchEscape}
             onArrowDown={handleSearchArrowDown}
+            showCustomAction={provider === "openrouter"}
+            onUseCustom={handleUseCustom}
           />
 
           <ModelFilterTabs
@@ -234,6 +324,13 @@ export function ModelSelectDialog({
               setFilterIndex(idx);
             }}
           />
+          {provider === "openrouter" && (
+            <div className="px-4 pb-2 text-[10px] text-gray-500">
+              {compatibilityLabel}
+              {" "}
+              You can enter a custom model ID at your own risk.
+            </div>
+          )}
 
           <ModelList
             ref={listContainerRef}
@@ -248,6 +345,8 @@ export function ModelSelectDialog({
               if (model) setCheckedModelId(model.id);
             }}
             onConfirm={handleConfirm}
+            isLoading={provider === "openrouter" && openRouterLoading}
+            emptyLabel={emptyLabel}
           />
         </DialogBody>
 

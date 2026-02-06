@@ -1,10 +1,12 @@
-import { useMemo, useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useKey, useFooterNavigation } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { Panel, PanelHeader, PanelContent, PathList, Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import type { SystemDiagnostics } from "@/types/diagnostics";
+import { api } from "@/lib/api";
+import type { ReviewContextResponse } from "@stargazer/api";
 
 const DIAGNOSTICS: SystemDiagnostics = {
   version: "v1.4.2",
@@ -28,27 +30,70 @@ const FOOTER_SHORTCUTS = [
   { key: "Esc", label: "Back" },
 ];
 
-const BUTTON_COUNT = 3;
+const BUTTON_COUNT = 4;
 
 export function SettingsDiagnosticsPage() {
   const navigate = useNavigate();
+  const [contextSnapshot, setContextSnapshot] = useState<ReviewContextResponse | null>(null);
+  const [contextStatus, setContextStatus] = useState<"loading" | "ready" | "missing" | "error">("loading");
 
-  const footerShortcuts = useMemo(() => FOOTER_SHORTCUTS, []);
-  usePageFooter({ shortcuts: footerShortcuts });
+  usePageFooter({ shortcuts: FOOTER_SHORTCUTS });
+
+  useEffect(() => {
+    let active = true;
+    setContextStatus("loading");
+    api
+      .getReviewContext()
+      .then((context) => {
+        if (!active) return;
+        setContextSnapshot(context);
+        setContextStatus("ready");
+      })
+      .catch(() => {
+        if (!active) return;
+        setContextSnapshot(null);
+        setContextStatus("missing");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const downloadContextSnapshot = useCallback(() => {
+    if (!contextSnapshot) return;
+    const download = (filename: string, content: string, type: string) => {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    };
+
+    download("context.txt", contextSnapshot.text, "text/plain");
+    download("context.md", contextSnapshot.markdown, "text/markdown");
+    download("context.json", JSON.stringify(contextSnapshot.graph, null, 2), "application/json");
+  }, [contextSnapshot]);
+
+  const canDownloadContext = contextStatus === "ready" && !!contextSnapshot;
 
   const handleButtonAction = useCallback((index: number) => {
     switch (index) {
       case 0:
-        console.log("Paths:", DIAGNOSTICS.paths);
         break;
       case 1:
-        console.log("Debug report exported");
+        if (canDownloadContext) {
+          downloadContextSnapshot();
+        }
         break;
       case 2:
-        console.log("UI settings reset");
+        break;
+      case 3:
         break;
     }
-  }, []);
+  }, [downloadContextSnapshot, canDownloadContext]);
 
   const { focusedIndex, enterFooter } = useFooterNavigation({
     enabled: true,
@@ -157,11 +202,24 @@ export function SettingsDiagnosticsPage() {
             <Button
               bracket
               variant="outline"
+              disabled={!canDownloadContext}
               className={cn(
                 "transition-colors",
                 "hover:bg-tui-selection hover:text-white hover:border-tui-green",
                 "focus:outline-none focus:ring-1 focus:ring-tui-green",
-                focusedIndex === 1 && "ring-2 ring-tui-green border-tui-green"
+                focusedIndex === 1 && canDownloadContext && "ring-2 ring-tui-green border-tui-green"
+              )}
+            >
+              Download Context
+            </Button>
+            <Button
+              bracket
+              variant="outline"
+              className={cn(
+                "transition-colors",
+                "hover:bg-tui-selection hover:text-white hover:border-tui-green",
+                "focus:outline-none focus:ring-1 focus:ring-tui-green",
+                focusedIndex === 2 && "ring-2 ring-tui-green border-tui-green"
               )}
             >
               Export Debug Report
@@ -173,12 +231,17 @@ export function SettingsDiagnosticsPage() {
                 "ml-auto transition-colors",
                 "hover:bg-tui-selection hover:text-tui-red hover:border-tui-red",
                 "focus:outline-none focus:ring-1 focus:ring-tui-red",
-                focusedIndex === 2 && "ring-2 ring-tui-red border-tui-red text-tui-red"
+                focusedIndex === 3 && "ring-2 ring-tui-red border-tui-red text-tui-red"
               )}
             >
               Reset UI Settings
             </Button>
           </div>
+          {contextStatus === "missing" && (
+            <div className="text-xs text-tui-muted font-mono">
+              Context snapshot not available. Run a review or generate it in Settings → Analysis.
+            </div>
+          )}
         </PanelContent>
       </Panel>
     </div>

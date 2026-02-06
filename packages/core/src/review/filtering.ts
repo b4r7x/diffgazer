@@ -1,9 +1,9 @@
-import type { TriageIssue, TriageSeverity } from "@stargazer/schemas/triage";
+import type { ReviewIssue, ReviewSeverity } from "@stargazer/schemas/review";
 
 /**
  * Check if an issue matches a text pattern (case-insensitive search across key fields)
  */
-export function issueMatchesPattern(issue: TriageIssue, pattern: string): boolean {
+export function issueMatchesPattern(issue: ReviewIssue, pattern: string): boolean {
   const lowerPattern = pattern.toLowerCase();
   return (
     issue.title.toLowerCase().includes(lowerPattern) ||
@@ -18,10 +18,10 @@ export function issueMatchesPattern(issue: TriageIssue, pattern: string): boolea
  * Matching issues are sorted to the top when activeFilter is provided.
  */
 export function filterIssuesByPattern(
-  issues: TriageIssue[],
+  issues: ReviewIssue[],
   activeFilter: string | null,
   ignoredPatterns: string[]
-): TriageIssue[] {
+): ReviewIssue[] {
   let filtered = issues;
 
   if (ignoredPatterns.length > 0) {
@@ -31,8 +31,8 @@ export function filterIssuesByPattern(
   }
 
   if (activeFilter) {
-    const matching: TriageIssue[] = [];
-    const nonMatching: TriageIssue[] = [];
+    const matching: ReviewIssue[] = [];
+    const nonMatching: ReviewIssue[] = [];
     for (const issue of filtered) {
       if (issueMatchesPattern(issue, activeFilter)) {
         matching.push(issue);
@@ -50,9 +50,9 @@ export function filterIssuesByPattern(
  * Filter issues by severity level
  */
 export function filterIssuesBySeverity(
-  issues: TriageIssue[],
-  severityFilter: TriageSeverity | "all"
-): TriageIssue[] {
+  issues: ReviewIssue[],
+  severityFilter: ReviewSeverity | "all"
+): ReviewIssue[] {
   if (severityFilter === "all") {
     return issues;
   }
@@ -63,13 +63,13 @@ export function filterIssuesBySeverity(
  * Combined filter: applies pattern filtering then severity filtering
  */
 export function filterIssues(
-  issues: TriageIssue[],
+  issues: ReviewIssue[],
   options: {
     activeFilter?: string | null;
     ignoredPatterns?: string[];
-    severityFilter?: TriageSeverity | "all";
+    severityFilter?: ReviewSeverity | "all";
   }
-): TriageIssue[] {
+): ReviewIssue[] {
   const { activeFilter = null, ignoredPatterns = [], severityFilter = "all" } = options;
 
   const patternFiltered = filterIssuesByPattern(issues, activeFilter, ignoredPatterns);

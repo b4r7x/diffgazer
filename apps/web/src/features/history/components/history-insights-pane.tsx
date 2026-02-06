@@ -1,14 +1,14 @@
 import { cn } from "@/lib/utils";
 import { SectionHeader } from "@/components/ui/section-header";
 import { SeverityBreakdown } from "@/components/ui/severity/severity-breakdown";
-import type { TriageIssue } from "@stargazer/schemas";
+import type { ReviewIssue } from "@stargazer/schemas";
 import type { SeverityCounts } from "@stargazer/schemas/ui";
 import { capitalize } from "@stargazer/core";
 
 export interface HistoryInsightsPaneProps {
   runId: string | null;
   severityCounts: SeverityCounts | null;
-  issues: TriageIssue[];
+  issues: ReviewIssue[];
   duration?: string;
   onIssueClick?: (issueId: string) => void;
   className?: string;
