@@ -1,4 +1,6 @@
-import type { ApiClient, ReviewMode, GitDiffResponse, GitStatus } from "./types.js";
+import type { ReviewMode } from "@stargazer/schemas/review";
+import type { GitStatus } from "@stargazer/schemas/git";
+import type { ApiClient, GitDiffResponse } from "./types.js";
 
 export async function getGitStatus(
   client: ApiClient,

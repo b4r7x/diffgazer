@@ -15,7 +15,7 @@ import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.j
 import { getProjectRoot } from "../../shared/lib/http/request.js";
 import { createBodyLimitMiddleware } from "../../shared/middlewares/body-limit.js";
 import { ErrorCode } from "@stargazer/schemas/errors";
-import { saveConfigSchema, providerParamSchema, activateProviderBodySchema } from "./schemas.js";
+import { SaveConfigSchema, ProviderParamSchema, ActivateProviderBodySchema } from "./schemas.js";
 
 const configRouter = new Hono();
 
@@ -68,7 +68,7 @@ configRouter.get("/provider/openrouter/models", async (c): Promise<Response> => 
 configRouter.post(
   "/",
   bodyLimitMiddleware,
-  zValidator("json", saveConfigSchema, zodErrorHandler),
+  zValidator("json", SaveConfigSchema, zodErrorHandler),
   (c): Response => {
     const body = c.req.valid("json");
     const result = saveConfig(body);
@@ -82,8 +82,8 @@ configRouter.post(
 configRouter.post(
   "/provider/:providerId/activate",
   bodyLimitMiddleware,
-  zValidator("param", providerParamSchema),
-  zValidator("json", activateProviderBodySchema, zodErrorHandler),
+  zValidator("param", ProviderParamSchema),
+  zValidator("json", ActivateProviderBodySchema, zodErrorHandler),
   (c): Response => {
     const { providerId } = c.req.valid("param");
     const { model } = c.req.valid("json");
@@ -98,7 +98,7 @@ configRouter.post(
 
 configRouter.delete(
   "/provider/:providerId",
-  zValidator("param", providerParamSchema),
+  zValidator("param", ProviderParamSchema),
   (c): Response => {
     const { providerId } = c.req.valid("param");
     const result = deleteProvider(providerId);

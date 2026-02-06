@@ -1,38 +1,54 @@
 import { randomUUID } from "node:crypto";
-import type { LensId } from "@stargazer/schemas/lens";
+import type { LensId } from "@stargazer/schemas/review";
 import type {
   ReviewIssue,
   ReviewOptions,
 } from "@stargazer/schemas/review";
 import { type Result, ok, err, getErrorMessage } from "@stargazer/core";
-import type { AgentStreamEvent, LensStat } from "@stargazer/schemas/agent-event";
-import { AGENT_METADATA, LENS_TO_AGENT } from "@stargazer/schemas/agent-event";
-import type { StepEvent } from "@stargazer/schemas/step-event";
+import type { AgentStreamEvent, LensStat, StepEvent } from "@stargazer/schemas/events";
+import { AGENT_METADATA, LENS_TO_AGENT } from "@stargazer/schemas/events";
 import type { AIClient } from "../ai/types.js";
 import type { ParsedDiff } from "../diff/types.js";
 import { getLenses } from "./lenses.js";
-import { now } from "./utils.js";
 import { filterIssuesByMinSeverity, deduplicateIssues, sortIssuesBySeverity, validateIssueCompleteness } from "./issues.js";
 import { runLensAnalysis } from "./analysis.js";
-import { runWithConcurrency } from "../concurrency.js";
+import type { ReviewError, OrchestrationOutcome, OrchestrationOptions } from "./types.js";
 
-type ReviewError = { code: string; message: string };
+async function runWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<R>
+): Promise<PromiseSettledResult<R>[]> {
+  const results: PromiseSettledResult<R>[] = new Array(items.length);
+  let nextIndex = 0;
+  let active = 0;
 
-export type OrchestrationOutcome = {
-  summary: string;
-  issues: ReviewIssue[];
-  lensStats: LensStat[];
-  failedLenses: Array<{ lensId: LensId; errorCode?: string; errorMessage?: string }>;
-};
+  return new Promise((resolve) => {
+    const launchNext = () => {
+      if (nextIndex >= items.length && active === 0) {
+        resolve(results);
+        return;
+      }
 
-export interface OrchestrationOptions {
-  concurrency: number;
-  projectContext?: string;
-  /**
-   * When true, returns ok() with a partial-analysis summary even when all lenses fail.
-   * When false, returns err(lastError) when all lenses fail and no issues were found.
-   */
-  partialOnAllFailed?: boolean;
+      while (active < limit && nextIndex < items.length) {
+        const currentIndex = nextIndex++;
+        active++;
+        Promise.resolve(worker(items[currentIndex]!, currentIndex))
+          .then((value) => {
+            results[currentIndex] = { status: "fulfilled", value };
+          })
+          .catch((reason) => {
+            results[currentIndex] = { status: "rejected", reason };
+          })
+          .finally(() => {
+            active--;
+            launchNext();
+          });
+      }
+    };
+
+    launchNext();
+  });
 }
 
 export async function orchestrateReview(
@@ -58,7 +74,7 @@ export async function orchestrateReview(
     type: "orchestrator_start",
     agents: lenses.map((lens) => AGENT_METADATA[LENS_TO_AGENT[lens.id]]),
     concurrency,
-    timestamp: now(),
+    timestamp: new Date().toISOString(),
     traceId,
     spanId: orchestratorSpanId,
   });
@@ -73,7 +89,7 @@ export async function orchestrateReview(
       agent: agentMeta,
       position: index + 1,
       total: lenses.length,
-      timestamp: now(),
+      timestamp: new Date().toISOString(),
       traceId,
       spanId,
     });
@@ -96,7 +112,7 @@ export async function orchestrateReview(
           type: "agent_error",
           agent: task.agentId,
           error: String(error),
-          timestamp: now(),
+          timestamp: new Date().toISOString(),
           traceId,
           spanId: task.spanId,
         });
@@ -151,7 +167,7 @@ export async function orchestrateReview(
     totalIssues: sorted.length,
     lensStats,
     filesAnalyzed: diff.files.length,
-    timestamp: now(),
+    timestamp: new Date().toISOString(),
     traceId,
     spanId: orchestratorSpanId,
   });

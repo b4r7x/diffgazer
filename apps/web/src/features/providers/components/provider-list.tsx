@@ -4,8 +4,7 @@ import { NavigationList, NavigationListItem } from '@/components/ui';
 import { Badge } from '@/components/ui';
 import { Input } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import { PROVIDER_CAPABILITIES } from '@stargazer/schemas';
-import type { ProviderFilter } from '@stargazer/schemas';
+import { PROVIDER_CAPABILITIES, OPENROUTER_PROVIDER_ID, type ProviderFilter } from '@/features/providers/constants';
 import type { ProviderWithStatus, DisplayStatus } from '../types';
 
 export type { ProviderFilter };
@@ -132,7 +131,7 @@ export function ProviderList({
                 }
                 subtitle={
                   provider.defaultModel ||
-                  (provider.id === "openrouter" ? "Select model" : undefined)
+                  (provider.id === OPENROUTER_PROVIDER_ID ? "Select model" : undefined)
                 }
               >
                 {provider.name}

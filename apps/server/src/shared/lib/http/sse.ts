@@ -1,23 +1,6 @@
-export interface SSEWriter {
-  writeSSE: (data: { event: string; data: string }) => Promise<void>;
-}
+import type { SSEWriter } from "./types.js";
 
-export const writeSSEChunk = async (stream: SSEWriter, content: string): Promise<void> => {
-  await stream.writeSSE({
-    event: "chunk",
-    data: JSON.stringify({ type: "chunk", content }),
-  });
-};
-
-export const writeSSEComplete = async <T extends Record<string, unknown>>(
-  stream: SSEWriter,
-  data: T
-): Promise<void> => {
-  await stream.writeSSE({
-    event: "complete",
-    data: JSON.stringify({ type: "complete", ...data }),
-  });
-};
+export type { SSEWriter } from "./types.js";
 
 export const writeSSEError = async (
   stream: SSEWriter,

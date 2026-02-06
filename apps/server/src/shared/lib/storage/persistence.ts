@@ -1,20 +1,39 @@
-import { mkdir, readFile, writeFile, readdir, unlink, rename, open } from "node:fs/promises";
-import type { FileHandle } from "node:fs/promises";
+import { mkdir, readFile, readdir, unlink } from "node:fs/promises";
 import type { ZodType } from "zod";
-import { type Result, ok, err, type AppError, createError, getErrorMessage, safeParseJson } from "@stargazer/core";
+import { type Result, ok, err, createError, getErrorMessage, safeParseJson } from "@stargazer/core";
+import { UuidSchema } from "@stargazer/schemas/errors";
+import { atomicWriteFile as atomicWrite } from "../fs.js";
+import type { StoreErrorCode, StoreError, CollectionConfig, Collection } from "./types.js";
 
 const isNodeError = (error: unknown, code: string): error is NodeJS.ErrnoException =>
   error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === code;
-import { isValidUuid, parseAndValidate, validateSchema } from "../validation.js";
 
-export type StoreErrorCode =
-  | "NOT_FOUND"
-  | "PARSE_ERROR"
-  | "VALIDATION_ERROR"
-  | "WRITE_ERROR"
-  | "PERMISSION_ERROR";
+const isValidUuid = (id: string): boolean => UuidSchema.safeParse(id).success;
 
-export type StoreError = AppError<StoreErrorCode>;
+const validateSchema = <T, E>(
+  value: unknown,
+  schema: ZodType<T>,
+  errorFactory: (message: string) => E
+): Result<T, E> => {
+  const result = schema.safeParse(value);
+  if (!result.success) {
+    return err(errorFactory(result.error.message));
+  }
+  return ok(result.data);
+};
+
+const parseAndValidate = <T, E>(
+  content: string,
+  schema: ZodType<T>,
+  parseErrorFactory: (message: string) => E,
+  validationErrorFactory: (message: string) => E
+): Result<T, E> => {
+  const parseResult = safeParseJson(content, parseErrorFactory);
+  if (!parseResult.ok) {
+    return err(parseResult.error);
+  }
+  return validateSchema(parseResult.value, schema, validationErrorFactory);
+};
 
 const createStoreError = createError<StoreErrorCode>;
 
@@ -47,21 +66,15 @@ async function ensureDirectory(dirPath: string, name: string): Promise<Result<vo
   }
 }
 
-async function atomicWriteFile(
+async function safeAtomicWrite(
   path: string,
   content: string,
   name: string
 ): Promise<Result<void, StoreError>> {
-  const tempPath = path + "." + Date.now() + ".tmp";
-
   try {
-    await writeFile(tempPath, content, { mode: 0o600 });
-    await rename(tempPath, path);
+    await atomicWrite(path, content);
     return ok(undefined);
   } catch (error) {
-    try {
-      await unlink(tempPath);
-    } catch {}
     if (isNodeError(error, "EACCES")) {
       return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
     }
@@ -69,140 +82,30 @@ async function atomicWriteFile(
   }
 }
 
-const CHUNK_SIZE = 4096;
-const MAX_METADATA_SIZE = 8192;
-
-async function* readFileChunks(
-  handle: FileHandle,
-  chunkSize: number,
-  maxBytes: number
-): AsyncGenerator<Buffer, void, unknown> {
-  let totalRead = 0;
-  const buffer = Buffer.alloc(chunkSize);
-
-  while (totalRead < maxBytes) {
-    const { bytesRead } = await handle.read(buffer, 0, chunkSize, totalRead);
-    if (bytesRead === 0) break;
-    totalRead += bytesRead;
-    yield buffer.subarray(0, bytesRead);
-  }
-}
-
-function findClosingBrace(buffer: string, startIndex: number): number {
-  let depth = 1;
-  let inString = false;
-  let escaped = false;
-
-  for (let i = startIndex + 1; i < buffer.length; i++) {
-    const char = buffer[i];
-    if (escaped) { escaped = false; continue; }
-    if (char === "\\") { escaped = true; continue; }
-    if (char === '"') { inString = !inString; continue; }
-    if (inString) continue;
-    if (char === "{") depth++;
-    if (char === "}") depth--;
-    if (depth === 0) return i + 1;
-  }
-  return -1;
-}
-
-function findMetadataBoundary(buffer: string): number {
-  const metadataKey = '"metadata"';
-  const keyIndex = buffer.indexOf(metadataKey);
-  if (keyIndex === -1) return -1;
-
-  const colonIndex = buffer.indexOf(":", keyIndex + metadataKey.length);
-  if (colonIndex === -1) return -1;
-
-  const openBrace = buffer.indexOf("{", colonIndex);
-  if (openBrace === -1) return -1;
-
-  return findClosingBrace(buffer, openBrace);
-}
-
-function parseMetadataJson<M>(
-  buffer: string,
-  schema: ZodType<M>,
-  name: string
-): Result<M, StoreError> {
-  const metadataKey = '"metadata"';
-  const keyIndex = buffer.indexOf(metadataKey);
-  if (keyIndex === -1) {
-    return err(createStoreError("PARSE_ERROR", `${name} missing metadata key`));
-  }
-
-  const endIndex = findMetadataBoundary(buffer);
-  if (endIndex === -1) {
-    return err(createStoreError("PARSE_ERROR", `${name} has incomplete metadata`));
-  }
-
-  const colonIndex = buffer.indexOf(":", keyIndex + metadataKey.length);
-  const metadataJson = buffer.slice(colonIndex + 1, endIndex).trim();
-
-  const parseResult = safeParseJson(metadataJson, (message) =>
-    createStoreError("PARSE_ERROR", `${name} metadata: ${message}`)
-  );
-  if (!parseResult.ok) {
-    return parseResult;
-  }
-
-  return validateSchema(
-    parseResult.value,
-    schema,
-    (message) => createStoreError("VALIDATION_ERROR", `${name} metadata validation failed`, message)
-  );
-}
-
 async function extractMetadataFromFile<M>(
   path: string,
   schema: ZodType<M>,
   name: string
 ): Promise<Result<M, StoreError>> {
-  let handle: FileHandle | null = null;
+  const readResult = await safeReadFile(path, name);
+  if (!readResult.ok) return readResult;
 
-  try {
-    handle = await open(path, "r");
-    let buffer = "";
+  const parseResult = safeParseJson(readResult.value, (message) =>
+    createStoreError("PARSE_ERROR", `${name}: ${message}`)
+  );
+  if (!parseResult.ok) return parseResult;
 
-    for await (const chunk of readFileChunks(handle, CHUNK_SIZE, MAX_METADATA_SIZE)) {
-      buffer += chunk.toString("utf-8");
-      const boundaryIndex = findMetadataBoundary(buffer);
-      if (boundaryIndex !== -1) {
-        return parseMetadataJson(buffer, schema, name);
-      }
-    }
-
-    return parseMetadataJson(buffer, schema, name);
-  } catch (error) {
-    if (isNodeError(error, "ENOENT")) {
-      return err(createStoreError("NOT_FOUND", `${name} not found: ${path}`));
-    }
-    if (isNodeError(error, "EACCES")) {
-      return err(createStoreError("PERMISSION_ERROR", `Permission denied: ${path}`));
-    }
-    return err(createStoreError("PARSE_ERROR", `Failed to read ${name}`, getErrorMessage(error)));
-  } finally {
-    await handle?.close();
+  const metadata = (parseResult.value as Record<string, unknown>).metadata;
+  if (metadata === undefined) {
+    return err(createStoreError("PARSE_ERROR", `${name} missing metadata key`));
   }
+
+  return validateSchema(metadata, schema, (message) =>
+    createStoreError("VALIDATION_ERROR", `${name} metadata validation failed`, message)
+  );
 }
 
-interface CollectionConfig<T, M> {
-  name: string;
-  dir: string;
-  filePath: (id: string) => string;
-  schema: ZodType<T>;
-  getMetadata: (item: T) => M;
-  getId: (item: T) => string;
-  metadataSchema?: ZodType<M>;
-}
-
-export interface Collection<T, M> {
-  ensureDir(): Promise<Result<void, StoreError>>;
-  read(id: string): Promise<Result<T, StoreError>>;
-  write(item: T): Promise<Result<void, StoreError>>;
-  list(): Promise<Result<{ items: M[]; warnings: string[] }, StoreError>>;
-  remove(id: string): Promise<Result<{ existed: boolean }, StoreError>>;
-}
+export type { StoreErrorCode, StoreError, Collection } from "./types.js";
 
 export function createCollection<T, M>(config: CollectionConfig<T, M>): Collection<T, M> {
   const { name, dir, filePath, schema, getMetadata, getId, metadataSchema } = config;
@@ -231,7 +134,7 @@ export function createCollection<T, M>(config: CollectionConfig<T, M>): Collecti
     const path = filePath(id);
     const content = JSON.stringify(item, null, 2) + "\n";
 
-    return atomicWriteFile(path, content, name);
+    return safeAtomicWrite(path, content, name);
   }
 
   async function list(): Promise<Result<{ items: M[]; warnings: string[] }, StoreError>> {

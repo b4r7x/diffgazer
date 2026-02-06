@@ -13,11 +13,11 @@ import { TrustPermissionsPage } from "./routes/settings/trust-permissions";
 import { ProviderSettingsPage } from "./routes/settings/providers";
 import { HelpPage } from "./routes/help";
 
-const reviewSearchSchema = z.object({
+const ReviewSearchSchema = z.object({
   mode: z.enum(["unstaged", "staged", "files"]).optional().default("unstaged"),
 });
 
-export type ReviewSearch = z.infer<typeof reviewSearchSchema>;
+export type ReviewSearch = z.infer<typeof ReviewSearchSchema>;
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -35,13 +35,13 @@ const routeTree = rootRoute.addChildren([
     getParentRoute: () => rootRoute,
     path: "/review",
     component: ReviewPage,
-    validateSearch: reviewSearchSchema,
+    validateSearch: ReviewSearchSchema,
   }),
   createRoute({
     getParentRoute: () => rootRoute,
     path: "/review/$reviewId",
     component: ReviewPage,
-    validateSearch: reviewSearchSchema,
+    validateSearch: ReviewSearchSchema,
     beforeLoad: ({ params }) => {
       if (!UUID_REGEX.test(params.reviewId)) {
         throw redirect({ to: "/", search: { error: "invalid-review-id" } });

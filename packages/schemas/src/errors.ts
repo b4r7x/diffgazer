@@ -44,8 +44,8 @@ export const createdAtField = {
 
 export function createDomainErrorCodes<const T extends readonly string[]>(
   specificCodes: T
-): readonly [...typeof SHARED_ERROR_CODES, ...T] {
-  return [...SHARED_ERROR_CODES, ...specificCodes] as const;
+): [string, ...string[]] {
+  return [...SHARED_ERROR_CODES, ...specificCodes] as [string, ...string[]];
 }
 
 export function createDomainErrorSchema<const T extends readonly string[]>(
@@ -53,7 +53,7 @@ export function createDomainErrorSchema<const T extends readonly string[]>(
   options?: { includeDetails?: boolean }
 ) {
   const allCodes = createDomainErrorCodes(specificCodes);
-  const codeSchema = z.enum(allCodes as unknown as [string, ...string[]]);
+  const codeSchema = z.enum(allCodes);
 
   const base = z.object({
     message: z.string(),
@@ -61,19 +61,4 @@ export function createDomainErrorSchema<const T extends readonly string[]>(
   });
 
   return options?.includeDetails ? base.extend({ details: z.string().optional() }) : base;
-}
-
-export const ChunkEventSchema = z.object({ type: z.literal("chunk"), content: z.string() });
-export const ErrorEventSchema = <T extends z.ZodTypeAny>(errorSchema: T) =>
-  z.object({ type: z.literal("error"), error: errorSchema });
-
-export function createStreamEventSchema<
-  C extends z.ZodRawShape,
-  E extends z.ZodTypeAny
->(completeShape: C, errorSchema: E) {
-  return z.discriminatedUnion("type", [
-    ChunkEventSchema,
-    z.object({ type: z.literal("complete"), ...completeShape }),
-    ErrorEventSchema(errorSchema),
-  ]);
 }

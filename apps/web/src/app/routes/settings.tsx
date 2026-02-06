@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import type { SettingsConfig } from "@/types/config";
+import type { SettingsConfig } from "@stargazer/schemas/config";
 import {
   Menu,
   MenuItem,

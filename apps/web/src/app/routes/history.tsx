@@ -1,10 +1,11 @@
 import { useState, useMemo, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { FocusablePane } from "@/components/ui";
-import type { ReviewMetadata } from "@stargazer/api";
-import type { ReviewResult } from "@stargazer/schemas";
-import type { HistoryFocusZone } from "@stargazer/schemas/history";
+import type { ReviewMetadata } from "@stargazer/schemas/review";
+import type { ReviewResult } from "@stargazer/schemas/review";
+import type { HistoryFocusZone } from "@/features/history/types";
 import type { TimelineItem } from "@stargazer/schemas/ui";
+import { SEVERITY_ORDER } from "@stargazer/schemas/ui";
 import { useScope, useKey } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
@@ -160,8 +161,7 @@ export function HistoryPage() {
 
   const sortedIssues = useMemo(() => {
     if (!issues) return [];
-    const severityOrder = { blocker: 0, high: 1, medium: 2, low: 3, nit: 4 };
-    return [...issues].sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+    return [...issues].sort((a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity));
   }, [issues]);
 
   useScope("history");

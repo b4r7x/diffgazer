@@ -5,8 +5,7 @@ import {
   type ReviewState,
   type ReviewAction,
 } from "./review-state.js";
-import type { ReviewStartedEvent } from "@stargazer/schemas/step-event";
-import type { AgentStreamEvent } from "@stargazer/schemas";
+import type { ReviewStartedEvent, AgentStreamEvent } from "@stargazer/schemas/events";
 
 describe("review-state", () => {
   describe("createInitialReviewState", () => {

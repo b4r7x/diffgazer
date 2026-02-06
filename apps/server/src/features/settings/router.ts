@@ -1,6 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import { TrustConfigSchema } from "@stargazer/schemas/settings";
+import { TrustConfigSchema } from "@stargazer/schemas/config";
+import { ErrorCode } from "@stargazer/schemas/errors";
 import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
 import { createBodyLimitMiddleware } from "../../shared/middlewares/body-limit.js";
 import {
@@ -11,7 +12,7 @@ import {
   saveTrust,
   updateSettings,
 } from "../../shared/lib/config/store.js";
-import { settingsSchema, projectIdQuery } from "./schemas.js";
+import { SettingsSchema, ProjectIdQuerySchema } from "./schemas.js";
 
 const settingsRouter = new Hono();
 
@@ -24,7 +25,7 @@ settingsRouter.get("/", (c) => {
 settingsRouter.post(
   "/",
   bodyLimitMiddleware,
-  zValidator("json", settingsSchema, zodErrorHandler),
+  zValidator("json", SettingsSchema, zodErrorHandler),
   (c) => {
     const patch = c.req.valid("json");
     const result = updateSettings(patch);
@@ -37,12 +38,12 @@ settingsRouter.post(
 
 settingsRouter.get(
   "/trust",
-  zValidator("query", projectIdQuery, zodErrorHandler),
+  zValidator("query", ProjectIdQuerySchema, zodErrorHandler),
   (c) => {
     const { projectId } = c.req.valid("query");
     const trust = getTrust(projectId);
     if (!trust) {
-      return errorResponse(c, "Trust not found for project", "NOT_FOUND", 404);
+      return errorResponse(c, "Trust not found for project", ErrorCode.NOT_FOUND, 404);
     }
     return c.json({ trust });
   }
@@ -64,7 +65,7 @@ settingsRouter.post(
 
 settingsRouter.delete(
   "/trust",
-  zValidator("query", projectIdQuery, zodErrorHandler),
+  zValidator("query", ProjectIdQuerySchema, zodErrorHandler),
   (c) => {
     const { projectId } = c.req.valid("query");
     return c.json({ removed: removeTrust(projectId) });

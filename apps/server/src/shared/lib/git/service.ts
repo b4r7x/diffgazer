@@ -1,8 +1,8 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { GIT_FILE_STATUS_CODES, type GitStatus, type GitStatusFiles, type GitFileEntry, type GitFileStatusCode } from "@stargazer/schemas/git";
-import type { GitBlameInfo } from "@stargazer/schemas/review";
-import type { ReviewMode } from "@stargazer/schemas/review-storage";
+import type { GitBlameInfo, ReviewMode } from "@stargazer/schemas/review";
+import type { BranchInfo, CategorizedFile } from "./types.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -18,13 +18,6 @@ const EMPTY_GIT_STATUS: GitStatus = {
   hasChanges: false,
   conflicted: [],
 };
-
-interface BranchInfo {
-  branch: string | null;
-  remoteBranch: string | null;
-  ahead: number;
-  behind: number;
-}
 
 function parseBranchLine(line: string): BranchInfo {
   const result: BranchInfo = { branch: null, remoteBranch: null, ahead: 0, behind: 0 };
@@ -51,14 +44,6 @@ const STATUS_CODES: Set<string> = new Set(GIT_FILE_STATUS_CODES);
 
 function toStatusCode(char: string): GitFileStatusCode {
   return STATUS_CODES.has(char) ? (char as GitFileStatusCode) : " ";
-}
-
-interface CategorizedFile {
-  entry: GitFileEntry;
-  isConflicted: boolean;
-  isUntracked: boolean;
-  isStaged: boolean;
-  isUnstaged: boolean;
 }
 
 function categorizeGitFile(line: string): CategorizedFile | null {

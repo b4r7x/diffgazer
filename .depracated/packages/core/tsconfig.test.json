@@ -1,4 +1,0 @@
-{
-  "extends": "@repo/tsconfig/test.json",
-  "include": ["src", "__test__", "vitest.config.ts"]
-}

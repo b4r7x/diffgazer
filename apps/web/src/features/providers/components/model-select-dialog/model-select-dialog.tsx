@@ -17,8 +17,9 @@ import {
   GLM_MODEL_INFO,
   type AIProvider,
   type ModelInfo,
-} from "@stargazer/schemas";
+} from "@stargazer/schemas/config";
 import { api } from "@/lib/api";
+import { OPENROUTER_PROVIDER_ID } from "../../constants";
 import { useModelFilter } from "../../hooks/use-model-filter";
 import { ModelSearchInput } from "./model-search-input";
 import { ModelFilterTabs, FILTERS } from "./model-filter-tabs";
@@ -86,7 +87,7 @@ export function ModelSelectDialog({
       case "zai":
       case "zai-coding":
         return Object.values(GLM_MODEL_INFO);
-      case "openrouter":
+      case OPENROUTER_PROVIDER_ID:
         return openRouterModels;
       default:
         return [];
@@ -114,7 +115,7 @@ export function ModelSelectDialog({
   const { scrollItemIntoView } = useScrollIntoView(listContainerRef);
 
   useEffect(() => {
-    if (!open || provider !== "openrouter") return;
+    if (!open || provider !== OPENROUTER_PROVIDER_ID) return;
     if (openRouterFetched || openRouterLoading) return;
 
     setOpenRouterLoading(true);
@@ -279,11 +280,11 @@ export function ModelSelectDialog({
   };
 
   const emptyLabel =
-    provider === "openrouter"
+    provider === OPENROUTER_PROVIDER_ID
       ? openRouterError ?? "No models match your search"
       : "No models match your search";
   const showCompatibilityNote =
-    provider === "openrouter" &&
+    provider === OPENROUTER_PROVIDER_ID &&
     openRouterTotal > 0 &&
     openRouterCompatible < openRouterTotal;
   const compatibilityLabel = showCompatibilityNote
@@ -310,7 +311,7 @@ export function ModelSelectDialog({
             onFocus={() => setFocusZone("search")}
             onEscape={handleSearchEscape}
             onArrowDown={handleSearchArrowDown}
-            showCustomAction={provider === "openrouter"}
+            showCustomAction={provider === OPENROUTER_PROVIDER_ID}
             onUseCustom={handleUseCustom}
           />
 
@@ -324,7 +325,7 @@ export function ModelSelectDialog({
               setFilterIndex(idx);
             }}
           />
-          {provider === "openrouter" && (
+          {provider === OPENROUTER_PROVIDER_ID && (
             <div className="px-4 pb-2 text-[10px] text-gray-500">
               {compatibilityLabel}
               {" "}
@@ -345,7 +346,7 @@ export function ModelSelectDialog({
               if (model) setCheckedModelId(model.id);
             }}
             onConfirm={handleConfirm}
-            isLoading={provider === "openrouter" && openRouterLoading}
+            isLoading={provider === OPENROUTER_PROVIDER_ID && openRouterLoading}
             emptyLabel={emptyLabel}
           />
         </DialogBody>

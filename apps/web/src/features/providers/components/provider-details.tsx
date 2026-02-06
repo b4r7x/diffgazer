@@ -1,5 +1,5 @@
 import { Badge, Button, CapabilityCard, StatusRow } from '@/components/ui';
-import { PROVIDER_CAPABILITIES } from '@stargazer/schemas';
+import { PROVIDER_CAPABILITIES, OPENROUTER_PROVIDER_ID } from '@/features/providers/constants';
 import type { ProviderWithStatus } from '../types';
 
 export interface ProviderDetailsProps {
@@ -105,7 +105,7 @@ export function ProviderDetails({
               <span className="text-tui-fg">{provider.model}</span>
             ) : (
               <span className="text-gray-500">
-                {provider.id === "openrouter"
+                {provider.id === OPENROUTER_PROVIDER_ID
                   ? "Model required"
                   : `${provider.defaultModel} (default)`}
               </span>

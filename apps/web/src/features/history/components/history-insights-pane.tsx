@@ -1,7 +1,8 @@
 import { cn } from "@/lib/utils";
 import { SectionHeader } from "@/components/ui/section-header";
 import { SeverityBreakdown } from "@/components/ui/severity/severity-breakdown";
-import type { ReviewIssue } from "@stargazer/schemas";
+import type { ReviewIssue } from "@stargazer/schemas/review";
+import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
 import type { SeverityCounts } from "@stargazer/schemas/ui";
 import { capitalize } from "@stargazer/core";
 
@@ -59,13 +60,7 @@ export function HistoryInsightsPane({
               {issues.map((issue) => (
                 <div key={issue.id} className="text-xs">
                   <div className="flex justify-between mb-1">
-                    <span className={cn(
-                      "font-bold",
-                      issue.severity === "blocker" && "text-tui-red",
-                      issue.severity === "high" && "text-tui-yellow",
-                      issue.severity === "medium" && "text-gray-400",
-                      issue.severity === "low" && "text-tui-blue"
-                    )}>
+                    <span className={cn("font-bold", SEVERITY_CONFIG[issue.severity].color)}>
                       [{capitalize(issue.severity)}]
                     </span>
                     <span className="text-gray-600 font-mono">L:{issue.line_start}</span>

@@ -1,7 +1,6 @@
 // Browser-safe review exports only
 // Server-only code (drilldown, lenses, profiles, trace-recorder) has been moved to apps/server/src/review/
 
-export { calculateAgentActivity, createInitialAgentActivityState, type AgentActivityState } from "./agent-activity.js";
 export {
   reviewReducer,
   createInitialReviewState,

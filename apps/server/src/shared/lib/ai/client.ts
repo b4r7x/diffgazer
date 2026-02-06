@@ -11,14 +11,12 @@ import type {
   AIErrorCode,
 } from "./types.js";
 import { type Result, ok, err, createError, toError, getErrorMessage } from "@stargazer/core";
+import { AVAILABLE_PROVIDERS, type AIProvider } from "@stargazer/schemas/config";
 import { getActiveProvider, getProviderApiKey } from "../config/store.js";
 
-const DEFAULT_MODELS = {
-  gemini: "gemini-2.5-flash",
-  zai: "glm-4.7",
-  "zai-coding": "glm-4.7",
-  openrouter: "",
-} as const;
+const DEFAULT_MODELS = Object.fromEntries(
+  AVAILABLE_PROVIDERS.map((p) => [p.id, p.defaultModel])
+) as Record<AIProvider, string>;
 
 const DEFAULT_TEMPERATURE = 0.7;
 const DEFAULT_MAX_TOKENS = 65536;

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import type { TrustCapabilities } from "@/types/config";
+import type { TrustCapabilities } from "@stargazer/schemas/config";
 import { useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useToast, Panel, PanelHeader, PanelContent } from "@/components/ui";
