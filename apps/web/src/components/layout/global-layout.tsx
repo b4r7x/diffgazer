@@ -3,7 +3,7 @@ import { useCanGoBack, useRouter } from "@tanstack/react-router";
 import { Header } from "./header";
 import { Footer, useFooter } from "./footer";
 import { ToastContainer } from "@/components/ui/toast";
-import { useConfig } from "@/features/settings";
+import { useConfig } from "@/hooks/use-config";
 
 interface GlobalLayoutProps {
   children: ReactNode;

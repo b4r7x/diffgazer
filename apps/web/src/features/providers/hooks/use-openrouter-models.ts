@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useReducer, useEffect } from "react";
 import type { ModelInfo } from "@stargazer/schemas/config";
 import { api } from "@/lib/api";
 import { OPENROUTER_PROVIDER_ID } from "@/config/constants";
@@ -27,6 +27,42 @@ function mapOpenRouterModels(
   }));
 }
 
+type Status = "idle" | "loading" | "loaded" | "error";
+
+interface State {
+  status: Status;
+  models: ModelInfo[];
+  total: number;
+  compatible: number;
+  hasParams: boolean;
+  error: string | null;
+}
+
+type Action =
+  | { type: "FETCH_START" }
+  | { type: "FETCH_SUCCESS"; payload: { models: ModelInfo[]; total: number; compatible: number; hasParams: boolean } }
+  | { type: "FETCH_ERROR"; error: string };
+
+const initialState: State = {
+  status: "idle",
+  models: [],
+  total: 0,
+  compatible: 0,
+  hasParams: false,
+  error: null,
+};
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case "FETCH_START":
+      return { ...state, status: "loading", error: null };
+    case "FETCH_SUCCESS":
+      return { ...state, status: "loaded", ...action.payload };
+    case "FETCH_ERROR":
+      return { ...state, status: "error", error: action.error };
+  }
+}
+
 export interface OpenRouterModelsState {
   models: ModelInfo[];
   loading: boolean;
@@ -37,23 +73,19 @@ export interface OpenRouterModelsState {
 }
 
 export function useOpenRouterModels(open: boolean, provider: AIProvider): OpenRouterModelsState {
-  const [models, setModels] = useState<ModelInfo[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [total, setTotal] = useState(0);
-  const [compatible, setCompatible] = useState(0);
-  const [fetched, setFetched] = useState(false);
-  const [hasParams, setHasParams] = useState(false);
+  const [state, dispatch] = useReducer(reducer, initialState);
 
   useEffect(() => {
     if (!open || provider !== OPENROUTER_PROVIDER_ID) return;
-    if (fetched || loading) return;
+    if (state.status !== "idle") return;
 
-    setLoading(true);
-    setError(null);
+    let ignore = false;
+    dispatch({ type: "FETCH_START" });
+
     api
       .getOpenRouterModels()
       .then((response) => {
+        if (ignore) return;
         const withParams = response.models.filter(
           (model) => (model.supportedParameters?.length ?? 0) > 0
         );
@@ -62,20 +94,35 @@ export function useOpenRouterModels(open: boolean, provider: AIProvider): OpenRo
           ? response.models.filter(isOpenRouterCompatible)
           : response.models;
 
-        setTotal(response.models.length);
-        setHasParams(paramsAvailable);
-        setCompatible(compatibleModels.length);
-        const mapped = mapOpenRouterModels(compatibleModels);
-        setModels(mapped);
+        dispatch({
+          type: "FETCH_SUCCESS",
+          payload: {
+            models: mapOpenRouterModels(compatibleModels),
+            total: response.models.length,
+            compatible: compatibleModels.length,
+            hasParams: paramsAvailable,
+          },
+        });
       })
       .catch((err) => {
-        setError(err instanceof Error ? err.message : "Failed to load models");
-      })
-      .finally(() => {
-        setLoading(false);
-        setFetched(true);
+        if (ignore) return;
+        dispatch({
+          type: "FETCH_ERROR",
+          error: err instanceof Error ? err.message : "Failed to load models",
+        });
       });
-  }, [open, provider, fetched, loading]);
 
-  return { models, loading, error, total, compatible, hasParams };
+    return () => {
+      ignore = true;
+    };
+  }, [open, provider, state.status]);
+
+  return {
+    models: state.models,
+    loading: state.status === "loading",
+    error: state.error,
+    total: state.total,
+    compatible: state.compatible,
+    hasParams: state.hasParams,
+  };
 }

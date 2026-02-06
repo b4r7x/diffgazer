@@ -1,4 +1,4 @@
-import { createContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { ResolvedTheme, ThemeContextValue, WebTheme } from "@/types/theme";
 import { api } from "@/lib/api";
 
@@ -67,13 +67,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     document.documentElement.setAttribute("data-theme", resolved);
   }, [resolved]);
 
-  const setTheme = (newTheme: WebTheme) => {
+  const setTheme = useCallback((newTheme: WebTheme) => {
     setThemeState(newTheme);
     localStorage.setItem(STORAGE_KEY, newTheme);
     api.saveSettings({ theme: newTheme }).catch((err) => {
       console.error("Failed to sync theme to server:", err);
     });
-  };
+  }, []);
 
-  return <ThemeContext.Provider value={{ theme, resolved, setTheme }}>{children}</ThemeContext.Provider>;
+  const value = useMemo<ThemeContextValue>(() => ({ theme, resolved, setTheme }), [theme, resolved, setTheme]);
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

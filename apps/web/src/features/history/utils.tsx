@@ -48,6 +48,15 @@ export function getRunSummary(metadata: ReviewMetadata): React.ReactNode {
   );
 }
 
+export function formatDuration(durationMs: number | null | undefined): string {
+  if (!durationMs) return "--";
+  const seconds = Math.floor(durationMs / 1000);
+  if (seconds === 0) return `${durationMs}ms`;
+  if (seconds < 60) return `${seconds}.${Math.floor((durationMs % 1000) / 100)}s`;
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}m ${seconds % 60}s`;
+}
+
 export function buildTimelineItems(reviews: ReviewMetadata[]): TimelineItem[] {
   const groups = new Map<string, { label: string; count: number }>();
 
