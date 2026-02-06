@@ -4,11 +4,6 @@ export const selectableItemVariants = cva(
   "flex cursor-pointer select-none font-mono relative",
   {
     variants: {
-      size: {
-        sm: "",
-        md: "",
-        lg: "",
-      },
       focused: {
         true: "bg-tui-selection text-white font-bold before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-tui-blue",
         false: "text-tui-fg hover:bg-tui-selection/50",
@@ -19,7 +14,6 @@ export const selectableItemVariants = cva(
       },
     },
     defaultVariants: {
-      size: "md",
       focused: false,
       disabled: false,
     },

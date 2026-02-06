@@ -1,6 +1,7 @@
 import { AnalysisSummary, type IssuePreview } from "@/features/review/components/analysis-summary";
 import type { LensStats } from "@/features/review/components/lens-stats-table";
 import type { ReviewIssue } from "@stargazer/schemas/review";
+import { useMemo } from "react";
 import { useScope, useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { calculateSeverityCounts } from "@stargazer/core/severity";
@@ -59,6 +60,13 @@ export function ReviewSummaryView({
 
   const filesAnalyzed = new Set(issues.map((i) => i.file)).size;
 
+  const stats = useMemo(() => ({
+    runId: reviewId ?? "unknown",
+    totalIssues: issues.length,
+    filesAnalyzed,
+    criticalCount: severityCounts.blocker,
+  }), [reviewId, issues.length, filesAnalyzed, severityCounts.blocker]);
+
   useScope("review-summary");
   useKey("Enter", onEnterReview);
   useKey("Escape", onBack);
@@ -72,12 +80,7 @@ export function ReviewSummaryView({
     <div className="flex-1 overflow-y-auto px-4 py-4">
       <div className="w-full max-w-4xl mx-auto">
         <AnalysisSummary
-          stats={{
-            runId: reviewId ?? "unknown",
-            totalIssues: issues.length,
-            filesAnalyzed,
-            criticalCount: severityCounts.blocker,
-          }}
+          stats={stats}
           severityCounts={severityCounts}
           lensStats={lensStats}
           topIssues={topIssues}

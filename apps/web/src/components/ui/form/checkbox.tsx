@@ -100,9 +100,9 @@ export function Checkbox({
   );
 }
 
-interface CheckboxGroupContextType {
-  value: string[];
-  toggle: (itemValue: string) => void;
+interface CheckboxGroupContextType<T extends string = string> {
+  value: T[];
+  toggle: (itemValue: T) => void;
   disabled: boolean;
   size: SelectableItemSize;
   variant: CheckboxVariant;
@@ -121,11 +121,11 @@ function useCheckboxGroupContext() {
   return context;
 }
 
-export interface CheckboxGroupProps {
-  value?: string[];
-  defaultValue?: string[];
-  onValueChange?: (value: string[]) => void;
-  onEnter?: (itemValue: string, newValues: string[]) => void;
+export interface CheckboxGroupProps<T extends string = string> {
+  value?: T[];
+  defaultValue?: T[];
+  onValueChange?: (value: T[]) => void;
+  onEnter?: (itemValue: T, newValues: T[]) => void;
   disabled?: boolean;
   size?: SelectableItemSize;
   variant?: CheckboxVariant;
@@ -135,9 +135,9 @@ export interface CheckboxGroupProps {
   onBoundaryReached?: (direction: "up" | "down") => void;
 }
 
-export function CheckboxGroup({
+export function CheckboxGroup<T extends string = string>({
   value: controlledValue,
-  defaultValue = [],
+  defaultValue = [] as T[],
   onValueChange,
   onEnter,
   disabled = false,
@@ -147,14 +147,14 @@ export function CheckboxGroup({
   children,
   wrap = true,
   onBoundaryReached,
-}: CheckboxGroupProps) {
+}: CheckboxGroupProps<T>) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [uncontrolledValue, setUncontrolledValue] =
     React.useState(defaultValue);
   const isControlled = controlledValue !== undefined;
   const value = isControlled ? controlledValue : uncontrolledValue;
 
-  const handleValueChange = (newValue: string[]) => {
+  const handleValueChange = (newValue: T[]) => {
     onValueChange?.(newValue);
     if (!isControlled) {
       setUncontrolledValue(newValue);
@@ -163,21 +163,23 @@ export function CheckboxGroup({
 
   const toggle = React.useCallback((itemValue: string) => {
     if (disabled) return;
-    const newValue = value.includes(itemValue)
-      ? value.filter((v) => v !== itemValue)
-      : [...value, itemValue];
+    const typedValue = itemValue as T;
+    const newValue = value.includes(typedValue)
+      ? value.filter((v) => v !== typedValue)
+      : [...value, typedValue];
     handleValueChange(newValue);
   }, [disabled, value, handleValueChange]);
 
   const handleEnterKey = (itemValue: string) => {
     if (disabled) return;
-    const newValue = value.includes(itemValue)
-      ? value.filter((v) => v !== itemValue)
-      : [...value, itemValue];
+    const typedValue = itemValue as T;
+    const newValue = value.includes(typedValue)
+      ? value.filter((v) => v !== typedValue)
+      : [...value, typedValue];
     handleValueChange(newValue);
 
     if (onEnter) {
-      onEnter(itemValue, newValue);
+      onEnter(typedValue, newValue);
     }
   };
 

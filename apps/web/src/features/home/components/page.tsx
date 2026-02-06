@@ -7,7 +7,7 @@ import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ContextSidebar } from "@/features/home/components/context-sidebar";
 import { HomeMenu } from "@/features/home/components/home-menu";
-import { useConfig } from "@/hooks/use-config";
+import { useConfigData } from "@/app/providers/config-provider";
 import { useReviewHistory } from "@/hooks/use-review-history";
 import { useToast } from "@/components/ui/toast";
 import { StorageWizard } from "./storage-wizard";
@@ -15,7 +15,7 @@ import { TrustModal } from "./trust-modal";
 import type { ContextInfo } from "@stargazer/schemas/ui";
 import { api } from "@/lib/api";
 import { useSettings } from "@/hooks/use-settings";
-import { useShutdown } from "@/features/home/hooks/use-shutdown";
+import { shutdown } from "@/features/home/hooks/use-shutdown";
 
 type RouteConfig = { to: string; search?: Record<string, string> };
 
@@ -29,12 +29,11 @@ const MENU_ROUTES: Record<string, RouteConfig> = {
 };
 
 export function HomePage() {
-  const { provider, model, trust, repoRoot, projectId } = useConfig();
+  const { provider, model, trust, repoRoot, projectId } = useConfigData();
   const { reviews } = useReviewHistory();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const search = useSearch({ strict: false });
-  const { shutdown } = useShutdown();
   const { settings, refresh: refreshSettings } = useSettings();
 
   const [wizardSaving, setWizardSaving] = useState(false);
@@ -54,6 +53,9 @@ export function HomePage() {
       message: "The review ID format is invalid.",
     });
     navigate({ to: "/", replace: true });
+    return () => {
+      errorShownRef.current = false;
+    };
   }, [search.error, showToast, navigate]);
 
   const showWizard = settings !== null && !settings.secretsStorage;
@@ -114,42 +116,31 @@ export function HomePage() {
   useKey("s", () => navigate({ to: "/settings" }));
   useKey("h", () => handleActivate("help"));
 
-  if (showWizard) {
-    return (
-      <>
+  return (
+    <>
+      {showWizard ? (
         <StorageWizard
           onComplete={handleWizardComplete}
           isLoading={wizardSaving}
           error={wizardError}
         />
-        {projectId && repoRoot && (
-          <TrustModal
-            isOpen={trustModalOpen}
-            directory={repoRoot}
-            projectId={projectId}
+      ) : (
+        <div className="flex flex-1 flex-col lg:flex-row items-center lg:items-start justify-start lg:justify-center p-4 md:p-6 lg:p-8 gap-4 md:gap-6 lg:gap-8 overflow-auto">
+          <ContextSidebar
+            context={context}
+            isTrusted={isTrusted}
+            projectPath={repoRoot ?? undefined}
           />
-        )}
-      </>
-    );
-  }
-
-  return (
-    <>
-      <div className="flex flex-1 flex-col lg:flex-row items-center lg:items-start justify-start lg:justify-center p-4 md:p-6 lg:p-8 gap-4 md:gap-6 lg:gap-8 overflow-auto">
-        <ContextSidebar
-          context={context}
-          isTrusted={isTrusted}
-          projectPath={repoRoot ?? undefined}
-        />
-        <HomeMenu
-          selectedIndex={selectedIndex}
-          onSelect={setSelectedIndex}
-          onActivate={handleActivate}
-          items={MENU_ITEMS}
-          isTrusted={isTrusted}
-          hasLastReview={hasLastReview}
-        />
-      </div>
+          <HomeMenu
+            selectedIndex={selectedIndex}
+            onSelect={setSelectedIndex}
+            onActivate={handleActivate}
+            items={MENU_ITEMS}
+            isTrusted={isTrusted}
+            hasLastReview={hasLastReview}
+          />
+        </div>
+      )}
       {projectId && repoRoot && (
         <TrustModal
           isOpen={trustModalOpen}

@@ -6,7 +6,7 @@ import { usePageFooter } from "@/hooks/use-page-footer";
 import { useToast } from "@/components/ui/toast";
 import { Panel, PanelHeader, PanelContent } from "@/components/ui/containers";
 import { TrustPermissionsContent } from "../trust-permissions-content";
-import { useConfig } from "@/hooks/use-config";
+import { useConfigData } from "@/app/providers/config-provider";
 import { useTrust } from "@/hooks/use-trust";
 
 const FOOTER_SHORTCUTS = [
@@ -23,7 +23,7 @@ const DEFAULT_CAPABILITIES: TrustCapabilities = {
 export function TrustPermissionsPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { projectId, repoRoot, trust } = useConfig();
+  const { projectId, repoRoot, trust } = useConfigData();
   const { save, revoke, isLoading } = useTrust(projectId);
 
   const [capabilities, setCapabilities] = useState<TrustCapabilities>(

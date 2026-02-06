@@ -57,7 +57,6 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     filesProcessed: state.fileProgress.completed.size,
     filesTotal: state.fileProgress.total || state.fileProgress.completed.size,
     issuesFound: state.issues.length,
-    elapsed: 0,
   }), [state.fileProgress.completed.size, state.fileProgress.total, state.issues.length]);
 
   if (loadingMessage) {
@@ -92,16 +91,20 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     );
   }
 
+  const progressData = useMemo(() => ({
+    steps: progressSteps,
+    entries: logEntries,
+    agents: state.agents,
+    metrics,
+    startTime: state.startedAt ?? undefined,
+    contextSnapshot,
+  }), [progressSteps, logEntries, state.agents, metrics, state.startedAt, contextSnapshot]);
+
   return (
     <ReviewProgressView
-      steps={progressSteps}
-      entries={logEntries}
-      agents={state.agents}
-      metrics={metrics}
+      data={progressData}
       isRunning={state.isStreaming}
       error={state.error}
-      startTime={state.startedAt ?? undefined}
-      contextSnapshot={contextSnapshot}
       onViewResults={handleViewResults}
       onCancel={handleCancel}
     />

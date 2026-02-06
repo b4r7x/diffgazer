@@ -7,11 +7,11 @@ export interface NavigationListContextValue {
   isFocused: boolean;
 }
 
-export const NavigationListContext = createContext<NavigationListContextValue | null>(null);
+export const NavigationListContext = createContext<NavigationListContextValue | undefined>(undefined);
 
 export function useNavigationListContext() {
   const context = useContext(NavigationListContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('NavigationList.Item must be used within NavigationList');
   }
   return context;

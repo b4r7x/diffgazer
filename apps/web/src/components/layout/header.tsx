@@ -2,19 +2,17 @@ import { cn } from "@/utils/cn";
 import { AsciiLogo } from "@/components/ui/ascii-logo";
 import { Button } from "@/components/ui/button";
 
-type ProviderStatus = "active" | "idle" | "error";
+type ProviderStatus = "active" | "idle";
 
 interface HeaderProps {
   providerName?: string;
   providerStatus?: ProviderStatus;
-  subtitle?: string;
   onBack?: () => void;
 }
 
 export function Header({
   providerName = "Not configured",
   providerStatus = "idle",
-  subtitle,
   onBack,
 }: HeaderProps) {
   return (
@@ -41,8 +39,6 @@ export function Header({
             "[zoom:0.8] md:[zoom:1] lg:[zoom:1.2]"
           )}
         />
-
-        {subtitle && <div className="mt-2 text-center text-gray-500 text-xs">{subtitle}</div>}
 
         <div className="text-center text-gray-600 text-sm select-none">─ ✦ ─ ✧ ─</div>
       </div>

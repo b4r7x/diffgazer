@@ -30,8 +30,8 @@ export function ThemeSelectorContent({
       <div className="text-sm font-mono text-[--tui-fg]/60">Select Interface Theme:</div>
       <RadioGroup
         value={value}
-        onValueChange={(v) => onChange(v as Theme)}
-        onFocus={onFocus ? (v) => onFocus(v as Theme) : undefined}
+        onValueChange={onChange}
+        onFocus={onFocus}
       >
         {options.map((option) => (
           <RadioGroupItem

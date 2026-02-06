@@ -3,14 +3,20 @@ import type { Shortcut } from "@stargazer/schemas/ui";
 
 export type { Shortcut };
 
-interface FooterContextValue {
+interface FooterDataContextValue {
   shortcuts: Shortcut[];
   rightShortcuts: Shortcut[];
+}
+
+interface FooterActionsContextValue {
   setShortcuts: (shortcuts: Shortcut[]) => void;
   setRightShortcuts: (shortcuts: Shortcut[]) => void;
 }
 
-const FooterContext = createContext<FooterContextValue | undefined>(undefined);
+type FooterContextValue = FooterDataContextValue & FooterActionsContextValue;
+
+const FooterDataContext = createContext<FooterDataContextValue | undefined>(undefined);
+const FooterActionsContext = createContext<FooterActionsContextValue | undefined>(undefined);
 
 const DEFAULT_SHORTCUTS: Shortcut[] = [
   { key: "?", label: "Help" },
@@ -21,23 +27,41 @@ export function FooterProvider({ children }: { children: ReactNode }) {
   const [shortcuts, setShortcuts] = useState<Shortcut[]>(DEFAULT_SHORTCUTS);
   const [rightShortcuts, setRightShortcuts] = useState<Shortcut[]>([]);
 
-  const contextValue = useMemo(
-    () => ({
-      shortcuts,
-      rightShortcuts,
-      setShortcuts,
-      setRightShortcuts,
-    }),
+  const dataValue = useMemo(
+    () => ({ shortcuts, rightShortcuts }),
     [shortcuts, rightShortcuts]
   );
 
-  return <FooterContext.Provider value={contextValue}>{children}</FooterContext.Provider>;
+  const actionsValue = useMemo(
+    () => ({ setShortcuts, setRightShortcuts }),
+    []
+  );
+
+  return (
+    <FooterDataContext.Provider value={dataValue}>
+      <FooterActionsContext.Provider value={actionsValue}>
+        {children}
+      </FooterActionsContext.Provider>
+    </FooterDataContext.Provider>
+  );
+}
+
+export function useFooterData(): FooterDataContextValue {
+  const context = useContext(FooterDataContext);
+  if (context === undefined) {
+    throw new Error("useFooterData must be used within a FooterProvider");
+  }
+  return context;
+}
+
+export function useFooterActions(): FooterActionsContextValue {
+  const context = useContext(FooterActionsContext);
+  if (context === undefined) {
+    throw new Error("useFooterActions must be used within a FooterProvider");
+  }
+  return context;
 }
 
 export function useFooter(): FooterContextValue {
-  const context = useContext(FooterContext);
-  if (context === undefined) {
-    throw new Error("useFooter must be used within a FooterProvider");
-  }
-  return context;
+  return { ...useFooterData(), ...useFooterActions() };
 }

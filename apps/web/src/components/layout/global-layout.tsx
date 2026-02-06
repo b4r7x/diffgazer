@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { useCanGoBack, useRouter } from "@tanstack/react-router";
 import { Header } from "./header";
-import { Footer, useFooter } from "./footer";
+import { Footer, useFooterData } from "./footer";
 import { ToastContainer } from "@/components/ui/toast";
-import { useConfig } from "@/hooks/use-config";
+import { useConfigData, useConfigActions } from "@/app/providers/config-provider";
 
 interface GlobalLayoutProps {
   children: ReactNode;
@@ -23,8 +23,9 @@ function getProviderDisplay(provider?: string, model?: string): string {
 export function GlobalLayout({ children }: GlobalLayoutProps) {
   const router = useRouter();
   const canGoBack = useCanGoBack();
-  const { provider, model, isConfigured, isLoading } = useConfig();
-  const { shortcuts, rightShortcuts } = useFooter();
+  const { provider, model, isConfigured } = useConfigData();
+  const { isLoading } = useConfigActions();
+  const { shortcuts, rightShortcuts } = useFooterData();
 
   const providerStatus = getProviderStatus(isLoading, isConfigured);
   const providerName = getProviderDisplay(provider, model);

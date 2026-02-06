@@ -6,23 +6,33 @@ import { StatusRow } from '@/components/ui/status-row';
 import { PROVIDER_CAPABILITIES, OPENROUTER_PROVIDER_ID } from '@/config/constants';
 import type { ProviderWithStatus } from '../types';
 
-export interface ProviderDetailsProps {
-  provider: ProviderWithStatus | null;
+export interface ProviderActions {
   onSetApiKey: () => void;
   onSelectModel: () => void;
   onRemoveKey: () => void;
   onSelectProvider: () => void;
+}
+
+export interface ProviderDetailsProps {
+  provider: ProviderWithStatus | null;
+  actions: ProviderActions;
   disableSelectProvider?: boolean;
   focusedButtonIndex?: number;
   isFocused?: boolean;
 }
 
+function getButtonConfig(actions: ProviderActions, provider: ProviderWithStatus, disableSelectProvider: boolean) {
+  return [
+    { action: actions.onSelectProvider, label: 'Select Provider', variant: 'primary' as const, disabled: disableSelectProvider },
+    { action: actions.onSetApiKey, label: 'Set API Key', variant: 'secondary' as const },
+    { action: actions.onRemoveKey, label: 'Remove Key', variant: 'destructive' as const, disabled: !provider.hasApiKey },
+    { action: actions.onSelectModel, label: 'Select Model...', variant: 'link' as const },
+  ];
+}
+
 export function ProviderDetails({
   provider,
-  onSetApiKey,
-  onSelectModel,
-  onRemoveKey,
-  onSelectProvider,
+  actions,
   disableSelectProvider = false,
   focusedButtonIndex,
   isFocused = false,
@@ -43,6 +53,8 @@ export function ProviderDetails({
       </div>
     );
   }
+
+  const buttons = getButtonConfig(actions, provider, disableSelectProvider);
 
   return (
     <div className="flex-1 flex flex-col overflow-y-auto">
@@ -113,12 +125,7 @@ export function ProviderDetails({
       {/* Action Buttons */}
       <section className="mt-auto">
         <div className="flex flex-wrap gap-3 pt-4">
-          {[
-            { action: onSelectProvider, label: 'Select Provider', variant: 'primary' as const, disabled: disableSelectProvider },
-            { action: onSetApiKey, label: 'Set API Key', variant: 'secondary' as const },
-            { action: onRemoveKey, label: 'Remove Key', variant: 'destructive' as const, disabled: !provider.hasApiKey },
-            { action: onSelectModel, label: 'Select Model...', variant: 'link' as const },
-          ].map((btn, index) => (
+          {buttons.map((btn, index) => (
             <Button
               key={btn.label}
               variant={btn.variant}

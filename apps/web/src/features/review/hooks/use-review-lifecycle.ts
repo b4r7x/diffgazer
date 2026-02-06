@@ -99,6 +99,14 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
     return () => { ignore = true; };
   }, [mode, start, resume, configLoading, isConfigured, params.reviewId, settingsLoading, defaultLenses]);
 
+  // Keep refs to state values the completion effect needs without adding them as deps
+  const stepsRef = useRef(state.steps);
+  const issuesRef = useRef(state.issues);
+  const reviewIdRef = useRef(state.reviewId);
+  stepsRef.current = state.steps;
+  issuesRef.current = state.issues;
+  reviewIdRef.current = state.reviewId;
+
   // Delay transition so users see final step completions before switching views
   const prevIsStreamingRef = useRef(state.isStreaming);
   useEffect(() => {
@@ -110,12 +118,12 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
         clearTimeout(completeTimeoutRef.current);
       }
 
-      const reportStep = state.steps.find(s => s.id === 'report');
+      const reportStep = stepsRef.current.find(s => s.id === 'report');
       const reportCompleted = reportStep?.status === 'completed';
       const delayMs = reportCompleted ? REPORT_COMPLETE_DELAY_MS : DEFAULT_COMPLETE_DELAY_MS;
 
       completeTimeoutRef.current = setTimeout(() => {
-        stableOnComplete({ issues: state.issues, reviewId: state.reviewId });
+        stableOnComplete({ issues: issuesRef.current, reviewId: reviewIdRef.current });
       }, delayMs);
     }
     return () => {
@@ -135,8 +143,8 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
       clearTimeout(completeTimeoutRef.current);
     }
     stop();
-    stableOnComplete({ issues: state.issues, reviewId: state.reviewId });
-  }, [stop, state.issues, state.reviewId]);
+    stableOnComplete({ issues: issuesRef.current, reviewId: reviewIdRef.current });
+  }, [stop]);
 
   const handleSetupProvider = useCallback(() => {
     stop();

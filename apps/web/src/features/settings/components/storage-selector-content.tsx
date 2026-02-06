@@ -30,7 +30,7 @@ export function StorageSelectorContent({
       <div className="text-sm font-mono text-[--tui-fg]/60">Select Storage Method:</div>
       <RadioGroup
         value={value ?? undefined}
-        onValueChange={(v) => onChange(v as SecretsStorage)}
+        onValueChange={onChange}
         className="space-y-2"
         disabled={disabled}
       >

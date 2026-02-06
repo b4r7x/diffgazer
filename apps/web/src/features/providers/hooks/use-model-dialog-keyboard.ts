@@ -1,4 +1,4 @@
-import { useState, useEffect, type RefObject } from "react";
+import { useState, useEffect, useRef, type RefObject } from "react";
 import type { ModelInfo } from "@stargazer/schemas/config";
 import { useKey } from "@/hooks/keyboard";
 import { useScrollIntoView } from "@/hooks/use-scroll-into-view";
@@ -63,10 +63,13 @@ export function useModelDialogKeyboard({
   const [footerButtonIndex, setFooterButtonIndex] = useState(1);
 
   const { scrollItemIntoView } = useScrollIntoView(listContainerRef);
+  const prevOpenRef = useRef(open);
 
-  // Reset state when dialog opens
+  // Reset state when dialog opens (false -> true transition only)
   useEffect(() => {
-    if (!open) return;
+    const wasOpen = prevOpenRef.current;
+    prevOpenRef.current = open;
+    if (!open || wasOpen) return;
     resetFilters();
     setFocusZone("list");
     setFilterIndex(0);
@@ -88,7 +91,8 @@ export function useModelDialogKeyboard({
     if (focusZone === "list" && filteredModels.length > 0) {
       scrollItemIntoView(selectedIndex);
     }
-  }, [selectedIndex, focusZone, filteredModels.length, scrollItemIntoView]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedIndex, focusZone, filteredModels.length]);
 
   const handleConfirm = () => {
     const model = filteredModels[selectedIndex];
