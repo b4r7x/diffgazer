@@ -4,4 +4,3 @@ export { HistoryInsightsPane, type HistoryInsightsPaneProps } from "./components
 export { SearchInput } from "./components/search-input";
 
 export { useReviews, useReviewDetail } from "./hooks";
-export { getReviews, deleteReview } from "./api";

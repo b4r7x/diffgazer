@@ -1,4 +1,4 @@
-import type { FullReviewStreamEvent } from "@stargazer/schemas/events";
+import type { FullReviewStreamEvent, StepId } from "@stargazer/schemas/events";
 import type { LensId, ProfileId, ReviewIssue, ReviewMode } from "@stargazer/schemas/review";
 import type { ErrorCode } from "@stargazer/schemas/errors";
 import type { AIError } from "../../shared/lib/ai/types.js";
@@ -26,6 +26,13 @@ export interface ResolvedConfig {
 export interface ReviewOutcome {
   issues: ReviewIssue[];
   summary: string;
+}
+
+export interface ReviewAbort {
+  readonly kind: "review_abort";
+  readonly message: string;
+  readonly code: string;
+  readonly step?: StepId;
 }
 
 export type DrilldownError =

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { getReviews, deleteReview as apiDeleteReview } from "../api";
+import { api } from "@/lib/api";
 import type { ReviewMetadata } from "@stargazer/schemas/review";
 
 export function useReviews(projectPath?: string) {
@@ -11,8 +11,8 @@ export function useReviews(projectPath?: string) {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await getReviews(projectPath);
-      setReviews(data);
+      const response = await api.getReviews(projectPath);
+      setReviews(response.reviews);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch reviews");
     } finally {
@@ -23,7 +23,7 @@ export function useReviews(projectPath?: string) {
   const deleteReview = useCallback(
     async (id: string) => {
       try {
-        await apiDeleteReview(id);
+        await api.deleteReview(id);
         setReviews((prev) => prev.filter((r) => r.id !== id));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to delete review");
