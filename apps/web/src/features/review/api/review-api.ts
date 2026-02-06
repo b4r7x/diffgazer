@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import type { Result } from "@stargazer/core";
+import type { Result } from "@stargazer/core/result";
 import {
   streamReview as sharedStreamReview,
   streamReviewWithEvents as sharedStreamReviewWithEvents,
@@ -11,7 +11,7 @@ import {
   type StreamReviewResult,
   type StreamReviewError,
   type ResumeReviewOptions,
-} from "@stargazer/api";
+} from "@stargazer/api/review";
 
 export type { StreamReviewRequest, StreamReviewResult, StreamReviewError, ResumeReviewOptions };
 export type StreamReviewOptions = FullStreamReviewOptions;

@@ -1,4 +1,4 @@
-import { getErrorMessage } from "@stargazer/core";
+import { getErrorMessage } from "@stargazer/core/errors";
 import {
   OpenRouterModelCacheSchema,
   OpenRouterModelSchema,

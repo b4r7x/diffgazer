@@ -256,6 +256,11 @@ export const ProjectInfoSchema = z.object({
 });
 export type ProjectInfo = z.infer<typeof ProjectInfoSchema>;
 
+export interface ActivateProviderResponse {
+  provider: AIProvider;
+  model?: string;
+}
+
 export const PROVIDER_ENV_VARS: Record<AIProvider, string> = {
   gemini: 'GOOGLE_API_KEY',
   zai: 'ZAI_API_KEY',

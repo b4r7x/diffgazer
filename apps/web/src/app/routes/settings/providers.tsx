@@ -5,15 +5,15 @@ import { useNavigate } from '@tanstack/react-router';
 import { useKey } from '@/hooks/keyboard';
 import { useScopedRouteState } from '@/hooks/use-scoped-route-state';
 import { usePageFooter } from '@/hooks/use-page-footer';
-import { useToast } from '@/components/ui';
+import { useToast } from '@/components/ui/toast';
 import {
   ProviderList,
   ProviderDetails,
-  ApiKeyDialog,
-  ModelSelectDialog,
   type ProviderFilter,
   FILTER_VALUES,
 } from '@/features/providers/components';
+import { ApiKeyDialog } from '@/features/providers/components/api-key-dialog/api-key-dialog';
+import { ModelSelectDialog } from '@/features/providers/components/model-select-dialog/model-select-dialog';
 import { useProviders } from '@/features/providers/hooks';
 import { PROVIDER_ENV_VARS } from '@stargazer/schemas/config';
 import { PROVIDER_CAPABILITIES } from '@/features/providers/constants';

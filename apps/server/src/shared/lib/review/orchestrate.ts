@@ -4,7 +4,8 @@ import type {
   ReviewIssue,
   ReviewOptions,
 } from "@stargazer/schemas/review";
-import { type Result, ok, err, getErrorMessage } from "@stargazer/core";
+import { type Result, ok, err } from "@stargazer/core/result";
+import { getErrorMessage } from "@stargazer/core/errors";
 import type { AgentStreamEvent, LensStat, StepEvent } from "@stargazer/schemas/events";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@stargazer/schemas/events";
 import type { AIClient } from "../ai/types.js";

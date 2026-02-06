@@ -7,8 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogBody,
-  Badge,
-} from "@/components/ui";
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { useKey } from "@/hooks/keyboard";
 import { useApiKeyForm } from "../../hooks/use-api-key-form";
 import { ApiKeyMethodSelector } from "./api-key-method-selector";

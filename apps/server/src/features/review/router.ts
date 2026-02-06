@@ -6,7 +6,7 @@ import { streamSSE } from "hono/streaming";
 import { ErrorCode } from "@stargazer/schemas/errors";
 import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
 import { createBodyLimitMiddleware } from "../../shared/middlewares/body-limit.js";
-import { getErrorMessage } from "@stargazer/core";
+import { getErrorMessage } from "@stargazer/core/errors";
 import { writeSSEError } from "../../shared/lib/http/sse.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
 import { getProjectStargazerDir } from "../../shared/lib/paths.js";

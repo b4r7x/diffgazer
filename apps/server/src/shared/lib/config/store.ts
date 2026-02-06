@@ -1,5 +1,6 @@
 import { resolveProjectRoot } from "../paths.js";
-import { type Result, ok, err, createError } from "@stargazer/core";
+import { type Result, ok, err } from "@stargazer/core/result";
+import { createError } from "@stargazer/core/errors";
 import type { AIProvider, ProjectInfo, ProviderStatus, SecretsStorage, SettingsConfig, TrustConfig } from "@stargazer/schemas/config";
 import type { SecretsStorageError, SecretsStorageErrorCode, ConfigState, SecretsState, TrustState } from "./types.js";
 import {

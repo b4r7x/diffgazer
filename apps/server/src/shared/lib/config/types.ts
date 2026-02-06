@@ -1,5 +1,5 @@
 import type { ProviderStatus, ProjectInfo, SettingsConfig, SecretsStorage, TrustConfig } from "@stargazer/schemas/config";
-import type { AppError } from "@stargazer/core";
+import type { AppError } from "@stargazer/core/errors";
 
 export interface ConfigState {
   settings: SettingsConfig;

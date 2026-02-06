@@ -1,12 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { SettingsConfig } from "@stargazer/schemas/config";
-import {
-  Menu,
-  MenuItem,
-  Panel,
-  PanelHeader,
-} from "@/components/ui";
+import { Menu, MenuItem } from "@/components/ui/menu";
+import { Panel, PanelHeader } from "@/components/ui/containers";
 import { useConfig } from "@/features/settings";
 import { useScope, useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createGitService } from "../../shared/lib/git/service.js";
 import { createGitDiffError } from "../../shared/lib/git/errors.js";
 import type { AIClient } from "../../shared/lib/ai/types.js";
-import { getErrorMessage } from "@stargazer/core";
+import { getErrorMessage } from "@stargazer/core/errors";
 import { parseDiff } from "../../shared/lib/diff/parser.js";
 import type { ParsedDiff } from "../../shared/lib/diff/types.js";
 import { saveReview } from "../../shared/lib/storage/reviews.js";
@@ -17,7 +17,7 @@ import { writeSSEError, type SSEWriter } from "../../shared/lib/http/sse.js";
 import type { StepEvent, StepId, ReviewStartedEvent, EnrichProgressEvent, FullReviewStreamEvent } from "@stargazer/schemas/events";
 import { getSettings } from "../../shared/lib/config/store.js";
 import { getProfile } from "../../shared/lib/review/profiles.js";
-import { severityRank } from "@stargazer/core";
+import { severityRank } from "@stargazer/core/severity";
 import { orchestrateReview } from "../../shared/lib/review/orchestrate.js";
 import {
   createSession,

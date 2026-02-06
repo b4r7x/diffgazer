@@ -1,6 +1,8 @@
 import { mkdir, readFile, readdir, unlink } from "node:fs/promises";
 import type { ZodType } from "zod";
-import { type Result, ok, err, createError, getErrorMessage, safeParseJson } from "@stargazer/core";
+import { type Result, ok, err } from "@stargazer/core/result";
+import { createError, getErrorMessage } from "@stargazer/core/errors";
+import { safeParseJson } from "@stargazer/core/json";
 import { UuidSchema } from "@stargazer/schemas/errors";
 import { atomicWriteFile as atomicWrite } from "../fs.js";
 import type { StoreErrorCode, StoreError, CollectionConfig, Collection } from "./types.js";

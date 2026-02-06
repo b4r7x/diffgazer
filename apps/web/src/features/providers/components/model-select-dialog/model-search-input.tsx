@@ -1,5 +1,5 @@
 import { forwardRef } from "react";
-import { Button } from "@/components/ui";
+import { Button } from "@/components/ui/button";
 
 interface ModelSearchInputProps {
   value: string;
