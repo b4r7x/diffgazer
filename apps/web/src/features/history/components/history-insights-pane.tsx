@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/cn";
 import { SectionHeader } from "@/components/ui/section-header";
 import { SeverityBreakdown } from "@/components/ui/severity/severity-breakdown";
 import type { ReviewIssue } from "@stargazer/schemas/review";

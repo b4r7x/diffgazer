@@ -1,11 +1,13 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/cn";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { CodeSnippet, DiffView, FixPlanChecklist, type CodeLine } from "@/components/ui/review";
+import { CodeSnippet, type CodeLine } from "./code-snippet";
+import { DiffView } from "./diff-view";
+import { FixPlanChecklist } from "./fix-plan-checklist";
 import { FocusablePane } from "@/components/ui/focusable-pane";
 import { SectionHeader } from "@/components/ui/section-header";
 import { EmptyState } from "@/components/ui/empty-state";
-import { IssueHeader } from "@/components/ui/issue";
-import { SecurityBadge } from "@/components/ui/badge";
+import { IssueHeader } from "./issue-header";
+import { SecurityBadge } from "./security-badge";
 import type { ReviewSeverity, ReviewIssue } from "@stargazer/schemas/review";
 import type { TabId } from "../types";
 

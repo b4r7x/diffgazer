@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/cn";
 import { AsciiLogo } from "@/components/ui/ascii-logo";
 import { Button } from "@/components/ui/button";
 

@@ -10,7 +10,7 @@ import {
 } from "react";
 import type { AIProvider, ProviderStatus, TrustConfig } from "@stargazer/schemas/config";
 import { OPENROUTER_PROVIDER_ID } from "@/features/providers/constants";
-import { DEFAULT_TTL } from "@/lib/constants";
+import { DEFAULT_TTL } from "@/config/constants";
 import { api } from "@/lib/api";
 
 interface ConfigData {

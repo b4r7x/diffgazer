@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { InfoField } from "@/components/ui/info-field";
+import { InfoField } from "./info-field";
 import { Panel, PanelContent, PanelHeader } from "@/components/ui/containers";
 import type { ContextInfo } from "@stargazer/schemas/ui";
 

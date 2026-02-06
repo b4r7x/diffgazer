@@ -2,7 +2,7 @@ import type { SeverityCounts } from '@stargazer/schemas/ui';
 import type { ReviewSeverity } from '@stargazer/schemas/review';
 import { SEVERITY_ORDER } from '@stargazer/schemas/ui';
 import { SeverityBar } from './severity-bar';
-import { cn } from '../../../lib/utils';
+import { cn } from '@/utils/cn';
 
 const SEVERITY_LABELS: Record<ReviewSeverity, string> = {
   blocker: "Blocker",

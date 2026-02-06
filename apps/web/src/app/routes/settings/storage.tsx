@@ -3,9 +3,9 @@ import { useNavigate } from "@tanstack/react-router";
 import type { SecretsStorage, SettingsConfig } from "@stargazer/schemas/config";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
-import { StorageSelectorContent, WizardLayout } from "@/components/settings";
+import { StorageSelectorContent, WizardLayout } from "@/features/settings/components";
 import { api } from "@/lib/api";
-import { SETTINGS_SHORTCUTS } from "@/lib/navigation";
+import { SETTINGS_SHORTCUTS } from "@/config/navigation";
 import { useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 

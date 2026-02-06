@@ -4,12 +4,11 @@ import type { Theme } from "@stargazer/schemas/config";
 import type { WebTheme, ResolvedTheme } from "@/types/theme";
 import { Panel, PanelContent, PanelHeader } from "@/components/ui/containers";
 import { Callout } from "@/components/ui/callout";
-import { ThemeSelectorContent } from "@/components/settings";
-import { ThemePreviewCard } from "@/components/theme/theme-preview-card";
+import { ThemeSelectorContent, ThemePreviewCard } from "@/features/settings/components";
 import { useTheme } from "@/hooks/use-theme";
 import { useKey } from "@/hooks/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { SETTINGS_SHORTCUTS } from "@/lib/navigation";
+import { SETTINGS_SHORTCUTS } from "@/config/navigation";
 
 export function SettingsThemePage() {
   const navigate = useNavigate();

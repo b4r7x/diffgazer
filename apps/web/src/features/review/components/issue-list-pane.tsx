@@ -1,6 +1,6 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/cn";
 import { IssueListItem } from "@/components/ui/issue";
-import { SeverityFilterGroup, type SeverityFilter } from "@/components/ui/severity";
+import { SeverityFilterGroup, type SeverityFilter } from "./severity-filter-group";
 import { FocusablePane } from "@/components/ui/focusable-pane";
 import { calculateSeverityCounts } from "@stargazer/core/severity";
 import type { ReviewIssue } from "@stargazer/schemas/review";

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { cn } from '../../../lib/utils';
+import { cn } from '@/utils/cn';
 import { useDialogContext } from './dialog-context';
 
 export interface DialogContentProps extends React.HTMLAttributes<HTMLDivElement> {

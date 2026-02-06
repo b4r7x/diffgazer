@@ -9,7 +9,7 @@ import { usePageFooter } from "@/hooks/use-page-footer";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useTheme } from "@/hooks/use-theme";
 import { api } from "@/lib/api";
-import { SETTINGS_MENU_ITEMS, SETTINGS_SHORTCUTS, type SettingsAction } from "@/lib/navigation";
+import { SETTINGS_MENU_ITEMS, SETTINGS_SHORTCUTS, type SettingsAction } from "@/config/navigation";
 
 const FOOTER_RIGHT = [{ key: "", label: "HUB-MODE" }];
 

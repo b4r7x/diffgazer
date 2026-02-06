@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/utils/cn";
 import { useGroupNavigation } from "@/hooks/keyboard";
 import type { TimelineItem } from "@stargazer/schemas/ui";
 

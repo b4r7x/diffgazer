@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CapabilityCard } from '@/components/ui/capability-card';
-import { StatusRow } from '@/components/ui/status-row';
+import { CapabilityCard } from './capability-card';
+import { StatusRow } from '@/features/home/components/status-row';
 import { PROVIDER_CAPABILITIES, OPENROUTER_PROVIDER_ID } from '@/features/providers/constants';
 import type { ProviderWithStatus } from '../types';
 

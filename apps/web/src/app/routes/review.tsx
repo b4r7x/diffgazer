@@ -4,20 +4,22 @@ import {
   useParams,
   useRouter,
 } from "@tanstack/react-router";
-import { AnalysisSummary, type LensStats, type IssuePreview } from "@/components/ui/review";
-import type { SeverityFilter } from "@/components/ui/severity";
+import {
+  AnalysisSummary,
+  ReviewContainer,
+  IssueListPane,
+  IssueDetailsPane,
+  type LensStats,
+  type IssuePreview,
+  type SeverityFilter,
+  type TabId,
+  type ReviewCompleteData,
+} from "@/features/review/components";
 import type { ReviewIssue, ReviewResult } from "@stargazer/schemas/review";
 import { SEVERITY_ORDER } from "@stargazer/schemas/ui";
 import { useScope, useKey, useSelectableList } from "@/hooks/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import {
-  ReviewContainer,
-  IssueListPane,
-  IssueDetailsPane,
-  type TabId,
-  type ReviewCompleteData,
-} from "@/features/review/components";
 import type { ReviewSearch } from "@/app/router";
 import { useReviewErrorHandler } from "@/features/review/hooks";
 import { calculateSeverityCounts } from "@stargazer/core/severity";

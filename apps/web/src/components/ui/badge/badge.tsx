@@ -1,7 +1,7 @@
 'use client';
 
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/cn';
 
 export const badgeVariants = cva(
   'inline-flex items-center font-bold tracking-wider rounded-sm border shrink-0 whitespace-nowrap',
