@@ -4,7 +4,7 @@ import type { SeverityFilter } from "@/features/review/components/severity-filte
 import type { ReviewIssue } from "@stargazer/schemas/review";
 import type { IssueTab as TabId } from "@stargazer/schemas/ui";
 import { SEVERITY_ORDER } from "@stargazer/schemas/ui";
-import { useScope, useKey, useSelectableList } from "@stargazer/keyboard";
+import { useFocusZone, useKey, useSelectableList } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { filterIssuesBySeverity } from "@stargazer/core/review";
 
@@ -21,6 +21,8 @@ const RIGHT_SHORTCUTS = [
 
 type FocusZone = "filters" | "list" | "details";
 
+const ZONES = ["filters", "list", "details"] as const;
+
 interface UseReviewResultsKeyboardOptions {
   issues: ReviewIssue[];
 }
@@ -29,11 +31,11 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>("details");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
-  const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [focusedFilterIndex, setFocusedFilterIndex] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(
     new Set([1]),
   );
+  const [focusZone, setFocusZone] = useState<FocusZone>("list");
 
   const filteredIssues = filterIssuesBySeverity(issues, severityFilter);
 
@@ -44,50 +46,39 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     initialIndex: 0,
   });
 
+  useFocusZone({
+    initial: "list" as FocusZone,
+    zones: ZONES,
+    zone: focusZone,
+    onZoneChange: setFocusZone,
+    scope: "review",
+    tabCycle: ["filters", "list", "details"],
+    transitions: ({ zone, key }) => {
+      if (zone === "details" && key === "ArrowLeft") return "list";
+      if (zone === "list" && key === "ArrowRight") return "details";
+      if (zone === "filters" && key === "ArrowRight" && focusedFilterIndex >= SEVERITY_ORDER.length - 1) return "details";
+      if (zone === "filters" && key === "ArrowDown") return "list";
+      if (zone === "list" && key === "ArrowUp" && focusedIndex === 0) return "filters";
+      return null;
+    },
+  });
+
   const selectedIssue = filteredIssues[focusedIndex] ?? null;
 
   const handleBack = () => router.history.back();
 
-  useScope("review");
   useKey("Escape", handleBack, { enabled: focusZone === "list" });
 
-  useKey("Tab", () => {
-    if (focusZone === "filters") setFocusZone("list");
-    else if (focusZone === "list") setFocusZone("details");
-    else setFocusZone("filters");
-  });
-
   useKey("ArrowLeft", () => {
-    if (focusZone === "details") setFocusZone("list");
-    else if (focusZone === "filters" && focusedFilterIndex > 0) {
-      setFocusedFilterIndex((i) => i - 1);
-    }
-  });
+    if (focusedFilterIndex > 0) setFocusedFilterIndex((i) => i - 1);
+  }, { enabled: focusZone === "filters" });
 
   useKey("ArrowRight", () => {
-    if (focusZone === "list") setFocusZone("details");
-    else if (focusZone === "filters") {
-      if (focusedFilterIndex < SEVERITY_ORDER.length - 1) {
-        setFocusedFilterIndex((i) => i + 1);
-      } else {
-        setFocusZone("details");
-      }
+    if (focusedFilterIndex < SEVERITY_ORDER.length - 1) {
+      setFocusedFilterIndex((i) => i + 1);
     }
-  });
+  }, { enabled: focusZone === "filters" });
 
-  useKey(
-    "ArrowUp",
-    () => {
-      if (focusZone === "list" && focusedIndex === 0) {
-        setFocusZone("filters");
-      }
-    },
-    { enabled: focusZone === "list" },
-  );
-
-  useKey("ArrowDown", () => setFocusZone("list"), {
-    enabled: focusZone === "filters",
-  });
   useKey("j", () => setFocusZone("list"), { enabled: focusZone === "filters" });
 
   const handleToggleSeverityFilter = () => {
