@@ -21,9 +21,7 @@ export interface ApiKeyDialogProps {
   onOpenChange: (open: boolean) => void;
   providerName: string;
   envVarName: string;
-  hasExistingKey: boolean;
   onSubmit: (method: "paste" | "env", value: string) => Promise<void>;
-  onRemoveKey?: () => Promise<void>;
 }
 
 export function ApiKeyDialog({
@@ -31,16 +29,13 @@ export function ApiKeyDialog({
   onOpenChange,
   providerName,
   envVarName,
-  hasExistingKey,
   onSubmit,
-  onRemoveKey,
 }: ApiKeyDialogProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const form = useApiKeyForm({
     envVarName,
     onSubmit,
-    onRemoveKey,
     onOpenChange,
   });
 
@@ -51,9 +46,7 @@ export function ApiKeyDialog({
     canSubmit: form.canSubmit,
     inputRef,
     onSubmit: form.handleSubmit,
-    onRemove: onRemoveKey ? form.handleRemove : undefined,
     onClose: () => onOpenChange(false),
-    hasExistingKey,
   });
 
   return (
@@ -96,10 +89,8 @@ export function ApiKeyDialog({
         <ApiKeyFooter
           onCancel={() => onOpenChange(false)}
           onConfirm={form.handleSubmit}
-          onRemove={onRemoveKey ? form.handleRemove : undefined}
           canSubmit={form.canSubmit}
           isSubmitting={form.isSubmitting}
-          hasExistingKey={hasExistingKey}
           focused={focused}
           onFocus={setFocused}
         />

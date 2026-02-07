@@ -93,13 +93,11 @@ export function ProvidersPage() {
             onOpenChange={dialogs.setApiKeyOpen}
             providerName={selectedProvider.name}
             envVarName={PROVIDER_ENV_VARS[selectedProvider.id]}
-            hasExistingKey={selectedProvider.hasApiKey}
             onSubmit={(_method, value) => handlers.saveApiKey(
               selectedProvider.id,
               value,
               { openModelDialog: selectedProvider.id === "openrouter" && !selectedProvider.model },
             )}
-            onRemoveKey={() => handlers.removeKey(selectedProvider.id)}
           />
           <ModelSelectDialog
             open={dialogs.modelOpen}

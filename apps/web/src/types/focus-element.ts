@@ -1,1 +1,1 @@
-export type FocusElement = "paste" | "input" | "env" | "cancel" | "confirm" | "remove";
+export type FocusElement = "paste" | "input" | "env" | "cancel" | "confirm";

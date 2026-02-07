@@ -112,7 +112,7 @@ export function ProviderList({
                   <Badge
                     variant={tierBadge === 'FREE' ? 'success' : 'neutral'}
                     size="sm"
-                    className="text-[9px]"
+                    className="text-[9px] inline-flex items-center leading-none"
                   >
                     {tierBadge}
                   </Badge>

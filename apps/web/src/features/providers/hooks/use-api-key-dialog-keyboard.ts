@@ -12,9 +12,7 @@ interface ApiKeyDialogKeyboardOptions {
   canSubmit: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
   onSubmit: () => void;
-  onRemove?: () => void;
   onClose: () => void;
-  hasExistingKey: boolean;
 }
 
 interface ApiKeyDialogKeyboardReturn {
@@ -22,25 +20,24 @@ interface ApiKeyDialogKeyboardReturn {
   setFocused: (element: FocusElement) => void;
 }
 
-function getFooterElements(hasRemove: boolean): FocusElement[] {
-  return hasRemove ? ["cancel", "confirm", "remove"] : ["cancel", "confirm"];
+function getFooterElements(): FocusElement[] {
+  return ["cancel", "confirm"];
+}
+
+function getZoneForElement(element: FocusElement): FocusZone {
+  if (element === "paste" || element === "env") return "radios";
+  if (element === "input") return "input";
+  return "footer";
 }
 
 function useFocusedElement(
-  zone: FocusZone,
   setZone: (zone: FocusZone) => void,
 ) {
   const [focused, setFocusedInternal] = useState<FocusElement>("paste");
 
   const setFocused = (element: FocusElement) => {
     setFocusedInternal(element);
-    if (element === "paste" || element === "env") {
-      if (zone !== "radios") setZone("radios");
-    } else if (element === "input") {
-      if (zone !== "input") setZone("input");
-    } else {
-      if (zone !== "footer") setZone("footer");
-    }
+    setZone(getZoneForElement(element));
   };
 
   return { focused, setFocused };
@@ -53,12 +50,9 @@ export function useApiKeyDialogKeyboard({
   canSubmit,
   inputRef,
   onSubmit,
-  onRemove,
   onClose,
-  hasExistingKey,
 }: ApiKeyDialogKeyboardOptions): ApiKeyDialogKeyboardReturn {
-  const hasRemove = hasExistingKey && !!onRemove;
-  const footerElements = getFooterElements(hasRemove);
+  const footerElements = getFooterElements();
 
   useScope("api-key-dialog", { enabled: open });
 
@@ -69,12 +63,11 @@ export function useApiKeyDialogKeyboard({
     enabled: open,
   });
 
-  const { focused, setFocused } = useFocusedElement(zone, setZone);
+  const { focused, setFocused } = useFocusedElement(setZone);
 
   // Reset when dialog opens
   useEffect(() => {
     if (!open) return;
-    setZone("radios");
     setFocused("paste");
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset once per dialog open
   }, [open]);
@@ -144,13 +137,12 @@ export function useApiKeyDialogKeyboard({
   }, { enabled: open && inZone("footer") });
 
   useKey("ArrowUp", () => {
-    setFocused("input");
+    setFocused("env");
   }, { enabled: open && inZone("footer") });
 
   const handleFooterAction = () => {
     if (focused === "cancel") onClose();
     else if (focused === "confirm" && canSubmit) onSubmit();
-    else if (focused === "remove" && onRemove) onRemove();
   };
   useKey("Enter", handleFooterAction, { enabled: open && inZone("footer") });
   useKey(" ", handleFooterAction, { enabled: open && inZone("footer") });

@@ -61,13 +61,6 @@ export function useModelDialogKeyboard({
   const { zone: focusZone, setZone: setFocusZone, inZone } = useFocusZone({
     initial: "list" as FocusZone,
     zones: ["search", "filters", "list", "footer"] as const,
-    transitions: ({ zone, key }) => {
-      if (zone === "search" && key === "ArrowDown") return "filters";
-      if (zone === "filters" && key === "ArrowUp") return "search";
-      if (zone === "filters" && key === "ArrowDown") return "list";
-      if (zone === "footer" && key === "ArrowUp") return "list";
-      return null;
-    },
     enabled: open,
   });
 
@@ -132,30 +125,42 @@ export function useModelDialogKeyboard({
 
   const handleCancel = () => onOpenChange(false);
 
-  // Search zone — side-effect for transition
-  useKey("ArrowDown", () => searchInputRef.current?.blur(),
+  const focusBoundaryModel = (target: "first" | "last") => {
+    const targetId =
+      target === "last"
+        ? filteredModels[filteredModels.length - 1]?.id
+        : filteredModels[0]?.id;
+    if (targetId) focusModel(targetId);
+  };
+
+  // Search zone
+  useKey("ArrowDown", () => {
+    setFocusZone("filters");
+    searchInputRef.current?.blur();
+  },
     { enabled: open && inZone("search") });
 
-  // Filters zone — side-effects for transitions + horizontal nav + actions
-  useKey("ArrowUp", () => searchInputRef.current?.focus(),
+  // Filters zone — manually set zone because these handlers override useFocusZone transitions
+  useKey("ArrowUp", () => {
+    setFocusZone("search");
+    searchInputRef.current?.focus();
+  },
     { enabled: open && inZone("filters") });
   useKey("ArrowDown", () => {
-    // Focus first model when entering list from filters
-    const firstId = filteredModels[0]?.id;
-    if (firstId) focusModel(firstId);
+    setFocusZone("list");
+    focusBoundaryModel("first");
   }, { enabled: open && inZone("filters") });
   useKey("ArrowLeft", () => setFilterIndex((prev) => (prev > 0 ? prev - 1 : 2)), { enabled: open && inZone("filters") });
   useKey("ArrowRight", () => setFilterIndex((prev) => (prev < 2 ? prev + 1 : 0)), { enabled: open && inZone("filters") });
   useKey("Enter", () => setTierFilter(TIER_FILTERS[filterIndex]), { enabled: open && inZone("filters") });
   useKey(" ", () => setTierFilter(TIER_FILTERS[filterIndex]), { enabled: open && inZone("filters") });
 
-  // Footer zone — side-effect for transition + horizontal nav + actions
+  // Footer zone — manually set zone because this handler overrides useFocusZone transition
   useKey("ArrowLeft", () => setFooterButtonIndex(0), { enabled: open && inZone("footer") });
   useKey("ArrowRight", () => setFooterButtonIndex(1), { enabled: open && inZone("footer") });
   useKey("ArrowUp", () => {
-    // Focus last model when entering list from footer
-    const lastId = filteredModels[filteredModels.length - 1]?.id;
-    if (lastId) focusModel(lastId);
+    setFocusZone("list");
+    focusBoundaryModel("last");
   }, { enabled: open && inZone("footer") });
   useKey("Enter", () => footerButtonIndex === 0 ? handleCancel() : handleConfirm(), { enabled: open && inZone("footer") });
   useKey(" ", () => footerButtonIndex === 0 ? handleCancel() : handleConfirm(), { enabled: open && inZone("footer") });
@@ -176,8 +181,7 @@ export function useModelDialogKeyboard({
     } else {
       searchInputRef.current?.blur();
       setFocusZone("list");
-      const firstId = filteredModels[0]?.id;
-      if (firstId) focusModel(firstId);
+      focusBoundaryModel("first");
     }
   };
 

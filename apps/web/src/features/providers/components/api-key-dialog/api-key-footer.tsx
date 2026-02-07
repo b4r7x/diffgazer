@@ -5,10 +5,8 @@ import type { FocusElement } from "@/types/focus-element";
 interface ApiKeyFooterProps {
   onCancel: () => void;
   onConfirm: () => void;
-  onRemove?: () => void;
   canSubmit: boolean;
   isSubmitting: boolean;
-  hasExistingKey: boolean;
   focused: FocusElement;
   onFocus: (element: FocusElement) => void;
 }
@@ -16,10 +14,8 @@ interface ApiKeyFooterProps {
 export function ApiKeyFooter({
   onCancel,
   onConfirm,
-  onRemove,
   canSubmit,
   isSubmitting,
-  hasExistingKey,
   focused,
   onFocus,
 }: ApiKeyFooterProps) {
@@ -57,22 +53,6 @@ export function ApiKeyFooter({
         >
           [Enter] Confirm
         </Button>
-        {hasExistingKey && onRemove && (
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={onRemove}
-            onMouseDown={() => onFocus("remove")}
-            disabled={isSubmitting}
-            className={cn(
-              "h-auto px-3 py-1.5",
-              focused === "remove" &&
-                "ring-2 ring-tui-blue ring-offset-2 ring-offset-tui-bg"
-            )}
-          >
-            Remove Key
-          </Button>
-        )}
       </div>
     </DialogFooter>
   );
