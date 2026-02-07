@@ -1,6 +1,6 @@
 import { useState, useEffect, type RefObject } from "react";
 import type { ModelInfo } from "@stargazer/schemas/config";
-import { useKey } from "@stargazer/keyboard";
+import { useKey, useFocusZone } from "@stargazer/keyboard";
 import { useScrollIntoView } from "@/hooks/use-scroll-into-view";
 import { TIER_FILTERS, type TierFilter } from "@/features/providers/constants";
 
@@ -57,9 +57,23 @@ export function useModelDialogKeyboard({
 }: ModelDialogKeyboardOptions): ModelDialogKeyboardReturn {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [checkedModelId, setCheckedModelId] = useState<string | undefined>(currentModel);
-  const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [filterIndex, setFilterIndex] = useState(0);
   const [footerButtonIndex, setFooterButtonIndex] = useState(1);
+
+  const { zone: focusZone, setZone: setFocusZone, inZone } = useFocusZone({
+    initial: "list" as FocusZone,
+    zones: ["search", "filters", "list", "footer"] as const,
+    transitions: ({ zone, key }) => {
+      if (zone === "search" && key === "ArrowDown") return "filters";
+      if (zone === "filters" && key === "ArrowUp") return "search";
+      if (zone === "filters" && key === "ArrowDown") return "list";
+      if (zone === "list" && key === "ArrowUp" && selectedIndex === 0) return "filters";
+      if (zone === "list" && key === "ArrowDown" && selectedIndex >= filteredModels.length - 1) return "footer";
+      if (zone === "footer" && key === "ArrowUp") return "list";
+      return null;
+    },
+    enabled: open,
+  });
 
   const { scrollItemIntoView } = useScrollIntoView(listContainerRef);
 
@@ -115,60 +129,59 @@ export function useModelDialogKeyboard({
   const handleCancel = () => onOpenChange(false);
 
   const navigateUp = () => {
-    setSelectedIndex((prev) => {
-      if (prev > 0) return prev - 1;
+    if (selectedIndex > 0) {
+      setSelectedIndex((prev) => prev - 1);
+    } else {
       setFocusZone("filters");
       setFilterIndex(0);
-      return prev;
-    });
+    }
   };
 
   const navigateDown = () => {
-    setSelectedIndex((prev) => {
-      if (prev < filteredModels.length - 1) return prev + 1;
+    if (selectedIndex < filteredModels.length - 1) {
+      setSelectedIndex((prev) => prev + 1);
+    } else {
       setFocusZone("footer");
       setFooterButtonIndex(1);
-      return prev;
-    });
+    }
   };
 
-  // List zone
-  useKey("ArrowUp", navigateUp, { enabled: open && focusZone === "list" });
-  useKey("ArrowDown", navigateDown, { enabled: open && focusZone === "list" });
-  useKey("k", navigateUp, { enabled: open && focusZone === "list" });
-  useKey("j", navigateDown, { enabled: open && focusZone === "list" });
-  useKey(" ", handleCheck, { enabled: open && focusZone === "list" && filteredModels.length > 0 });
-  useKey("Enter", handleConfirm, { enabled: open && focusZone === "list" && filteredModels.length > 0 });
-
-  // Search zone
-  useKey("ArrowDown", () => {
-    searchInputRef.current?.blur();
-    setFocusZone("filters");
-  }, { enabled: open && focusZone === "search" });
-
-  // Filters zone
-  useKey("ArrowLeft", () => setFilterIndex((prev) => (prev > 0 ? prev - 1 : 2)), { enabled: open && focusZone === "filters" });
-  useKey("ArrowRight", () => setFilterIndex((prev) => (prev < 2 ? prev + 1 : 0)), { enabled: open && focusZone === "filters" });
-  useKey("ArrowDown", () => {
-    setFocusZone("list");
-    setSelectedIndex(0);
-  }, { enabled: open && focusZone === "filters" });
+  // List zone — ArrowUp/ArrowDown side-effects (zone change handled by transitions)
   useKey("ArrowUp", () => {
-    setFocusZone("search");
-    searchInputRef.current?.focus();
-  }, { enabled: open && focusZone === "filters" });
-  useKey("Enter", () => setTierFilter(TIER_FILTERS[filterIndex]), { enabled: open && focusZone === "filters" });
-  useKey(" ", () => setTierFilter(TIER_FILTERS[filterIndex]), { enabled: open && focusZone === "filters" });
+    if (selectedIndex > 0) setSelectedIndex((prev) => prev - 1);
+    else setFilterIndex(0);
+  }, { enabled: open && inZone("list") });
+  useKey("ArrowDown", () => {
+    if (selectedIndex < filteredModels.length - 1) setSelectedIndex((prev) => prev + 1);
+    else setFooterButtonIndex(1);
+  }, { enabled: open && inZone("list") });
+  // j/k — manual zone transitions + index changes (not handled by useFocusZone)
+  useKey("k", navigateUp, { enabled: open && inZone("list") });
+  useKey("j", navigateDown, { enabled: open && inZone("list") });
+  useKey(" ", handleCheck, { enabled: open && inZone("list") && filteredModels.length > 0 });
+  useKey("Enter", handleConfirm, { enabled: open && inZone("list") && filteredModels.length > 0 });
 
-  // Footer zone
-  useKey("ArrowLeft", () => setFooterButtonIndex(0), { enabled: open && focusZone === "footer" });
-  useKey("ArrowRight", () => setFooterButtonIndex(1), { enabled: open && focusZone === "footer" });
-  useKey("ArrowUp", () => {
-    setFocusZone("list");
-    setSelectedIndex(filteredModels.length - 1);
-  }, { enabled: open && focusZone === "footer" });
-  useKey("Enter", () => footerButtonIndex === 0 ? handleCancel() : handleConfirm(), { enabled: open && focusZone === "footer" });
-  useKey(" ", () => footerButtonIndex === 0 ? handleCancel() : handleConfirm(), { enabled: open && focusZone === "footer" });
+  // Search zone — side-effect for transition
+  useKey("ArrowDown", () => searchInputRef.current?.blur(),
+    { enabled: open && inZone("search") });
+
+  // Filters zone — side-effects for transitions + horizontal nav + actions
+  useKey("ArrowUp", () => searchInputRef.current?.focus(),
+    { enabled: open && inZone("filters") });
+  useKey("ArrowDown", () => setSelectedIndex(0),
+    { enabled: open && inZone("filters") });
+  useKey("ArrowLeft", () => setFilterIndex((prev) => (prev > 0 ? prev - 1 : 2)), { enabled: open && inZone("filters") });
+  useKey("ArrowRight", () => setFilterIndex((prev) => (prev < 2 ? prev + 1 : 0)), { enabled: open && inZone("filters") });
+  useKey("Enter", () => setTierFilter(TIER_FILTERS[filterIndex]), { enabled: open && inZone("filters") });
+  useKey(" ", () => setTierFilter(TIER_FILTERS[filterIndex]), { enabled: open && inZone("filters") });
+
+  // Footer zone — side-effect for transition + horizontal nav + actions
+  useKey("ArrowLeft", () => setFooterButtonIndex(0), { enabled: open && inZone("footer") });
+  useKey("ArrowRight", () => setFooterButtonIndex(1), { enabled: open && inZone("footer") });
+  useKey("ArrowUp", () => setSelectedIndex(filteredModels.length - 1),
+    { enabled: open && inZone("footer") });
+  useKey("Enter", () => footerButtonIndex === 0 ? handleCancel() : handleConfirm(), { enabled: open && inZone("footer") });
+  useKey(" ", () => footerButtonIndex === 0 ? handleCancel() : handleConfirm(), { enabled: open && inZone("footer") });
 
   // Global shortcuts
   useKey("/", () => {
@@ -177,8 +190,8 @@ export function useModelDialogKeyboard({
       searchInputRef.current?.focus();
     }
   }, { enabled: open });
-  useKey("f", cycleTierFilter, { enabled: open && focusZone !== "search" });
-  useKey("Escape", handleCancel, { enabled: open && focusZone !== "search" });
+  useKey("f", cycleTierFilter, { enabled: open && !inZone("search") });
+  useKey("Escape", handleCancel, { enabled: open && !inZone("search") });
 
   const handleSearchEscape = () => {
     if (searchQuery) {

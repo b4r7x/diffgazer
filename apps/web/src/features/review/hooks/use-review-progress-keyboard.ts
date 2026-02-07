@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { useScope, useKey } from "@stargazer/keyboard";
+import { useFocusZone, useKey } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 
 const PROGRESS_SHORTCUTS = [
@@ -21,12 +20,16 @@ export function useReviewProgressKeyboard({
   onViewResults,
   onCancel,
 }: UseReviewProgressKeyboardOptions) {
-  const [focusPane, setFocusPane] = useState<"progress" | "log">("progress");
-
-  useScope("review-progress");
-
-  useKey("ArrowLeft", () => setFocusPane("progress"), { enabled: focusPane === "log" });
-  useKey("ArrowRight", () => setFocusPane("log"), { enabled: focusPane === "progress" });
+  const { zone: focusPane } = useFocusZone({
+    initial: "progress",
+    zones: ["progress", "log"] as const,
+    scope: "review-progress",
+    transitions: ({ zone, key }) => {
+      if (key === "ArrowLeft" && zone === "log") return "progress";
+      if (key === "ArrowRight" && zone === "progress") return "log";
+      return null;
+    },
+  });
 
   useKey("Enter", () => onViewResults?.(), { enabled: !!onViewResults });
   useKey("Escape", () => onCancel?.(), { enabled: !!onCancel });
