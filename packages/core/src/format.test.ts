@@ -44,4 +44,8 @@ describe("formatTimestamp", () => {
     // Result depends on local timezone, just check format
     expect(result).toMatch(/^\d{2}:\d{2}:\d{2}$/);
   });
+
+  it("should return invalid date string unchanged", () => {
+    expect(formatTimestamp("not-a-date")).toBe("not-a-date");
+  });
 });

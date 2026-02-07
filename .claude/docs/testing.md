@@ -123,6 +123,8 @@ vi.mock('../hooks/useReview', () => ({
 }))
 ```
 
+**Note:** MSW is recommended for integration tests that test through HTTP layers. For unit tests, `globalThis.fetch = vi.fn()` or `vi.spyOn(globalThis, "fetch")` is acceptable and simpler. MSW must be installed separately if needed.
+
 ### When Mocking is OK
 
 - External services (APIs, databases)
@@ -258,6 +260,24 @@ if (!result.ok) expect(result.error.code).toBe('NOT_FOUND')
 
 ---
 
+## React 19 Compiler
+
+This project uses React 19 with the React Compiler (auto-memoization).
+
+**Do NOT test:**
+- Re-render counts or memoization behavior
+- That `useMemo`/`useCallback` are called
+- Component identity via `React.memo()` wrappers
+
+**DO test:**
+- Observable output (what the user sees)
+- State transitions (user action → UI change)
+- Side effects (API calls, navigation)
+
+See `patterns.md` for the "No Manual Memoization" rule.
+
+---
+
 ## Test Naming
 
 ```typescript
@@ -290,6 +310,24 @@ it('calls the API')
 
 ---
 
+## Test Cleanup
+
+Vitest isolates each test file but mocks persist within a file.
+
+```typescript
+// In vitest config (recommended)
+test: { mockReset: true }
+
+// Or manually per file
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+```
+
+Clear module-level caches and global state between tests when needed.
+
+---
+
 ## Common Anti-Patterns
 
 | Anti-Pattern | Problem | Solution |
@@ -302,6 +340,8 @@ it('calls the API')
 | Snapshot abuse | Brittle, no intent | Assert specific values |
 | `fireEvent` | Misses real behavior | Use `userEvent` |
 | `getByTestId` first | Couples to implementation | Use accessible queries |
+| Manual `act()` wrapping | RTL wraps automatically | Only use for non-RTL async |
+| Testing memoization | React Compiler handles it | Test behavior, not renders |
 
 ---
 

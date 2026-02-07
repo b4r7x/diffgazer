@@ -73,4 +73,48 @@ describe("useApiKeyForm", () => {
 
     expect(result.current.isSubmitting).toBe(false);
   });
+
+  it("should call onRemoveKey and close dialog on handleRemove", async () => {
+    const onRemoveKey = vi.fn().mockResolvedValue(undefined);
+    const onOpenChange = vi.fn();
+    const { result } = renderHook(() =>
+      useApiKeyForm(defaultProps({ onRemoveKey, onOpenChange }))
+    );
+
+    await act(async () => {
+      await result.current.handleRemove();
+    });
+
+    expect(onRemoveKey).toHaveBeenCalledOnce();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("should set error state when handleSubmit fails", async () => {
+    const onSubmit = vi.fn().mockRejectedValue(new Error("Network error"));
+    const { result } = renderHook(() =>
+      useApiKeyForm(defaultProps({ onSubmit }))
+    );
+
+    act(() => result.current.setMethod("env"));
+
+    await act(async () => {
+      await result.current.handleSubmit();
+    });
+
+    expect(result.current.error).toBe("Network error");
+    expect(result.current.isSubmitting).toBe(false);
+  });
+
+  it("should clear keyValue on successful submit", async () => {
+    const { result } = renderHook(() => useApiKeyForm(defaultProps()));
+
+    act(() => result.current.setKeyValue("sk-test-key"));
+    expect(result.current.keyValue).toBe("sk-test-key");
+
+    await act(async () => {
+      await result.current.handleSubmit();
+    });
+
+    expect(result.current.keyValue).toBe("");
+  });
 });

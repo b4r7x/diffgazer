@@ -183,6 +183,7 @@ describe("createApiClient", () => {
     });
 
     it("throws ApiError with status code", async () => {
+      expect.assertions(1);
       mockFetch.mockResolvedValue(
         errorResponse(404, { error: { message: "Not found" } })
       );
@@ -195,6 +196,7 @@ describe("createApiClient", () => {
     });
 
     it("throws ApiError with error code from body", async () => {
+      expect.assertions(1);
       mockFetch.mockResolvedValue(
         errorResponse(409, { error: { message: "Conflict", code: "SESSION_STALE" } })
       );
@@ -222,6 +224,21 @@ describe("createApiClient", () => {
       mockFetch.mockResolvedValue(new Response("not json", { status: 200, headers: { "Content-Type": "text/plain" } }));
 
       await expect(client.get("/api/test")).rejects.toThrow("Invalid JSON response");
+    });
+  });
+
+  describe("stream", () => {
+    it("should return raw Response without parsing JSON", async () => {
+      const body = new ReadableStream();
+      mockFetch.mockResolvedValue(new Response(body, { status: 200 }));
+
+      const response = await client.stream("/api/review/stream", { params: { mode: "staged" } });
+
+      expect(response).toBeInstanceOf(Response);
+      expect(response.body).toBe(body);
+      const [url, options] = lastCall();
+      expect(url).toContain("mode=staged");
+      expect(options.method).toBe("GET");
     });
   });
 });

@@ -1,5 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { truncate } from "./strings.js";
+import { capitalize, truncate } from "./strings.js";
+
+describe("capitalize", () => {
+  it("should capitalize the first character of a string", () => {
+    expect(capitalize("hello")).toBe("Hello");
+  });
+
+  it("should return empty string unchanged", () => {
+    expect(capitalize("")).toBe("");
+  });
+});
 
 describe("truncate", () => {
   it("truncates string longer than maxLength", () => {

@@ -213,4 +213,188 @@ describe("createGitService", () => {
       expect(await git.isGitInstalled()).toBe(false);
     });
   });
+
+  describe("getDiff", () => {
+    it("should call git diff --cached for staged mode", async () => {
+      setupExecResult("diff --git a/file.ts b/file.ts\n");
+      const git = createGitService({ cwd: "/test" });
+
+      await git.getDiff("staged");
+
+      expect(mockExecFileAsync).toHaveBeenCalledWith(
+        "git",
+        ["diff", "--cached"],
+        expect.objectContaining({ cwd: "/test" }),
+      );
+    });
+
+    it("should call git diff for unstaged mode", async () => {
+      setupExecResult("diff --git a/file.ts b/file.ts\n");
+      const git = createGitService({ cwd: "/test" });
+
+      await git.getDiff("unstaged");
+
+      expect(mockExecFileAsync).toHaveBeenCalledWith(
+        "git",
+        ["diff"],
+        expect.objectContaining({ cwd: "/test" }),
+      );
+    });
+
+    it("should call git diff for files mode (falls through to unstaged)", async () => {
+      setupExecResult("");
+      const git = createGitService({ cwd: "/test" });
+
+      await git.getDiff("files");
+
+      expect(mockExecFileAsync).toHaveBeenCalledWith(
+        "git",
+        ["diff"],
+        expect.objectContaining({ cwd: "/test" }),
+      );
+    });
+
+    it("should return empty string when no diff", async () => {
+      setupExecResult("");
+      const git = createGitService({ cwd: "/test" });
+
+      const result = await git.getDiff();
+
+      expect(result).toBe("");
+    });
+  });
+
+  describe("getBlame", () => {
+    it("should parse porcelain blame output", async () => {
+      const porcelainOutput = [
+        "abc1234 1 1 1",
+        "author John Doe",
+        "author-mail <john@example.com>",
+        "author-time 1700000000",
+        "author-tz +0000",
+        "committer John Doe",
+        "committer-mail <john@example.com>",
+        "committer-time 1700000000",
+        "committer-tz +0000",
+        "summary Fix the bug",
+        "filename src/file.ts",
+        "\tconst x = 1;",
+      ].join("\n");
+      setupExecResult(porcelainOutput);
+      const git = createGitService({ cwd: "/test" });
+
+      const blame = await git.getBlame("src/file.ts", 1);
+
+      expect(blame).not.toBeNull();
+      expect(blame!.author).toBe("John Doe");
+      expect(blame!.authorEmail).toBe("john@example.com");
+      expect(blame!.commit).toBe("abc1234");
+      expect(blame!.summary).toBe("Fix the bug");
+      expect(blame!.commitDate).toBe(new Date(1700000000 * 1000).toISOString());
+    });
+
+    it("should return null when blame command fails", async () => {
+      setupExecError(new Error("fatal: no such path"));
+      const git = createGitService({ cwd: "/test" });
+
+      const blame = await git.getBlame("nonexistent.ts", 1);
+
+      expect(blame).toBeNull();
+    });
+  });
+
+  describe("getFileLines", () => {
+    it("should return correct line slice for startLine/endLine", async () => {
+      const fileContent = "line1\nline2\nline3\nline4\nline5";
+      setupExecResult(fileContent);
+      const git = createGitService({ cwd: "/test" });
+
+      const lines = await git.getFileLines("src/file.ts", 2, 4);
+
+      expect(lines).toEqual(["line2", "line3", "line4"]);
+    });
+
+    it("should handle out-of-range lines gracefully", async () => {
+      const fileContent = "line1\nline2";
+      setupExecResult(fileContent);
+      const git = createGitService({ cwd: "/test" });
+
+      const lines = await git.getFileLines("src/file.ts", 5, 10);
+
+      expect(lines).toEqual([]);
+    });
+
+    it("should return empty array when command fails", async () => {
+      setupExecError(new Error("fatal: path not found"));
+      const git = createGitService({ cwd: "/test" });
+
+      const lines = await git.getFileLines("nonexistent.ts", 1, 5);
+
+      expect(lines).toEqual([]);
+    });
+  });
+
+  describe("getHeadCommit", () => {
+    it("should return ok with commit hash on success", async () => {
+      setupExecResult("abc123def456\n");
+      const git = createGitService({ cwd: "/test" });
+
+      const result = await git.getHeadCommit();
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toBe("abc123def456");
+      }
+    });
+
+    it("should return err when stdout is empty", async () => {
+      setupExecResult("  \n");
+      const git = createGitService({ cwd: "/test" });
+
+      const result = await git.getHeadCommit();
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.error.message).toContain("Empty commit hash");
+      }
+    });
+
+    it("should return err when command fails", async () => {
+      setupExecError(new Error("fatal: not a git repo"));
+      const git = createGitService({ cwd: "/test" });
+
+      const result = await git.getHeadCommit();
+
+      expect(result.ok).toBe(false);
+    });
+  });
+
+  describe("getStatusHash", () => {
+    it("should return a hex hash when there are changes", async () => {
+      setupExecResult(" M file1.ts\n M file2.ts\n");
+      const git = createGitService({ cwd: "/test" });
+
+      const hash = await git.getStatusHash();
+
+      expect(hash).toMatch(/^[0-9a-f]{16}$/);
+    });
+
+    it("should return empty string when no changes", async () => {
+      setupExecResult("");
+      const git = createGitService({ cwd: "/test" });
+
+      const hash = await git.getStatusHash();
+
+      expect(hash).toBe("");
+    });
+
+    it("should return empty string when command fails", async () => {
+      setupExecError(new Error("git error"));
+      const git = createGitService({ cwd: "/test" });
+
+      const hash = await git.getStatusHash();
+
+      expect(hash).toBe("");
+    });
+  });
 });

@@ -83,4 +83,62 @@ describe("useReviews", () => {
     expect(result.current.reviews[0]?.id).toBe("r-1");
     expect(result.current.error).toBeNull();
   });
+
+  it("should set error state on initial fetch failure", async () => {
+    mockGetReviews.mockRejectedValue(new Error("Server down"));
+
+    const { result } = renderHook(() => useReviews());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.error).toBe("Server down");
+    expect(result.current.reviews).toHaveLength(0);
+  });
+
+  it("should refetch when refresh is called", async () => {
+    const { result } = renderHook(() => useReviews());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    const callCountBefore = mockGetReviews.mock.calls.length;
+
+    const updatedReviews = [
+      ...testReviews,
+      { id: "r-3", projectPath: "/proj", createdAt: "2026-01-03", mode: "staged" },
+    ];
+    mockGetReviews.mockResolvedValue({ reviews: updatedReviews });
+
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    expect(mockGetReviews.mock.calls.length).toBeGreaterThan(callCountBefore);
+    expect(result.current.reviews).toHaveLength(3);
+  });
+
+  it("should set error and rollback on delete failure", async () => {
+    mockDeleteReview.mockRejectedValue(new Error("Delete failed"));
+    mockGetReviews
+      .mockResolvedValueOnce({ reviews: testReviews }) // initial fetch
+      .mockResolvedValueOnce({ reviews: testReviews }); // rollback refetch
+
+    const { result } = renderHook(() => useReviews());
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.deleteReview("r-1");
+    });
+
+    // Rollback refetch restores all items (error gets cleared by refetch's setError(null))
+    await waitFor(() => {
+      expect(result.current.reviews).toHaveLength(2);
+    });
+  });
 });
