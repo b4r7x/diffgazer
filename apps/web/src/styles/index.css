@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@stargazer/ui/sources.css";
 @import "@stargazer/ui/theme.css";
 
 html,

@@ -1,4 +1,4 @@
-import { useReducer, useEffect, useRef } from "react";
+import { useReducer, useEffect } from "react";
 import type { ModelInfo } from "@stargazer/schemas/config";
 import { api } from "@/lib/api";
 import { OPENROUTER_PROVIDER_ID } from "@/config/constants";
@@ -39,10 +39,10 @@ interface State {
 }
 
 type Action =
+  | { type: "RESET" }
   | { type: "FETCH_START" }
   | { type: "FETCH_SUCCESS"; payload: { models: ModelInfo[]; total: number; compatible: number; hasParams: boolean } }
-  | { type: "FETCH_ERROR"; error: string }
-  | { type: "RESET" };
+  | { type: "FETCH_ERROR"; error: string };
 
 const initialState: State = {
   status: "idle",
@@ -77,30 +77,20 @@ export interface OpenRouterModelsState {
 
 export function useOpenRouterModels(open: boolean, provider: AIProvider): OpenRouterModelsState {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const prevOpenRef = useRef(false);
 
-  // Single effect: reset on open transition, then fetch
   useEffect(() => {
-    const justOpened = open && !prevOpenRef.current;
-    prevOpenRef.current = open;
-
-    if (!open || provider !== OPENROUTER_PROVIDER_ID) return;
-
-    // Reset state on fresh open so we re-fetch
-    if (justOpened) {
+    if (!open || provider !== OPENROUTER_PROVIDER_ID) {
       dispatch({ type: "RESET" });
+      return;
     }
 
-    // Only fetch from idle (initial mount or after reset re-renders this effect)
-    if (!justOpened && state.status !== "idle") return;
-
-    let ignore = false;
+    let cancelled = false;
     dispatch({ type: "FETCH_START" });
 
     api
       .getOpenRouterModels()
       .then((response) => {
-        if (ignore) return;
+        if (cancelled) return;
         const withParams = response.models.filter(
           (model) => (model.supportedParameters?.length ?? 0) > 0
         );
@@ -120,7 +110,7 @@ export function useOpenRouterModels(open: boolean, provider: AIProvider): OpenRo
         });
       })
       .catch((err) => {
-        if (ignore) return;
+        if (cancelled) return;
         dispatch({
           type: "FETCH_ERROR",
           error: err instanceof Error ? err.message : "Failed to load models",
@@ -128,9 +118,9 @@ export function useOpenRouterModels(open: boolean, provider: AIProvider): OpenRo
       });
 
     return () => {
-      ignore = true;
+      cancelled = true;
     };
-  }, [open, provider, state.status]);
+  }, [open, provider]);
 
   return {
     models: state.models,
