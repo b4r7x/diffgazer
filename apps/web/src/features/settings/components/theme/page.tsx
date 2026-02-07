@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { WebTheme, ResolvedTheme } from "@/types/theme";
-import { Panel, PanelContent, PanelHeader } from "@/components/ui/containers";
-import { Callout } from "@/components/ui/callout";
+import { Panel, PanelContent, PanelHeader, Callout } from "@stargazer/ui";
 import { ThemeSelectorContent } from "../theme-selector-content";
 import { ThemePreviewCard } from "../theme-preview-card";
 import { useTheme } from "@/hooks/use-theme";
-import { useKey } from "@/hooks/keyboard";
+import { useKey } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { SETTINGS_SHORTCUTS } from "@/config/navigation";
 

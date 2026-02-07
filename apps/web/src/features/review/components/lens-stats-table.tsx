@@ -12,18 +12,18 @@ export function LensStatsTable({ lenses, className }: LensStatsTableProps) {
   return (
     <table className={cn('w-full text-sm text-left border-collapse', className)}>
       <thead>
-        <tr className="text-gray-500 border-b border-gray-800 text-xs uppercase">
+        <tr className="text-tui-muted border-b border-tui-border text-xs uppercase">
           <th className="pb-2 font-normal pl-2">Lens</th>
           <th className="pb-2 font-normal text-right pr-2">Count</th>
         </tr>
       </thead>
-      <tbody className="text-gray-300">
+      <tbody className="text-tui-fg/80">
         {lenses.map((lens, index) => (
           <tr
             key={lens.id}
             className={cn(
               'hover:bg-tui-selection',
-              index < lenses.length - 1 && 'border-b border-gray-800/50'
+              index < lenses.length - 1 && 'border-b border-tui-border/50'
             )}
           >
             <td className="py-3 pl-2 flex items-center gap-2">

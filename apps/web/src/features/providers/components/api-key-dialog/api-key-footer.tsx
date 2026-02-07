@@ -1,5 +1,4 @@
-import { DialogFooter } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { DialogFooter, Button } from "@stargazer/ui";
 import { cn } from "@/utils/cn";
 import type { FocusElement } from "@/types/focus-element";
 
@@ -26,7 +25,7 @@ export function ApiKeyFooter({
 }: ApiKeyFooterProps) {
   return (
     <DialogFooter className="justify-between">
-      <div className="flex gap-3 text-[10px] text-gray-500">
+      <div className="flex gap-3 text-[10px] text-tui-muted">
         <span>↑↓ navigate</span>
         <span>Enter select</span>
       </div>
@@ -37,7 +36,7 @@ export function ApiKeyFooter({
           onClick={onCancel}
           onMouseDown={() => onFocus("cancel")}
           className={cn(
-            "text-gray-500 hover:text-tui-fg h-auto px-2 py-1",
+            "text-tui-muted hover:text-tui-fg h-auto px-2 py-1",
             focused === "cancel" && "ring-2 ring-tui-blue"
           )}
         >

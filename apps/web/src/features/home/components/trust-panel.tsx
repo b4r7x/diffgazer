@@ -1,8 +1,6 @@
 import { useState } from "react";
 import type { TrustCapabilities } from "@stargazer/schemas/config";
-import { WizardLayout } from "@/components/shared/wizard-layout";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
+import { CardLayout, Button, useToast } from "@stargazer/ui";
 import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
 import { useTrust } from "@/hooks/use-trust";
 
@@ -51,7 +49,7 @@ export function TrustPanel({
       : "Continue Without Trust";
 
   return (
-    <WizardLayout
+    <CardLayout
       title="Trust This Repository?"
       subtitle="Stargazer needs permissions to review your code"
       footer={
@@ -66,6 +64,6 @@ export function TrustPanel({
         onChange={setCapabilities}
         showActions={false}
       />
-    </WizardLayout>
+    </CardLayout>
   );
 }

@@ -41,7 +41,7 @@ export function SearchInput({
           }
         }}
         placeholder={placeholder}
-        className="flex-1 bg-transparent outline-none font-mono text-xs text-tui-fg placeholder:text-gray-500"
+        className="flex-1 bg-transparent outline-none font-mono text-xs text-tui-fg placeholder:text-tui-muted"
       />
       {value && <span className="w-2 h-4 bg-tui-blue opacity-50 animate-pulse" />}
     </div>

@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@stargazer/ui";
 import type { AIProvider } from "@stargazer/schemas/config";
 import { useProviders } from "./use-providers";
 

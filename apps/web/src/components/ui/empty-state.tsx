@@ -10,7 +10,7 @@ export function EmptyState({ message, variant = "centered", className }: EmptySt
   return (
     <div
       className={cn(
-        "text-gray-500",
+        "text-tui-muted",
         variant === "centered" && "text-center py-8",
         variant === "inline" && "text-sm italic",
         className

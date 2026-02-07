@@ -1,7 +1,7 @@
 import { cn } from "@/utils/cn";
 import { IssueListItem } from "@/components/ui/issue";
 import { SeverityFilterGroup, type SeverityFilter } from "./severity-filter-group";
-import { FocusablePane } from "@/components/ui/focusable-pane";
+import { FocusablePane } from "@stargazer/ui";
 import { calculateSeverityCounts } from "@stargazer/core/severity";
 import type { ReviewIssue } from "@stargazer/schemas/review";
 
@@ -60,7 +60,7 @@ export function IssueListPane({
           />
         ))}
         {issues.length === 0 && (
-          <div className="text-gray-500 text-sm p-2">No issues match filter</div>
+          <div className="text-tui-muted text-sm p-2">No issues match filter</div>
         )}
       </div>
     </FocusablePane>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useScope, useKey } from "@/hooks/keyboard";
+import { useScope, useKey } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 
 const PROGRESS_SHORTCUTS = [

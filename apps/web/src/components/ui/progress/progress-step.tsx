@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/utils/cn';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@stargazer/ui';
 import { ProgressSubstep } from './progress-substep';
 import type { ProgressStatus, ProgressSubstepData } from '@stargazer/schemas/ui';
 

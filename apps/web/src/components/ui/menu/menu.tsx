@@ -1,6 +1,6 @@
 import { Children, Fragment, isValidElement, type ReactNode } from "react";
 import { cn } from "@/utils/cn";
-import { useKey, useKeys } from "@/hooks/keyboard";
+import { useKey, useKeys } from "@stargazer/keyboard";
 import { MenuContext, type InternalMenuItemData, type MenuContextValue } from "./menu-context";
 import { MenuItem, type MenuItemProps } from "./menu-item";
 

@@ -1,5 +1,5 @@
 import type { Theme } from '@stargazer/schemas/config';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/form';
+import { RadioGroup, RadioGroupItem } from '@stargazer/ui';
 
 export interface ThemeSelectorContentProps {
   value: Theme;
@@ -18,7 +18,7 @@ const THEME_OPTIONS: Array<{ value: Theme; label: string; description: string }>
 export function ThemeSelectorContent({
   value,
   onChange,
-  onFocus,
+  onFocus: _onFocus,
   showTerminalOption = false
 }: ThemeSelectorContentProps) {
   const options = showTerminalOption
@@ -31,7 +31,6 @@ export function ThemeSelectorContent({
       <RadioGroup
         value={value}
         onValueChange={onChange}
-        onFocus={onFocus}
       >
         {options.map((option) => (
           <RadioGroupItem

@@ -1,5 +1,5 @@
 import { cn } from "@/utils/cn";
-import { SectionHeader } from "@/components/ui/section-header";
+import { SectionHeader } from "@stargazer/ui";
 import { SeverityBreakdown } from "@/components/ui/severity/severity-breakdown";
 import type { ReviewIssue } from "@stargazer/schemas/review";
 import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
