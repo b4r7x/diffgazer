@@ -49,14 +49,6 @@ export function useProvidersKeyboard({
     initial: "list" as FocusZone,
     zones: ["input", "filters", "list", "buttons"] as const,
     scope: "providers",
-    transitions: ({ zone, key }) => {
-      if (zone === "input" && key === "ArrowDown") return "filters";
-      if (zone === "filters" && key === "ArrowUp") return "input";
-      if (zone === "filters" && key === "ArrowDown") return "list";
-      if (zone === "list" && key === "ArrowRight" && selectedProvider) return "buttons";
-      if (zone === "buttons" && key === "ArrowLeft" && buttonIndex === 0) return "list";
-      return null;
-    },
     enabled: !dialogOpen,
   });
 
@@ -73,6 +65,14 @@ export function useProvidersKeyboard({
       next += direction;
     }
     return current;
+  };
+
+  const focusBoundaryProvider = (target: "first" | "last") => {
+    const targetId =
+      target === "last"
+        ? filteredProviders[filteredProviders.length - 1]?.id
+        : filteredProviders[0]?.id;
+    if (targetId) setSelectedId(targetId);
   };
 
   const handleButtonAction = (index: number) => {
@@ -108,7 +108,7 @@ export function useProvidersKeyboard({
   useKey("ArrowDown", () => {
     if (filteredProviders.length > 0) {
       setZone("list");
-      setSelectedId(filteredProviders[0].id);
+      focusBoundaryProvider("first");
     }
   }, { enabled: !dialogOpen && inFilters });
   useKey("ArrowLeft", () => setFilterIndex((i) => Math.max(0, i - 1)),
@@ -131,6 +131,7 @@ export function useProvidersKeyboard({
     const next = getNextButtonIndex(buttonIndex, -1);
     if (next === buttonIndex) {
       setZone("list");
+      focusBoundaryProvider("last");
     } else {
       setButtonIndex(next);
     }
