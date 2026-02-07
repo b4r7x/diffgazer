@@ -19,7 +19,7 @@ export function ThemePreviewCard({ previewTheme }: ThemePreviewCardProps) {
           </PanelHeader>
           <PanelContent spacing="none">
             {/* Menu with selection states */}
-            <Menu selectedIndex={1} onSelect={() => {}} keyboardEnabled={false}>
+            <Menu selectedId="selected" onSelect={() => {}}>
               <MenuItem id="normal">Normal Item</MenuItem>
               <MenuItem id="selected">Selected Item</MenuItem>
               <MenuItem id="disabled" disabled>

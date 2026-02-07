@@ -1,4 +1,4 @@
-import { useRef, useEffect, type HTMLAttributes, type ReactNode, type RefObject } from "react";
+import { useRef, useEffect, type HTMLAttributes, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type RefObject } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../../lib/cn";
 import { Portal } from "../../internal/portal";
@@ -93,6 +93,13 @@ function DialogContentInner({
   const contentRef = useRef<HTMLDivElement>(null);
   useFocusTrap(contentRef);
 
+  const handleKeyDown = (event: ReactKeyboardEvent) => {
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      onClose();
+    }
+  };
+
   return (
     <Portal>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 lg:p-12">
@@ -105,6 +112,7 @@ function DialogContentInner({
           aria-labelledby={titleId}
           aria-describedby={descriptionId}
           data-state="open"
+          onKeyDown={handleKeyDown}
           {...props}
         >
           {children}

@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button, Badge, CheckboxGroup, CheckboxItem, ScrollArea, Tabs, TabsList, TabsTrigger, TabsContent, CardLayout } from "@stargazer/ui";
-import { useKey } from "@stargazer/keyboard";
+import { useKey, useNavigation, useTabNavigation } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useSettings } from "@/hooks/use-settings";
 import { SETTINGS_SHORTCUTS } from "@/config/navigation";
@@ -29,6 +29,10 @@ export function SettingsAnalysisPage() {
   const [isSaving, setIsSaving] = useState(false);
   const { contextStatus, contextGeneratedAt, isRefreshing, error, setError, handleRefreshContext } = useContextManagement();
 
+  const tabsListRef = useRef<HTMLDivElement>(null);
+  const checkboxRef = useRef<HTMLDivElement>(null);
+  const [checkboxFocused, setCheckboxFocused] = useState<string | null>(null);
+
   const effectiveLenses = selectedLenses ?? (settings?.defaultLenses?.length ? settings.defaultLenses : LENS_OPTIONS.map(l => l.id));
 
   usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
@@ -44,6 +48,28 @@ export function SettingsAnalysisPage() {
       currentLenses.some((lens) => !selectedLenses.includes(lens))
     );
   })();
+
+  const toggleLens = (value: string) => {
+    const lensId = value as LensId;
+    const newLenses = effectiveLenses.includes(lensId)
+      ? effectiveLenses.filter((l) => l !== lensId)
+      : [...effectiveLenses, lensId];
+    setSelectedLenses(newLenses);
+  };
+
+  const { onKeyDown: tabsKeyDown } = useTabNavigation({
+    containerRef: tabsListRef,
+  });
+
+  const { onKeyDown: checkboxKeyDown, focusedValue: checkboxFocusedValue } = useNavigation({
+    mode: "local",
+    containerRef: checkboxRef,
+    role: "checkbox",
+    value: checkboxFocused,
+    onValueChange: setCheckboxFocused,
+    onSelect: toggleLens,
+    onEnter: toggleLens,
+  });
 
   const handleSave = async () => {
     if (!hasLensSelection) return;
@@ -84,8 +110,9 @@ export function SettingsAnalysisPage() {
       {isLoading ? (
         <p className="text-tui-muted">Loading settings...</p>
       ) : (
+        <div ref={tabsListRef}>
         <Tabs defaultValue="agents" className="space-y-4">
-          <TabsList className="border-b border-tui-border pb-2">
+          <TabsList className="border-b border-tui-border pb-2" onKeyDown={tabsKeyDown}>
             <TabsTrigger value="agents">Agents</TabsTrigger>
             <TabsTrigger value="context">Context</TabsTrigger>
           </TabsList>
@@ -97,8 +124,11 @@ export function SettingsAnalysisPage() {
                   Active Agents
                 </div>
                 <CheckboxGroup
+                  ref={checkboxRef}
                   value={effectiveLenses}
                   onValueChange={setSelectedLenses}
+                  onKeyDown={checkboxKeyDown}
+                  focusedValue={checkboxFocusedValue}
                   variant="bullet"
                 >
                   {LENS_OPTIONS.map((lens) => (
@@ -157,6 +187,7 @@ export function SettingsAnalysisPage() {
 
           {error && <p className="text-tui-red text-sm">{error}</p>}
         </Tabs>
+        </div>
       )}
     </CardLayout>
   );

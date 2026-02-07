@@ -1,17 +1,10 @@
 import { createContext, useContext } from "react";
 
-export interface InternalMenuItemData<T extends string = string> {
-  id: T;
-  disabled: boolean;
-  index: number;
-}
-
 export interface MenuContextValue {
-  selectedIndex: number;
-  onSelect: (index: number) => void;
-  onActivate?: (item: InternalMenuItemData) => void;
-  registerItem: (id: string, data: InternalMenuItemData) => void;
-  unregisterItem: (id: string) => void;
+  selectedId: string | null;
+  focusedValue: string | null;
+  onSelect: (id: string) => void;
+  onActivate?: (id: string) => void;
   variant: "default" | "hub";
 }
 

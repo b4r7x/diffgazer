@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useKey, useFooterNavigation } from "@stargazer/keyboard";
+import { useKey } from "@stargazer/keyboard";
+import { useFooterNavigation } from "@/hooks/use-footer-navigation";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { Panel, PanelHeader, PanelContent, Button } from "@stargazer/ui";
 import { cn } from "@/utils/cn";

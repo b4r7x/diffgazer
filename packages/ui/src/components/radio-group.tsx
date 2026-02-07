@@ -1,15 +1,12 @@
 import {
   createContext,
   useContext,
-  useImperativeHandle,
-  useRef,
   useState,
   type ReactNode,
   type Ref,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { cn } from "../lib/cn";
-import { useLocalNavigation, type NavigableHandle } from "../internal/use-local-navigation";
 import {
   selectableItemVariants,
   selectableItemContainerVariants,
@@ -143,36 +140,33 @@ export interface RadioGroupProps<T extends string = string> {
   value?: T;
   defaultValue?: T;
   onValueChange?: (value: T) => void;
-  onFocus?: (value: T) => void;
+  onKeyDown?: (event: ReactKeyboardEvent) => void;
+  focusedValue?: string | null;
   orientation?: "vertical" | "horizontal";
   disabled?: boolean;
   size?: SelectableItemSize;
   name?: string;
   required?: boolean;
-  loop?: boolean;
-  onBoundaryReached?: (direction: "up" | "down") => void;
   className?: string;
   children: ReactNode;
-  ref?: Ref<NavigableHandle>;
+  ref?: Ref<HTMLDivElement>;
 }
 
 function RadioGroupRoot<T extends string = string>({
   value: controlledValue,
   defaultValue,
   onValueChange,
-  onFocus,
+  onKeyDown,
+  focusedValue,
   orientation = "vertical",
   disabled = false,
   size = "md",
   name,
   required,
-  loop = true,
-  onBoundaryReached,
   className,
   children,
   ref,
 }: RadioGroupProps<T>) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
   const isControlled = controlledValue !== undefined;
   const value = isControlled ? controlledValue : uncontrolledValue;
@@ -185,20 +179,7 @@ function RadioGroupRoot<T extends string = string>({
     }
   };
 
-  const { isFocused, onKeyDown, handle } = useLocalNavigation({
-    containerRef,
-    role: "radio",
-    value: value ?? null,
-    onValueChange: handleValueChange,
-    onSelect: handleValueChange,
-    onEnter: handleValueChange,
-    onFocusChange: onFocus as ((value: string) => void) | undefined,
-    wrap: loop,
-    onBoundaryReached,
-    enabled: !disabled,
-  });
-
-  useImperativeHandle(ref, () => handle);
+  const isFocused = (v: string) => focusedValue === v;
 
   const contextValue: RadioGroupContextType = {
     value,
@@ -213,7 +194,7 @@ function RadioGroupRoot<T extends string = string>({
   return (
     <RadioGroupContext.Provider value={contextValue}>
       <div
-        ref={containerRef}
+        ref={ref}
         role="radiogroup"
         aria-orientation={orientation}
         aria-required={required || undefined}

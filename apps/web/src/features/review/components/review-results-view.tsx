@@ -12,14 +12,16 @@ export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) 
   const {
     filteredIssues,
     selectedIssue,
-    focusedIndex,
-    setFocusedIndex,
+    selectedIssueId,
+    setSelectedIssueId,
     activeTab,
     setActiveTab,
     severityFilter,
     setSeverityFilter,
     focusZone,
     focusedFilterIndex,
+    focusedValue,
+    listRef,
     completedSteps,
     handleToggleStep,
   } = useReviewResultsKeyboard({ issues });
@@ -35,13 +37,15 @@ export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) 
         <IssueListPane
           issues={filteredIssues}
           allIssues={issues}
-          selectedIndex={focusedIndex}
-          onSelectIndex={setFocusedIndex}
+          selectedIssueId={selectedIssueId}
+          onSelectIssue={setSelectedIssueId}
           severityFilter={severityFilter}
           onSeverityFilterChange={setSeverityFilter}
           isFocused={focusZone === "list"}
           isFilterFocused={focusZone === "filters"}
           focusedFilterIndex={focusedFilterIndex}
+          focusedValue={focusedValue}
+          listRef={listRef}
         />
         <IssueDetailsPane
           issue={selectedIssue}

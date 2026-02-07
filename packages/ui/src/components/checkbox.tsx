@@ -1,15 +1,12 @@
 import {
   createContext,
   useContext,
-  useImperativeHandle,
-  useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   type Ref,
 } from "react";
 import { cn } from "../lib/cn";
-import { useLocalNavigation, type NavigableHandle } from "../internal/use-local-navigation";
 import {
   selectableItemVariants,
   selectableItemContainerVariants,
@@ -173,46 +170,42 @@ export interface CheckboxGroupProps<T extends string = string> {
   value?: T[];
   defaultValue?: T[];
   onValueChange?: (value: T[]) => void;
+  onKeyDown?: (event: ReactKeyboardEvent) => void;
+  focusedValue?: string | null;
   disabled?: boolean;
   size?: SelectableItemSize;
   variant?: CheckboxVariant;
   name?: string;
   required?: boolean;
-  loop?: boolean;
-  onBoundaryReached?: (direction: "up" | "down") => void;
   className?: string;
   children: ReactNode;
-  ref?: Ref<NavigableHandle>;
+  ref?: Ref<HTMLDivElement>;
 }
 
 export function CheckboxGroup<T extends string = string>({
   value: controlledValue,
   defaultValue = [] as T[],
   onValueChange,
+  onKeyDown,
+  focusedValue,
   disabled = false,
   size = "md",
   variant = "x",
   name,
   required,
-  loop = true,
-  onBoundaryReached,
   className,
   children,
   ref,
 }: CheckboxGroupProps<T>) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const [uncontrolledValue, setUncontrolledValue] =
     useState(defaultValue);
-  const [focusedValue, setFocusedValue] = useState<string | null>(
-    () => controlledValue?.[0] ?? defaultValue[0] ?? null
-  );
   const isControlled = controlledValue !== undefined;
   const value = isControlled ? controlledValue : uncontrolledValue;
 
   const toggle = (itemValue: string) => {
     if (disabled) return;
     const typedValue = itemValue as T;
-    const current = isControlled ? controlledValue! : uncontrolledValue;
+    const current = value;
     const newValue = current.includes(typedValue)
       ? current.filter((v) => v !== typedValue)
       : [...current, typedValue];
@@ -220,18 +213,7 @@ export function CheckboxGroup<T extends string = string>({
     if (!isControlled) setUncontrolledValue(newValue);
   };
 
-  const { isFocused, onKeyDown, handle } = useLocalNavigation({
-    containerRef,
-    role: "checkbox",
-    value: focusedValue,
-    onValueChange: (nextValue: string) => setFocusedValue(nextValue),
-    onSelect: toggle,
-    wrap: loop,
-    onBoundaryReached,
-    enabled: !disabled,
-  });
-
-  useImperativeHandle(ref, () => handle);
+  const isFocused = (v: string) => focusedValue === v;
 
   const contextValue: CheckboxGroupContextType = {
     value,
@@ -246,7 +228,7 @@ export function CheckboxGroup<T extends string = string>({
   return (
     <CheckboxGroupContext.Provider value={contextValue}>
       <div
-        ref={containerRef}
+        ref={ref}
         role="group"
         aria-required={required || undefined}
         className={cn("flex flex-col gap-2", className)}

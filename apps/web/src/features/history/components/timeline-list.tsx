@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { cn } from "@/utils/cn";
-import { useGroupNavigation } from "@stargazer/keyboard";
+import { useNavigation } from "@stargazer/keyboard";
 import type { TimelineItem } from "@stargazer/schemas/ui";
 
 export interface TimelineListProps {
@@ -22,7 +22,7 @@ export function TimelineList({
 }: TimelineListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useGroupNavigation({
+  useNavigation({
     containerRef,
     role: "option",
     value: selectedId,

@@ -26,6 +26,18 @@ import { api } from "@/lib/api";
 const mockUseSettings = useSettings as ReturnType<typeof vi.fn>;
 const mockSaveSettings = api.saveSettings as ReturnType<typeof vi.fn>;
 
+// jsdom may not provide a working localStorage — polyfill it
+const localStorageStore = new Map<string, string>();
+const storageMock: Storage = {
+  getItem: (key: string) => localStorageStore.get(key) ?? null,
+  setItem: (key: string, value: string) => { localStorageStore.set(key, value); },
+  removeItem: (key: string) => { localStorageStore.delete(key); },
+  clear: () => { localStorageStore.clear(); },
+  get length() { return localStorageStore.size; },
+  key: (index: number) => [...localStorageStore.keys()][index] ?? null,
+};
+Object.defineProperty(globalThis, "localStorage", { value: storageMock, writable: true });
+
 let matchMediaListeners: Set<(e: MediaQueryListEvent) => void>;
 
 function mockMatchMedia(matches: boolean) {
@@ -63,7 +75,7 @@ describe("ThemeProvider", () => {
       invalidate: vi.fn(),
     });
     mockSaveSettings.mockResolvedValue({});
-    localStorage.clear();
+    localStorageStore.clear();
     document.documentElement.removeAttribute("data-theme");
   });
 

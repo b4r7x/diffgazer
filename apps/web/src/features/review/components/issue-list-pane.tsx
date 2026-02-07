@@ -1,3 +1,4 @@
+import type { Ref } from "react";
 import { cn } from "@/utils/cn";
 import { IssueListItem } from "@/components/ui/issue";
 import { SeverityFilterGroup, type SeverityFilter } from "./severity-filter-group";
@@ -8,13 +9,15 @@ import type { ReviewIssue } from "@stargazer/schemas/review";
 export interface IssueListPaneProps {
   issues: ReviewIssue[];
   allIssues: ReviewIssue[];
-  selectedIndex: number;
-  onSelectIndex: (index: number) => void;
+  selectedIssueId: string | null;
+  onSelectIssue: (id: string) => void;
   severityFilter: SeverityFilter;
   onSeverityFilterChange: (filter: SeverityFilter) => void;
   isFocused: boolean;
   isFilterFocused?: boolean;
   focusedFilterIndex?: number;
+  focusedValue?: string | null;
+  listRef?: Ref<HTMLDivElement>;
   title?: string;
   className?: string;
 }
@@ -22,13 +25,15 @@ export interface IssueListPaneProps {
 export function IssueListPane({
   issues,
   allIssues,
-  selectedIndex,
-  onSelectIndex,
+  selectedIssueId,
+  onSelectIssue,
   severityFilter,
   onSeverityFilterChange,
   isFocused,
   isFilterFocused,
   focusedFilterIndex,
+  focusedValue,
+  listRef,
   title = "Analysis",
   className,
 }: IssueListPaneProps) {
@@ -50,13 +55,13 @@ export function IssueListPane({
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-hide space-y-1">
-        {issues.map((issue, index) => (
+      <div ref={listRef} className="flex-1 overflow-y-auto scrollbar-hide space-y-1">
+        {issues.map((issue) => (
           <IssueListItem
             key={issue.id}
             issue={issue}
-            isSelected={index === selectedIndex}
-            onClick={() => onSelectIndex(index)}
+            isSelected={issue.id === selectedIssueId || issue.id === focusedValue}
+            onClick={() => onSelectIssue(issue.id)}
           />
         ))}
         {issues.length === 0 && (

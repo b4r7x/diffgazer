@@ -1,17 +1,7 @@
-import { useState, type RefObject, type KeyboardEvent } from "react";
+import { useState, type RefObject } from "react";
+import type { NavigationRole } from "../types";
 
-type NavigationRole = "radio" | "checkbox" | "option" | "menuitem";
-
-export interface NavigableHandle {
-  focusNext: () => void;
-  focusPrevious: () => void;
-  focusFirst: () => void;
-  focusLast: () => void;
-  selectFocused: () => void;
-  getFocusedValue: () => string | null;
-}
-
-interface UseLocalNavigationOptions {
+export interface UseDomNavigationCoreOptions {
   containerRef: RefObject<HTMLElement | null>;
   role: NavigationRole;
   value?: string | null;
@@ -20,20 +10,22 @@ interface UseLocalNavigationOptions {
   onEnter?: (value: string) => void;
   onFocusChange?: (value: string) => void;
   wrap?: boolean;
-  enabled?: boolean;
   onBoundaryReached?: (direction: "up" | "down") => void;
   initialValue?: string | null;
 }
 
-interface UseLocalNavigationReturn {
+export interface UseDomNavigationCoreReturn {
   focusedValue: string | null;
   isFocused: (value: string) => boolean;
   focus: (value: string) => void;
-  onKeyDown: (event: KeyboardEvent) => void;
-  handle: NavigableHandle;
+  move: (delta: 1 | -1) => void;
+  focusIndex: (index: number) => void;
+  handleSelect: () => void;
+  handleEnter: () => void;
+  getElements: () => HTMLElement[];
 }
 
-export function useLocalNavigation({
+export function useDomNavigationCore({
   containerRef,
   role,
   value,
@@ -42,10 +34,9 @@ export function useLocalNavigation({
   onEnter,
   onFocusChange,
   wrap = true,
-  enabled = true,
   onBoundaryReached,
   initialValue = null,
-}: UseLocalNavigationOptions): UseLocalNavigationReturn {
+}: UseDomNavigationCoreOptions): UseDomNavigationCoreReturn {
   const [internalValue, setInternalValue] = useState<string | null>(initialValue);
   const isControlled = value !== undefined;
   const focusedValue = isControlled ? value ?? null : internalValue;
@@ -117,40 +108,9 @@ export function useLocalNavigation({
     }
   };
 
-  const onKeyDown = (event: KeyboardEvent) => {
-    if (!enabled) return;
-
-    switch (event.key) {
-      case "ArrowUp":
-        event.preventDefault();
-        move(-1);
-        break;
-      case "ArrowDown":
-        event.preventDefault();
-        move(1);
-        break;
-      case "Home":
-        event.preventDefault();
-        focusIndex(0);
-        break;
-      case "End": {
-        event.preventDefault();
-        const elements = getElements();
-        if (elements.length > 0) {
-          focusIndex(elements.length - 1);
-        }
-        break;
-      }
-      case "Enter":
-        event.preventDefault();
-        if (focusedValue) {
-          onEnter ? onEnter(focusedValue) : onSelect?.(focusedValue);
-        }
-        break;
-      case " ":
-        event.preventDefault();
-        handleSelect();
-        break;
+  const handleEnter = () => {
+    if (focusedValue) {
+      onEnter ? onEnter(focusedValue) : onSelect?.(focusedValue);
     }
   };
 
@@ -160,25 +120,14 @@ export function useLocalNavigation({
     setFocusedValue(v);
   };
 
-  const handle: NavigableHandle = {
-    focusNext: () => move(1),
-    focusPrevious: () => move(-1),
-    focusFirst: () => focusIndex(0),
-    focusLast: () => {
-      const elements = getElements();
-      if (elements.length > 0) {
-        focusIndex(elements.length - 1);
-      }
-    },
-    selectFocused: handleSelect,
-    getFocusedValue: () => focusedValue,
-  };
-
   return {
     focusedValue,
     isFocused,
     focus,
-    onKeyDown,
-    handle,
+    move,
+    focusIndex,
+    handleSelect,
+    handleEnter,
+    getElements,
   };
 }

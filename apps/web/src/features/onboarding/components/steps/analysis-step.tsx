@@ -1,6 +1,8 @@
+import { useRef, useState } from "react";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@stargazer/schemas/events";
 import type { LensId } from "@stargazer/schemas/review";
 import { CheckboxGroup, CheckboxItem, RadioGroup, RadioGroupItem, Badge, ScrollArea } from "@stargazer/ui";
+import { useNavigation } from "@stargazer/keyboard";
 import type { AgentExecution } from "@stargazer/schemas/config";
 
 const LENS_OPTIONS = (
@@ -29,14 +31,51 @@ export function AnalysisStep({
   agentExecution,
   onAgentExecutionChange,
 }: AnalysisStepProps) {
+  const checkboxRef = useRef<HTMLDivElement>(null);
+  const radioRef = useRef<HTMLDivElement>(null);
+  const [checkboxFocused, setCheckboxFocused] = useState<string | null>(null);
+
+  const toggleLens = (value: string) => {
+    const lensId = value as LensId;
+    const newLenses = lenses.includes(lensId)
+      ? lenses.filter((l) => l !== lensId)
+      : [...lenses, lensId];
+    onLensesChange(newLenses);
+  };
+
+  const { onKeyDown: checkboxKeyDown, focusedValue: checkboxFocusedValue } = useNavigation({
+    mode: "local",
+    containerRef: checkboxRef,
+    role: "checkbox",
+    value: checkboxFocused,
+    onValueChange: setCheckboxFocused,
+    onSelect: toggleLens,
+    onEnter: toggleLens,
+  });
+
+  const onExecutionChangeStr = onAgentExecutionChange as (value: string) => void;
+
+  const { onKeyDown: radioKeyDown, focusedValue: radioFocusedValue } = useNavigation({
+    mode: "local",
+    containerRef: radioRef,
+    role: "radio",
+    value: agentExecution,
+    onValueChange: onExecutionChangeStr,
+    onSelect: onExecutionChangeStr,
+    onEnter: onExecutionChangeStr,
+  });
+
   return (
     <div className="space-y-6">
       <div className="space-y-3">
         <div className="text-sm font-mono text-tui-fg/60">Review Agents:</div>
         <ScrollArea className="max-h-[35vh]">
           <CheckboxGroup
+            ref={checkboxRef}
             value={lenses}
             onValueChange={onLensesChange}
+            onKeyDown={checkboxKeyDown}
+            focusedValue={checkboxFocusedValue}
             className="space-y-1"
           >
             {LENS_OPTIONS.map((option) => (
@@ -60,7 +99,7 @@ export function AnalysisStep({
 
       <div className="space-y-3">
         <div className="text-sm font-mono text-tui-fg/60">Agent Execution Mode:</div>
-        <RadioGroup value={agentExecution} onValueChange={onAgentExecutionChange} className="space-y-1">
+        <RadioGroup ref={radioRef} value={agentExecution} onValueChange={onAgentExecutionChange} onKeyDown={radioKeyDown} focusedValue={radioFocusedValue} className="space-y-1">
           <RadioGroupItem
             value="sequential"
             label="Sequential"

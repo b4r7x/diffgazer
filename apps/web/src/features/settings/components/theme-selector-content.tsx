@@ -1,5 +1,7 @@
+import { useRef } from "react";
 import type { Theme } from '@stargazer/schemas/config';
 import { RadioGroup, RadioGroupItem } from '@stargazer/ui';
+import { useNavigation } from "@stargazer/keyboard";
 
 export interface ThemeSelectorContentProps {
   value: Theme;
@@ -18,19 +20,36 @@ const THEME_OPTIONS: Array<{ value: Theme; label: string; description: string }>
 export function ThemeSelectorContent({
   value,
   onChange,
-  onFocus: _onFocus,
+  onFocus,
   showTerminalOption = false
 }: ThemeSelectorContentProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const options = showTerminalOption
     ? THEME_OPTIONS
     : THEME_OPTIONS.filter(opt => opt.value !== 'terminal');
+
+  const onChangeStr = onChange as (value: string) => void;
+
+  const { onKeyDown, focusedValue } = useNavigation({
+    mode: "local",
+    containerRef,
+    role: "radio",
+    value,
+    onValueChange: onChangeStr,
+    onSelect: onChangeStr,
+    onEnter: onChangeStr,
+    onFocusChange: onFocus as ((value: string) => void) | undefined,
+  });
 
   return (
     <div className="space-y-3">
       <div className="text-sm font-mono text-[--tui-fg]/60">Select Interface Theme:</div>
       <RadioGroup
+        ref={containerRef}
         value={value}
         onValueChange={onChange}
+        onKeyDown={onKeyDown}
+        focusedValue={focusedValue}
       >
         {options.map((option) => (
           <RadioGroupItem

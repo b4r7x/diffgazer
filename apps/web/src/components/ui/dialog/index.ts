@@ -1,9 +1,0 @@
-export { Dialog, type DialogProps } from './dialog';
-export { DialogTrigger, type DialogTriggerProps } from './dialog-trigger';
-export { DialogContent, type DialogContentProps } from './dialog-content';
-export { DialogHeader, type DialogHeaderProps } from './dialog-header';
-export { DialogTitle, type DialogTitleProps } from './dialog-title';
-export { DialogDescription, type DialogDescriptionProps } from './dialog-description';
-export { DialogBody, type DialogBodyProps } from './dialog-body';
-export { DialogFooter, type DialogFooterProps } from './dialog-footer';
-export { DialogClose, type DialogCloseProps } from './dialog-close';

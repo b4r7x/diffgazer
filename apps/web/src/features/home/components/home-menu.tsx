@@ -1,5 +1,5 @@
 import type { Ref } from "react";
-import { Menu, MenuDivider, MenuItem, Panel, PanelHeader, type NavigableHandle } from "@stargazer/ui";
+import { Menu, MenuDivider, MenuItem, Panel, PanelHeader } from "@stargazer/ui";
 
 export interface MenuItemDefinition {
   id: string;
@@ -10,13 +10,14 @@ export interface MenuItemDefinition {
 }
 
 interface HomeMenuProps {
-  selectedIndex: number;
-  onSelect: (index: number) => void;
+  selectedId: string | null;
+  focusedValue: string | null;
+  onSelect: (id: string) => void;
   onActivate: (id: string) => void;
   items: MenuItemDefinition[];
   isTrusted?: boolean;
   hasLastReview?: boolean;
-  menuRef?: Ref<NavigableHandle>;
+  menuRef?: Ref<HTMLDivElement>;
 }
 
 function groupItems(items: MenuItemDefinition[]) {
@@ -34,7 +35,8 @@ function groupItems(items: MenuItemDefinition[]) {
 }
 
 export function HomeMenu({
-  selectedIndex,
+  selectedId,
+  focusedValue,
   onSelect,
   onActivate,
   items,
@@ -52,10 +54,10 @@ export function HomeMenu({
       <div className="flex flex-col py-2">
         <Menu
           ref={menuRef}
-          selectedIndex={selectedIndex}
+          selectedId={selectedId}
+          focusedValue={focusedValue}
           onSelect={onSelect}
-          onActivate={(item) => onActivate(item.id)}
-          enableNumberJump
+          onActivate={onActivate}
         >
           {review.map((item) => {
             const disabled = item.id === "resume-review" ? resumeDisabled : reviewDisabled;

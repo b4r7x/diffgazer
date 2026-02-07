@@ -83,11 +83,7 @@ export {
   type MenuProps,
   type MenuItemProps,
   type MenuDividerProps,
-  type InternalMenuItemData,
 } from "./components/menu";
-
-// Types
-export type { NavigableHandle } from "./internal/use-local-navigation";
 
 // Feature Components
 export { SearchInput, type SearchInputProps } from "./components/search-input";

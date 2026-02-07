@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 import type { SeverityFilter } from "@/features/review/components/severity-filter-group";
 import type { ReviewIssue } from "@stargazer/schemas/review";
 import type { IssueTab as TabId } from "@stargazer/schemas/ui";
 import { SEVERITY_ORDER } from "@stargazer/schemas/ui";
-import { useFocusZone, useKey, useSelectableList } from "@stargazer/keyboard";
+import { useFocusZone, useKey, useNavigation } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { filterIssuesBySeverity } from "@stargazer/core/review";
 
@@ -36,14 +36,28 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     new Set([1]),
   );
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
+  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const filteredIssues = filterIssuesBySeverity(issues, severityFilter);
 
-  const { focusedIndex, setFocusedIndex } = useSelectableList({
-    itemCount: filteredIssues.length,
-    wrap: false,
+  // Ensure selectedIssueId is valid for current filtered list
+  const effectiveSelectedId = filteredIssues.some(i => i.id === selectedIssueId)
+    ? selectedIssueId
+    : filteredIssues[0]?.id ?? null;
+
+  const { focusedValue } = useNavigation({
+    containerRef: listRef,
+    role: "option",
     enabled: focusZone === "list",
-    initialIndex: 0,
+    value: effectiveSelectedId,
+    onValueChange: setSelectedIssueId,
+    wrap: false,
+    upKeys: ["ArrowUp", "k"],
+    downKeys: ["ArrowDown", "j"],
+    onBoundaryReached: (direction) => {
+      if (direction === "up") setFocusZone("filters");
+    },
   });
 
   useFocusZone({
@@ -58,12 +72,11 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
       if (zone === "list" && key === "ArrowRight") return "details";
       if (zone === "filters" && key === "ArrowRight" && focusedFilterIndex >= SEVERITY_ORDER.length - 1) return "details";
       if (zone === "filters" && key === "ArrowDown") return "list";
-      if (zone === "list" && key === "ArrowUp" && focusedIndex === 0) return "filters";
       return null;
     },
   });
 
-  const selectedIssue = filteredIssues[focusedIndex] ?? null;
+  const selectedIssue = filteredIssues.find(i => i.id === effectiveSelectedId) ?? null;
 
   const handleBack = () => router.history.back();
 
@@ -118,14 +131,16 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
   return {
     filteredIssues,
     selectedIssue,
-    focusedIndex,
-    setFocusedIndex,
+    selectedIssueId: effectiveSelectedId,
+    setSelectedIssueId,
     activeTab,
     setActiveTab,
     severityFilter,
     setSeverityFilter,
     focusZone,
     focusedFilterIndex,
+    focusedValue,
+    listRef,
     completedSteps,
     handleToggleStep,
   };

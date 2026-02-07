@@ -1,6 +1,21 @@
 {
   "name": "@stargazer/ui",
   "version": "0.0.1",
+  "description": "Terminal-inspired React UI components",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/b4r7x/stargazer",
+    "directory": "packages/ui"
+  },
+  "keywords": [
+    "react",
+    "ui",
+    "components",
+    "terminal",
+    "tui",
+    "tailwind"
+  ],
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { cva } from "class-variance-authority";
 import { cn } from "../../lib/cn";
 import { useMenuContext } from "./menu-context";
@@ -36,33 +36,18 @@ export function MenuItem({
   children,
   className,
 }: MenuItemProps) {
-  const { selectedIndex, onSelect, onActivate, registerItem, unregisterItem, variant: menuVariant } = useMenuContext();
-  const itemRef = useRef<HTMLDivElement>(null);
-  const [itemIndex, setItemIndex] = useState(-1);
+  const { selectedId, focusedValue, onSelect, onActivate, variant: menuVariant } = useMenuContext();
 
-  // Ref-based registration replaces Children.forEach discovery
-  useEffect(() => {
-    const itemElement = itemRef.current;
-    const parent = itemElement?.parentElement;
-    if (!itemElement || !parent) return;
-
-    const options = Array.from(parent.querySelectorAll('[role="option"]'));
-    const idx = options.indexOf(itemElement);
-    setItemIndex(idx);
-    registerItem(id, { id, disabled, index: idx });
-
-    return () => unregisterItem(id);
-  }, [id, disabled, registerItem, unregisterItem]);
-
-  const isSelected = itemIndex === selectedIndex;
+  const isSelected = selectedId === id;
+  const isFocused = focusedValue === id;
+  const isHighlighted = isSelected || isFocused;
   const isDanger = variant === "danger";
   const isHub = menuVariant === "hub";
 
   const handleClick = () => {
     if (disabled) return;
-    onSelect(itemIndex);
-    const itemData = { id, disabled, index: itemIndex };
-    onActivate?.(itemData);
+    onSelect(id);
+    onActivate?.(id);
   };
 
   const selectedBg = isDanger ? "bg-tui-red" : "bg-tui-blue";
@@ -72,7 +57,7 @@ export function MenuItem({
   let stateClasses = cn(baseTextClass, "hover:bg-tui-selection group", !isHub && "duration-75");
   if (disabled) {
     stateClasses = cn(baseTextClass, "opacity-50", !isHub && "hover:bg-transparent");
-  } else if (isSelected) {
+  } else if (isHighlighted) {
     stateClasses = cn(
       selectedBg,
       "text-primary-foreground font-bold",
@@ -81,7 +66,7 @@ export function MenuItem({
   }
 
   let valueClasses = "text-tui-muted font-mono text-xs";
-  if (isSelected) {
+  if (isHighlighted) {
     valueClasses = "font-mono text-xs uppercase tracking-wide";
   } else if (valueVariant === "success-badge") {
     valueClasses = "text-tui-green font-mono text-xs border border-tui-green/30 bg-tui-green/10 px-2 py-0.5 rounded";
@@ -93,7 +78,6 @@ export function MenuItem({
 
   return (
     <div
-      ref={itemRef}
       id={`menu-item-${id}`}
       role="option"
       data-value={id}
@@ -109,14 +93,14 @@ export function MenuItem({
             <span
               className={cn(
                 "w-6",
-                isSelected
+                isHighlighted
                   ? "text-primary-foreground"
                   : "text-tui-blue opacity-0 group-hover:opacity-100 transition-opacity"
               )}
             >
-              {isSelected ? "\u258C" : "\u276F"}
+              {isHighlighted ? "\u258C" : "\u276F"}
             </span>
-            <span className={cn(isSelected ? "" : "font-medium group-hover:text-tui-fg")}>{children}</span>
+            <span className={cn(isHighlighted ? "" : "font-medium group-hover:text-tui-fg")}>{children}</span>
           </div>
           {value && <div className={valueClasses}>{value}</div>}
         </>
@@ -125,7 +109,7 @@ export function MenuItem({
           <span
             className={cn(
               "mr-3 shrink-0",
-              !isSelected && cn("opacity-0 group-hover:opacity-100", indicatorColor)
+              !isHighlighted && cn("opacity-0 group-hover:opacity-100", indicatorColor)
             )}
           >
             {"\u258C"}
@@ -134,13 +118,13 @@ export function MenuItem({
             <span
               className={cn(
                 "mr-4 shrink-0",
-                !isSelected && cn("group-hover:text-tui-fg", indicatorColor)
+                !isHighlighted && cn("group-hover:text-tui-fg", indicatorColor)
               )}
             >
               [{hotkey}]
             </span>
           )}
-          <span className={cn(!isHub && "tracking-wide", !isSelected && !isDanger && "group-hover:text-tui-fg")}>
+          <span className={cn(!isHub && "tracking-wide", !isHighlighted && !isDanger && "group-hover:text-tui-fg")}>
             {children}
           </span>
         </>

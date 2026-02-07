@@ -1,9 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { ContextInfo } from "@stargazer/schemas/ui";
-import type { NavigableHandle } from "@stargazer/ui";
 import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@/config/navigation";
-import { useKey, useScope, useNavigationKeys } from "@stargazer/keyboard";
+import { useKey, useScope, useNavigation } from "@stargazer/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ContextSidebar } from "@/features/home/components/context-sidebar";
@@ -60,11 +59,8 @@ export function HomePage() {
     trustedDir: isTrusted ? trust?.repoRoot : undefined,
   };
 
-  const [selectedIndex, setSelectedIndex] = useScopedRouteState("menuIndex", 0);
-  const menuRef = useRef<NavigableHandle>(null);
-
-  usePageFooter({ shortcuts: MAIN_MENU_SHORTCUTS });
-  useNavigationKeys(menuRef);
+  const [selectedId, setSelectedId] = useScopedRouteState<string | null>("menuId", null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const handleActivate = (id: string) => {
     if (id === "quit") {
@@ -88,6 +84,15 @@ export function HomePage() {
     }
   };
 
+  usePageFooter({ shortcuts: MAIN_MENU_SHORTCUTS });
+  const { focusedValue } = useNavigation({
+    containerRef: menuRef,
+    role: "option",
+    value: selectedId,
+    onValueChange: setSelectedId,
+    onEnter: handleActivate,
+  });
+
   useScope("home");
   useKey("q", () => {
     void shutdown();
@@ -108,8 +113,9 @@ export function HomePage() {
       />
       <HomeMenu
         menuRef={menuRef}
-        selectedIndex={selectedIndex}
-        onSelect={setSelectedIndex}
+        selectedId={selectedId}
+        focusedValue={focusedValue}
+        onSelect={setSelectedId}
         onActivate={handleActivate}
         items={MENU_ITEMS}
         isTrusted={isTrusted}

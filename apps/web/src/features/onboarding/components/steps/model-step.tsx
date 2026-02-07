@@ -1,6 +1,8 @@
+import { useRef } from "react";
 import { AVAILABLE_PROVIDERS, GEMINI_MODEL_INFO, GLM_MODEL_INFO } from "@stargazer/schemas/config";
 import type { AIProvider, ModelInfo } from "@stargazer/schemas/config";
 import { RadioGroup, RadioGroupItem, Badge } from "@stargazer/ui";
+import { useNavigation } from "@stargazer/keyboard";
 import { useOpenRouterModels } from "@/hooks/use-openrouter-models";
 
 interface ModelStepProps {
@@ -24,13 +26,24 @@ function getStaticModels(provider: AIProvider): ModelInfo[] {
 function StaticModelList({ provider, value, onChange }: ModelStepProps) {
   const models = getStaticModels(provider);
   const providerInfo = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const { onKeyDown, focusedValue } = useNavigation({
+    mode: "local",
+    containerRef,
+    role: "radio",
+    value,
+    onValueChange: onChange,
+    onSelect: onChange,
+    onEnter: onChange,
+  });
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-tui-muted font-mono">
         Select a model for {providerInfo?.name ?? provider}.
       </p>
-      <RadioGroup value={value ?? undefined} onValueChange={onChange} className="space-y-1">
+      <RadioGroup ref={containerRef} value={value ?? undefined} onValueChange={onChange} onKeyDown={onKeyDown} focusedValue={focusedValue} className="space-y-1">
         {models.map((model) => (
           <RadioGroupItem
             key={model.id}
@@ -62,6 +75,17 @@ function StaticModelList({ provider, value, onChange }: ModelStepProps) {
 
 function OpenRouterModelList({ value, onChange }: Omit<ModelStepProps, "provider">) {
   const { models, loading, error } = useOpenRouterModels(true, "openrouter");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const { onKeyDown, focusedValue } = useNavigation({
+    mode: "local",
+    containerRef,
+    role: "radio",
+    value,
+    onValueChange: onChange,
+    onSelect: onChange,
+    onEnter: onChange,
+  });
 
   if (loading) {
     return (
@@ -85,7 +109,7 @@ function OpenRouterModelList({ value, onChange }: Omit<ModelStepProps, "provider
         Select a model from OpenRouter.
       </p>
       <div className="max-h-64 overflow-y-auto scrollbar-hide">
-        <RadioGroup value={value ?? undefined} onValueChange={onChange} className="space-y-1">
+        <RadioGroup ref={containerRef} value={value ?? undefined} onValueChange={onChange} onKeyDown={onKeyDown} focusedValue={focusedValue} className="space-y-1">
           {models.map((model) => (
             <RadioGroupItem
               key={model.id}
