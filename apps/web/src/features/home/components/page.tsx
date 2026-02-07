@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { ContextInfo } from "@stargazer/schemas/ui";
+import type { NavigableHandle } from "@stargazer/ui";
 import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@/config/navigation";
-import { useKey, useScope } from "@stargazer/keyboard";
+import { useKey, useScope, useNavigationKeys } from "@stargazer/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ContextSidebar } from "@/features/home/components/context-sidebar";
@@ -60,8 +61,10 @@ export function HomePage() {
   };
 
   const [selectedIndex, setSelectedIndex] = useScopedRouteState("menuIndex", 0);
+  const menuRef = useRef<NavigableHandle>(null);
 
   usePageFooter({ shortcuts: MAIN_MENU_SHORTCUTS });
+  useNavigationKeys(menuRef);
 
   const handleActivate = (id: string) => {
     if (id === "quit") {
@@ -104,6 +107,7 @@ export function HomePage() {
         projectPath={repoRoot ?? undefined}
       />
       <HomeMenu
+        menuRef={menuRef}
         selectedIndex={selectedIndex}
         onSelect={setSelectedIndex}
         onActivate={handleActivate}

@@ -1,4 +1,5 @@
-import { NavigationList, NavigationListItem, Badge, Input } from '@stargazer/ui';
+import type { Ref } from 'react';
+import { NavigationList, NavigationListItem, Badge, Input, type NavigableHandle } from '@stargazer/ui';
 import { cn } from '@/utils/cn';
 import { PROVIDER_CAPABILITIES } from '@/config/constants';
 import { PROVIDER_FILTER_LABELS, type ProviderFilter } from '@/features/providers/constants';
@@ -14,9 +15,11 @@ interface ProviderListProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   keyboardEnabled?: boolean;
+  isFocused?: boolean;
   onBoundaryReached?: (direction: "up" | "down") => void;
   inputRef?: React.RefObject<HTMLInputElement | null>;
   focusedFilterIndex?: number;
+  listRef?: Ref<NavigableHandle>;
 }
 
 function getStatusIndicator(status: DisplayStatus): string | undefined {
@@ -40,9 +43,11 @@ export function ProviderList({
   searchQuery,
   onSearchChange,
   keyboardEnabled = true,
+  isFocused = true,
   onBoundaryReached,
   inputRef,
   focusedFilterIndex,
+  listRef,
 }: ProviderListProps) {
   return (
     <div className="flex flex-col h-full">
@@ -89,11 +94,12 @@ export function ProviderList({
 
       <div className="flex-1 overflow-y-auto scrollbar-hide">
         <NavigationList
+          ref={listRef}
           selectedId={selectedId}
           onSelect={onSelect}
           onActivate={onActivate}
           keyboardEnabled={keyboardEnabled}
-          isFocused={keyboardEnabled}
+          isFocused={isFocused}
           onBoundaryReached={onBoundaryReached}
         >
           {providers.map((provider) => {

@@ -1,13 +1,15 @@
 import {
   createContext,
   useContext,
+  useImperativeHandle,
   useRef,
   useState,
   type ReactNode,
+  type Ref,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
-import { useGroupNavigation } from "@stargazer/keyboard";
 import { cn } from "../lib/cn";
+import { useLocalNavigation, type NavigableHandle } from "../internal/use-local-navigation";
 import {
   selectableItemVariants,
   selectableItemContainerVariants,
@@ -96,15 +98,19 @@ export function Radio({
       >
         {checked ? "[\u00a0\u25cf\u00a0]" : "[\u00a0\u00a0\u00a0]"}
       </span>
-      {label && !description && (
-        <span className={selectableItemLabelVariants({ size })}>{label}</span>
-      )}
-      {label && description && (
-        <div className="flex flex-col min-w-0">
+      {label && (
+        <div
+          className={cn(
+            "flex flex-col min-w-0",
+            !description && "justify-center"
+          )}
+        >
           <span className={selectableItemLabelVariants({ size })}>{label}</span>
-          <span className={selectableItemDescriptionVariants({ focused })}>
-            {description}
-          </span>
+          {description && (
+            <span className={selectableItemDescriptionVariants({ focused })}>
+              {description}
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -147,6 +153,7 @@ export interface RadioGroupProps<T extends string = string> {
   onBoundaryReached?: (direction: "up" | "down") => void;
   className?: string;
   children: ReactNode;
+  ref?: Ref<NavigableHandle>;
 }
 
 function RadioGroupRoot<T extends string = string>({
@@ -163,6 +170,7 @@ function RadioGroupRoot<T extends string = string>({
   onBoundaryReached,
   className,
   children,
+  ref,
 }: RadioGroupProps<T>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
@@ -177,7 +185,7 @@ function RadioGroupRoot<T extends string = string>({
     }
   };
 
-  const { isFocused } = useGroupNavigation({
+  const { isFocused, onKeyDown, handle } = useLocalNavigation({
     containerRef,
     role: "radio",
     value: value ?? null,
@@ -189,6 +197,8 @@ function RadioGroupRoot<T extends string = string>({
     onBoundaryReached,
     enabled: !disabled,
   });
+
+  useImperativeHandle(ref, () => handle);
 
   const contextValue: RadioGroupContextType = {
     value,
@@ -212,6 +222,7 @@ function RadioGroupRoot<T extends string = string>({
           orientation === "vertical" ? "flex-col gap-1" : "flex-row gap-4",
           className
         )}
+        onKeyDown={onKeyDown}
       >
         {children}
       </div>

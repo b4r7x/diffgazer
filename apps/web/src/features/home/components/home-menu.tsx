@@ -1,4 +1,5 @@
-import { Menu, MenuDivider, MenuItem, Panel, PanelHeader } from "@stargazer/ui";
+import type { Ref } from "react";
+import { Menu, MenuDivider, MenuItem, Panel, PanelHeader, type NavigableHandle } from "@stargazer/ui";
 
 export interface MenuItemDefinition {
   id: string;
@@ -15,6 +16,7 @@ interface HomeMenuProps {
   items: MenuItemDefinition[];
   isTrusted?: boolean;
   hasLastReview?: boolean;
+  menuRef?: Ref<NavigableHandle>;
 }
 
 function groupItems(items: MenuItemDefinition[]) {
@@ -38,6 +40,7 @@ export function HomeMenu({
   items,
   isTrusted = false,
   hasLastReview = false,
+  menuRef,
 }: HomeMenuProps) {
   const { review, navigation, system } = groupItems(items);
   const reviewDisabled = !isTrusted;
@@ -48,6 +51,7 @@ export function HomeMenu({
       <PanelHeader variant="subtle">Main Menu</PanelHeader>
       <div className="flex flex-col py-2">
         <Menu
+          ref={menuRef}
           selectedIndex={selectedIndex}
           onSelect={onSelect}
           onActivate={(item) => onActivate(item.id)}

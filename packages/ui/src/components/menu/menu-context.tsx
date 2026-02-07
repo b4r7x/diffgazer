@@ -12,7 +12,6 @@ export interface MenuContextValue {
   onActivate?: (item: InternalMenuItemData) => void;
   registerItem: (id: string, data: InternalMenuItemData) => void;
   unregisterItem: (id: string) => void;
-  items: Map<string, InternalMenuItemData>;
   variant: "default" | "hub";
 }
 

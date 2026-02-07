@@ -1,4 +1,6 @@
-import { FocusablePane, NavigationList } from "@stargazer/ui";
+import { useRef } from "react";
+import { FocusablePane, NavigationList, type NavigableHandle } from "@stargazer/ui";
+import { useNavigationKeys } from "@stargazer/keyboard";
 import { RunAccordionItem } from "@/features/history/components/run-accordion-item";
 import { TimelineList } from "@/features/history/components/timeline-list";
 import { HistoryInsightsPane } from "@/features/history/components/history-insights-pane";
@@ -6,6 +8,7 @@ import { SearchInput } from "@/features/history/components/search-input";
 import { useHistoryPage } from "@/features/history/hooks/use-history-page";
 
 export function HistoryPage() {
+  const runsListRef = useRef<NavigableHandle>(null);
   const {
     isLoading,
     error,
@@ -31,6 +34,8 @@ export function HistoryPage() {
     handleRunsBoundary,
     handleIssueClick,
   } = useHistoryPage();
+
+  useNavigationKeys(runsListRef, { enabled: focusZone === "runs" });
 
   if (isLoading) {
     return (
@@ -97,10 +102,11 @@ export function HistoryPage() {
           <div className="flex-1 overflow-y-auto">
             {mappedRuns.length > 0 ? (
               <NavigationList
+                ref={runsListRef}
                 selectedId={selectedRunId}
                 onSelect={setSelectedRunId}
                 onActivate={handleRunActivate}
-                keyboardEnabled={focusZone === "runs"}
+                keyboardEnabled={false}
                 onBoundaryReached={handleRunsBoundary}
               >
                 {mappedRuns.map((run) => (

@@ -1,6 +1,15 @@
-import * as React from "react";
-import { useGroupNavigation } from "@stargazer/keyboard";
+import {
+  createContext,
+  useContext,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { cn } from "../lib/cn";
+import { useLocalNavigation, type NavigableHandle } from "../internal/use-local-navigation";
 import {
   selectableItemVariants,
   selectableItemContainerVariants,
@@ -16,8 +25,8 @@ export interface CheckboxProps {
   checked?: boolean | "indeterminate";
   defaultChecked?: boolean;
   onCheckedChange?: (checked: boolean) => void;
-  label?: React.ReactNode;
-  description?: React.ReactNode;
+  label?: ReactNode;
+  description?: ReactNode;
   disabled?: boolean;
   focused?: boolean;
   size?: SelectableItemSize;
@@ -44,7 +53,7 @@ export function Checkbox({
   "data-value": dataValue,
 }: CheckboxProps) {
   const [uncontrolledChecked, setUncontrolledChecked] =
-    React.useState(defaultChecked);
+    useState(defaultChecked);
   const isControlled = controlledChecked !== undefined;
   const checked = isControlled ? controlledChecked : uncontrolledChecked;
   const isChecked = checked === true;
@@ -62,7 +71,7 @@ export function Checkbox({
     handleChange(!isChecked);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: ReactKeyboardEvent) => {
     if (disabled) return;
     if (e.key === " " || e.key === "Enter") {
       e.preventDefault();
@@ -148,12 +157,12 @@ interface CheckboxGroupContextType<T extends string = string> {
   name?: string;
 }
 
-const CheckboxGroupContext = React.createContext<
+const CheckboxGroupContext = createContext<
   CheckboxGroupContextType | undefined
 >(undefined);
 
 function useCheckboxGroupContext() {
-  const context = React.useContext(CheckboxGroupContext);
+  const context = useContext(CheckboxGroupContext);
   if (!context) {
     throw new Error("CheckboxItem must be used within CheckboxGroup");
   }
@@ -172,7 +181,8 @@ export interface CheckboxGroupProps<T extends string = string> {
   loop?: boolean;
   onBoundaryReached?: (direction: "up" | "down") => void;
   className?: string;
-  children: React.ReactNode;
+  children: ReactNode;
+  ref?: Ref<NavigableHandle>;
 }
 
 export function CheckboxGroup<T extends string = string>({
@@ -188,11 +198,12 @@ export function CheckboxGroup<T extends string = string>({
   onBoundaryReached,
   className,
   children,
+  ref,
 }: CheckboxGroupProps<T>) {
-  const containerRef = React.useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [uncontrolledValue, setUncontrolledValue] =
-    React.useState(defaultValue);
-  const [focusedValue, setFocusedValue] = React.useState<string | null>(
+    useState(defaultValue);
+  const [focusedValue, setFocusedValue] = useState<string | null>(
     () => controlledValue?.[0] ?? defaultValue[0] ?? null
   );
   const isControlled = controlledValue !== undefined;
@@ -209,7 +220,7 @@ export function CheckboxGroup<T extends string = string>({
     if (!isControlled) setUncontrolledValue(newValue);
   };
 
-  const { isFocused } = useGroupNavigation({
+  const { isFocused, onKeyDown, handle } = useLocalNavigation({
     containerRef,
     role: "checkbox",
     value: focusedValue,
@@ -219,6 +230,8 @@ export function CheckboxGroup<T extends string = string>({
     onBoundaryReached,
     enabled: !disabled,
   });
+
+  useImperativeHandle(ref, () => handle);
 
   const contextValue: CheckboxGroupContextType = {
     value,
@@ -237,6 +250,7 @@ export function CheckboxGroup<T extends string = string>({
         role="group"
         aria-required={required || undefined}
         className={cn("flex flex-col gap-2", className)}
+        onKeyDown={onKeyDown}
       >
         {children}
       </div>
@@ -246,8 +260,8 @@ export function CheckboxGroup<T extends string = string>({
 
 export interface CheckboxItemProps {
   value: string;
-  label: React.ReactNode;
-  description?: React.ReactNode;
+  label: ReactNode;
+  description?: ReactNode;
   disabled?: boolean;
   className?: string;
 }
