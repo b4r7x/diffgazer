@@ -40,8 +40,7 @@ export function StorageSelectorContent({
   const { focusedValue } = useNavigation({
     containerRef,
     role: "radio",
-    value,
-    onValueChange: onChangeStr,
+    initialValue: value,
     onSelect: onChangeStr,
     onEnter: onChangeStr,
     enabled: navigationEnabled,

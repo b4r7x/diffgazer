@@ -19,14 +19,14 @@ const BUTTON_COUNT = 1;
 
 export function DiagnosticsPage() {
   const navigate = useNavigate();
-  const { contextStatus, contextGeneratedAt, handleRefreshContext } = useContextManagement();
+  const { contextStatus, contextGeneratedAt, isRefreshing, error, handleRefreshContext } = useContextManagement();
 
-  const canDownloadContext = contextStatus === "ready";
+  const canRegenerate = contextStatus === "ready" || contextStatus === "missing";
 
   usePageFooter({ shortcuts: FOOTER_SHORTCUTS });
 
   const handleButtonAction = (_index: number) => {
-    if (canDownloadContext) {
+    if (canRegenerate && !isRefreshing) {
       void handleRefreshContext();
     }
   };
@@ -99,7 +99,7 @@ export function DiagnosticsPage() {
               {contextStatus === "ready" && contextGeneratedAt && (
                 <span>Last generated: {new Date(contextGeneratedAt).toLocaleString()}</span>
               )}
-              {contextStatus === "missing" && "Not generated yet. Generate it in Settings \u2192 Analysis."}
+              {contextStatus === "missing" && "Not generated yet."}
               {contextStatus === "error" && "Failed to load context status."}
             </div>
           </div>
@@ -112,18 +112,23 @@ export function DiagnosticsPage() {
             <Button
               bracket
               variant="outline"
-              disabled={!canDownloadContext}
+              disabled={!canRegenerate || isRefreshing}
               className={cn(
                 "transition-colors",
                 "hover:bg-tui-selection hover:text-tui-fg hover:border-tui-green",
                 "focus:outline-none focus:ring-1 focus:ring-tui-green",
-                focusedIndex === 0 && canDownloadContext && "ring-2 ring-tui-green border-tui-green"
+                focusedIndex === 0 && canRegenerate && !isRefreshing && "ring-2 ring-tui-green border-tui-green"
               )}
               onClick={() => void handleRefreshContext()}
             >
-              Refresh Context
+              {isRefreshing
+                ? "Working..."
+                : contextStatus === "ready"
+                  ? "Regenerate Context"
+                  : "Generate Context"}
             </Button>
           </div>
+          {error && <p className="text-tui-red text-sm">{error}</p>}
         </PanelContent>
       </Panel>
     </div>

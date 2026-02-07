@@ -3,10 +3,10 @@ import { ModelListItem } from "./model-list-item";
 
 interface ModelListProps {
   models: ModelInfo[];
-  selectedIndex: number;
+  focusedModelId: string | null;
   currentModelId?: string;
   isFocused: boolean;
-  onSelect: (index: number) => void;
+  onSelect: (modelId: string) => void;
   onConfirm: () => void;
   isLoading?: boolean;
   emptyLabel?: string;
@@ -15,7 +15,7 @@ interface ModelListProps {
 
 export function ModelList({
   models,
-  selectedIndex,
+  focusedModelId,
   currentModelId,
   isFocused,
   onSelect,
@@ -28,7 +28,7 @@ export function ModelList({
     return (
       <div
         ref={ref}
-        role="listbox"
+        role="radiogroup"
         aria-label="Available models"
         className="px-4 py-2 max-h-60 overflow-y-auto scrollbar-thin"
       >
@@ -42,18 +42,18 @@ export function ModelList({
   return (
     <div
       ref={ref}
-      role="listbox"
+      role="radiogroup"
       aria-label="Available models"
       className="px-4 py-2 space-y-1 max-h-60 overflow-y-auto scrollbar-thin"
     >
-      {models.map((model, index) => (
+      {models.map((model) => (
         <ModelListItem
           key={model.id}
           model={model}
-          isSelected={index === selectedIndex}
+          isSelected={model.id === focusedModelId}
           isChecked={model.id === currentModelId}
           isFocused={isFocused}
-          onClick={() => onSelect(index)}
+          onClick={() => onSelect(model.id)}
           onDoubleClick={onConfirm}
         />
       ))}

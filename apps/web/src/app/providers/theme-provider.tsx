@@ -28,9 +28,9 @@ function mapSettingsTheme(theme: string): WebTheme {
   return resolveWebTheme(theme);
 }
 
-function ThemeStyleApplicator() {
+function ThemeStyleApplicator({ preview }: { preview: ResolvedTheme | null }) {
   const context = useContext(ThemeContext);
-  const resolved = context?.resolved ?? "dark";
+  const resolved = preview ?? context?.resolved ?? "dark";
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", resolved);
@@ -44,6 +44,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") return "auto";
     return resolveWebTheme(localStorage.getItem(STORAGE_KEY));
   });
+  const [preview, setPreview] = useState<ResolvedTheme | null>(null);
 
   const { settings } = useSettings();
 
@@ -62,11 +63,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     api.saveSettings({ theme: newTheme }).catch((err) => console.error("Failed to save theme settings", err));
   };
 
-  const value: ThemeContextValue = { theme: resolvedTheme, resolved, setTheme };
+  const value: ThemeContextValue = { theme: resolvedTheme, resolved, setTheme, setPreview };
 
   return (
     <ThemeContext.Provider value={value}>
-      <ThemeStyleApplicator />
+      <ThemeStyleApplicator preview={preview} />
       {children}
     </ThemeContext.Provider>
   );

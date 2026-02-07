@@ -5,4 +5,5 @@ export interface ThemeContextValue {
   theme: WebTheme;
   resolved: ResolvedTheme;
   setTheme: (theme: WebTheme) => void;
+  setPreview: (theme: ResolvedTheme | null) => void;
 }
