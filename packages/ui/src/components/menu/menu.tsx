@@ -1,6 +1,6 @@
-import { useContext, useEffect, useRef, useState, type ReactNode, type KeyboardEvent } from "react";
-import { KeyboardContext } from "@stargazer/keyboard";
+import { useImperativeHandle, useRef, useState, type ReactNode, type KeyboardEvent, type Ref } from "react";
 import { cn } from "../../lib/cn";
+import type { NavigableHandle } from "../../internal/use-local-navigation";
 import { MenuContext, type InternalMenuItemData, type MenuContextValue } from "./menu-context";
 
 export interface MenuProps<T extends string = string> {
@@ -14,6 +14,7 @@ export interface MenuProps<T extends string = string> {
   className?: string;
   "aria-label"?: string;
   children: ReactNode;
+  ref?: Ref<NavigableHandle>;
 }
 
 const NUMBER_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
@@ -29,8 +30,8 @@ export function Menu<T extends string = string>({
   className,
   "aria-label": ariaLabel,
   children,
+  ref,
 }: MenuProps<T>) {
-  const keyboardContext = useContext(KeyboardContext);
   const containerRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef<Map<string, InternalMenuItemData>>(new Map());
   const [uncontrolledIndex, setUncontrolledIndex] = useState(defaultIndex);
@@ -112,39 +113,32 @@ export function Menu<T extends string = string>({
     }
   };
 
-  const activeScope = keyboardContext?.activeScope ?? null;
-  const hasScopedKeyboard = keyboardEnabled && !!activeScope;
-
-  useEffect(() => {
-    if (!hasScopedKeyboard || !keyboardContext || !activeScope) return;
-
-    const cleanups: Array<() => void> = [
-      keyboardContext.register(activeScope, "ArrowUp", selectPrevious),
-      keyboardContext.register(activeScope, "ArrowDown", selectNext),
-      keyboardContext.register(activeScope, "Enter", activateSelected),
-    ];
-
-    if (enableNumberJump) {
-      NUMBER_KEYS.forEach((key, idx) => {
-        cleanups.push(
-          keyboardContext.register(activeScope, key, () => selectByNumber(idx))
-        );
-      });
-    }
-
-    return () => cleanups.forEach((cleanup) => cleanup());
-  }, [
-    activeScope,
-    hasScopedKeyboard,
-    keyboardContext,
-    enableNumberJump,
-    selectedIndex,
-  ]);
+  useImperativeHandle(ref, () => ({
+    focusNext: selectNext,
+    focusPrevious: selectPrevious,
+    focusFirst: () => {
+      const sorted = getItemsByIndex();
+      const firstEnabled = sorted.findIndex((item) => !item.disabled);
+      if (firstEnabled >= 0) handleSelect(firstEnabled);
+    },
+    focusLast: () => {
+      const sorted = getItemsByIndex();
+      for (let i = sorted.length - 1; i >= 0; i--) {
+        if (!sorted[i]?.disabled) {
+          handleSelect(i);
+          return;
+        }
+      }
+    },
+    selectFocused: activateSelected,
+    getFocusedValue: () => {
+      const sorted = getItemsByIndex();
+      return sorted[selectedIndex]?.id ?? null;
+    },
+  }));
 
   const handleKeyDown = (event: KeyboardEvent) => {
     if (!keyboardEnabled) return;
-    // Scoped keyboard already handles these globally.
-    if (hasScopedKeyboard) return;
 
     if (event.key === "ArrowUp") {
       event.preventDefault();
@@ -168,7 +162,6 @@ export function Menu<T extends string = string>({
     onActivate: onActivate as ((item: InternalMenuItemData) => void) | undefined,
     registerItem,
     unregisterItem,
-    items: itemsRef.current,
     variant,
   };
 

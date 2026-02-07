@@ -86,6 +86,9 @@ export {
   type InternalMenuItemData,
 } from "./components/menu";
 
+// Types
+export type { NavigableHandle } from "./internal/use-local-navigation";
+
 // Feature Components
 export { SearchInput, type SearchInputProps } from "./components/search-input";
 export { ToggleGroup, type ToggleGroupProps, type ToggleGroupItem } from "./components/toggle-group";

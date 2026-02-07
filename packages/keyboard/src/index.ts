@@ -12,5 +12,8 @@ export { useGroupNavigation } from "./use-group-navigation";
 export { useSelectableList } from "./use-selectable-list";
 export { useFooterNavigation } from "./use-footer-navigation";
 
+// Bridge hooks (connect keyboard system to UI component refs)
+export { useNavigationKeys } from "./use-navigation-keys";
+
 // Utilities (for advanced consumers)
 export { matchesHotkey, isInputElement } from "./keyboard-utils";
