@@ -70,6 +70,8 @@ describe("isInputElement", () => {
 
   it("should return false for div element", () => {
     const div = document.createElement("div");
+    // jsdom's isContentEditable is undefined, so the return is not strictly false.
+    // In real browsers this returns false.
     expect(isInputElement(div)).toBeFalsy();
   });
 
@@ -78,13 +80,12 @@ describe("isInputElement", () => {
     expect(isInputElement(span)).toBeFalsy();
   });
 
-  it("should return true for contentEditable element", () => {
+  // jsdom does not implement isContentEditable (returns undefined),
+  // so this test cannot run in jsdom.
+  it.skip("should return true for contentEditable element (requires real DOM)", () => {
     const div = document.createElement("div");
     div.contentEditable = "true";
-    // jsdom may not fully support isContentEditable property
-    if (div.isContentEditable !== undefined) {
-      expect(isInputElement(div)).toBe(true);
-    }
+    expect(isInputElement(div)).toBe(true);
   });
 
   it("should return false for null target", () => {

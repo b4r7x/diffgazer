@@ -605,6 +605,94 @@ describe("review-state", () => {
 
       expect(state.fileProgress.total).toBe(12);
     });
+
+    it("should not update fileProgress.total when filesAnalyzed is 0", () => {
+      let state = startedState();
+      const event: AgentStreamEvent = {
+        type: "orchestrator_complete",
+        summary: "Done",
+        totalIssues: 0,
+        lensStats: [],
+        filesAnalyzed: 0,
+        timestamp: ts,
+      };
+
+      state = reviewReducer(state, { type: "EVENT", event });
+
+      expect(state.fileProgress.total).toBe(5);
+    });
+  });
+
+  describe("updateAgents — agent_progress without message", () => {
+    it("should fall back to currentAction when message is undefined", () => {
+      let state = startedState();
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: { type: "agent_start", agent: optimizer, timestamp: ts },
+      });
+
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: { type: "agent_progress", agent: "optimizer", progress: 50, timestamp: ts },
+      });
+
+      expect(state.agents[0].progress).toBe(50);
+      expect(state.agents[0].currentAction).toBe("Starting...");
+    });
+  });
+
+  describe("updateAgents — tool_result with empty summary", () => {
+    it("should set currentAction to undefined when summary is empty string", () => {
+      let state = startedState();
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: { type: "agent_start", agent: detective, timestamp: ts },
+      });
+
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: { type: "tool_result", agent: "detective", tool: "readFileContext", summary: "", timestamp: ts },
+      });
+
+      expect(state.agents[0].currentAction).toBeUndefined();
+    });
+  });
+
+  describe("file_complete deduplication", () => {
+    it("should not add duplicate file to completed list", () => {
+      let state = startedState();
+      const event: AgentStreamEvent = {
+        type: "file_complete",
+        file: "src/app.ts",
+        index: 0,
+        total: 5,
+        timestamp: ts,
+      };
+
+      state = reviewReducer(state, { type: "EVENT", event });
+      state = reviewReducer(state, { type: "EVENT", event });
+
+      expect(state.fileProgress.completed).toHaveLength(1);
+      expect(state.fileProgress.completed[0]).toBe("src/app.ts");
+    });
+  });
+
+  describe("updateAgents — tool_start", () => {
+    it("should update agent currentAction on tool_start event", () => {
+      let state = startedState();
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: { type: "agent_start", agent: detective, timestamp: ts },
+      });
+
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: { type: "tool_start", agent: "detective", tool: "searchCode", input: "query", timestamp: ts },
+      });
+
+      expect(state.agents[0].currentAction).toContain("searchCode");
+      expect(state.agents[0].lastToolCall).toBe("searchCode");
+    });
   });
 
   describe("multiple concurrent agents", () => {

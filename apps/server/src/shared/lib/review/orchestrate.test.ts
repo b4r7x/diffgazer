@@ -166,6 +166,134 @@ describe("orchestrateReview", () => {
     }
   });
 
+  it("should return err when all lenses fail and partialOnAllFailed is false", async () => {
+    const lenses = [makeLens("correctness"), makeLens("security")];
+    mockGetLenses.mockReturnValue(lenses);
+    mockRunLensAnalysis
+      .mockResolvedValueOnce(err({ code: "MODEL_ERROR", message: "Correctness failed" }))
+      .mockResolvedValueOnce(err({ code: "NETWORK_ERROR", message: "Security failed" }));
+
+    const result = await orchestrateReview(
+      client,
+      makeDiff(["src/a.ts"]),
+      { lenses: ["correctness", "security"] },
+      () => {},
+      { concurrency: 2 },
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("NETWORK_ERROR");
+    }
+  });
+
+  it("should emit orchestrator_complete event with summary and stats", async () => {
+    const events: Array<Record<string, unknown>> = [];
+    const lenses = [makeLens("correctness")];
+    mockGetLenses.mockReturnValue(lenses);
+    mockRunLensAnalysis.mockResolvedValueOnce(
+      ok({
+        lensId: "correctness",
+        lensName: "Correctness lens",
+        summary: "All good",
+        issues: [makeIssue("issue-1", "src/a.ts")],
+      }),
+    );
+
+    await orchestrateReview(
+      client,
+      makeDiff(["src/a.ts"]),
+      { lenses: ["correctness"] },
+      (event) => events.push(event as Record<string, unknown>),
+      { concurrency: 1 },
+    );
+
+    const completeEvent = events.find((e) => e.type === "orchestrator_complete");
+    expect(completeEvent).toBeDefined();
+    expect(completeEvent!.totalIssues).toBe(1);
+    expect(completeEvent!.filesAnalyzed).toBe(1);
+    expect(completeEvent!.summary).toContain("All good");
+    expect(completeEvent!.lensStats).toHaveLength(1);
+  });
+
+  it("should deduplicate and sort issues from multiple lenses", async () => {
+    const lenses = [makeLens("correctness"), makeLens("security")];
+    mockGetLenses.mockReturnValue(lenses);
+
+    const sharedIssue = makeIssue("dup-1", "src/a.ts");
+    const uniqueIssue = { ...makeIssue("unique-1", "src/b.ts"), severity: "low" as const };
+
+    mockRunLensAnalysis
+      .mockResolvedValueOnce(
+        ok({
+          lensId: "correctness",
+          lensName: "Correctness lens",
+          summary: "Correctness summary",
+          issues: [sharedIssue],
+        }),
+      )
+      .mockResolvedValueOnce(
+        ok({
+          lensId: "security",
+          lensName: "Security lens",
+          summary: "Security summary",
+          // Same file, same line_start, same title prefix → should be deduped
+          issues: [{ ...sharedIssue, id: "dup-2" }, uniqueIssue],
+        }),
+      );
+
+    const result = await orchestrateReview(
+      client,
+      makeDiff(["src/a.ts", "src/b.ts"]),
+      { lenses: ["correctness", "security"] },
+      () => {},
+      { concurrency: 2 },
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // Dedup removes one of the shared issues, leaves 2 total
+      expect(result.value.issues).toHaveLength(2);
+      // Sorted by severity: high before low
+      expect(result.value.issues[0]!.severity).toBe("high");
+      expect(result.value.issues[1]!.severity).toBe("low");
+    }
+  });
+
+  it("should execute lenses serially when concurrency is 1", async () => {
+    const executionOrder: string[] = [];
+    const lenses = [makeLens("correctness"), makeLens("security")];
+    mockGetLenses.mockReturnValue(lenses);
+    mockRunLensAnalysis.mockImplementation(async (_clientArg, lensArg: Lens) => {
+      executionOrder.push(`start-${lensArg.id}`);
+      // Small delay to detect parallelism
+      await new Promise((r) => setTimeout(r, 10));
+      executionOrder.push(`end-${lensArg.id}`);
+      return ok({
+        lensId: lensArg.id,
+        lensName: lensArg.name,
+        summary: `${lensArg.id} summary`,
+        issues: [],
+      });
+    });
+
+    await orchestrateReview(
+      client,
+      makeDiff(["src/a.ts"]),
+      { lenses: ["correctness", "security"] },
+      () => {},
+      { concurrency: 1 },
+    );
+
+    // With concurrency 1, second lens starts only after first ends
+    expect(executionOrder).toEqual([
+      "start-correctness",
+      "end-correctness",
+      "start-security",
+      "end-security",
+    ]);
+  });
+
   it("marks unstarted lenses as failed when aborted", async () => {
     const controller = new AbortController();
     const lenses = [

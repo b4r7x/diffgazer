@@ -278,3 +278,115 @@ describe("classifyError (via generate)", () => {
     }
   });
 });
+
+describe("generateStream", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it("should stream chunks and call onComplete with accumulated text", async () => {
+    const { streamText } = await import("ai");
+    const chunks = ["Hello", " ", "world"];
+    vi.mocked(streamText).mockReturnValue({
+      textStream: (async function* () {
+        for (const chunk of chunks) yield chunk;
+      })(),
+      finishReason: Promise.resolve("stop"),
+    } as any);
+
+    const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
+    expect(clientResult.ok).toBe(true);
+    if (!clientResult.ok) return;
+
+    const receivedChunks: string[] = [];
+    let completedText = "";
+    let completedMeta: any = null;
+
+    await clientResult.value.generateStream("test prompt", {
+      onChunk: (chunk) => { receivedChunks.push(chunk); },
+      onComplete: (text, meta) => { completedText = text; completedMeta = meta; },
+      onError: () => {},
+    });
+
+    expect(receivedChunks).toEqual(["Hello", " ", "world"]);
+    expect(completedText).toBe("Hello world");
+    expect(completedMeta.truncated).toBe(false);
+    expect(completedMeta.finishReason).toBe("stop");
+  });
+
+  it("should call onError when streaming throws", async () => {
+    const { streamText } = await import("ai");
+    vi.mocked(streamText).mockReturnValue({
+      textStream: (async function* () {
+        yield "partial";
+        throw new Error("stream broke");
+      })(),
+      finishReason: Promise.resolve("error"),
+    } as any);
+
+    const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
+    if (!clientResult.ok) return;
+
+    let capturedError: Error | null = null;
+
+    await clientResult.value.generateStream("test", {
+      onChunk: () => {},
+      onComplete: () => {},
+      onError: (error) => { capturedError = error; },
+    });
+
+    expect(capturedError).not.toBeNull();
+    expect(capturedError!.message).toBe("stream broke");
+  });
+
+  it("should detect truncation when finishReason is length", async () => {
+    const { streamText } = await import("ai");
+    vi.mocked(streamText).mockReturnValue({
+      textStream: (async function* () {
+        yield "truncated content";
+      })(),
+      finishReason: Promise.resolve("length"),
+    } as any);
+
+    const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
+    if (!clientResult.ok) return;
+
+    let completedMeta: any = null;
+
+    await clientResult.value.generateStream("test", {
+      onChunk: () => {},
+      onComplete: (_text, meta) => { completedMeta = meta; },
+      onError: () => {},
+    });
+
+    expect(completedMeta.truncated).toBe(true);
+    expect(completedMeta.finishReason).toBe("length");
+  });
+
+  it("should skip empty chunks", async () => {
+    const { streamText } = await import("ai");
+    vi.mocked(streamText).mockReturnValue({
+      textStream: (async function* () {
+        yield "hello";
+        yield "";
+        yield "world";
+      })(),
+      finishReason: Promise.resolve("stop"),
+    } as any);
+
+    const clientResult = createAIClient({ apiKey: "key", provider: "gemini" });
+    if (!clientResult.ok) return;
+
+    const receivedChunks: string[] = [];
+    let completedText = "";
+
+    await clientResult.value.generateStream("test", {
+      onChunk: (chunk) => { receivedChunks.push(chunk); },
+      onComplete: (text) => { completedText = text; },
+      onError: () => {},
+    });
+
+    expect(receivedChunks).toEqual(["hello", "world"]);
+    expect(completedText).toBe("helloworld");
+  });
+});
