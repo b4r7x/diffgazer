@@ -28,14 +28,13 @@ export function ProgressSubstep({
   detail,
   className,
 }: ProgressSubstepProps) {
-  const badgeVariant =
-    status === "completed"
-      ? "success"
-      : status === "active"
-        ? "info"
-        : status === "error"
-          ? "error"
-          : "neutral";
+  const badgeVariantMap = {
+    completed: "success",
+    active: "info",
+    error: "error",
+    pending: "neutral",
+  } as const;
+  const badgeVariant = badgeVariantMap[status ?? "pending"];
 
   return (
     <div className={cn(substepVariants({ status }), className)}>
