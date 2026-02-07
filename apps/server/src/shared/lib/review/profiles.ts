@@ -33,4 +33,3 @@ export function getProfile(id: ProfileId): ReviewProfile {
   return PROFILES[id];
 }
 
-export { PROFILES };

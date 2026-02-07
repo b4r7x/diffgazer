@@ -77,24 +77,22 @@ export interface OpenRouterModelsState {
 
 export function useOpenRouterModels(open: boolean, provider: AIProvider): OpenRouterModelsState {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const prevOpenRef = useRef(open);
-  const fetchTriggeredRef = useRef(false);
+  const prevOpenRef = useRef(false);
 
-  // Effect 1: Reset on open (false -> true transition)
+  // Single effect: reset on open transition, then fetch
   useEffect(() => {
-    const wasOpen = prevOpenRef.current;
+    const justOpened = open && !prevOpenRef.current;
     prevOpenRef.current = open;
-    if (open && !wasOpen) {
-      fetchTriggeredRef.current = false;
+
+    if (!open || provider !== OPENROUTER_PROVIDER_ID) return;
+
+    // Reset state on fresh open so we re-fetch
+    if (justOpened) {
       dispatch({ type: "RESET" });
     }
-  }, [open]);
 
-  // Effect 2: Fetch when idle after reset
-  useEffect(() => {
-    if (!open || provider !== OPENROUTER_PROVIDER_ID) return;
-    if (state.status !== "idle" || fetchTriggeredRef.current) return;
-    fetchTriggeredRef.current = true;
+    // Only fetch from idle (initial mount or after reset re-renders this effect)
+    if (!justOpened && state.status !== "idle") return;
 
     let ignore = false;
     dispatch({ type: "FETCH_START" });

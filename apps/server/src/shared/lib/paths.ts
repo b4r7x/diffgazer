@@ -8,6 +8,19 @@ const DEFAULT_GLOBAL_DIR = path.join(homedir(), ".stargazer");
 
 const normalizePath = (input: string): string => path.resolve(input.trim());
 
+const isAllowedPath = (resolved: string): boolean => {
+  const home = homedir();
+  if (resolved.startsWith(home + path.sep) || resolved === home) {
+    return true;
+  }
+  // Allow paths with a .git directory (valid repos outside home)
+  try {
+    return fs.existsSync(path.join(resolved, ".git"));
+  } catch {
+    return false;
+  }
+};
+
 const findGitRoot = (startPath: string): string | null => {
   let current = startPath;
   while (true) {
@@ -30,7 +43,13 @@ export const resolveProjectRoot = (options?: {
   cwd?: string | null;
 }): string => {
   const header = options?.header?.trim();
-  if (header) return normalizePath(header);
+  if (header) {
+    const resolved = normalizePath(header);
+    if (!isAllowedPath(resolved)) {
+      throw new Error("Invalid project root: path must be under user home or contain a .git directory");
+    }
+    return resolved;
+  }
 
   const env = options?.env?.trim();
   if (env) return normalizePath(env);

@@ -1,9 +1,10 @@
 import { getErrorMessage } from "@stargazer/core/errors";
-import type { GitDiffErrorCode, ClassifiedError } from "./types.js";
+import type { GitDiffErrorCode } from "./types.js";
+import { classifyError, type ErrorRule } from "../errors.js";
 
 export type { GitDiffErrorCode } from "./types.js";
 
-const rules: Array<{ patterns: string[]; code: GitDiffErrorCode; message: string }> = [
+const GIT_ERROR_RULES: ErrorRule<GitDiffErrorCode>[] = [
   {
     patterns: ["enoent", "spawn git", "not found"],
     code: "GIT_NOT_FOUND",
@@ -31,19 +32,12 @@ const rules: Array<{ patterns: string[]; code: GitDiffErrorCode; message: string
   },
 ];
 
-function classifyGitDiffError(error: unknown): ClassifiedError {
-  const msg = getErrorMessage(error).toLowerCase();
-  for (const rule of rules) {
-    if (rule.patterns.some((pattern) => msg.includes(pattern))) {
-      return { code: rule.code, message: rule.message };
-    }
-  }
-  return { code: "UNKNOWN", message: `Failed to get git diff: ${getErrorMessage(error)}` };
-}
-
 export function createGitDiffError(error: unknown): Error {
   const originalMessage = getErrorMessage(error);
-  const classified = classifyGitDiffError(error);
+  const classified = classifyError(error, GIT_ERROR_RULES, {
+    code: "UNKNOWN",
+    message: (msg) => `Failed to get git diff: ${msg}`,
+  });
 
   if (classified.code === "UNKNOWN") {
     return new Error(classified.message);

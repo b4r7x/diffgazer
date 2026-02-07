@@ -5,12 +5,14 @@ const { mockExecFileAsync } = vi.hoisted(() => ({
 }));
 
 vi.mock("node:child_process", () => {
-  const execFileFn = (...args: any[]) => {
-    const cb = args[args.length - 1];
-    if (typeof cb === "function") cb(null, "", "");
-    return {} as any;
-  };
-  execFileFn[Symbol.for("nodejs.util.promisify.custom")] = mockExecFileAsync;
+  const execFileFn = Object.assign(
+    (...args: unknown[]) => {
+      const cb = args[args.length - 1];
+      if (typeof cb === "function") (cb as (err: null, stdout: string, stderr: string) => void)(null, "", "");
+      return {};
+    },
+    { [Symbol.for("nodejs.util.promisify.custom")]: mockExecFileAsync },
+  );
   return { execFile: execFileFn };
 });
 

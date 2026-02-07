@@ -3,14 +3,16 @@ import {
   filterDiffByFiles,
   generateExecutiveSummary,
   generateReport,
-  MAX_DIFF_SIZE_BYTES,
 } from "./pipeline.js";
 import type { ParsedDiff } from "../../shared/lib/diff/types.js";
 import type { ReviewIssue } from "@stargazer/schemas/review";
 
 const makeFile = (filePath: string, additions = 1, deletions = 0) => ({
   filePath,
+  previousPath: null,
+  operation: "modify" as const,
   hunks: [],
+  rawDiff: "",
   stats: { additions, deletions, sizeBytes: 100 },
   fileMode: "modified" as const,
 });
@@ -34,13 +36,17 @@ const makeIssue = (
     id,
     file,
     severity,
+    category: "correctness",
     title: `Issue ${id}`,
-    description: "desc",
-    lens: "correctness",
+    rationale: "test",
+    recommendation: "fix",
+    suggested_patch: null,
+    confidence: 0.9,
+    symptom: "broken",
+    whyItMatters: "matters",
+    evidence: [],
     line_start: 1,
     line_end: 5,
-    suggestion: null,
-    enrichment: null,
   }) as ReviewIssue;
 
 describe("filterDiffByFiles", () => {
@@ -141,8 +147,3 @@ describe("generateReport", () => {
   });
 });
 
-describe("MAX_DIFF_SIZE_BYTES", () => {
-  it("should be 512KB", () => {
-    expect(MAX_DIFF_SIZE_BYTES).toBe(524288);
-  });
-});

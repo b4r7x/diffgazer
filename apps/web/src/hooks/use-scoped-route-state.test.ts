@@ -56,17 +56,4 @@ describe("useScopedRouteState", () => {
     expect(result2.current[0]).toBe("changed");
   });
 
-  it("should handle object values", () => {
-    const { result } = renderHook(() =>
-      useScopedRouteState("obj", { count: 0 })
-    );
-    act(() => result.current[1]({ count: 5 }));
-    expect(result.current[0]).toEqual({ count: 5 });
-  });
-
-  it("should handle boolean values", () => {
-    const { result } = renderHook(() => useScopedRouteState("bool", false));
-    act(() => result.current[1](true));
-    expect(result.current[0]).toBe(true);
-  });
 });

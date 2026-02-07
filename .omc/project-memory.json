@@ -96,62 +96,128 @@
   "hotPaths": [
     {
       "path": "",
-      "accessCount": 65,
-      "lastAccessed": 1770446883053,
-      "type": "directory"
-    },
-    {
-      "path": "apps/server/src",
-      "accessCount": 18,
-      "lastAccessed": 1770446861628,
-      "type": "directory"
-    },
-    {
-      "path": "apps/web/src",
-      "accessCount": 17,
-      "lastAccessed": 1770446843459,
+      "accessCount": 125,
+      "lastAccessed": 1770456524244,
       "type": "directory"
     },
     {
       "path": "apps/web/src/app/providers/config-provider.tsx",
-      "accessCount": 17,
-      "lastAccessed": 1770446853398,
-      "type": "file"
-    },
-    {
-      "path": "packages/schemas/src",
-      "accessCount": 12,
-      "lastAccessed": 1770444838875,
-      "type": "directory"
-    },
-    {
-      "path": "apps/web/src/app/router.tsx",
-      "accessCount": 12,
-      "lastAccessed": 1770446760730,
-      "type": "file"
-    },
-    {
-      "path": "apps/server/src/features/review/router.ts",
-      "accessCount": 11,
-      "lastAccessed": 1770446839855,
+      "accessCount": 34,
+      "lastAccessed": 1770449550461,
       "type": "file"
     },
     {
       "path": "apps/server/src/features/config/service.ts",
-      "accessCount": 11,
-      "lastAccessed": 1770446848529,
+      "accessCount": 30,
+      "lastAccessed": 1770456525005,
+      "type": "file"
+    },
+    {
+      "path": "packages/schemas/src",
+      "accessCount": 28,
+      "lastAccessed": 1770456534427,
+      "type": "directory"
+    },
+    {
+      "path": "apps/web/src",
+      "accessCount": 28,
+      "lastAccessed": 1770456603838,
+      "type": "directory"
+    },
+    {
+      "path": "apps/server/src/features/review/router.ts",
+      "accessCount": 23,
+      "lastAccessed": 1770455482340,
+      "type": "file"
+    },
+    {
+      "path": "apps/server",
+      "accessCount": 22,
+      "lastAccessed": 1770449935206,
+      "type": "directory"
+    },
+    {
+      "path": "apps/server/src",
+      "accessCount": 22,
+      "lastAccessed": 1770452451374,
+      "type": "directory"
+    },
+    {
+      "path": "apps/server/src/shared/lib/ai/client.ts",
+      "accessCount": 21,
+      "lastAccessed": 1770450430270,
+      "type": "file"
+    },
+    {
+      "path": "apps/server/src/shared/lib/config/state.ts",
+      "accessCount": 21,
+      "lastAccessed": 1770451619275,
+      "type": "file"
+    },
+    {
+      "path": "apps/server/src/features/review/pipeline.ts",
+      "accessCount": 20,
+      "lastAccessed": 1770455511858,
+      "type": "file"
+    },
+    {
+      "path": "apps/server/src/shared/lib/config/store.ts",
+      "accessCount": 20,
+      "lastAccessed": 1770456524561,
       "type": "file"
     },
     {
       "path": "packages/schemas/src/config/providers.ts",
-      "accessCount": 10,
-      "lastAccessed": 1770446826163,
+      "accessCount": 16,
+      "lastAccessed": 1770456505211,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/app/router.tsx",
+      "accessCount": 15,
+      "lastAccessed": 1770449655138,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/app/providers/keyboard-provider.tsx",
+      "accessCount": 15,
+      "lastAccessed": 1770453352498,
+      "type": "file"
+    },
+    {
+      "path": "apps/server/src/app.ts",
+      "accessCount": 14,
+      "lastAccessed": 1770455439019,
       "type": "file"
     },
     {
       "path": "apps/server/src/shared/middlewares/setup-guard.ts",
+      "accessCount": 13,
+      "lastAccessed": 1770456518906,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/features/history/hooks/use-reviews.ts",
+      "accessCount": 12,
+      "lastAccessed": 1770456512560,
+      "type": "file"
+    },
+    {
+      "path": "apps/server/src/shared/lib/http/response.ts",
+      "accessCount": 12,
+      "lastAccessed": 1770456523577,
+      "type": "file"
+    },
+    {
+      "path": "apps/web",
+      "accessCount": 11,
+      "lastAccessed": 1770452453462,
+      "type": "directory"
+    },
+    {
+      "path": "apps/server/src/shared/middlewares/trust-guard.ts",
       "accessCount": 10,
-      "lastAccessed": 1770446839119,
+      "lastAccessed": 1770456518356,
       "type": "file"
     },
     {
@@ -161,9 +227,33 @@
       "type": "file"
     },
     {
+      "path": "apps/web/src/features/review/components/review-container.tsx",
+      "accessCount": 9,
+      "lastAccessed": 1770452484264,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/features/review/hooks/use-review-lifecycle.ts",
+      "accessCount": 9,
+      "lastAccessed": 1770455496966,
+      "type": "file"
+    },
+    {
       "path": "apps/web/src/features/onboarding/hooks/use-onboarding.ts",
+      "accessCount": 9,
+      "lastAccessed": 1770455504963,
+      "type": "file"
+    },
+    {
+      "path": "packages/schemas/src/errors.ts",
+      "accessCount": 9,
+      "lastAccessed": 1770456536950,
+      "type": "file"
+    },
+    {
+      "path": "apps/server/src/features/git/router.ts",
       "accessCount": 8,
-      "lastAccessed": 1770446834839,
+      "lastAccessed": 1770455484079,
       "type": "file"
     },
     {
@@ -173,9 +263,9 @@
       "type": "directory"
     },
     {
-      "path": "apps/server/src/features/git/router.ts",
+      "path": "packages/schemas/src/config/settings.ts",
       "accessCount": 7,
-      "lastAccessed": 1770446846873,
+      "lastAccessed": 1770449022910,
       "type": "file"
     },
     {
@@ -185,39 +275,21 @@
       "type": "file"
     },
     {
-      "path": "packages/schemas/src/config/settings.ts",
-      "accessCount": 6,
-      "lastAccessed": 1770446799641,
-      "type": "file"
-    },
-    {
-      "path": "apps/server/src/app.ts",
-      "accessCount": 6,
-      "lastAccessed": 1770446814058,
-      "type": "file"
-    },
-    {
-      "path": "packages/schemas/src/errors.ts",
-      "accessCount": 6,
-      "lastAccessed": 1770446826613,
-      "type": "file"
-    },
-    {
-      "path": "apps/server/src/shared/middlewares/trust-guard.ts",
-      "accessCount": 6,
-      "lastAccessed": 1770446839306,
-      "type": "file"
-    },
-    {
-      "path": "apps/server/src/features/review/pipeline.ts",
-      "accessCount": 6,
-      "lastAccessed": 1770446847982,
-      "type": "file"
-    },
-    {
       "path": "apps/web/src/features/onboarding/components/onboarding-wizard.tsx",
       "accessCount": 6,
       "lastAccessed": 1770446853461,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/features/providers/hooks/use-providers-page-state.ts",
+      "accessCount": 6,
+      "lastAccessed": 1770451116050,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/lib/api.ts",
+      "accessCount": 6,
+      "lastAccessed": 1770451662876,
       "type": "file"
     },
     {
@@ -233,27 +305,9 @@
       "type": "file"
     },
     {
-      "path": "apps/server/src/shared/lib/ai/client.ts",
+      "path": "apps/web/src/features/providers/hooks/use-openrouter-models.ts",
       "accessCount": 5,
-      "lastAccessed": 1770446815241,
-      "type": "file"
-    },
-    {
-      "path": "apps/server/src/shared/lib/config/store.ts",
-      "accessCount": 5,
-      "lastAccessed": 1770446816840,
-      "type": "file"
-    },
-    {
-      "path": "apps/server/src/shared/lib/config/state.ts",
-      "accessCount": 5,
-      "lastAccessed": 1770446817318,
-      "type": "file"
-    },
-    {
-      "path": "apps/server/src/shared/lib/http/response.ts",
-      "accessCount": 5,
-      "lastAccessed": 1770446825292,
+      "lastAccessed": 1770449543828,
       "type": "file"
     },
     {
@@ -263,27 +317,9 @@
       "type": "file"
     },
     {
-      "path": "apps/web/src/app/providers/keyboard-provider.tsx",
-      "accessCount": 4,
-      "lastAccessed": 1770446759412,
-      "type": "file"
-    },
-    {
       "path": "apps/web/src/features/providers/hooks/use-providers-keyboard.ts",
       "accessCount": 4,
       "lastAccessed": 1770446824381,
-      "type": "file"
-    },
-    {
-      "path": "apps/web/src/features/providers/hooks/use-openrouter-models.ts",
-      "accessCount": 4,
-      "lastAccessed": 1770446887483,
-      "type": "file"
-    },
-    {
-      "path": "apps/web/src/lib/api.ts",
-      "accessCount": 4,
-      "lastAccessed": 1770446889952,
       "type": "file"
     },
     {
@@ -317,30 +353,6 @@
       "type": "file"
     },
     {
-      "path": "apps/web/src/features/providers/hooks/use-providers-page-state.ts",
-      "accessCount": 3,
-      "lastAccessed": 1770446821644,
-      "type": "file"
-    },
-    {
-      "path": "apps/web/src/features/history/hooks/use-reviews.ts",
-      "accessCount": 3,
-      "lastAccessed": 1770446831414,
-      "type": "file"
-    },
-    {
-      "path": "apps/server",
-      "accessCount": 3,
-      "lastAccessed": 1770446880086,
-      "type": "directory"
-    },
-    {
-      "path": "apps/web",
-      "accessCount": 3,
-      "lastAccessed": 1770446882065,
-      "type": "directory"
-    },
-    {
       "path": "apps/web/src/features/providers/components/api-key-dialog/api-key-dialog.tsx",
       "accessCount": 2,
       "lastAccessed": 1770443044978,
@@ -350,18 +362,6 @@
       "path": "apps/web/src/app/routes/onboarding.tsx",
       "accessCount": 2,
       "lastAccessed": 1770446767953,
-      "type": "file"
-    },
-    {
-      "path": "apps/web/src/features/review/hooks/use-review-lifecycle.ts",
-      "accessCount": 2,
-      "lastAccessed": 1770446793119,
-      "type": "file"
-    },
-    {
-      "path": "apps/web/src/features/review/components/review-container.tsx",
-      "accessCount": 2,
-      "lastAccessed": 1770446801934,
       "type": "file"
     },
     {

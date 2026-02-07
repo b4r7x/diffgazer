@@ -16,6 +16,8 @@ import { ProviderSettingsPage } from "./routes/settings/providers";
 import { HelpPage } from "./routes/help";
 import { OnboardingPage } from "./routes/onboarding";
 
+// Route-guard cache: short TTL (30s) boolean for "is configured?" checks.
+// Separate from ConfigProvider's full config cache (5min TTL, different data shape).
 let configuredCache: { value: boolean; timestamp: number } | null = null;
 const CONFIG_CACHE_TTL = 30_000;
 

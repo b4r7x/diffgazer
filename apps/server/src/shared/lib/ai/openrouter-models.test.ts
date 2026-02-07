@@ -1,13 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import * as path from "node:path";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-vi.mock("../paths.js", () => ({
-  getGlobalOpenRouterModelsPath: () => "/mock/.stargazer/openrouter-models.json",
-}));
+vi.mock("../fs.js");
 
-vi.mock("../fs.js", () => ({
-  readJsonFileSync: vi.fn(),
-  writeJsonFileSync: vi.fn(),
-}));
+const TEST_HOME = "/tmp/stargazer-test";
 
 import { readJsonFileSync, writeJsonFileSync } from "../fs.js";
 import {
@@ -18,8 +14,13 @@ import {
 } from "./openrouter-models.js";
 
 beforeEach(() => {
+  process.env.STARGAZER_HOME = TEST_HOME;
   vi.clearAllMocks();
   vi.restoreAllMocks();
+});
+
+afterEach(() => {
+  delete process.env.STARGAZER_HOME;
 });
 
 describe("loadOpenRouterModelCache", () => {
@@ -58,7 +59,7 @@ describe("persistOpenRouterModelCache", () => {
     persistOpenRouterModelCache(cache);
 
     expect(writeJsonFileSync).toHaveBeenCalledWith(
-      "/mock/.stargazer/openrouter-models.json",
+      path.join(TEST_HOME, "openrouter-models.json"),
       cache,
     );
   });
@@ -81,23 +82,34 @@ describe("fetchOpenRouterModels", () => {
     };
     vi.spyOn(globalThis, "fetch").mockResolvedValue(mockResponse as Response);
 
-    const models = await fetchOpenRouterModels("test-key");
+    const result = await fetchOpenRouterModels("test-key");
 
-    expect(models).toHaveLength(1);
-    expect(models[0]!.id).toBe("openai/gpt-4");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0]!.id).toBe("openai/gpt-4");
+    }
     expect(fetch).toHaveBeenCalledWith(
       "https://openrouter.ai/api/v1/models",
-      { headers: { Authorization: "Bearer test-key" } },
+      expect.objectContaining({
+        headers: { Authorization: "Bearer test-key" },
+        signal: expect.any(AbortSignal),
+      }),
     );
   });
 
-  it("should throw on non-ok response", async () => {
+  it("should return error on non-ok response", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: false,
       status: 401,
     } as Response);
 
-    await expect(fetchOpenRouterModels("bad-key")).rejects.toThrow("401");
+    const result = await fetchOpenRouterModels("bad-key");
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).toContain("401");
+    }
   });
 
   it("should filter out invalid models (no id)", async () => {
@@ -112,9 +124,13 @@ describe("fetchOpenRouterModels", () => {
       }),
     } as Response);
 
-    const models = await fetchOpenRouterModels("key");
-    expect(models).toHaveLength(1);
-    expect(models[0]!.id).toBe("valid/model");
+    const result = await fetchOpenRouterModels("key");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0]!.id).toBe("valid/model");
+    }
   });
 
   it("should handle array response (no data wrapper)", async () => {
@@ -125,8 +141,12 @@ describe("fetchOpenRouterModels", () => {
       ],
     } as Response);
 
-    const models = await fetchOpenRouterModels("key");
-    expect(models).toHaveLength(1);
+    const result = await fetchOpenRouterModels("key");
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toHaveLength(1);
+    }
   });
 });
 
@@ -149,8 +169,11 @@ describe("getOpenRouterModelsWithCache", () => {
 
     const result = await getOpenRouterModelsWithCache("key");
 
-    expect(result.cached).toBe(true);
-    expect(result.models).toHaveLength(1);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.cached).toBe(true);
+      expect(result.value.models).toHaveLength(1);
+    }
   });
 
   it("should refetch after TTL expires", async () => {
@@ -171,7 +194,10 @@ describe("getOpenRouterModelsWithCache", () => {
 
     const result = await getOpenRouterModelsWithCache("key");
 
-    expect(result.cached).toBe(false);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.cached).toBe(false);
+    }
     expect(fetch).toHaveBeenCalled();
   });
 
@@ -194,14 +220,22 @@ describe("getOpenRouterModelsWithCache", () => {
 
     const result = await getOpenRouterModelsWithCache("key");
 
-    expect(result.cached).toBe(true);
-    expect(result.models).toHaveLength(1);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.cached).toBe(true);
+      expect(result.value.models).toHaveLength(1);
+    }
   });
 
-  it("should throw when fetch fails and no cache exists", async () => {
+  it("should return error when fetch fails and no cache exists", async () => {
     vi.mocked(readJsonFileSync).mockReturnValue(null);
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network error"));
 
-    await expect(getOpenRouterModelsWithCache("key")).rejects.toThrow();
+    const result = await getOpenRouterModelsWithCache("key");
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.message).toContain("network error");
+    }
   });
 });

@@ -14,6 +14,7 @@ import { type Result, ok, err } from "@stargazer/core/result";
 import { createError, toError, getErrorMessage } from "@stargazer/core/errors";
 import { AVAILABLE_PROVIDERS, type AIProvider } from "@stargazer/schemas/config";
 import { getActiveProvider, getProviderApiKey } from "../config/store.js";
+import { classifyError, type ErrorRule } from "../errors.js";
 
 const DEFAULT_MODELS = Object.fromEntries(
   AVAILABLE_PROVIDERS.map((p) => [p.id, p.defaultModel])
@@ -24,7 +25,7 @@ const DEFAULT_MAX_TOKENS = 65536;
 const DEFAULT_MAX_RETRIES = 0;
 const DEFAULT_TIMEOUT_MS = 300_000;
 
-const ERROR_RULES: Array<{ patterns: string[]; code: AIErrorCode; message: string }> = [
+const AI_ERROR_RULES: ErrorRule<AIErrorCode>[] = [
   {
     patterns: ["quota", "insufficient", "billing", "exceeded your current quota", "insufficient_quota"],
     code: "RATE_LIMITED",
@@ -47,50 +48,48 @@ const ERROR_RULES: Array<{ patterns: string[]; code: AIErrorCode; message: strin
   },
 ];
 
-function classifyError(error: unknown): { code: AIErrorCode; message: string } {
-  const msg = getErrorMessage(error).toLowerCase();
-  for (const rule of ERROR_RULES) {
-    if (rule.patterns.some((pattern) => msg.includes(pattern))) {
-      return { code: rule.code, message: rule.message };
-    }
-  }
-  return { code: "MODEL_ERROR", message: getErrorMessage(error) };
-}
-
 function classifyApiError(error: unknown): AIError {
-  const { code, message } = classifyError(error);
+  const { code, message } = classifyError(error, AI_ERROR_RULES, {
+    code: "MODEL_ERROR",
+    message: (msg) => msg,
+  });
   return createError<AIErrorCode>(code, message);
 }
 
-function createLanguageModel(config: AIClientConfig): LanguageModel {
+function createLanguageModel(config: AIClientConfig): Result<LanguageModel, AIError> {
   const { provider, apiKey, model } = config;
   const modelId = model ?? DEFAULT_MODELS[provider];
 
   switch (provider) {
     case "gemini": {
       const google = createGoogleGenerativeAI({ apiKey });
-      return google(modelId);
+      return ok(google(modelId as Parameters<typeof google>[0]));
     }
     case "zai": {
       const zhipu = createZhipu({
         apiKey,
         baseURL: "https://api.z.ai/api/paas/v4",
       });
-      return zhipu(modelId);
+      return ok(zhipu(modelId as Parameters<typeof zhipu>[0]));
     }
     case "zai-coding": {
       const zhipu = createZhipu({
         apiKey,
         baseURL: "https://api.z.ai/api/coding/paas/v4",
       });
-      return zhipu(modelId);
+      return ok(zhipu(modelId as Parameters<typeof zhipu>[0]));
     }
     case "openrouter": {
       const openrouter = createOpenRouter({ apiKey, compatibility: "strict" });
-      return openrouter.chat(modelId) as unknown as LanguageModel;
+      // Double assertion: @openrouter/ai-sdk-provider returns a type incompatible
+      // with Vercel AI SDK's LanguageModel due to SDK version mismatch. Functionally
+      // compatible at runtime — the provider implements the same interface.
+      return ok(openrouter.chat(modelId as Parameters<typeof openrouter.chat>[0]) as unknown as LanguageModel);
     }
     default:
-      throw new Error(`Unsupported provider: ${provider}`);
+      return err(
+        createError<AIErrorCode>("UNSUPPORTED_PROVIDER", `Unsupported provider: ${provider}`)
+      );
   }
 }
 
@@ -105,14 +104,11 @@ export function createAIClient(config: AIClientConfig): Result<AIClient, AIError
     return err(createError<AIErrorCode>("UNSUPPORTED_PROVIDER", "AI provider is required"));
   }
 
-  let languageModel: LanguageModel;
-  try {
-    languageModel = createLanguageModel(config);
-  } catch {
-    return err(
-      createError<AIErrorCode>("UNSUPPORTED_PROVIDER", `Failed to create ${config.provider} client`)
-    );
+  const languageModelResult = createLanguageModel(config);
+  if (!languageModelResult.ok) {
+    return err(languageModelResult.error);
   }
+  const languageModel = languageModelResult.value;
 
   const aiClient: AIClient = {
     provider: config.provider,

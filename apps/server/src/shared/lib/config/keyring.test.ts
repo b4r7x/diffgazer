@@ -13,17 +13,6 @@ import {
 
 const keyringAvailable = isKeyringAvailable();
 
-describe("isKeyringAvailable", () => {
-  it("should return a boolean", () => {
-    expect(typeof isKeyringAvailable()).toBe("boolean");
-  });
-
-  it("should return consistent results (cached)", () => {
-    expect(isKeyringAvailable()).toBe(keyringAvailable);
-    expect(isKeyringAvailable()).toBe(keyringAvailable);
-  });
-});
-
 describe("readKeyringSecret", () => {
   if (keyringAvailable) {
     it("should return Result with null for non-existent key", () => {

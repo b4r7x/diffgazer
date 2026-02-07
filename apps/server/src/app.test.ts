@@ -40,7 +40,7 @@ describe("host validation middleware", () => {
     });
 
     expect(res.status).toBe(403);
-    const body = await res.json();
+    const body = (await res.json()) as { error: { message: string } };
     expect(body.error.message).toBe("Forbidden");
   });
 
@@ -78,6 +78,34 @@ describe("CORS configuration", () => {
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("http://localhost:3001");
   });
 
+  it("should allow localhost on any port", async () => {
+    const app = createApp();
+    const res = await app.request("/api/health", {
+      method: "OPTIONS",
+      headers: {
+        Host: "localhost:3000",
+        Origin: "http://localhost:9999",
+        "Access-Control-Request-Method": "GET",
+      },
+    });
+
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("http://localhost:9999");
+  });
+
+  it("should allow 127.0.0.1 on any port", async () => {
+    const app = createApp();
+    const res = await app.request("/api/health", {
+      method: "OPTIONS",
+      headers: {
+        Host: "localhost:3000",
+        Origin: "http://127.0.0.1:4200",
+        "Access-Control-Request-Method": "GET",
+      },
+    });
+
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("http://127.0.0.1:4200");
+  });
+
   it("should not include CORS allow-origin for disallowed origin", async () => {
     const app = createApp();
     const res = await app.request("/api/health", {
@@ -94,6 +122,26 @@ describe("CORS configuration", () => {
   });
 });
 
+describe("security headers", () => {
+  it("should set X-Frame-Options to DENY", async () => {
+    const app = createApp();
+    const res = await app.request("/api/health", {
+      headers: { Host: "localhost:3000" },
+    });
+
+    expect(res.headers.get("X-Frame-Options")).toBe("DENY");
+  });
+
+  it("should set X-Content-Type-Options to nosniff", async () => {
+    const app = createApp();
+    const res = await app.request("/api/health", {
+      headers: { Host: "localhost:3000" },
+    });
+
+    expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+  });
+});
+
 describe("error handling", () => {
   it("should return 404 for unknown routes", async () => {
     const app = createApp();
@@ -102,7 +150,7 @@ describe("error handling", () => {
     });
 
     expect(res.status).toBe(404);
-    const body = await res.json();
+    const body = (await res.json()) as { error: { message: string } };
     expect(body.error.message).toBe("Not Found");
   });
 });

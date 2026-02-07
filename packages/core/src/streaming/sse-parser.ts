@@ -1,5 +1,4 @@
 import { safeParseJson } from "../json.js";
-import { truncate } from "../strings.js";
 
 const MAX_BUFFER_SIZE = 1024 * 1024;
 
@@ -17,10 +16,7 @@ function parseSSELine(line: string): unknown | undefined {
   if (!line.startsWith("data: ")) return undefined;
 
   const jsonStr = line.slice(6);
-  const result = safeParseJson(jsonStr, (message, details) => {
-    console.debug(`Failed to parse SSE event: ${truncate(jsonStr, 100)}${details ? ` (${details})` : ""}`);
-    return undefined;
-  });
+  const result = safeParseJson(jsonStr, () => undefined);
 
   return result.ok ? result.value : undefined;
 }

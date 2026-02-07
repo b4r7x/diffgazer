@@ -6,12 +6,14 @@ import { settingsRouter } from "./features/settings/router.js";
 import { gitRouter } from "./features/git/router.js";
 import { reviewRouter } from "./features/review/router.js";
 
-const ALLOWED_ORIGINS = [
-  "http://localhost:3001",
-  "http://127.0.0.1:3001",
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-];
+const isLocalhostOrigin = (origin: string): boolean => {
+  try {
+    const url = new URL(origin);
+    return url.hostname === "localhost" || url.hostname === "127.0.0.1";
+  } catch {
+    return false;
+  }
+};
 
 const ALLOWED_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 
@@ -36,15 +38,25 @@ export const createApp = (): Hono => {
     return next();
   });
 
+  app.use("*", async (c, next) => {
+    c.res.headers.set("X-Frame-Options", "DENY");
+    c.res.headers.set("X-Content-Type-Options", "nosniff");
+    await next();
+  });
+
   app.use(
     "/api/*",
     cors({
-      origin: ALLOWED_ORIGINS,
+      origin: (origin) => {
+        if (!origin) return origin;
+        return isLocalhostOrigin(origin) ? origin : "";
+      },
       allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       allowHeaders: ["Content-Type", "Authorization", "x-stargazer-project-root"],
     })
   );
 
+  // Health at root for container/load-balancer probes, and under /api for API client consistency
   app.route("/", healthRouter);
   app.route("/api", healthRouter);
   app.route("/api/config", configRouter);

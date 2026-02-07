@@ -1,5 +1,5 @@
 # Project Context Snapshot
-Generated: 2026-02-07T06:00:32.827Z
+Generated: 2026-02-07T08:36:24.717Z
 Root: /home/b4r7/Projects/stargazer/apps/cli
 
 ## Project Info

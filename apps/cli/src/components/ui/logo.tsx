@@ -1,13 +1,13 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import { useFiglet } from "@stargazer/hooks";
+import { getFigletText } from "@stargazer/hooks";
 
 interface LogoProps {
   color?: string;
 }
 
 export function Logo({ color = "cyan" }: LogoProps): ReactElement {
-  const text = useFiglet("Stargazer", "Big");
+  const text = getFigletText("Stargazer", "Big");
 
   if (!text) {
     return <Text color={color}>Stargazer</Text>;

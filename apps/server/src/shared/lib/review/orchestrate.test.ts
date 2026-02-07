@@ -1,164 +1,207 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { ok, err } from "@stargazer/core/result";
+import type { Lens, LensId, ReviewIssue } from "@stargazer/schemas/review";
+import type { ParsedDiff } from "../diff/types.js";
+import type { AIClient } from "../ai/types.js";
+import { orchestrateReview } from "./orchestrate.js";
 
-// We test the runWithConcurrency function indirectly since it's not exported.
-// Instead, we extract and test the pattern by reimplementing a minimal version
-// that matches the source's behavior, then test the exported orchestrateReview
-// at a higher level. However, since orchestrateReview has many dependencies
-// (AIClient, getLenses, runLensAnalysis, etc.), we focus on testing the
-// concurrency helper pattern directly by importing from the module.
+const { mockGetLenses, mockRunLensAnalysis } = vi.hoisted(() => ({
+  mockGetLenses: vi.fn(),
+  mockRunLensAnalysis: vi.fn(),
+}));
 
-// Since runWithConcurrency is not exported, we test it through a small
-// standalone copy. The orchestrateReview function is tested via integration.
+vi.mock("./lenses.js", () => ({
+  getLenses: mockGetLenses,
+}));
 
-async function runWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  worker: (item: T, index: number) => Promise<R>,
-  signal?: AbortSignal
-): Promise<PromiseSettledResult<R>[]> {
-  const results: PromiseSettledResult<R>[] = new Array(items.length);
-  let nextIndex = 0;
-  let active = 0;
+vi.mock("./analysis.js", () => ({
+  runLensAnalysis: mockRunLensAnalysis,
+}));
 
-  return new Promise((resolve) => {
-    const launchNext = () => {
-      if (signal?.aborted) {
-        if (active === 0) resolve(results);
-        return;
-      }
+const makeLens = (id: LensId): Lens => ({
+  id,
+  name: `${id} lens`,
+  description: `${id} description`,
+  systemPrompt: `Prompt for ${id}`,
+  severityRubric: {
+    blocker: "blocker",
+    high: "high",
+    medium: "medium",
+    low: "low",
+    nit: "nit",
+  },
+});
 
-      if (nextIndex >= items.length && active === 0) {
-        resolve(results);
-        return;
-      }
+const makeIssue = (id: string, file: string): ReviewIssue => ({
+  id,
+  severity: "high",
+  category: "correctness",
+  title: `Issue ${id}`,
+  file,
+  line_start: 1,
+  line_end: 1,
+  rationale: "Test rationale",
+  recommendation: "Test recommendation",
+  suggested_patch: null,
+  confidence: 0.9,
+  symptom: "Test symptom",
+  whyItMatters: "Test impact",
+  evidence: [
+    {
+      type: "code",
+      title: "Test evidence",
+      sourceId: "test-evidence",
+      file,
+      excerpt: "const value = 1;",
+    },
+  ],
+});
 
-      while (active < limit && nextIndex < items.length) {
-        const currentIndex = nextIndex++;
-        active++;
-        Promise.resolve(worker(items[currentIndex]!, currentIndex))
-          .then((value) => {
-            results[currentIndex] = { status: "fulfilled", value };
-          })
-          .catch((reason) => {
-            results[currentIndex] = { status: "rejected", reason };
-          })
-          .finally(() => {
-            active--;
-            launchNext();
-          });
-      }
-    };
+const makeDiff = (files: string[]): ParsedDiff => ({
+  files: files.map((filePath) => ({
+    filePath,
+    previousPath: null,
+    operation: "modify",
+    hunks: [],
+    rawDiff: "",
+    stats: { additions: 1, deletions: 0, sizeBytes: 10 },
+  })),
+  totalStats: {
+    filesChanged: files.length,
+    additions: files.length,
+    deletions: 0,
+    totalSizeBytes: files.length * 10,
+  },
+});
 
-    launchNext();
-  });
-}
+const client = {} as AIClient;
 
-describe("runWithConcurrency", () => {
-  it("should execute all tasks and return results in order", async () => {
-    const items = [1, 2, 3];
-    const results = await runWithConcurrency(items, 3, async (item) => item * 2);
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
-    expect(results).toHaveLength(3);
-    expect(results[0]).toEqual({ status: "fulfilled", value: 2 });
-    expect(results[1]).toEqual({ status: "fulfilled", value: 4 });
-    expect(results[2]).toEqual({ status: "fulfilled", value: 6 });
-  });
-
-  it("should respect concurrency limit", async () => {
-    let maxConcurrent = 0;
-    let currentConcurrent = 0;
-
-    const items = [1, 2, 3, 4, 5];
-    await runWithConcurrency(items, 2, async (item) => {
-      currentConcurrent++;
-      maxConcurrent = Math.max(maxConcurrent, currentConcurrent);
-      await new Promise((r) => setTimeout(r, 10));
-      currentConcurrent--;
-      return item;
-    });
-
-    expect(maxConcurrent).toBeLessThanOrEqual(2);
-  });
-
-  it("should handle partial failures (some tasks fail, others succeed)", async () => {
-    const items = [1, 2, 3];
-    const results = await runWithConcurrency(items, 3, async (item) => {
-      if (item === 2) throw new Error("task 2 failed");
-      return item;
-    });
-
-    expect(results[0]).toEqual({ status: "fulfilled", value: 1 });
-    expect(results[1]!.status).toBe("rejected");
-    expect(results[2]).toEqual({ status: "fulfilled", value: 3 });
-  });
-
-  it("should handle all tasks failing", async () => {
-    const items = [1, 2, 3];
-    const results = await runWithConcurrency(items, 3, async () => {
-      throw new Error("fail");
-    });
-
-    expect(results.every((r) => r.status === "rejected")).toBe(true);
-  });
-
-  it("should handle empty task list", async () => {
-    const results = await runWithConcurrency([], 3, async (item) => item);
-
-    expect(results).toHaveLength(0);
-  });
-
-  it("should pass index to worker", async () => {
-    const items = ["a", "b", "c"];
-    const indices: number[] = [];
-
-    await runWithConcurrency(items, 3, async (_item, index) => {
-      indices.push(index);
-    });
-
-    expect(indices.sort()).toEqual([0, 1, 2]);
-  });
-
-  it("should handle concurrency limit of 1 (sequential)", async () => {
-    const order: number[] = [];
-    const items = [1, 2, 3];
-
-    await runWithConcurrency(items, 1, async (item) => {
-      order.push(item);
-      await new Promise((r) => setTimeout(r, 5));
-      return item;
-    });
-
-    expect(order).toEqual([1, 2, 3]);
-  });
-
-  it("should stop launching new tasks when signal is aborted", async () => {
-    const controller = new AbortController();
-    const items = [1, 2, 3, 4, 5];
-    let completed = 0;
-
-    const results = await runWithConcurrency(
-      items,
-      1,
-      async (item) => {
-        if (item === 2) controller.abort();
-        await new Promise((r) => setTimeout(r, 5));
-        completed++;
-        return item;
-      },
-      controller.signal
+describe("orchestrateReview", () => {
+  it("returns NO_DIFF when no files changed", async () => {
+    const events: Array<{ type: string }> = [];
+    const result = await orchestrateReview(
+      client,
+      makeDiff([]),
+      {},
+      (event) => events.push({ type: event.type }),
+      { concurrency: 2 },
     );
 
-    // With concurrency 1, after item 2 aborts the signal, item 3+ should not start
-    expect(completed).toBeLessThanOrEqual(3);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.code).toBe("NO_DIFF");
+    }
+    expect(events).toHaveLength(0);
   });
 
-  it("should handle large number of items with small concurrency", async () => {
-    const items = Array.from({ length: 20 }, (_, i) => i);
-    const results = await runWithConcurrency(items, 3, async (item) => item * 2);
+  it("caps orchestrator concurrency to available lenses", async () => {
+    const events: Array<{ type: string; concurrency?: number; position?: number }> = [];
+    const lenses = [makeLens("correctness"), makeLens("security")];
 
-    expect(results).toHaveLength(20);
-    expect(results.every((r) => r.status === "fulfilled")).toBe(true);
-    expect((results[0] as PromiseFulfilledResult<number>).value).toBe(0);
-    expect((results[19] as PromiseFulfilledResult<number>).value).toBe(38);
+    mockGetLenses.mockReturnValue(lenses);
+    mockRunLensAnalysis.mockImplementation(async (_clientArg, lensArg: Lens) =>
+      ok({
+        lensId: lensArg.id,
+        lensName: lensArg.name,
+        summary: `${lensArg.id} summary`,
+        issues: [],
+      }),
+    );
+
+    const result = await orchestrateReview(
+      client,
+      makeDiff(["src/a.ts"]),
+      { lenses: ["correctness", "security"] },
+      (event) => events.push(event),
+      { concurrency: 10 },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(mockRunLensAnalysis).toHaveBeenCalledTimes(2);
+
+    const orchestratorStart = events.find((event) => event.type === "orchestrator_start");
+    expect(orchestratorStart?.concurrency).toBe(2);
+
+    const queuedEvents = events.filter((event) => event.type === "agent_queued");
+    expect(queuedEvents).toHaveLength(2);
+    expect(queuedEvents.map((event) => event.position)).toEqual([1, 2]);
+  });
+
+  it("keeps successful issues and reports failed lenses", async () => {
+    const lenses = [makeLens("correctness"), makeLens("security")];
+    mockGetLenses.mockReturnValue(lenses);
+    mockRunLensAnalysis
+      .mockResolvedValueOnce(
+        ok({
+          lensId: "correctness",
+          lensName: "Correctness lens",
+          summary: "Found correctness issues",
+          issues: [makeIssue("issue-1", "src/a.ts")],
+        }),
+      )
+      .mockResolvedValueOnce(err({ code: "MODEL_ERROR", message: "Second lens failed" }));
+
+    const result = await orchestrateReview(
+      client,
+      makeDiff(["src/a.ts"]),
+      { lenses: ["correctness", "security"] },
+      () => {},
+      { concurrency: 2 },
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.issues).toHaveLength(1);
+      expect(result.value.failedLenses).toEqual([
+        expect.objectContaining({
+          lensId: "security",
+          errorCode: "MODEL_ERROR",
+        }),
+      ]);
+      expect(result.value.summary).toContain("Partial analysis:");
+    }
+  });
+
+  it("marks unstarted lenses as failed when aborted", async () => {
+    const controller = new AbortController();
+    const lenses = [
+      makeLens("correctness"),
+      makeLens("security"),
+      makeLens("performance"),
+    ];
+    mockGetLenses.mockReturnValue(lenses);
+    mockRunLensAnalysis.mockImplementation(async (_clientArg, lensArg: Lens) => {
+      if (lensArg.id === "correctness") {
+        controller.abort("cancel test");
+      }
+      return ok({
+        lensId: lensArg.id,
+        lensName: lensArg.name,
+        summary: `${lensArg.id} summary`,
+        issues: [],
+      });
+    });
+
+    const result = await orchestrateReview(
+      client,
+      makeDiff(["src/a.ts"]),
+      { lenses: ["correctness", "security", "performance"] },
+      () => {},
+      { concurrency: 1, partialOnAllFailed: true, signal: controller.signal },
+    );
+
+    expect(mockRunLensAnalysis).toHaveBeenCalledTimes(1);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      // Ensures unstarted slots are represented in output (no sparse holes).
+      expect(result.value.lensStats).toHaveLength(3);
+      expect(result.value.failedLenses.map((lens) => lens.lensId)).toEqual(
+        expect.arrayContaining(["security", "performance"]),
+      );
+    }
   });
 });

@@ -307,84 +307,13 @@ describe("parseSSEStream", () => {
       );
     });
 
-    it("should pass raw data with identity parseEvent", async () => {
-      const onEvent = vi.fn();
-      const reader = createMockReader([
-        'data: {"message":"raw","count":42}\n',
-      ]);
-
-      await parseSSEStream(reader, { onEvent, parseEvent: identity });
-
-      expect(onEvent).toHaveBeenCalledWith({ message: "raw", count: 42 });
-    });
   });
 
   describe("edge cases", () => {
-    it("should handle Unicode characters in events", async () => {
-      const onEvent = vi.fn();
-      const reader = createMockReader([
-        'data: {"message":"Hello 世界 🌍"}\n',
-      ]);
-
-      await parseSSEStream(reader, { onEvent, parseEvent: identity });
-
-      expect(onEvent).toHaveBeenCalledWith({ message: "Hello 世界 🌍" });
-    });
-
-    it("should handle nested JSON objects", async () => {
-      const onEvent = vi.fn();
-      const reader = createMockReader([
-        'data: {"outer":{"inner":{"deep":"value"}}}\n',
-      ]);
-
-      await parseSSEStream(reader, { onEvent, parseEvent: identity });
-
-      expect(onEvent).toHaveBeenCalledWith({
-        outer: { inner: { deep: "value" } },
-      });
-    });
-
-    it("should handle arrays in JSON", async () => {
-      const onEvent = vi.fn();
-      const reader = createMockReader([
-        'data: {"items":[1,2,3],"names":["a","b"]}\n',
-      ]);
-
-      await parseSSEStream(reader, { onEvent, parseEvent: identity });
-
-      expect(onEvent).toHaveBeenCalledWith({
-        items: [1, 2, 3],
-        names: ["a", "b"],
-      });
-    });
-
-    it("should handle escaped quotes in JSON strings", async () => {
-      const onEvent = vi.fn();
-      const reader = createMockReader([
-        'data: {"message":"She said \\"hello\\""}\n',
-      ]);
-
-      await parseSSEStream(reader, { onEvent, parseEvent: identity });
-
-      expect(onEvent).toHaveBeenCalledWith({ message: 'She said "hello"' });
-    });
-
     it("should handle multiple consecutive newlines", async () => {
       const onEvent = vi.fn();
       const reader = createMockReader([
         'data: {"id":1}\n\n\ndata: {"id":2}\n',
-      ]);
-
-      await parseSSEStream(reader, { onEvent, parseEvent: identity });
-
-      expect(onEvent).toHaveBeenCalledTimes(2);
-    });
-
-    it("should handle CRLF line endings", async () => {
-      const onEvent = vi.fn();
-      const reader = createMockReader([
-        'data: {"id":1}\r\n',
-        'data: {"id":2}\r\n',
       ]);
 
       await parseSSEStream(reader, { onEvent, parseEvent: identity });

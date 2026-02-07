@@ -112,7 +112,7 @@ server.use(
   })
 )
 
-// ❌ BAD: Mock internal modules
+// ❌ BAD: Mock internal business logic modules
 vi.mock('../api/reviewApi', () => ({
   getReviews: vi.fn().mockResolvedValue([{ id: '1' }])
 }))
@@ -132,9 +132,22 @@ vi.mock('../hooks/useReview', () => ({
 
 ### When Mocking is NOT OK
 
-- Internal modules (test through them)
+- Internal business logic modules (test through them)
 - Hooks you're testing
 - State management internals
+
+**Note:** `vi.mock` is the correct tool for boundary mocking of non-network dependencies (file system, OS keyring, environment). MSW is preferred for HTTP/API boundaries.
+
+### Mocking Decision Table
+
+| What to mock | Tool | Example |
+|---|---|---|
+| HTTP/API requests | MSW | `http.get('/api/reviews', ...)` |
+| File system | `vi.mock('node:fs/promises')` | Read/write operations |
+| OS keyring | `vi.mock('../keyring')` | Credential storage |
+| Timers/Date | `vi.useFakeTimers()` | Debounce, polling |
+| Environment vars | `vi.stubEnv()` | `process.env.NODE_ENV` |
+| Internal business logic | Do NOT mock | Test through public API |
 
 ---
 
@@ -227,6 +240,24 @@ Complex factories are OK when:
 
 ---
 
+## Testing Result<T, E>
+
+This project uses Result types for error handling. Test both paths:
+
+```typescript
+// Testing success
+const result = await service.doThing()
+expect(result.ok).toBe(true)
+if (result.ok) expect(result.value).toEqual(expected)
+
+// Testing failure
+const result = await service.doThing()
+expect(result.ok).toBe(false)
+if (!result.ok) expect(result.error.code).toBe('NOT_FOUND')
+```
+
+---
+
 ## Test Naming
 
 ```typescript
@@ -295,3 +326,4 @@ Don't chase coverage numbers. Instead:
 - [Software Testing Anti-patterns](https://blog.codepipes.com/testing/software-testing-antipatterns.html)
 - [Don't Test Implementation Details in React](https://maxrozen.com/dont-test-implementation-details-react)
 - [TDD, Where Did It All Go Wrong](https://keyvanakbary.github.io/learning-notes/talks/tdd-where-did-it-all-go-wrong/)
+- [Vitest Mocking Guide](https://vitest.dev/guide/mocking)

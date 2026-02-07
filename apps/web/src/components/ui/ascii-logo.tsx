@@ -1,5 +1,5 @@
 import { cn } from "@/utils/cn";
-import { useFiglet } from "@stargazer/hooks";
+import { getFigletText } from "@stargazer/hooks";
 
 interface AsciiLogoProps {
   text?: string;
@@ -7,7 +7,7 @@ interface AsciiLogoProps {
 }
 
 export function AsciiLogo({ text = "STARGAZER", className }: AsciiLogoProps) {
-  const asciiText = useFiglet(text);
+  const asciiText = getFigletText(text);
   const isReady = Boolean(asciiText);
 
   return (

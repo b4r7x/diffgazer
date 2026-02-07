@@ -1,15 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { capitalize, truncate } from "./strings.js";
-
-describe("capitalize", () => {
-  it("capitalizes the first character", () => {
-    expect(capitalize("hello")).toBe("Hello");
-  });
-
-  it("returns empty string unchanged", () => {
-    expect(capitalize("")).toBe("");
-  });
-});
+import { truncate } from "./strings.js";
 
 describe("truncate", () => {
   it("truncates string longer than maxLength", () => {
@@ -35,10 +25,13 @@ describe("truncate", () => {
   });
 
   it("handles maxLength less than suffix length", () => {
-    // slice(0, 2-3) = slice(0, -1) removes last char, then appends "..."
-    // Result is longer than maxLength — the function doesn't clamp
-    const result = truncate("hello world", 2);
-    expect(result).toBe("hello worl...");
+    expect(truncate("hello world", 2)).toBe("..");
+    expect(truncate("hello world", 1)).toBe(".");
+    expect(truncate("hello world", 0)).toBe("");
+  });
+
+  it("handles maxLength equal to suffix length", () => {
+    expect(truncate("hello world", 3)).toBe("...");
   });
 
   it("handles empty string", () => {

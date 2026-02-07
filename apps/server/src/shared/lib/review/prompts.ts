@@ -247,7 +247,7 @@ export function buildDrilldownPrompt(issue: ReviewIssue, diff: ParsedDiff, allIs
 
   const otherIssuesSummary = allIssues
     .filter((i) => i.id !== issue.id)
-    .map((i) => `- [${i.id}] ${i.severity}: ${i.title} (${i.file}:${i.line_start ?? "?"})`)
+    .map((i) => `- [${escapeXml(i.id)}] ${escapeXml(i.severity)}: ${escapeXml(i.title)} (${escapeXml(i.file)}:${i.line_start ?? "?"})`)
     .join("\n");
 
   return `You are an expert code reviewer providing deep analysis of a specific issue.
@@ -255,11 +255,11 @@ export function buildDrilldownPrompt(issue: ReviewIssue, diff: ParsedDiff, allIs
 ${SECURITY_HARDENING_PROMPT}
 
 <issue>
-ID: ${issue.id}
-Severity: ${issue.severity}
-Category: ${issue.category}
-Title: ${issue.title}
-File: ${issue.file}
+ID: ${escapeXml(issue.id)}
+Severity: ${escapeXml(issue.severity)}
+Category: ${escapeXml(issue.category)}
+Title: ${escapeXml(issue.title)}
+File: ${escapeXml(issue.file)}
 Lines: ${issue.line_start ?? "?"}-${issue.line_end ?? "?"}
 Initial Rationale: ${escapeXml(issue.rationale)}
 Initial Recommendation: ${escapeXml(issue.recommendation)}

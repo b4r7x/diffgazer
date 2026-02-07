@@ -1,9 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-const { mockReadJsonFileSync, mockWriteJsonFileSync, mockRemoveFileSync, mockIsKeyringAvailable, mockReadKeyringSecret, mockWriteKeyringSecret, mockDeleteKeyringSecret } = vi.hoisted(() => ({
+const { mockReadJsonFileSync, mockWriteJsonFileSync, mockRemoveFileSync, mockWriteJsonFile, mockReadJsonFile, mockIsKeyringAvailable, mockReadKeyringSecret, mockWriteKeyringSecret, mockDeleteKeyringSecret } = vi.hoisted(() => ({
   mockReadJsonFileSync: vi.fn(),
   mockWriteJsonFileSync: vi.fn(),
   mockRemoveFileSync: vi.fn(),
+  mockWriteJsonFile: vi.fn(),
+  mockReadJsonFile: vi.fn(),
   mockIsKeyringAvailable: vi.fn(),
   mockReadKeyringSecret: vi.fn(),
   mockWriteKeyringSecret: vi.fn(),
@@ -14,15 +16,8 @@ vi.mock("../fs.js", () => ({
   readJsonFileSync: mockReadJsonFileSync,
   writeJsonFileSync: mockWriteJsonFileSync,
   removeFileSync: mockRemoveFileSync,
-}));
-
-vi.mock("../paths.js", () => ({
-  getGlobalConfigPath: () => "/mock/config.json",
-  getGlobalSecretsPath: () => "/mock/secrets.json",
-  getGlobalTrustPath: () => "/mock/trust.json",
-  getProjectInfoPath: (root: string) => `${root}/.stargazer/project.json`,
-  resolveProjectRoot: (opts: any) => opts.header ?? opts.cwd,
-  getGlobalStargazerDir: () => "/mock/.stargazer",
+  writeJsonFile: mockWriteJsonFile,
+  readJsonFile: mockReadJsonFile,
 }));
 
 vi.mock("./keyring.js", () => ({
@@ -37,6 +32,8 @@ function setupDefaults() {
   mockReadJsonFileSync.mockReturnValue(null);
   mockWriteJsonFileSync.mockReturnValue(undefined);
   mockRemoveFileSync.mockReturnValue(false);
+  mockWriteJsonFile.mockResolvedValue(undefined);
+  mockReadJsonFile.mockResolvedValue(null);
   mockIsKeyringAvailable.mockReturnValue(true);
 }
 
@@ -47,9 +44,14 @@ async function loadStore() {
 
 describe("config store", () => {
   beforeEach(() => {
+    process.env.STARGAZER_HOME = "/tmp/stargazer-test";
     vi.resetAllMocks();
     vi.resetModules();
     setupDefaults();
+  });
+
+  afterEach(() => {
+    delete process.env.STARGAZER_HOME;
   });
 
   describe("getProviders", () => {
@@ -119,7 +121,7 @@ describe("config store", () => {
       if (result.ok) {
         expect(result.value.theme).toBe("dark");
       }
-      expect(mockWriteJsonFileSync).toHaveBeenCalled();
+      expect(mockWriteJsonFile).toHaveBeenCalled();
     });
   });
 
@@ -134,8 +136,8 @@ describe("config store", () => {
       });
 
       expect(result.ok).toBe(true);
-      // Should persist secrets (writeJsonFileSync for secrets file)
-      expect(mockWriteJsonFileSync).toHaveBeenCalled();
+      // Should persist secrets (writeJsonFile async for secrets file)
+      expect(mockWriteJsonFile).toHaveBeenCalled();
     });
 
     it("should activate provider when model is provided", async () => {
@@ -309,15 +311,16 @@ describe("config store", () => {
       const store = await loadStore();
       const trustConfig = {
         projectId: "proj-1",
-        projectPath: "/projects/test",
+        repoRoot: "/projects/test",
         trustedAt: new Date().toISOString(),
         capabilities: { readFiles: true, runCommands: false },
+        trustMode: "persistent" as const,
       };
 
       store.saveTrust(trustConfig);
 
       expect(store.getTrust("proj-1")).toEqual(trustConfig);
-      expect(mockWriteJsonFileSync).toHaveBeenCalled();
+      expect(mockWriteJsonFile).toHaveBeenCalled();
     });
 
     it("should remove trust and return true", async () => {
