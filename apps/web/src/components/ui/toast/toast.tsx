@@ -86,7 +86,7 @@ export function Toast({
         </div>
         <button
           onClick={() => onDismiss(id)}
-          className="text-[10px] text-gray-500 hover:text-tui-fg"
+          className="text-[10px] text-tui-muted hover:text-tui-fg"
           aria-label="Dismiss notification"
         >
           ✕

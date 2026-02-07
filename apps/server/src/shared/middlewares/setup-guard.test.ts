@@ -33,7 +33,7 @@ describe("requireSetup", () => {
     const res = await app.request("/test");
 
     expect(res.status).toBe(503);
-    const body = await res.json();
+    const body = await res.json() as any;
     expect(body.error.code).toBe("SETUP_REQUIRED");
   });
 
@@ -45,7 +45,7 @@ describe("requireSetup", () => {
 
     const res = await app.request("/test");
 
-    const body = await res.json();
+    const body = await res.json() as any;
     expect(body.error.message).toContain("provider");
     expect(body.error.message).toContain("model");
     expect(body.error.message).toContain("trust");
@@ -60,7 +60,7 @@ describe("requireSetup", () => {
     const res = await app.request("/test");
 
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await res.json() as any;
     expect(body.ok).toBe(true);
   });
 });

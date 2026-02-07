@@ -93,7 +93,7 @@ describe("resumeReviewStream", () => {
     vi.mocked(processReviewStream).mockResolvedValue({
       ok: true,
       value: {
-        result: { summary: "Good", issues: [], lensResults: [], metadata: { model: "test", provider: "test", totalTokens: 100, totalDuration: 500 } },
+        result: { summary: "Good", issues: [] },
         reviewId: "r1",
         agentEvents: [],
       },
@@ -169,7 +169,7 @@ describe("streamReviewWithEvents", () => {
     const mockResult = {
       ok: true as const,
       value: {
-        result: { summary: "OK", issues: [], lensResults: [], metadata: { model: "test", provider: "test", totalTokens: 50, totalDuration: 200 } },
+        result: { summary: "OK", issues: [] },
         reviewId: "r2",
         agentEvents: [],
       },

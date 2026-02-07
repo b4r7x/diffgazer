@@ -1,7 +1,7 @@
 import { AnalysisSummary, type IssuePreview } from "@/features/review/components/analysis-summary";
 import type { LensStats } from "@/features/review/components/lens-stats-table";
 import type { ReviewIssue } from "@stargazer/schemas/review";
-import { useScope, useKey } from "@/hooks/keyboard";
+import { useScope, useKey } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { calculateSeverityCounts } from "@stargazer/core/severity";
 

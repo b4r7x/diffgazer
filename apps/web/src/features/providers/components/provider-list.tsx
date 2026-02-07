@@ -1,6 +1,4 @@
-import { NavigationList, NavigationListItem } from '@/components/ui/navigation-list';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/form';
+import { NavigationList, NavigationListItem, Badge, Input } from '@stargazer/ui';
 import { cn } from '@/utils/cn';
 import { PROVIDER_CAPABILITIES } from '@/config/constants';
 import { PROVIDER_FILTER_LABELS, type ProviderFilter } from '@/features/providers/constants';

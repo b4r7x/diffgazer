@@ -1,6 +1,6 @@
 import { useRef, type ReactNode } from 'react';
 import { cn } from '@/utils/cn';
-import { useGroupNavigation } from '@/hooks/keyboard';
+import { useGroupNavigation } from '@stargazer/keyboard';
 import { NavigationListContext } from './navigation-list-context';
 
 export interface NavigationListRootProps {

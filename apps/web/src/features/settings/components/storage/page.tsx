@@ -1,14 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { SecretsStorage } from "@stargazer/schemas/config";
-import { Button } from "@/components/ui/button";
-import { Callout } from "@/components/ui/callout";
+import { Button, Callout, CardLayout } from "@stargazer/ui";
 import { StorageSelectorContent } from "@/components/shared/storage-selector-content";
-import { WizardLayout } from "@/components/shared/wizard-layout";
 import { useSettings } from "@/hooks/use-settings";
 import { api } from "@/lib/api";
 import { SETTINGS_SHORTCUTS } from "@/config/navigation";
-import { useKey } from "@/hooks/keyboard";
+import { useKey } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 
 export function SettingsStoragePage() {
@@ -40,7 +38,7 @@ export function SettingsStoragePage() {
   };
 
   return (
-    <WizardLayout
+    <CardLayout
       title="Configure Secrets Storage"
       subtitle="Choose where API keys and sensitive data should be stored."
       footer={
@@ -63,7 +61,7 @@ export function SettingsStoragePage() {
       }
     >
       {isLoading ? (
-        <p className="text-gray-500">Loading settings...</p>
+        <p className="text-tui-muted">Loading settings...</p>
       ) : (
         <div className="space-y-6">
           <StorageSelectorContent
@@ -79,6 +77,6 @@ export function SettingsStoragePage() {
           {(error || settingsError) && <p className="text-tui-red text-sm">{error || settingsError}</p>}
         </div>
       )}
-    </WizardLayout>
+    </CardLayout>
   );
 }

@@ -1,9 +1,6 @@
 import { AGENT_METADATA, LENS_TO_AGENT } from "@stargazer/schemas/events";
 import type { LensId } from "@stargazer/schemas/review";
-import { CheckboxGroup, CheckboxItem } from "@/components/ui/form";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/form";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { CheckboxGroup, CheckboxItem, RadioGroup, RadioGroupItem, Badge, ScrollArea } from "@stargazer/ui";
 import type { AgentExecution } from "@stargazer/schemas/config";
 
 const LENS_OPTIONS = (

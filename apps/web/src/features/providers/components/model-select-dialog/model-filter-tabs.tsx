@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button } from "@stargazer/ui";
 import { cn } from "@/utils/cn";
 import { TIER_FILTERS, type TierFilter } from "@/features/providers/constants";
 

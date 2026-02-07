@@ -4,7 +4,7 @@ import type { SeverityFilter } from "@/features/review/components/severity-filte
 import type { ReviewIssue } from "@stargazer/schemas/review";
 import type { IssueTab as TabId } from "@stargazer/schemas/ui";
 import { SEVERITY_ORDER } from "@stargazer/schemas/ui";
-import { useScope, useKey, useSelectableList } from "@/hooks/keyboard";
+import { useScope, useKey, useSelectableList } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { filterIssuesBySeverity } from "@stargazer/core/review";
 

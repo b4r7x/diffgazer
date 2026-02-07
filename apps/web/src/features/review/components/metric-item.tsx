@@ -16,7 +16,7 @@ const valueVariants = {
 export function MetricItem({ label, value, variant = 'default', className }: MetricItemProps) {
   return (
     <div className={cn('flex justify-between items-center', className)}>
-      <span className="text-sm text-gray-400">{label}</span>
+      <span className="text-sm text-tui-muted">{label}</span>
       <span className={valueVariants[variant]}>{value}</span>
     </div>
   );

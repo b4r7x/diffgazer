@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@stargazer/ui";
 import { cn } from "@/utils/cn";
 import type { ModelInfo } from "@stargazer/schemas/config";
 
@@ -30,13 +30,13 @@ export function ModelListItem({
         "flex items-start gap-3 w-full text-left px-3 py-2 rounded transition-colors",
         isSelected && isFocused
           ? "bg-tui-selection/60 text-tui-fg ring-2 ring-tui-blue ring-offset-1 ring-offset-tui-bg"
-          : "text-gray-400 hover:bg-tui-selection/30 hover:text-tui-fg"
+          : "text-tui-muted hover:bg-tui-selection/30 hover:text-tui-fg"
       )}
     >
       <span
         className={cn(
           "font-bold shrink-0 mt-0.5",
-          isChecked ? "text-tui-blue" : "text-gray-600"
+          isChecked ? "text-tui-blue" : "text-muted-foreground"
         )}
       >
         {isChecked ? "[ \u25cf ]" : "[   ]"}
@@ -52,7 +52,7 @@ export function ModelListItem({
             {model.tier}
           </Badge>
         </div>
-        <div className="text-xs text-gray-500 mt-0.5 truncate">
+        <div className="text-xs text-tui-muted mt-0.5 truncate">
           {model.description}
         </div>
       </div>

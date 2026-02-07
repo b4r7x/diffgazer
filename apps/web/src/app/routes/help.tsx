@@ -1,4 +1,4 @@
-import { Panel, PanelContent, PanelHeader } from "@/components/ui/containers";
+import { Panel, PanelContent, PanelHeader } from "@stargazer/ui";
 
 export function HelpPage() {
   return (
@@ -6,7 +6,7 @@ export function HelpPage() {
       <Panel className="w-full max-w-2xl">
         <PanelHeader>Help</PanelHeader>
         <PanelContent>
-          <p className="text-gray-500">Help is not wired in this build.</p>
+          <p className="text-tui-muted">Help is not wired in this build.</p>
         </PanelContent>
       </Panel>
     </div>

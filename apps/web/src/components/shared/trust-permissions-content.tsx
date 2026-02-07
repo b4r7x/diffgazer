@@ -1,10 +1,7 @@
 import { useState } from "react";
 import type { TrustCapabilities } from "@stargazer/schemas/config";
-import { Badge } from "@/components/ui/badge";
-import { Callout } from "@/components/ui/callout";
-import { Button } from "@/components/ui/button";
-import { CheckboxGroup, CheckboxItem } from "@/components/ui/form";
-import { useTrustFormKeyboard } from "@/hooks/keyboard";
+import { Badge, Callout, Button, CheckboxGroup, CheckboxItem } from "@stargazer/ui";
+import { useTrustFormKeyboard } from "@/features/settings/hooks/use-trust-form-keyboard";
 import { cn } from "@/utils/cn";
 
 export interface TrustPermissionsContentProps {
@@ -56,12 +53,6 @@ export function TrustPermissionsContent({
 
   const selectedCapabilities = value.readFiles ? ["readFiles"] : [];
 
-  const handleBoundaryReached = (dir: "up" | "down") => {
-    if (dir === "down" && showActions) {
-      setFocusZone("buttons");
-    }
-  };
-
   const handleValueChange = (selected: string[]) => {
     onChange({
       readFiles: selected.includes("readFiles"),
@@ -90,8 +81,6 @@ export function TrustPermissionsContent({
       <CheckboxGroup
         value={selectedCapabilities}
         onValueChange={handleValueChange}
-        wrap={false}
-        onBoundaryReached={handleBoundaryReached}
         disabled={focusZone !== 'list'}
       >
         {CAPABILITIES.map(({ id, label, description, disabled }) => (

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import { z } from "zod";
 import { errorResponse, zodErrorHandler } from "./response.js";
 import { ErrorCode } from "@stargazer/schemas/errors";
 
@@ -46,15 +47,10 @@ describe("errorResponse", () => {
 describe("zodErrorHandler", () => {
   it("should extract first issue message from Zod error", () => {
     const ctx = createMockContext();
-    const zodResult = {
-      success: false as const,
-      error: {
-        issues: [
-          { message: "Expected string, received number", path: ["name"] },
-          { message: "Required", path: ["age"] },
-        ],
-      },
-    };
+    const zodResult = z.object({ name: z.string(), age: z.number() }).safeParse({
+      name: 123,
+      age: "nope",
+    });
 
     zodErrorHandler(zodResult, ctx);
 
@@ -65,12 +61,7 @@ describe("zodErrorHandler", () => {
 
   it("should return 400 status with VALIDATION_ERROR code", () => {
     const ctx = createMockContext();
-    const zodResult = {
-      success: false as const,
-      error: {
-        issues: [{ message: "Invalid", path: [] }],
-      },
-    };
+    const zodResult = z.object({ name: z.string() }).safeParse({ name: 123 });
 
     zodErrorHandler(zodResult, ctx);
 
@@ -93,7 +84,7 @@ describe("zodErrorHandler", () => {
     const ctx = createMockContext();
     const zodResult = {
       success: false as const,
-      error: { issues: [] },
+      error: { issues: [] } as unknown as z.core.$ZodError,
     };
 
     zodErrorHandler(zodResult, ctx);
