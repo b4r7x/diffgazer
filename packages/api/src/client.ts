@@ -16,6 +16,10 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     projectHeaders["x-stargazer-project-root"] = projectRoot;
   }
 
+  /**
+   * Parses JSON from a response without runtime type validation.
+   * Callers are responsible for validating the shape of T if needed.
+   */
   async function parse<T>(response: Response): Promise<T> {
     const body = await response.json().catch(() => null);
     if (body === null) {

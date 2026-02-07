@@ -1,4 +1,5 @@
 import { getErrorMessage } from "@stargazer/core/errors";
+import { type Result, ok, err } from "@stargazer/core/result";
 import {
   OpenRouterModelCacheSchema,
   OpenRouterModelSchema,
@@ -19,32 +20,36 @@ const parseCost = (value: unknown): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const mapOpenRouterModel = (raw: any): OpenRouterModel | null => {
+const mapOpenRouterModel = (raw: unknown): OpenRouterModel | null => {
   if (!raw || typeof raw !== "object") return null;
-  const id = typeof raw.id === "string" ? raw.id : "";
+  const r = raw as Record<string, unknown>;
+  const id = typeof r.id === "string" ? r.id : "";
   if (!id) return null;
 
-  const name = typeof raw.name === "string" ? raw.name : id;
-  const description = typeof raw.description === "string" ? raw.description : undefined;
+  const name = typeof r.name === "string" ? r.name : id;
+  const description = typeof r.description === "string" ? r.description : undefined;
 
+  const topProvider = r.top_provider && typeof r.top_provider === "object"
+    ? (r.top_provider as Record<string, unknown>)
+    : null;
   const contextLengthRaw =
-    raw.context_length ??
-    raw.context_window ??
-    raw.contextLength ??
-    raw.contextWindow ??
-    raw?.top_provider?.context_length ??
-    raw?.top_provider?.contextLength;
+    r.context_length ??
+    r.context_window ??
+    r.contextLength ??
+    r.contextWindow ??
+    topProvider?.context_length ??
+    topProvider?.contextLength;
   const contextLength = Number.isFinite(Number(contextLengthRaw))
     ? Number(contextLengthRaw)
     : 0;
 
-  const supportedParametersRaw = Array.isArray(raw.supported_parameters)
-    ? raw.supported_parameters
-    : Array.isArray(raw.supportedParameters)
-      ? raw.supportedParameters
+  const supportedParametersRaw = Array.isArray(r.supported_parameters)
+    ? r.supported_parameters
+    : Array.isArray(r.supportedParameters)
+      ? r.supportedParameters
       : undefined;
 
-  const pricingRaw = raw.pricing ?? {};
+  const pricingRaw = (r.pricing && typeof r.pricing === "object" ? r.pricing : {}) as Record<string, unknown>;
   const prompt = pricingRaw.prompt ?? "0";
   const completion = pricingRaw.completion ?? "0";
 
@@ -81,15 +86,21 @@ export const persistOpenRouterModelCache = (cache: OpenRouterModelCache): void =
   writeJsonFileSync(path, cache);
 };
 
-export const fetchOpenRouterModels = async (apiKey: string): Promise<OpenRouterModel[]> => {
-  const response = await fetch(OPENROUTER_MODELS_URL, {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-    },
-  });
+export const fetchOpenRouterModels = async (apiKey: string): Promise<Result<OpenRouterModel[], { message: string }>> => {
+  let response: Response;
+  try {
+    response = await fetch(OPENROUTER_MODELS_URL, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (error) {
+    return err({ message: getErrorMessage(error, "Failed to fetch OpenRouter models") });
+  }
 
   if (!response.ok) {
-    throw new Error(`OpenRouter models request failed: ${response.status}`);
+    return err({ message: `OpenRouter models request failed: ${response.status}` });
   }
 
   const payload = (await response.json()) as unknown;
@@ -99,17 +110,19 @@ export const fetchOpenRouterModels = async (apiKey: string): Promise<OpenRouterM
       ? (payload as { data: unknown }).data
       : [];
   if (!Array.isArray(rawModels)) {
-    throw new Error("OpenRouter models response is not an array");
+    return err({ message: "OpenRouter models response is not an array" });
   }
 
-  return rawModels
-    .map(mapOpenRouterModel)
-    .filter((model): model is OpenRouterModel => model !== null);
+  return ok(
+    rawModels
+      .map(mapOpenRouterModel)
+      .filter((model): model is OpenRouterModel => model !== null)
+  );
 };
 
 export const getOpenRouterModelsWithCache = async (
   apiKey: string
-): Promise<{ models: OpenRouterModel[]; fetchedAt: string; cached: boolean }> => {
+): Promise<Result<{ models: OpenRouterModel[]; fetchedAt: string; cached: boolean }, { message: string }>> => {
   const cache = loadOpenRouterModelCache();
   const cacheTime = cache ? Date.parse(cache.fetchedAt) : NaN;
   const cacheValid = Number.isFinite(cacheTime) && Date.now() - cacheTime < CACHE_TTL_MS;
@@ -122,11 +135,12 @@ export const getOpenRouterModelsWithCache = async (
     console.info(
       `[openrouter-models] cache hit: models=${cache.models.length} withParams=${cacheWithParams}`
     );
-    return { models: cache.models, fetchedAt: cache.fetchedAt, cached: true };
+    return ok({ models: cache.models, fetchedAt: cache.fetchedAt, cached: true });
   }
 
-  try {
-    const models = await fetchOpenRouterModels(apiKey);
+  const fetchResult = await fetchOpenRouterModels(apiKey);
+  if (fetchResult.ok) {
+    const models = fetchResult.value;
     const fetchedAt = new Date().toISOString();
     persistOpenRouterModelCache({ models, fetchedAt });
     const withParams = models.filter((model) => (model.supportedParameters?.length ?? 0) > 0)
@@ -134,14 +148,15 @@ export const getOpenRouterModelsWithCache = async (
     console.info(
       `[openrouter-models] fetched: models=${models.length} withParams=${withParams} cacheWasValid=${cacheValid}`
     );
-    return { models, fetchedAt, cached: false };
-  } catch (error) {
-    if (cache) {
-      console.info(
-        `[openrouter-models] fetch failed, using cache: models=${cache.models.length} withParams=${cacheWithParams}`
-      );
-      return { models: cache.models, fetchedAt: cache.fetchedAt, cached: true };
-    }
-    throw new Error(getErrorMessage(error, "Failed to fetch OpenRouter models"));
+    return ok({ models, fetchedAt, cached: false });
   }
+
+  if (cache) {
+    console.info(
+      `[openrouter-models] fetch failed, using cache: models=${cache.models.length} withParams=${cacheWithParams}`
+    );
+    return ok({ models: cache.models, fetchedAt: cache.fetchedAt, cached: true });
+  }
+
+  return err({ message: fetchResult.error.message });
 };

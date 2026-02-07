@@ -1,4 +1,4 @@
-import { Children, Fragment, isValidElement, useMemo, type ReactNode } from "react";
+import { Children, Fragment, isValidElement, type ReactNode } from "react";
 import { cn } from "@/utils/cn";
 import { useKey, useKeys } from "@/hooks/keyboard";
 import { MenuContext, type InternalMenuItemData, type MenuContextValue } from "./menu-context";
@@ -109,16 +109,13 @@ export function Menu<T extends string = string>({
 
   // Generic T provides type safety at the call site but is erased internally.
   // Context stores string values; consumers use the generic via props.
-  const contextValue: MenuContextValue = useMemo(
-    () => ({
-      selectedIndex,
-      onSelect,
-      onActivate: onActivate as ((item: InternalMenuItemData) => void) | undefined,
-      items,
-      variant,
-    }),
-    [selectedIndex, onSelect, onActivate, items, variant]
-  );
+  const contextValue: MenuContextValue = {
+    selectedIndex,
+    onSelect,
+    onActivate: onActivate as ((item: InternalMenuItemData) => void) | undefined,
+    items,
+    variant,
+  };
 
   return (
     <MenuContext.Provider value={contextValue}>

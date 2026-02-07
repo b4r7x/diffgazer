@@ -15,7 +15,43 @@ export interface ActiveSession {
   controller: AbortController;
 }
 
+const MAX_SESSIONS = 50;
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
 const activeSessions = new Map<string, ActiveSession>();
+
+function evictOldestSession(): void {
+  let oldest: { id: string; startedAt: Date } | null = null;
+  for (const [id, session] of activeSessions) {
+    if (!oldest || session.startedAt < oldest.startedAt) {
+      oldest = { id, startedAt: session.startedAt };
+    }
+  }
+  if (oldest) {
+    const session = activeSessions.get(oldest.id);
+    if (session && !session.isComplete) {
+      session.controller.abort("evicted");
+      session.isComplete = true;
+      session.subscribers.clear();
+    }
+    activeSessions.delete(oldest.id);
+  }
+}
+
+function cleanupStaleSessions(): void {
+  const now = Date.now();
+  for (const [id, session] of activeSessions) {
+    if (!session.isComplete && now - session.startedAt.getTime() > SESSION_TIMEOUT_MS) {
+      session.controller.abort("timeout");
+      session.isComplete = true;
+      session.subscribers.clear();
+      activeSessions.delete(id);
+    }
+  }
+}
+
+const cleanupInterval = setInterval(cleanupStaleSessions, 5 * 60 * 1000);
+cleanupInterval.unref();
 
 export function createSession(
   reviewId: string,
@@ -24,6 +60,10 @@ export function createSession(
   statusHash: string,
   mode: ReviewMode
 ): ActiveSession {
+  if (activeSessions.size >= MAX_SESSIONS) {
+    evictOldestSession();
+  }
+
   const session: ActiveSession = {
     reviewId,
     projectPath,
@@ -54,7 +94,9 @@ export function addEvent(reviewId: string, event: FullReviewStreamEvent): void {
     session.events.push(event);
     session.subscribers.forEach(cb => {
       try {
-        cb(event);
+        Promise.resolve(cb(event)).catch(e => {
+          console.error('Subscriber callback error:', e);
+        });
       } catch (e) {
         console.error('Subscriber callback error:', e);
       }
@@ -87,7 +129,9 @@ export function cancelSession(reviewId: string): void {
 
   session.subscribers.forEach((cb) => {
     try {
-      cb(cancelEvent);
+      Promise.resolve(cb(cancelEvent)).catch(e => {
+        console.error("Subscriber callback error:", e);
+      });
     } catch (e) {
       console.error("Subscriber callback error:", e);
     }

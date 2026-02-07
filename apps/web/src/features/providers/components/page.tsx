@@ -16,39 +16,24 @@ const FOOTER_SHORTCUTS = [
 
 export function ProvidersPage() {
   const {
-    inputRef,
-    filter,
-    setFilter,
-    searchQuery,
-    setSearchQuery,
-    filteredProviders,
-    effectiveSelectedId,
-    setSelectedId,
-    selectedProvider,
     isLoading,
-    apiKeyDialogOpen,
-    setApiKeyDialogOpen,
-    modelDialogOpen,
-    setModelDialogOpen,
-    handleSaveApiKey,
-    handleRemoveKey,
-    handleSelectModel,
-    handleSelectProvider,
-    dialogOpen,
+    filteredProviders,
+    selectedProvider,
     needsModel,
-    focusZone,
-    filterIndex,
-    buttonIndex,
-    handleListBoundary,
+    search,
+    selection,
+    dialogs,
+    handlers,
+    keyboard,
   } = useProvidersPageState();
 
   usePageFooter({ shortcuts: FOOTER_SHORTCUTS });
 
   const actions = {
-    onSetApiKey: () => setApiKeyDialogOpen(true),
-    onSelectModel: () => setModelDialogOpen(true),
-    onRemoveKey: () => { if (selectedProvider) void handleRemoveKey(selectedProvider.id); },
-    onSelectProvider: () => { if (selectedProvider) void handleSelectProvider(selectedProvider.id, selectedProvider.name, selectedProvider.model); },
+    onSetApiKey: () => dialogs.setApiKeyOpen(true),
+    onSelectModel: () => dialogs.setModelOpen(true),
+    onRemoveKey: () => { if (selectedProvider) void handlers.removeKey(selectedProvider.id); },
+    onSelectProvider: () => { if (selectedProvider) void handlers.selectProvider(selectedProvider.id, selectedProvider.name, selectedProvider.model); },
   };
 
   if (isLoading) {
@@ -64,16 +49,16 @@ export function ProvidersPage() {
       <div className="w-2/5 flex flex-col border-r border-tui-border">
         <ProviderList
           providers={filteredProviders}
-          selectedId={effectiveSelectedId}
-          onSelect={setSelectedId}
-          filter={filter}
-          onFilterChange={setFilter}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          keyboardEnabled={focusZone === "list" && !dialogOpen}
-          onBoundaryReached={handleListBoundary}
-          inputRef={inputRef}
-          focusedFilterIndex={focusZone === "filters" ? filterIndex : undefined}
+          selectedId={selection.effectiveSelectedId}
+          onSelect={selection.setSelectedId}
+          filter={selection.filter}
+          onFilterChange={selection.setFilter}
+          searchQuery={search.query}
+          onSearchChange={search.setQuery}
+          keyboardEnabled={keyboard.focusZone === "list" && !dialogs.anyOpen}
+          onBoundaryReached={keyboard.handleListBoundary}
+          inputRef={search.inputRef}
+          focusedFilterIndex={keyboard.focusZone === "filters" ? keyboard.filterIndex : undefined}
         />
       </div>
       <div className="w-3/5 flex flex-col bg-tui-bg">
@@ -81,32 +66,32 @@ export function ProvidersPage() {
           provider={selectedProvider}
           actions={actions}
           disableSelectProvider={needsModel}
-          focusedButtonIndex={focusZone === "buttons" && selectedProvider ? buttonIndex : undefined}
-          isFocused={focusZone === "buttons" && !!selectedProvider}
+          focusedButtonIndex={keyboard.focusZone === "buttons" && selectedProvider ? keyboard.buttonIndex : undefined}
+          isFocused={keyboard.focusZone === "buttons" && !!selectedProvider}
         />
       </div>
 
       {selectedProvider && (
         <>
           <ApiKeyDialog
-            open={apiKeyDialogOpen}
-            onOpenChange={setApiKeyDialogOpen}
+            open={dialogs.apiKeyOpen}
+            onOpenChange={dialogs.setApiKeyOpen}
             providerName={selectedProvider.name}
             envVarName={PROVIDER_ENV_VARS[selectedProvider.id]}
             hasExistingKey={selectedProvider.hasApiKey}
-            onSubmit={(_method, value) => handleSaveApiKey(
+            onSubmit={(_method, value) => handlers.saveApiKey(
               selectedProvider.id,
               value,
               { openModelDialog: selectedProvider.id === "openrouter" && !selectedProvider.model },
             )}
-            onRemoveKey={() => handleRemoveKey(selectedProvider.id)}
+            onRemoveKey={() => handlers.removeKey(selectedProvider.id)}
           />
           <ModelSelectDialog
-            open={modelDialogOpen}
-            onOpenChange={setModelDialogOpen}
+            open={dialogs.modelOpen}
+            onOpenChange={dialogs.setModelOpen}
             provider={selectedProvider.id}
             currentModel={selectedProvider.model}
-            onSelect={(modelId) => void handleSelectModel(selectedProvider.id, modelId)}
+            onSelect={(modelId) => void handlers.selectModel(selectedProvider.id, modelId)}
           />
         </>
       )}

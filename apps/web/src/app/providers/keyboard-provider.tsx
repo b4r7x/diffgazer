@@ -73,10 +73,7 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
     return () => handlers.current.get(scope)?.delete(hotkey);
   }, []);
 
-  const contextValue = useMemo(
-    () => ({ activeScope, pushScope, register }),
-    [activeScope, pushScope, register]
-  );
+  const contextValue = useMemo<KeyboardContextValue>(() => ({ activeScope, pushScope, register }), [activeScope, pushScope, register]);
 
   return <KeyboardContext.Provider value={contextValue}>{children}</KeyboardContext.Provider>;
 }

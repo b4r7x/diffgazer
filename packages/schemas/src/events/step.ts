@@ -45,7 +45,7 @@ export const ReviewStartedEventSchema = z.object({
 });
 export type ReviewStartedEvent = z.infer<typeof ReviewStartedEventSchema>;
 
-const StepEventSchema = z.discriminatedUnion("type", [
+export const StepEventSchema = z.discriminatedUnion("type", [
   ReviewStartedEventSchema,
   StepStartEventSchema,
   StepCompleteEventSchema,
@@ -70,12 +70,5 @@ export function createInitialSteps(): StepState[] {
 }
 
 export function isStepEvent(event: unknown): event is StepEvent {
-  if (!event || typeof event !== "object") return false;
-  const type = (event as { type?: string }).type;
-  return (
-    type === "review_started" ||
-    type === "step_start" ||
-    type === "step_complete" ||
-    type === "step_error"
-  );
+  return StepEventSchema.safeParse(event).success;
 }

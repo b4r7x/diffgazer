@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { IssueHeader } from "./issue-header";
 
 import type { ReviewIssue } from "@stargazer/schemas/review";
-import type { TabId } from "../types";
+import type { IssueTab as TabId } from "@stargazer/schemas/ui";
 
 export interface IssueDetailsPaneProps {
   issue: ReviewIssue | null;

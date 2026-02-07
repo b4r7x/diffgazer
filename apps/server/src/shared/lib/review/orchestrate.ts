@@ -26,9 +26,18 @@ async function runWithConcurrency<T, R>(
   let active = 0;
 
   return new Promise((resolve) => {
+    const resolveWithFill = () => {
+      for (let i = 0; i < results.length; i++) {
+        if (!results[i]) {
+          results[i] = { status: "rejected", reason: new Error("Aborted") };
+        }
+      }
+      resolve(results);
+    };
+
     const launchNext = () => {
       if (signal?.aborted) {
-        if (active === 0) resolve(results);
+        if (active === 0) resolveWithFill();
         return;
       }
 

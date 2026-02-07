@@ -1,7 +1,7 @@
 import { useScope, useKey } from '@/hooks/keyboard';
 import { usePageFooter } from '@/hooks/use-page-footer';
 import { Button } from '@/components/ui/button';
-import type { ReviewMode } from '../types';
+import type { ReviewMode } from '@stargazer/schemas/review';
 
 export interface NoChangesViewProps {
   mode: ReviewMode;

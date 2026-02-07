@@ -14,9 +14,10 @@ export function formatTime(ms: number, format: TimerFormat = "short"): string {
 }
 
 export function formatTimestamp(timestamp: Date | string): string {
-  if (typeof timestamp === "string") return timestamp;
-  const hours = timestamp.getHours().toString().padStart(2, "0");
-  const minutes = timestamp.getMinutes().toString().padStart(2, "0");
-  const seconds = timestamp.getSeconds().toString().padStart(2, "0");
+  const date = typeof timestamp === "string" ? new Date(timestamp) : timestamp;
+  if (isNaN(date.getTime())) return timestamp as string;
+  const hours = date.getHours().toString().padStart(2, "0");
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  const seconds = date.getSeconds().toString().padStart(2, "0");
   return `${hours}:${minutes}:${seconds}`;
 }

@@ -1,14 +1,13 @@
 import {
   createContext,
-  useCallback,
   useContext,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type ReactNode,
 } from "react";
 import { AIProviderSchema } from "@stargazer/schemas/config";
+import { SetupStatusSchema } from "@stargazer/schemas/config";
 import type { AIProvider, ProviderStatus, TrustConfig, SetupStatus } from "@stargazer/schemas/config";
 import { DEFAULT_TTL } from "@/config/constants";
 import { api } from "@/lib/api";
@@ -135,13 +134,13 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       projectId: initData.project.projectId,
       repoRoot: initData.project.path,
       trust: initData.project.trust,
-      setupStatus: initData.setup as SetupStatus,
+      setupStatus: SetupStatusSchema.parse(initData.setup),
     };
     applyConfigData(data);
     setCache(data);
   };
 
-  const refresh = useCallback(async (invalidate = false) => {
+  const refresh = async (invalidate = false) => {
     if (invalidate) invalidateConfigCache();
     setIsLoading(true);
     setError(null);
@@ -163,7 +162,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
         projectId: initData.project.projectId,
         repoRoot: initData.project.path,
         trust: initData.project.trust,
-        setupStatus: initData.setup as SetupStatus,
+        setupStatus: SetupStatusSchema.parse(initData.setup),
       };
       applyConfigData(data);
       setCache(data);
@@ -174,9 +173,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  };
 
-  const activateProvider = useCallback(async (providerId: string, selectedModel?: string) => {
+  const activateProvider = async (providerId: string, selectedModel?: string) => {
     setIsSaving(true);
     setError(null);
     try {
@@ -187,13 +186,12 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       setError(
         err instanceof Error ? err.message : "Failed to activate provider",
       );
-      throw err;
     } finally {
       setIsSaving(false);
     }
-  }, []);
+  };
 
-  const saveCredentials = useCallback(async (
+  const saveCredentials = async (
     providerName: AIProvider,
     apiKey: string,
     selectedModel?: string,
@@ -212,13 +210,12 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       setError(
         err instanceof Error ? err.message : "Failed to save credentials",
       );
-      throw err;
     } finally {
       setIsSaving(false);
     }
-  }, []);
+  };
 
-  const deleteProviderCredentials = useCallback(async (providerName: AIProvider) => {
+  const deleteProviderCredentials = async (providerName: AIProvider) => {
     setIsSaving(true);
     setError(null);
     try {
@@ -237,17 +234,16 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
           ? err.message
           : "Failed to delete provider credentials",
       );
-      throw err;
     } finally {
       setIsSaving(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     refresh();
-  }, [refresh]);
+  }, []);
 
-  const dataValue = useMemo<ConfigDataContextValue>(() => ({
+  const dataValue: ConfigDataContextValue = {
     provider: state.provider,
     model: state.model,
     isConfigured,
@@ -256,9 +252,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     repoRoot: state.repoRoot,
     trust: state.trust,
     setupStatus: state.setupStatus,
-  }), [state.provider, state.model, isConfigured, state.providerStatus, state.projectId, state.repoRoot, state.trust, state.setupStatus]);
+  };
 
-  const actionsValue = useMemo<ConfigActionsContextValue>(() => ({
+  const actionsValue: ConfigActionsContextValue = {
     isLoading,
     isSaving,
     error,
@@ -266,7 +262,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     activateProvider,
     saveCredentials,
     deleteProviderCredentials,
-  }), [isLoading, isSaving, error, refresh, activateProvider, saveCredentials, deleteProviderCredentials]);
+  };
 
   return (
     <ConfigDataContext.Provider value={dataValue}>

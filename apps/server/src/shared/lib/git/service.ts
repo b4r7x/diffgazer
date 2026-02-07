@@ -2,6 +2,8 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { GIT_FILE_STATUS_CODES, type GitStatus, type GitStatusFiles, type GitFileEntry, type GitFileStatusCode } from "@stargazer/schemas/git";
 import type { GitBlameInfo, ReviewMode } from "@stargazer/schemas/review";
+import { type Result, ok, err } from "@stargazer/core/result";
+import { getErrorMessage } from "@stargazer/core/errors";
 import type { BranchInfo, CategorizedFile } from "./types.js";
 
 const execFileAsync = promisify(execFile);
@@ -112,7 +114,10 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
     try {
       await execFileAsync("git", ["--version"], { timeout });
       return true;
-    } catch { return false; }
+    } catch (error) {
+      console.warn("[git] failed to check git installation:", getErrorMessage(error));
+      return false;
+    }
   }
 
   async function getStatus(): Promise<GitStatus> {
@@ -121,7 +126,8 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
       const parsed = parseGitStatusOutput(stdout);
       const hasChanges = parsed.files.staged.length > 0 || parsed.files.unstaged.length > 0 || parsed.files.untracked.length > 0;
       return { isGitRepo: true, ...parsed, hasChanges };
-    } catch {
+    } catch (error) {
+      console.warn("[git] failed to get status:", getErrorMessage(error));
       return EMPTY_GIT_STATUS;
     }
   }
@@ -153,7 +159,8 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
         commitDate: new Date(Number(commitTime) * 1000).toISOString(),
         summary,
       };
-    } catch {
+    } catch (error) {
+      console.warn(`[git] failed to get blame for ${file}:${line}:`, getErrorMessage(error));
       return null;
     }
   }
@@ -164,21 +171,22 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
       const { stdout } = await execFileAsync("git", args, { cwd, timeout, maxBuffer: GIT_DIFF_MAX_BUFFER });
       const allLines = stdout.split("\n");
       return allLines.slice(Math.max(0, startLine - 1), endLine);
-    } catch {
+    } catch (error) {
+      console.warn(`[git] failed to get file lines for ${file}:`, getErrorMessage(error));
       return [];
     }
   }
 
-  async function getHeadCommit(): Promise<string> {
+  async function getHeadCommit(): Promise<Result<string, { message: string }>> {
     try {
       const { stdout } = await execFileAsync("git", ["rev-parse", "HEAD"], { cwd, timeout });
       const commit = stdout.trim();
       if (!commit) {
-        throw new Error("Empty commit hash returned from git rev-parse HEAD");
+        return err({ message: "Empty commit hash returned from git rev-parse HEAD" });
       }
-      return commit;
+      return ok(commit);
     } catch (error) {
-      throw error instanceof Error ? error : new Error("Failed to get HEAD commit");
+      return err({ message: getErrorMessage(error, "Failed to get HEAD commit") });
     }
   }
 
@@ -191,7 +199,8 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
       }
       const { createHash } = await import("node:crypto");
       return createHash("sha256").update(lines.join("\n")).digest("hex").slice(0, 16);
-    } catch {
+    } catch (error) {
+      console.warn("[git] failed to get status hash:", getErrorMessage(error));
       return "";
     }
   }

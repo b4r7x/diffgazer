@@ -1,4 +1,4 @@
-import { useMemo, useRef, type ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { cn } from '@/utils/cn';
 import { useGroupNavigation } from '@/hooks/keyboard';
 import { NavigationListContext } from './navigation-list-context';
@@ -37,10 +37,7 @@ export function NavigationList({
     onBoundaryReached,
   });
 
-  const contextValue = useMemo(
-    () => ({ selectedId, onSelect, onActivate, isFocused }),
-    [selectedId, onSelect, onActivate, isFocused]
-  );
+  const contextValue = { selectedId, onSelect, onActivate, isFocused };
 
   return (
     <NavigationListContext.Provider value={contextValue}>

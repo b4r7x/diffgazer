@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import type { SettingsConfig } from "@stargazer/schemas/config";
 import { DEFAULT_TTL } from "@/config/constants";
 import { api } from "@/lib/api";
@@ -50,9 +50,11 @@ function getSnapshot() {
 export function useSettings() {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot);
 
-  if (!snapshot && !inflightPromise) {
-    triggerFetch();
-  }
+  useEffect(() => {
+    if (!snapshot && !inflightPromise) {
+      triggerFetch();
+    }
+  }, [snapshot]);
 
   const refresh = async () => {
     invalidateSettings();
@@ -68,7 +70,7 @@ export function useSettings() {
   return {
     settings: snapshot?.data ?? null,
     isLoading: !snapshot && !getCached(),
-    error: null as string | null,
+    error: null,
     refresh,
     invalidate: invalidateSettings,
   };

@@ -1,8 +1,9 @@
 import { type Result, ok, err } from "@stargazer/core/result";
-import { createError, getErrorMessage } from "@stargazer/core/errors";
+import { createError } from "@stargazer/core/errors";
 import type { AIProvider, SetupField, SetupStatus } from "@stargazer/schemas/config";
 import { ErrorCode } from "@stargazer/schemas/errors";
 import type { SecretsStorageError } from "../../shared/lib/config/types.js";
+import type { AppError } from "@stargazer/core/errors";
 import type {
   ActivateProviderResponse,
   ConfigCheckResponse,
@@ -146,10 +147,12 @@ export const deleteProvider = (
   });
 };
 
-export const deleteConfig = (): Result<DeleteConfigResponse | null, SecretsStorageError> => {
+export const deleteConfig = (): Result<DeleteConfigResponse, SecretsStorageError | AppError<"CONFIG_NOT_FOUND">> => {
   const configResult = getConfig();
   if (!configResult.ok) return configResult;
-  if (!configResult.value) return ok(null);
+  if (!configResult.value) {
+    return err(createError(ErrorCode.CONFIG_NOT_FOUND, "No active configuration to delete"));
+  }
 
   const deletedResult = deleteProviderCredentials(configResult.value.provider);
   if (!deletedResult.ok) return deletedResult;
@@ -170,15 +173,14 @@ export const getOpenRouterModels = async (): Promise<
     );
   }
 
-  try {
-    const result = await getOpenRouterModelsWithCache(apiKeyResult.value);
-    return ok(result);
-  } catch (error) {
+  const result = await getOpenRouterModelsWithCache(apiKeyResult.value);
+  if (!result.ok) {
     return err(
       createError(
         ErrorCode.INTERNAL_ERROR,
-        getErrorMessage(error, "Failed to fetch OpenRouter models")
+        result.error.message
       )
     );
   }
+  return ok(result.value);
 };

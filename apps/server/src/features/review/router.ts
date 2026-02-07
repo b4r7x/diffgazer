@@ -53,14 +53,11 @@ const resumeStreamById = async (c: Context): Promise<Response> => {
   }
 
   const gitService = createGitService({ cwd: projectPath });
-  let currentHeadCommit = "";
-  let currentStatusHash = "";
-  try {
-    [currentHeadCommit, currentStatusHash] = await Promise.all([
-      gitService.getHeadCommit(),
-      gitService.getStatusHash(),
-    ]);
-  } catch {
+  const [headCommitResult, currentStatusHash] = await Promise.all([
+    gitService.getHeadCommit(),
+    gitService.getStatusHash(),
+  ]);
+  if (!headCommitResult.ok) {
     return errorResponse(
       c,
       "Failed to inspect repository state",
@@ -68,6 +65,7 @@ const resumeStreamById = async (c: Context): Promise<Response> => {
       500,
     );
   }
+  const currentHeadCommit = headCommitResult.value;
 
   if (
     currentHeadCommit !== session.headCommit ||
@@ -101,6 +99,7 @@ const resumeStreamById = async (c: Context): Promise<Response> => {
 reviewRouter.get(
   "/stream",
   requireSetup,
+  requireRepoAccess,
   zValidator("query", ReviewStreamQuerySchema, zodErrorHandler),
   async (c): Promise<Response> => {
     const clientResult = initializeAIClient();
@@ -149,6 +148,7 @@ reviewRouter.get(
 reviewRouter.get(
   "/reviews/:id/stream",
   requireSetup,
+  requireRepoAccess,
   zValidator("param", ReviewIdParamSchema, zodErrorHandler),
   resumeStreamById,
 );
@@ -156,6 +156,7 @@ reviewRouter.get(
 reviewRouter.get(
   "/context",
   requireSetup,
+  requireRepoAccess,
   async (c): Promise<Response> => {
     const projectRoot = getProjectRoot(c);
     if (!isValidProjectPath(projectRoot)) {
@@ -192,6 +193,7 @@ reviewRouter.post(
   "/context/refresh",
   bodyLimitMiddleware,
   requireSetup,
+  requireRepoAccess,
   zValidator("json", ContextRefreshSchema, zodErrorHandler),
   async (c): Promise<Response> => {
     const projectRoot = getProjectRoot(c);
@@ -297,7 +299,14 @@ reviewRouter.post(
     );
 
     if (!result.ok) {
-      return errorResponse(c, result.error.message, result.error.code, 400);
+      const code = result.error.code;
+      let status: 400 | 404 | 500 = 500;
+      if (code === "ISSUE_NOT_FOUND" || code === "NOT_FOUND") {
+        status = 404;
+      } else if (code === "VALIDATION_ERROR") {
+        status = 400;
+      }
+      return errorResponse(c, result.error.message, code, status);
     }
 
     return c.json({ drilldown: result.value });
