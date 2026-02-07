@@ -4,7 +4,7 @@ import { cn } from "../../lib/cn";
 import { useTabsContext } from "./tabs-context";
 
 const tabsTriggerVariants = cva(
-  "px-3 py-1 text-sm font-mono transition-colors cursor-pointer border border-[--tui-border] focus:outline-none focus:ring-1 focus:ring-[--tui-primary]",
+  "px-3 py-1 text-sm font-mono transition-colors cursor-pointer border border-[--tui-border] focus:outline-none",
   {
     variants: {
       variant: {
@@ -47,8 +47,9 @@ export function TabsTrigger({ value, children, className, disabled, variant }: T
       onClick={() => !disabled && onValueChange(value)}
       className={cn(
         tabsTriggerVariants({ variant }),
-        isActive && "bg-tui-blue text-primary-foreground border-tui-blue",
+        isActive && "bg-tui-blue text-black font-bold border-tui-blue",
         !isActive && !disabled && "bg-[--tui-bg] text-[--tui-fg] hover:bg-[--tui-selection]",
+        !isActive && !disabled && "focus-visible:bg-tui-blue focus-visible:text-black focus-visible:font-bold focus-visible:border-tui-blue",
         disabled && "opacity-50 cursor-not-allowed",
         className
       )}

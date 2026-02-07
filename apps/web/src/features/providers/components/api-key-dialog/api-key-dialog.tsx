@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -7,8 +7,8 @@ import {
   DialogBody,
   Badge,
 } from "@stargazer/ui";
-import { useKey } from "@stargazer/keyboard";
 import { useApiKeyForm } from "../../hooks/use-api-key-form";
+import { useApiKeyDialogKeyboard } from "../../hooks/use-api-key-dialog-keyboard";
 import { ApiKeyMethodSelector } from "./api-key-method-selector";
 import { ApiKeyFooter } from "./api-key-footer";
 
@@ -36,7 +36,6 @@ export function ApiKeyDialog({
   onRemoveKey,
 }: ApiKeyDialogProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [focused, setFocused] = useState<FocusElement>("paste");
 
   const form = useApiKeyForm({
     envVarName,
@@ -45,68 +44,17 @@ export function ApiKeyDialog({
     onOpenChange,
   });
 
-  const footerElements: FocusElement[] = onRemoveKey
-    ? ["cancel", "confirm", "remove"]
-    : ["cancel", "confirm"];
-  const allElements: FocusElement[] = ["paste", "input", "env", ...footerElements];
-
-  useKey(
-    "ArrowDown",
-    () => {
-      const idx = allElements.indexOf(focused);
-      setFocused(allElements[(idx + 1) % allElements.length]);
-    },
-    { enabled: open }
-  );
-
-  useKey(
-    "ArrowUp",
-    () => {
-      const idx = allElements.indexOf(focused);
-      setFocused(allElements[(idx - 1 + allElements.length) % allElements.length]);
-    },
-    { enabled: open }
-  );
-
-  useKey(
-    "ArrowRight",
-    () => {
-      if (!footerElements.includes(focused)) return;
-      const idx = footerElements.indexOf(focused);
-      setFocused(footerElements[(idx + 1) % footerElements.length]);
-    },
-    { enabled: open }
-  );
-
-  useKey(
-    "ArrowLeft",
-    () => {
-      if (!footerElements.includes(focused)) return;
-      const idx = footerElements.indexOf(focused);
-      setFocused(footerElements[(idx - 1 + footerElements.length) % footerElements.length]);
-    },
-    { enabled: open }
-  );
-
-  const handleSelect = () => {
-    if (focused === "paste") {
-      form.setMethod("paste");
-    } else if (focused === "input") {
-      form.setMethod("paste");
-      inputRef.current?.focus();
-    } else if (focused === "env") {
-      form.setMethod("env");
-    } else if (focused === "cancel") {
-      onOpenChange(false);
-    } else if (focused === "confirm" && form.canSubmit) {
-      form.handleSubmit();
-    } else if (focused === "remove" && onRemoveKey) {
-      form.handleRemove();
-    }
-  };
-
-  useKey("Enter", handleSelect, { enabled: open && focused !== "input" });
-  useKey(" ", handleSelect, { enabled: open && focused !== "input" });
+  const { focused, setFocused } = useApiKeyDialogKeyboard({
+    open,
+    method: form.method,
+    setMethod: form.setMethod,
+    canSubmit: form.canSubmit,
+    inputRef,
+    onSubmit: form.handleSubmit,
+    onRemove: onRemoveKey ? form.handleRemove : undefined,
+    onClose: () => onOpenChange(false),
+    hasExistingKey,
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
