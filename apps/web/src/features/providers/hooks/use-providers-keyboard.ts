@@ -1,6 +1,6 @@
 import { useState, type RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useKey, useFocusZone } from "@stargazer/keyboard";
+import { useKey, useFocusZone, useScope } from "@stargazer/keyboard";
 import { PROVIDER_FILTER_VALUES, type ProviderFilter } from "@/features/providers/constants";
 import type { AIProvider } from "@stargazer/schemas/config";
 
@@ -41,6 +41,7 @@ export function useProvidersKeyboard({
   onRemoveKey,
   onSelectProvider,
 }: ProvidersKeyboardOptions): ProvidersKeyboardReturn {
+  useScope("providers");
   const navigate = useNavigate();
   const [filterIndex, setFilterIndex] = useState(0);
   const [buttonIndex, setButtonIndex] = useState(0);

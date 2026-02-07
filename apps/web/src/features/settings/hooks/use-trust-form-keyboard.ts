@@ -1,4 +1,4 @@
-import { useFocusZone, useKey } from "@stargazer/keyboard";
+import { useFocusZone, useKey, useScope } from "@stargazer/keyboard";
 
 type FocusZone = "list" | "buttons";
 
@@ -23,6 +23,7 @@ export function useTrustFormKeyboard({
   onSave,
   onRevoke,
 }: UseTrustFormKeyboardOptions) {
+  useScope("trust-form");
   const { inZone } = useFocusZone({
     initial: "list" as FocusZone,
     zones: ["list", "buttons"] as const,

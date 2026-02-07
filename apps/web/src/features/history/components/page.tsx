@@ -1,6 +1,6 @@
 import { useRef } from "react";
-import { FocusablePane, NavigationList, type NavigableHandle } from "@stargazer/ui";
-import { useNavigationKeys } from "@stargazer/keyboard";
+import { FocusablePane, NavigationList } from "@stargazer/ui";
+import { useNavigation } from "@stargazer/keyboard";
 import { RunAccordionItem } from "@/features/history/components/run-accordion-item";
 import { TimelineList } from "@/features/history/components/timeline-list";
 import { HistoryInsightsPane } from "@/features/history/components/history-insights-pane";
@@ -8,7 +8,7 @@ import { SearchInput } from "@/features/history/components/search-input";
 import { useHistoryPage } from "@/features/history/hooks/use-history-page";
 
 export function HistoryPage() {
-  const runsListRef = useRef<NavigableHandle>(null);
+  const runsListRef = useRef<HTMLDivElement>(null);
   const {
     isLoading,
     error,
@@ -31,11 +31,17 @@ export function HistoryPage() {
     handleSearchEscape,
     handleSearchArrowDown,
     handleRunActivate,
-    handleRunsBoundary,
     handleIssueClick,
   } = useHistoryPage();
 
-  useNavigationKeys(runsListRef, { enabled: focusZone === "runs" });
+  const { focusedValue: runsFocusedValue } = useNavigation({
+    containerRef: runsListRef,
+    role: "option",
+    enabled: focusZone === "runs",
+    value: selectedRunId,
+    onValueChange: setSelectedRunId,
+    wrap: false,
+  });
 
   if (isLoading) {
     return (
@@ -104,10 +110,9 @@ export function HistoryPage() {
               <NavigationList
                 ref={runsListRef}
                 selectedId={selectedRunId}
+                focusedValue={runsFocusedValue}
                 onSelect={setSelectedRunId}
                 onActivate={handleRunActivate}
-                keyboardEnabled={false}
-                onBoundaryReached={handleRunsBoundary}
               >
                 {mappedRuns.map((run) => (
                   <RunAccordionItem

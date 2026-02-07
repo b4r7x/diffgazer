@@ -1,8 +1,8 @@
 import { useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Menu, MenuItem, Panel, PanelHeader, type NavigableHandle } from "@stargazer/ui";
+import { Menu, MenuItem, Panel, PanelHeader } from "@stargazer/ui";
 import { useConfigData } from "@/app/providers/config-provider";
-import { useScope, useKey, useNavigationKeys } from "@stargazer/keyboard";
+import { useScope, useKey, useNavigation } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useTheme } from "@/hooks/use-theme";
@@ -24,16 +24,28 @@ export function SettingsHubPage() {
   const navigate = useNavigate();
   const { provider, isConfigured, trust } = useConfigData();
   const { theme } = useTheme();
-  const [selectedIndex, setSelectedIndex] = useScopedRouteState("menuIndex", 0);
-  const menuRef = useRef<NavigableHandle>(null);
+  const [selectedId, setSelectedId] = useScopedRouteState<string | null>("menuId", null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const isTrusted = Boolean(trust?.capabilities.readFiles);
   const { settings, error: settingsError } = useSettings();
 
   usePageFooter({ shortcuts: SETTINGS_SHORTCUTS, rightShortcuts: FOOTER_RIGHT });
 
   useScope("settings-hub");
-  useNavigationKeys(menuRef);
   useKey("Escape", () => navigate({ to: "/" }));
+
+  const handleActivate = (id: string) => {
+    const route = SETTINGS_ROUTES[id as SettingsAction];
+    if (route) navigate({ to: route });
+  };
+
+  const { focusedValue } = useNavigation({
+    containerRef: menuRef,
+    role: "option",
+    value: selectedId,
+    onValueChange: setSelectedId,
+    onEnter: handleActivate,
+  });
 
   const providerLabel = isConfigured && provider ? provider.toUpperCase() : "Not configured";
   const storageLabel = settings?.secretsStorage
@@ -69,11 +81,6 @@ export function SettingsHubPage() {
     },
   };
 
-  const handleActivate = (item: { id: SettingsAction }) => {
-    const route = SETTINGS_ROUTES[item.id];
-    if (route) navigate({ to: route });
-  };
-
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-4 pb-12">
       <div className="w-full max-w-3xl">
@@ -81,10 +88,10 @@ export function SettingsHubPage() {
           <PanelHeader variant="floating">SETTINGS HUB</PanelHeader>
           <Menu
             ref={menuRef}
-            selectedIndex={selectedIndex}
-            onSelect={setSelectedIndex}
+            selectedId={selectedId}
+            focusedValue={focusedValue}
+            onSelect={setSelectedId}
             onActivate={handleActivate}
-            keyboardEnabled
             variant="hub"
             className="flex flex-col text-sm pt-2"
           >

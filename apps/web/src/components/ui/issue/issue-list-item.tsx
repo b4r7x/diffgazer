@@ -15,6 +15,9 @@ export function IssueListItem({ issue, isSelected, onClick, className }: IssueLi
   return (
     <button
       type="button"
+      role="option"
+      data-value={issue.id}
+      aria-selected={isSelected}
       onClick={onClick}
       className={cn(
         "w-full text-left px-2 py-1 flex items-center cursor-pointer",
