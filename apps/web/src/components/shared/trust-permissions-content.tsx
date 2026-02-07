@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { TrustCapabilities } from "@stargazer/schemas/config";
 import { Badge, Callout, Button, CheckboxGroup, CheckboxItem } from "@stargazer/ui";
+import { useNavigation } from "@stargazer/keyboard";
 import { useTrustFormKeyboard } from "@/features/settings/hooks/use-trust-form-keyboard";
 import { cn } from "@/utils/cn";
 
@@ -38,7 +39,26 @@ export function TrustPermissionsContent({
   type FocusZone = "list" | "buttons";
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [buttonIndex, setButtonIndex] = useState(0);
+  const [listFocused, setListFocused] = useState<string | null>(null);
+  const checkboxRef = useRef<HTMLDivElement>(null);
   const BUTTONS_COUNT = 2;
+
+  const selectedCapabilities = value.readFiles ? ["readFiles"] : [];
+
+  const handleValueChange = (selected: string[]) => {
+    onChange({
+      readFiles: selected.includes("readFiles"),
+      runCommands: false,
+    });
+  };
+
+  const toggleCapability = (val: string) => {
+    handleValueChange(
+      selectedCapabilities.includes(val)
+        ? selectedCapabilities.filter((v) => v !== val)
+        : [...selectedCapabilities, val],
+    );
+  };
 
   useTrustFormKeyboard({
     enabled: showActions,
@@ -51,14 +71,23 @@ export function TrustPermissionsContent({
     onRevoke,
   });
 
-  const selectedCapabilities = value.readFiles ? ["readFiles"] : [];
+  const isListZone = focusZone === "list";
 
-  const handleValueChange = (selected: string[]) => {
-    onChange({
-      readFiles: selected.includes("readFiles"),
-      runCommands: false,
-    });
-  };
+  const { focusedValue: listFocusedValue } = useNavigation({
+    containerRef: checkboxRef,
+    role: "checkbox",
+    value: listFocused,
+    onValueChange: setListFocused,
+    wrap: false,
+    enabled: isListZone,
+    onBoundaryReached: (direction) => {
+      if (direction === "down" && showActions) {
+        setFocusZone("buttons");
+      }
+    },
+    onSelect: toggleCapability,
+    onEnter: toggleCapability,
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -79,9 +108,11 @@ export function TrustPermissionsContent({
 
       {/* Capabilities */}
       <CheckboxGroup
+        ref={checkboxRef}
         value={selectedCapabilities}
         onValueChange={handleValueChange}
-        disabled={focusZone !== 'list'}
+        focusedValue={isListZone ? listFocusedValue : null}
+        disabled={!isListZone}
       >
         {CAPABILITIES.map(({ id, label, description, disabled }) => (
           <CheckboxItem

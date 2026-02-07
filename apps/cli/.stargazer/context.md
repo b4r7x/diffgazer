@@ -1,6 +1,6 @@
 # Project Context Snapshot
-Generated: 2026-02-07T14:30:30.651Z
-Root: /home/b4r7/Projects/stargazer/apps/cli
+Generated: 2026-02-07T19:21:49.314Z
+Root: /Users/voitz/Projects/stargazer/apps/cli
 
 ## Project Info
 - Name: stargazer

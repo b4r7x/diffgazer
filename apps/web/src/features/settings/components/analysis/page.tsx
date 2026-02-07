@@ -1,11 +1,12 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button, Badge, CheckboxGroup, CheckboxItem, ScrollArea, Tabs, TabsList, TabsTrigger, TabsContent, CardLayout } from "@stargazer/ui";
-import { useKey, useNavigation, useTabNavigation } from "@stargazer/keyboard";
+import { useKey, useScope, useNavigation, useTabNavigation, useFocusZone } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useSettings } from "@/hooks/use-settings";
 import { SETTINGS_SHORTCUTS } from "@/config/navigation";
 import { api } from "@/lib/api";
+import { cn } from "@/utils/cn";
 import { useContextManagement } from "../../hooks/use-context-management";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@stargazer/schemas/events";
 import type { LensId } from "@stargazer/schemas/review";
@@ -29,13 +30,19 @@ export function SettingsAnalysisPage() {
   const [isSaving, setIsSaving] = useState(false);
   const { contextStatus, contextGeneratedAt, isRefreshing, error, setError, handleRefreshContext } = useContextManagement();
 
+  type FocusZone = "tabs" | "list" | "buttons";
+  const ZONES = ["tabs", "list", "buttons"] as const;
+  const BUTTONS_COUNT = 2;
+
   const tabsListRef = useRef<HTMLDivElement>(null);
   const checkboxRef = useRef<HTMLDivElement>(null);
   const [checkboxFocused, setCheckboxFocused] = useState<string | null>(null);
+  const [buttonIndex, setButtonIndex] = useState(0);
 
   const effectiveLenses = selectedLenses ?? (settings?.defaultLenses?.length ? settings.defaultLenses : LENS_OPTIONS.map(l => l.id));
 
   usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
+  useScope("settings-analysis");
   useKey("Escape", () => navigate({ to: "/settings" }));
 
   const hasLensSelection = effectiveLenses.length > 0;
@@ -57,18 +64,51 @@ export function SettingsAnalysisPage() {
     setSelectedLenses(newLenses);
   };
 
+  const { zone, setZone } = useFocusZone<FocusZone>({
+    initial: "tabs",
+    zones: ZONES,
+    transitions: ({ zone: z, key }) => {
+      if (z === "tabs" && key === "ArrowDown") return "list";
+      if (z === "buttons" && key === "ArrowUp") return "list";
+      return null;
+    },
+  });
+
+  const isButtonsZone = zone === "buttons";
+
+  useKey("ArrowLeft", () => setButtonIndex(Math.max(0, buttonIndex - 1)), {
+    enabled: isButtonsZone,
+  });
+  useKey("ArrowRight", () => setButtonIndex(Math.min(BUTTONS_COUNT - 1, buttonIndex + 1)), {
+    enabled: isButtonsZone,
+  });
+  useKey("ArrowDown", () => {}, { enabled: isButtonsZone });
+  useKey("Enter", () => {
+    if (buttonIndex === 0) navigate({ to: "/settings" });
+    else if (buttonIndex === 1) handleSave();
+  }, { enabled: isButtonsZone });
+  useKey(" ", () => {
+    if (buttonIndex === 0) navigate({ to: "/settings" });
+    else if (buttonIndex === 1) handleSave();
+  }, { enabled: isButtonsZone });
+
   const { onKeyDown: tabsKeyDown } = useTabNavigation({
     containerRef: tabsListRef,
   });
 
-  const { onKeyDown: checkboxKeyDown, focusedValue: checkboxFocusedValue } = useNavigation({
-    mode: "local",
+  const { focusedValue: checkboxFocusedValue } = useNavigation({
     containerRef: checkboxRef,
     role: "checkbox",
     value: checkboxFocused,
     onValueChange: setCheckboxFocused,
     onSelect: toggleLens,
     onEnter: toggleLens,
+    wrap: false,
+    enabled: zone === "list",
+    onBoundaryReached: (direction) => {
+      if (direction === "up") setZone("tabs");
+      if (direction === "down") setZone("buttons");
+    },
   });
 
   const handleSave = async () => {
@@ -94,6 +134,7 @@ export function SettingsAnalysisPage() {
             variant="ghost"
             onClick={() => navigate({ to: "/settings" })}
             disabled={isSaving}
+            className={cn(isButtonsZone && buttonIndex === 0 && "ring-2 ring-tui-blue")}
           >
             Cancel
           </Button>
@@ -101,6 +142,7 @@ export function SettingsAnalysisPage() {
             variant="success"
             onClick={handleSave}
             disabled={isSaving || !isDirty || !hasLensSelection}
+            className={cn(isButtonsZone && buttonIndex === 1 && "ring-2 ring-tui-blue")}
           >
             {isSaving ? "Saving..." : "Save"}
           </Button>
@@ -127,8 +169,7 @@ export function SettingsAnalysisPage() {
                   ref={checkboxRef}
                   value={effectiveLenses}
                   onValueChange={setSelectedLenses}
-                  onKeyDown={checkboxKeyDown}
-                  focusedValue={checkboxFocusedValue}
+                  focusedValue={zone === "list" ? checkboxFocusedValue : null}
                   variant="bullet"
                 >
                   {LENS_OPTIONS.map((lens) => (
