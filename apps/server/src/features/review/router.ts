@@ -14,6 +14,7 @@ import { getProjectRoot } from "../../shared/lib/http/request.js";
 import { getProjectStargazerDir } from "../../shared/lib/paths.js";
 import { isValidProjectPath } from "../../shared/lib/validation.js";
 import { createGitService } from "../../shared/lib/git/service.js";
+import { requireSetup } from "../../shared/middlewares/setup-guard.js";
 import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
 import {
   deleteReview as deleteStoredReview,
@@ -99,7 +100,7 @@ const resumeStreamById = async (c: Context): Promise<Response> => {
 
 reviewRouter.get(
   "/stream",
-  requireRepoAccess,
+  requireSetup,
   zValidator("query", ReviewStreamQuerySchema, zodErrorHandler),
   async (c): Promise<Response> => {
     const clientResult = initializeAIClient();
@@ -147,14 +148,14 @@ reviewRouter.get(
 
 reviewRouter.get(
   "/reviews/:id/stream",
-  requireRepoAccess,
+  requireSetup,
   zValidator("param", ReviewIdParamSchema, zodErrorHandler),
   resumeStreamById,
 );
 
 reviewRouter.get(
   "/context",
-  requireRepoAccess,
+  requireSetup,
   async (c): Promise<Response> => {
     const projectRoot = getProjectRoot(c);
     if (!isValidProjectPath(projectRoot)) {
@@ -190,7 +191,7 @@ reviewRouter.get(
 reviewRouter.post(
   "/context/refresh",
   bodyLimitMiddleware,
-  requireRepoAccess,
+  requireSetup,
   zValidator("json", ContextRefreshSchema, zodErrorHandler),
   async (c): Promise<Response> => {
     const projectRoot = getProjectRoot(c);
@@ -226,7 +227,7 @@ reviewRouter.post(
   },
 );
 
-reviewRouter.get("/reviews", async (c): Promise<Response> => {
+reviewRouter.get("/reviews", requireRepoAccess, async (c): Promise<Response> => {
   const projectPathResult = parseProjectPath(c);
   if (!projectPathResult.ok) return projectPathResult.response;
 
@@ -243,6 +244,7 @@ reviewRouter.get("/reviews", async (c): Promise<Response> => {
 
 reviewRouter.get(
   "/reviews/:id",
+  requireRepoAccess,
   zValidator("param", ReviewIdParamSchema, zodErrorHandler),
   async (c): Promise<Response> => {
     const { id } = c.req.valid("param");
@@ -255,6 +257,7 @@ reviewRouter.get(
 
 reviewRouter.delete(
   "/reviews/:id",
+  requireRepoAccess,
   zValidator("param", ReviewIdParamSchema, zodErrorHandler),
   async (c): Promise<Response> => {
     const { id } = c.req.valid("param");
@@ -268,7 +271,7 @@ reviewRouter.delete(
 reviewRouter.post(
   "/reviews/:id/drilldown",
   bodyLimitMiddleware,
-  requireRepoAccess,
+  requireSetup,
   zValidator("param", ReviewIdParamSchema, zodErrorHandler),
   zValidator("json", DrilldownRequestSchema, zodErrorHandler),
   async (c): Promise<Response> => {

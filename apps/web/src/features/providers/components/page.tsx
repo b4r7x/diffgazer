@@ -35,7 +35,7 @@ export function ProvidersPage() {
     handleSelectModel,
     handleSelectProvider,
     dialogOpen,
-    needsOpenRouterModel,
+    needsModel,
     focusZone,
     filterIndex,
     buttonIndex,
@@ -80,7 +80,7 @@ export function ProvidersPage() {
         <ProviderDetails
           provider={selectedProvider}
           actions={actions}
-          disableSelectProvider={needsOpenRouterModel}
+          disableSelectProvider={needsModel}
           focusedButtonIndex={focusZone === "buttons" && selectedProvider ? buttonIndex : undefined}
           isFocused={focusZone === "buttons" && !!selectedProvider}
         />

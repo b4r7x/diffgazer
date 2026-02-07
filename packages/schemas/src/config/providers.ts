@@ -182,7 +182,7 @@ export type UserConfig = z.infer<typeof UserConfigSchema>;
 export const SaveConfigRequestSchema = z.object({
   provider: AIProviderSchema,
   apiKey: z.string().min(1),
-  model: z.string().optional(),
+  model: z.string().min(1).optional(),
 });
 export type SaveConfigRequest = z.infer<typeof SaveConfigRequestSchema>;
 
@@ -249,6 +249,21 @@ export const PROVIDER_ENV_VARS: Record<AIProvider, string> = {
   openrouter: 'OPENROUTER_API_KEY',
 };
 
+export const SETUP_FIELDS = ["secretsStorage", "provider", "model", "trust"] as const;
+export const SetupFieldSchema = z.enum(SETUP_FIELDS);
+export type SetupField = z.infer<typeof SetupFieldSchema>;
+
+export const SetupStatusSchema = z.object({
+  hasSecretsStorage: z.boolean(),
+  hasProvider: z.boolean(),
+  hasModel: z.boolean(),
+  hasTrust: z.boolean(),
+  isConfigured: z.boolean(),
+  isReady: z.boolean(),
+  missing: z.array(SetupFieldSchema),
+});
+export type SetupStatus = z.infer<typeof SetupStatusSchema>;
+
 export const InitResponseSchema = z.object({
   config: z.object({
     provider: AIProviderSchema,
@@ -258,5 +273,6 @@ export const InitResponseSchema = z.object({
   providers: z.array(ProviderStatusSchema),
   configured: z.boolean(),
   project: ProjectInfoSchema,
+  setup: SetupStatusSchema,
 });
 export type InitResponse = z.infer<typeof InitResponseSchema>;

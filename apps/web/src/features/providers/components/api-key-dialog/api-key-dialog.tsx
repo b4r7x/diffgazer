@@ -12,7 +12,9 @@ import { useApiKeyForm } from "../../hooks/use-api-key-form";
 import { ApiKeyMethodSelector } from "./api-key-method-selector";
 import { ApiKeyFooter } from "./api-key-footer";
 
-export type FocusElement = "paste" | "input" | "env" | "cancel" | "confirm" | "remove";
+import type { FocusElement } from "@/types/focus-element";
+
+export type { FocusElement };
 
 export interface ApiKeyDialogProps {
   open: boolean;

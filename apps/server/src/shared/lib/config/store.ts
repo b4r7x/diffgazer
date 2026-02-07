@@ -257,7 +257,7 @@ export const saveProviderCredentials = (input: {
 
   ensureProvider(provider);
 
-  if (provider === "openrouter" && !model) {
+  if (!model) {
     configState.providers = configState.providers.map((item) => {
       if (item.provider !== provider) return item;
       const hasModel = Boolean(item.model);
@@ -284,7 +284,7 @@ export const activateProvider = (input: {
     (item) => item.provider === provider,
   );
   if (!existing) return null;
-  if (provider === "openrouter" && !model && !existing.model) return null;
+  if (!model && !existing.model) return null;
 
   setActiveProvider(provider, { model, preserveModel: true });
 

@@ -28,11 +28,16 @@ export const SECRETS_STORAGE = ["file", "keyring"] as const;
 export const SecretsStorageSchema = z.enum(SECRETS_STORAGE);
 export type SecretsStorage = z.infer<typeof SecretsStorageSchema>;
 
+export const AGENT_EXECUTION_MODES = ["parallel", "sequential"] as const;
+export const AgentExecutionSchema = z.enum(AGENT_EXECUTION_MODES);
+export type AgentExecution = z.infer<typeof AgentExecutionSchema>;
+
 export const SettingsConfigSchema = z.object({
   theme: ThemeSchema,
   defaultLenses: z.array(LensIdSchema),
   defaultProfile: ProfileIdSchema.nullable(),
   severityThreshold: ReviewSeveritySchema,
   secretsStorage: SecretsStorageSchema.nullable(),
+  agentExecution: AgentExecutionSchema,
 });
 export type SettingsConfig = z.infer<typeof SettingsConfigSchema>;

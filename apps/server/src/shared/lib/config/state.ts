@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS: SettingsConfig = {
   defaultLenses: ["correctness", "security", "performance", "simplicity", "tests"],
   defaultProfile: null,
   severityThreshold: "low",
+  agentExecution: "sequential",
 };
 
 export const DEFAULT_PROVIDERS: ProviderStatus[] = AI_PROVIDERS.map((id) => ({
