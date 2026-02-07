@@ -1,6 +1,6 @@
 import { type RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useScope, useKey } from "@stargazer/keyboard";
+import { useFocusZone, useKey } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import type { HistoryFocusZone } from "@/features/history/types";
 
@@ -16,19 +16,7 @@ const HISTORY_FOOTER_RIGHT_SHORTCUTS = [
   { key: "Esc", label: "Back" },
 ];
 
-const FOCUS_LEFT: Record<HistoryFocusZone, HistoryFocusZone | null> = {
-  timeline: null,
-  runs: "timeline",
-  insights: "runs",
-  search: "insights",
-};
-
-const FOCUS_RIGHT: Record<HistoryFocusZone, HistoryFocusZone | null> = {
-  timeline: "runs",
-  runs: "insights",
-  insights: "search",
-  search: null,
-};
+const ZONES = ["timeline", "runs", "insights", "search"] as const;
 
 interface UseHistoryKeyboardOptions {
   focusZone: HistoryFocusZone;
@@ -45,21 +33,20 @@ export function useHistoryKeyboard({
 }: UseHistoryKeyboardOptions) {
   const navigate = useNavigate();
 
-  useScope("history");
-
-  useKey("Tab", () => {
-    const zones: HistoryFocusZone[] = ["search", "timeline", "runs", "insights"];
-    setFocusZone(zones[(zones.indexOf(focusZone) + 1) % zones.length]);
-  });
-
-  useKey("ArrowLeft", () => {
-    const next = FOCUS_LEFT[focusZone];
-    if (next) setFocusZone(next);
-  });
-
-  useKey("ArrowRight", () => {
-    const next = FOCUS_RIGHT[focusZone];
-    if (next) setFocusZone(next);
+  useFocusZone({
+    initial: "runs" as HistoryFocusZone,
+    zones: ZONES,
+    zone: focusZone,
+    onZoneChange: setFocusZone,
+    scope: "history",
+    tabCycle: ["search", "timeline", "runs", "insights"],
+    transitions: ({ zone, key }) => {
+      const left: Record<string, HistoryFocusZone | null> = { timeline: null, runs: "timeline", insights: "runs", search: "insights" };
+      const right: Record<string, HistoryFocusZone | null> = { timeline: "runs", runs: "insights", insights: "search", search: null };
+      if (key === "ArrowLeft") return left[zone] ?? null;
+      if (key === "ArrowRight") return right[zone] ?? null;
+      return null;
+    },
   });
 
   useKey("/", () => {

@@ -1,6 +1,6 @@
 import { useState, type RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useKey } from "@stargazer/keyboard";
+import { useKey, useFocusZone } from "@stargazer/keyboard";
 import { PROVIDER_FILTER_VALUES, type ProviderFilter } from "@/features/providers/constants";
 import type { AIProvider } from "@stargazer/schemas/config";
 
@@ -42,11 +42,25 @@ export function useProvidersKeyboard({
   onSelectProvider,
 }: ProvidersKeyboardOptions): ProvidersKeyboardReturn {
   const navigate = useNavigate();
-  const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [filterIndex, setFilterIndex] = useState(0);
   const [buttonIndex, setButtonIndex] = useState(0);
 
-  const effectiveFocusZone = (!selectedProvider && focusZone === "buttons") ? "list" : focusZone;
+  const { zone: internalZone, setZone, inZone } = useFocusZone({
+    initial: "list" as FocusZone,
+    zones: ["input", "filters", "list", "buttons"] as const,
+    scope: "providers",
+    transitions: ({ zone, key }) => {
+      if (zone === "input" && key === "ArrowDown") return "filters";
+      if (zone === "filters" && key === "ArrowUp") return "input";
+      if (zone === "filters" && key === "ArrowDown") return "list";
+      if (zone === "list" && key === "ArrowRight" && selectedProvider) return "buttons";
+      if (zone === "buttons" && key === "ArrowLeft" && buttonIndex === 0) return "list";
+      return null;
+    },
+    enabled: !dialogOpen,
+  });
+
+  const effectiveFocusZone = (!selectedProvider && internalZone === "buttons") ? "list" : internalZone;
 
   const canRemoveKey = selectedProvider?.hasApiKey ?? false;
   const needsModel = selectedProvider !== null && !selectedProvider.model;
@@ -73,26 +87,20 @@ export function useProvidersKeyboard({
 
   const inInput = effectiveFocusZone === "input";
   const inFilters = effectiveFocusZone === "filters";
-  const inList = effectiveFocusZone === "list";
   const inButtons = effectiveFocusZone === "buttons";
 
-  // Input zone
-  useKey("ArrowDown", () => {
-    setFocusZone("filters");
-    inputRef.current?.blur();
-  }, { enabled: !dialogOpen && inInput, allowInInput: true });
+  // Input zone — side-effects for transitions + Escape (not an arrow key)
+  useKey("ArrowDown", () => inputRef.current?.blur(),
+    { enabled: !dialogOpen && inInput, allowInInput: true });
   useKey("Escape", () => {
-    setFocusZone("filters");
+    setZone("filters");
     inputRef.current?.blur();
   }, { enabled: !dialogOpen && inInput, allowInInput: true });
 
-  // Filters zone
-  useKey("ArrowUp", () => {
-    setFocusZone("input");
-    inputRef.current?.focus();
-  }, { enabled: !dialogOpen && inFilters });
+  // Filters zone — side-effects for transitions + horizontal nav + actions
+  useKey("ArrowUp", () => inputRef.current?.focus(),
+    { enabled: !dialogOpen && inFilters });
   useKey("ArrowDown", () => {
-    setFocusZone("list");
     if (filteredProviders.length > 0) {
       setSelectedId(filteredProviders[0].id);
     }
@@ -106,18 +114,13 @@ export function useProvidersKeyboard({
   useKey(" ", () => setFilter(PROVIDER_FILTER_VALUES[filterIndex]),
     { enabled: !dialogOpen && inFilters });
 
-  // List zone
-  useKey("ArrowRight", () => { setFocusZone("buttons"); setButtonIndex(getNextButtonIndex(-1, 1)); },
-    { enabled: !dialogOpen && inList && !!selectedProvider });
+  // List zone — side-effect for transition to buttons
+  useKey("ArrowRight", () => setButtonIndex(getNextButtonIndex(-1, 1)),
+    { enabled: !dialogOpen && inZone("list") && !!selectedProvider });
 
-  // Buttons zone
-  useKey("ArrowLeft", () => {
-    if (buttonIndex === 0) {
-      setFocusZone("list");
-    } else {
-      setButtonIndex((i) => getNextButtonIndex(i, -1));
-    }
-  }, { enabled: !dialogOpen && inButtons });
+  // Buttons zone — horizontal/vertical nav + actions
+  useKey("ArrowLeft", () => setButtonIndex((i) => getNextButtonIndex(i, -1)),
+    { enabled: !dialogOpen && inButtons && buttonIndex > 0 });
   useKey("ArrowRight", () => setButtonIndex((i) => getNextButtonIndex(i, 1)),
     { enabled: !dialogOpen && inButtons });
   useKey("ArrowUp", () => setButtonIndex((i) => getNextButtonIndex(i, -1)),
@@ -132,13 +135,13 @@ export function useProvidersKeyboard({
   // Global shortcuts
   useKey("Escape", () => navigate({ to: "/settings" }), { enabled: !dialogOpen && !inInput });
   useKey("/", () => {
-    setFocusZone("input");
+    setZone("input");
     inputRef.current?.focus();
   }, { enabled: !dialogOpen && !inInput });
 
   const handleListBoundary = (direction: "up" | "down") => {
     if (direction === "up") {
-      setFocusZone("filters");
+      setZone("filters");
       setFilterIndex(PROVIDER_FILTER_VALUES.indexOf(filter));
     }
   };

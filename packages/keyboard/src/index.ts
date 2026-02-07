@@ -11,6 +11,7 @@ export { useKeyboardContext } from "./use-keyboard-context";
 export { useGroupNavigation } from "./use-group-navigation";
 export { useSelectableList } from "./use-selectable-list";
 export { useFooterNavigation } from "./use-footer-navigation";
+export { useFocusZone } from "./use-focus-zone";
 
 // Bridge hooks (connect keyboard system to UI component refs)
 export { useNavigationKeys } from "./use-navigation-keys";
