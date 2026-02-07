@@ -1,13 +1,12 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Button, Badge, CheckboxGroup, CheckboxItem, ScrollArea, Tabs, TabsList, TabsTrigger, TabsContent, CardLayout } from "@stargazer/ui";
-import { useKey, useScope, useNavigation, useTabNavigation, useFocusZone } from "@stargazer/keyboard";
+import { Button, Badge, CheckboxGroup, CheckboxItem, ScrollArea, CardLayout } from "@stargazer/ui";
+import { useKey, useScope, useNavigation, useFocusZone } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useSettings } from "@/hooks/use-settings";
 import { SETTINGS_SHORTCUTS } from "@/config/navigation";
 import { api } from "@/lib/api";
 import { cn } from "@/utils/cn";
-import { useContextManagement } from "../../hooks/use-context-management";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@stargazer/schemas/events";
 import type { LensId } from "@stargazer/schemas/review";
 
@@ -28,13 +27,12 @@ export function SettingsAnalysisPage() {
   const { settings, isLoading } = useSettings();
   const [selectedLenses, setSelectedLenses] = useState<LensId[] | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const { contextStatus, contextGeneratedAt, isRefreshing, error, setError, handleRefreshContext } = useContextManagement();
+  const [error, setError] = useState<string | null>(null);
 
-  type FocusZone = "tabs" | "list" | "buttons";
-  const ZONES = ["tabs", "list", "buttons"] as const;
+  type FocusZone = "list" | "buttons";
+  const ZONES = ["list", "buttons"] as const;
   const BUTTONS_COUNT = 2;
 
-  const tabsListRef = useRef<HTMLDivElement>(null);
   const checkboxRef = useRef<HTMLDivElement>(null);
   const [checkboxFocused, setCheckboxFocused] = useState<string | null>(null);
   const [buttonIndex, setButtonIndex] = useState(0);
@@ -65,10 +63,10 @@ export function SettingsAnalysisPage() {
   };
 
   const { zone, setZone } = useFocusZone<FocusZone>({
-    initial: "tabs",
+    initial: "list",
     zones: ZONES,
     transitions: ({ zone: z, key }) => {
-      if (z === "tabs" && key === "ArrowDown") return "list";
+      if (z === "list" && key === "ArrowUp") return null;
       if (z === "buttons" && key === "ArrowUp") return "list";
       return null;
     },
@@ -92,10 +90,6 @@ export function SettingsAnalysisPage() {
     else if (buttonIndex === 1) handleSave();
   }, { enabled: isButtonsZone });
 
-  const { onKeyDown: tabsKeyDown } = useTabNavigation({
-    containerRef: tabsListRef,
-  });
-
   const { focusedValue: checkboxFocusedValue } = useNavigation({
     containerRef: checkboxRef,
     role: "checkbox",
@@ -106,7 +100,6 @@ export function SettingsAnalysisPage() {
     wrap: false,
     enabled: zone === "list",
     onBoundaryReached: (direction) => {
-      if (direction === "up") setZone("tabs");
       if (direction === "down") setZone("buttons");
     },
   });
@@ -152,84 +145,39 @@ export function SettingsAnalysisPage() {
       {isLoading ? (
         <p className="text-tui-muted">Loading settings...</p>
       ) : (
-        <div ref={tabsListRef}>
-        <Tabs defaultValue="agents" className="space-y-4">
-          <TabsList className="border-b border-tui-border pb-2" onKeyDown={tabsKeyDown}>
-            <TabsTrigger value="agents">Agents</TabsTrigger>
-            <TabsTrigger value="context">Context</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="agents" className="mt-0">
-            <ScrollArea className="max-h-[360px] pr-2">
-              <div className="space-y-3">
-                <div className="text-xs text-tui-muted uppercase tracking-wider font-bold">
-                  Active Agents
-                </div>
-                <CheckboxGroup
-                  ref={checkboxRef}
-                  value={effectiveLenses}
-                  onValueChange={setSelectedLenses}
-                  focusedValue={zone === "list" ? checkboxFocusedValue : null}
-                  variant="bullet"
-                >
-                  {LENS_OPTIONS.map((lens) => (
-                    <CheckboxItem
-                      key={lens.id}
-                      value={lens.id}
-                      label={(
-                        <span className="flex items-center gap-2">
-                          <Badge variant={lens.badgeVariant ?? "info"} size="sm">{lens.badgeLabel}</Badge>
-                          <span>{lens.label}</span>
-                        </span>
-                      )}
-                      description={lens.description}
-                    />
-                  ))}
-                </CheckboxGroup>
-                {!hasLensSelection && (
-                  <p className="text-tui-red text-xs">Select at least one agent.</p>
-                )}
-              </div>
-            </ScrollArea>
-          </TabsContent>
-
-          <TabsContent value="context" className="mt-0">
-            <ScrollArea className="max-h-[360px] pr-2">
-              <div className="space-y-4">
-                <div className="text-xs text-tui-muted uppercase tracking-wider font-bold">
-                  Project Context
-                </div>
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={handleRefreshContext}
-                    disabled={isRefreshing}
-                  >
-                    {isRefreshing
-                      ? "Working..."
-                      : contextStatus === "ready"
-                        ? "Regenerate context"
-                        : "Generate context"}
-                  </Button>
-                  {contextStatus === "ready" && contextGeneratedAt && (
-                    <span className="text-xs text-tui-muted">
-                      Last generated: {new Date(contextGeneratedAt).toLocaleString()}
+        <ScrollArea className="max-h-[360px] pr-2">
+          <div className="space-y-3">
+            <div className="text-xs text-tui-muted uppercase tracking-wider font-bold">
+              Active Agents
+            </div>
+            <CheckboxGroup
+              ref={checkboxRef}
+              value={effectiveLenses}
+              onValueChange={setSelectedLenses}
+              focusedValue={zone === "list" ? checkboxFocusedValue : null}
+              variant="bullet"
+            >
+              {LENS_OPTIONS.map((lens) => (
+                <CheckboxItem
+                  key={lens.id}
+                  value={lens.id}
+                  label={(
+                    <span className="flex items-center gap-2">
+                      <Badge variant={lens.badgeVariant ?? "info"} size="sm">{lens.badgeLabel}</Badge>
+                      <span>{lens.label}</span>
                     </span>
                   )}
-                  {contextStatus === "missing" && (
-                    <span className="text-xs text-tui-muted">
-                      Not generated yet.
-                    </span>
-                  )}
-                </div>
-              </div>
-            </ScrollArea>
-          </TabsContent>
-
-          {error && <p className="text-tui-red text-sm">{error}</p>}
-        </Tabs>
-        </div>
+                  description={lens.description}
+                />
+              ))}
+            </CheckboxGroup>
+            {!hasLensSelection && (
+              <p className="text-tui-red text-xs">Select at least one agent.</p>
+            )}
+          </div>
+        </ScrollArea>
       )}
+      {error && <p className="text-tui-red text-sm">{error}</p>}
     </CardLayout>
   );
 }

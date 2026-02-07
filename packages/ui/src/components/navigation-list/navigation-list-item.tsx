@@ -91,7 +91,11 @@ export function NavigationListItem({
         </div>
         {(badge || subtitle) && (
           <div className="flex gap-2 items-center">
-            {badge}
+            {badge && (
+              <span className={cn(showSelection && "[&>*]:bg-black/20 [&>*]:text-black [&>*]:border-black/30 [&_*]:text-black")}>
+                {badge}
+              </span>
+            )}
             {subtitle && (
               <span className={cn("text-[9px]", showSelection ? "text-black/70" : "text-tui-muted")}>
                 {subtitle}

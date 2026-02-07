@@ -27,7 +27,8 @@ export function ApiKeyFooter({
     <DialogFooter className="justify-between">
       <div className="flex gap-3 text-[10px] text-tui-muted">
         <span>↑↓ navigate</span>
-        <span>Enter select</span>
+        <span>Space select</span>
+        <span>Enter confirm</span>
       </div>
       <div className="flex gap-3 items-center">
         <Button

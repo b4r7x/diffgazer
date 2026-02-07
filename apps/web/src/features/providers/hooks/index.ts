@@ -4,3 +4,4 @@ export { useModelFilter } from './use-model-filter';
 export { useOpenRouterModels } from '@/hooks/use-openrouter-models';
 export { useProvidersKeyboard } from './use-providers-keyboard';
 export { useModelDialogKeyboard } from './use-model-dialog-keyboard';
+export { useApiKeyDialogKeyboard } from './use-api-key-dialog-keyboard';

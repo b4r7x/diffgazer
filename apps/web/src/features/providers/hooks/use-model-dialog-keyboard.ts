@@ -1,7 +1,6 @@
 import { useState, useEffect, type RefObject } from "react";
 import type { ModelInfo } from "@stargazer/schemas/config";
-import { useKey, useFocusZone } from "@stargazer/keyboard";
-import { useScrollIntoView } from "@/hooks/use-scroll-into-view";
+import { useKey, useFocusZone, useNavigation } from "@stargazer/keyboard";
 import { TIER_FILTERS, type TierFilter } from "@/features/providers/constants";
 
 type FocusZone = "search" | "filters" | "list" | "footer";
@@ -24,8 +23,7 @@ interface ModelDialogKeyboardOptions {
 
 interface ModelDialogKeyboardReturn {
   focusZone: FocusZone;
-  selectedIndex: number;
-  setSelectedIndex: (index: number | ((prev: number) => number)) => void;
+  focusedModelId: string | null;
   checkedModelId: string | undefined;
   setCheckedModelId: (id: string | undefined) => void;
   filterIndex: number;
@@ -38,6 +36,7 @@ interface ModelDialogKeyboardReturn {
   handleUseCustom: () => void;
   handleSearchEscape: () => void;
   handleSearchArrowDown: () => void;
+  handleListSelect: (modelId: string) => void;
 }
 
 export function useModelDialogKeyboard({
@@ -55,7 +54,6 @@ export function useModelDialogKeyboard({
   onSelect,
   onOpenChange,
 }: ModelDialogKeyboardOptions): ModelDialogKeyboardReturn {
-  const [selectedIndex, setSelectedIndex] = useState(0);
   const [checkedModelId, setCheckedModelId] = useState<string | undefined>(currentModel);
   const [filterIndex, setFilterIndex] = useState(0);
   const [footerButtonIndex, setFooterButtonIndex] = useState(1);
@@ -67,15 +65,39 @@ export function useModelDialogKeyboard({
       if (zone === "search" && key === "ArrowDown") return "filters";
       if (zone === "filters" && key === "ArrowUp") return "search";
       if (zone === "filters" && key === "ArrowDown") return "list";
-      if (zone === "list" && key === "ArrowUp" && selectedIndex === 0) return "filters";
-      if (zone === "list" && key === "ArrowDown" && selectedIndex >= filteredModels.length - 1) return "footer";
       if (zone === "footer" && key === "ArrowUp") return "list";
       return null;
     },
     enabled: open,
   });
 
-  const { scrollItemIntoView } = useScrollIntoView(listContainerRef);
+  // Use useNavigation for the model list — DOM-based navigation with role="radio"
+  const { focusedValue: focusedModelId, focus: focusModel } = useNavigation({
+    containerRef: listContainerRef,
+    role: "radio",
+    enabled: open && inZone("list") && filteredModels.length > 0,
+    wrap: false,
+    upKeys: ["ArrowUp", "k"],
+    downKeys: ["ArrowDown", "j"],
+    onSelect: (modelId) => {
+      // Space: check the radio
+      setCheckedModelId(modelId);
+    },
+    onEnter: (modelId) => {
+      // Enter: check + confirm + close
+      onSelect(modelId);
+      onOpenChange(false);
+    },
+    onBoundaryReached: (direction) => {
+      if (direction === "up") {
+        setFocusZone("filters");
+        setFilterIndex(0);
+      } else if (direction === "down") {
+        setFocusZone("footer");
+        setFooterButtonIndex(1);
+      }
+    },
+  });
 
   // Reset all state when dialog opens — intentionally omit deps other than `open`
   // to run exactly once per open transition, not on every model/filter change
@@ -86,28 +108,17 @@ export function useModelDialogKeyboard({
     setFilterIndex(0);
     setFooterButtonIndex(1);
     setCheckedModelId(currentModel);
-    const currentIndex = models.findIndex((m) => m.id === currentModel);
-    setSelectedIndex(currentIndex >= 0 ? currentIndex : 0);
+    // Focus the current model (or first) in the list after reset
+    const targetId = currentModel ?? models[0]?.id;
+    if (targetId) focusModel(targetId);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset once per dialog open, not on data changes
   }, [open]);
 
-  // Clamp selection when filtered list shrinks
-  const clampedSelectedIndex =
-    filteredModels.length > 0 && selectedIndex >= filteredModels.length
-      ? 0
-      : selectedIndex;
-
-  // Auto-scroll selected item into view
-  useEffect(() => {
-    if (focusZone === "list" && filteredModels.length > 0) {
-      scrollItemIntoView(clampedSelectedIndex);
-    }
-  }, [clampedSelectedIndex, focusZone, filteredModels.length, scrollItemIntoView]);
-
   const handleConfirm = () => {
-    const model = filteredModels[clampedSelectedIndex];
-    if (model) {
-      onSelect(model.id);
+    // Confirm the checked model (the one with the radio dot)
+    const modelId = checkedModelId ?? focusedModelId;
+    if (modelId) {
+      onSelect(modelId);
       onOpenChange(false);
     }
   };
@@ -119,47 +130,7 @@ export function useModelDialogKeyboard({
     onOpenChange(false);
   };
 
-  const handleCheck = () => {
-    const model = filteredModels[clampedSelectedIndex];
-    if (model) {
-      setCheckedModelId(model.id);
-    }
-  };
-
   const handleCancel = () => onOpenChange(false);
-
-  const navigateUp = () => {
-    if (selectedIndex > 0) {
-      setSelectedIndex((prev) => prev - 1);
-    } else {
-      setFocusZone("filters");
-      setFilterIndex(0);
-    }
-  };
-
-  const navigateDown = () => {
-    if (selectedIndex < filteredModels.length - 1) {
-      setSelectedIndex((prev) => prev + 1);
-    } else {
-      setFocusZone("footer");
-      setFooterButtonIndex(1);
-    }
-  };
-
-  // List zone — ArrowUp/ArrowDown side-effects (zone change handled by transitions)
-  useKey("ArrowUp", () => {
-    if (selectedIndex > 0) setSelectedIndex((prev) => prev - 1);
-    else setFilterIndex(0);
-  }, { enabled: open && inZone("list") });
-  useKey("ArrowDown", () => {
-    if (selectedIndex < filteredModels.length - 1) setSelectedIndex((prev) => prev + 1);
-    else setFooterButtonIndex(1);
-  }, { enabled: open && inZone("list") });
-  // j/k — manual zone transitions + index changes (not handled by useFocusZone)
-  useKey("k", navigateUp, { enabled: open && inZone("list") });
-  useKey("j", navigateDown, { enabled: open && inZone("list") });
-  useKey(" ", handleCheck, { enabled: open && inZone("list") && filteredModels.length > 0 });
-  useKey("Enter", handleConfirm, { enabled: open && inZone("list") && filteredModels.length > 0 });
 
   // Search zone — side-effect for transition
   useKey("ArrowDown", () => searchInputRef.current?.blur(),
@@ -168,8 +139,11 @@ export function useModelDialogKeyboard({
   // Filters zone — side-effects for transitions + horizontal nav + actions
   useKey("ArrowUp", () => searchInputRef.current?.focus(),
     { enabled: open && inZone("filters") });
-  useKey("ArrowDown", () => setSelectedIndex(0),
-    { enabled: open && inZone("filters") });
+  useKey("ArrowDown", () => {
+    // Focus first model when entering list from filters
+    const firstId = filteredModels[0]?.id;
+    if (firstId) focusModel(firstId);
+  }, { enabled: open && inZone("filters") });
   useKey("ArrowLeft", () => setFilterIndex((prev) => (prev > 0 ? prev - 1 : 2)), { enabled: open && inZone("filters") });
   useKey("ArrowRight", () => setFilterIndex((prev) => (prev < 2 ? prev + 1 : 0)), { enabled: open && inZone("filters") });
   useKey("Enter", () => setTierFilter(TIER_FILTERS[filterIndex]), { enabled: open && inZone("filters") });
@@ -178,8 +152,11 @@ export function useModelDialogKeyboard({
   // Footer zone — side-effect for transition + horizontal nav + actions
   useKey("ArrowLeft", () => setFooterButtonIndex(0), { enabled: open && inZone("footer") });
   useKey("ArrowRight", () => setFooterButtonIndex(1), { enabled: open && inZone("footer") });
-  useKey("ArrowUp", () => setSelectedIndex(filteredModels.length - 1),
-    { enabled: open && inZone("footer") });
+  useKey("ArrowUp", () => {
+    // Focus last model when entering list from footer
+    const lastId = filteredModels[filteredModels.length - 1]?.id;
+    if (lastId) focusModel(lastId);
+  }, { enabled: open && inZone("footer") });
   useKey("Enter", () => footerButtonIndex === 0 ? handleCancel() : handleConfirm(), { enabled: open && inZone("footer") });
   useKey(" ", () => footerButtonIndex === 0 ? handleCancel() : handleConfirm(), { enabled: open && inZone("footer") });
 
@@ -199,7 +176,8 @@ export function useModelDialogKeyboard({
     } else {
       searchInputRef.current?.blur();
       setFocusZone("list");
-      setSelectedIndex(0);
+      const firstId = filteredModels[0]?.id;
+      if (firstId) focusModel(firstId);
     }
   };
 
@@ -208,10 +186,15 @@ export function useModelDialogKeyboard({
     setFocusZone("filters");
   };
 
+  const handleListSelect = (modelId: string) => {
+    setFocusZone("list");
+    focusModel(modelId);
+    setCheckedModelId(modelId);
+  };
+
   return {
     focusZone,
-    selectedIndex: clampedSelectedIndex,
-    setSelectedIndex,
+    focusedModelId,
     checkedModelId,
     setCheckedModelId,
     filterIndex,
@@ -224,5 +207,6 @@ export function useModelDialogKeyboard({
     handleUseCustom,
     handleSearchEscape,
     handleSearchArrowDown,
+    handleListSelect,
   };
 }

@@ -73,19 +73,18 @@ export function ModelSelectDialog({
 
   const {
     focusZone,
-    selectedIndex,
-    setSelectedIndex,
+    focusedModelId,
     checkedModelId,
-    setCheckedModelId,
     filterIndex,
     setFilterIndex,
-    footerButtonIndex,
     setFocusZone,
     handleConfirm,
     handleCancel,
     handleUseCustom,
     handleSearchEscape,
     handleSearchArrowDown,
+    handleListSelect,
+    footerButtonIndex,
   } = useModelDialogKeyboard({
     open,
     currentModel,
@@ -159,15 +158,10 @@ export function ModelSelectDialog({
           <ModelList
             ref={listContainerRef}
             models={filteredModels}
-            selectedIndex={selectedIndex}
+            focusedModelId={focusedModelId}
             currentModelId={checkedModelId}
             isFocused={focusZone === "list"}
-            onSelect={(idx) => {
-              setFocusZone("list");
-              setSelectedIndex(idx);
-              const model = filteredModels[idx];
-              if (model) setCheckedModelId(model.id);
-            }}
+            onSelect={handleListSelect}
             onConfirm={handleConfirm}
             isLoading={provider === OPENROUTER_PROVIDER_ID && openRouter.loading}
             emptyLabel={emptyLabel}

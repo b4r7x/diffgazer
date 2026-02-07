@@ -7,16 +7,16 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: "bg-tui-blue text-primary-foreground font-bold hover:bg-tui-blue/90",
+        primary: "bg-tui-blue text-black font-bold hover:bg-tui-blue/90",
         secondary: "border border-tui-border bg-transparent hover:bg-tui-selection",
         destructive:
-          "text-tui-red border border-tui-red bg-transparent hover:bg-tui-red hover:text-destructive-foreground",
-        success: "bg-tui-green text-success-foreground font-bold hover:bg-tui-green/90",
+          "text-tui-red border border-tui-red bg-transparent hover:bg-tui-red hover:text-black",
+        success: "bg-tui-green text-black font-bold hover:bg-tui-green/90",
         ghost: "bg-transparent hover:bg-tui-selection",
         outline: "border border-tui-border bg-transparent text-tui-fg hover:bg-tui-border",
         tab: "bg-transparent text-tui-fg border-b-2 border-transparent hover:border-b-tui-blue data-[active=true]:border-b-tui-blue data-[active=true]:font-bold",
         toggle:
-          "border border-tui-border bg-transparent text-tui-fg data-[active=true]:bg-tui-blue data-[active=true]:text-primary-foreground data-[active=true]:border-tui-blue",
+          "border border-tui-border bg-transparent text-tui-fg data-[active=true]:bg-tui-blue data-[active=true]:text-black data-[active=true]:border-tui-blue",
         link: "bg-transparent text-tui-blue underline-offset-2 hover:underline",
       },
       size: {

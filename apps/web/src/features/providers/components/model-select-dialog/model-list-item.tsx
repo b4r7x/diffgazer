@@ -21,8 +21,9 @@ export function ModelListItem({
 }: ModelListItemProps) {
   return (
     <button
-      role="option"
-      aria-selected={isSelected}
+      role="radio"
+      aria-checked={isChecked}
+      data-value={model.id}
       type="button"
       onClick={onClick}
       onDoubleClick={onDoubleClick}

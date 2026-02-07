@@ -6,7 +6,10 @@ import { useNavigation } from "@stargazer/keyboard";
 export interface ThemeSelectorContentProps {
   value: Theme;
   onChange: (value: Theme) => void;
+  onEnter?: (value: Theme) => void;
   onFocus?: (value: Theme) => void;
+  onBoundaryReached?: (direction: "up" | "down") => void;
+  enabled?: boolean;
   showTerminalOption?: boolean;
 }
 
@@ -20,7 +23,10 @@ const THEME_OPTIONS: Array<{ value: Theme; label: string; description: string }>
 export function ThemeSelectorContent({
   value,
   onChange,
+  onEnter,
   onFocus,
+  onBoundaryReached,
+  enabled = true,
   showTerminalOption = false
 }: ThemeSelectorContentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -28,16 +34,15 @@ export function ThemeSelectorContent({
     ? THEME_OPTIONS
     : THEME_OPTIONS.filter(opt => opt.value !== 'terminal');
 
-  const onChangeStr = onChange as (value: string) => void;
-
   const { focusedValue, focus } = useNavigation({
     containerRef,
     role: "radio",
     value,
-    onValueChange: onChangeStr,
-    onSelect: onChangeStr,
-    onEnter: onChangeStr,
+    enabled,
+    onSelect: onChange as (value: string) => void,
+    onEnter: onEnter as ((value: string) => void) | undefined,
     onFocusChange: onFocus as ((value: string) => void) | undefined,
+    onBoundaryReached,
   });
 
   return (
