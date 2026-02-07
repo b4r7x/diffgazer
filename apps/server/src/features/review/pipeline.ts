@@ -34,7 +34,6 @@ import {
 } from "./types.js";
 
 export const MAX_DIFF_SIZE_BYTES = 524288; // 512KB
-export const MAX_AGENT_CONCURRENCY = 1;
 
 export function generateExecutiveSummary(
   issues: ReviewIssue[],
@@ -220,7 +219,7 @@ export async function executeReview(params: {
       await emit(event);
     },
     {
-      concurrency: MAX_AGENT_CONCURRENCY,
+      concurrency: getSettings().agentExecution === "parallel" ? config.activeLenses.length : 1,
       projectContext: config.projectContext,
       partialOnAllFailed: true,
       signal,

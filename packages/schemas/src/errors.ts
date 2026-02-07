@@ -15,6 +15,7 @@ export const ErrorCode = {
   COMMAND_FAILED: "COMMAND_FAILED",
   INVALID_PATH: "INVALID_PATH",
   TRUST_REQUIRED: "TRUST_REQUIRED",
+  SETUP_REQUIRED: "SETUP_REQUIRED",
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];

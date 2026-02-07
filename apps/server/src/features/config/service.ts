@@ -1,6 +1,6 @@
 import { type Result, ok, err } from "@stargazer/core/result";
 import { createError, getErrorMessage } from "@stargazer/core/errors";
-import type { AIProvider } from "@stargazer/schemas/config";
+import type { AIProvider, SetupField, SetupStatus } from "@stargazer/schemas/config";
 import { ErrorCode } from "@stargazer/schemas/errors";
 import type { SecretsStorageError } from "../../shared/lib/config/types.js";
 import type {
@@ -37,6 +37,36 @@ export const getProvidersStatus = (): ProvidersStatusResponse => {
   };
 };
 
+export const getSetupStatus = (projectRoot?: string): SetupStatus => {
+  const settings = getSettings();
+  const providers = getProviders();
+  const activeProvider = providers.find((p) => p.isActive) ?? null;
+  const project = getProjectInfo(projectRoot);
+
+  const hasSecretsStorage = settings.secretsStorage !== null;
+  const hasProvider = activeProvider !== null;
+  const hasModel = Boolean(activeProvider?.model);
+  const hasTrust = Boolean(project.trust?.capabilities.readFiles);
+
+  const missing: SetupField[] = [];
+  if (!hasSecretsStorage) missing.push("secretsStorage");
+  if (!hasProvider) missing.push("provider");
+  if (!hasModel) missing.push("model");
+  if (!hasTrust) missing.push("trust");
+
+  const isConfigured = hasSecretsStorage && hasProvider && hasModel;
+
+  return {
+    hasSecretsStorage,
+    hasProvider,
+    hasModel,
+    hasTrust,
+    isConfigured,
+    isReady: isConfigured && hasTrust,
+    missing,
+  };
+};
+
 export const getInitState = (projectRoot?: string): InitResponse => {
   const providers = getProviders();
   const activeProvider = providers.find((provider) => provider.isActive) ?? null;
@@ -49,6 +79,7 @@ export const getInitState = (projectRoot?: string): InitResponse => {
     providers,
     configured: providers.some((provider) => provider.isActive),
     project: getProjectInfo(projectRoot),
+    setup: getSetupStatus(projectRoot),
   };
 };
 
@@ -88,10 +119,10 @@ export const activateProvider = (input: {
 }): Result<ActivateProviderResponse, { message: string; code: string }> => {
   const { provider, model } = input;
 
-  if (provider === "openrouter" && !model) {
-    const existing = getProviders().find((p) => p.provider === "openrouter");
+  if (!model) {
+    const existing = getProviders().find((p) => p.provider === provider);
     if (!existing?.model) {
-      return err(createError("INVALID_BODY", "Model is required for OpenRouter"));
+      return err(createError("INVALID_BODY", "Model selection is required"));
     }
   }
 

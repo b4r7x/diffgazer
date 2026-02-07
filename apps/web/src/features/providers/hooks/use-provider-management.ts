@@ -66,8 +66,8 @@ export function useProviderManagement() {
     providerName: string,
     model: string | undefined,
   ) => {
-    if (providerId === "openrouter" && !model) {
-      showToast({ variant: "error", title: "Model Required", message: "Select a model for OpenRouter first" });
+    if (!model) {
+      showToast({ variant: "error", title: "Model Required", message: "Select a model first" });
       setModelDialogOpen(true);
       return;
     }

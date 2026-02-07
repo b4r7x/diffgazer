@@ -2,7 +2,7 @@ import { NavigationList, NavigationListItem } from '@/components/ui/navigation-l
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/form';
 import { cn } from '@/utils/cn';
-import { PROVIDER_CAPABILITIES, OPENROUTER_PROVIDER_ID } from '@/config/constants';
+import { PROVIDER_CAPABILITIES } from '@/config/constants';
 import { PROVIDER_FILTER_LABELS, type ProviderFilter } from '@/features/providers/constants';
 import type { ProviderWithStatus, DisplayStatus } from '../types';
 
@@ -117,8 +117,9 @@ export function ProviderList({
                   </Badge>
                 }
                 subtitle={
-                  provider.defaultModel ||
-                  (provider.id === OPENROUTER_PROVIDER_ID ? "Select model" : undefined)
+                  !provider.model
+                    ? "Select model"
+                    : (provider.defaultModel || undefined)
                 }
               >
                 {provider.name}
