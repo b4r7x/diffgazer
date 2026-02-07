@@ -1,8 +1,7 @@
 import { AVAILABLE_PROVIDERS, GEMINI_MODEL_INFO, GLM_MODEL_INFO } from "@stargazer/schemas/config";
 import type { AIProvider, ModelInfo } from "@stargazer/schemas/config";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/form";
+import { RadioGroup, RadioGroupItem, Badge } from "@stargazer/ui";
 import { useOpenRouterModels } from "@/hooks/use-openrouter-models";
-import { Badge } from "@/components/ui/badge";
 
 interface ModelStepProps {
   provider: AIProvider;

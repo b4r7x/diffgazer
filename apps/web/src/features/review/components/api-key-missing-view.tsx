@@ -1,7 +1,7 @@
 import type { AIProvider } from '@stargazer/schemas/config';
-import { useScope, useKey } from '@/hooks/keyboard';
+import { useScope, useKey } from '@stargazer/keyboard';
 import { usePageFooter } from '@/hooks/use-page-footer';
-import { Button } from '@/components/ui/button';
+import { Button } from '@stargazer/ui';
 
 const FOOTER_SHORTCUTS = [{ key: 'Enter', label: 'Setup Provider' }];
 const FOOTER_RIGHT_SHORTCUTS = [{ key: 'Esc', label: 'Back' }];
@@ -32,7 +32,7 @@ export function ApiKeyMissingView({
         <div className="text-tui-yellow text-lg font-bold mb-4">
           {missingModel ? "Model Required" : "API Key Required"}
         </div>
-        <p className="text-gray-400 font-mono text-sm mb-6">
+        <p className="text-tui-muted font-mono text-sm mb-6">
           {missingModel
             ? `No model selected${activeProvider ? ` for ${activeProvider}` : ''}.`
             : `No API key configured${activeProvider ? ` for ${activeProvider}` : ''}.`}

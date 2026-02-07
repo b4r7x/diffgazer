@@ -1,0 +1,74 @@
+import type { ButtonHTMLAttributes, Ref } from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "../lib/cn";
+
+export const buttonVariants = cva(
+  "inline-flex items-center justify-center font-mono whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tui-blue focus-visible:ring-offset-2 focus-visible:ring-offset-tui-bg disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
+  {
+    variants: {
+      variant: {
+        primary: "bg-tui-blue text-primary-foreground font-bold hover:bg-tui-blue/90",
+        secondary: "border border-tui-border bg-transparent hover:bg-tui-selection",
+        destructive:
+          "text-tui-red border border-tui-red bg-transparent hover:bg-tui-red hover:text-destructive-foreground",
+        success: "bg-tui-green text-success-foreground font-bold hover:bg-tui-green/90",
+        ghost: "bg-transparent hover:bg-tui-selection",
+        outline: "border border-tui-border bg-transparent text-tui-fg hover:bg-tui-border",
+        tab: "bg-transparent text-tui-fg border-b-2 border-transparent hover:border-b-tui-blue data-[active=true]:border-b-tui-blue data-[active=true]:font-bold",
+        toggle:
+          "border border-tui-border bg-transparent text-tui-fg data-[active=true]:bg-tui-blue data-[active=true]:text-primary-foreground data-[active=true]:border-tui-blue",
+        link: "bg-transparent text-tui-blue underline-offset-2 hover:underline",
+      },
+      size: {
+        sm: "h-7 px-3 text-xs",
+        md: "h-9 px-4 py-2 text-sm",
+        lg: "h-11 px-6 py-2 text-base",
+        icon: "h-9 w-9 p-0",
+      },
+    },
+    defaultVariants: {
+      variant: "primary",
+      size: "md",
+    },
+  }
+);
+
+export interface ButtonProps
+  extends ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  bracket?: boolean;
+  loading?: boolean;
+  ref?: Ref<HTMLButtonElement>;
+}
+
+export function Button({
+  className,
+  variant,
+  size,
+  bracket,
+  loading = false,
+  children,
+  ref,
+  ...props
+}: ButtonProps) {
+  return (
+    <button
+      className={cn(
+        buttonVariants({ variant, size, className }),
+        loading && "pointer-events-none"
+      )}
+      ref={ref}
+      aria-busy={loading || undefined}
+      disabled={props.disabled || loading}
+      {...props}
+    >
+      {loading ? (
+        bracket ? <>[ ... ]</> : "[...]"
+      ) : bracket ? (
+        <>[ {children} ]</>
+      ) : (
+        children
+      )}
+    </button>
+  );
+}

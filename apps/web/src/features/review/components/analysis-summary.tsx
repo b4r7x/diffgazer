@@ -1,6 +1,5 @@
 import { cn } from '@/utils/cn';
-import { Panel, PanelHeader, PanelContent } from '@/components/ui/containers';
-import { Button } from '@/components/ui/button';
+import { Panel, PanelHeader, PanelContent, Button } from '@stargazer/ui';
 import { SeverityBreakdown } from '@/components/ui/severity';
 import { IssuePreviewItem } from './issue-preview-item';
 import { LensStatsTable, type LensStats } from './lens-stats-table';
@@ -33,7 +32,7 @@ export function AnalysisSummary({
         <h1 className="text-2xl font-bold text-tui-green mb-2">
           Analysis Complete #{stats.runId}
         </h1>
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-tui-muted">
           Found <span className="text-tui-fg font-bold">{stats.totalIssues} issues</span> across{' '}
           <span className="text-tui-fg font-bold">{stats.filesAnalyzed} files</span>.
           {stats.criticalCount > 0 && (
@@ -89,7 +88,7 @@ export function AnalysisSummary({
         <Button variant="success" size="lg" onClick={onEnterReview} className="w-full sm:w-auto">
           [ Enter Review Queue ]
         </Button>
-        <Button variant="ghost" size="md" onClick={onBack} className="text-gray-500">
+        <Button variant="ghost" size="md" onClick={onBack} className="text-tui-muted">
           [ Back ]
         </Button>
       </div>

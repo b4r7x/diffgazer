@@ -1,5 +1,4 @@
-import { NavigationList, NavigationListItem } from "@/components/ui/navigation-list";
-import { Badge } from "@/components/ui/badge";
+import { NavigationList, NavigationListItem, Badge } from "@stargazer/ui";
 import { AVAILABLE_PROVIDERS } from "@stargazer/schemas/config";
 import type { AIProvider } from "@stargazer/schemas/config";
 import { PROVIDER_CAPABILITIES } from "@/config/constants";

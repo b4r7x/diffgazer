@@ -1,7 +1,7 @@
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createContext, useContext, useState, useRef, type ReactNode } from "react";
 import { cn } from "@/utils/cn";
-import { useGroupNavigation } from "@/hooks/keyboard";
+import { useGroupNavigation } from "@stargazer/keyboard";
 import {
   selectableItemVariants,
   selectableItemContainerVariants,

@@ -18,7 +18,7 @@ const labelColors: Record<InfoFieldColor, string> = {
   green: "text-tui-green",
   yellow: "text-tui-yellow",
   red: "text-tui-red",
-  muted: "text-gray-400",
+  muted: "text-tui-muted",
 };
 
 export function InfoField({

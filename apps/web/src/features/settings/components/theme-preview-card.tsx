@@ -1,6 +1,4 @@
-import { Panel, PanelHeader, PanelContent } from "@/components/ui/containers";
-import { Menu, MenuItem } from "@/components/ui/menu";
-import { Badge } from "@/components/ui/badge/badge";
+import { Panel, PanelHeader, PanelContent, Menu, MenuItem, Badge } from "@stargazer/ui";
 import type { ResolvedTheme } from "@/types/theme";
 
 interface ThemePreviewCardProps {

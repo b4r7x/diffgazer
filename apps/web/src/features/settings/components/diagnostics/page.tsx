@@ -1,9 +1,8 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useKey, useFooterNavigation } from "@/hooks/keyboard";
+import { useKey, useFooterNavigation } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { Panel, PanelHeader, PanelContent } from "@/components/ui/containers";
-import { Button } from "@/components/ui/button";
+import { Panel, PanelHeader, PanelContent, Button } from "@stargazer/ui";
 import { cn } from "@/utils/cn";
 import { useContextManagement } from "@/features/settings/hooks/use-context-management";
 
@@ -115,7 +114,7 @@ export function DiagnosticsPage() {
               disabled={!canDownloadContext}
               className={cn(
                 "transition-colors",
-                "hover:bg-tui-selection hover:text-white hover:border-tui-green",
+                "hover:bg-tui-selection hover:text-tui-fg hover:border-tui-green",
                 "focus:outline-none focus:ring-1 focus:ring-tui-green",
                 focusedIndex === 0 && canDownloadContext && "ring-2 ring-tui-green border-tui-green"
               )}

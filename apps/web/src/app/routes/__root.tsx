@@ -1,9 +1,8 @@
 import React from "react";
 import { Outlet } from "@tanstack/react-router";
-import { Button } from "@/components/ui/button";
+import { Button, ToastProvider } from "@stargazer/ui";
 import { GlobalLayout } from "@/components/layout";
 import { FooterProvider } from "@/components/layout";
-import { ToastProvider } from "@/components/ui/toast";
 import { useServerStatus } from "@/hooks/use-server-status";
 
 class RouteErrorBoundary extends React.Component<
@@ -21,8 +20,8 @@ class RouteErrorBoundary extends React.Component<
       return (
         <div className="flex h-screen items-center justify-center bg-tui-bg text-tui-fg font-mono">
           <div className="text-center">
-            <p className="text-red-400 mb-2">Something went wrong</p>
-            <p className="text-gray-500 text-sm">{this.state.error.message}</p>
+            <p className="text-tui-red mb-2">Something went wrong</p>
+            <p className="text-tui-muted text-sm">{this.state.error.message}</p>
             <button
               type="button"
               className="mt-4 px-4 py-2 border border-tui-border text-sm hover:bg-tui-border/20"
@@ -47,7 +46,7 @@ export function RootLayout() {
   if (state.status === "checking") {
     return (
       <div className="flex h-screen items-center justify-center bg-tui-bg text-tui-fg font-mono">
-        <span className="text-gray-500">Connecting...</span>
+        <span className="text-tui-muted">Connecting...</span>
       </div>
     );
   }

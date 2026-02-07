@@ -1,6 +1,6 @@
 import { useState, type RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useKey } from "@/hooks/keyboard";
+import { useKey } from "@stargazer/keyboard";
 import { PROVIDER_FILTER_VALUES, type ProviderFilter } from "@/features/providers/constants";
 import type { AIProvider } from "@stargazer/schemas/config";
 

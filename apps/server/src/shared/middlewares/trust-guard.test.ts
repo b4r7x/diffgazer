@@ -30,7 +30,7 @@ describe("requireRepoAccess", () => {
     const res = await app.request("/test");
 
     expect(res.status).toBe(403);
-    const body = await res.json();
+    const body = await res.json() as any;
     expect(body.error.code).toBe("TRUST_REQUIRED");
   });
 
@@ -42,7 +42,7 @@ describe("requireRepoAccess", () => {
     const res = await app.request("/test");
 
     expect(res.status).toBe(403);
-    const body = await res.json();
+    const body = await res.json() as any;
     expect(body.error.code).toBe("TRUST_REQUIRED");
   });
 
@@ -54,7 +54,7 @@ describe("requireRepoAccess", () => {
     const res = await app.request("/test");
 
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await res.json() as any;
     expect(body.ok).toBe(true);
   });
 });

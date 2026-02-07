@@ -1,4 +1,4 @@
-import { PanelHeader } from '@/components/ui/containers';
+import { PanelHeader } from '@stargazer/ui';
 import { MetricItem } from './metric-item';
 import { Timer } from './timer';
 import type { ReviewProgressMetrics } from '@stargazer/schemas/ui';

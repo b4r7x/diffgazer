@@ -1,6 +1,6 @@
 import { useState, useEffect, type RefObject } from "react";
 import type { ModelInfo } from "@stargazer/schemas/config";
-import { useKey } from "@/hooks/keyboard";
+import { useKey } from "@stargazer/keyboard";
 import { useScrollIntoView } from "@/hooks/use-scroll-into-view";
 import { TIER_FILTERS, type TierFilter } from "@/features/providers/constants";
 

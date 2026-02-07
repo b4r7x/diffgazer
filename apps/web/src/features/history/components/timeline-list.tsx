@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { cn } from "@/utils/cn";
-import { useGroupNavigation } from "@/hooks/keyboard";
+import { useGroupNavigation } from "@stargazer/keyboard";
 import type { TimelineItem } from "@stargazer/schemas/ui";
 
 export interface TimelineListProps {
@@ -47,11 +47,11 @@ export function TimelineList({
             className={cn(
               "flex items-center justify-between text-sm px-2 py-1 rounded cursor-pointer",
               isSelected && "bg-tui-selection text-tui-blue font-bold",
-              !isSelected && "text-gray-400 hover:text-tui-fg hover:bg-white/5"
+              !isSelected && "text-tui-muted hover:text-tui-fg hover:bg-tui-selection/30"
             )}
           >
             <span className="flex items-center gap-2">
-              <span className={cn("text-[10px]", isSelected ? "text-tui-blue" : "text-gray-600")}>
+              <span className={cn("text-[10px]", isSelected ? "text-tui-blue" : "text-muted-foreground")}>
                 {isSelected ? "●" : "○"}
               </span>
               {item.label}

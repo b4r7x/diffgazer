@@ -7,7 +7,7 @@ export interface DiffViewProps {
 
 export function DiffView({ patch, className }: DiffViewProps) {
   return (
-    <pre className={cn("bg-black border border-tui-border p-2 font-mono text-xs overflow-x-auto", className)}>
+    <pre className={cn("bg-tui-bg border border-tui-border p-2 font-mono text-xs overflow-x-auto", className)}>
       {patch.split("\n").map((line, i) => (
         <div
           key={i}

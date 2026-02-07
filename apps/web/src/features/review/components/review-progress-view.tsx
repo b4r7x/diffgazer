@@ -1,15 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { cn } from '@/utils/cn';
-import { PanelHeader } from '@/components/ui/containers';
+import { PanelHeader, Badge, type BadgeProps, Button, Callout } from '@stargazer/ui';
 import { ProgressList, type ProgressStepData } from '@/components/ui/progress';
 import { ActivityLog, type LogEntryData } from './activity-log';
 import { AgentBoard } from './agent-board';
 import { ContextSnapshotPreview } from './context-snapshot-preview';
 import { ReviewMetricsFooter } from './review-metrics-footer';
-import { Badge, type BadgeProps } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Callout } from '@/components/ui/callout';
 import { useReviewProgressKeyboard } from '../hooks/use-review-progress-keyboard';
 import type { AgentState } from '@stargazer/schemas/events';
 import type { ReviewContextResponse } from '@stargazer/api/types';
@@ -47,7 +44,7 @@ function AgentFilterBar({ agents, active, onChange }: { agents: AgentOption[]; a
         onClick={() => onChange(null)}
         className={cn(
           'text-[10px] font-mono px-2 py-1 border',
-          active === null ? 'border-tui-blue text-tui-blue' : 'border-tui-border text-gray-500'
+          active === null ? 'border-tui-blue text-tui-blue' : 'border-tui-border text-tui-muted'
         )}
       >
         All
@@ -59,7 +56,7 @@ function AgentFilterBar({ agents, active, onChange }: { agents: AgentOption[]; a
           onClick={() => onChange(agent.name)}
           className={cn(
             'text-[10px] font-mono px-2 py-1 border',
-            active === agent.name ? 'border-tui-violet text-tui-violet' : 'border-tui-border text-gray-500'
+            active === agent.name ? 'border-tui-violet text-tui-violet' : 'border-tui-border text-tui-muted'
           )}
         >
           <Badge variant={(agent.badgeVariant as BadgeProps['variant']) ?? 'info'} size="sm" className="mr-1">
@@ -81,9 +78,9 @@ function ErrorDisplay({ error, isApiKeyError, onCancel }: { error: string; isApi
         <div className="text-tui-red text-lg font-bold mb-2">
           {isApiKeyError ? 'API Key Error' : 'Error'}
         </div>
-        <div className="text-gray-400 font-mono text-sm mb-2">{error}</div>
+        <div className="text-tui-muted font-mono text-sm mb-2">{error}</div>
         {isApiKeyError && (
-          <div className="text-gray-500 text-sm mb-4">
+          <div className="text-tui-muted text-sm mb-4">
             Your API key may be invalid or expired.
           </div>
         )}
@@ -196,7 +193,7 @@ export function ReviewProgressView({
       >
         <div className="flex justify-between items-end mb-2 pt-2 border-b border-tui-border pb-2">
           <PanelHeader variant="section" className="mb-0">Live Activity Log</PanelHeader>
-          <span className="text-[10px] text-gray-600 font-mono">tail -f agent.log</span>
+          <span className="text-[10px] text-muted-foreground font-mono">tail -f agent.log</span>
         </div>
 
         <AgentFilterBar agents={agentOptions} active={agentFilter} onChange={setAgentFilter} />

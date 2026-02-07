@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { Input, Radio } from "@/components/ui/form";
+import { Input, Radio } from "@stargazer/ui";
 import { cn } from "@/utils/cn";
 import type { FocusElement } from "@/types/focus-element";
 import type { InputMethod } from "@/types/input-method";
@@ -52,7 +52,7 @@ export function ApiKeyMethodSelector({
               focused === "input" && "ring-2 ring-tui-blue"
             )}
           >
-            <span className="text-gray-500 mr-1 select-none">KEY:</span>
+            <span className="text-tui-muted mr-1 select-none">KEY:</span>
             <Input
               ref={inputRef}
               type="password"
@@ -67,7 +67,7 @@ export function ApiKeyMethodSelector({
               }}
               disabled={method !== "paste"}
               aria-label={`${providerName} API Key`}
-              className="flex-1 bg-transparent text-white tracking-widest border-0 focus:ring-0 h-auto p-0 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 bg-transparent text-tui-fg tracking-widest border-0 focus:ring-0 h-auto p-0 disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
         </div>
@@ -85,8 +85,8 @@ export function ApiKeyMethodSelector({
           focused={focused === "env"}
         />
         <div className="pl-9">
-          <div className="flex items-center bg-tui-bg border border-tui-border px-3 py-2 w-full text-gray-500">
-            <span className="mr-2 select-none text-gray-600">$</span>
+          <div className="flex items-center bg-tui-bg border border-tui-border px-3 py-2 w-full text-tui-muted">
+            <span className="mr-2 select-none text-muted-foreground">$</span>
             <span>{envVarName}</span>
           </div>
         </div>

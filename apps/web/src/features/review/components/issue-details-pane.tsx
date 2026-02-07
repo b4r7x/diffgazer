@@ -1,11 +1,8 @@
 import { cn } from "@/utils/cn";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent, FocusablePane, SectionHeader, EmptyState } from "@stargazer/ui";
 import { CodeSnippet, type CodeLine } from "./code-snippet";
 import { DiffView } from "./diff-view";
 import { FixPlanChecklist } from "./fix-plan-checklist";
-import { FocusablePane } from "@/components/ui/focusable-pane";
-import { SectionHeader } from "@/components/ui/section-header";
-import { EmptyState } from "@/components/ui/empty-state";
 import { IssueHeader } from "./issue-header";
 
 import type { ReviewIssue } from "@stargazer/schemas/review";
@@ -57,7 +54,7 @@ export function IssueDetailsPane({
               </TabsContent>
 
               <TabsContent value="explain" className="mt-0">
-                <div className="text-sm text-gray-300">
+                <div className="text-sm text-tui-fg/80">
                   <p className="mb-4">{issue.rationale}</p>
                   <p>{issue.recommendation}</p>
                 </div>
@@ -103,7 +100,7 @@ function DetailsTabContent({
     <>
       <div className="mb-6">
         <SectionHeader>SYMPTOM</SectionHeader>
-        <p className="text-sm leading-relaxed text-gray-300">{issue.symptom}</p>
+        <p className="text-sm leading-relaxed text-tui-fg/80">{issue.symptom}</p>
         {evidenceLines.length > 0 && (
           <div className="mt-2">
             <CodeSnippet lines={evidenceLines} />
@@ -113,7 +110,7 @@ function DetailsTabContent({
 
       <div className="mb-6">
         <SectionHeader>WHY IT MATTERS</SectionHeader>
-        <p className="text-sm leading-relaxed text-gray-300">{issue.whyItMatters}</p>
+        <p className="text-sm leading-relaxed text-tui-fg/80">{issue.whyItMatters}</p>
       </div>
 
       {issue.fixPlan && issue.fixPlan.length > 0 && (
@@ -140,7 +137,7 @@ function TraceTabContent({ issue }: { issue: ReviewIssue }) {
       {issue.trace.map((t) => (
         <div key={t.step} className="border-l-2 border-tui-border pl-2">
           <div className="text-tui-fg text-sm">Step {t.step}: {t.tool}</div>
-          <div className="text-gray-500 text-xs">{t.outputSummary}</div>
+          <div className="text-tui-muted text-xs">{t.outputSummary}</div>
         </div>
       ))}
     </div>

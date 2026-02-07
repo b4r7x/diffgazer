@@ -1,5 +1,4 @@
-import { PanelHeader } from "@/components/ui/containers";
-import { Button } from "@/components/ui/button";
+import { PanelHeader, Button } from "@stargazer/ui";
 import { downloadAsFile } from "@/utils/download";
 import type { ReviewContextResponse } from "@stargazer/api/types";
 
@@ -17,10 +16,10 @@ export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps
   return (
     <div className="mb-8">
       <PanelHeader variant="section-bordered">Context Snapshot</PanelHeader>
-      <div className="text-xs text-gray-500">
+      <div className="text-xs text-tui-muted">
         {snapshot.meta.charCount.toLocaleString()} chars
       </div>
-      <pre className="mt-3 max-h-28 overflow-auto border border-tui-border bg-tui-selection/10 p-2 text-[10px] text-gray-500">
+      <pre className="mt-3 max-h-28 overflow-auto border border-tui-border bg-tui-selection/10 p-2 text-[10px] text-tui-muted">
         {contextPreview.preview}
         {contextPreview.truncated ? "\n... (preview)" : ""}
       </pre>

@@ -62,7 +62,7 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
   if (loadingMessage) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <div className="text-gray-500 font-mono text-sm" role="status" aria-live="polite">
+        <div className="text-tui-muted font-mono text-sm" role="status" aria-live="polite">
           {loadingMessage}
         </div>
       </div>

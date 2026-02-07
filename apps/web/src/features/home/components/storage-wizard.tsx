@@ -1,8 +1,6 @@
 import { useState } from "react";
 import type { SecretsStorage } from "@stargazer/schemas/config";
-import { Button } from "@/components/ui/button";
-import { Callout } from "@/components/ui/callout";
-import { WizardLayout } from "@/components/shared/wizard-layout";
+import { Button, Callout, CardLayout } from "@stargazer/ui";
 import { StorageSelectorContent } from "@/components/shared/storage-selector-content";
 
 export interface StorageWizardProps {
@@ -25,7 +23,7 @@ export function StorageWizard({
   };
 
   return (
-    <WizardLayout
+    <CardLayout
       title="Configure Secrets Storage"
       subtitle="Choose where API keys and sensitive data should be stored."
       footer={
@@ -53,6 +51,6 @@ export function StorageWizard({
           <p className="text-tui-red text-sm">{error}</p>
         )}
       </div>
-    </WizardLayout>
+    </CardLayout>
   );
 }

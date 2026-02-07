@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button } from "@stargazer/ui";
 import { cn } from "@/utils/cn";
 
 interface Hint {
@@ -25,7 +25,7 @@ export function DialogFooterActions({
 }: DialogFooterActionsProps) {
   return (
     <>
-      <div className="flex gap-3 text-[10px] text-gray-500">
+      <div className="flex gap-3 text-[10px] text-tui-muted">
         {hints.map((hint) => (
           <span key={hint.key}>
             {hint.key} {hint.label}
@@ -38,7 +38,7 @@ export function DialogFooterActions({
           size="sm"
           onClick={onCancel}
           className={cn(
-            "text-gray-500 hover:text-tui-fg h-auto px-2 py-1",
+            "text-tui-muted hover:text-tui-fg h-auto px-2 py-1",
             cancelFocused && "ring-2 ring-tui-blue"
           )}
         >

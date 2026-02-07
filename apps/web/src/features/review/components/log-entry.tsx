@@ -1,7 +1,7 @@
 import { formatTimestamp } from '@stargazer/core/format';
 import { cn } from '@/utils/cn';
 import type { LogTagType } from '@stargazer/schemas/ui';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@stargazer/ui';
 
 export type { LogTagType };
 

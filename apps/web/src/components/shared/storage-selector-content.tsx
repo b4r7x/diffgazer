@@ -1,5 +1,5 @@
 import type { SecretsStorage } from '@stargazer/schemas/config';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/form';
+import { RadioGroup, RadioGroupItem } from '@stargazer/ui';
 
 export interface StorageSelectorContentProps {
   value: SecretsStorage | null;

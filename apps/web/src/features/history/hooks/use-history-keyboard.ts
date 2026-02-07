@@ -1,6 +1,6 @@
 import { type RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useScope, useKey } from "@/hooks/keyboard";
+import { useScope, useKey } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import type { HistoryFocusZone } from "@/features/history/types";
 

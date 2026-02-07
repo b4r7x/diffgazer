@@ -24,7 +24,7 @@ export function FixPlanChecklist({ steps, completedSteps, onToggle, className }:
             <span className={isComplete ? "text-tui-green" : "text-tui-fg"} aria-hidden="true">
               [{isComplete ? "x" : " "}]
             </span>
-            <span className={isComplete ? "text-gray-400 line-through" : ""}>{step.action}</span>
+            <span className={isComplete ? "text-tui-muted line-through" : ""}>{step.action}</span>
           </button>
         );
       })}

@@ -1,8 +1,5 @@
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { SectionHeader } from '@/components/ui/section-header';
+import { Badge, Button, SectionHeader, KeyValueRow } from '@stargazer/ui';
 import { CapabilityCard } from './capability-card';
-import { StatusRow } from '@/components/ui/status-row';
 import { PROVIDER_CAPABILITIES, OPENROUTER_PROVIDER_ID } from '@/config/constants';
 import type { ProviderWithStatus } from '../types';
 
@@ -39,7 +36,7 @@ export function ProviderDetails({
 }: ProviderDetailsProps) {
   if (!provider) {
     return (
-      <div className="flex-1 flex items-center justify-center text-gray-500 text-sm">
+      <div className="flex-1 flex items-center justify-center text-tui-muted text-sm">
         Select a provider to view details
       </div>
     );
@@ -48,7 +45,7 @@ export function ProviderDetails({
   const capabilities = PROVIDER_CAPABILITIES[provider.id];
   if (!capabilities) {
     return (
-      <div className="flex-1 flex items-center justify-center text-gray-500 text-sm">
+      <div className="flex-1 flex items-center justify-center text-tui-muted text-sm">
         Unknown provider: {provider.id}
       </div>
     );
@@ -87,7 +84,7 @@ export function ProviderDetails({
       <section className="mb-6">
         <SectionHeader className="text-tui-violet mb-4 tracking-widest flex items-center">Cost Tier <span className="ml-2 flex-1 h-px bg-tui-border" /></SectionHeader>
         <div className="border-l-2 border-tui-green pl-4">
-          <p className="text-xs text-gray-400 leading-relaxed">
+          <p className="text-xs text-tui-muted leading-relaxed">
             {capabilities.costDescription}
           </p>
         </div>
@@ -96,23 +93,23 @@ export function ProviderDetails({
       {/* Status Rows */}
       <section className="mb-6">
         <SectionHeader className="text-tui-violet mb-4 tracking-widest flex items-center">Status <span className="ml-2 flex-1 h-px bg-tui-border" /></SectionHeader>
-        <StatusRow
+        <KeyValueRow
           label="API Key Status"
           value={
             provider.hasApiKey ? (
-              <Badge variant="stored">[ STORED ]</Badge>
+              <Badge variant="info">[ STORED ]</Badge>
             ) : (
-              <span className="text-gray-500">Not configured</span>
+              <span className="text-tui-muted">Not configured</span>
             )
           }
         />
-        <StatusRow
+        <KeyValueRow
           label="Selected Model"
           value={
             provider.model ? (
               <span className="text-tui-fg">{provider.model}</span>
             ) : (
-              <span className="text-gray-500">
+              <span className="text-tui-muted">
                 {provider.id === OPENROUTER_PROVIDER_ID
                   ? "Model required"
                   : `${provider.defaultModel} (default)`}

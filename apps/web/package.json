@@ -4,8 +4,11 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "predev": "pnpm --filter @stargazer/keyboard build && pnpm --filter @stargazer/ui build",
     "dev": "vite",
+    "prebuild": "pnpm --filter @stargazer/keyboard build && pnpm --filter @stargazer/ui build",
     "build": "tsc -b && vite build",
+    "pretest": "pnpm --filter @stargazer/keyboard build && pnpm --filter @stargazer/ui build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -14,7 +17,9 @@
     "@stargazer/api": "workspace:*",
     "@stargazer/core": "workspace:*",
     "@stargazer/hooks": "workspace:*",
+    "@stargazer/keyboard": "workspace:*",
     "@stargazer/schemas": "workspace:*",
+    "@stargazer/ui": "workspace:*",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-router": "^1.158.1",
     "class-variance-authority": "^0.7.1",

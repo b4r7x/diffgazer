@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button } from "@stargazer/ui";
 
 interface ModelSearchInputProps {
   value: string;
@@ -51,7 +51,7 @@ export function ModelSearchInput({
               }
             }}
             placeholder="Search models..."
-            className="w-full bg-tui-input-bg border border-tui-border px-3 py-1.5 pl-6 text-xs focus:border-tui-blue focus:outline-none placeholder:text-gray-600"
+            className="w-full bg-tui-input-bg border border-tui-border px-3 py-1.5 pl-6 text-xs focus:border-tui-blue focus:outline-none placeholder:text-muted-foreground"
           />
         </div>
         {showCustomAction && (
@@ -67,7 +67,7 @@ export function ModelSearchInput({
         )}
       </div>
       {showCustomAction && (
-        <div className="pt-2 text-[10px] text-gray-500">
+        <div className="pt-2 text-[10px] text-tui-muted">
           Tip: enter a custom model ID and press Enter
         </div>
       )}

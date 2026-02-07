@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useScope, useKey } from '@/hooks/keyboard';
+import { useScope, useKey } from '@stargazer/keyboard';
 import { DialogContext, type DialogContextValue } from './dialog-context';
 
 export interface DialogProps {

@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { InfoField } from "./info-field";
-import { Panel, PanelContent, PanelHeader } from "@/components/ui/containers";
+import { Panel, PanelContent, PanelHeader } from "@stargazer/ui";
 import type { ContextInfo } from "@stargazer/schemas/ui";
 
 interface ContextSidebarProps {

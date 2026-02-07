@@ -1,6 +1,5 @@
 import { cn } from '@/utils/cn';
-import { PanelHeader } from '@/components/ui/containers';
-import { Badge } from '@/components/ui/badge';
+import { PanelHeader, Badge } from '@stargazer/ui';
 import type { AgentState } from '@stargazer/schemas/events';
 
 const AGENT_STATUS_META = {
@@ -34,7 +33,7 @@ export function AgentBoard({ agents }: AgentBoardProps) {
                   {status.label}
                 </Badge>
               </div>
-              <div className="text-xs text-gray-500 mt-1 truncate">
+              <div className="text-xs text-tui-muted mt-1 truncate">
                 {agent.currentAction ?? "Standing by"}
               </div>
               <div className="mt-2 h-1 w-full bg-tui-border">

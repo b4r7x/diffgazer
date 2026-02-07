@@ -32,7 +32,7 @@ export function ModelList({
         aria-label="Available models"
         className="px-4 py-2 max-h-60 overflow-y-auto scrollbar-thin"
       >
-        <div className="text-center text-gray-500 py-8 text-sm">
+        <div className="text-center text-tui-muted py-8 text-sm">
           {isLoading ? "Loading models..." : emptyLabel ?? "No models match your search"}
         </div>
       </div>

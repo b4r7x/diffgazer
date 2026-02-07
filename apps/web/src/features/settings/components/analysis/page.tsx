@@ -1,12 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { CheckboxGroup, CheckboxItem } from "@/components/ui/form";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { WizardLayout } from "@/components/shared/wizard-layout";
-import { useKey } from "@/hooks/keyboard";
+import { Button, Badge, CheckboxGroup, CheckboxItem, ScrollArea, Tabs, TabsList, TabsTrigger, TabsContent, CardLayout } from "@stargazer/ui";
+import { useKey } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useSettings } from "@/hooks/use-settings";
 import { SETTINGS_SHORTCUTS } from "@/config/navigation";
@@ -64,7 +59,7 @@ export function SettingsAnalysisPage() {
   };
 
   return (
-    <WizardLayout
+    <CardLayout
       title="Analysis Settings"
       subtitle="Choose which agents run during reviews."
       footer={
@@ -87,7 +82,7 @@ export function SettingsAnalysisPage() {
       }
     >
       {isLoading ? (
-        <p className="text-gray-500">Loading settings...</p>
+        <p className="text-tui-muted">Loading settings...</p>
       ) : (
         <Tabs defaultValue="agents" className="space-y-4">
           <TabsList className="border-b border-tui-border pb-2">
@@ -98,7 +93,7 @@ export function SettingsAnalysisPage() {
           <TabsContent value="agents" className="mt-0">
             <ScrollArea className="max-h-[360px] pr-2">
               <div className="space-y-3">
-                <div className="text-xs text-gray-500 uppercase tracking-wider font-bold">
+                <div className="text-xs text-tui-muted uppercase tracking-wider font-bold">
                   Active Agents
                 </div>
                 <CheckboxGroup
@@ -130,7 +125,7 @@ export function SettingsAnalysisPage() {
           <TabsContent value="context" className="mt-0">
             <ScrollArea className="max-h-[360px] pr-2">
               <div className="space-y-4">
-                <div className="text-xs text-gray-500 uppercase tracking-wider font-bold">
+                <div className="text-xs text-tui-muted uppercase tracking-wider font-bold">
                   Project Context
                 </div>
                 <div className="flex items-center gap-3">
@@ -146,12 +141,12 @@ export function SettingsAnalysisPage() {
                         : "Generate context"}
                   </Button>
                   {contextStatus === "ready" && contextGeneratedAt && (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-tui-muted">
                       Last generated: {new Date(contextGeneratedAt).toLocaleString()}
                     </span>
                   )}
                   {contextStatus === "missing" && (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-tui-muted">
                       Not generated yet.
                     </span>
                   )}
@@ -163,6 +158,6 @@ export function SettingsAnalysisPage() {
           {error && <p className="text-tui-red text-sm">{error}</p>}
         </Tabs>
       )}
-    </WizardLayout>
+    </CardLayout>
   );
 }

@@ -7,7 +7,7 @@ import {
   DialogBody,
   DialogFooter,
   DialogClose,
-} from "@/components/ui/dialog";
+} from "@stargazer/ui";
 import {
   GEMINI_MODEL_INFO,
   GLM_MODEL_INFO,
@@ -123,7 +123,7 @@ export function ModelSelectDialog({
       <DialogContent className="max-w-lg border border-tui-border shadow-2xl">
         <DialogHeader className="bg-tui-selection/50">
           <DialogTitle className="text-tui-blue tracking-wide">Select Model</DialogTitle>
-          <DialogClose className="text-gray-500 hover:text-tui-fg font-bold" />
+          <DialogClose className="text-tui-muted hover:text-tui-fg font-bold" />
         </DialogHeader>
 
         <DialogBody className="p-0 flex flex-col">
@@ -149,7 +149,7 @@ export function ModelSelectDialog({
             }}
           />
           {provider === OPENROUTER_PROVIDER_ID && (
-            <div className="px-4 pb-2 text-[10px] text-gray-500">
+            <div className="px-4 pb-2 text-[10px] text-tui-muted">
               {compatibilityLabel}
               {" "}
               You can enter a custom model ID at your own risk.

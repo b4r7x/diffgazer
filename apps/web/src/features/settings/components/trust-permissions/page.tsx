@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { TrustCapabilities } from "@stargazer/schemas/config";
-import { useKey } from "@/hooks/keyboard";
+import { useKey } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { useToast } from "@/components/ui/toast";
-import { Panel, PanelHeader, PanelContent } from "@/components/ui/containers";
+import { useToast, Panel, PanelHeader, PanelContent } from "@stargazer/ui";
 import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
 import { useConfigData } from "@/app/providers/config-provider";
 import { useTrust } from "@/hooks/use-trust";

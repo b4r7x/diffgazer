@@ -1,6 +1,6 @@
 import { cn } from "@/utils/cn";
 import { AsciiLogo } from "@/components/ui/ascii-logo";
-import { Button } from "@/components/ui/button";
+import { Button } from "@stargazer/ui";
 
 type ProviderStatus = "active" | "idle";
 

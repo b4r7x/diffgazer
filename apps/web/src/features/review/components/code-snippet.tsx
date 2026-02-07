@@ -10,10 +10,10 @@ export interface CodeSnippetProps {
 
 export function CodeSnippet({ lines, className }: CodeSnippetProps) {
   return (
-    <pre className={cn("bg-black border border-tui-border p-2 font-mono text-xs text-gray-400 overflow-x-auto", className)}>
+    <pre className={cn("bg-tui-bg border border-tui-border p-2 font-mono text-xs text-tui-muted overflow-x-auto", className)}>
       {lines.map((line) => (
         <div key={line.number} className="flex">
-          <span className="w-6 text-gray-600 border-r border-gray-700 mr-2 text-right pr-1 select-none">
+          <span className="w-6 text-muted-foreground border-r border-tui-border mr-2 text-right pr-1 select-none">
             {line.number}
           </span>
           <code

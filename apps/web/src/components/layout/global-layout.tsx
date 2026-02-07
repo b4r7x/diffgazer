@@ -2,7 +2,6 @@ import { type ReactNode } from "react";
 import { useCanGoBack, useRouter } from "@tanstack/react-router";
 import { Header } from "./header";
 import { Footer, useFooterData } from "./footer";
-import { ToastContainer } from "@/components/ui/toast";
 import { useConfigData, useConfigActions } from "@/app/providers/config-provider";
 
 function getProviderStatus(isLoading: boolean, isConfigured: boolean): "active" | "idle" {
@@ -54,7 +53,6 @@ export function GlobalLayout({ children }: GlobalLayoutProps) {
       <ConnectedHeader />
       <main className="flex-1 flex flex-col overflow-hidden">{children}</main>
       <ConnectedFooter />
-      <ToastContainer />
     </div>
   );
 }

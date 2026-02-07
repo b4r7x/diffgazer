@@ -6,7 +6,7 @@ import { MenuItem } from "./menu-item";
 import { Fragment } from "react";
 
 // Mock the keyboard hooks since they depend on KeyboardContext
-vi.mock("@/hooks/keyboard", () => ({
+vi.mock("@stargazer/keyboard", () => ({
   useKey: vi.fn(),
   useKeys: vi.fn(),
 }));

@@ -2,14 +2,14 @@ import { useEffect, useRef } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { ContextInfo } from "@stargazer/schemas/ui";
 import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@/config/navigation";
-import { useKey, useScope } from "@/hooks/keyboard";
+import { useKey, useScope } from "@stargazer/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ContextSidebar } from "@/features/home/components/context-sidebar";
 import { HomeMenu } from "@/features/home/components/home-menu";
 import { useConfigData } from "@/app/providers/config-provider";
 import { useReviewHistory } from "@/features/history/hooks/use-review-history";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@stargazer/ui";
 import { shutdown } from "@/features/home/utils/shutdown";
 import { TrustPanel } from "./trust-panel";
 

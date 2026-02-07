@@ -1,8 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { WizardLayout } from "@/components/shared/wizard-layout";
-import { Button } from "@/components/ui/button";
-import { Callout } from "@/components/ui/callout";
+import { CardLayout, Button, Callout } from "@stargazer/ui";
 import { useConfigData } from "@/app/providers/config-provider";
 import { useOnboarding } from "../hooks/use-onboarding";
 import { WizardProgress } from "./wizard-progress";
@@ -105,7 +103,7 @@ export function OnboardingWizard() {
   };
 
   return (
-    <WizardLayout
+    <CardLayout
       title={STEP_TITLES[currentStep] ?? "Setup"}
       subtitle="Stargazer Setup Wizard"
       footer={
@@ -141,6 +139,6 @@ export function OnboardingWizard() {
         )}
         {renderStep()}
       </div>
-    </WizardLayout>
+    </CardLayout>
   );
 }

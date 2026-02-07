@@ -5,9 +5,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogBody,
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { useKey } from "@/hooks/keyboard";
+  Badge,
+} from "@stargazer/ui";
+import { useKey } from "@stargazer/keyboard";
 import { useApiKeyForm } from "../../hooks/use-api-key-form";
 import { ApiKeyMethodSelector } from "./api-key-method-selector";
 import { ApiKeyFooter } from "./api-key-footer";
@@ -139,7 +139,7 @@ export function ApiKeyDialog({
             onKeySubmit={form.handleSubmit}
           />
 
-          <div className="text-[11px] text-gray-600 border-t border-tui-border/40 pt-3 leading-relaxed">
+          <div className="text-[11px] text-muted-foreground border-t border-tui-border/40 pt-3 leading-relaxed">
             Note: Keys are encrypted in your OS keychain. Context is only sent to{" "}
             {providerName}.
           </div>

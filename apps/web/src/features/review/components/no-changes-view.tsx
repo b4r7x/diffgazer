@@ -1,6 +1,6 @@
-import { useScope, useKey } from '@/hooks/keyboard';
+import { useScope, useKey } from '@stargazer/keyboard';
 import { usePageFooter } from '@/hooks/use-page-footer';
-import { Button } from '@/components/ui/button';
+import { Button } from '@stargazer/ui';
 import type { ReviewMode } from '@stargazer/schemas/review';
 
 export interface NoChangesViewProps {
@@ -46,7 +46,7 @@ export function NoChangesView({ mode, onBack, onSwitchMode }: NoChangesViewProps
     <div className="flex flex-1 items-center justify-center">
       <div className="text-center max-w-md p-6">
         <div className="text-tui-yellow text-lg font-bold mb-4">{title}</div>
-        <p className="text-gray-400 font-mono text-sm mb-6">{message}</p>
+        <p className="text-tui-muted font-mono text-sm mb-6">{message}</p>
         <div className="flex gap-4 justify-center">
           {onSwitchMode && (
             <Button
