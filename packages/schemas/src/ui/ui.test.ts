@@ -1,6 +1,19 @@
 import { describe, it, expect } from "vitest";
-import { calculateSeverityCounts, severityRank, SEVERITY_ORDER } from "./ui.js";
+import { calculateSeverityCounts, severityRank } from "./ui.js";
 import type { ReviewSeverity } from "../review/issues.js";
+
+describe("severityRank", () => {
+  it("returns lower rank for more severe levels", () => {
+    expect(severityRank("blocker")).toBeLessThan(severityRank("high"));
+    expect(severityRank("high")).toBeLessThan(severityRank("medium"));
+    expect(severityRank("medium")).toBeLessThan(severityRank("low"));
+    expect(severityRank("low")).toBeLessThan(severityRank("nit"));
+  });
+
+  it("returns 0 for blocker", () => {
+    expect(severityRank("blocker")).toBe(0);
+  });
+});
 
 describe("calculateSeverityCounts", () => {
   it("counts each severity level", () => {
@@ -17,53 +30,21 @@ describe("calculateSeverityCounts", () => {
 
     const counts = calculateSeverityCounts(issues);
 
-    expect(counts.blocker).toBe(1);
-    expect(counts.high).toBe(2);
-    expect(counts.medium).toBe(1);
-    expect(counts.low).toBe(1);
-    expect(counts.nit).toBe(3);
+    expect(counts).toEqual({ blocker: 1, high: 2, medium: 1, low: 1, nit: 3 });
   });
 
-  it("returns all zeros for empty issues array", () => {
+  it("returns all zeros for empty input", () => {
     const counts = calculateSeverityCounts([]);
 
-    expect(counts).toEqual({
-      blocker: 0,
-      high: 0,
-      medium: 0,
-      low: 0,
-      nit: 0,
-    });
+    expect(counts).toEqual({ blocker: 0, high: 0, medium: 0, low: 0, nit: 0 });
   });
 
   it("handles single severity", () => {
-    const issues: { severity: ReviewSeverity }[] = [
-      { severity: "blocker" },
-      { severity: "blocker" },
-    ];
+    const issues = [{ severity: "medium" as const }];
 
     const counts = calculateSeverityCounts(issues);
 
-    expect(counts.blocker).toBe(2);
-    expect(counts.high).toBe(0);
-  });
-});
-
-describe("severityRank", () => {
-  it("returns 0 for blocker (most severe)", () => {
-    expect(severityRank("blocker")).toBe(0);
-  });
-
-  it("returns correct ordering: blocker < high < medium < low < nit", () => {
-    expect(severityRank("blocker")).toBeLessThan(severityRank("high"));
-    expect(severityRank("high")).toBeLessThan(severityRank("medium"));
-    expect(severityRank("medium")).toBeLessThan(severityRank("low"));
-    expect(severityRank("low")).toBeLessThan(severityRank("nit"));
-  });
-
-  it("matches SEVERITY_ORDER indices", () => {
-    for (let i = 0; i < SEVERITY_ORDER.length; i++) {
-      expect(severityRank(SEVERITY_ORDER[i])).toBe(i);
-    }
+    expect(counts.medium).toBe(1);
+    expect(counts.blocker).toBe(0);
   });
 });

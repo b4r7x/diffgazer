@@ -39,7 +39,7 @@ const AgentMetaSchema = z.object({
 }));
 type AgentMeta = z.infer<typeof AgentMetaSchema>;
 
-export const AGENT_METADATA: Record<AgentId, AgentMeta> = {
+export const AGENT_METADATA = {
   detective: {
     id: "detective",
     lens: "correctness",
@@ -80,7 +80,7 @@ export const AGENT_METADATA: Record<AgentId, AgentMeta> = {
     badgeVariant: "info",
     description: "Evaluates test coverage and quality",
   },
-} as const;
+} satisfies Record<AgentId, AgentMeta>;
 
 export const AGENT_STATUS = ["queued", "running", "complete", "error"] as const;
 const AgentStatusSchema = z.enum(AGENT_STATUS);

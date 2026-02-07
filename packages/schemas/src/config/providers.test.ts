@@ -37,6 +37,16 @@ describe("UserConfigSchema refine — model/provider validation", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts valid GLM model for zai-coding provider", () => {
+    const result = UserConfigSchema.safeParse({
+      ...baseConfig,
+      provider: "zai-coding",
+      model: "glm-4.7",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
   it("accepts any model for openrouter provider", () => {
     const result = UserConfigSchema.safeParse({
       ...baseConfig,

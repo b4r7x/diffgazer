@@ -19,8 +19,8 @@ export function useScrollIntoView(containerRef: RefObject<HTMLDivElement | null>
     if (!container) return true;
 
     const { itemSelector = '[role="option"]' } = options;
-    const items = container.querySelectorAll(itemSelector);
-    const item = items[itemIndex] as HTMLElement | undefined;
+    const items = container.querySelectorAll<HTMLElement>(itemSelector);
+    const item = items[itemIndex];
     if (!item) return true;
 
     const containerRect = container.getBoundingClientRect();
@@ -40,8 +40,8 @@ export function useScrollIntoView(containerRef: RefObject<HTMLDivElement | null>
     if (!container) return;
 
     const { padding = 8, itemSelector = '[role="option"]' } = options;
-    const items = container.querySelectorAll(itemSelector);
-    const item = items[itemIndex] as HTMLElement | undefined;
+    const items = container.querySelectorAll<HTMLElement>(itemSelector);
+    const item = items[itemIndex];
     if (!item) return;
 
     const containerRect = container.getBoundingClientRect();

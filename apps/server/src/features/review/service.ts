@@ -95,6 +95,8 @@ async function handleReviewFailure(
   reviewId: string
 ): Promise<void> {
   if (isAbortError(error)) {
+    markComplete(reviewId);
+    deleteSession(reviewId);
     return;
   }
 
@@ -171,17 +173,11 @@ export async function streamReviewToSSE(
   const projectPath = projectPathOption ?? process.cwd();
   const gitService = createGitService({ cwd: projectPath });
 
-  let headCommit: string;
-  let statusHash: string;
-  try {
-    [headCommit, statusHash] = await Promise.all([
-      gitService.getHeadCommit(),
-      gitService.getStatusHash(),
-    ]);
-  } catch {
-    headCommit = "";
-    statusHash = "";
-  }
+  const [headCommitResult, statusHash] = await Promise.all([
+    gitService.getHeadCommit(),
+    gitService.getStatusHash(),
+  ]);
+  const headCommit = headCommitResult.ok ? headCommitResult.value : "";
 
   const replayed = await tryReplayExistingSession(stream, projectPath, headCommit, statusHash, mode);
   if (replayed) return;

@@ -5,7 +5,7 @@ import { useReviewLifecycle, type ReviewCompleteData } from '../hooks/use-review
 import { useContextSnapshot } from '../hooks/use-context-snapshot';
 import { convertAgentEventsToLogEntries } from '@stargazer/core/review';
 import { mapStepsToProgressData } from './review-container.utils';
-import type { ReviewMode } from '../types';
+import type { ReviewMode } from '@stargazer/schemas/review';
 
 export type { ReviewCompleteData };
 
@@ -45,8 +45,8 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     const steps = mapStepsToProgressData(state.steps, state.agents);
     const entries = convertAgentEventsToLogEntries(state.events);
     const metrics = {
-      filesProcessed: state.fileProgress.completed.size,
-      filesTotal: state.fileProgress.total || state.fileProgress.completed.size,
+      filesProcessed: state.fileProgress.completed.length,
+      filesTotal: state.fileProgress.total || state.fileProgress.completed.length,
       issuesFound: state.issues.length,
     };
     return {

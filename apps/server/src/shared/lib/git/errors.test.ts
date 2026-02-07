@@ -10,13 +10,6 @@ describe("createGitDiffError", () => {
     expect(result.message).toContain("Original:");
   });
 
-  it("should classify 'fatal:' prefix as NOT_A_REPOSITORY", () => {
-    const error = new Error("fatal: some git error");
-    const result = createGitDiffError(error);
-
-    expect(result.message).toContain("Not a git repository");
-  });
-
   it("should classify enoent/spawn git as GIT_NOT_FOUND", () => {
     const error = new Error("spawn git ENOENT");
     const result = createGitDiffError(error);

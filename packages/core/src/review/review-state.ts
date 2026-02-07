@@ -6,7 +6,7 @@ export interface FileProgress {
   total: number;
   current: number;
   currentFile: string | null;
-  completed: Set<string>;
+  completed: string[];
 }
 
 export type ReviewEvent = AgentStreamEvent | StepEvent | EnrichEvent;
@@ -36,7 +36,7 @@ export function createInitialReviewState(): ReviewState {
     agents: [],
     issues: [],
     events: [],
-    fileProgress: { total: 0, current: 0, currentFile: null, completed: new Set() },
+    fileProgress: { total: 0, current: 0, currentFile: null, completed: [] },
     isStreaming: false,
     error: null,
     startedAt: null,
@@ -193,8 +193,9 @@ export function reviewReducer(state: ReviewState, action: ReviewAction): ReviewS
       }
 
       if (event.type === "file_complete" && event.scope !== "agent") {
-        const newCompleted = new Set(state.fileProgress.completed);
-        newCompleted.add(event.file);
+        const newCompleted = state.fileProgress.completed.includes(event.file)
+          ? state.fileProgress.completed
+          : [...state.fileProgress.completed, event.file];
         return {
           ...state,
           fileProgress: {
@@ -216,15 +217,16 @@ export function reviewReducer(state: ReviewState, action: ReviewAction): ReviewS
       if ((event.type === "tool_call" || event.type === "tool_start") && event.tool === "readFileContext") {
         const colonIndex = event.input.indexOf(':');
         const filePath = colonIndex === -1 ? event.input : event.input.substring(0, colonIndex);
-        const newCompleted = new Set(state.fileProgress.completed);
-        newCompleted.add(filePath);
+        const newCompleted = state.fileProgress.completed.includes(filePath)
+          ? state.fileProgress.completed
+          : [...state.fileProgress.completed, filePath];
         return {
           ...state,
           agents: updateAgents(state.agents, event),
           fileProgress: {
             ...state.fileProgress,
             completed: newCompleted,
-            current: newCompleted.size,
+            current: newCompleted.length,
             currentFile: filePath,
           },
           events: [...state.events, event],
@@ -256,7 +258,9 @@ export function reviewReducer(state: ReviewState, action: ReviewAction): ReviewS
     case "RESET":
       return createInitialReviewState();
 
-    default:
+    default: {
+      const _exhaustive: never = action;
       return state;
+    }
   }
 }

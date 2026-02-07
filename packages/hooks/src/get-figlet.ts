@@ -3,16 +3,22 @@ import figlet from "figlet";
 import bigFont from "figlet/importable-fonts/Big.js";
 import smallFont from "figlet/importable-fonts/Small.js";
 
-figlet.parseFont("Big", bigFont);
-figlet.parseFont("Small", smallFont);
-
 export type FigletFont = "Big" | "Small";
 
-export function useFiglet(
+const loadedFonts = new Set<FigletFont>();
+
+function ensureFont(font: FigletFont): void {
+  if (loadedFonts.has(font)) return;
+  figlet.parseFont(font, font === "Big" ? bigFont : smallFont);
+  loadedFonts.add(font);
+}
+
+export function getFigletText(
   inputText: string,
   font: FigletFont = "Big",
 ): string | null {
   try {
+    ensureFont(font);
     return figlet.textSync(inputText.toUpperCase(), { font });
   } catch {
     return null;

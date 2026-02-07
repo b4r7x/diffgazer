@@ -1,24 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import * as path from "node:path";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-const { mockReadJsonFileSync, mockWriteJsonFileSync, mockRemoveFileSync } = vi.hoisted(() => ({
-  mockReadJsonFileSync: vi.fn(),
-  mockWriteJsonFileSync: vi.fn(),
-  mockRemoveFileSync: vi.fn(),
-}));
+vi.mock("../fs.js");
 
-vi.mock("../fs.js", () => ({
-  readJsonFileSync: mockReadJsonFileSync,
-  writeJsonFileSync: mockWriteJsonFileSync,
-  removeFileSync: mockRemoveFileSync,
-}));
+const TEST_HOME = "/tmp/stargazer-test";
 
-vi.mock("../paths.js", () => ({
-  getGlobalConfigPath: () => "/mock/config.json",
-  getGlobalSecretsPath: () => "/mock/secrets.json",
-  getGlobalTrustPath: () => "/mock/trust.json",
-  getProjectInfoPath: (root: string) => `${root}/.stargazer/project.json`,
-}));
-
+import { readJsonFileSync, writeJsonFileSync, removeFileSync } from "../fs.js";
 import {
   loadConfig,
   loadSecrets,
@@ -35,12 +22,17 @@ import {
 
 describe("config state", () => {
   beforeEach(() => {
+    process.env.STARGAZER_HOME = TEST_HOME;
     vi.resetAllMocks();
+  });
+
+  afterEach(() => {
+    delete process.env.STARGAZER_HOME;
   });
 
   describe("loadConfig", () => {
     it("should return defaults when no config file exists", () => {
-      mockReadJsonFileSync.mockReturnValue(null);
+      vi.mocked(readJsonFileSync).mockReturnValue(null);
 
       const config = loadConfig();
 
@@ -49,7 +41,7 @@ describe("config state", () => {
     });
 
     it("should merge stored settings with defaults", () => {
-      mockReadJsonFileSync.mockReturnValue({
+      vi.mocked(readJsonFileSync).mockReturnValue({
         settings: { theme: "dark" },
         providers: [],
       });
@@ -61,7 +53,7 @@ describe("config state", () => {
     });
 
     it("should normalize providers to include all known providers", () => {
-      mockReadJsonFileSync.mockReturnValue({
+      vi.mocked(readJsonFileSync).mockReturnValue({
         settings: {},
         providers: [
           { provider: "gemini", hasApiKey: true, isActive: true, model: "gemini-2.5-flash" },
@@ -78,7 +70,7 @@ describe("config state", () => {
     });
 
     it("should filter out invalid provider IDs", () => {
-      mockReadJsonFileSync.mockReturnValue({
+      vi.mocked(readJsonFileSync).mockReturnValue({
         settings: {},
         providers: [
           { provider: "invalid-provider", hasApiKey: true, isActive: true },
@@ -87,14 +79,14 @@ describe("config state", () => {
 
       const config = loadConfig();
 
-      const invalid = config.providers.find((p) => p.provider === "invalid-provider");
+      const invalid = config.providers.find((p) => p.provider === ("invalid-provider" as string));
       expect(invalid).toBeUndefined();
     });
   });
 
   describe("loadSecrets", () => {
     it("should return empty providers when no secrets file exists", () => {
-      mockReadJsonFileSync.mockReturnValue(null);
+      vi.mocked(readJsonFileSync).mockReturnValue(null);
 
       const secrets = loadSecrets();
 
@@ -102,7 +94,7 @@ describe("config state", () => {
     });
 
     it("should load stored secrets", () => {
-      mockReadJsonFileSync.mockReturnValue({
+      vi.mocked(readJsonFileSync).mockReturnValue({
         providers: { gemini: "key-123" },
       });
 
@@ -114,7 +106,7 @@ describe("config state", () => {
 
   describe("loadTrust", () => {
     it("should return empty projects when no trust file exists", () => {
-      mockReadJsonFileSync.mockReturnValue(null);
+      vi.mocked(readJsonFileSync).mockReturnValue(null);
 
       const trust = loadTrust();
 
@@ -122,7 +114,7 @@ describe("config state", () => {
     });
 
     it("should normalize trust capabilities with defaults", () => {
-      mockReadJsonFileSync.mockReturnValue({
+      vi.mocked(readJsonFileSync).mockReturnValue({
         projects: {
           "proj-1": {
             projectId: "proj-1",
@@ -141,7 +133,7 @@ describe("config state", () => {
     });
 
     it("should preserve existing capability values", () => {
-      mockReadJsonFileSync.mockReturnValue({
+      vi.mocked(readJsonFileSync).mockReturnValue({
         projects: {
           "proj-1": {
             projectId: "proj-1",
@@ -164,8 +156,8 @@ describe("config state", () => {
     it("should write config with 0o600 permissions", () => {
       persistConfig({ settings: DEFAULT_SETTINGS, providers: [] });
 
-      expect(mockWriteJsonFileSync).toHaveBeenCalledWith(
-        "/mock/config.json",
+      expect(vi.mocked(writeJsonFileSync)).toHaveBeenCalledWith(
+        path.join(TEST_HOME, "config.json"),
         { settings: DEFAULT_SETTINGS, providers: [] },
         0o600
       );
@@ -176,8 +168,8 @@ describe("config state", () => {
     it("should write secrets with 0o600 permissions", () => {
       persistSecrets({ providers: { gemini: "key" } });
 
-      expect(mockWriteJsonFileSync).toHaveBeenCalledWith(
-        "/mock/secrets.json",
+      expect(vi.mocked(writeJsonFileSync)).toHaveBeenCalledWith(
+        path.join(TEST_HOME, "secrets.json"),
         { providers: { gemini: "key" } },
         0o600
       );
@@ -186,12 +178,12 @@ describe("config state", () => {
 
   describe("removeSecretsFile", () => {
     it("should call removeFileSync with secrets path", () => {
-      mockRemoveFileSync.mockReturnValue(true);
+      vi.mocked(removeFileSync).mockReturnValue(true);
 
       const result = removeSecretsFile();
 
       expect(result).toBe(true);
-      expect(mockRemoveFileSync).toHaveBeenCalledWith("/mock/secrets.json");
+      expect(vi.mocked(removeFileSync)).toHaveBeenCalledWith(path.join(TEST_HOME, "secrets.json"));
     });
   });
 
@@ -250,22 +242,22 @@ describe("config state", () => {
         repoRoot: "/projects/foo",
         createdAt: "2024-01-01",
       };
-      mockReadJsonFileSync.mockReturnValue(existing);
+      vi.mocked(readJsonFileSync).mockReturnValue(existing);
 
       const result = readOrCreateProjectFile("/projects/foo");
 
       expect(result.projectId).toBe("existing-id");
-      expect(mockWriteJsonFileSync).not.toHaveBeenCalled();
+      expect(vi.mocked(writeJsonFileSync)).not.toHaveBeenCalled();
     });
 
     it("should create new project file when not found", () => {
-      mockReadJsonFileSync.mockReturnValue(null);
+      vi.mocked(readJsonFileSync).mockReturnValue(null);
 
       const result = readOrCreateProjectFile("/projects/new");
 
       expect(result.projectId).toBeDefined();
       expect(result.repoRoot).toBe("/projects/new");
-      expect(mockWriteJsonFileSync).toHaveBeenCalledWith(
+      expect(vi.mocked(writeJsonFileSync)).toHaveBeenCalledWith(
         "/projects/new/.stargazer/project.json",
         expect.objectContaining({ repoRoot: "/projects/new" }),
         0o600

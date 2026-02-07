@@ -13,7 +13,7 @@ import { Callout } from '@/components/ui/callout';
 import { useReviewProgressKeyboard } from '../hooks/use-review-progress-keyboard';
 import type { AgentState } from '@stargazer/schemas/events';
 import type { ReviewContextResponse } from '@stargazer/api/types';
-import type { ReviewProgressMetrics } from '../types';
+import type { ReviewProgressMetrics } from '@stargazer/schemas/ui';
 
 export interface ReviewProgressData {
   steps: ProgressStepData[];

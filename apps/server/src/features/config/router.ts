@@ -98,7 +98,7 @@ configRouter.post(
 
 configRouter.delete(
   "/provider/:providerId",
-  zValidator("param", ProviderParamSchema),
+  zValidator("param", ProviderParamSchema, zodErrorHandler),
   (c): Response => {
     const { providerId } = c.req.valid("param");
     const result = deleteProvider(providerId);
@@ -112,15 +112,8 @@ configRouter.delete(
 configRouter.delete("/", (c): Response => {
   const result = deleteConfig();
   if (!result.ok) {
-    return errorResponse(c, result.error.message, result.error.code, 400);
-  }
-  if (!result.value) {
-    return errorResponse(
-      c,
-      "Configuration not found",
-      ErrorCode.CONFIG_NOT_FOUND,
-      404,
-    );
+    const status = result.error.code === ErrorCode.CONFIG_NOT_FOUND ? 404 : 400;
+    return errorResponse(c, result.error.message, result.error.code, status);
   }
   return c.json(result.value);
 });

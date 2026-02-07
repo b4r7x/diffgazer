@@ -277,4 +277,40 @@ describe("buildDrilldownPrompt", () => {
 
     expect(result).toContain("No other issues identified");
   });
+
+  it("should escape all dynamic fields in issue block", () => {
+    const issue: ReviewIssue = {
+      ...baseIssue,
+      id: "id<inject>",
+      severity: "high",
+      category: "correctness",
+      title: "Title <script>alert(1)</script>",
+      file: "file<evil>.ts",
+    };
+    const diff = makeDiff();
+    const result = buildDrilldownPrompt(issue, diff, [issue]);
+
+    expect(result).toContain("ID: id&lt;inject&gt;");
+    expect(result).toContain("Title: Title &lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(result).toContain("File: file&lt;evil&gt;.ts");
+    // Should not contain raw unescaped values
+    expect(result).not.toContain("ID: id<inject>");
+    expect(result).not.toContain("Title: Title <script>");
+  });
+
+  it("should escape fields in other issues summary", () => {
+    const otherIssue: ReviewIssue = {
+      ...baseIssue,
+      id: "other<id>",
+      title: "Other <title>",
+      file: "other<file>.ts",
+      line_start: 1,
+    };
+    const diff = makeDiff();
+    const result = buildDrilldownPrompt(baseIssue, diff, [baseIssue, otherIssue]);
+
+    expect(result).toContain("other&lt;id&gt;");
+    expect(result).toContain("Other &lt;title&gt;");
+    expect(result).toContain("other&lt;file&gt;.ts");
+  });
 });

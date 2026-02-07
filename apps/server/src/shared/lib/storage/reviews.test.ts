@@ -19,10 +19,36 @@ vi.mock("./persistence.js", () => ({
 }));
 
 vi.mock("../paths.js", () => ({
-  getGlobalStargazerDir: () => "/mock/.stargazer",
+  getGlobalStargazerDir: vi.fn(() => "/tmp/test-stargazer"),
+  getGlobalConfigPath: vi.fn(() => "/tmp/test-stargazer/config.json"),
+  getGlobalSecretsPath: vi.fn(() => "/tmp/test-stargazer/secrets.json"),
+  getGlobalTrustPath: vi.fn(() => "/tmp/test-stargazer/trust.json"),
+  getGlobalOpenRouterModelsPath: vi.fn(() => "/tmp/test-stargazer/openrouter-models.json"),
+  getProjectStargazerDir: vi.fn((root: string) => `${root}/.stargazer`),
+  getProjectInfoPath: vi.fn((root: string) => `${root}/.stargazer/project.json`),
+  resolveProjectRoot: vi.fn(() => "/tmp/test-project"),
+  PROJECT_ROOT_HEADER: "x-stargazer-project-root",
 }));
 
 import { saveReview, listReviews, getReview, deleteReview, addDrilldownToReview } from "./reviews.js";
+
+const makeIssue = (overrides: Record<string, unknown> = {}) => ({
+  id: "i1",
+  title: "Bug",
+  severity: "high" as const,
+  category: "correctness" as const,
+  file: "a.ts",
+  line_start: 1,
+  line_end: 2,
+  rationale: "test rationale",
+  recommendation: "fix it",
+  suggested_patch: null,
+  confidence: 0.9,
+  symptom: "broken",
+  whyItMatters: "matters",
+  evidence: [],
+  ...overrides,
+});
 
 const makeReviewOptions = (overrides: Record<string, any> = {}) => ({
   projectPath: "/projects/test",
@@ -31,14 +57,12 @@ const makeReviewOptions = (overrides: Record<string, any> = {}) => ({
   commit: "abc123",
   lenses: ["correctness" as const],
   diff: {
-    totalStats: { filesChanged: 3, additions: 10, deletions: 5 },
+    totalStats: { filesChanged: 3, additions: 10, deletions: 5, totalSizeBytes: 1000 },
     files: [],
   },
   result: {
     summary: "Test review",
-    issues: [
-      { id: "i1", title: "Bug", severity: "high" as const, description: "desc", file: "a.ts", startLine: 1, endLine: 2, category: "correctness" as const },
-    ],
+    issues: [makeIssue()],
   },
   ...overrides,
 });
@@ -64,8 +88,8 @@ const makeSavedReview = (overrides: Record<string, any> = {}) => ({
   result: {
     summary: "Review summary",
     issues: [
-      { id: "i1", title: "Bug", severity: "high", description: "desc", file: "a.ts", startLine: 1, endLine: 2, category: "correctness" },
-      { id: "i2", title: "Warn", severity: "medium", description: "desc", file: "b.ts", startLine: 5, endLine: 6, category: "correctness" },
+      makeIssue({ id: "i1", title: "Bug", severity: "high" as const, file: "a.ts" }),
+      makeIssue({ id: "i2", title: "Warn", severity: "medium" as const, file: "b.ts", line_start: 5, line_end: 6 }),
     ],
   },
   gitContext: {
@@ -107,9 +131,9 @@ describe("reviews storage", () => {
         result: {
           summary: "test",
           issues: [
-            { id: "i1", title: "A", severity: "blocker", description: "d", file: "a.ts", startLine: 1, endLine: 2, category: "correctness" },
-            { id: "i2", title: "B", severity: "high", description: "d", file: "b.ts", startLine: 1, endLine: 2, category: "correctness" },
-            { id: "i3", title: "C", severity: "nit", description: "d", file: "c.ts", startLine: 1, endLine: 2, category: "correctness" },
+            makeIssue({ id: "i1", title: "A", severity: "blocker" as const, file: "a.ts" }),
+            makeIssue({ id: "i2", title: "B", severity: "high" as const, file: "b.ts" }),
+            makeIssue({ id: "i3", title: "C", severity: "nit" as const, file: "c.ts" }),
           ],
         },
       }));

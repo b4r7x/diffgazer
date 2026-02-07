@@ -92,12 +92,19 @@ export async function enrichIssues(
   signal?: AbortSignal,
 ): Promise<ReviewIssue[]> {
   if (signal?.aborted) return issues;
-  const enrichPromises = issues.map((issue) =>
-    enrichIssue(issue, gitService, onEvent),
-  );
-  const enriched = await Promise.allSettled(enrichPromises);
 
-  return enriched.map((result, i) =>
-    result.status === "fulfilled" ? result.value : issues[i]!,
-  );
+  const results: ReviewIssue[] = [];
+  for (const issue of issues) {
+    if (signal?.aborted) {
+      results.push(issue);
+      continue;
+    }
+    try {
+      results.push(await enrichIssue(issue, gitService, onEvent));
+    } catch {
+      results.push(issue);
+    }
+  }
+
+  return results;
 }

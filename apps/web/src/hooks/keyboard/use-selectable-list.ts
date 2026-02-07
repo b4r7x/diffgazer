@@ -91,7 +91,7 @@ export function useSelectableList({
     } else {
       onBoundaryReached?.(pending.direction);
     }
-  });
+  }, [focusedIndex]);
 
   useKeys(upKeys, moveUp, { enabled: enabled && itemCount > 0 });
   useKeys(downKeys, moveDown, { enabled: enabled && itemCount > 0 });

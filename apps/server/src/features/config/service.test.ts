@@ -4,8 +4,6 @@ vi.mock("../../shared/lib/config/store.js", () => ({
   getProviders: vi.fn(),
   getActiveProvider: vi.fn(),
   getProviderApiKey: vi.fn(),
-  saveProviderCredentials: vi.fn(),
-  deleteProviderCredentials: vi.fn(),
   activateProvider: vi.fn(),
   getSettings: vi.fn().mockReturnValue({
     secretsStorage: "keyring",
@@ -25,19 +23,13 @@ import {
   getProvidersStatus,
   checkConfig,
   activateProvider,
-  getConfig,
-  saveConfig,
-  deleteProvider,
   getOpenRouterModels,
   getSetupStatus,
-  getInitState,
 } from "./service.js";
 import {
   getProviders,
   getActiveProvider,
   getProviderApiKey,
-  saveProviderCredentials,
-  deleteProviderCredentials,
   activateProvider as activateProviderInStore,
 } from "../../shared/lib/config/store.js";
 import { getOpenRouterModelsWithCache } from "../../shared/lib/ai/openrouter-models.js";
@@ -185,9 +177,12 @@ describe("getOpenRouterModels", () => {
       value: "sk-123",
     });
     vi.mocked(getOpenRouterModelsWithCache).mockResolvedValue({
-      models: [{ id: "model-1", name: "M1" }] as any,
-      fetchedAt: "2024-01-01",
-      cached: false,
+      ok: true,
+      value: {
+        models: [{ id: "model-1", name: "M1" }] as any,
+        fetchedAt: "2024-01-01",
+        cached: false,
+      },
     });
 
     const result = await getOpenRouterModels();
@@ -217,9 +212,10 @@ describe("getOpenRouterModels", () => {
       ok: true,
       value: "sk-123",
     });
-    vi.mocked(getOpenRouterModelsWithCache).mockRejectedValue(
-      new Error("network error"),
-    );
+    vi.mocked(getOpenRouterModelsWithCache).mockResolvedValue({
+      ok: false,
+      error: { message: "network error" },
+    });
 
     const result = await getOpenRouterModels();
 
@@ -241,40 +237,3 @@ describe("getSetupStatus", () => {
   });
 });
 
-describe("saveConfig", () => {
-  it("should delegate to saveProviderCredentials", () => {
-    vi.mocked(saveProviderCredentials).mockReturnValue({
-      ok: true,
-      value: { provider: "gemini", model: "m1", isActive: true },
-    } as any);
-
-    const result = saveConfig({
-      provider: "gemini" as any,
-      apiKey: "key",
-      model: "m1",
-    });
-
-    expect(result.ok).toBe(true);
-    expect(saveProviderCredentials).toHaveBeenCalledWith({
-      provider: "gemini",
-      apiKey: "key",
-      model: "m1",
-    });
-  });
-});
-
-describe("deleteProvider", () => {
-  it("should delete provider credentials", () => {
-    vi.mocked(deleteProviderCredentials).mockReturnValue({
-      ok: true,
-      value: true,
-    });
-
-    const result = deleteProvider("gemini" as any);
-
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value.provider).toBe("gemini");
-    }
-  });
-});

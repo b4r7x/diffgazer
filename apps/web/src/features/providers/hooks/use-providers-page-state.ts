@@ -67,29 +67,44 @@ export function useProvidersPageState() {
   });
 
   return {
-    inputRef,
-    filter,
-    setFilter,
-    searchQuery,
-    setSearchQuery,
-    filteredProviders,
-    effectiveSelectedId,
-    setSelectedId,
-    selectedProvider,
     isLoading,
-    apiKeyDialogOpen,
-    setApiKeyDialogOpen,
-    modelDialogOpen,
-    setModelDialogOpen,
-    handleSaveApiKey,
-    handleRemoveKey,
-    handleSelectModel,
-    handleSelectProvider,
-    dialogOpen,
+    filteredProviders,
+    selectedProvider,
     needsModel,
-    focusZone,
-    filterIndex,
-    buttonIndex,
-    handleListBoundary,
+
+    search: {
+      inputRef,
+      query: searchQuery,
+      setQuery: setSearchQuery,
+    },
+
+    selection: {
+      effectiveSelectedId,
+      setSelectedId,
+      filter,
+      setFilter,
+    },
+
+    dialogs: {
+      apiKeyOpen: apiKeyDialogOpen,
+      setApiKeyOpen: setApiKeyDialogOpen,
+      modelOpen: modelDialogOpen,
+      setModelOpen: setModelDialogOpen,
+      anyOpen: dialogOpen,
+    },
+
+    handlers: {
+      saveApiKey: handleSaveApiKey,
+      removeKey: handleRemoveKey,
+      selectModel: handleSelectModel,
+      selectProvider: handleSelectProvider,
+    },
+
+    keyboard: {
+      focusZone,
+      filterIndex,
+      buttonIndex,
+      handleListBoundary,
+    },
   };
 }

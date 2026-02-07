@@ -1,29 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
-  errorCodeToStatus,
   isReviewAbort,
   reviewAbort,
   summarizeOutput,
 } from "./utils.js";
-
-describe("errorCodeToStatus", () => {
-  it("should map NOT_FOUND to 404", () => {
-    expect(errorCodeToStatus("NOT_FOUND")).toBe(404);
-  });
-
-  it("should map VALIDATION_ERROR to 400", () => {
-    expect(errorCodeToStatus("VALIDATION_ERROR")).toBe(400);
-  });
-
-  it("should map PERMISSION_ERROR to 403", () => {
-    expect(errorCodeToStatus("PERMISSION_ERROR")).toBe(403);
-  });
-
-  it("should default unknown codes to 500", () => {
-    expect(errorCodeToStatus("WRITE_ERROR")).toBe(500);
-    expect(errorCodeToStatus("PARSE_ERROR")).toBe(500);
-  });
-});
 
 describe("reviewAbort", () => {
   it("should create a ReviewAbort object", () => {

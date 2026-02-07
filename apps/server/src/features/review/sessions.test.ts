@@ -182,6 +182,56 @@ describe("cancelSession", () => {
   });
 });
 
+describe("session limits", () => {
+  afterEach(() => {
+    // Clean up bulk sessions
+    for (let i = 0; i < 55; i++) {
+      deleteSession(`bulk-${i}`);
+    }
+  });
+
+  it("should evict oldest session when MAX_SESSIONS reached", () => {
+    // Create 50 sessions (the max)
+    for (let i = 0; i < 50; i++) {
+      vi.advanceTimersByTime(1); // ensure different startedAt
+      createSession(`bulk-${i}`, "/project", "abc", "h", "staged");
+    }
+
+    // The 51st session should trigger eviction of the oldest
+    createSession("bulk-50", "/project", "abc", "h", "staged");
+
+    // Oldest session (bulk-0) should have been evicted
+    expect(getSession("bulk-0")).toBeUndefined();
+    // Newest should exist
+    expect(getSession("bulk-50")).toBeDefined();
+  });
+});
+
+describe("async subscriber error handling", () => {
+  it("should catch rejected promises from async subscribers", async () => {
+    createSession("test-sub", "/project", "abc", "h", "staged");
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const asyncCallback = vi.fn().mockRejectedValue(new Error("async fail"));
+    subscribe("test-sub", asyncCallback);
+
+    addEvent("test-sub", {
+      type: "step_start",
+      step: "diff",
+      timestamp: "2024-01-01T00:00:00Z",
+    });
+
+    expect(asyncCallback).toHaveBeenCalled();
+
+    // Allow microtask queue to flush Promise rejection handler
+    await Promise.resolve();
+    expect(errorSpy).toHaveBeenCalled();
+    const errorArg = errorSpy.mock.calls[0]?.[1];
+    expect(errorArg).toBeInstanceOf(Error);
+    errorSpy.mockRestore();
+  });
+});
+
 describe("getActiveSessionForProject", () => {
   it("should find matching active session", () => {
     createSession("test-active", "/project", "abc", "hash1", "staged");

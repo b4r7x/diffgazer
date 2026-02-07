@@ -45,24 +45,29 @@ const reviewStore = createCollection<SavedReview, ReviewMetadata>({
  * Migrates a review by recalculating severity counts from issues.
  * Returns true if migration was applied.
  */
-function migrateReview(review: SavedReview): boolean {
+function migrateReview(review: SavedReview): SavedReview | null {
   const { metadata } = review;
   const { issues } = review.result;
 
-  if (issues.length === 0) return false;
+  if (issues.length === 0) return null;
 
   const totalCounted =
     metadata.blockerCount + metadata.highCount + metadata.mediumCount + metadata.lowCount + metadata.nitCount;
 
-  if (totalCounted > 0 || metadata.issueCount === 0) return false;
+  if (totalCounted > 0 || metadata.issueCount === 0) return null;
 
   const counts = calculateSeverityCounts(issues);
-  metadata.blockerCount = counts.blocker;
-  metadata.highCount = counts.high;
-  metadata.mediumCount = counts.medium;
-  metadata.lowCount = counts.low;
-  metadata.nitCount = counts.nit;
-  return true;
+  return {
+    ...review,
+    metadata: {
+      ...metadata,
+      blockerCount: counts.blocker,
+      highCount: counts.high,
+      mediumCount: counts.medium,
+      lowCount: counts.low,
+      nitCount: counts.nit,
+    },
+  };
 }
 
 export async function saveReview(
@@ -147,10 +152,10 @@ export async function listReviews(
         const reviewResult = await reviewStore.read(metadata.id);
         if (!reviewResult.ok) return metadata;
 
-        const review = reviewResult.value;
-        if (migrateReview(review)) {
-          reviewStore.write(review).catch(() => {});
-          return review.metadata;
+        const migrated = migrateReview(reviewResult.value);
+        if (migrated) {
+          reviewStore.write(migrated).catch((e) => console.warn('[reviews] migration write failed:', e));
+          return migrated.metadata;
         }
       }
 
@@ -168,9 +173,11 @@ export async function getReview(
   if (!result.ok) return result;
 
   const review = result.value;
-  if (migrateReview(review)) {
+  const migrated = migrateReview(review);
+  if (migrated) {
     // Persist migrated data in background (fire and forget)
-    reviewStore.write(review).catch(() => {});
+    reviewStore.write(migrated).catch((e) => console.warn('[reviews] migration write failed:', e));
+    return ok(migrated);
   }
 
   return ok(review);

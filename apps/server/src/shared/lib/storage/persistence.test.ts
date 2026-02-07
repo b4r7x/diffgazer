@@ -1,12 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { z } from "zod";
 
-const { mockMkdir, mockReadFile, mockReaddir, mockUnlink, mockAtomicWrite } = vi.hoisted(() => ({
+const { mockMkdir, mockReadFile, mockReaddir, mockUnlink } = vi.hoisted(() => ({
   mockMkdir: vi.fn(),
   mockReadFile: vi.fn(),
   mockReaddir: vi.fn(),
   mockUnlink: vi.fn(),
-  mockAtomicWrite: vi.fn(),
 }));
 
 vi.mock("node:fs/promises", () => ({
@@ -16,10 +15,9 @@ vi.mock("node:fs/promises", () => ({
   unlink: mockUnlink,
 }));
 
-vi.mock("../fs.js", () => ({
-  atomicWriteFile: mockAtomicWrite,
-}));
+vi.mock("../fs.js");
 
+import { atomicWriteFile } from "../fs.js";
 import { createCollection } from "./persistence.js";
 
 const TestSchema = z.object({
@@ -135,7 +133,7 @@ describe("createCollection", () => {
   describe("write", () => {
     it("should ensure directory and write item", async () => {
       mockMkdir.mockResolvedValue(undefined);
-      mockAtomicWrite.mockResolvedValue(undefined);
+      vi.mocked(atomicWriteFile).mockResolvedValue(undefined);
       const collection = makeCollection();
       const item = makeItem();
 
@@ -143,7 +141,7 @@ describe("createCollection", () => {
 
       expect(result.ok).toBe(true);
       expect(mockMkdir).toHaveBeenCalledWith(TEST_DIR, { recursive: true });
-      expect(mockAtomicWrite).toHaveBeenCalledWith(
+      expect(vi.mocked(atomicWriteFile)).toHaveBeenCalledWith(
         `${TEST_DIR}/${TEST_ID}.json`,
         expect.stringContaining('"name": "Test"')
       );
@@ -165,7 +163,7 @@ describe("createCollection", () => {
 
     it("should return WRITE_ERROR when atomic write fails", async () => {
       mockMkdir.mockResolvedValue(undefined);
-      mockAtomicWrite.mockRejectedValue(new Error("disk full"));
+      vi.mocked(atomicWriteFile).mockRejectedValue(new Error("disk full"));
       const collection = makeCollection();
 
       const result = await collection.write(makeItem());

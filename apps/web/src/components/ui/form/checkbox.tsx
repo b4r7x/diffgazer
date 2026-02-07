@@ -196,10 +196,7 @@ export function CheckboxGroup<T extends string = string>({
     initialValue: value[0] ?? null,
   });
 
-  const contextValue = React.useMemo(
-    () => ({ value, toggle, disabled, size, variant, isFocused }),
-    [value, toggle, disabled, size, variant, isFocused]
-  );
+  const contextValue: CheckboxGroupContextType = { value, toggle, disabled, size, variant, isFocused };
 
   return (
     <CheckboxGroupContext.Provider value={contextValue}>

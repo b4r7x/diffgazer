@@ -5,7 +5,26 @@ import {
   type ReviewState,
   type ReviewAction,
 } from "./review-state.js";
-import type { ReviewStartedEvent, AgentStreamEvent } from "@stargazer/schemas/events";
+import type { ReviewStartedEvent, AgentStreamEvent, StepEvent, EnrichEvent } from "@stargazer/schemas/events";
+
+const ts = "2025-02-01T10:00:00Z";
+
+const makeAgentMeta = (name: string, id: string, lens: string, badgeLabel: string, badgeVariant: string, description: string) =>
+  ({ id, lens, name, badgeLabel, badgeVariant, description });
+
+const detective = makeAgentMeta("Detective", "detective", "correctness", "DET", "info", "Finds bugs");
+const guardian = makeAgentMeta("Guardian", "guardian", "security", "SEC", "warning", "Security");
+const optimizer = makeAgentMeta("Optimizer", "optimizer", "performance", "PERF", "info", "Perf");
+
+function startedState(): ReviewState {
+  let state = createInitialReviewState();
+  state = reviewReducer(state, { type: "START" });
+  state = reviewReducer(state, {
+    type: "EVENT",
+    event: { type: "review_started", reviewId: "r1", filesTotal: 5, timestamp: ts },
+  });
+  return state;
+}
 
 describe("review-state", () => {
   describe("createInitialReviewState", () => {
@@ -15,18 +34,6 @@ describe("review-state", () => {
       expect(state.startedAt).toBeNull();
     });
 
-    it("initializes all required fields", () => {
-      const state = createInitialReviewState();
-
-      expect(state.steps).toBeDefined();
-      expect(Array.isArray(state.steps)).toBe(true);
-      expect(state.agents).toEqual([]);
-      expect(state.issues).toEqual([]);
-      expect(state.events).toEqual([]);
-      expect(state.fileProgress).toBeDefined();
-      expect(state.isStreaming).toBe(false);
-      expect(state.error).toBeNull();
-    });
   });
 
   describe("reviewReducer with review_started event", () => {
@@ -46,23 +53,6 @@ describe("review-state", () => {
       expect(newState.startedAt).not.toBeNull();
       expect(newState.startedAt).toBeInstanceOf(Date);
       expect(newState.startedAt?.getTime()).toBe(new Date(timestamp).getTime());
-    });
-
-    it("handles ISO timestamp string parsing correctly", () => {
-      const state = createInitialReviewState();
-      const timestamp = "2025-01-15T14:45:30.123Z";
-      const event: ReviewStartedEvent = {
-        type: "review_started",
-        reviewId: "review-456",
-        filesTotal: 10,
-        timestamp,
-      };
-
-      const action: ReviewAction = { type: "EVENT", event };
-      const newState = reviewReducer(state, action);
-
-      const expectedDate = new Date(timestamp);
-      expect(newState.startedAt?.getTime()).toBe(expectedDate.getTime());
     });
 
     it("sets fileProgress.total from review_started event", () => {
@@ -97,89 +87,7 @@ describe("review-state", () => {
     });
   });
 
-  describe("startedAt persistence", () => {
-    it("persists startedAt through subsequent events", () => {
-      let state = createInitialReviewState();
-      const startTimestamp = "2025-02-01T10:30:00Z";
-      const reviewStarted: ReviewStartedEvent = {
-        type: "review_started",
-        reviewId: "review-persist",
-        filesTotal: 5,
-        timestamp: startTimestamp,
-      };
-
-      state = reviewReducer(state, { type: "EVENT", event: reviewStarted });
-      const initialStartedAt = state.startedAt;
-
-      const agentStartEvent: AgentStreamEvent = {
-        type: "agent_start",
-        agent: {
-          id: "agent-1",
-          name: "SecurityAgent",
-          role: "security",
-        },
-      };
-
-      state = reviewReducer(state, { type: "EVENT", event: agentStartEvent });
-
-      expect(state.startedAt).toEqual(initialStartedAt);
-      expect(state.events).toHaveLength(2);
-    });
-
-    it("persists startedAt through multiple agent events", () => {
-      let state = createInitialReviewState();
-      const startTimestamp = "2025-02-01T10:30:00Z";
-      const reviewStarted: ReviewStartedEvent = {
-        type: "review_started",
-        reviewId: "review-multi",
-        filesTotal: 8,
-        timestamp: startTimestamp,
-      };
-
-      state = reviewReducer(state, { type: "EVENT", event: reviewStarted });
-      const originalStartedAt = state.startedAt;
-
-      const agentThinkingEvent: AgentStreamEvent = {
-        type: "agent_thinking",
-        agent: "agent-2",
-        thought: "Analyzing security patterns",
-      };
-
-      state = reviewReducer(state, { type: "EVENT", event: agentThinkingEvent });
-
-      expect(state.startedAt).toEqual(originalStartedAt);
-
-      const toolCallEvent: AgentStreamEvent = {
-        type: "tool_call",
-        agent: "agent-2",
-        tool: "readFileContext",
-        input: "src/app.ts:1-50",
-      };
-
-      state = reviewReducer(state, { type: "EVENT", event: toolCallEvent });
-
-      expect(state.startedAt).toEqual(originalStartedAt);
-    });
-  });
-
   describe("START action resets startedAt", () => {
-    it("resets startedAt to null on START action", () => {
-      let state = createInitialReviewState();
-      const reviewStarted: ReviewStartedEvent = {
-        type: "review_started",
-        reviewId: "review-reset",
-        filesTotal: 4,
-        timestamp: "2025-02-01T10:30:00Z",
-      };
-
-      state = reviewReducer(state, { type: "EVENT", event: reviewStarted });
-      expect(state.startedAt).not.toBeNull();
-
-      state = reviewReducer(state, { type: "START" });
-
-      expect(state.startedAt).toBeNull();
-    });
-
     it("clears all state fields on START action", () => {
       let state = createInitialReviewState();
       const reviewStarted: ReviewStartedEvent = {
@@ -220,66 +128,519 @@ describe("review-state", () => {
     });
   });
 
-  describe("Edge cases", () => {
-    it("handles timestamp with milliseconds precision", () => {
-      const state = createInitialReviewState();
-      const timestamp = "2025-02-01T10:30:45.987Z";
-      const event: ReviewStartedEvent = {
-        type: "review_started",
-        reviewId: "review-ms",
-        filesTotal: 1,
-        timestamp,
-      };
+  describe("COMPLETE action", () => {
+    it("sets isStreaming to false", () => {
+      let state = startedState();
+      expect(state.isStreaming).toBe(true);
 
-      const newState = reviewReducer(state, { type: "EVENT", event });
-      const expectedDate = new Date(timestamp);
+      state = reviewReducer(state, { type: "COMPLETE" });
 
-      expect(newState.startedAt?.getMilliseconds()).toBe(
-        expectedDate.getMilliseconds()
-      );
+      expect(state.isStreaming).toBe(false);
     });
 
-    it("preserves Date object type for startedAt", () => {
-      const state = createInitialReviewState();
-      const event: ReviewStartedEvent = {
-        type: "review_started",
-        reviewId: "review-type",
-        filesTotal: 7,
-        timestamp: "2025-02-01T10:30:00Z",
-      };
-
-      const newState = reviewReducer(state, { type: "EVENT", event });
-
-      expect(newState.startedAt).toBeInstanceOf(Date);
-      expect(typeof newState.startedAt?.getTime).toBe("function");
-    });
-
-    it("handles review_started event without resetting other state", () => {
-      let state = createInitialReviewState();
-      const initialAgent: AgentStreamEvent = {
-        type: "agent_start",
-        agent: {
-          id: "agent-3",
-          name: "PerformanceAgent",
-          role: "performance",
+    it("preserves issues on COMPLETE", () => {
+      let state = startedState();
+      const issueEvent: AgentStreamEvent = {
+        type: "issue_found",
+        agent: "detective",
+        issue: {
+          id: "i1",
+          title: "Bug found",
+          severity: "high",
+          category: "correctness",
+          file: "src/a.ts",
+          line: 1,
+          description: "desc",
+          codeSnippet: "code",
+          suggestion: "fix",
         },
+        timestamp: ts,
       };
 
-      state = reviewReducer(state, { type: "EVENT", event: initialAgent });
-      expect(state.agents).toHaveLength(1);
+      state = reviewReducer(state, { type: "EVENT", event: issueEvent });
+      expect(state.issues).toHaveLength(1);
 
-      const reviewStarted: ReviewStartedEvent = {
-        type: "review_started",
-        reviewId: "review-preserve",
-        filesTotal: 5,
-        timestamp: "2025-02-01T10:30:00Z",
+      state = reviewReducer(state, { type: "COMPLETE" });
+
+      expect(state.issues).toHaveLength(1);
+      expect(state.issues[0].title).toBe("Bug found");
+    });
+  });
+
+  describe("ERROR action", () => {
+    it("sets error and stops streaming", () => {
+      let state = startedState();
+
+      state = reviewReducer(state, { type: "ERROR", error: "Network failed" });
+
+      expect(state.isStreaming).toBe(false);
+      expect(state.error).toBe("Network failed");
+    });
+  });
+
+  describe("updateAgents — agent_queued", () => {
+    it("adds a new queued agent", () => {
+      let state = startedState();
+      const event: AgentStreamEvent = {
+        type: "agent_queued",
+        agent: detective,
+        position: 1,
+        total: 3,
+        timestamp: ts,
       };
 
-      state = reviewReducer(state, { type: "EVENT", event: reviewStarted });
+      state = reviewReducer(state, { type: "EVENT", event });
 
-      expect(state.startedAt).not.toBeNull();
       expect(state.agents).toHaveLength(1);
-      expect(state.agents[0].id).toBe("agent-3");
+      expect(state.agents[0].status).toBe("queued");
+      expect(state.agents[0].id).toBe("detective");
+    });
+
+    it("replaces existing agent on re-queue", () => {
+      let state = startedState();
+      const queueEvent: AgentStreamEvent = {
+        type: "agent_queued",
+        agent: detective,
+        position: 1,
+        total: 3,
+        timestamp: ts,
+      };
+
+      state = reviewReducer(state, { type: "EVENT", event: queueEvent });
+      state = reviewReducer(state, { type: "EVENT", event: queueEvent });
+
+      expect(state.agents).toHaveLength(1);
+    });
+  });
+
+  describe("updateAgents — agent_start", () => {
+    it("adds agent with running status", () => {
+      let state = startedState();
+      const event: AgentStreamEvent = {
+        type: "agent_start",
+        agent: guardian,
+        timestamp: ts,
+      };
+
+      state = reviewReducer(state, { type: "EVENT", event });
+
+      expect(state.agents).toHaveLength(1);
+      expect(state.agents[0].status).toBe("running");
+      expect(state.agents[0].startedAt).toBe(ts);
+    });
+
+    it("updates existing queued agent to running", () => {
+      let state = startedState();
+      const queueEvent: AgentStreamEvent = {
+        type: "agent_queued",
+        agent: detective,
+        position: 1,
+        total: 3,
+        timestamp: ts,
+      };
+      const startEvent: AgentStreamEvent = {
+        type: "agent_start",
+        agent: detective,
+        timestamp: ts,
+      };
+
+      state = reviewReducer(state, { type: "EVENT", event: queueEvent });
+      state = reviewReducer(state, { type: "EVENT", event: startEvent });
+
+      expect(state.agents).toHaveLength(1);
+      expect(state.agents[0].status).toBe("running");
+    });
+  });
+
+  describe("updateAgents — agent_thinking", () => {
+    it("updates currentAction with thought", () => {
+      let state = startedState();
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: {
+          type: "agent_start",
+          agent: detective,
+          timestamp: ts,
+        },
+      });
+
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: { type: "agent_thinking", agent: "detective", thought: "Analyzing patterns", timestamp: ts },
+      });
+
+      expect(state.agents[0].currentAction).toBe("Analyzing patterns");
+    });
+  });
+
+  describe("updateAgents — agent_progress", () => {
+    it("updates progress and message", () => {
+      let state = startedState();
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: {
+          type: "agent_start",
+          agent: optimizer,
+          timestamp: ts,
+        },
+      });
+
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: { type: "agent_progress", agent: "optimizer", progress: 75, message: "Almost done", timestamp: ts },
+      });
+
+      expect(state.agents[0].progress).toBe(75);
+      expect(state.agents[0].currentAction).toBe("Almost done");
+    });
+  });
+
+  describe("updateAgents — tool_call", () => {
+    it("updates currentAction and lastToolCall", () => {
+      let state = startedState();
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: {
+          type: "agent_start",
+          agent: detective,
+          timestamp: ts,
+        },
+      });
+
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: { type: "tool_call", agent: "detective", tool: "readFileContext", input: "src/app.ts", timestamp: ts },
+      });
+
+      expect(state.agents[0].currentAction).toContain("readFileContext");
+      expect(state.agents[0].lastToolCall).toBe("readFileContext");
+    });
+  });
+
+  describe("updateAgents — tool_result", () => {
+    it("updates currentAction with summary", () => {
+      let state = startedState();
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: {
+          type: "agent_start",
+          agent: detective,
+          timestamp: ts,
+        },
+      });
+
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: { type: "tool_result", agent: "detective", tool: "readFileContext", summary: "Read 50 lines", timestamp: ts },
+      });
+
+      expect(state.agents[0].currentAction).toBe("Read 50 lines");
+    });
+  });
+
+  describe("updateAgents — agent_error", () => {
+    it("sets agent status to error", () => {
+      let state = startedState();
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: {
+          type: "agent_start",
+          agent: detective,
+          timestamp: ts,
+        },
+      });
+
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: { type: "agent_error", agent: "detective", error: "Timeout", timestamp: ts },
+      });
+
+      expect(state.agents[0].status).toBe("error");
+      expect(state.agents[0].error).toBe("Timeout");
+      expect(state.agents[0].progress).toBe(100);
+    });
+  });
+
+  describe("updateAgents — agent_complete", () => {
+    it("sets agent status to complete with issue count", () => {
+      let state = startedState();
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: {
+          type: "agent_start",
+          agent: guardian,
+          timestamp: ts,
+        },
+      });
+
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: { type: "agent_complete", agent: "guardian", issueCount: 3, timestamp: ts },
+      });
+
+      expect(state.agents[0].status).toBe("complete");
+      expect(state.agents[0].issueCount).toBe(3);
+      expect(state.agents[0].progress).toBe(100);
+    });
+  });
+
+  describe("file progress", () => {
+    it("updates current file on file_start (orchestrator scope)", () => {
+      let state = startedState();
+      const event: AgentStreamEvent = {
+        type: "file_start",
+        file: "src/app.ts",
+        index: 2,
+        total: 5,
+        scope: "orchestrator",
+        timestamp: ts,
+      };
+
+      state = reviewReducer(state, { type: "EVENT", event });
+
+      expect(state.fileProgress.current).toBe(2);
+      expect(state.fileProgress.currentFile).toBe("src/app.ts");
+    });
+
+    it("ignores file_start with agent scope", () => {
+      let state = startedState();
+      const event: AgentStreamEvent = {
+        type: "file_start",
+        file: "src/app.ts",
+        index: 2,
+        total: 5,
+        scope: "agent",
+        timestamp: ts,
+      };
+
+      state = reviewReducer(state, { type: "EVENT", event });
+
+      expect(state.fileProgress.current).toBe(0);
+      expect(state.fileProgress.currentFile).toBeNull();
+    });
+
+    it("adds file to completed set on file_complete", () => {
+      let state = startedState();
+      const event: AgentStreamEvent = {
+        type: "file_complete",
+        file: "src/app.ts",
+        index: 0,
+        total: 5,
+        timestamp: ts,
+      };
+
+      state = reviewReducer(state, { type: "EVENT", event });
+
+      expect(state.fileProgress.completed.includes("src/app.ts")).toBe(true);
+      expect(state.fileProgress.currentFile).toBeNull();
+    });
+
+    it("ignores file_complete with agent scope", () => {
+      let state = startedState();
+      const event: AgentStreamEvent = {
+        type: "file_complete",
+        file: "src/app.ts",
+        index: 0,
+        total: 5,
+        scope: "agent",
+        timestamp: ts,
+      };
+
+      state = reviewReducer(state, { type: "EVENT", event });
+
+      expect(state.fileProgress.completed.includes("src/app.ts")).toBe(false);
+    });
+  });
+
+  describe("tool_call with readFileContext — colon parsing", () => {
+    it("extracts file path before colon from tool input", () => {
+      let state = startedState();
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: {
+          type: "agent_start",
+          agent: detective,
+          timestamp: ts,
+        },
+      });
+
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: { type: "tool_call", agent: "detective", tool: "readFileContext", input: "src/app.ts:10-50", timestamp: ts },
+      });
+
+      expect(state.fileProgress.completed.includes("src/app.ts")).toBe(true);
+      expect(state.fileProgress.currentFile).toBe("src/app.ts");
+    });
+
+    it("uses full input when no colon present", () => {
+      let state = startedState();
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: {
+          type: "agent_start",
+          agent: detective,
+          timestamp: ts,
+        },
+      });
+
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: { type: "tool_call", agent: "detective", tool: "readFileContext", input: "src/index.ts", timestamp: ts },
+      });
+
+      expect(state.fileProgress.completed.includes("src/index.ts")).toBe(true);
+    });
+  });
+
+  describe("issue_found", () => {
+    it("adds issues to state", () => {
+      let state = startedState();
+      const issue1: AgentStreamEvent = {
+        type: "issue_found",
+        agent: "detective",
+        issue: {
+          id: "i1",
+          title: "Bug A",
+          severity: "high",
+          category: "correctness",
+          file: "a.ts",
+          line: 1,
+          description: "desc",
+          codeSnippet: "code",
+          suggestion: "fix",
+        },
+        timestamp: ts,
+      };
+      const issue2: AgentStreamEvent = {
+        type: "issue_found",
+        agent: "guardian",
+        issue: {
+          id: "i2",
+          title: "Bug B",
+          severity: "medium",
+          category: "security",
+          file: "b.ts",
+          line: 5,
+          description: "desc2",
+          codeSnippet: "code2",
+          suggestion: "fix2",
+        },
+        timestamp: ts,
+      };
+
+      state = reviewReducer(state, { type: "EVENT", event: issue1 });
+      state = reviewReducer(state, { type: "EVENT", event: issue2 });
+
+      expect(state.issues).toHaveLength(2);
+      expect(state.issues[0].title).toBe("Bug A");
+      expect(state.issues[1].title).toBe("Bug B");
+    });
+  });
+
+  describe("step events", () => {
+    it("updates step status on step_start", () => {
+      let state = startedState();
+      const event: StepEvent = { type: "step_start", step: "diff", timestamp: ts };
+
+      state = reviewReducer(state, { type: "EVENT", event });
+
+      const diffStep = state.steps.find((s) => s.id === "diff");
+      expect(diffStep?.status).toBe("active");
+    });
+
+    it("updates step status on step_complete", () => {
+      let state = startedState();
+      state = reviewReducer(state, { type: "EVENT", event: { type: "step_start", step: "diff", timestamp: ts } });
+      state = reviewReducer(state, { type: "EVENT", event: { type: "step_complete", step: "diff", timestamp: ts } });
+
+      const diffStep = state.steps.find((s) => s.id === "diff");
+      expect(diffStep?.status).toBe("completed");
+    });
+
+    it("sets error and stops streaming on step_error", () => {
+      let state = startedState();
+      const event: StepEvent = { type: "step_error", step: "review", error: "AI provider down", timestamp: ts };
+
+      state = reviewReducer(state, { type: "EVENT", event });
+
+      const reviewStep = state.steps.find((s) => s.id === "review");
+      expect(reviewStep?.status).toBe("error");
+      expect(state.error).toBe("AI provider down");
+      expect(state.isStreaming).toBe(false);
+    });
+  });
+
+  describe("enrich_progress event", () => {
+    it("appends to events array", () => {
+      let state = startedState();
+      const event: EnrichEvent = {
+        type: "enrich_progress",
+        issueId: "i1",
+        enrichmentType: "blame",
+        status: "started",
+        timestamp: ts,
+      };
+
+      state = reviewReducer(state, { type: "EVENT", event });
+
+      const enrichEvents = state.events.filter((e) => e.type === "enrich_progress");
+      expect(enrichEvents).toHaveLength(1);
+    });
+  });
+
+  describe("orchestrator_complete", () => {
+    it("updates filesAnalyzed in fileProgress", () => {
+      let state = startedState();
+      const event: AgentStreamEvent = {
+        type: "orchestrator_complete",
+        summary: "Done",
+        totalIssues: 5,
+        lensStats: [],
+        filesAnalyzed: 12,
+        timestamp: ts,
+      };
+
+      state = reviewReducer(state, { type: "EVENT", event });
+
+      expect(state.fileProgress.total).toBe(12);
+    });
+  });
+
+  describe("multiple concurrent agents", () => {
+    it("tracks multiple agents independently", () => {
+      let state = startedState();
+
+      // Start two agents
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: {
+          type: "agent_start",
+          agent: detective,
+          timestamp: ts,
+        },
+      });
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: {
+          type: "agent_start",
+          agent: guardian,
+          timestamp: ts,
+        },
+      });
+
+      expect(state.agents).toHaveLength(2);
+      expect(state.agents[0].status).toBe("running");
+      expect(state.agents[1].status).toBe("running");
+
+      // Complete one agent
+      state = reviewReducer(state, {
+        type: "EVENT",
+        event: { type: "agent_complete", agent: "detective", issueCount: 2, timestamp: ts },
+      });
+
+      expect(state.agents[0].status).toBe("complete");
+      expect(state.agents[1].status).toBe("running");
     });
   });
 });

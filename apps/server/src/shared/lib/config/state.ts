@@ -5,7 +5,7 @@ import {
   getGlobalTrustPath,
   getProjectInfoPath,
 } from "../paths.js";
-import { readJsonFileSync, writeJsonFileSync, removeFileSync } from "../fs.js";
+import { readJsonFileSync, writeJsonFileSync, writeJsonFile, removeFileSync } from "../fs.js";
 import { AI_PROVIDERS, type AIProvider, type ProviderStatus, type SettingsConfig, type SecretsStorage, type TrustCapabilities } from "@stargazer/schemas/config";
 import type {
   ConfigState,
@@ -33,9 +33,13 @@ export const DEFAULT_PROVIDERS: ProviderStatus[] = AI_PROVIDERS.map((id) => ({
   isActive: false,
 }));
 
-const CONFIG_PATH = getGlobalConfigPath();
-const SECRETS_PATH = getGlobalSecretsPath();
-const TRUST_PATH = getGlobalTrustPath();
+let _configPath: string | undefined;
+let _secretsPath: string | undefined;
+let _trustPath: string | undefined;
+
+const CONFIG_PATH = (): string => (_configPath ??= getGlobalConfigPath());
+const SECRETS_PATH = (): string => (_secretsPath ??= getGlobalSecretsPath());
+const TRUST_PATH = (): string => (_trustPath ??= getGlobalTrustPath());
 
 const normalizeProviders = (providers: ProviderStatus[]): ProviderStatus[] => {
   const valid = providers.filter((provider) => isValidAIProvider(provider.provider));
@@ -48,7 +52,7 @@ const normalizeProviders = (providers: ProviderStatus[]): ProviderStatus[] => {
 };
 
 export const loadConfig = (): ConfigState => {
-  const stored = readJsonFileSync<ConfigState>(CONFIG_PATH);
+  const stored = readJsonFileSync<ConfigState>(CONFIG_PATH());
   const settings = { ...DEFAULT_SETTINGS, ...(stored?.settings ?? {}) };
   const providers = normalizeProviders(stored?.providers ?? DEFAULT_PROVIDERS);
 
@@ -59,7 +63,7 @@ export const loadConfig = (): ConfigState => {
 };
 
 export const loadSecrets = (): SecretsState => {
-  const stored = readJsonFileSync<SecretsState>(SECRETS_PATH);
+  const stored = readJsonFileSync<SecretsState>(SECRETS_PATH());
   if (!stored?.providers) {
     return { providers: {} };
   }
@@ -81,7 +85,7 @@ const normalizeTrustCapabilities = (
 };
 
 export const loadTrust = (): TrustState => {
-  const stored = readJsonFileSync<TrustState>(TRUST_PATH);
+  const stored = readJsonFileSync<TrustState>(TRUST_PATH());
   if (!stored?.projects) {
     return { projects: {} };
   }
@@ -100,18 +104,27 @@ export const loadTrust = (): TrustState => {
 };
 
 export const persistConfig = (state: ConfigState): void => {
-  writeJsonFileSync(CONFIG_PATH, state, 0o600);
+  writeJsonFileSync(CONFIG_PATH(), state, 0o600);
 };
+
+export const persistConfigAsync = (state: ConfigState): Promise<void> =>
+  writeJsonFile(CONFIG_PATH(), state, 0o600);
 
 export const persistSecrets = (state: SecretsState): void => {
-  writeJsonFileSync(SECRETS_PATH, state, 0o600);
+  writeJsonFileSync(SECRETS_PATH(), state, 0o600);
 };
+
+export const persistSecretsAsync = (state: SecretsState): Promise<void> =>
+  writeJsonFile(SECRETS_PATH(), state, 0o600);
 
 export const persistTrust = (state: TrustState): void => {
-  writeJsonFileSync(TRUST_PATH, state, 0o600);
+  writeJsonFileSync(TRUST_PATH(), state, 0o600);
 };
 
-export const removeSecretsFile = (): boolean => removeFileSync(SECRETS_PATH);
+export const persistTrustAsync = (state: TrustState): Promise<void> =>
+  writeJsonFile(TRUST_PATH(), state, 0o600);
+
+export const removeSecretsFile = (): boolean => removeFileSync(SECRETS_PATH());
 
 export const syncProvidersWithSecrets = (
   providers: ProviderStatus[],

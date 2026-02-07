@@ -1,5 +1,5 @@
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
-import { createContext, useContext, useState, useRef, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useState, useRef, type ReactNode } from "react";
 import { cn } from "@/utils/cn";
 import { useGroupNavigation } from "@/hooks/keyboard";
 import {
@@ -156,17 +156,14 @@ function RadioGroupRoot<T extends string = string>({
     initialValue: value ?? null,
   });
 
-  const contextValue = useMemo(
-    () => ({
-      value,
-      onValueChange: handleValueChange,
-      disabled,
-      size,
-      isFocused,
-      onFocusZoneEnter,
-    }),
-    [value, handleValueChange, disabled, size, isFocused, onFocusZoneEnter]
-  );
+  const contextValue: RadioGroupContextType = {
+    value,
+    onValueChange: handleValueChange,
+    disabled,
+    size,
+    isFocused,
+    onFocusZoneEnter,
+  };
 
   return (
     <RadioGroupContext.Provider value={contextValue}>

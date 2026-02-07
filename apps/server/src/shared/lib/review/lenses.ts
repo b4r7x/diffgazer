@@ -1,6 +1,5 @@
 import type { Lens, LensId } from "@stargazer/schemas/review";
 import {
-  DEFAULT_RUBRIC,
   CORRECTNESS_SYSTEM_PROMPT,
   CORRECTNESS_SEVERITY_RUBRIC,
   SECURITY_SYSTEM_PROMPT,
@@ -65,4 +64,3 @@ export function getLenses(ids: LensId[]): Lens[] {
   return ids.map((id) => LENSES[id]);
 }
 
-export { LENSES, DEFAULT_RUBRIC };

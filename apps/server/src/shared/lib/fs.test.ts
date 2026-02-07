@@ -44,10 +44,15 @@ describe("readJsonFileSync", () => {
     expect(readJsonFileSync("/missing.json")).toBeNull();
   });
 
-  it("should return null for corrupt JSON", () => {
+  it("should return null for corrupt JSON and log warning", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.mocked(fs.readFileSync).mockReturnValue("not json {{{");
 
     expect(readJsonFileSync("/corrupt.json")).toBeNull();
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    const warningMessage = warnSpy.mock.calls[0]?.[0];
+    expect(warningMessage).toContain("/corrupt.json");
+    warnSpy.mockRestore();
   });
 });
 
@@ -106,18 +111,20 @@ describe("removeFileSync", () => {
 });
 
 describe("atomicWriteFile", () => {
-  it("should write to temp file then rename", async () => {
+  it("should write to temp file then rename using randomUUID", async () => {
     vi.mocked(fs.promises.writeFile).mockResolvedValue(undefined);
     vi.mocked(fs.promises.rename).mockResolvedValue(undefined);
 
     await atomicWriteFile("/test/file.txt", "content");
 
     expect(fs.promises.writeFile).toHaveBeenCalledWith(
-      expect.stringContaining("/test/file.txt."),
+      expect.stringMatching(/^\/test\/file\.txt\.[a-z0-9-]+\.tmp$/i),
       "content",
       { mode: 0o600 },
     );
-    expect(fs.promises.rename).toHaveBeenCalled();
+
+    const tempPath = vi.mocked(fs.promises.writeFile).mock.calls[0]?.[0];
+    expect(fs.promises.rename).toHaveBeenCalledWith(tempPath, "/test/file.txt");
   });
 
   it("should clean up temp file on write error", async () => {

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { ResolvedTheme, ThemeContextValue, WebTheme } from "@/types/theme";
 import { useSettings } from "@/hooks/use-settings";
 import { api } from "@/lib/api";
@@ -62,7 +62,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     api.saveSettings({ theme: newTheme }).catch((err) => console.error("Failed to save theme settings", err));
   };
 
-  const value = useMemo<ThemeContextValue>(() => ({ theme: resolvedTheme, resolved, setTheme }), [resolvedTheme, resolved, setTheme]);
+  const value: ThemeContextValue = { theme: resolvedTheme, resolved, setTheme };
 
   return (
     <ThemeContext.Provider value={value}>

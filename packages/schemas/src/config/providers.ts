@@ -156,10 +156,10 @@ export const AVAILABLE_PROVIDERS: ProviderInfo[] = [
 function isValidModelForProvider(provider: AIProvider, model: string): boolean {
   switch (provider) {
     case "gemini":
-      return GEMINI_MODELS.includes(model as GeminiModel);
+      return (GEMINI_MODELS as readonly string[]).includes(model);
     case "zai":
     case "zai-coding":
-      return GLM_MODELS.includes(model as GLMModel);
+      return (GLM_MODELS as readonly string[]).includes(model);
     case "openrouter":
       return true;
     default:

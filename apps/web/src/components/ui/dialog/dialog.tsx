@@ -20,15 +20,12 @@ export function Dialog({ open: controlledOpen, onOpenChange, children }: DialogP
   useScope('dialog', { enabled: isOpen });
   useKey('Escape', () => handleOpenChange(false), { enabled: isOpen });
 
-  const contextValue = React.useMemo<DialogContextValue>(
-    () => ({
-      open: isOpen,
-      onOpenChange: handleOpenChange,
-      titleId: `${dialogId}-title`,
-      descriptionId: `${dialogId}-description`,
-    }),
-    [isOpen, handleOpenChange, dialogId]
-  );
+  const contextValue: DialogContextValue = {
+    open: isOpen,
+    onOpenChange: handleOpenChange,
+    titleId: `${dialogId}-title`,
+    descriptionId: `${dialogId}-description`,
+  };
 
   return (
     <DialogContext.Provider value={contextValue}>

@@ -17,6 +17,8 @@ export const ContextRefreshSchema = z.object({
   force: z.boolean().optional(),
 });
 
+const MAX_CSV_ITEMS = 1000;
+
 export const parseCsvParam = (
   value: string | undefined | null,
 ): string[] | undefined => {
@@ -24,16 +26,15 @@ export const parseCsvParam = (
   const items = value
     .split(",")
     .map((item) => item.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .slice(0, MAX_CSV_ITEMS);
   return items.length > 0 ? items : undefined;
 };
 
 export const CsvLensIdsSchema = z
   .string()
-  .transform((val) => {
-    const items = parseCsvParam(val);
-    return items ? z.array(LensIdSchema).parse(items) : undefined;
-  })
+  .transform((val) => parseCsvParam(val))
+  .pipe(z.array(LensIdSchema).optional())
   .optional();
 
 export const ReviewStreamQuerySchema = z.object({

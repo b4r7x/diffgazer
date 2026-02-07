@@ -45,3 +45,6 @@ Thumbs.db
 
 # mocks
 ui-mocks
+
+# oh-my-claudecode
+.omc/

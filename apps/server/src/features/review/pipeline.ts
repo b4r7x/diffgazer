@@ -5,6 +5,7 @@ import type { ParsedDiff } from "../../shared/lib/diff/types.js";
 import { saveReview } from "../../shared/lib/storage/reviews.js";
 import {
   type LensId,
+  LensIdSchema,
   type ProfileId,
   type ReviewMode,
 } from "@stargazer/schemas/review";
@@ -39,13 +40,16 @@ export function generateExecutiveSummary(
   issues: ReviewIssue[],
   orchestrationSummary: string,
 ): string {
-  const severityCounts = issues.reduce(
-    (acc, issue) => {
-      acc[issue.severity] = (acc[issue.severity] ?? 0) + 1;
-      return acc;
-    },
-    {} as Record<ReviewSeverity, number>,
-  );
+  const severityCounts: Record<ReviewSeverity, number> = {
+    blocker: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+    nit: 0,
+  };
+  for (const issue of issues) {
+    severityCounts[issue.severity]++;
+  }
 
   const uniqueFiles = new Set(issues.map((i) => i.file)).size;
 
@@ -122,6 +126,7 @@ export async function resolveGitDiff(params: {
   try {
     diff = await gitService.getDiff(mode);
   } catch (error: unknown) {
+    // Intentional: reviewAbort is thrown as flow control, caught by the pipeline orchestrator in service.ts
     throw reviewAbort(
       createGitDiffError(error).message,
       ErrorCode.GIT_NOT_FOUND,
@@ -134,6 +139,7 @@ export async function resolveGitDiff(params: {
       mode === "staged"
         ? "No staged changes found. Use 'git add' to stage files, or review unstaged changes instead."
         : "No unstaged changes found. Make some edits first, or review staged changes instead.";
+    // Intentional flow control — caught by pipeline orchestrator in service.ts
     throw reviewAbort(errorMessage, "NO_DIFF", "diff");
   }
 
@@ -151,6 +157,7 @@ export async function resolveGitDiff(params: {
   if (files && files.length > 0) {
     parsed = filterDiffByFiles(parsed, files);
     if (parsed.files.length === 0) {
+      // Intentional flow control — caught by pipeline orchestrator in service.ts
       throw reviewAbort(
         `None of the specified files have ${mode} changes`,
         "NO_DIFF",
@@ -161,6 +168,7 @@ export async function resolveGitDiff(params: {
   if (parsed.totalStats.totalSizeBytes > MAX_DIFF_SIZE_BYTES) {
     const sizeMB = (parsed.totalStats.totalSizeBytes / 1024 / 1024).toFixed(2);
     const maxMB = (MAX_DIFF_SIZE_BYTES / 1024 / 1024).toFixed(2);
+    // Intentional flow control — caught by pipeline orchestrator in service.ts
     throw reviewAbort(
       `Diff too large (${sizeMB}MB exceeds ${maxMB}MB limit). Try reviewing fewer files or use file filtering.`,
       ErrorCode.VALIDATION_ERROR,
@@ -194,7 +202,10 @@ export async function resolveReviewConfig(params: {
   }
   await emit(stepComplete("context"));
 
-  return { activeLenses: activeLenses as LensId[], profile, projectContext };
+  const validatedLenses = activeLenses.filter(
+    (id): id is LensId => LensIdSchema.safeParse(id).success
+  );
+  return { activeLenses: validatedLenses, profile, projectContext };
 }
 
 export async function executeReview(params: {
@@ -227,6 +238,7 @@ export async function executeReview(params: {
   );
 
   if (!result.ok) {
+    // Intentional flow control — caught by pipeline orchestrator in service.ts
     throw reviewAbort(result.error.message, "AI_ERROR", "review");
   }
 
@@ -298,6 +310,7 @@ export async function finalizeReview(params: {
   });
 
   if (!saveResult.ok) {
+    // Intentional flow control — caught by pipeline orchestrator in service.ts
     throw reviewAbort(saveResult.error.message, ErrorCode.INTERNAL_ERROR);
   }
 

@@ -1,5 +1,4 @@
-import { readFile, writeFile, mkdir, readdir } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { readFile, mkdir, readdir, access, realpath } from "node:fs/promises";
 import path from "node:path";
 import type {
   FileTreeNode,
@@ -8,18 +7,7 @@ import type {
   ProjectContextSnapshot,
 } from "@stargazer/schemas/context";
 import { createGitService } from "../../shared/lib/git/service.js";
-
-async function readJsonFile<T>(filePath: string): Promise<T | null> {
-  try {
-    const content = await readFile(filePath, "utf-8");
-    return JSON.parse(content) as T;
-  } catch (error) {
-    if (error instanceof Error && "code" in error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
-    }
-    return null;
-  }
-}
+import { readJsonFile, atomicWriteFile } from "../../shared/lib/fs.js";
 
 type WorkspacePackage = {
   name: string;
@@ -54,7 +42,7 @@ async function discoverWorkspacePackages(
 
   for (const root of roots) {
     const absoluteRoot = path.join(projectPath, root.dir);
-    if (!existsSync(absoluteRoot)) continue;
+    try { await access(absoluteRoot); } catch { continue; }
 
     const entries = await readFileDirectory(absoluteRoot);
     for (const entry of entries) {
@@ -140,8 +128,15 @@ async function buildFileTree(
   root: string,
   depth: number,
   baseRoot: string = root,
+  visited: Set<string> = new Set(),
 ): Promise<FileTreeNode[]> {
   if (depth < 0) return [];
+
+  // Prevent symlink cycles by tracking visited real paths
+  const real = await realpath(root).catch(() => root);
+  if (visited.has(real)) return [];
+  visited.add(real);
+
   const entries = await readFileDirectory(root);
   entries.sort((a, b) => a.name.localeCompare(b.name));
   const nodes: FileTreeNode[] = [];
@@ -153,7 +148,7 @@ async function buildFileTree(
     if (entry.isDirectory) {
       const children =
         depth > 0
-          ? await buildFileTree(fullPath, depth - 1, baseRoot)
+          ? await buildFileTree(fullPath, depth - 1, baseRoot, visited)
           : undefined;
       nodes.push({
         name: entry.name,
@@ -292,16 +287,14 @@ export async function buildProjectContextSnapshot(
     charCount: rawMarkdown.length,
   };
 
-  await writeFile(
+  await atomicWriteFile(
     path.join(contextDir, "context.json"),
     JSON.stringify(graph, null, 2),
-    "utf8",
   );
-  await writeFile(path.join(contextDir, "context.md"), rawMarkdown, "utf8");
-  await writeFile(
+  await atomicWriteFile(path.join(contextDir, "context.md"), rawMarkdown);
+  await atomicWriteFile(
     path.join(contextDir, "context.meta.json"),
     JSON.stringify(meta, null, 2),
-    "utf8",
   );
 
   return { markdown: rawMarkdown, graph, meta };

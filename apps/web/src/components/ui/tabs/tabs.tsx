@@ -36,10 +36,7 @@ function TabsRoot<T extends string = string>({
 
   const getTriggers = () => triggersRef.current;
 
-  const contextValue = React.useMemo(
-    () => ({ value: value as string, onValueChange: handleValueChange, registerTrigger, getTriggers }),
-    [value, handleValueChange, registerTrigger, getTriggers]
-  );
+  const contextValue = { value: value as string, onValueChange: handleValueChange, registerTrigger, getTriggers };
 
   return (
     <TabsContext.Provider value={contextValue}>

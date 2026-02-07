@@ -15,7 +15,7 @@ import {
 } from "@stargazer/schemas/config";
 import { OPENROUTER_PROVIDER_ID } from "@/config/constants";
 import { useModelFilter } from "../../hooks/use-model-filter";
-import { useOpenRouterModels } from "../../hooks/use-openrouter-models";
+import { useOpenRouterModels } from "@/hooks/use-openrouter-models";
 import { useModelDialogKeyboard } from "../../hooks/use-model-dialog-keyboard";
 import { ModelSearchInput } from "./model-search-input";
 import { ModelFilterTabs } from "./model-filter-tabs";

@@ -4,6 +4,12 @@ import { createApiClient } from "./client.js";
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
+function lastCall() {
+  const call = mockFetch.mock.calls[0];
+  if (!call) throw new Error("No fetch calls recorded");
+  return call as [string, RequestInit];
+}
+
 function jsonResponse(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -65,7 +71,7 @@ describe("createApiClient", () => {
 
       await client.get("/api/reviews", { mode: "staged" });
 
-      const url = mockFetch.mock.calls[0][0] as string;
+      const [url] = lastCall();
       expect(url).toContain("mode=staged");
     });
   });
@@ -76,7 +82,7 @@ describe("createApiClient", () => {
 
       await client.get("/api/test");
 
-      const options = mockFetch.mock.calls[0][1] as RequestInit;
+      const [, options] = lastCall();
       expect((options.headers as Record<string, string>).Accept).toBe("application/json");
     });
 
@@ -85,7 +91,7 @@ describe("createApiClient", () => {
 
       await client.post("/api/test", { data: 1 });
 
-      const options = mockFetch.mock.calls[0][1] as RequestInit;
+      const [, options] = lastCall();
       expect((options.headers as Record<string, string>)["Content-Type"]).toBe("application/json");
     });
 
@@ -94,7 +100,7 @@ describe("createApiClient", () => {
 
       await client.get("/api/test");
 
-      const options = mockFetch.mock.calls[0][1] as RequestInit;
+      const [, options] = lastCall();
       expect((options.headers as Record<string, string>)["Content-Type"]).toBeUndefined();
     });
 
@@ -107,7 +113,7 @@ describe("createApiClient", () => {
 
       await projectClient.get("/api/test");
 
-      const options = mockFetch.mock.calls[0][1] as RequestInit;
+      const [, options] = lastCall();
       expect((options.headers as Record<string, string>)["x-stargazer-project-root"]).toBe("/home/user/project");
     });
 
@@ -120,7 +126,7 @@ describe("createApiClient", () => {
 
       await customClient.get("/api/test");
 
-      const options = mockFetch.mock.calls[0][1] as RequestInit;
+      const [, options] = lastCall();
       expect((options.headers as Record<string, string>)["X-Custom"]).toBe("value");
     });
   });
@@ -132,7 +138,7 @@ describe("createApiClient", () => {
       const result = await client.get<{ items: string[] }>("/api/list");
 
       expect(result).toEqual({ items: [] });
-      const options = mockFetch.mock.calls[0][1] as RequestInit;
+      const [, options] = lastCall();
       expect(options.method).toBe("GET");
       expect(options.body).toBeUndefined();
     });
@@ -142,7 +148,7 @@ describe("createApiClient", () => {
 
       await client.post("/api/create", { name: "test" });
 
-      const options = mockFetch.mock.calls[0][1] as RequestInit;
+      const [, options] = lastCall();
       expect(options.method).toBe("POST");
       expect(options.body).toBe(JSON.stringify({ name: "test" }));
     });
@@ -152,7 +158,7 @@ describe("createApiClient", () => {
 
       await client.put("/api/update", { name: "new" });
 
-      const options = mockFetch.mock.calls[0][1] as RequestInit;
+      const [, options] = lastCall();
       expect(options.method).toBe("PUT");
     });
 
@@ -162,7 +168,7 @@ describe("createApiClient", () => {
       const result = await client.delete<{ deleted: boolean }>("/api/item/1");
 
       expect(result).toEqual({ deleted: true });
-      const options = mockFetch.mock.calls[0][1] as RequestInit;
+      const [, options] = lastCall();
       expect(options.method).toBe("DELETE");
     });
   });

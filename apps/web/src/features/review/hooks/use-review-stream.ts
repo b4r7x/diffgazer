@@ -168,7 +168,8 @@ export function useReviewStream(): UseReviewStreamReturn {
       return result;
     } catch (e) {
       handleStreamError(e);
-      throw e;
+      const message = e instanceof Error ? e.message : "Failed to resume review";
+      return { ok: false as const, error: { code: "STREAM_ERROR" as const, message } };
     } finally {
       abortControllerRef.current = null;
     }

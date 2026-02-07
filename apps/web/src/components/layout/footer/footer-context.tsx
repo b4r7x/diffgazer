@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 import type { Shortcut } from "@stargazer/schemas/ui";
 
 export type { Shortcut };
@@ -26,15 +26,9 @@ export function FooterProvider({ children }: { children: ReactNode }) {
   const [shortcuts, setShortcuts] = useState<Shortcut[]>(DEFAULT_SHORTCUTS);
   const [rightShortcuts, setRightShortcuts] = useState<Shortcut[]>([]);
 
-  const dataValue = useMemo(
-    () => ({ shortcuts, rightShortcuts }),
-    [shortcuts, rightShortcuts]
-  );
+  const dataValue: FooterDataContextValue = { shortcuts, rightShortcuts };
 
-  const actionsValue = useMemo(
-    () => ({ setShortcuts, setRightShortcuts }),
-    []
-  );
+  const actionsValue: FooterActionsContextValue = { setShortcuts, setRightShortcuts };
 
   return (
     <FooterDataContext.Provider value={dataValue}>

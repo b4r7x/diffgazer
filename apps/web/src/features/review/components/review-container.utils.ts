@@ -1,6 +1,7 @@
 import type { ProgressStepData, ProgressStatus } from '@/components/ui/progress';
 import type { StepState, AgentState, AgentStatus } from '@stargazer/schemas/events';
 import type { ProgressSubstepData } from '@stargazer/schemas/ui';
+import { truncate } from '@stargazer/core/strings';
 
 function mapStepStatus(status: StepState['status']): ProgressStatus {
   return status === 'error' ? 'pending' : status;
@@ -15,15 +16,10 @@ function mapAgentToSubstepStatus(agentStatus: AgentStatus): ProgressSubstepData[
   }
 }
 
-function truncateText(value: string, maxLength: number): string {
-  if (value.length <= maxLength) return value;
-  return value.slice(0, maxLength - 3) + '...';
-}
-
 function getSubstepDetail(agent: AgentState): string {
   switch (agent.status) {
     case 'running':
-      return `${Math.round(agent.progress)}%${agent.currentAction ? ` · ${truncateText(agent.currentAction, 40)}` : ''}`;
+      return `${Math.round(agent.progress)}%${agent.currentAction ? ` · ${truncate(agent.currentAction, 40)}` : ''}`;
     case 'complete':
       return `${agent.issueCount} issue${agent.issueCount === 1 ? '' : 's'}`;
     case 'error':
