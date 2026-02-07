@@ -1,7 +1,8 @@
+import { useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Menu, MenuItem, Panel, PanelHeader } from "@stargazer/ui";
+import { Menu, MenuItem, Panel, PanelHeader, type NavigableHandle } from "@stargazer/ui";
 import { useConfigData } from "@/app/providers/config-provider";
-import { useScope, useKey } from "@stargazer/keyboard";
+import { useScope, useKey, useNavigationKeys } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useTheme } from "@/hooks/use-theme";
@@ -24,12 +25,14 @@ export function SettingsHubPage() {
   const { provider, isConfigured, trust } = useConfigData();
   const { theme } = useTheme();
   const [selectedIndex, setSelectedIndex] = useScopedRouteState("menuIndex", 0);
+  const menuRef = useRef<NavigableHandle>(null);
   const isTrusted = Boolean(trust?.capabilities.readFiles);
   const { settings, error: settingsError } = useSettings();
 
   usePageFooter({ shortcuts: SETTINGS_SHORTCUTS, rightShortcuts: FOOTER_RIGHT });
 
   useScope("settings-hub");
+  useNavigationKeys(menuRef);
   useKey("Escape", () => navigate({ to: "/" }));
 
   const providerLabel = isConfigured && provider ? provider.toUpperCase() : "Not configured";
@@ -77,6 +80,7 @@ export function SettingsHubPage() {
         <Panel className="bg-tui-bg shadow-2xl">
           <PanelHeader variant="floating">SETTINGS HUB</PanelHeader>
           <Menu
+            ref={menuRef}
             selectedIndex={selectedIndex}
             onSelect={setSelectedIndex}
             onActivate={handleActivate}
