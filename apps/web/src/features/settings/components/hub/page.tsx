@@ -24,7 +24,7 @@ export function SettingsHubPage() {
   const navigate = useNavigate();
   const { provider, isConfigured, trust } = useConfigData();
   const { theme } = useTheme();
-  const [selectedId, setSelectedId] = useScopedRouteState<string | null>("menuId", null);
+  const [selectedId, setSelectedId] = useScopedRouteState<string | null>("menuId", SETTINGS_MENU_ITEMS[0]?.id ?? null);
   const menuRef = useRef<HTMLDivElement>(null);
   const isTrusted = Boolean(trust?.capabilities.readFiles);
   const { settings, error: settingsError } = useSettings();

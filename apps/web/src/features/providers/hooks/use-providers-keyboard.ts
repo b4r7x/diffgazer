@@ -1,6 +1,6 @@
 import { useState, type RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useKey, useFocusZone, useScope } from "@stargazer/keyboard";
+import { useKey, useFocusZone } from "@stargazer/keyboard";
 import { PROVIDER_FILTER_VALUES, type ProviderFilter } from "@/features/providers/constants";
 import type { AIProvider } from "@stargazer/schemas/config";
 
@@ -41,7 +41,6 @@ export function useProvidersKeyboard({
   onRemoveKey,
   onSelectProvider,
 }: ProvidersKeyboardOptions): ProvidersKeyboardReturn {
-  useScope("providers");
   const navigate = useNavigate();
   const [filterIndex, setFilterIndex] = useState(0);
   const [buttonIndex, setButtonIndex] = useState(0);
@@ -90,19 +89,25 @@ export function useProvidersKeyboard({
   const inFilters = effectiveFocusZone === "filters";
   const inButtons = effectiveFocusZone === "buttons";
 
-  // Input zone — side-effects for transitions + Escape (not an arrow key)
-  useKey("ArrowDown", () => inputRef.current?.blur(),
-    { enabled: !dialogOpen && inInput, allowInInput: true });
+  // Input zone — useFocusZone can't handle transitions from input (no allowInInput)
+  // so we manually change zone AND blur
+  useKey("ArrowDown", () => {
+    setZone("filters");
+    inputRef.current?.blur();
+  }, { enabled: !dialogOpen && inInput, allowInInput: true });
   useKey("Escape", () => {
     setZone("filters");
     inputRef.current?.blur();
   }, { enabled: !dialogOpen && inInput, allowInInput: true });
 
   // Filters zone — side-effects for transitions + horizontal nav + actions
-  useKey("ArrowUp", () => inputRef.current?.focus(),
-    { enabled: !dialogOpen && inFilters });
+  useKey("ArrowUp", () => {
+    setZone("input");
+    inputRef.current?.focus();
+  }, { enabled: !dialogOpen && inFilters });
   useKey("ArrowDown", () => {
     if (filteredProviders.length > 0) {
+      setZone("list");
       setSelectedId(filteredProviders[0].id);
     }
   }, { enabled: !dialogOpen && inFilters });
@@ -116,12 +121,20 @@ export function useProvidersKeyboard({
     { enabled: !dialogOpen && inFilters });
 
   // List zone — side-effect for transition to buttons
-  useKey("ArrowRight", () => setButtonIndex(getNextButtonIndex(-1, 1)),
-    { enabled: !dialogOpen && inZone("list") && !!selectedProvider });
+  useKey("ArrowRight", () => {
+    setZone("buttons");
+    setButtonIndex(getNextButtonIndex(-1, 1));
+  }, { enabled: !dialogOpen && inZone("list") && !!selectedProvider });
 
   // Buttons zone — horizontal/vertical nav + actions
-  useKey("ArrowLeft", () => setButtonIndex((i) => getNextButtonIndex(i, -1)),
-    { enabled: !dialogOpen && inButtons && buttonIndex > 0 });
+  useKey("ArrowLeft", () => {
+    const next = getNextButtonIndex(buttonIndex, -1);
+    if (next === buttonIndex) {
+      setZone("list");
+    } else {
+      setButtonIndex(next);
+    }
+  }, { enabled: !dialogOpen && inButtons });
   useKey("ArrowRight", () => setButtonIndex((i) => getNextButtonIndex(i, 1)),
     { enabled: !dialogOpen && inButtons });
   useKey("ArrowUp", () => setButtonIndex((i) => getNextButtonIndex(i, -1)),

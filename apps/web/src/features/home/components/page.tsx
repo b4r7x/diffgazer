@@ -59,7 +59,7 @@ export function HomePage() {
     trustedDir: isTrusted ? trust?.repoRoot : undefined,
   };
 
-  const [selectedId, setSelectedId] = useScopedRouteState<string | null>("menuId", null);
+  const [selectedId, setSelectedId] = useScopedRouteState<string | null>("menuId", MENU_ITEMS[0]?.id ?? null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const handleActivate = (id: string) => {
