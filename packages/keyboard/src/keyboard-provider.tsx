@@ -28,6 +28,8 @@ export const KeyboardContext = createContext<KeyboardContextValue | undefined>(u
 
 export function KeyboardProvider({ children }: { children: ReactNode }) {
   const [scopeStack, setScopeStack] = useState<string[]>(["global"]);
+  const scopeStackRef = useRef(scopeStack);
+  scopeStackRef.current = scopeStack;
   const handlers = useRef(new Map<string, HandlerMap>());
   const nextHandlerId = useRef(1);
 
@@ -49,11 +51,12 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
       setScopeStack((prev) => {
         const idx = prev.lastIndexOf(scope);
         if (idx < 0) return prev;
-        const next = [...prev.slice(0, idx), ...prev.slice(idx + 1)];
-        if (!next.includes(scope)) {
+        return [...prev.slice(0, idx), ...prev.slice(idx + 1)];
+      });
+      queueMicrotask(() => {
+        if (!scopeStackRef.current.includes(scope)) {
           handlers.current.delete(scope);
         }
-        return next;
       });
     };
   }, []);

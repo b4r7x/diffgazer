@@ -1,4 +1,4 @@
-import { useState, useId, useEffect, type ReactNode } from "react";
+import { useState, useId, type ReactNode } from "react";
 import { DialogContext, type DialogContextValue } from "./dialog-context";
 
 export interface DialogProps {
@@ -15,21 +15,6 @@ export function Dialog({ open: controlledOpen, onOpenChange, children }: DialogP
     else setUncontrolledOpen(open);
   };
   const dialogId = useId();
-
-  // Escape key handler — self-contained, no external keyboard dependency
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        handleOpenChange(false);
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen]);
 
   const contextValue: DialogContextValue = {
     open: isOpen,

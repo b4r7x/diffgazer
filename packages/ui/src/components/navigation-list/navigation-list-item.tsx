@@ -42,9 +42,10 @@ export function NavigationListItem({
   children,
   className,
 }: NavigationListItemProps) {
-  const { selectedId, onSelect, onActivate, isFocused } = useNavigationListContext();
+  const { selectedId, focusedValue, onSelect, onActivate, isFocused } = useNavigationListContext();
   const isSelected = selectedId === id;
-  const showSelection = isSelected && isFocused;
+  const isFocusedItem = focusedValue === id;
+  const showSelection = (isSelected || isFocusedItem) && isFocused;
 
   const handleClick = () => {
     if (!disabled) {

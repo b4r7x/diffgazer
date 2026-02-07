@@ -55,7 +55,7 @@ describe("zodErrorHandler", () => {
     zodErrorHandler(zodResult, ctx);
 
     const [body, status] = ctx.json.mock.calls[0]!;
-    expect(body.error.message).toBe("Expected string, received number");
+    expect(body.error.message).toBe("Invalid input: expected string, received number");
     expect(status).toBe(400);
   });
 

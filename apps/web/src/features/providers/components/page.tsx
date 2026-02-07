@@ -1,6 +1,5 @@
 import { useRef } from "react";
-import type { NavigableHandle } from "@stargazer/ui";
-import { useNavigationKeys } from "@stargazer/keyboard";
+import { useNavigation } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ProviderList } from "@/features/providers/components/provider-list";
 import { ProviderDetails } from "@/features/providers/components/provider-details";
@@ -32,9 +31,17 @@ export function ProvidersPage() {
 
   usePageFooter({ shortcuts: FOOTER_SHORTCUTS });
 
-  const listRef = useRef<NavigableHandle>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const listBridgeActive = keyboard.focusZone === "list" && !dialogs.anyOpen;
-  useNavigationKeys(listRef, { enabled: listBridgeActive });
+  const { focusedValue: listFocusedValue } = useNavigation({
+    containerRef: listRef,
+    role: "option",
+    enabled: listBridgeActive,
+    value: selection.effectiveSelectedId,
+    onValueChange: selection.setSelectedId,
+    wrap: false,
+    onBoundaryReached: keyboard.handleListBoundary,
+  });
 
   const actions = {
     onSetApiKey: () => dialogs.setApiKeyOpen(true),
@@ -62,12 +69,11 @@ export function ProvidersPage() {
           onFilterChange={selection.setFilter}
           searchQuery={search.query}
           onSearchChange={search.setQuery}
-          keyboardEnabled={false}
           isFocused={keyboard.focusZone === "list"}
-          onBoundaryReached={keyboard.handleListBoundary}
           inputRef={search.inputRef}
           focusedFilterIndex={keyboard.focusZone === "filters" ? keyboard.filterIndex : undefined}
           listRef={listRef}
+          focusedValue={listFocusedValue}
         />
       </div>
       <div className="w-3/5 flex flex-col bg-tui-bg">

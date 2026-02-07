@@ -1,5 +1,7 @@
+import { useRef } from "react";
 import type { SecretsStorage } from '@stargazer/schemas/config';
 import { RadioGroup, RadioGroupItem } from '@stargazer/ui';
+import { useNavigation } from "@stargazer/keyboard";
 
 export interface StorageSelectorContentProps {
   value: SecretsStorage | null;
@@ -25,12 +27,30 @@ export function StorageSelectorContent({
   onChange,
   disabled = false,
 }: StorageSelectorContentProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const onChangeStr = onChange as (value: string) => void;
+
+  const { onKeyDown, focusedValue } = useNavigation({
+    mode: "local",
+    containerRef,
+    role: "radio",
+    value,
+    onValueChange: onChangeStr,
+    onSelect: onChangeStr,
+    onEnter: onChangeStr,
+    enabled: !disabled,
+  });
+
   return (
     <div className="space-y-3">
       <div className="text-sm font-mono text-[--tui-fg]/60">Select Storage Method:</div>
       <RadioGroup
+        ref={containerRef}
         value={value ?? undefined}
         onValueChange={onChange}
+        onKeyDown={onKeyDown}
+        focusedValue={focusedValue}
         className="space-y-2"
         disabled={disabled}
       >

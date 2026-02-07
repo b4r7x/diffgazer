@@ -2,6 +2,7 @@ import { createContext, useContext } from "react";
 
 export interface NavigationListContextValue {
   selectedId: string | null;
+  focusedValue: string | null;
   onSelect: (id: string) => void;
   onActivate?: (id: string) => void;
   isFocused: boolean;
