@@ -92,7 +92,7 @@ export function NavigationListItem({
         {(badge || subtitle) && (
           <div className="flex gap-2 items-center">
             {badge && (
-              <span className={cn(showSelection && "[&>*]:bg-black/20 [&>*]:text-black [&>*]:border-black/30 [&_*]:text-black")}>
+              <span className={cn(showSelection && "[&>*]:!bg-tui-bg [&>*]:!text-tui-blue [&>*]:!border-tui-blue [&_*]:!text-tui-blue")}>
                 {badge}
               </span>
             )}

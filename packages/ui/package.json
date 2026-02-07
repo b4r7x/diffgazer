@@ -21,7 +21,8 @@
   "types": "./dist/index.d.ts",
   "sideEffects": [
     "./dist/styles.css",
-    "./dist/theme.css"
+    "./dist/theme.css",
+    "./dist/sources.css"
   ],
   "exports": {
     ".": {
@@ -29,13 +30,14 @@
       "import": "./dist/index.js"
     },
     "./styles.css": "./dist/styles.css",
-    "./theme.css": "./dist/theme.css"
+    "./theme.css": "./dist/theme.css",
+    "./sources.css": "./dist/sources.css"
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "rm -rf dist && tsc && cp src/styles/index.css dist/styles.css && cp src/styles/theme.css dist/theme.css",
+    "build": "rm -rf dist && tsc && cp src/styles/index.css dist/styles.css && cp src/styles/theme.css dist/theme.css && cp src/styles/sources.css dist/sources.css",
     "dev": "tsc --watch",
     "type-check": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
