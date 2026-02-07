@@ -19,6 +19,7 @@ import {
 export interface RadioProps {
   checked?: boolean;
   onCheckedChange?: (checked: boolean) => void;
+  onMouseEnter?: () => void;
   label?: ReactNode;
   description?: ReactNode;
   disabled?: boolean;
@@ -33,6 +34,7 @@ export interface RadioProps {
 export function Radio({
   checked = false,
   onCheckedChange,
+  onMouseEnter,
   label,
   description,
   disabled = false,
@@ -66,6 +68,7 @@ export function Radio({
       tabIndex={disabled ? -1 : 0}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
+      onMouseEnter={onMouseEnter}
       className={cn(
         selectableItemVariants({ focused, disabled }),
         selectableItemContainerVariants(),
@@ -117,6 +120,7 @@ export function Radio({
 interface RadioGroupContextType<T extends string = string> {
   value?: T;
   onValueChange: (value: T) => void;
+  onFocusChange?: (value: T) => void;
   disabled: boolean;
   size: SelectableItemSize;
   isFocused: (value: string) => boolean;
@@ -140,6 +144,7 @@ export interface RadioGroupProps<T extends string = string> {
   value?: T;
   defaultValue?: T;
   onValueChange?: (value: T) => void;
+  onFocusChange?: (value: T) => void;
   onKeyDown?: (event: ReactKeyboardEvent) => void;
   focusedValue?: string | null;
   orientation?: "vertical" | "horizontal";
@@ -156,6 +161,7 @@ function RadioGroupRoot<T extends string = string>({
   value: controlledValue,
   defaultValue,
   onValueChange,
+  onFocusChange,
   onKeyDown,
   focusedValue,
   orientation = "vertical",
@@ -184,6 +190,7 @@ function RadioGroupRoot<T extends string = string>({
   const contextValue: RadioGroupContextType = {
     value,
     onValueChange: handleValueChange,
+    onFocusChange: onFocusChange as ((value: string) => void) | undefined,
     disabled,
     size,
     isFocused,
@@ -231,11 +238,18 @@ function RadioGroupItem({
   const isDisabled = context.disabled || itemDisabled;
   const isFocused = context.isFocused(value);
 
+  const handleMouseEnter = () => {
+    if (!isDisabled) {
+      context.onFocusChange?.(value);
+    }
+  };
+
   return (
     <Radio
       data-value={value}
       checked={isSelected}
       onCheckedChange={() => context.onValueChange(value)}
+      onMouseEnter={handleMouseEnter}
       label={label}
       description={description}
       disabled={isDisabled}

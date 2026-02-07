@@ -65,7 +65,7 @@ export function NavigationListItem({
       onClick={handleClick}
       className={cn(
         navigationListItemVariants({ density }),
-        showSelection && "bg-tui-fg text-primary-foreground",
+        showSelection && "bg-tui-blue text-black",
         !showSelection && "hover:bg-tui-selection border-b border-tui-border/50",
         disabled && "opacity-50 cursor-not-allowed",
         className
@@ -74,17 +74,17 @@ export function NavigationListItem({
       <div
         className={cn(
           "w-1 shrink-0",
-          showSelection ? "bg-tui-blue" : "bg-transparent group-hover:bg-tui-muted"
+          showSelection ? "bg-black/40" : "bg-transparent group-hover:bg-tui-muted"
         )}
       />
       <div className={cn("flex-1", contentPaddingMap[density ?? "default"])}>
         <div className="flex justify-between items-start mb-1">
-          <span className={cn("font-bold flex items-center", showSelection && "text-primary-foreground")}>
+          <span className={cn("font-bold flex items-center", showSelection && "text-black")}>
             <span className={cn("mr-2", !showSelection && "opacity-0")}>{"\u258C"}</span>
             {children}
           </span>
           {statusIndicator && (
-            <span className={cn("text-[10px] font-bold", showSelection ? "text-primary-foreground" : "text-tui-yellow")}>
+            <span className={cn("text-[10px] font-bold", showSelection ? "text-black" : "text-tui-yellow")}>
               {statusIndicator}
             </span>
           )}
@@ -93,7 +93,7 @@ export function NavigationListItem({
           <div className="flex gap-2 items-center">
             {badge}
             {subtitle && (
-              <span className={cn("text-[9px]", showSelection ? "text-primary-foreground/70" : "text-tui-muted")}>
+              <span className={cn("text-[9px]", showSelection ? "text-black/70" : "text-tui-muted")}>
                 {subtitle}
               </span>
             )}

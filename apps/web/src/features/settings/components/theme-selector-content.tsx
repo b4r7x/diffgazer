@@ -30,8 +30,7 @@ export function ThemeSelectorContent({
 
   const onChangeStr = onChange as (value: string) => void;
 
-  const { onKeyDown, focusedValue } = useNavigation({
-    mode: "local",
+  const { focusedValue, focus } = useNavigation({
     containerRef,
     role: "radio",
     value,
@@ -48,7 +47,7 @@ export function ThemeSelectorContent({
         ref={containerRef}
         value={value}
         onValueChange={onChange}
-        onKeyDown={onKeyDown}
+        onFocusChange={focus as (value: Theme) => void}
         focusedValue={focusedValue}
       >
         {options.map((option) => (

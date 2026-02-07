@@ -7,6 +7,8 @@ export interface StorageSelectorContentProps {
   value: SecretsStorage | null;
   onChange: (value: SecretsStorage) => void;
   disabled?: boolean;
+  enabled?: boolean;
+  onBoundaryReached?: (direction: "up" | "down") => void;
 }
 
 const STORAGE_OPTIONS: Array<{ value: SecretsStorage; label: string; description: string }> = [
@@ -26,20 +28,25 @@ export function StorageSelectorContent({
   value,
   onChange,
   disabled = false,
+  enabled = true,
+  onBoundaryReached,
 }: StorageSelectorContentProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const onChangeStr = onChange as (value: string) => void;
 
-  const { onKeyDown, focusedValue } = useNavigation({
-    mode: "local",
+  const navigationEnabled = !disabled && enabled;
+
+  const { focusedValue } = useNavigation({
     containerRef,
     role: "radio",
     value,
     onValueChange: onChangeStr,
     onSelect: onChangeStr,
     onEnter: onChangeStr,
-    enabled: !disabled,
+    enabled: navigationEnabled,
+    wrap: false,
+    onBoundaryReached,
   });
 
   return (
@@ -49,8 +56,7 @@ export function StorageSelectorContent({
         ref={containerRef}
         value={value ?? undefined}
         onValueChange={onChange}
-        onKeyDown={onKeyDown}
-        focusedValue={focusedValue}
+        focusedValue={navigationEnabled ? focusedValue : null}
         className="space-y-2"
         disabled={disabled}
       >
