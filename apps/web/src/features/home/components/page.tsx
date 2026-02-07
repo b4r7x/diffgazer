@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import type { SecretsStorage } from "@stargazer/schemas/config";
 import type { ContextInfo } from "@stargazer/schemas/ui";
 import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@/config/navigation";
 import { useKey, useScope } from "@/hooks/keyboard";
@@ -11,11 +10,8 @@ import { HomeMenu } from "@/features/home/components/home-menu";
 import { useConfigData } from "@/app/providers/config-provider";
 import { useReviewHistory } from "@/features/history/hooks/use-review-history";
 import { useToast } from "@/components/ui/toast";
-import { api } from "@/lib/api";
-import { useSettings } from "@/hooks/use-settings";
 import { shutdown } from "@/features/home/utils/shutdown";
-import { StorageWizard } from "./storage-wizard";
-import { TrustModal } from "./trust-modal";
+import { TrustPanel } from "./trust-panel";
 
 type RouteConfig = { to: string; search?: Record<string, string> };
 
@@ -34,7 +30,6 @@ export function HomePage() {
   const { showToast } = useToast();
   const navigate = useNavigate();
   const search = useSearch({ strict: false });
-  const { settings, refresh: refreshSettings } = useSettings();
 
   const isTrusted = Boolean(trust?.capabilities.readFiles);
   const hasLastReview = reviews.length > 0;
@@ -53,25 +48,7 @@ export function HomePage() {
     navigate({ to: "/", replace: true });
   }, [search.error, showToast, navigate]);
 
-  // Wizard state
-  const [wizardSaving, setWizardSaving] = useState(false);
-  const [wizardError, setWizardError] = useState<string | null>(null);
-  const showWizard = settings !== null && !settings.secretsStorage;
-
-  const handleWizardComplete = async (choice: SecretsStorage): Promise<void> => {
-    setWizardSaving(true);
-    setWizardError(null);
-    try {
-      await api.saveSettings({ secretsStorage: choice });
-      await refreshSettings();
-    } catch (err) {
-      setWizardError(err instanceof Error ? err.message : "Failed to save settings");
-    } finally {
-      setWizardSaving(false);
-    }
-  };
-
-  const trustModalOpen = Boolean(projectId && repoRoot && trust === null);
+  const needsTrust = Boolean(projectId && repoRoot && trust === null);
 
   const mostRecentReview = reviews[0];
   const context: ContextInfo = {
@@ -115,38 +92,25 @@ export function HomePage() {
   useKey("s", () => navigate({ to: "/settings" }));
   useKey("h", () => handleActivate("help"));
 
+  if (needsTrust && projectId && repoRoot) {
+    return <TrustPanel directory={repoRoot} projectId={projectId} />;
+  }
+
   return (
-    <>
-      {showWizard ? (
-        <StorageWizard
-          onComplete={handleWizardComplete}
-          isLoading={wizardSaving}
-          error={wizardError}
-        />
-      ) : (
-        <div className="flex flex-1 flex-col lg:flex-row items-center lg:items-start justify-start lg:justify-center p-4 md:p-6 lg:p-8 gap-4 md:gap-6 lg:gap-8 overflow-auto">
-          <ContextSidebar
-            context={context}
-            isTrusted={isTrusted}
-            projectPath={repoRoot ?? undefined}
-          />
-          <HomeMenu
-            selectedIndex={selectedIndex}
-            onSelect={setSelectedIndex}
-            onActivate={handleActivate}
-            items={MENU_ITEMS}
-            isTrusted={isTrusted}
-            hasLastReview={hasLastReview}
-          />
-        </div>
-      )}
-      {projectId && repoRoot && (
-        <TrustModal
-          isOpen={trustModalOpen}
-          directory={repoRoot}
-          projectId={projectId}
-        />
-      )}
-    </>
+    <div className="flex flex-1 flex-col lg:flex-row items-center lg:items-start justify-start lg:justify-center p-4 md:p-6 lg:p-8 gap-4 md:gap-6 lg:gap-8 overflow-auto">
+      <ContextSidebar
+        context={context}
+        isTrusted={isTrusted}
+        projectPath={repoRoot ?? undefined}
+      />
+      <HomeMenu
+        selectedIndex={selectedIndex}
+        onSelect={setSelectedIndex}
+        onActivate={handleActivate}
+        items={MENU_ITEMS}
+        isTrusted={isTrusted}
+        hasLastReview={hasLastReview}
+      />
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -8,8 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { AIProviderSchema } from "@stargazer/schemas/config";
-import type { AIProvider, ProviderStatus, TrustConfig } from "@stargazer/schemas/config";
-import { OPENROUTER_PROVIDER_ID } from "@/config/constants";
+import type { AIProvider, ProviderStatus, TrustConfig, SetupStatus } from "@stargazer/schemas/config";
 import { DEFAULT_TTL } from "@/config/constants";
 import { api } from "@/lib/api";
 
@@ -20,6 +20,7 @@ interface ConfigData {
   projectId: string | null;
   repoRoot: string | null;
   trust: TrustConfig | null;
+  setupStatus: SetupStatus | null;
 }
 
 interface CacheEntry {
@@ -53,6 +54,7 @@ interface ConfigState {
   projectId: string | null;
   repoRoot: string | null;
   trust: TrustConfig | null;
+  setupStatus: SetupStatus | null;
 }
 
 const initialConfigState: ConfigState = {
@@ -62,6 +64,7 @@ const initialConfigState: ConfigState = {
   projectId: null,
   repoRoot: null,
   trust: null,
+  setupStatus: null,
 };
 
 // Stable data context — changes only when config data itself changes
@@ -73,6 +76,7 @@ interface ConfigDataContextValue {
   projectId: string | null;
   repoRoot: string | null;
   trust: TrustConfig | null;
+  setupStatus: SetupStatus | null;
 }
 
 // Volatile actions context — changes with loading/saving state
@@ -102,11 +106,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  const isConfigured = state.providerStatus.some(
-    (s) =>
-      s.isActive &&
-      (s.provider !== OPENROUTER_PROVIDER_ID || Boolean(s.model))
-  );
+  const isConfigured = state.setupStatus?.isConfigured ?? false;
 
   const applyConfigData = (data: ConfigData) => {
     setState({
@@ -116,6 +116,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       projectId: data.projectId,
       repoRoot: data.repoRoot,
       trust: data.trust,
+      setupStatus: data.setupStatus,
     });
   };
 
@@ -123,25 +124,24 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     newProvider: AIProvider | undefined,
     newModel: string | undefined,
   ) => {
-    const providers = await api.getProviderStatus();
-    const {
-      projectId: cachedProjectId,
-      repoRoot: cachedRepoRoot,
-      trust: cachedTrust,
-    } = stateRef.current;
+    const [providers, initData] = await Promise.all([
+      api.getProviderStatus(),
+      api.loadInit(),
+    ]);
     const data: ConfigData = {
       provider: newProvider,
       model: newModel,
       providers,
-      projectId: cachedProjectId,
-      repoRoot: cachedRepoRoot,
-      trust: cachedTrust,
+      projectId: initData.project.projectId,
+      repoRoot: initData.project.path,
+      trust: initData.project.trust,
+      setupStatus: initData.setup as SetupStatus,
     };
     applyConfigData(data);
     setCache(data);
   };
 
-  const refresh = async (invalidate = false) => {
+  const refresh = useCallback(async (invalidate = false) => {
     if (invalidate) invalidateConfigCache();
     setIsLoading(true);
     setError(null);
@@ -163,6 +163,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
         projectId: initData.project.projectId,
         repoRoot: initData.project.path,
         trust: initData.project.trust,
+        setupStatus: initData.setup as SetupStatus,
       };
       applyConfigData(data);
       setCache(data);
@@ -173,9 +174,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const activateProvider = async (providerId: string, selectedModel?: string) => {
+  const activateProvider = useCallback(async (providerId: string, selectedModel?: string) => {
     setIsSaving(true);
     setError(null);
     try {
@@ -190,9 +191,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsSaving(false);
     }
-  };
+  }, []);
 
-  const saveCredentials = async (
+  const saveCredentials = useCallback(async (
     providerName: AIProvider,
     apiKey: string,
     selectedModel?: string,
@@ -215,9 +216,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsSaving(false);
     }
-  };
+  }, []);
 
-  const deleteProviderCredentials = async (providerName: AIProvider) => {
+  const deleteProviderCredentials = useCallback(async (providerName: AIProvider) => {
     setIsSaving(true);
     setError(null);
     try {
@@ -240,7 +241,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsSaving(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     refresh();
@@ -254,7 +255,8 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     projectId: state.projectId,
     repoRoot: state.repoRoot,
     trust: state.trust,
-  }), [state.provider, state.model, isConfigured, state.providerStatus, state.projectId, state.repoRoot, state.trust]);
+    setupStatus: state.setupStatus,
+  }), [state.provider, state.model, isConfigured, state.providerStatus, state.projectId, state.repoRoot, state.trust, state.setupStatus]);
 
   const actionsValue = useMemo<ConfigActionsContextValue>(() => ({
     isLoading,

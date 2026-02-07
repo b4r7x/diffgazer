@@ -1,0 +1,399 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1770440556656,
+  "projectRoot": "/home/b4r7/Projects/stargazer",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": "pnpm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "pnpm build",
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": "pnpm dev",
+    "scripts": {
+      "dev": "pnpm run --parallel dev:web dev:cli",
+      "dev:cli": "pnpm --filter stargazer dev",
+      "dev:web": "pnpm --filter @stargazer/web dev",
+      "build": "pnpm -r build",
+      "cli": "pnpm --filter stargazer dev",
+      "web": "pnpm --filter @stargazer/web dev"
+    }
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": true,
+    "workspaces": [],
+    "mainDirectories": [],
+    "gitBranches": {
+      "defaultBranch": "main",
+      "branchingStrategy": null
+    }
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "apps": {
+      "path": "apps",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1770440556648,
+      "keyFiles": []
+    },
+    "packages": {
+      "path": "packages",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1770440556648,
+      "keyFiles": []
+    },
+    "prompts": {
+      "path": "prompts",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1770440556654,
+      "keyFiles": [
+        "refactor-review-bounding.md",
+        "review-fixes.md"
+      ]
+    },
+    "packages/api": {
+      "path": "packages/api",
+      "purpose": "API routes",
+      "fileCount": 2,
+      "lastAccessed": 1770440556655,
+      "keyFiles": [
+        "package.json",
+        "tsconfig.json"
+      ]
+    },
+    "packages/schemas": {
+      "path": "packages/schemas",
+      "purpose": "Schema definitions",
+      "fileCount": 2,
+      "lastAccessed": 1770440556655,
+      "keyFiles": [
+        "package.json",
+        "tsconfig.json"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "apps/web/src/app/providers/config-provider.tsx",
+      "accessCount": 15,
+      "lastAccessed": 1770443198232,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/app/router.tsx",
+      "accessCount": 11,
+      "lastAccessed": 1770443201170,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/app/routes/__root.tsx",
+      "accessCount": 8,
+      "lastAccessed": 1770443200701,
+      "type": "file"
+    },
+    {
+      "path": "apps/server/src/features/review/router.ts",
+      "accessCount": 8,
+      "lastAccessed": 1770443991356,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/features/onboarding/hooks/use-onboarding.ts",
+      "accessCount": 7,
+      "lastAccessed": 1770443417853,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/features/onboarding",
+      "accessCount": 7,
+      "lastAccessed": 1770443422242,
+      "type": "directory"
+    },
+    {
+      "path": "apps/server/src/features/config/service.ts",
+      "accessCount": 7,
+      "lastAccessed": 1770443869311,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src",
+      "accessCount": 6,
+      "lastAccessed": 1770442919683,
+      "type": "directory"
+    },
+    {
+      "path": "packages/schemas/src/config/providers.ts",
+      "accessCount": 6,
+      "lastAccessed": 1770443164611,
+      "type": "file"
+    },
+    {
+      "path": "apps/server/src/shared/middlewares/setup-guard.ts",
+      "accessCount": 6,
+      "lastAccessed": 1770443867212,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/features/onboarding/components/onboarding-wizard.tsx",
+      "accessCount": 5,
+      "lastAccessed": 1770443072819,
+      "type": "file"
+    },
+    {
+      "path": "apps/server/src/features/git/router.ts",
+      "accessCount": 5,
+      "lastAccessed": 1770443868279,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/hooks/use-server-status.ts",
+      "accessCount": 4,
+      "lastAccessed": 1770440911533,
+      "type": "file"
+    },
+    {
+      "path": "packages/schemas/src/config/settings.ts",
+      "accessCount": 4,
+      "lastAccessed": 1770442926745,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/features/onboarding/components/steps/provider-step.tsx",
+      "accessCount": 4,
+      "lastAccessed": 1770443019699,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/features/providers/constants.ts",
+      "accessCount": 4,
+      "lastAccessed": 1770443262788,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/app/providers/keyboard-provider.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1770442882429,
+      "type": "file"
+    },
+    {
+      "path": "",
+      "accessCount": 3,
+      "lastAccessed": 1770442890162,
+      "type": "directory"
+    },
+    {
+      "path": "apps/web/src/features/providers/hooks/use-providers-keyboard.ts",
+      "accessCount": 3,
+      "lastAccessed": 1770442924817,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/features/providers/components/provider-list.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1770442987568,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/features/providers/components/api-key-dialog/api-key-method-selector.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1770443064820,
+      "type": "file"
+    },
+    {
+      "path": "packages/schemas/src",
+      "accessCount": 3,
+      "lastAccessed": 1770443102221,
+      "type": "directory"
+    },
+    {
+      "path": "apps/web/src/features/onboarding/types.ts",
+      "accessCount": 3,
+      "lastAccessed": 1770443267378,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/features/onboarding/components/steps/api-key-step.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1770443267978,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/features/onboarding/components/steps/model-step.tsx",
+      "accessCount": 3,
+      "lastAccessed": 1770443268573,
+      "type": "file"
+    },
+    {
+      "path": "apps/server/src/shared/middlewares/trust-guard.ts",
+      "accessCount": 3,
+      "lastAccessed": 1770443867642,
+      "type": "file"
+    },
+    {
+      "path": "apps/server/src/features/review/pipeline.ts",
+      "accessCount": 2,
+      "lastAccessed": 1770440912906,
+      "type": "file"
+    },
+    {
+      "path": "packages/schemas/src/errors.ts",
+      "accessCount": 2,
+      "lastAccessed": 1770442897661,
+      "type": "file"
+    },
+    {
+      "path": "apps/server/src",
+      "accessCount": 2,
+      "lastAccessed": 1770442902312,
+      "type": "directory"
+    },
+    {
+      "path": "apps/web/src/features/providers/hooks/use-providers-page-state.ts",
+      "accessCount": 2,
+      "lastAccessed": 1770442969125,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/features/history/hooks/use-reviews.ts",
+      "accessCount": 2,
+      "lastAccessed": 1770443001618,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/features/providers/components/api-key-dialog/api-key-dialog.tsx",
+      "accessCount": 2,
+      "lastAccessed": 1770443044978,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/features/providers/hooks/use-openrouter-models.ts",
+      "accessCount": 2,
+      "lastAccessed": 1770443061957,
+      "type": "file"
+    },
+    {
+      "path": "apps/web",
+      "accessCount": 2,
+      "lastAccessed": 1770443069178,
+      "type": "directory"
+    },
+    {
+      "path": "apps/web/src/lib/api.ts",
+      "accessCount": 2,
+      "lastAccessed": 1770443102665,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/features/review/components/review-container.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1770440883580,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/features/home/components/page.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1770440884299,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/features/providers",
+      "accessCount": 1,
+      "lastAccessed": 1770440889796,
+      "type": "directory"
+    },
+    {
+      "path": "apps/server/src/app.ts",
+      "accessCount": 1,
+      "lastAccessed": 1770440908267,
+      "type": "file"
+    },
+    {
+      "path": "apps/server/src/index.ts",
+      "accessCount": 1,
+      "lastAccessed": 1770440908736,
+      "type": "file"
+    },
+    {
+      "path": "apps/server/src/shared/lib/ai/client.ts",
+      "accessCount": 1,
+      "lastAccessed": 1770440914124,
+      "type": "file"
+    },
+    {
+      "path": "apps/server/src/shared/lib/config/state.ts",
+      "accessCount": 1,
+      "lastAccessed": 1770440914493,
+      "type": "file"
+    },
+    {
+      "path": "apps/server/src/shared/lib/config/store.ts",
+      "accessCount": 1,
+      "lastAccessed": 1770440914896,
+      "type": "file"
+    },
+    {
+      "path": "apps/server/src/shared/lib/http/response.ts",
+      "accessCount": 1,
+      "lastAccessed": 1770440922583,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/app/routes/onboarding.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1770442893302,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/features/review/hooks/use-review-lifecycle.ts",
+      "accessCount": 1,
+      "lastAccessed": 1770442893394,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/features/onboarding/index.ts",
+      "accessCount": 1,
+      "lastAccessed": 1770442899326,
+      "type": "file"
+    },
+    {
+      "path": "apps/server",
+      "accessCount": 1,
+      "lastAccessed": 1770442901026,
+      "type": "directory"
+    },
+    {
+      "path": "apps/web/src/features/home/components/trust-panel.tsx",
+      "accessCount": 1,
+      "lastAccessed": 1770442926173,
+      "type": "file"
+    },
+    {
+      "path": "apps/web/src/types/input-method.ts",
+      "accessCount": 1,
+      "lastAccessed": 1770442985118,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

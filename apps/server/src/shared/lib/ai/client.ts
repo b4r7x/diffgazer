@@ -191,8 +191,8 @@ export function initializeAIClient(): Result<AIClient, AIError> {
     return err(createError<AIErrorCode>("UNSUPPORTED_PROVIDER", "AI provider not configured"));
   }
 
-  if (activeProvider.provider === "openrouter" && !activeProvider.model) {
-    return err(createError<AIErrorCode>("MODEL_ERROR", "OpenRouter model is required"));
+  if (!activeProvider.model) {
+    return err(createError<AIErrorCode>("MODEL_ERROR", "Model selection is required"));
   }
 
   const apiKeyResult = getProviderApiKey(activeProvider.provider);

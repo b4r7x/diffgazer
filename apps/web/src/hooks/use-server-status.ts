@@ -17,12 +17,12 @@ export function useServerStatus(): ServerStatus {
   const [state, setState] = useState<ServerState>({ status: "checking" });
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const checkHealth = async () => {
+  const checkHealth = async (showChecking = false) => {
     abortControllerRef.current?.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    setState({ status: "checking" });
+    if (showChecking) setState({ status: "checking" });
     try {
       await api.request("GET", "/api/health", { signal: controller.signal });
       setState({ status: "connected" });
@@ -36,23 +36,17 @@ export function useServerStatus(): ServerStatus {
   };
 
   useEffect(() => {
-    checkHealth();
+    checkHealth(true);
 
     const intervalId = window.setInterval(() => {
       if (!document.hidden) checkHealth();
     }, HEALTH_CHECK_INTERVAL_MS);
 
-    const onVisibilityChange = () => {
-      if (!document.hidden) checkHealth();
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
-
     return () => {
       window.clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
       abortControllerRef.current?.abort();
     };
   }, []);
 
-  return { state, retry: checkHealth };
+  return { state, retry: () => checkHealth(true) };
 }

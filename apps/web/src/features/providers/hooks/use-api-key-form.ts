@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { InputMethod } from "@/features/providers/constants";
+import type { InputMethod } from "@/types/input-method";
 
 interface UseApiKeyFormOptions {
   envVarName: string;

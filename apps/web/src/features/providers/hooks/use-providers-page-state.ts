@@ -49,7 +49,7 @@ export function useProvidersPageState() {
     : null;
 
   const dialogOpen = apiKeyDialogOpen || modelDialogOpen;
-  const needsOpenRouterModel = selectedProvider?.id === "openrouter" && !selectedProvider?.model;
+  const needsModel = selectedProvider !== null && !selectedProvider.model;
 
   const { focusZone, filterIndex, buttonIndex, handleListBoundary } = useProvidersKeyboard({
     selectedId: effectiveSelectedId,
@@ -86,7 +86,7 @@ export function useProvidersPageState() {
     handleSelectModel,
     handleSelectProvider,
     dialogOpen,
-    needsOpenRouterModel,
+    needsModel,
     focusZone,
     filterIndex,
     buttonIndex,

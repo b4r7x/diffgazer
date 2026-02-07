@@ -1,5 +1,4 @@
-export const INPUT_METHODS = ["paste", "env"] as const;
-export type InputMethod = (typeof INPUT_METHODS)[number];
+export { INPUT_METHODS, type InputMethod } from "@/types/input-method";
 
 export const TIER_FILTERS = ["all", "free", "paid"] as const;
 export type TierFilter = (typeof TIER_FILTERS)[number];

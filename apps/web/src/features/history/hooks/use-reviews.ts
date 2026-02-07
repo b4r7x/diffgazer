@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api";
 import type { ReviewMetadata } from "@stargazer/schemas/review";
 
@@ -7,7 +7,7 @@ export function useReviews(projectPath?: string) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -18,7 +18,7 @@ export function useReviews(projectPath?: string) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [projectPath]);
 
   const deleteReview = async (id: string) => {
     try {

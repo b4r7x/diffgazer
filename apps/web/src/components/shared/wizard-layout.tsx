@@ -30,7 +30,7 @@ export function WizardLayout({
         </div>
 
         {/* Content */}
-        <div className="px-6 py-6">{children}</div>
+        <div className="px-6 py-6 max-h-[60vh] overflow-y-auto scrollbar-thin">{children}</div>
 
         {/* Footer */}
         {footer && (

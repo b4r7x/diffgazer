@@ -1,4 +1,4 @@
-import { createContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { isInputElement, matchesHotkey } from "@/app/providers/keyboard-utils";
 
 type Handler = () => void;
@@ -28,21 +28,20 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
 
   const activeScope = scopeStack[scopeStack.length - 1] ?? null;
 
-  const pushScope = (scope: string) => {
+  const pushScope = useCallback((scope: string) => {
     setScopeStack((prev) => [...prev, scope]);
     return () => {
       setScopeStack((prev) => {
         const idx = prev.lastIndexOf(scope);
         if (idx < 0) return prev;
         const next = [...prev.slice(0, idx), ...prev.slice(idx + 1)];
-        // Clean up handlers if this scope is no longer in the stack
         if (!next.includes(scope)) {
           handlers.current.delete(scope);
         }
         return next;
       });
     };
-  };
+  }, []);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -67,12 +66,12 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [activeScope]);
 
-  const register = (scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => {
+  const register = useCallback((scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => {
     const scopeHandlers = handlers.current.get(scope) ?? new Map<string, HandlerEntry>();
     if (!handlers.current.has(scope)) handlers.current.set(scope, scopeHandlers);
     scopeHandlers.set(hotkey, { handler, options });
     return () => handlers.current.get(scope)?.delete(hotkey);
-  };
+  }, []);
 
   const contextValue = useMemo(
     () => ({ activeScope, pushScope, register }),

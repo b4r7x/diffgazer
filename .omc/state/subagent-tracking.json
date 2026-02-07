@@ -1,0 +1,190 @@
+{
+  "agents": [
+    {
+      "agent_id": "a92bb6b",
+      "agent_type": "coderabbit-reviewer",
+      "started_at": "2026-02-07T05:07:47.022Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-07T05:09:20.509Z",
+      "duration_ms": 93487
+    },
+    {
+      "agent_id": "a55a099",
+      "agent_type": "code-simplifier",
+      "started_at": "2026-02-07T05:07:57.399Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-07T05:08:58.650Z",
+      "duration_ms": 61251
+    },
+    {
+      "agent_id": "a9acfa8",
+      "agent_type": "react-ts-reviewer",
+      "started_at": "2026-02-07T05:08:12.522Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-07T05:09:36.503Z",
+      "duration_ms": 83981
+    },
+    {
+      "agent_id": "a0f4169",
+      "agent_type": "architecture-explorer",
+      "started_at": "2026-02-07T05:08:24.572Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-07T05:09:49.703Z",
+      "duration_ms": 85131
+    },
+    {
+      "agent_id": "a41c6ec",
+      "agent_type": "architecture-explorer",
+      "started_at": "2026-02-07T05:09:49.876Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-07T05:09:52.789Z",
+      "duration_ms": 2913
+    },
+    {
+      "agent_id": "aaa7ddf",
+      "agent_type": "coderabbit-reviewer",
+      "started_at": "2026-02-07T05:10:01.231Z",
+      "parent_mode": "none",
+      "status": "running"
+    },
+    {
+      "agent_id": "a61e700",
+      "agent_type": "code-simplifier",
+      "started_at": "2026-02-07T05:10:01.912Z",
+      "parent_mode": "none",
+      "status": "running"
+    },
+    {
+      "agent_id": "adf51f6",
+      "agent_type": "react-ts-reviewer",
+      "started_at": "2026-02-07T05:10:02.201Z",
+      "parent_mode": "none",
+      "status": "running"
+    },
+    {
+      "agent_id": "a60ac61",
+      "agent_type": "architecture-explorer",
+      "started_at": "2026-02-07T05:10:02.986Z",
+      "parent_mode": "none",
+      "status": "running"
+    },
+    {
+      "agent_id": "a95ea8c",
+      "agent_type": "config-onboarding",
+      "started_at": "2026-02-07T05:41:10.603Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-07T05:47:51.930Z",
+      "duration_ms": 401327
+    },
+    {
+      "agent_id": "a68d6ba",
+      "agent_type": "provider-hooks",
+      "started_at": "2026-02-07T05:41:13.546Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-07T05:44:33.189Z",
+      "duration_ms": 199643
+    },
+    {
+      "agent_id": "acedce2",
+      "agent_type": "cross-feature-routing",
+      "started_at": "2026-02-07T05:41:20.266Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-07T05:48:41.015Z",
+      "duration_ms": 440749
+    },
+    {
+      "agent_id": "a4f8d32",
+      "agent_type": "server-schemas",
+      "started_at": "2026-02-07T05:41:25.900Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-07T05:44:09.978Z",
+      "duration_ms": 164078
+    },
+    {
+      "agent_id": "acce591",
+      "agent_type": "server-schemas",
+      "started_at": "2026-02-07T05:44:10.143Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-07T05:44:17.961Z",
+      "duration_ms": 7818
+    },
+    {
+      "agent_id": "a9f5927",
+      "agent_type": "server-schemas",
+      "started_at": "2026-02-07T05:44:18.132Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-07T05:44:20.540Z",
+      "duration_ms": 2408
+    },
+    {
+      "agent_id": "affcc5a",
+      "agent_type": "provider-hooks",
+      "started_at": "2026-02-07T05:44:33.353Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-07T05:44:40.807Z",
+      "duration_ms": 7454
+    },
+    {
+      "agent_id": "ac9530c",
+      "agent_type": "config-onboarding",
+      "started_at": "2026-02-07T05:47:52.116Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-07T05:47:57.656Z",
+      "duration_ms": 5540
+    },
+    {
+      "agent_id": "ab9bc1d",
+      "agent_type": "cross-feature-routing",
+      "started_at": "2026-02-07T05:48:41.186Z",
+      "parent_mode": "none",
+      "status": "completed",
+      "completed_at": "2026-02-07T05:48:48.723Z",
+      "duration_ms": 7537
+    },
+    {
+      "agent_id": "a0f34ba",
+      "agent_type": "config-onboarding",
+      "started_at": "2026-02-07T05:49:47.577Z",
+      "parent_mode": "none",
+      "status": "running"
+    },
+    {
+      "agent_id": "ac1d463",
+      "agent_type": "provider-hooks",
+      "started_at": "2026-02-07T05:49:48.231Z",
+      "parent_mode": "none",
+      "status": "running"
+    },
+    {
+      "agent_id": "ad0d651",
+      "agent_type": "cross-feature-routing",
+      "started_at": "2026-02-07T05:49:48.553Z",
+      "parent_mode": "none",
+      "status": "running"
+    },
+    {
+      "agent_id": "a3af819",
+      "agent_type": "server-schemas",
+      "started_at": "2026-02-07T05:49:49.489Z",
+      "parent_mode": "none",
+      "status": "running"
+    }
+  ],
+  "total_spawned": 22,
+  "total_completed": 14,
+  "total_failed": 0,
+  "last_updated": "2026-02-07T05:49:49.590Z"
+}

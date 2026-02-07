@@ -49,10 +49,10 @@ export function useProvidersKeyboard({
   const effectiveFocusZone = (!selectedProvider && focusZone === "buttons") ? "list" : focusZone;
 
   const canRemoveKey = selectedProvider?.hasApiKey ?? false;
-  const needsOpenRouterModel = selectedProvider?.id === "openrouter" && !selectedProvider?.model;
+  const needsModel = selectedProvider !== null && !selectedProvider.model;
 
   const getNextButtonIndex = (current: number, direction: 1 | -1) => {
-    const enabled = [!needsOpenRouterModel, true, canRemoveKey, true];
+    const enabled = [!needsModel, true, canRemoveKey, true];
     let next = current + direction;
     while (next >= 0 && next < 4) {
       if (enabled[next]) return next;
@@ -64,7 +64,7 @@ export function useProvidersKeyboard({
   const handleButtonAction = (index: number) => {
     if (!selectedProvider) return;
     switch (index) {
-      case 0: if (!needsOpenRouterModel) void onSelectProvider(selectedProvider.id, selectedProvider.name, selectedProvider.model); break;
+      case 0: if (!needsModel) void onSelectProvider(selectedProvider.id, selectedProvider.name, selectedProvider.model); break;
       case 1: onSetApiKey(); break;
       case 2: if (selectedProvider.hasApiKey) void onRemoveKey(selectedProvider.id); break;
       case 3: onSelectModel(); break;
