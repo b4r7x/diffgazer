@@ -36,7 +36,13 @@ export function MenuItem({
   children,
   className,
 }: MenuItemProps) {
-  const { selectedId, focusedValue, onSelect, onActivate, variant: menuVariant } = useMenuContext();
+  const {
+    selectedId,
+    focusedValue,
+    onSelect,
+    onActivate,
+    variant: menuVariant,
+  } = useMenuContext();
 
   const isSelected = selectedId === id;
   const isFocused = focusedValue === id;
@@ -54,14 +60,22 @@ export function MenuItem({
 
   const baseTextClass = !isHub && isDanger ? "text-tui-red" : "text-tui-fg";
 
-  let stateClasses = cn(baseTextClass, "hover:bg-tui-selection group", !isHub && "duration-75");
+  let stateClasses = cn(
+    baseTextClass,
+    "hover:bg-tui-selection group",
+    !isHub && "duration-75",
+  );
   if (disabled) {
-    stateClasses = cn(baseTextClass, "opacity-50", !isHub && "hover:bg-transparent");
+    stateClasses = cn(
+      baseTextClass,
+      "opacity-50",
+      !isHub && "hover:bg-transparent",
+    );
   } else if (isHighlighted) {
     stateClasses = cn(
       selectedBg,
-      "text-primary-foreground font-bold",
-      isHub && "shadow-[inset_0_0_15px_rgba(0,0,0,0.1)]"
+      "text-black font-bold",
+      isHub && "shadow-[inset_0_0_15px_rgba(0,0,0,0.1)]",
     );
   }
 
@@ -69,7 +83,8 @@ export function MenuItem({
   if (isHighlighted) {
     valueClasses = "font-mono text-xs uppercase tracking-wide";
   } else if (valueVariant === "success-badge") {
-    valueClasses = "text-tui-green font-mono text-xs border border-tui-green/30 bg-tui-green/10 px-2 py-0.5 rounded";
+    valueClasses =
+      "text-tui-green font-mono text-xs border border-tui-green/30 bg-tui-green/10 px-2 py-0.5 rounded";
   } else if (valueVariant === "success") {
     valueClasses = "text-tui-violet font-mono text-xs";
   }
@@ -85,22 +100,33 @@ export function MenuItem({
       aria-disabled={disabled}
       data-state={isSelected ? "selected" : "unselected"}
       onClick={handleClick}
-      className={cn(menuItemBase({ menuVariant }), stateClasses, disabled && "cursor-not-allowed", className)}
+      className={cn(
+        menuItemBase({ menuVariant }),
+        stateClasses,
+        disabled && "cursor-not-allowed",
+        className,
+      )}
     >
       {isHub ? (
         <>
           <div className="flex items-center">
             <span
               className={cn(
-                "w-6",
+                "pr-4 shrink-0 inline-flex w-5 items-center justify-center self-center leading-none relative -top-[2px]",
                 isHighlighted
-                  ? "text-primary-foreground"
-                  : "text-tui-blue opacity-0 group-hover:opacity-100 transition-opacity"
+                  ? "text-black"
+                  : "text-tui-blue opacity-0 group-hover:opacity-100 transition-opacity",
               )}
             >
-              {isHighlighted ? "\u258C" : "\u276F"}
+              {isHighlighted ? "\u258C" : ">"}
             </span>
-            <span className={cn(isHighlighted ? "" : "font-medium group-hover:text-tui-fg")}>{children}</span>
+            <span
+              className={cn(
+                isHighlighted ? "" : "font-medium group-hover:text-tui-fg",
+              )}
+            >
+              {children}
+            </span>
           </div>
           {value && <div className={valueClasses}>{value}</div>}
         </>
@@ -108,23 +134,29 @@ export function MenuItem({
         <>
           <span
             className={cn(
-              "mr-3 shrink-0",
-              !isHighlighted && cn("opacity-0 group-hover:opacity-100", indicatorColor)
+              "pr-4 shrink-0 inline-flex w-5 items-center justify-center self-center leading-none transition-opacity relative -top-[2px]",
+              !isHighlighted &&
+                cn("opacity-0 group-hover:opacity-100", indicatorColor),
             )}
           >
-            {"\u258C"}
+            {isHighlighted ? "\u258C" : ">"}
           </span>
           {hotkey !== undefined && (
             <span
               className={cn(
                 "mr-4 shrink-0",
-                !isHighlighted && cn("group-hover:text-tui-fg", indicatorColor)
+                !isHighlighted && cn("group-hover:text-tui-fg", indicatorColor),
               )}
             >
               [{hotkey}]
             </span>
           )}
-          <span className={cn(!isHub && "tracking-wide", !isHighlighted && !isDanger && "group-hover:text-tui-fg")}>
+          <span
+            className={cn(
+              !isHub && "tracking-wide",
+              !isHighlighted && !isDanger && "group-hover:text-tui-fg",
+            )}
+          >
             {children}
           </span>
         </>

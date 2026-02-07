@@ -1,4 +1,4 @@
-import { useFocusZone, useKey, useScope } from "@stargazer/keyboard";
+import { useKey, useScope } from "@stargazer/keyboard";
 
 type FocusZone = "list" | "buttons";
 
@@ -24,22 +24,15 @@ export function useTrustFormKeyboard({
   onRevoke,
 }: UseTrustFormKeyboardOptions) {
   useScope("trust-form");
-  const { inZone } = useFocusZone({
-    initial: "list" as FocusZone,
-    zones: ["list", "buttons"] as const,
-    zone: focusZone,
-    onZoneChange: (zone) => {
-      onFocusZoneChange(zone);
-      if (zone === "list") onButtonIndexChange(0);
-    },
-    transitions: ({ zone, key }) => {
-      if (zone === "buttons" && key === "ArrowUp") return "list";
-      return null;
-    },
-    enabled,
-  });
 
-  const isButtonsZone = inZone("buttons") && enabled;
+  const isButtonsZone = focusZone === "buttons" && enabled;
+
+  useKey("ArrowUp", () => {
+    onFocusZoneChange("list");
+    onButtonIndexChange(0);
+  }, { enabled: isButtonsZone });
+
+  useKey("ArrowDown", () => {}, { enabled: isButtonsZone });
 
   useKey("ArrowLeft", () => onButtonIndexChange(Math.max(0, buttonIndex - 1)), {
     enabled: isButtonsZone,

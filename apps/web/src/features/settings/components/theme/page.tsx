@@ -5,7 +5,7 @@ import { Panel, PanelContent, PanelHeader, Callout } from "@stargazer/ui";
 import { ThemeSelectorContent } from "../theme-selector-content";
 import { ThemePreviewCard } from "../theme-preview-card";
 import { useTheme } from "@/hooks/use-theme";
-import { useKey } from "@stargazer/keyboard";
+import { useKey, useScope } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { SETTINGS_SHORTCUTS } from "@/config/navigation";
 
@@ -20,6 +20,7 @@ export function SettingsThemePage() {
 
   usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
 
+  useScope("settings-theme");
   useKey("Escape", () => navigate({ to: "/settings" }));
   useKey("Enter", () => {
     setTheme(previewTheme);
