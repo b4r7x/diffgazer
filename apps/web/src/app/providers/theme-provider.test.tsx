@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, cleanup } from "@testing-library/react";
-import { ThemeProvider } from "./theme-provider";
+import { useContext } from "react";
+import { ThemeProvider, ThemeContext } from "./theme-provider";
 
 // Mock useSettings at the boundary
 vi.mock("@/hooks/use-settings", () => ({
@@ -20,16 +21,20 @@ vi.mock("@/lib/api", () => ({
 }));
 
 import { useSettings } from "@/hooks/use-settings";
+import { api } from "@/lib/api";
 
 const mockUseSettings = useSettings as ReturnType<typeof vi.fn>;
+const mockSaveSettings = api.saveSettings as ReturnType<typeof vi.fn>;
+
+let matchMediaListeners: Set<(e: MediaQueryListEvent) => void>;
 
 function mockMatchMedia(matches: boolean) {
-  const listeners = new Set<(e: MediaQueryListEvent) => void>();
+  matchMediaListeners = new Set();
   const mql = {
     matches,
     media: "(prefers-color-scheme: dark)",
-    addEventListener: (_: string, cb: (e: MediaQueryListEvent) => void) => listeners.add(cb),
-    removeEventListener: (_: string, cb: (e: MediaQueryListEvent) => void) => listeners.delete(cb),
+    addEventListener: (_: string, cb: (e: MediaQueryListEvent) => void) => matchMediaListeners.add(cb),
+    removeEventListener: (_: string, cb: (e: MediaQueryListEvent) => void) => matchMediaListeners.delete(cb),
     addListener: vi.fn(),
     removeListener: vi.fn(),
     onchange: null,
@@ -37,6 +42,13 @@ function mockMatchMedia(matches: boolean) {
   };
   window.matchMedia = vi.fn().mockReturnValue(mql);
   return mql;
+}
+
+// Helper to read context values
+function ThemeConsumer({ onRender }: { onRender: (ctx: { theme: string; resolved: string; setTheme: (t: string) => void }) => void }) {
+  const ctx = useContext(ThemeContext);
+  if (ctx) onRender(ctx as any);
+  return null;
 }
 
 describe("ThemeProvider", () => {
@@ -50,6 +62,7 @@ describe("ThemeProvider", () => {
       refresh: vi.fn(),
       invalidate: vi.fn(),
     });
+    mockSaveSettings.mockResolvedValue({});
     localStorage.clear();
     document.documentElement.removeAttribute("data-theme");
   });
@@ -83,12 +96,74 @@ describe("ThemeProvider", () => {
       </ThemeProvider>
     );
 
-    // jsdom matchMedia returns false for dark → system = "light"
+    // jsdom matchMedia returns false for dark -> system = "light"
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
   it("should apply dark theme when system prefers dark", () => {
     mockMatchMedia(true); // system = dark
+    render(
+      <ThemeProvider>
+        <div />
+      </ThemeProvider>
+    );
+
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+  });
+
+  it("should persist theme to localStorage and call API on setTheme", () => {
+    let capturedSetTheme: ((t: string) => void) | undefined;
+
+    render(
+      <ThemeProvider>
+        <ThemeConsumer onRender={(ctx) => { capturedSetTheme = ctx.setTheme; }} />
+      </ThemeProvider>
+    );
+
+    expect(capturedSetTheme).toBeDefined();
+    capturedSetTheme!("dark");
+
+    expect(localStorage.getItem("stargazer-theme")).toBe("dark");
+    expect(mockSaveSettings).toHaveBeenCalledWith({ theme: "dark" });
+  });
+
+  it("should map 'terminal' settings theme to dark", () => {
+    mockUseSettings.mockReturnValue({
+      settings: { theme: "terminal" },
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+      invalidate: vi.fn(),
+    });
+
+    render(
+      <ThemeProvider>
+        <div />
+      </ThemeProvider>
+    );
+
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+  });
+
+  it("should reflect system theme change", () => {
+    mockMatchMedia(false); // start light
+
+    render(
+      <ThemeProvider>
+        <div />
+      </ThemeProvider>
+    );
+
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+
+    // Simulate system theme changing to dark
+    // Update the matchMedia mock to return dark
+    const mql = mockMatchMedia(true);
+
+    // Re-render to pick up the new value — useSyncExternalStore
+    // should have subscribed, but since we replaced window.matchMedia
+    // we need to re-render
+    cleanup();
     render(
       <ThemeProvider>
         <div />

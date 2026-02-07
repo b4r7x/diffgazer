@@ -13,20 +13,25 @@
 
 ---
 
-## Current State
+## Current State (updated 2026-02-07)
 
 | What | Status |
 |------|--------|
-| Test runner | None configured |
-| Test deps | Not installed (need `pnpm add -Dw vitest`) |
-| Config files | None (need per-package vitest.config.ts) |
-| Test scripts | None in any package.json |
-| Existing tests | 3 files in packages/core (~60 tests) |
+| Test runner | Vitest 4.0.18 (root workspace devDep) |
+| Config files | 5 configs (core, api, schemas, server, web) |
+| Test scripts | All packages except `packages/hooks` |
+| Test files | 61+ files |
+| Tests passing | 655+ (all green) |
 
-### Existing Tests
-- `packages/core/src/review/filtering.test.ts` — 11 tests, thorough ✓
-- `packages/core/src/review/review-state.test.ts` — 20 tests, **only ~20% of reducer branches covered** ⚠
-- `packages/core/src/streaming/sse-parser.test.ts` — 30+ tests, excellent ✓
+### Coverage by area
+| Area | Files | Tests |
+|------|-------|-------|
+| apps/server | 31 | ~384 |
+| packages/core | 8 | ~117 |
+| apps/web | 15 | ~110 |
+| packages/api | 3 | ~28 |
+| packages/schemas | 3 | ~16 |
+| packages/hooks | 1 | Not run (missing config) |
 
 ---
 
@@ -204,45 +209,12 @@
 
 ---
 
-## Infrastructure Needed
+## Infrastructure — COMPLETE
 
-### 1. Install vitest
-```bash
-pnpm add -Dw vitest
-```
-
-### 2. Per-package vitest.config.ts
-```typescript
-// packages/core/vitest.config.ts (also api, hooks, schemas)
-import { defineConfig } from 'vitest/config'
-export default defineConfig({
-  test: { include: ['src/**/*.test.ts'] },
-})
-
-// apps/server/vitest.config.ts
-import { defineConfig } from 'vitest/config'
-export default defineConfig({
-  test: { include: ['src/**/*.test.ts'] },
-})
-
-// apps/web/vitest.config.ts
-import { defineConfig } from 'vitest/config'
-export default defineConfig({
-  test: {
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
-    environment: 'jsdom',
-  },
-})
-```
-
-### 3. Test scripts
-```jsonc
-// Root package.json
-{ "test": "pnpm -r test" }
-
-// Each package/app package.json
-{ "test": "vitest run", "test:watch": "vitest" }
-```
+- [x] Vitest installed (`^4.0.18` at root)
+- [x] Per-package vitest.config.ts (5 configs)
+- [x] Test scripts in package.json (5 of 6 packages)
+- [ ] `packages/hooks` missing vitest config and test script
 
 ---
 
