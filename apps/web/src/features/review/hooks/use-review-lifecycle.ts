@@ -5,6 +5,7 @@ import { useReviewSettings } from './use-review-settings';
 import { useReviewStart } from './use-review-start';
 import { useReviewCompletion } from './use-review-completion';
 import { useConfigData, useConfigActions } from '@/app/providers/config-provider';
+import { api } from '@/lib/api';
 import type { ReviewIssue } from '@stargazer/schemas/review';
 import type { ReviewMode } from '@stargazer/schemas/review';
 
@@ -54,6 +55,7 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
     reviewId: params.reviewId,
     start,
     resume,
+    getActiveSession: api.getActiveReviewSession,
     onResumeFailed: stableOnComplete,
   });
 

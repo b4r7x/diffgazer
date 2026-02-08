@@ -2,9 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { SSEWriter } from "../../shared/lib/http/types.js";
 import type { FullReviewStreamEvent } from "@stargazer/schemas/events";
 import type { ActiveSession } from "./sessions.js";
-import type { EmitFn } from "./types.js";
 import { ReviewErrorCode } from "@stargazer/schemas/review";
-import { ErrorCode } from "@stargazer/schemas/errors";
 
 // Mock sessions module (boundary: in-memory session store)
 vi.mock("./sessions.js", () => ({
@@ -15,7 +13,7 @@ vi.mock("./sessions.js", () => ({
   subscribe: vi.fn(),
   getActiveSessionForProject: vi.fn(),
   getSession: vi.fn(),
-  deleteSession: vi.fn(),
+  cancelStaleSessionsForProjectMode: vi.fn(),
 }));
 
 // Mock pipeline module (boundary: orchestration layer)
@@ -49,12 +47,13 @@ import {
 } from "./service.js";
 import {
   markComplete,
-  deleteSession,
   subscribe,
   getSession,
   getActiveSessionForProject,
   createSession,
   markReady,
+  cancelStaleSessionsForProjectMode,
+  addEvent,
 } from "./sessions.js";
 import {
   resolveGitDiff,
@@ -89,6 +88,58 @@ function makeSession(overrides: Partial<ActiveSession> = {}): ActiveSession {
     controller: new AbortController(),
     ...overrides,
   };
+}
+
+function setupInMemorySessionStore(): void {
+  const sessions = new Map<string, ActiveSession>();
+  const subscribers = new Map<string, Set<(event: FullReviewStreamEvent) => void>>();
+
+  vi.mocked(createSession).mockImplementation((reviewId, projectPath, headCommit, statusHash, mode) => {
+    const session = makeSession({
+      reviewId,
+      projectPath,
+      headCommit,
+      statusHash,
+      mode,
+      isReady: false,
+    });
+    sessions.set(reviewId, session);
+    subscribers.set(reviewId, new Set());
+    return session;
+  });
+
+  vi.mocked(getSession).mockImplementation((reviewId) => sessions.get(reviewId));
+
+  vi.mocked(subscribe).mockImplementation((reviewId, callback) => {
+    const callbacks = subscribers.get(reviewId);
+    if (!callbacks) return null;
+    callbacks.add(callback);
+    return () => callbacks.delete(callback);
+  });
+
+  vi.mocked(addEvent).mockImplementation((reviewId, event) => {
+    const session = sessions.get(reviewId);
+    if (!session || session.isComplete) return;
+    session.events.push(event);
+    const callbacks = subscribers.get(reviewId);
+    if (!callbacks) return;
+    callbacks.forEach((callback) => {
+      void callback(event);
+    });
+  });
+
+  vi.mocked(markComplete).mockImplementation((reviewId) => {
+    const session = sessions.get(reviewId);
+    if (!session) return;
+    session.isComplete = true;
+    subscribers.get(reviewId)?.clear();
+  });
+
+  vi.mocked(markReady).mockImplementation((reviewId) => {
+    const session = sessions.get(reviewId);
+    if (!session) return;
+    session.isReady = true;
+  });
 }
 
 describe("streamActiveSessionToSSE", () => {
@@ -144,7 +195,7 @@ describe("streamActiveSessionToSSE", () => {
     expect(parsed.error.code).toBe(ReviewErrorCode.SESSION_STALE);
   });
 
-  it("should write stale error when session completes during replay", async () => {
+  it("should close replay when session completes during replay", async () => {
     const stream = makeMockStream();
     const completedSession = makeSession({ isComplete: true });
 
@@ -156,9 +207,25 @@ describe("streamActiveSessionToSSE", () => {
 
     await streamActiveSessionToSSE(stream, makeSession({ events: [], isComplete: false }));
 
-    expect(stream.events).toHaveLength(1);
-    const parsed = JSON.parse(stream.events[0]!.data);
-    expect(parsed.error.code).toBe(ReviewErrorCode.SESSION_STALE);
+    expect(stream.events).toHaveLength(0);
+  });
+
+  it("should stop replay when client signal aborts", async () => {
+    const stream = makeMockStream();
+    const session = makeSession({ events: [], isComplete: false });
+    const controller = new AbortController();
+    const unsubscribe = vi.fn();
+
+    vi.mocked(subscribe).mockReturnValue(unsubscribe);
+    vi.mocked(getSession).mockReturnValue(session);
+
+    const replay = streamActiveSessionToSSE(stream, session, controller.signal);
+    controller.abort();
+
+    await replay;
+
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+    expect(stream.events).toHaveLength(0);
   });
 });
 
@@ -171,11 +238,13 @@ describe("streamReviewToSSE", () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    setupInMemorySessionStore();
 
     vi.mocked(createGitService).mockReturnValue({
       getHeadCommit: vi.fn(async () => ({ ok: true, value: "abc123" })),
       getStatusHash: vi.fn(async () => "hash123"),
     } as any);
+    vi.mocked(getActiveSessionForProject).mockReturnValue(undefined);
   });
 
   it("should replay existing session when found", async () => {
@@ -205,10 +274,8 @@ describe("streamReviewToSSE", () => {
 
   it("should create new session when no existing session found", async () => {
     const stream = makeMockStream();
-    const session = makeSession();
 
     vi.mocked(getActiveSessionForProject).mockReturnValue(undefined);
-    vi.mocked(createSession).mockReturnValue(session);
 
     const parsedDiff = { files: [], totalStats: { filesChanged: 0, additions: 0, deletions: 0, totalSizeBytes: 0 } };
     vi.mocked(resolveGitDiff).mockResolvedValue(parsedDiff);
@@ -234,11 +301,18 @@ describe("streamReviewToSSE", () => {
     await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
 
     expect(createSession).toHaveBeenCalled();
+    expect(cancelStaleSessionsForProjectMode).toHaveBeenCalledWith(
+      expect.any(String),
+      "unstaged",
+      "abc123",
+      "hash123",
+    );
     expect(markReady).toHaveBeenCalled();
     expect(markComplete).toHaveBeenCalled();
     // Should have emitted complete event
     expect(stream.events.some((e) => e.event === "complete")).toBe(true);
   });
+
 });
 
 describe("handleReviewFailure (via streamReviewToSSE)", () => {
@@ -250,6 +324,7 @@ describe("handleReviewFailure (via streamReviewToSSE)", () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    setupInMemorySessionStore();
 
     vi.mocked(createGitService).mockReturnValue({
       getHeadCommit: vi.fn(async () => ({ ok: true, value: "abc123" })),
@@ -257,7 +332,6 @@ describe("handleReviewFailure (via streamReviewToSSE)", () => {
     } as any);
 
     vi.mocked(getActiveSessionForProject).mockReturnValue(undefined);
-    vi.mocked(createSession).mockReturnValue(makeSession());
   });
 
   it("should handle AbortError silently", async () => {
@@ -270,7 +344,6 @@ describe("handleReviewFailure (via streamReviewToSSE)", () => {
     await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
 
     expect(markComplete).toHaveBeenCalled();
-    expect(deleteSession).toHaveBeenCalled();
     // No error written to stream
     expect(stream.events).toHaveLength(0);
   });
@@ -318,15 +391,31 @@ describe("handleReviewFailure (via streamReviewToSSE)", () => {
     await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
 
     expect(markComplete).toHaveBeenCalled();
-    expect(deleteSession).toHaveBeenCalled();
     const errorEvents = stream.events.filter((e) => e.event === "error");
     expect(errorEvents).toHaveLength(1);
     const parsed = JSON.parse(errorEvents[0]!.data);
-    expect(parsed.error.code).toBe(ErrorCode.INTERNAL_ERROR);
+    expect(parsed.error.code).toBe(ReviewErrorCode.GENERATION_FAILED);
     expect(parsed.error.message).toBe("Unexpected boom");
   });
 
-  it("should re-throw unexpected error when SSE write fails", async () => {
+  it("should preserve known review error code from non-ReviewAbort errors", async () => {
+    const stream = makeMockStream();
+
+    vi.mocked(resolveGitDiff).mockRejectedValue({
+      code: ReviewErrorCode.AI_ERROR,
+      message: "Upstream model failed",
+    });
+
+    await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
+
+    const errorEvents = stream.events.filter((e) => e.event === "error");
+    expect(errorEvents).toHaveLength(1);
+    const parsed = JSON.parse(errorEvents[0]!.data);
+    expect(parsed.error.code).toBe(ReviewErrorCode.AI_ERROR);
+    expect(parsed.error.message).toBe("Upstream model failed");
+  });
+
+  it("should buffer error events even when stream write fails", async () => {
     const stream = makeMockStream();
     stream.writeSSE = vi.fn().mockRejectedValue(new Error("stream closed"));
 
@@ -334,7 +423,15 @@ describe("handleReviewFailure (via streamReviewToSSE)", () => {
 
     await expect(
       streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream),
-    ).rejects.toThrow("Unexpected boom");
+    ).rejects.toThrow("stream closed");
+    expect(addEvent).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        type: "error",
+        error: expect.objectContaining({
+          code: ReviewErrorCode.GENERATION_FAILED,
+        }),
+      }),
+    );
   });
 });
-

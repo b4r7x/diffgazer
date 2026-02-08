@@ -43,6 +43,7 @@ function parseBranchLine(line: string): BranchInfo {
 }
 
 const STATUS_CODES: Set<string> = new Set(GIT_FILE_STATUS_CODES);
+const INTERNAL_STARGAZER_DIR = ".stargazer";
 
 function toStatusCode(char: string): GitFileStatusCode {
   return STATUS_CODES.has(char) ? (char as GitFileStatusCode) : " ";
@@ -105,6 +106,20 @@ function parseGitStatusOutput(output: string): {
   }
 
   return { branch, remoteBranch, ahead, behind, files: { staged, unstaged, untracked }, conflicted };
+}
+
+function isInternalStargazerPath(pathPart: string): boolean {
+  const normalized = pathPart.trim();
+  return normalized === INTERNAL_STARGAZER_DIR || normalized.startsWith(`${INTERNAL_STARGAZER_DIR}/`);
+}
+
+function shouldIncludeStatusLineForHash(line: string): boolean {
+  if (line.length < 3) return false;
+  const pathPart = line.slice(3).trim();
+  if (!pathPart) return false;
+
+  const paths = pathPart.split(" -> ").map((part) => part.trim()).filter(Boolean);
+  return paths.every((path) => !isInternalStargazerPath(path));
 }
 
 export function createGitService(options: { cwd?: string; timeout?: number } = {}) {
@@ -193,7 +208,10 @@ export function createGitService(options: { cwd?: string; timeout?: number } = {
   async function getStatusHash(): Promise<string> {
     try {
       const { stdout } = await execFileAsync("git", ["status", "--porcelain"], { cwd, timeout });
-      const lines = stdout.split("\n").filter(Boolean).sort();
+      const lines = stdout
+        .split("\n")
+        .filter((line) => line.length > 0 && shouldIncludeStatusLineForHash(line))
+        .sort();
       if (lines.length === 0) {
         return "";
       }
