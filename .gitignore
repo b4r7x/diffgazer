@@ -42,3 +42,15 @@ Thumbs.db
 # Secrets
 *.pem
 *.key
+
+# mocks
+ui-mocks
+mocks
+
+# oh-my-claudecode
+**/.omc
+**/.omc/
+
+# Stargazer runtime artifacts
+**/.stargazer
+**/.stargazer/

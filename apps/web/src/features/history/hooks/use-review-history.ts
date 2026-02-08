@@ -1,0 +1,40 @@
+import { useState } from "react";
+import type { SavedReview } from "@stargazer/schemas/review";
+import { useReviews } from "@/features/history/hooks/use-reviews";
+import { api } from "@/lib/api";
+
+export function useReviewHistory() {
+  const { reviews, isLoading, error: listError, refresh, deleteReview } = useReviews();
+  const [currentReview, setCurrentReview] = useState<SavedReview | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isLoadingReview, setIsLoadingReview] = useState(false);
+
+  const loadReview = async (id: string) => {
+    setIsLoadingReview(true);
+    setLoadError(null);
+    try {
+      const { review } = await api.getReview(id);
+      setCurrentReview(review);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : "Failed to load review");
+    } finally {
+      setIsLoadingReview(false);
+    }
+  };
+
+  const removeReview = async (id: string) => {
+    await deleteReview(id);
+    setCurrentReview(prev => prev?.metadata?.id === id ? null : prev);
+  };
+
+  return {
+    reviews,
+    currentReview,
+    isLoading: isLoading || isLoadingReview,
+    error: listError || loadError,
+    refresh,
+    loadReview,
+    removeReview,
+    clearCurrentReview: () => setCurrentReview(null),
+  };
+}

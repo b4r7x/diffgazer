@@ -1,17 +1,19 @@
 {
-  "name": "stargazer",
+  "name": "stargazer-workspace",
   "private": true,
-  "packageManager": "pnpm@9.15.4",
+  "type": "module",
   "scripts": {
-    "build": "turbo build",
-    "dev": "turbo dev",
-    "lint": "turbo lint",
-    "type-check": "turbo type-check",
-    "test": "turbo test",
-    "clean": "turbo clean"
+    "dev": "pnpm run --parallel dev:web dev:cli",
+    "dev:cli": "pnpm --filter stargazer dev",
+    "dev:web": "pnpm --filter @stargazer/web dev",
+    "build": "pnpm -r build",
+    "cli": "pnpm --filter stargazer dev",
+    "web": "pnpm --filter @stargazer/web dev",
+    "test": "pnpm -r test"
   },
   "devDependencies": {
-    "turbo": "^2.3.0",
-    "typescript": "^5.7.0"
-  }
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "packageManager": "pnpm@9.15.0"
 }
