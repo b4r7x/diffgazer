@@ -22,6 +22,7 @@ import {
   listReviews as listStoredReviews,
 } from "../../shared/lib/storage/reviews.js";
 import {
+  ActiveSessionQuerySchema,
   ContextRefreshSchema,
   DrilldownRequestSchema,
   ReviewIdParamSchema,
@@ -33,7 +34,7 @@ import { streamActiveSessionToSSE, streamReviewToSSE } from "./service.js";
 import { buildProjectContextSnapshot, loadContextSnapshot } from "./context.js";
 import { handleDrilldownRequest } from "./drilldown.js";
 import { ReviewErrorCode } from "@stargazer/schemas/review";
-import { cancelSession, getSession } from "./sessions.js";
+import { cancelSession, getActiveSessionForProject, getSession } from "./sessions.js";
 import { parseProjectPath, handleStoreError } from "./utils.js";
 
 const reviewRouter = new Hono();
@@ -82,7 +83,7 @@ const resumeStreamById = async (c: Context): Promise<Response> => {
 
   return streamSSE(c, async (stream) => {
     try {
-      await streamActiveSessionToSSE(stream, session);
+      await streamActiveSessionToSSE(stream, session, c.req.raw.signal);
     } catch (error) {
       try {
         await writeSSEError(
@@ -151,6 +152,65 @@ reviewRouter.get(
   requireRepoAccess,
   zValidator("param", ReviewIdParamSchema, zodErrorHandler),
   resumeStreamById,
+);
+
+reviewRouter.get(
+  "/sessions/active",
+  requireSetup,
+  requireRepoAccess,
+  zValidator("query", ActiveSessionQuerySchema, zodErrorHandler),
+  async (c): Promise<Response> => {
+    const { mode: modeParam } = c.req.valid("query");
+    const mode = modeParam ?? "unstaged";
+    const projectPath = getProjectRoot(c);
+    const gitService = createGitService({ cwd: projectPath });
+
+    let headCommit: string;
+    let statusHash: string;
+    try {
+      const [headCommitResult, currentStatusHash] = await Promise.all([
+        gitService.getHeadCommit(),
+        gitService.getStatusHash(),
+      ]);
+      if (!headCommitResult.ok) {
+        return errorResponse(
+          c,
+          "Failed to inspect repository state",
+          ErrorCode.INTERNAL_ERROR,
+          500,
+        );
+      }
+      headCommit = headCommitResult.value;
+      statusHash = currentStatusHash;
+    } catch {
+      return errorResponse(
+        c,
+        "Failed to inspect repository state",
+        ErrorCode.INTERNAL_ERROR,
+        500,
+      );
+    }
+
+    const session = getActiveSessionForProject(
+      projectPath,
+      headCommit,
+      statusHash,
+      mode,
+    );
+    if (!session) {
+      return c.json({ session: null });
+    }
+
+    return c.json({
+      session: {
+        reviewId: session.reviewId,
+        mode: session.mode,
+        startedAt: session.startedAt.toISOString(),
+        headCommit: session.headCommit,
+        statusHash: session.statusHash,
+      },
+    });
+  },
 );
 
 reviewRouter.get(

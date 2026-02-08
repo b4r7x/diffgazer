@@ -44,6 +44,10 @@ export const ReviewStreamQuerySchema = z.object({
   files: z.string().optional(),
 });
 
+export const ActiveSessionQuerySchema = z.object({
+  mode: ReviewModeSchema.optional(),
+});
+
 export const DrilldownResponseSchema = z.object({
   detailedAnalysis: z.string(),
   rootCause: z.string(),

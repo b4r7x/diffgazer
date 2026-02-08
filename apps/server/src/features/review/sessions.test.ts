@@ -8,6 +8,7 @@ import {
   addEvent,
   subscribe,
   cancelSession,
+  cancelStaleSessionsForProjectMode,
   getActiveSessionForProject,
 } from "./sessions.js";
 import type { FullReviewStreamEvent } from "@stargazer/schemas/events";
@@ -177,6 +178,20 @@ describe("cancelSession", () => {
     );
   });
 
+  it("should not emit duplicate cancellation events", () => {
+    createSession("test-cancel", "/project", "abc", "h", "staged");
+    const callback = vi.fn();
+    subscribe("test-cancel", callback);
+
+    cancelSession("test-cancel");
+    cancelSession("test-cancel");
+
+    const session = getSession("test-cancel");
+    const errorEvents = session?.events.filter((event) => event.type === "error");
+    expect(errorEvents).toHaveLength(1);
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
   it("should be a no-op for unknown session", () => {
     expect(() => cancelSession("nonexistent")).not.toThrow();
   });
@@ -266,5 +281,45 @@ describe("getActiveSessionForProject", () => {
     expect(
       getActiveSessionForProject("/project", "abc", "hash1", "unstaged"),
     ).toBeUndefined();
+  });
+});
+
+describe("cancelStaleSessionsForProjectMode", () => {
+  it("should cancel active sessions for same project and mode with mismatched git state", () => {
+    createSession("test-active", "/project", "abc", "hash1", "staged");
+    markReady("test-active");
+
+    cancelStaleSessionsForProjectMode("/project", "staged", "abc", "hash2");
+
+    expect(getSession("test-active")?.isComplete).toBe(true);
+    expect(getSession("test-active")?.controller.signal.aborted).toBe(true);
+  });
+
+  it("should keep matching session state untouched", () => {
+    createSession("test-active", "/project", "abc", "hash1", "staged");
+    markReady("test-active");
+
+    cancelStaleSessionsForProjectMode("/project", "staged", "abc", "hash1");
+
+    expect(getSession("test-active")?.isComplete).toBe(false);
+  });
+
+  it("should not cancel sessions from a different mode", () => {
+    createSession("test-active", "/project", "abc", "hash1", "unstaged");
+    markReady("test-active");
+
+    cancelStaleSessionsForProjectMode("/project", "staged", "abc", "hash2");
+
+    expect(getSession("test-active")?.isComplete).toBe(false);
+  });
+
+  it("should skip cancellation when git identity is unavailable", () => {
+    createSession("test-active", "/project", "abc", "hash1", "staged");
+    markReady("test-active");
+
+    cancelStaleSessionsForProjectMode("/project", "staged", "", "");
+
+    expect(getSession("test-active")?.isComplete).toBe(false);
+    expect(getSession("test-active")?.controller.signal.aborted).toBe(false);
   });
 });

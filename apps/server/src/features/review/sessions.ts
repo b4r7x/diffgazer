@@ -115,10 +115,9 @@ export function markComplete(reviewId: string): void {
 
 export function cancelSession(reviewId: string): void {
   const session = activeSessions.get(reviewId);
-  if (!session) return;
+  if (!session || session.isComplete) return;
 
   session.controller.abort("session_stale");
-  session.isComplete = true;
   const cancelEvent: FullReviewStreamEvent = {
     type: "error",
     error: {
@@ -126,6 +125,8 @@ export function cancelSession(reviewId: string): void {
       message: "Review session cancelled because repository state changed.",
     },
   };
+  session.events.push(cancelEvent);
+  session.isComplete = true;
 
   session.subscribers.forEach((cb) => {
     try {
@@ -138,6 +139,27 @@ export function cancelSession(reviewId: string): void {
   });
   session.subscribers.clear();
   setTimeout(() => activeSessions.delete(reviewId), 2 * 60 * 1000);
+}
+
+export function cancelStaleSessionsForProjectMode(
+  projectPath: string,
+  mode: ReviewMode,
+  headCommit: string,
+  statusHash: string
+): void {
+  if (!headCommit || !statusHash) {
+    return;
+  }
+
+  for (const [reviewId, session] of activeSessions) {
+    if (session.isComplete) continue;
+    if (session.projectPath !== projectPath) continue;
+    if (session.mode !== mode) continue;
+    if (session.headCommit === headCommit && session.statusHash === statusHash) {
+      continue;
+    }
+    cancelSession(reviewId);
+  }
 }
 
 export function subscribe(

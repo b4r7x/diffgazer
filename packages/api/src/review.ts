@@ -11,7 +11,7 @@ import {
 import { ReviewErrorCode, type ReviewMode } from "@stargazer/schemas/review";
 import type {
   ApiClient,
-  ApiError,
+  ActiveReviewSessionResponse,
   ReviewContextResponse,
   ReviewsResponse,
   ReviewResponse,
@@ -122,6 +122,14 @@ export async function getReview(
   return client.get<ReviewResponse>(`/api/review/reviews/${id}`);
 }
 
+export async function getActiveReviewSession(
+  client: ApiClient,
+  mode?: ReviewMode
+): Promise<ActiveReviewSessionResponse> {
+  const params = mode ? { mode } : undefined;
+  return client.get<ActiveReviewSessionResponse>("/api/review/sessions/active", params);
+}
+
 export async function getReviewContext(
   client: ApiClient
 ): Promise<ReviewContextResponse> {
@@ -158,6 +166,7 @@ export const bindReview = (client: ApiClient) => ({
   resumeReviewStream: (options: ResumeReviewOptions) => resumeReviewStream(client, options),
   getReviews: (projectPath?: string) => getReviews(client, projectPath),
   getReview: (id: string) => getReview(client, id),
+  getActiveReviewSession: (mode?: ReviewMode) => getActiveReviewSession(client, mode),
   getReviewContext: () => getReviewContext(client),
   refreshReviewContext: (options?: { force?: boolean }) => refreshReviewContext(client, options),
   deleteReview: (id: string) => deleteReview(client, id),

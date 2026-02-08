@@ -388,6 +388,42 @@ describe("createGitService", () => {
       expect(hash).toBe("");
     });
 
+    it("should ignore .stargazer workspace files when hashing", async () => {
+      setupExecResult("?? .stargazer/context.md\n?? .stargazer/context.json\n");
+      const git = createGitService({ cwd: "/test" });
+
+      const hash = await git.getStatusHash();
+
+      expect(hash).toBe("");
+    });
+
+    it("should hash user changes even when .stargazer files are present", async () => {
+      setupExecResult(" M src/app.ts\n?? .stargazer/context.md\n");
+      const git = createGitService({ cwd: "/test" });
+
+      const hash = await git.getStatusHash();
+
+      expect(hash).toMatch(/^[0-9a-f]{16}$/);
+    });
+
+    it("should include similarly named top-level directories in hash", async () => {
+      setupExecResult(" M .stargazer-backup/config.json\n");
+      const git = createGitService({ cwd: "/test" });
+
+      const hash = await git.getStatusHash();
+
+      expect(hash).toMatch(/^[0-9a-f]{16}$/);
+    });
+
+    it("should include nested .stargazer directories in hash", async () => {
+      setupExecResult(" M src/.stargazer/config.json\n");
+      const git = createGitService({ cwd: "/test" });
+
+      const hash = await git.getStatusHash();
+
+      expect(hash).toMatch(/^[0-9a-f]{16}$/);
+    });
+
     it("should return empty string when command fails", async () => {
       setupExecError(new Error("git error"));
       const git = createGitService({ cwd: "/test" });
