@@ -49,3 +49,7 @@ mocks
 
 # oh-my-claudecode
 .omc/
+
+# Stargazer runtime artifacts
+**/.stargazer
+**/.stargazer/

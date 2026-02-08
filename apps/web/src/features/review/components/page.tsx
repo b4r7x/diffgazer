@@ -61,12 +61,21 @@ export function ReviewPage() {
   const router = useRouter();
   const { handleApiError } = useReviewErrorHandler();
 
+  const startFreshReview = async () => {
+    await router.navigate({
+      to: "/review",
+      search: { mode: reviewMode },
+      replace: true,
+    });
+    dispatch({ type: "SHOW_STREAMING" });
+  };
+
   const handleResumeFailed = async (reviewId: string) => {
     dispatch({ type: "START_LOAD_SAVED" });
     try {
       const { review } = await api.getReview(reviewId);
       if (!review?.result) {
-        handleApiError({ status: 404, message: "Review result not available" });
+        await startFreshReview();
         return;
       }
       dispatch({
@@ -74,13 +83,17 @@ export function ReviewPage() {
         reviewData: { issues: review.result.issues, reviewId: review.metadata.id },
       });
     } catch (error) {
+      if (isApiError(error) && error.status === 404) {
+        await startFreshReview();
+        return;
+      }
       handleApiError(error);
     }
   };
 
   const handleComplete = (data: ReviewCompleteData) => {
     if (data.resumeFailed && data.reviewId) {
-      handleResumeFailed(data.reviewId);
+      void handleResumeFailed(data.reviewId);
       return;
     }
     dispatch({ type: "SHOW_SUMMARY", reviewData: data });

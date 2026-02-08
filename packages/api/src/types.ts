@@ -71,3 +71,15 @@ export interface ReviewResponse {
 export interface DrilldownResponse {
   drilldown: DrilldownResult;
 }
+
+export interface ActiveReviewSession {
+  reviewId: string;
+  mode: ReviewMode;
+  startedAt: string;
+  headCommit: string;
+  statusHash: string;
+}
+
+export interface ActiveReviewSessionResponse {
+  session: ActiveReviewSession | null;
+}

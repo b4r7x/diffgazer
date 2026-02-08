@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { resumeReviewStream, streamReview, streamReviewWithEvents } from "./review.js";
+import {
+  getActiveReviewSession,
+  resumeReviewStream,
+  streamReview,
+  streamReviewWithEvents,
+} from "./review.js";
 import type { ApiClient } from "./types.js";
 
 vi.mock("@stargazer/core/review", async (importOriginal) => {
@@ -184,5 +189,52 @@ describe("streamReviewWithEvents", () => {
 
     expect(result.ok).toBe(true);
     expect(processReviewStream).toHaveBeenCalled();
+  });
+});
+
+describe("getActiveReviewSession", () => {
+  let mockClient: ApiClient;
+
+  beforeEach(() => {
+    mockClient = {
+      get: vi.fn(),
+      post: vi.fn(),
+      put: vi.fn(),
+      delete: vi.fn(),
+      stream: vi.fn(),
+      request: vi.fn(),
+    };
+  });
+
+  it("calls active session endpoint with mode query", async () => {
+    vi.mocked(mockClient.get).mockResolvedValue({
+      session: {
+        reviewId: "r-1",
+        mode: "staged",
+        startedAt: new Date().toISOString(),
+        headCommit: "abc123",
+        statusHash: "hash123",
+      },
+    });
+
+    const result = await getActiveReviewSession(mockClient, "staged");
+
+    expect(result.session?.reviewId).toBe("r-1");
+    expect(mockClient.get).toHaveBeenCalledWith(
+      "/api/review/sessions/active",
+      { mode: "staged" },
+    );
+  });
+
+  it("calls active session endpoint without params when mode is omitted", async () => {
+    vi.mocked(mockClient.get).mockResolvedValue({ session: null });
+
+    const result = await getActiveReviewSession(mockClient);
+
+    expect(result.session).toBeNull();
+    expect(mockClient.get).toHaveBeenCalledWith(
+      "/api/review/sessions/active",
+      undefined,
+    );
   });
 });
