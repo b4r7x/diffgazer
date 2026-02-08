@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TrustCapabilities } from "@stargazer/schemas/config";
 import { Badge, Callout, Button, CheckboxGroup, CheckboxItem } from "@stargazer/ui";
 import { useNavigation } from "@stargazer/keyboard";
@@ -26,6 +26,16 @@ const CAPABILITIES = [
   { id: "runCommands", label: "Run commands (tests/lint)", description: "Currently unavailable", disabled: true },
 ] as const;
 
+function getInitialFocusedCapability(value: TrustCapabilities): string | null {
+  if (value.readFiles) return "readFiles";
+  return CAPABILITIES.find((capability) => !capability.disabled)?.id ?? null;
+}
+
+function isFocusableCapability(value: string | null): value is string {
+  if (!value) return false;
+  return CAPABILITIES.some((capability) => capability.id === value && !capability.disabled);
+}
+
 export function TrustPermissionsContent({
   directory,
   value,
@@ -39,11 +49,17 @@ export function TrustPermissionsContent({
   type FocusZone = "list" | "buttons";
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [buttonIndex, setButtonIndex] = useState(0);
-  const [listFocused, setListFocused] = useState<string | null>(null);
+  const [listFocused, setListFocused] = useState<string | null>(() => getInitialFocusedCapability(value));
   const checkboxRef = useRef<HTMLDivElement>(null);
   const BUTTONS_COUNT = 2;
 
   const selectedCapabilities = value.readFiles ? ["readFiles"] : [];
+  const initialFocusedCapability = getInitialFocusedCapability(value);
+
+  useEffect(() => {
+    if (isFocusableCapability(listFocused)) return;
+    setListFocused(initialFocusedCapability);
+  }, [initialFocusedCapability, listFocused]);
 
   const handleValueChange = (selected: string[]) => {
     onChange({
@@ -76,6 +92,7 @@ export function TrustPermissionsContent({
   const { focusedValue: listFocusedValue } = useNavigation({
     containerRef: checkboxRef,
     role: "checkbox",
+    initialValue: initialFocusedCapability,
     value: listFocused,
     onValueChange: setListFocused,
     wrap: false,
