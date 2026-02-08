@@ -3,7 +3,7 @@ import type { Result } from '@stargazer/core/result';
 import type { StreamReviewError } from '@stargazer/api/review';
 import { ReviewErrorCode } from '@stargazer/schemas/review';
 import type { LensId } from '@stargazer/schemas/review';
-import type { ReviewCompleteData } from './use-review-lifecycle';
+
 import type { ReviewMode } from '@stargazer/schemas/review';
 
 interface ActiveReviewSessionResult {
@@ -20,7 +20,7 @@ interface UseReviewStartOptions {
   start: (options: { mode?: ReviewMode; lenses?: LensId[] }) => Promise<void>;
   resume: (id: string) => Promise<Result<void, StreamReviewError>>;
   getActiveSession: (mode: ReviewMode) => Promise<ActiveReviewSessionResult>;
-  onResumeFailed: (data: ReviewCompleteData) => void;
+  onNotFoundInSession: (reviewId: string) => void;
 }
 
 export function useReviewStart({
@@ -33,7 +33,7 @@ export function useReviewStart({
   start,
   resume,
   getActiveSession,
-  onResumeFailed,
+  onNotFoundInSession,
 }: UseReviewStartOptions) {
   const hasStartedRef = useRef(false);
   const hasStreamedRef = useRef(false);
@@ -52,44 +52,24 @@ export function useReviewStart({
       void start(options);
     };
 
-    const handleResumeResult = (
-      result: Result<void, StreamReviewError>,
-      onNotFound: () => void,
-    ) => {
-      if (ignore) return;
-      if (result.ok) return;
-
-      if (result.error.code === ReviewErrorCode.SESSION_STALE) {
-        startFresh();
-        return;
-      }
-
-      if (result.error.code === ReviewErrorCode.SESSION_NOT_FOUND) {
-        onNotFound();
-        return;
-      }
-    };
-
     const resumeById = (id: string, onNotFound: () => void) => {
-      resume(id)
-        .then((result) => {
-          handleResumeResult(result, onNotFound);
-        })
-        .catch(() => {
-          // Transport/runtime errors — hook already set error state.
-        });
+      void resume(id).then((result) => {
+        if (ignore || result.ok) return;
+
+        if (result.error.code === ReviewErrorCode.SESSION_STALE) {
+          startFresh();
+        } else if (result.error.code === ReviewErrorCode.SESSION_NOT_FOUND) {
+          onNotFound();
+        }
+      });
     };
 
     if (reviewId) {
       resumeById(reviewId, () => {
-        onResumeFailed({
-          issues: [],
-          reviewId: reviewId ?? null,
-          resumeFailed: true,
-        });
+        onNotFoundInSession(reviewId);
       });
     } else {
-      getActiveSession(mode)
+      void getActiveSession(mode)
         .then((active) => {
           if (ignore) return;
 
@@ -117,7 +97,6 @@ export function useReviewStart({
     reviewId,
     settingsLoading,
     defaultLenses,
-    onResumeFailed,
   ]);
 
   return { hasStartedRef, hasStreamedRef };

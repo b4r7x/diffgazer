@@ -12,6 +12,7 @@ export type { ReviewCompleteData };
 export interface ReviewContainerProps {
   mode: ReviewMode;
   onComplete?: (data: ReviewCompleteData) => void;
+  onReviewNotInSession?: (reviewId: string) => void;
 }
 
 /**
@@ -20,7 +21,7 @@ export interface ReviewContainerProps {
  * 2. Shows ReviewProgressView during review
  * 3. Calls onComplete when done (parent can switch to results view)
  */
-export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
+export function ReviewContainer({ mode, onComplete, onReviewNotInSession }: ReviewContainerProps) {
   const {
     state,
     isConfigured,
@@ -32,7 +33,7 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     handleViewResults,
     handleSetupProvider,
     handleSwitchMode,
-  } = useReviewLifecycle({ mode, onComplete });
+  } = useReviewLifecycle({ mode, onComplete, onReviewNotInSession });
 
   const contextStep = state.steps.find((step) => step.id === "context");
   const contextSnapshot = useContextSnapshot(
