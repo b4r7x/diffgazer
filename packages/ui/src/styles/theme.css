@@ -40,6 +40,40 @@
   --success-foreground: var(--tui-bg);
   --warning: var(--tui-yellow);
   --warning-foreground: var(--tui-bg);
+  --info: var(--tui-blue);
+  --info-foreground: var(--tui-bg);
+  --error: var(--tui-red);
+  --error-foreground: var(--tui-bg);
+
+  --success-subtle: #3fb9501a;
+  --success-fg: var(--tui-green);
+  --success-border: var(--tui-green);
+  --success-strong: var(--tui-green);
+  --success-strong-foreground: var(--tui-bg);
+
+  --warning-subtle: #d299220d;
+  --warning-fg: var(--tui-yellow);
+  --warning-border: var(--tui-yellow);
+  --warning-strong: var(--tui-yellow);
+  --warning-strong-foreground: var(--tui-bg);
+
+  --error-subtle: #ff7b721a;
+  --error-fg: var(--tui-red);
+  --error-border: var(--tui-red);
+  --error-strong: var(--tui-red);
+  --error-strong-foreground: var(--tui-bg);
+
+  --info-subtle: #58a6ff1a;
+  --info-fg: var(--tui-blue);
+  --info-border: var(--tui-blue);
+  --info-strong: var(--tui-blue);
+  --info-strong-foreground: var(--tui-bg);
+
+  --neutral-subtle: #6e76811a;
+  --neutral-border: var(--tui-border);
+  --neutral-fg: var(--tui-muted);
+  --neutral-strong: var(--tui-muted);
+  --neutral-strong-foreground: var(--tui-bg);
 
   --severity-blocker: var(--tui-red);
   --severity-high: var(--tui-yellow);
@@ -91,6 +125,40 @@
   --success-foreground: #ffffff;
   --warning: var(--tui-yellow);
   --warning-foreground: #ffffff;
+  --info: var(--tui-blue);
+  --info-foreground: #ffffff;
+  --error: var(--tui-red);
+  --error-foreground: #ffffff;
+
+  --success-subtle: #1a7f371f;
+  --success-fg: var(--tui-green);
+  --success-border: var(--tui-green);
+  --success-strong: var(--tui-green);
+  --success-strong-foreground: #ffffff;
+
+  --warning-subtle: #9a670014;
+  --warning-fg: var(--tui-yellow);
+  --warning-border: var(--tui-yellow);
+  --warning-strong: var(--tui-yellow);
+  --warning-strong-foreground: #ffffff;
+
+  --error-subtle: #cf222e1a;
+  --error-fg: var(--tui-red);
+  --error-border: var(--tui-red);
+  --error-strong: var(--tui-red);
+  --error-strong-foreground: #ffffff;
+
+  --info-subtle: #0969da1a;
+  --info-fg: var(--tui-blue);
+  --info-border: var(--tui-blue);
+  --info-strong: var(--tui-blue);
+  --info-strong-foreground: #ffffff;
+
+  --neutral-subtle: #57606a14;
+  --neutral-border: var(--tui-border);
+  --neutral-fg: var(--tui-muted);
+  --neutral-strong: var(--tui-muted);
+  --neutral-strong-foreground: #ffffff;
 
   --severity-blocker: var(--tui-red);
   --severity-high: var(--tui-yellow);
@@ -199,6 +267,35 @@
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-error: var(--error);
+  --color-error-foreground: var(--error-foreground);
+  --color-success-subtle: var(--success-subtle);
+  --color-success-fg: var(--success-fg);
+  --color-success-border: var(--success-border);
+  --color-success-strong: var(--success-strong);
+  --color-success-strong-foreground: var(--success-strong-foreground);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-warning-fg: var(--warning-fg);
+  --color-warning-border: var(--warning-border);
+  --color-warning-strong: var(--warning-strong);
+  --color-warning-strong-foreground: var(--warning-strong-foreground);
+  --color-error-subtle: var(--error-subtle);
+  --color-error-fg: var(--error-fg);
+  --color-error-border: var(--error-border);
+  --color-error-strong: var(--error-strong);
+  --color-error-strong-foreground: var(--error-strong-foreground);
+  --color-info-subtle: var(--info-subtle);
+  --color-info-fg: var(--info-fg);
+  --color-info-border: var(--info-border);
+  --color-info-strong: var(--info-strong);
+  --color-info-strong-foreground: var(--info-strong-foreground);
+  --color-neutral-subtle: var(--neutral-subtle);
+  --color-neutral-border: var(--neutral-border);
+  --color-neutral-fg: var(--neutral-fg);
+  --color-neutral-strong: var(--neutral-strong);
+  --color-neutral-strong-foreground: var(--neutral-strong-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

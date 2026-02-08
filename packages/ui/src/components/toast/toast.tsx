@@ -3,13 +3,13 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../../lib/cn";
 import type { Toast as ToastType } from "./toast-context";
 
-const toastVariants = cva("w-full border border-tui-border bg-tui-bg shadow-2xl", {
+const toastVariants = cva("w-full border border-border bg-background shadow-2xl", {
   variants: {
     variant: {
-      success: "border-tui-green",
-      error: "border-tui-red",
-      warning: "border-tui-yellow",
-      info: "border-tui-blue",
+      success: "border-success-border",
+      error: "border-error-border",
+      warning: "border-warning-border",
+      info: "border-info-border",
     },
   },
   defaultVariants: {
@@ -20,10 +20,10 @@ const toastVariants = cva("w-full border border-tui-border bg-tui-bg shadow-2xl"
 const iconVariants = cva("font-bold", {
   variants: {
     variant: {
-      success: "text-tui-green",
-      error: "text-tui-red",
-      warning: "text-tui-yellow",
-      info: "text-tui-blue",
+      success: "text-success-fg",
+      error: "text-error-fg",
+      warning: "text-warning-fg",
+      info: "text-info-fg",
     },
   },
   defaultVariants: {
@@ -95,19 +95,19 @@ export function Toast({
         if (dismissing) safeRemove();
       }}
     >
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-tui-border bg-tui-selection/40">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border bg-secondary/40">
         <div className="flex items-center gap-2">
           <span className={cn(iconVariants({ variant }))} aria-hidden="true">
             {icons[variant]}
           </span>
           <span className="sr-only">{titles[variant]}:</span>
-          <span className="text-xs font-bold uppercase tracking-tight text-tui-fg">
+          <span className="text-xs font-bold uppercase tracking-tight text-foreground">
             {displayTitle}
           </span>
         </div>
         <button
           onClick={() => onDismiss(id)}
-          className="text-[10px] text-tui-muted hover:text-tui-fg"
+          className="text-[10px] text-muted hover:text-foreground"
           aria-label="Dismiss notification"
         >
           {"\u2715"}
@@ -115,7 +115,7 @@ export function Toast({
       </div>
       {(message || action) && (
         <div className="p-3 text-sm flex items-center justify-between gap-2">
-          {message && <span className="text-tui-fg/90">{message}</span>}
+          {message && <span className="text-foreground/90">{message}</span>}
           {action && <span className="shrink-0">{action}</span>}
         </div>
       )}

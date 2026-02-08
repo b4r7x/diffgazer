@@ -3,21 +3,24 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/cn";
 
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center font-mono whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tui-blue focus-visible:ring-offset-2 focus-visible:ring-offset-tui-bg disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
+  "inline-flex items-center justify-center font-mono whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
   {
     variants: {
       variant: {
-        primary: "bg-tui-blue text-black font-bold hover:bg-tui-blue/90",
-        secondary: "border border-tui-border bg-transparent hover:bg-tui-selection",
+        primary: "bg-primary text-primary-foreground font-bold hover:bg-primary/90",
+        secondary: "border border-border bg-transparent text-foreground hover:bg-secondary",
+        error:
+          "text-error-fg border border-error-border bg-transparent hover:bg-error-strong hover:text-error-strong-foreground",
         destructive:
-          "text-tui-red border border-tui-red bg-transparent hover:bg-tui-red hover:text-black",
-        success: "bg-tui-green text-black font-bold hover:bg-tui-green/90",
-        ghost: "bg-transparent hover:bg-tui-selection",
-        outline: "border border-tui-border bg-transparent text-tui-fg hover:bg-tui-border",
-        tab: "bg-transparent text-tui-fg border-b-2 border-transparent hover:border-b-tui-blue data-[active=true]:border-b-tui-blue data-[active=true]:font-bold",
+          "text-error-fg border border-error-border bg-transparent hover:bg-error-strong hover:text-error-strong-foreground",
+        success:
+          "bg-success-strong text-success-strong-foreground font-bold hover:bg-success-strong/90",
+        ghost: "bg-transparent text-foreground hover:bg-secondary",
+        outline: "border border-border bg-transparent text-foreground hover:bg-border",
+        tab: "bg-transparent text-foreground border-b-2 border-transparent hover:border-b-primary data-[active=true]:border-b-primary data-[active=true]:font-bold",
         toggle:
-          "border border-tui-border bg-transparent text-tui-fg data-[active=true]:bg-tui-blue data-[active=true]:text-black data-[active=true]:border-tui-blue",
-        link: "bg-transparent text-tui-blue underline-offset-2 hover:underline",
+          "border border-border bg-transparent text-foreground data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:border-primary",
+        link: "bg-transparent text-info-fg underline-offset-2 hover:underline",
       },
       size: {
         sm: "h-7 px-3 text-xs",

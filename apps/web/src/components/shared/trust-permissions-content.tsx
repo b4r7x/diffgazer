@@ -143,7 +143,7 @@ export function TrustPermissionsContent({
             {isLoading ? "[ Saving... ]" : "[ Save Changes ]"}
           </Button>
           <Button
-            variant="destructive"
+            variant="error"
             onClick={onRevoke}
             disabled={isLoading}
             className={cn(focusZone === 'buttons' && buttonIndex === 1 && 'ring-2 ring-tui-blue')}
