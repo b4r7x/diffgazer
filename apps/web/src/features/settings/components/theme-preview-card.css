@@ -1,0 +1,22 @@
+.theme-preview-scope {
+  --color-tui-bg: var(--tui-bg);
+  --color-tui-fg: var(--tui-fg);
+  --color-tui-blue: var(--tui-blue);
+  --color-tui-violet: var(--tui-violet);
+  --color-tui-border: var(--tui-border);
+  --color-tui-selection: var(--tui-selection);
+  --color-tui-muted: var(--tui-muted);
+
+  --color-success-subtle: var(--success-subtle);
+  --color-success-fg: var(--success-fg);
+  --color-success-border: var(--success-border);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-warning-fg: var(--warning-fg);
+  --color-warning-border: var(--warning-border);
+  --color-error-subtle: var(--error-subtle);
+  --color-error-fg: var(--error-fg);
+  --color-error-border: var(--error-border);
+  --color-info-subtle: var(--info-subtle);
+  --color-info-fg: var(--info-fg);
+  --color-info-border: var(--info-border);
+}

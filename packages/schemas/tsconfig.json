@@ -1,5 +1,5 @@
 {
-  "extends": "@repo/tsconfig/node.json",
+  "extends": "@stargazer/tsconfig/node.json",
   "compilerOptions": { "outDir": "dist", "rootDir": "src" },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]

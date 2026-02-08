@@ -1,0 +1,10 @@
+@import "tailwindcss";
+@import "@stargazer/ui/sources.css";
+@import "@stargazer/ui/theme.css";
+
+html,
+body {
+  font-family: "JetBrains Mono", monospace;
+  background-color: var(--tui-bg);
+  color: var(--tui-fg);
+}

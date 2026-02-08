@@ -1,18 +1,45 @@
 {
-  "name": "@repo/api",
+  "name": "@stargazer/api",
   "version": "0.0.1",
-  "private": true,
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
-  },
-  "scripts": { "build": "tsc", "type-check": "tsc --noEmit" },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./review": {
+      "types": "./dist/review.d.ts",
+      "import": "./dist/review.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.js"
+    },
+    "./git": {
+      "types": "./dist/git.d.ts",
+      "import": "./dist/git.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@stargazer/core": "workspace:*",
+    "@stargazer/schemas": "workspace:*"
+  },
   "devDependencies": {
-    "@repo/tsconfig": "workspace:*",
-    "@types/node": "^22.0.0",
-    "typescript": "^5.7.0"
+    "@stargazer/tsconfig": "workspace:*",
+    "@types/node": "^25.2.0",
+    "typescript": "^5.9.3"
   }
 }
