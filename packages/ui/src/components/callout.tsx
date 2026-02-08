@@ -3,14 +3,14 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/cn";
 
 export const calloutVariants = cva(
-  "relative border border-tui-border bg-black/30 font-mono p-4 flex gap-4 items-start",
+  "relative border font-mono p-4 flex gap-4 items-start",
   {
     variants: {
       variant: {
-        info: "",
-        warning: "",
-        error: "",
-        success: "",
+        info: "border-info-border/40 bg-info-subtle",
+        warning: "border-warning-border/40 bg-warning-subtle",
+        error: "border-error-border/40 bg-error-subtle",
+        success: "border-success-border/40 bg-success-subtle",
       },
     },
     defaultVariants: { variant: "info" },
@@ -18,27 +18,27 @@ export const calloutVariants = cva(
 );
 
 const iconVariants = cva(
-  "w-5 h-5 flex items-center justify-center text-xs font-bold rounded-sm shrink-0 mt-0.5 shadow-lg text-black",
+  "w-5 h-5 flex items-center justify-center text-xs font-bold rounded-sm shrink-0 mt-0.5 shadow-lg",
   {
     variants: {
       variant: {
-        info: "bg-tui-blue shadow-tui-blue/20",
-        warning: "bg-tui-yellow shadow-tui-yellow/20",
-        error: "bg-tui-red shadow-tui-red/20",
-        success: "bg-tui-green shadow-tui-green/20",
+        info: "bg-info-strong text-info-strong-foreground shadow-info-strong/20",
+        warning: "bg-warning-strong text-warning-strong-foreground shadow-warning-strong/20",
+        error: "bg-error-strong text-error-strong-foreground shadow-error-strong/20",
+        success: "bg-success-strong text-success-strong-foreground shadow-success-strong/20",
       },
     },
     defaultVariants: { variant: "info" },
   }
 );
 
-const textVariants = cva("text-sm text-tui-muted", {
+const textVariants = cva("text-sm", {
   variants: {
     variant: {
-      info: "",
-      warning: "",
-      error: "",
-      success: "",
+      info: "text-info-fg",
+      warning: "text-warning-fg",
+      error: "text-error-fg",
+      success: "text-success-fg",
     },
   },
   defaultVariants: { variant: "info" },
@@ -47,10 +47,10 @@ const textVariants = cva("text-sm text-tui-muted", {
 const titleVariants = cva("font-bold", {
   variants: {
     variant: {
-      info: "text-tui-blue",
-      warning: "text-tui-yellow",
-      error: "text-tui-red",
-      success: "text-tui-green",
+      info: "text-info-fg",
+      warning: "text-warning-fg",
+      error: "text-error-fg",
+      success: "text-success-fg",
     },
   },
   defaultVariants: { variant: "info" },
