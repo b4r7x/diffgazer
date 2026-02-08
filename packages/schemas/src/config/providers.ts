@@ -31,33 +31,33 @@ export type ModelInfo = z.infer<typeof ModelInfoSchema>;
 export const GEMINI_MODEL_INFO: Record<GeminiModel, ModelInfo> = {
   "gemini-3-flash-preview": {
     id: "gemini-3-flash-preview",
-    name: "Gemini 3 Flash",
-    description: "Latest preview, balanced speed and intelligence",
+    name: "Gemini 3 Flash (Preview)",
+    description: "Preview Gemini 3 Flash model for lower-latency multimodal generation.",
     tier: "paid",
   },
   "gemini-3-pro-preview": {
     id: "gemini-3-pro-preview",
-    name: "Gemini 3 Pro",
-    description: "Most intelligent, reasoning-first model",
+    name: "Gemini 3 Pro (Preview)",
+    description: "Preview Gemini 3 Pro model for complex reasoning and analysis.",
     tier: "paid",
   },
   "gemini-2.5-flash": {
     id: "gemini-2.5-flash",
-    name: "Gemini 2.5 Flash",
-    description: "Best balance of speed and quality",
+    name: "Gemini 2.5 Flash (Stable)",
+    description: "Stable Gemini 2.5 Flash model with up to 1M-token context window.",
     tier: "free",
     recommended: true,
   },
   "gemini-2.5-flash-lite": {
     id: "gemini-2.5-flash-lite",
-    name: "Gemini 2.5 Flash Lite",
-    description: "Fastest and cheapest, highest free limits",
+    name: "Gemini 2.5 Flash-Lite (Stable)",
+    description: "Stable low-cost Gemini 2.5 variant for high-throughput workloads.",
     tier: "free",
   },
   "gemini-2.5-pro": {
     id: "gemini-2.5-pro",
-    name: "Gemini 2.5 Pro",
-    description: "Best quality for complex analysis",
+    name: "Gemini 2.5 Pro (Stable)",
+    description: "Stable Gemini 2.5 Pro model for higher-reasoning workloads.",
     tier: "free",
   },
 };
@@ -70,20 +70,20 @@ export const GLM_MODEL_INFO: Record<GLMModel, ModelInfo> = {
   "glm-4.7": {
     id: "glm-4.7",
     name: "GLM-4.7",
-    description: "Flagship model, highest performance for coding & reasoning",
+    description: "General-purpose GLM-4.7 model on the standard Z.AI endpoint.",
     tier: "paid",
     recommended: true,
   },
   "glm-4.7-flashx": {
     id: "glm-4.7-flashx",
     name: "GLM-4.7 FlashX",
-    description: "Lightweight, high-speed and affordable",
+    description: "Lower-cost GLM-4.7 variant; promotional free period ended on 2026-01-30.",
     tier: "paid",
   },
   "glm-4.7-flash": {
     id: "glm-4.7-flash",
     name: "GLM-4.7 Flash",
-    description: "Completely free, open-source SOTA performance",
+    description: "Fast GLM-4.7 variant; listed with promotional free usage through 2026-03-31.",
     tier: "free",
   },
 };
