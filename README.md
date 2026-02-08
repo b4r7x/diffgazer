@@ -50,7 +50,7 @@ First run walks you through setup — secrets storage, provider, API key, model,
 ### From Source
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/b4r7x/stargazer
 cd stargazer && pnpm install && pnpm build
 cd apps/cli && npm link
 stargazer   # now works from any git repo
