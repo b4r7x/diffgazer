@@ -1,5 +1,6 @@
 import { Panel, PanelHeader, PanelContent, Menu, MenuItem, Badge } from "@stargazer/ui";
 import type { ResolvedTheme } from "@/types/theme";
+import "./theme-preview-card.css";
 
 interface ThemePreviewCardProps {
   previewTheme: ResolvedTheme;
@@ -8,8 +9,9 @@ interface ThemePreviewCardProps {
 export function ThemePreviewCard({ previewTheme }: ThemePreviewCardProps) {
   return (
     <div
+      data-testid="theme-preview-root"
       data-theme={previewTheme}
-      className="w-full h-full flex items-center justify-center bg-tui-bg p-6"
+      className="theme-preview-scope w-full h-full flex items-center justify-center bg-tui-bg p-6"
       style={{ colorScheme: previewTheme }}
     >
       <div className="w-full max-w-sm font-mono text-xs isolate">
@@ -18,7 +20,6 @@ export function ThemePreviewCard({ previewTheme }: ThemePreviewCardProps) {
             PREVIEW.tsx
           </PanelHeader>
           <PanelContent spacing="none">
-            {/* Menu with selection states */}
             <Menu selectedId="selected" onSelect={() => {}}>
               <MenuItem id="normal">Normal Item</MenuItem>
               <MenuItem id="selected">Selected Item</MenuItem>
@@ -27,10 +28,8 @@ export function ThemePreviewCard({ previewTheme }: ThemePreviewCardProps) {
               </MenuItem>
             </Menu>
 
-            {/* Divider */}
             <div className="border-t border-tui-border my-2" />
 
-            {/* Text samples */}
             <div className="px-4 py-2 space-y-1">
               <div className="text-tui-fg">Primary text color</div>
               <div className="text-tui-muted">Muted text color</div>
@@ -38,10 +37,8 @@ export function ThemePreviewCard({ previewTheme }: ThemePreviewCardProps) {
               <div className="text-tui-violet">Accent violet color</div>
             </div>
 
-            {/* Divider */}
             <div className="border-t border-tui-border my-2" />
 
-            {/* Badges */}
             <div className="px-4 py-2 flex flex-wrap gap-2">
               <Badge variant="error">Error</Badge>
               <Badge variant="warning">Warning</Badge>

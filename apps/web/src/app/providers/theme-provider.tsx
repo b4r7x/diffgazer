@@ -28,9 +28,9 @@ function mapSettingsTheme(theme: string): WebTheme {
   return resolveWebTheme(theme);
 }
 
-function ThemeStyleApplicator({ preview }: { preview: ResolvedTheme | null }) {
+function ThemeStyleApplicator() {
   const context = useContext(ThemeContext);
-  const resolved = preview ?? context?.resolved ?? "dark";
+  const resolved = context?.resolved ?? "dark";
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", resolved);
@@ -44,30 +44,56 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") return "auto";
     return resolveWebTheme(localStorage.getItem(STORAGE_KEY));
   });
-  const [preview, setPreview] = useState<ResolvedTheme | null>(null);
+  const [localOverride, setLocalOverride] = useState<WebTheme | null>(null);
 
-  const { settings } = useSettings();
+  const { settings, refresh } = useSettings();
 
   const systemTheme = useSyncExternalStore(
     subscribeToSystemTheme,
     getSystemTheme,
-    () => "dark" as ResolvedTheme
+    () => "dark"
   );
 
-  const resolvedTheme = settings?.theme ? mapSettingsTheme(settings.theme) : theme;
-  const resolved: ResolvedTheme = resolvedTheme === "auto" ? systemTheme : resolvedTheme;
+  const settingsTheme = settings?.theme ? mapSettingsTheme(settings.theme) : null;
+
+  useEffect(() => {
+    if (!settingsTheme) return;
+
+    if (localOverride) {
+      if (settingsTheme === localOverride) {
+        setLocalOverride(null);
+      }
+      return;
+    }
+
+    setThemeState(settingsTheme);
+    localStorage.setItem(STORAGE_KEY, settingsTheme);
+  }, [settingsTheme, localOverride]);
+
+  const effectiveTheme = localOverride ?? theme;
+  const resolved: ResolvedTheme = effectiveTheme === "auto" ? systemTheme : effectiveTheme;
 
   const setTheme = (newTheme: WebTheme) => {
     setThemeState(newTheme);
+    setLocalOverride(newTheme);
     localStorage.setItem(STORAGE_KEY, newTheme);
-    api.saveSettings({ theme: newTheme }).catch((err) => console.error("Failed to save theme settings", err));
+    api.saveSettings({ theme: newTheme })
+      .then(() => {
+        void refresh();
+      })
+      .catch((err) => console.error("Failed to save theme settings", err));
   };
 
-  const value: ThemeContextValue = { theme: resolvedTheme, resolved, setTheme, setPreview };
+  const value: ThemeContextValue = {
+    theme: effectiveTheme,
+    resolved,
+    setTheme,
+    setPreview: () => {},
+  };
 
   return (
     <ThemeContext.Provider value={value}>
-      <ThemeStyleApplicator preview={preview} />
+      <ThemeStyleApplicator />
       {children}
     </ThemeContext.Provider>
   );

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, cleanup } from "@testing-library/react";
+import { act, cleanup, render } from "@testing-library/react";
 import { useContext } from "react";
 import { ThemeProvider, ThemeContext } from "./theme-provider";
+import type { ThemeContextValue } from "@/types/theme";
 
-// Mock useSettings at the boundary
 vi.mock("@/hooks/use-settings", () => ({
   useSettings: vi.fn().mockReturnValue({
     settings: null,
@@ -26,7 +26,6 @@ import { api } from "@/lib/api";
 const mockUseSettings = useSettings as ReturnType<typeof vi.fn>;
 const mockSaveSettings = api.saveSettings as ReturnType<typeof vi.fn>;
 
-// jsdom may not provide a working localStorage — polyfill it
 const localStorageStore = new Map<string, string>();
 const storageMock: Storage = {
   getItem: (key: string) => localStorageStore.get(key) ?? null,
@@ -56,10 +55,14 @@ function mockMatchMedia(matches: boolean) {
   return mql;
 }
 
-// Helper to read context values
-function ThemeConsumer({ onRender }: { onRender: (ctx: { theme: string; resolved: string; setTheme: (t: string) => void }) => void }) {
+function ThemeConsumer({
+  onRender,
+}: {
+  onRender: (ctx: ThemeContextValue) => void;
+}) {
   const ctx = useContext(ThemeContext);
-  if (ctx) onRender(ctx as any);
+  if (!ctx) return null;
+  onRender(ctx);
   return null;
 }
 
@@ -108,7 +111,6 @@ describe("ThemeProvider", () => {
       </ThemeProvider>
     );
 
-    // jsdom matchMedia returns false for dark -> system = "light"
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
@@ -124,7 +126,7 @@ describe("ThemeProvider", () => {
   });
 
   it("should persist theme to localStorage and call API on setTheme", () => {
-    let capturedSetTheme: ((t: string) => void) | undefined;
+    let capturedSetTheme: ThemeContextValue["setTheme"] | undefined;
 
     render(
       <ThemeProvider>
@@ -137,6 +139,50 @@ describe("ThemeProvider", () => {
 
     expect(localStorage.getItem("stargazer-theme")).toBe("dark");
     expect(mockSaveSettings).toHaveBeenCalledWith({ theme: "dark" });
+  });
+
+  it("should apply setTheme immediately even when settings cache is stale", () => {
+    let capturedSetTheme: ThemeContextValue["setTheme"] | undefined;
+
+    mockUseSettings.mockReturnValue({
+      settings: { theme: "auto" },
+      isLoading: false,
+      error: null,
+      refresh: vi.fn(),
+      invalidate: vi.fn(),
+    });
+
+    render(
+      <ThemeProvider>
+        <ThemeConsumer onRender={(ctx) => { capturedSetTheme = ctx.setTheme; }} />
+      </ThemeProvider>
+    );
+
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+
+    act(() => {
+      capturedSetTheme?.("dark");
+    });
+
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+  });
+
+  it("should keep global theme tied to resolved theme when setPreview is called", () => {
+    let capturedSetPreview: ThemeContextValue["setPreview"] | undefined;
+
+    render(
+      <ThemeProvider>
+        <ThemeConsumer
+          onRender={(ctx) => {
+            capturedSetPreview = ctx.setPreview;
+          }}
+        />
+      </ThemeProvider>
+    );
+
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
+    capturedSetPreview?.("dark");
+    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
   it("should map 'terminal' settings theme to dark", () => {
@@ -158,7 +204,7 @@ describe("ThemeProvider", () => {
   });
 
   it("should reflect system theme change", () => {
-    mockMatchMedia(false); // start light
+    mockMatchMedia(false);
 
     render(
       <ThemeProvider>
@@ -168,13 +214,8 @@ describe("ThemeProvider", () => {
 
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
 
-    // Simulate system theme changing to dark
-    // Update the matchMedia mock to return dark
-    const mql = mockMatchMedia(true);
+    mockMatchMedia(true);
 
-    // Re-render to pick up the new value — useSyncExternalStore
-    // should have subscribed, but since we replaced window.matchMedia
-    // we need to re-render
     cleanup();
     render(
       <ThemeProvider>
