@@ -17,27 +17,21 @@ interface ReviewData {
 }
 
 type ReviewState =
-  | { phase: "checking-status" }
   | { phase: "loading-saved" }
   | { phase: "streaming" }
   | { phase: "summary"; reviewData: ReviewData }
   | { phase: "results"; reviewData: ReviewData };
 
 type ReviewAction =
-  | { type: "START_CHECK" }
   | { type: "START_LOAD_SAVED" }
-  | { type: "CHECK_DONE" }
   | { type: "SHOW_STREAMING" }
   | { type: "SHOW_SUMMARY"; reviewData: ReviewData }
   | { type: "SHOW_RESULTS"; reviewData: ReviewData };
 
 function reviewReducer(_state: ReviewState, action: ReviewAction): ReviewState {
   switch (action.type) {
-    case "START_CHECK":
-      return { phase: "checking-status" };
     case "START_LOAD_SAVED":
       return { phase: "loading-saved" };
-    case "CHECK_DONE":
     case "SHOW_STREAMING":
       return { phase: "streaming" };
     case "SHOW_SUMMARY":
@@ -47,6 +41,13 @@ function reviewReducer(_state: ReviewState, action: ReviewAction): ReviewState {
   }
 }
 
+const loadingMessageMap: Record<ReviewState["phase"], string | null> = {
+  "loading-saved": "Loading review...",
+  streaming: null,
+  summary: null,
+  results: null,
+};
+
 export function ReviewPage() {
   const params = useParams({ strict: false });
   const search = useSearch({ strict: false });
@@ -55,7 +56,7 @@ export function ReviewPage() {
   const hasReviewId = !!params.reviewId;
   const [state, dispatch] = useReducer(
     reviewReducer,
-    hasReviewId ? { phase: "checking-status" as const } : { phase: "streaming" as const },
+    hasReviewId ? { phase: "loading-saved" as const } : { phase: "streaming" as const },
   );
 
   const router = useRouter();
@@ -70,77 +71,40 @@ export function ReviewPage() {
     dispatch({ type: "SHOW_STREAMING" });
   };
 
-  const handleResumeFailed = async (reviewId: string) => {
-    dispatch({ type: "START_LOAD_SAVED" });
+  const loadSavedOrFresh = async (reviewId: string) => {
     try {
       const { review } = await api.getReview(reviewId);
-      if (!review?.result) {
-        await startFreshReview();
+      if (review?.result) {
+        dispatch({
+          type: "SHOW_RESULTS",
+          reviewData: { issues: review.result.issues, reviewId: review.metadata.id },
+        });
         return;
       }
-      dispatch({
-        type: "SHOW_RESULTS",
-        reviewData: { issues: review.result.issues, reviewId: review.metadata.id },
-      });
     } catch (error) {
-      if (isApiError(error) && error.status === 404) {
-        await startFreshReview();
+      if (!isApiError(error) || error.status !== 404) {
+        handleApiError(error);
         return;
       }
-      handleApiError(error);
     }
+    await startFreshReview();
   };
 
   const handleComplete = (data: ReviewCompleteData) => {
-    if (data.resumeFailed && data.reviewId) {
-      void handleResumeFailed(data.reviewId);
-      return;
-    }
     dispatch({ type: "SHOW_SUMMARY", reviewData: data });
   };
 
+  const handleReviewNotInSession = (reviewId: string) => {
+    dispatch({ type: "START_LOAD_SAVED" });
+    void loadSavedOrFresh(reviewId);
+  };
+
   useEffect(() => {
-    if (state.phase !== "checking-status" || !params.reviewId) return;
+    if (state.phase !== "loading-saved" || !params.reviewId) return;
+    void loadSavedOrFresh(params.reviewId);
+  }, []);
 
-    const reviewId = params.reviewId;
-    const controller = new AbortController();
-
-    const checkStatus = async () => {
-      try {
-        const { review } = await api.getReview(reviewId);
-
-        if (controller.signal.aborted) return;
-
-        if (review?.result) {
-          dispatch({
-            type: "SHOW_RESULTS",
-            reviewData: { issues: review.result.issues, reviewId: review.metadata.id },
-          });
-          return;
-        }
-
-        handleApiError({ status: 404, message: "Review not found" });
-      } catch (error) {
-        if (controller.signal.aborted) return;
-
-        if (isApiError(error) && error.status === 404) {
-          dispatch({ type: "CHECK_DONE" });
-          return;
-        }
-
-        handleApiError(error);
-      }
-    };
-
-    checkStatus();
-
-    return () => controller.abort();
-  }, [state.phase, params.reviewId, handleApiError]);
-
-  const loadingMessage =
-    state.phase === "checking-status" ? "Checking review..." :
-    state.phase === "loading-saved" ? "Loading review..." :
-    null;
+  const loadingMessage = loadingMessageMap[state.phase];
 
   if (loadingMessage) {
     return (
@@ -158,7 +122,13 @@ export function ReviewPage() {
 
   switch (state.phase) {
     case "streaming":
-      return <ReviewContainer mode={reviewMode} onComplete={handleComplete} />;
+      return (
+        <ReviewContainer
+          mode={reviewMode}
+          onComplete={handleComplete}
+          onReviewNotInSession={handleReviewNotInSession}
+        />
+      );
 
     case "summary":
       return (
