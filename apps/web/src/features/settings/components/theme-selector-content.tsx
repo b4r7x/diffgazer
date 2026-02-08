@@ -6,6 +6,9 @@ import { useNavigation } from "@stargazer/keyboard";
 export interface ThemeSelectorContentProps {
   value: Theme;
   onChange: (value: Theme) => void;
+  focusedValue?: Theme | null;
+  onFocusedValueChange?: (value: Theme) => void;
+  onSelect?: (value: Theme) => void;
   onEnter?: (value: Theme) => void;
   onFocus?: (value: Theme) => void;
   onBoundaryReached?: (direction: "up" | "down") => void;
@@ -23,6 +26,9 @@ const THEME_OPTIONS: Array<{ value: Theme; label: string; description: string }>
 export function ThemeSelectorContent({
   value,
   onChange,
+  focusedValue,
+  onFocusedValueChange,
+  onSelect,
   onEnter,
   onFocus,
   onBoundaryReached,
@@ -34,14 +40,22 @@ export function ThemeSelectorContent({
     ? THEME_OPTIONS
     : THEME_OPTIONS.filter(opt => opt.value !== 'terminal');
 
-  const { focusedValue, focus } = useNavigation({
+  const notifyFocusedValueChange = (nextValue: Theme) => {
+    onFocusedValueChange?.(nextValue);
+    onFocus?.(nextValue);
+  };
+
+  const { focusedValue: navigationFocusedValue, focus } = useNavigation({
     containerRef,
     role: "radio",
-    value,
+    value: focusedValue ?? undefined,
+    onValueChange: (nextValue) =>
+      notifyFocusedValueChange(nextValue as Theme),
+    initialValue: focusedValue ?? value,
+    wrap: false,
     enabled,
-    onSelect: onChange as (value: string) => void,
+    onSelect: onSelect as ((value: string) => void) | undefined,
     onEnter: onEnter as ((value: string) => void) | undefined,
-    onFocusChange: onFocus as ((value: string) => void) | undefined,
     onBoundaryReached,
   });
 
@@ -52,8 +66,8 @@ export function ThemeSelectorContent({
         ref={containerRef}
         value={value}
         onValueChange={onChange}
-        onFocusChange={focus as (value: Theme) => void}
-        focusedValue={focusedValue}
+        onFocusChange={(nextValue) => focus(nextValue as Theme)}
+        focusedValue={enabled ? navigationFocusedValue : null}
       >
         {options.map((option) => (
           <RadioGroupItem
