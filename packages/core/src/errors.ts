@@ -4,25 +4,23 @@ export interface AppError<C extends string = string> {
   details?: string;
 }
 
-export function createError<C extends string>(
+export const createError = <C extends string>(
   code: C,
   message: string,
   details?: string
-): AppError<C> {
-  return { code, message, details };
+): AppError<C> => ({ code, message, details });
+
+export function getErrorMessage(error: unknown, fallback?: string): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (fallback !== undefined) {
+    return fallback;
+  }
+
+  return String(error);
 }
 
-/** Type guard for Node.js system errors (ENOENT, EACCES, etc.) */
-export function isNodeError(error: unknown, code: string): error is NodeJS.ErrnoException {
-  return error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === code;
-}
-
-/** Extract error message safely from unknown error */
-export function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-/** Ensure value is an Error instance */
-export function toError(error: unknown): Error {
-  return error instanceof Error ? error : new Error(String(error));
-}
+export const toError = (error: unknown): Error =>
+  error instanceof Error ? error : new Error(String(error));

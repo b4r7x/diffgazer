@@ -1,73 +1,77 @@
 import { Hono } from "hono";
-import { logger } from "hono/logger";
 import { cors } from "hono/cors";
-import { csrf } from "hono/csrf";
-import { routes } from "./api/routes/index.js";
-import { errorResponse } from "./lib/response.js";
+import { healthRouter } from "./features/health/router.js";
+import { configRouter } from "./features/config/router.js";
+import { settingsRouter } from "./features/settings/router.js";
+import { gitRouter } from "./features/git/router.js";
+import { reviewRouter } from "./features/review/router.js";
 
-export function createServer(): Hono {
+const isLocalhostOrigin = (origin: string): boolean => {
+  try {
+    const url = new URL(origin);
+    return url.hostname === "localhost" || url.hostname === "127.0.0.1";
+  } catch {
+    return false;
+  }
+};
+
+const ALLOWED_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+
+const getHostname = (hostHeader: string | null | undefined): string | null => {
+  if (!hostHeader) return null;
+  if (hostHeader.startsWith("[")) {
+    const end = hostHeader.indexOf("]");
+    return end === -1 ? null : hostHeader.slice(1, end);
+  }
+  return hostHeader.split(":")[0] ?? null;
+};
+
+export const createApp = (): Hono => {
   const app = new Hono();
 
-  app.use(logger());
-
-  // CVE-2024-28224: Host header validation prevents DNS rebinding
-  app.use("*", async (c, next): Promise<void | Response> => {
-    const host = c.req.header("host")?.split(":")[0];
-    if (host && !["localhost", "127.0.0.1"].includes(host)) {
-      return c.text("Forbidden", 403);
+  app.use("*", async (c, next) => {
+    const hostname = getHostname(c.req.header("host"));
+    if (!hostname || !ALLOWED_HOSTS.has(hostname)) {
+      return c.json({ error: { message: "Forbidden" } }, 403);
     }
+
+    return next();
+  });
+
+  app.use("*", async (c, next) => {
+    c.res.headers.set("X-Frame-Options", "DENY");
+    c.res.headers.set("X-Content-Type-Options", "nosniff");
     await next();
   });
 
-  // CSRF protection for state-changing endpoints
-  app.use(csrf());
-
-  // CVE-2024-28224: CORS localhost restriction prevents DNS rebinding
   app.use(
-    "*",
+    "/api/*",
     cors({
       origin: (origin) => {
-        // Allow requests with no origin (e.g., same-origin, curl, etc.)
         if (!origin) return origin;
-
-        // Parse the origin URL
-        try {
-          const url = new URL(origin);
-          const hostname = url.hostname;
-
-          // Allow only localhost and 127.0.0.1
-          if (hostname === "localhost" || hostname === "127.0.0.1") {
-            return origin;
-          }
-        } catch {
-          // Invalid origin URL
-          return "";
-        }
-
-        // Reject all other origins
-        return "";
+        return isLocalhostOrigin(origin) ? origin : "";
       },
-      credentials: true,
-    }),
+      allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      allowHeaders: ["Content-Type", "Authorization", "x-stargazer-project-root"],
+    })
   );
 
-  // Security headers: X-Frame-Options, X-Content-Type-Options
-  app.use("*", async (c, next) => {
-    await next();
-    c.header("X-Frame-Options", "DENY");
-    c.header("X-Content-Type-Options", "nosniff");
-  });
+  // Health at root for container/load-balancer probes, and under /api for API client consistency
+  app.route("/", healthRouter);
+  app.route("/api", healthRouter);
+  app.route("/api/config", configRouter);
+  app.route("/api/settings", settingsRouter);
+  app.route("/api/git", gitRouter);
+  app.route("/api/review", reviewRouter);
 
-  app.route("/", routes);
+  app.notFound((c) => {
+    return c.json({ error: { message: "Not Found" } }, 404);
+  });
 
   app.onError((err, c) => {
     console.error("Unhandled error:", err);
-    return errorResponse(c, "Internal server error", "INTERNAL_ERROR", 500);
-  });
-
-  app.notFound((c) => {
-    return errorResponse(c, "Not found", "NOT_FOUND", 404);
+    return c.json({ error: { message: "Internal Server Error" } }, 500);
   });
 
   return app;
-}
+};

@@ -1,33 +1,39 @@
 {
-  "name": "@repo/server",
-  "version": "0.0.1",
-  "private": true,
+  "name": "@stargazer/server",
+  "version": "0.1.0",
   "type": "module",
-  "main": "dist/app.js",
-  "types": "dist/app.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/app.d.ts",
-      "import": "./dist/app.js"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "scripts": {
-    "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "dev": "tsx src/dev.ts",
+    "start": "node dist/dev.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.21",
     "@hono/node-server": "^1.19.9",
-    "@hono/zod-validator": "^0.4.0",
-    "@repo/core": "workspace:*",
-    "@repo/schemas": "workspace:*",
-    "hono": "^4.11.4",
-    "zod": "^3.23.0"
+    "@hono/zod-validator": "^0.7.6",
+    "@napi-rs/keyring": "^1.2.0",
+    "@openrouter/ai-sdk-provider": "^2.1.1",
+    "@stargazer/api": "workspace:*",
+    "@stargazer/core": "workspace:*",
+    "@stargazer/schemas": "workspace:*",
+    "ai": "^6.0.71",
+    "hono": "^4.11.7",
+    "zhipu-ai-provider": "^0.2.2",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@repo/tsconfig": "workspace:*",
-    "@types/node": "^22.0.0",
-    "tsx": "^4.21.0"
+    "@napi-rs/keyring": "^1.1.6",
+    "@stargazer/tsconfig": "workspace:*",
+    "@types/node": "^25.2.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }

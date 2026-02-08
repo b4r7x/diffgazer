@@ -1,29 +1,57 @@
 {
-  "name": "@repo/core",
+  "name": "@stargazer/core",
   "version": "0.0.1",
-  "private": true,
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./ai": { "types": "./dist/ai/index.d.ts", "import": "./dist/ai/index.js" },
-    "./storage": { "types": "./dist/storage/index.d.ts", "import": "./dist/storage/index.js" },
-    "./secrets": { "types": "./dist/secrets/index.d.ts", "import": "./dist/secrets/index.js" }
-  },
-  "scripts": { "build": "tsc", "type-check": "tsc --noEmit" },
   "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "import": "./dist/errors.js"
+    },
+    "./result": {
+      "types": "./dist/result.d.ts",
+      "import": "./dist/result.js"
+    },
+    "./severity": {
+      "types": "./dist/severity.d.ts",
+      "import": "./dist/severity.js"
+    },
+    "./strings": {
+      "types": "./dist/strings.d.ts",
+      "import": "./dist/strings.js"
+    },
+    "./format": {
+      "types": "./dist/format.d.ts",
+      "import": "./dist/format.js"
+    },
+    "./json": {
+      "types": "./dist/json.d.ts",
+      "import": "./dist/json.js"
+    },
+    "./review": {
+      "types": "./dist/review/index.d.ts",
+      "import": "./dist/review/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
   "dependencies": {
-    "@google/genai": "^1.0.0",
-    "@repo/schemas": "workspace:*",
-    "zod": "^3.23.0"
+    "@stargazer/schemas": "workspace:*",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@repo/tsconfig": "workspace:*",
-    "@types/node": "^22.0.0",
-    "typescript": "^5.7.0"
-  },
-  "optionalDependencies": {
-    "@napi-rs/keyring": "^1.1.0"
+    "@stargazer/tsconfig": "workspace:*",
+    "@types/node": "^25.2.0",
+    "typescript": "^5.9.3"
   }
 }

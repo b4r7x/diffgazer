@@ -1,2 +1,1 @@
-export { createApiClient } from "./client.js";
-export type { ApiClient, ApiClientConfig, ApiError, RequestOptions, StreamOptions } from "./types.js";
+export { createApi, type BoundApi } from "./bound.js";

@@ -1,20 +1,57 @@
 {
-  "name": "@repo/schemas",
+  "name": "@stargazer/schemas",
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./config": { "types": "./dist/config.d.ts", "import": "./dist/config.js" },
-    "./git": { "types": "./dist/git.d.ts", "import": "./dist/git.js" },
-    "./port": { "types": "./dist/port.d.ts", "import": "./dist/port.js" },
-    "./review": { "types": "./dist/review.d.ts", "import": "./dist/review.js" },
-    "./review-history": { "types": "./dist/review-history.d.ts", "import": "./dist/review-history.js" },
-    "./session": { "types": "./dist/session.d.ts", "import": "./dist/session.js" }
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "import": "./dist/errors.js"
+    },
+    "./review": {
+      "types": "./dist/review/index.d.ts",
+      "import": "./dist/review/index.js"
+    },
+    "./events": {
+      "types": "./dist/events/index.d.ts",
+      "import": "./dist/events/index.js"
+    },
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "import": "./dist/config/index.js"
+    },
+    "./git": {
+      "types": "./dist/git/index.d.ts",
+      "import": "./dist/git/index.js"
+    },
+    "./context": {
+      "types": "./dist/context/index.d.ts",
+      "import": "./dist/context/index.js"
+    },
+    "./ui": {
+      "types": "./dist/ui/index.d.ts",
+      "import": "./dist/ui/index.js"
+    }
   },
-  "scripts": { "build": "tsc", "typecheck": "tsc --noEmit" },
-  "dependencies": { "zod": "^3.23.0" },
-  "devDependencies": { "@repo/tsconfig": "workspace:*", "@types/node": "^22.0.0", "typescript": "^5.7.0" }
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@stargazer/tsconfig": "workspace:*",
+    "@types/node": "^25.2.0",
+    "typescript": "^5.9.3"
+  }
 }
