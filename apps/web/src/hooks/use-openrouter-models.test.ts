@@ -84,4 +84,33 @@ describe("useOpenRouterModels", () => {
       },
     ]);
   });
+
+  it("returns error state when API rejects", async () => {
+    mockGetOpenRouterModels.mockRejectedValueOnce(new Error("Network error"));
+
+    const { result } = renderHook(() => useOpenRouterModels(true, "openrouter"));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.error).toBe("Network error");
+    expect(result.current.models).toEqual([]);
+  });
+
+  it("resets when provider is not openrouter", () => {
+    const { result } = renderHook(() => useOpenRouterModels(true, "google"));
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.models).toEqual([]);
+    expect(mockGetOpenRouterModels).not.toHaveBeenCalled();
+  });
+
+  it("resets when dialog is closed", () => {
+    const { result } = renderHook(() => useOpenRouterModels(false, "openrouter"));
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.models).toEqual([]);
+    expect(mockGetOpenRouterModels).not.toHaveBeenCalled();
+  });
 });

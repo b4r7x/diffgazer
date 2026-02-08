@@ -32,15 +32,6 @@ vi.mock("../../shared/lib/git/service.js", () => ({
   })),
 }));
 
-// Mock utils
-vi.mock("./utils.js", async (importOriginal) => {
-  const original = await importOriginal<typeof import("./utils.js")>();
-  return {
-    ...original,
-    isReviewAbort: original.isReviewAbort,
-  };
-});
-
 import {
   streamActiveSessionToSSE,
   streamReviewToSSE,
@@ -166,16 +157,23 @@ describe("streamActiveSessionToSSE", () => {
     const stream = makeMockStream();
     const session = makeSession({ events: [], isComplete: false });
 
+    let subscriberCallback: ((event: FullReviewStreamEvent) => void) | null = null;
     vi.mocked(subscribe).mockImplementation((_id, callback) => {
-      // Simulate a live event arriving then completion
-      setTimeout(() => {
-        callback({ type: "complete", result: {} as any, reviewId: "review-1", durationMs: 50 });
-      }, 5);
+      subscriberCallback = callback;
       return () => {};
     });
     vi.mocked(getSession).mockReturnValue(session);
 
-    await streamActiveSessionToSSE(stream, session);
+    vi.useFakeTimers();
+    const promise = streamActiveSessionToSSE(stream, session);
+
+    // Simulate a live event arriving
+    subscriberCallback!({ type: "complete", result: {} as any, reviewId: "review-1", durationMs: 50 });
+
+    await vi.advanceTimersByTimeAsync(0);
+    vi.useRealTimers();
+
+    await promise;
 
     expect(subscribe).toHaveBeenCalledWith("review-1", expect.any(Function));
     expect(stream.events.some((e) => e.event === "complete")).toBe(true);
@@ -226,6 +224,39 @@ describe("streamActiveSessionToSSE", () => {
 
     expect(unsubscribe).toHaveBeenCalledTimes(1);
     expect(stream.events).toHaveLength(0);
+  });
+
+  it("should write terminal event when poll finds isComplete but subscriber missed it", async () => {
+    const stream = makeMockStream();
+    const session = makeSession({ events: [], isComplete: false });
+
+    const terminalEvent: FullReviewStreamEvent = {
+      type: "complete",
+      result: {} as any,
+      reviewId: "review-1",
+      durationMs: 200,
+    };
+
+    // Subscribe returns a valid unsubscribe, but never fires the callback
+    vi.mocked(subscribe).mockReturnValue(() => {});
+
+    // First call: session still running. Second call: session complete with terminal event buffered.
+    vi.mocked(getSession)
+      .mockReturnValueOnce(makeSession({ events: [], isComplete: false }))
+      .mockReturnValueOnce(
+        makeSession({ events: [terminalEvent], isComplete: true }),
+      );
+
+    vi.useFakeTimers();
+    const promise = streamActiveSessionToSSE(stream, session);
+    // Advance past first poll (no-op) and second poll (finds isComplete)
+    await vi.advanceTimersByTimeAsync(500);
+    vi.useRealTimers();
+
+    await promise;
+
+    expect(stream.events).toHaveLength(1);
+    expect(stream.events[0]!.event).toBe("complete");
   });
 });
 

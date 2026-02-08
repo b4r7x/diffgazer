@@ -28,7 +28,6 @@ import {
   finalizeReview,
 } from "./pipeline.js";
 import { isReviewAbort } from "./utils.js";
-import type { ReviewAbort } from "./types.js";
 
 const REVIEW_STREAM_ERROR_CODES = new Set(Object.values(ReviewErrorCode));
 
@@ -51,55 +50,28 @@ async function writeStreamEvent(stream: SSEWriter, event: FullReviewStreamEvent)
   });
 }
 
-function normalizeReviewErrorCode(
-  code: unknown,
-  fallback: ReviewErrorCodeType = ReviewErrorCode.GENERATION_FAILED,
-): ReviewErrorCodeType {
-  if (typeof code === "string" && isReviewStreamErrorCode(code)) {
-    return code;
-  }
-  return fallback;
-}
-
-function getReviewErrorMessage(error: unknown): string {
-  if (
-    error &&
-    typeof error === "object" &&
-    "message" in error &&
-    typeof (error as { message?: unknown }).message === "string" &&
-    (error as { message: string }).message.length > 0
-  ) {
-    return (error as { message: string }).message;
-  }
-
-  return getErrorMessage(error);
-}
-
 function normalizeReviewStreamError(
   error: unknown,
   fallbackCode: ReviewErrorCodeType = ReviewErrorCode.GENERATION_FAILED,
 ): { code: ReviewErrorCodeType; message: string } {
+  const resolveCode = (code: unknown): ReviewErrorCodeType =>
+    typeof code === "string" && isReviewStreamErrorCode(code) ? code : fallbackCode;
+
   if (isReviewAbort(error)) {
-    return {
-      code: normalizeReviewErrorCode(error.code, fallbackCode),
-      message: error.message,
-    };
+    return { code: resolveCode(error.code), message: error.message };
   }
 
   if (error && typeof error === "object") {
+    const candidate = error as { code?: unknown; message?: unknown };
     return {
-      code: normalizeReviewErrorCode(
-        (error as { code?: unknown }).code,
-        fallbackCode,
-      ),
-      message: getReviewErrorMessage(error),
+      code: resolveCode(candidate.code),
+      message: typeof candidate.message === "string" && candidate.message.length > 0
+        ? candidate.message
+        : getErrorMessage(error),
     };
   }
 
-  return {
-    code: fallbackCode,
-    message: getReviewErrorMessage(error),
-  };
+  return { code: fallbackCode, message: getErrorMessage(error) };
 }
 
 function reviewStreamError(
@@ -109,45 +81,20 @@ function reviewStreamError(
   return {
     type: "error",
     error: {
-      code: normalizeReviewErrorCode(code),
+      code: typeof code === "string" && isReviewStreamErrorCode(code)
+        ? code
+        : ReviewErrorCode.GENERATION_FAILED,
       message,
     },
   };
 }
 
-async function writeReviewStreamError(
-  stream: SSEWriter,
-  message: string,
-  code?: unknown,
-): Promise<void> {
-  await writeStreamEvent(stream, reviewStreamError(message, code));
+function isTerminalEvent(event: FullReviewStreamEvent): boolean {
+  return event.type === "complete" || event.type === "error";
 }
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";
-}
-
-async function handleReviewAbortError(
-  error: ReviewAbort,
-  emit: EmitFn,
-  reviewId: string
-): Promise<void> {
-  const tasks: Promise<unknown>[] = [emit(reviewStreamError(error.message, error.code))];
-  if (error.step) {
-    tasks.unshift(emit(stepError(error.step, error.message)));
-  }
-  await Promise.allSettled(tasks);
-  markComplete(reviewId);
-}
-
-async function handleUnexpectedError(
-  error: unknown,
-  emit: EmitFn,
-  reviewId: string
-): Promise<void> {
-  const normalized = normalizeReviewStreamError(error);
-  await emit(reviewStreamError(normalized.message, normalized.code));
-  markComplete(reviewId);
 }
 
 async function handleReviewFailure(
@@ -161,11 +108,17 @@ async function handleReviewFailure(
   }
 
   if (isReviewAbort(error)) {
-    await handleReviewAbortError(error, emit, reviewId);
+    if (error.step) {
+      await emit(stepError(error.step, error.message));
+    }
+    await emit(reviewStreamError(error.message, error.code));
+    markComplete(reviewId);
     return;
   }
 
-  await handleUnexpectedError(error, emit, reviewId);
+  const normalized = normalizeReviewStreamError(error);
+  await emit(reviewStreamError(normalized.message, normalized.code));
+  markComplete(reviewId);
 }
 
 function handleDetachedReviewSessionError(reviewId: string, error: unknown): void {
@@ -198,7 +151,7 @@ export async function streamActiveSessionToSSE(
       }
       throw error;
     }
-    if (event.type === "complete" || event.type === "error") {
+    if (isTerminalEvent(event)) {
       replayedTerminalEvent = true;
     }
   }
@@ -206,33 +159,34 @@ export async function streamActiveSessionToSSE(
     return;
   }
 
+  const staleError: FullReviewStreamEvent = {
+    type: "error",
+    error: { code: ReviewErrorCode.SESSION_STALE, message: "Session was cancelled during replay" },
+  };
+
   await new Promise<void>((resolve, reject) => {
     let done = false;
+    let wroteTerminalEvent = false;
     let unsubscribe: (() => void) | null = null;
-
     let pollTimer: ReturnType<typeof setInterval> | null = null;
-    const clearPoll = (): void => {
-      if (!pollTimer) return;
-      clearInterval(pollTimer);
-      pollTimer = null;
-    };
-
-    const onClientAbort = (): void => {
-      finish(resolve);
-    };
-
-    const cleanup = (): void => {
-      unsubscribe?.();
-      unsubscribe = null;
-      clearPoll();
-      clientSignal?.removeEventListener("abort", onClientAbort);
-    };
 
     const finish = (action: () => void): void => {
       if (done) return;
       done = true;
-      cleanup();
+      unsubscribe?.();
+      unsubscribe = null;
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+      clientSignal?.removeEventListener("abort", onClientAbort);
       action();
+    };
+
+    const onClientAbort = (): void => finish(resolve);
+
+    const writeAndFinish = (event: FullReviewStreamEvent): void => {
+      writeStreamEvent(stream, event).then(
+        () => finish(resolve),
+        () => finish(resolve),
+      );
     };
 
     if (clientSignal?.aborted) {
@@ -244,7 +198,8 @@ export async function streamActiveSessionToSSE(
     unsubscribe = subscribe(session.reviewId, async (event) => {
       try {
         await writeStreamEvent(stream, event);
-        if (event.type === "complete" || event.type === "error") {
+        if (isTerminalEvent(event)) {
+          wroteTerminalEvent = true;
           finish(resolve);
         }
       } catch (e) {
@@ -257,24 +212,25 @@ export async function streamActiveSessionToSSE(
     });
 
     if (!unsubscribe) {
-      writeStreamEvent(stream, { type: "error", error: { code: ReviewErrorCode.SESSION_STALE, message: "Session was cancelled during replay" } }).then(
-        () => finish(resolve),
-        () => finish(resolve),
-      );
+      writeAndFinish(staleError);
       return;
     }
 
     const checkSessionState = (): boolean => {
       const latest = getSession(session.reviewId);
       if (!latest) {
-        writeStreamEvent(stream, { type: "error", error: { code: ReviewErrorCode.SESSION_STALE, message: "Session was cancelled during replay" } }).then(
-          () => finish(resolve),
-          () => finish(resolve),
-        );
+        writeAndFinish(staleError);
         return true;
       }
       if (!latest.isComplete) {
         return false;
+      }
+      if (!wroteTerminalEvent) {
+        const terminalEvent = [...latest.events].reverse().find(isTerminalEvent);
+        if (terminalEvent) {
+          writeAndFinish(terminalEvent);
+          return true;
+        }
       }
       finish(resolve);
       return true;
@@ -375,20 +331,14 @@ export async function streamReviewToSSE(
     ]);
 
     if (!headCommitResult.ok) {
-      await writeReviewStreamError(
-        stream,
-        `Failed to inspect repository state: ${headCommitResult.error.message}`,
-      );
+      await writeStreamEvent(stream, reviewStreamError(`Failed to inspect repository state: ${headCommitResult.error.message}`));
       return;
     }
 
     headCommit = headCommitResult.value;
     statusHash = currentStatusHash;
   } catch (error) {
-    await writeReviewStreamError(
-      stream,
-      `Failed to inspect repository state: ${getErrorMessage(error)}`,
-    );
+    await writeStreamEvent(stream, reviewStreamError(`Failed to inspect repository state: ${getErrorMessage(error)}`));
     return;
   }
 

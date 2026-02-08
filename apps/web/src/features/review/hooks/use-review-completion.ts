@@ -59,9 +59,12 @@ export function useReviewCompletion({
     };
   }, [isStreaming, error]);
 
-  return {
-    completeTimeoutRef,
-    issuesRef,
-    reviewIdRef,
+  const skipDelayAndComplete = () => {
+    if (completeTimeoutRef.current) {
+      clearTimeout(completeTimeoutRef.current);
+    }
+    onComplete({ issues: issuesRef.current, reviewId: reviewIdRef.current });
   };
+
+  return { skipDelayAndComplete };
 }

@@ -12,15 +12,15 @@ import type { ReviewMode } from '@stargazer/schemas/review';
 export interface ReviewCompleteData {
   issues: ReviewIssue[];
   reviewId: string | null;
-  resumeFailed?: boolean;
 }
 
 interface UseReviewLifecycleOptions {
   mode: ReviewMode;
   onComplete?: (data: ReviewCompleteData) => void;
+  onReviewNotInSession?: (reviewId: string) => void;
 }
 
-export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptions) {
+export function useReviewLifecycle({ mode, onComplete, onReviewNotInSession }: UseReviewLifecycleOptions) {
   const navigate = useNavigate();
   const params = useParams({ strict: false });
   const { isConfigured, provider, model } = useConfigData();
@@ -30,6 +30,10 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
 
   const stableOnComplete = useEffectEvent((data: ReviewCompleteData) => {
     onComplete?.(data);
+  });
+
+  const stableOnNotFound = useEffectEvent((reviewId: string) => {
+    onReviewNotInSession?.(reviewId);
   });
 
   // Sync review ID to URL
@@ -56,11 +60,11 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
     start,
     resume,
     getActiveSession: api.getActiveReviewSession,
-    onResumeFailed: stableOnComplete,
+    onNotFoundInSession: stableOnNotFound,
   });
 
   // Delay transition after streaming completes
-  const { completeTimeoutRef, issuesRef, reviewIdRef } = useReviewCompletion({
+  const { skipDelayAndComplete } = useReviewCompletion({
     isStreaming: state.isStreaming,
     error: state.error,
     hasStreamed: hasStreamedRef.current,
@@ -76,11 +80,8 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
   };
 
   const handleViewResults = () => {
-    if (completeTimeoutRef.current) {
-      clearTimeout(completeTimeoutRef.current);
-    }
     stop();
-    stableOnComplete({ issues: issuesRef.current, reviewId: reviewIdRef.current });
+    skipDelayAndComplete();
   };
 
   const handleSetupProvider = () => {
