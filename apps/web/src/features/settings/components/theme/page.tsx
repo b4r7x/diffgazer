@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { WebTheme, ResolvedTheme } from "@/types/theme";
 import { Panel, PanelContent, PanelHeader, Callout, Button } from "@stargazer/ui";
@@ -16,8 +16,8 @@ const FOOTER_SHORTCUTS = [
   { key: "Esc", label: "Cancel" },
 ];
 
-function resolveTheme(theme: WebTheme, systemResolved: ResolvedTheme): ResolvedTheme {
-  return theme === "auto" ? systemResolved : theme;
+function resolveTheme(theme: WebTheme, systemResolved?: ResolvedTheme | null): ResolvedTheme {
+  return theme === "auto" ? (systemResolved ?? "dark") : theme;
 }
 
 type FocusZone = "list" | "buttons";
@@ -25,20 +25,19 @@ const BUTTONS_COUNT = 2;
 
 export function SettingsThemePage() {
   const navigate = useNavigate();
-  const { theme: savedTheme, resolved: systemResolved, setTheme, setPreview } = useTheme();
+  const { theme: savedTheme, resolved: systemResolved, setTheme } = useTheme();
   const [selectedTheme, setSelectedTheme] = useState<WebTheme>(savedTheme);
-  const [previewOverride, setPreviewOverride] = useState<WebTheme | null>(null);
+  const [focusedTheme, setFocusedTheme] = useState<WebTheme | null>(savedTheme);
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [buttonIndex, setButtonIndex] = useState(0);
 
-  const previewTheme = previewOverride ?? selectedTheme;
-  const previewResolved = resolveTheme(previewTheme, systemResolved);
-
-  // Apply live preview to the full page
   useEffect(() => {
-    setPreview(previewResolved);
-    return () => setPreview(null);
-  }, [previewResolved, setPreview]);
+    setSelectedTheme(savedTheme);
+    setFocusedTheme(savedTheme);
+  }, [savedTheme]);
+
+  const previewTheme = focusedTheme ?? selectedTheme;
+  const previewResolved = resolveTheme(previewTheme, systemResolved);
 
   usePageFooter({ shortcuts: FOOTER_SHORTCUTS });
   useScope("settings-theme");
@@ -55,16 +54,24 @@ export function SettingsThemePage() {
     navigate({ to: "/settings" });
   };
 
+  const selectTheme = (theme: WebTheme) => {
+    setSelectedTheme(theme);
+    setFocusedTheme(theme);
+  };
+
+  const handleChange = (value: string) => {
+    selectTheme(value as WebTheme);
+  };
+
   const handleEnterOnList = (value: string) => {
-    setSelectedTheme(value as WebTheme);
-    setTheme(value as WebTheme);
+    const theme = value as WebTheme;
+    selectTheme(theme);
+    setTheme(theme);
     navigate({ to: "/settings" });
   };
 
-  // Escape always cancels
   useKey("Escape", handleCancel);
 
-  // Button zone navigation
   useKey("ArrowUp", () => {
     setFocusZone("list");
     setButtonIndex(0);
@@ -91,7 +98,6 @@ export function SettingsThemePage() {
   return (
     <div className="flex-1 flex flex-col p-6 min-h-0">
       <div className="grid grid-cols-[2fr_3fr] gap-6 w-full h-full min-h-0">
-        {/* Left Panel - Theme Settings */}
         <Panel className="relative pt-4 flex flex-col h-full">
           <PanelHeader variant="floating" className="text-tui-violet">
             Theme Settings
@@ -99,9 +105,11 @@ export function SettingsThemePage() {
           <PanelContent className="flex-1 flex flex-col">
             <ThemeSelectorContent
               value={selectedTheme}
-              onChange={setSelectedTheme as (v: string) => void}
-              onEnter={handleEnterOnList as (v: string) => void}
-              onFocus={(v) => setPreviewOverride(v as WebTheme)}
+              focusedValue={focusedTheme}
+              onFocusedValueChange={(v) => setFocusedTheme(v as WebTheme)}
+              onChange={handleChange}
+              onEnter={handleEnterOnList}
+              onSelect={handleChange}
               enabled={!isButtonsZone}
               onBoundaryReached={(direction) => {
                 if (direction === "down") {
@@ -136,7 +144,6 @@ export function SettingsThemePage() {
           </PanelContent>
         </Panel>
 
-        {/* Right Panel - Live Preview */}
         <Panel className="relative pt-4 flex flex-col h-full overflow-hidden">
           <PanelHeader variant="floating" className="text-tui-blue">
             Live Preview
