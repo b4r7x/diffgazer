@@ -6,7 +6,7 @@ import {
   useConfigData,
   useConfigActions,
 } from "@/app/providers/config-provider";
-import { resolveBackAction } from "@/lib/back-navigation";
+import { resolveBackAction } from "@/lib/back-navigation/back-navigation";
 
 function getProviderStatus(
   isLoading: boolean,

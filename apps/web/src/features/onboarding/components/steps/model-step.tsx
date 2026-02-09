@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AVAILABLE_PROVIDERS, GEMINI_MODEL_INFO, GLM_MODEL_INFO } from "@diffgazer/schemas/config";
 import type { AIProvider, ModelInfo } from "@diffgazer/schemas/config";
 import { RadioGroup, RadioGroupItem, Badge } from "@diffgazer/ui";
@@ -9,6 +9,9 @@ interface ModelStepProps {
   provider: AIProvider;
   value: string | null;
   onChange: (model: string) => void;
+  onCommit?: (model: string) => void;
+  enabled?: boolean;
+  onBoundaryReached?: (direction: "up" | "down") => void;
 }
 
 function getStaticModels(provider: AIProvider): ModelInfo[] {
@@ -23,19 +26,50 @@ function getStaticModels(provider: AIProvider): ModelInfo[] {
   }
 }
 
-function StaticModelList({ provider, value, onChange }: ModelStepProps) {
+function StaticModelList({
+  provider,
+  value,
+  onChange,
+  onCommit,
+  enabled = true,
+  onBoundaryReached,
+}: ModelStepProps) {
   const models = getStaticModels(provider);
   const providerInfo = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
   const containerRef = useRef<HTMLDivElement>(null);
+  const modelIds = models.map((model) => model.id);
+  const [focusedModel, setFocusedModel] = useState<string | null>(modelIds[0] ?? null);
 
-  const { onKeyDown, focusedValue } = useNavigation({
-    mode: "local",
+  useEffect(() => {
+    if (!focusedModel || !modelIds.includes(focusedModel)) {
+      setFocusedModel(modelIds[0] ?? null);
+    }
+  }, [focusedModel, modelIds]);
+
+  useEffect(() => {
+    const firstModelId = modelIds[0];
+    if (!firstModelId) return;
+    if (!value || !modelIds.includes(value)) {
+      onChange(firstModelId);
+    }
+  }, [modelIds, onChange, value]);
+
+  const handleEnter = (nextModel: string) => {
+    onChange(nextModel);
+    onCommit?.(nextModel);
+  };
+
+  const { focusedValue } = useNavigation({
     containerRef,
     role: "radio",
-    value,
-    onValueChange: onChange,
+    value: focusedModel,
+    initialValue: modelIds[0] ?? null,
+    onValueChange: setFocusedModel,
     onSelect: onChange,
-    onEnter: onChange,
+    onEnter: handleEnter,
+    wrap: false,
+    enabled,
+    onBoundaryReached,
   });
 
   return (
@@ -43,7 +77,13 @@ function StaticModelList({ provider, value, onChange }: ModelStepProps) {
       <p className="text-sm text-tui-muted font-mono">
         Select a model for {providerInfo?.name ?? provider}.
       </p>
-      <RadioGroup ref={containerRef} value={value ?? undefined} onValueChange={onChange} onKeyDown={onKeyDown} focusedValue={focusedValue} className="space-y-1">
+      <RadioGroup
+        ref={containerRef}
+        value={value ?? undefined}
+        onValueChange={onChange}
+        focusedValue={enabled ? focusedValue : null}
+        className="space-y-1"
+      >
         {models.map((model) => (
           <RadioGroupItem
             key={model.id}
@@ -73,18 +113,52 @@ function StaticModelList({ provider, value, onChange }: ModelStepProps) {
   );
 }
 
-function OpenRouterModelList({ value, onChange }: Omit<ModelStepProps, "provider">) {
+function OpenRouterModelList({
+  value,
+  onChange,
+  onCommit,
+  enabled = true,
+  onBoundaryReached,
+}: Omit<ModelStepProps, "provider">) {
   const { models, loading, error } = useOpenRouterModels(true, "openrouter");
   const containerRef = useRef<HTMLDivElement>(null);
+  const modelIds = models.map((model) => model.id);
+  const [focusedModel, setFocusedModel] = useState<string | null>(null);
 
-  const { onKeyDown, focusedValue } = useNavigation({
-    mode: "local",
+  useEffect(() => {
+    if (modelIds.length === 0) {
+      setFocusedModel(null);
+      return;
+    }
+    if (!focusedModel || !modelIds.includes(focusedModel)) {
+      setFocusedModel(modelIds[0] ?? null);
+    }
+  }, [focusedModel, modelIds]);
+
+  useEffect(() => {
+    const firstModelId = modelIds[0];
+    if (!firstModelId) return;
+    if (!value || !modelIds.includes(value)) {
+      onChange(firstModelId);
+    }
+  }, [modelIds, onChange, value]);
+
+  const handleEnter = (nextModel: string) => {
+    onChange(nextModel);
+    onCommit?.(nextModel);
+  };
+
+  const { focusedValue } = useNavigation({
     containerRef,
     role: "radio",
-    value,
-    onValueChange: onChange,
+    value: focusedModel,
+    initialValue: modelIds[0] ?? null,
+    onValueChange: setFocusedModel,
     onSelect: onChange,
-    onEnter: onChange,
+    onEnter: handleEnter,
+    wrap: false,
+    enabled,
+    onBoundaryReached,
   });
 
   if (loading) {
@@ -109,7 +183,13 @@ function OpenRouterModelList({ value, onChange }: Omit<ModelStepProps, "provider
         Select a model from OpenRouter.
       </p>
       <div className="max-h-64 overflow-y-auto scrollbar-hide">
-        <RadioGroup ref={containerRef} value={value ?? undefined} onValueChange={onChange} onKeyDown={onKeyDown} focusedValue={focusedValue} className="space-y-1">
+        <RadioGroup
+          ref={containerRef}
+          value={value ?? undefined}
+          onValueChange={onChange}
+          focusedValue={enabled ? focusedValue : null}
+          className="space-y-1"
+        >
           {models.map((model) => (
             <RadioGroupItem
               key={model.id}
@@ -135,9 +215,33 @@ function OpenRouterModelList({ value, onChange }: Omit<ModelStepProps, "provider
   );
 }
 
-export function ModelStep({ provider, value, onChange }: ModelStepProps) {
+export function ModelStep({
+  provider,
+  value,
+  onChange,
+  onCommit,
+  enabled = true,
+  onBoundaryReached,
+}: ModelStepProps) {
   if (provider === "openrouter") {
-    return <OpenRouterModelList value={value} onChange={onChange} />;
+    return (
+      <OpenRouterModelList
+        value={value}
+        onChange={onChange}
+        onCommit={onCommit}
+        enabled={enabled}
+        onBoundaryReached={onBoundaryReached}
+      />
+    );
   }
-  return <StaticModelList provider={provider} value={value} onChange={onChange} />;
+  return (
+    <StaticModelList
+      provider={provider}
+      value={value}
+      onChange={onChange}
+      onCommit={onCommit}
+      enabled={enabled}
+      onBoundaryReached={onBoundaryReached}
+    />
+  );
 }

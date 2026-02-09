@@ -6,6 +6,7 @@ import { useNavigation } from "@diffgazer/keyboard";
 export interface StorageSelectorContentProps {
   value: SecretsStorage | null;
   onChange: (value: SecretsStorage) => void;
+  onEnter?: (value: SecretsStorage) => void;
   disabled?: boolean;
   enabled?: boolean;
   onBoundaryReached?: (direction: "up" | "down") => void;
@@ -27,6 +28,7 @@ const STORAGE_OPTIONS: Array<{ value: SecretsStorage; label: string; description
 export function StorageSelectorContent({
   value,
   onChange,
+  onEnter,
   disabled = false,
   enabled = true,
   onBoundaryReached,
@@ -34,6 +36,7 @@ export function StorageSelectorContent({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const onChangeStr = onChange as (value: string) => void;
+  const onEnterStr = onEnter as ((value: string) => void) | undefined;
 
   const navigationEnabled = !disabled && enabled;
 
@@ -42,7 +45,7 @@ export function StorageSelectorContent({
     role: "radio",
     initialValue: value,
     onSelect: onChangeStr,
-    onEnter: onChangeStr,
+    onEnter: onEnterStr ?? onChangeStr,
     enabled: navigationEnabled,
     wrap: false,
     onBoundaryReached,
