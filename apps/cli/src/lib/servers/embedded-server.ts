@@ -1,8 +1,9 @@
 import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
+import type { Context } from "hono";
 import { createApp } from "@diffgazer/server";
 import type { ServerController } from "./create-process-server.js";
 
@@ -14,6 +15,28 @@ export interface EmbeddedServerConfig {
 
 const moduleDir = dirname(fileURLToPath(import.meta.url));
 const webRoot = join(moduleDir, "web");
+
+const isSpaNavigationRequest = (c: Context, pathname: string): boolean => {
+  const method = c.req.method;
+  if (method !== "GET" && method !== "HEAD") {
+    return false;
+  }
+
+  if (pathname.startsWith("/api/")) {
+    return false;
+  }
+
+  if (extname(pathname) !== "") {
+    return false;
+  }
+
+  const accept = c.req.header("accept");
+  if (!accept) {
+    return false;
+  }
+
+  return accept.includes("text/html");
+};
 
 export function createEmbeddedServer(
   config: EmbeddedServerConfig,
@@ -35,7 +58,14 @@ export function createEmbeddedServer(
     }
 
     const app = createApp();
-    app.use("/*", serveStatic({ root: webRoot }));
+    app.use(
+      "/*",
+      serveStatic({
+        root: webRoot,
+        rewriteRequestPath: (path, c) =>
+          isSpaNavigationRequest(c, path) ? "/index.html" : path,
+      }),
+    );
 
     try {
       server = serve({ fetch: app.fetch, port: config.port }, (info) => {

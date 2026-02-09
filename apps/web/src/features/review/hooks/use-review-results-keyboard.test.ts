@@ -20,7 +20,7 @@ describe("getReviewResultsFooter", () => {
       { key: "Enter/Space", label: "Toggle Filter" },
       { key: "j", label: "Issue List" },
     ]);
-    expect(footer.rightShortcuts).toEqual([]);
+    expect(footer.rightShortcuts).toEqual([{ key: "Esc", label: "Back" }]);
   });
 
   it("adapts tab range based on patch availability", () => {
@@ -32,6 +32,8 @@ describe("getReviewResultsFooter", () => {
       key: "1-4",
       label: "Switch Tab",
     });
+    expect(getReviewResultsFooter("details", false).rightShortcuts).toEqual([
+      { key: "Esc", label: "Back" },
+    ]);
   });
 });
-
