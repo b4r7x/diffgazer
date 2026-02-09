@@ -22,6 +22,7 @@ export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) 
     focusedFilterIndex,
     focusedValue,
     listRef,
+    detailsScrollRef,
     completedSteps,
     handleToggleStep,
   } = useReviewResultsKeyboard({ issues });
@@ -53,6 +54,7 @@ export function ReviewResultsView({ issues, reviewId }: ReviewResultsViewProps) 
           onTabChange={setActiveTab}
           completedSteps={completedSteps}
           onToggleStep={handleToggleStep}
+          scrollAreaRef={detailsScrollRef}
           isFocused={focusZone === "details"}
         />
       </div>

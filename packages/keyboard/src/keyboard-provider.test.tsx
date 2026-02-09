@@ -71,6 +71,48 @@ describe("KeyboardProvider", () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
+  it("should ignore events already handled by local keydown listeners", () => {
+    const handler = vi.fn();
+
+    function Consumer() {
+      const { register } = useKeyboardContext();
+      useEffect(() => register("global", "ArrowRight", handler), []);
+      return (
+        <button
+          data-testid="local-handler"
+          onKeyDown={(event) => {
+            if (event.key === "ArrowRight") {
+              event.preventDefault();
+            }
+          }}
+        >
+          local
+        </button>
+      );
+    }
+
+    render(
+      <Wrapper>
+        <Consumer />
+      </Wrapper>,
+    );
+
+    const button = screen.getByTestId("local-handler");
+    button.focus();
+
+    act(() => {
+      button.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "ArrowRight",
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+
+    expect(handler).not.toHaveBeenCalled();
+  });
+
   it("should only fire handlers in the active scope", () => {
     const globalHandler = vi.fn();
     const modalHandler = vi.fn();

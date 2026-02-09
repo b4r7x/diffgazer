@@ -67,9 +67,12 @@ export function useFocusZone<T extends string>(
     }
   });
 
+  const canTransition = (key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown") =>
+    options.transitions?.({ zone: currentZone, key }) != null;
+
   for (const key of ARROW_KEYS) {
     useKey(key, () => stableTransitions(key), {
-      enabled: enabled && options.transitions != null,
+      enabled: enabled && options.transitions != null && canTransition(key),
     });
   }
 

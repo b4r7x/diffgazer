@@ -119,6 +119,29 @@ describe("useFocusZone", () => {
   });
 
   describe("transitions", () => {
+    it("registers only transition keys for the current zone", () => {
+      const { result } = renderHook(() =>
+        useFocusZone({
+          initial: "main",
+          zones: ["main", "sidebar"],
+          transitions: ({ zone, key }) => {
+            if (zone === "main" && key === "ArrowRight") return "sidebar";
+            if (zone === "sidebar" && key === "ArrowLeft") return "main";
+            return null;
+          },
+        }),
+      );
+
+      expect(capturedKeyHandlers.has("ArrowRight")).toBe(true);
+      expect(capturedKeyHandlers.has("ArrowLeft")).toBe(false);
+      expect(capturedKeyHandlers.has("ArrowUp")).toBe(false);
+      expect(capturedKeyHandlers.has("ArrowDown")).toBe(false);
+
+      act(() => simulateKey("ArrowRight"));
+      expect(result.current.zone).toBe("sidebar");
+      expect(capturedKeyHandlers.has("ArrowLeft")).toBe(true);
+    });
+
     it("should change zone on arrow key when transition returns new zone", () => {
       const { result } = renderHook(() =>
         useFocusZone({

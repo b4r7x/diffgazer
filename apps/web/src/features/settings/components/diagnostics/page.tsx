@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import { useKey, useScope } from "@diffgazer/keyboard";
@@ -44,6 +44,7 @@ export function DiagnosticsPage() {
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
+  const hasInitializedFooter = useRef(false);
 
   useScope("settings-diagnostics");
   const canRegenerate = contextStatus === "ready" || contextStatus === "missing";
@@ -96,6 +97,8 @@ export function DiagnosticsPage() {
   });
 
   useEffect(() => {
+    if (hasInitializedFooter.current) return;
+    hasInitializedFooter.current = true;
     enterFooter(0);
   }, [enterFooter]);
 

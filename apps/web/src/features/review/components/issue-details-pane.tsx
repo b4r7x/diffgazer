@@ -1,6 +1,6 @@
-import { useRef } from "react";
+import { useRef, type Ref } from "react";
 import { cn } from "@/utils/cn";
-import { Tabs, TabsList, TabsTrigger, TabsContent, FocusablePane, SectionHeader, EmptyState } from "@diffgazer/ui";
+import { Tabs, TabsList, TabsTrigger, TabsContent, FocusablePane, SectionHeader, EmptyState, ScrollArea } from "@diffgazer/ui";
 import { useTabNavigation } from "@diffgazer/keyboard";
 import { CodeSnippet, type CodeLine } from "./code-snippet";
 import { DiffView } from "./diff-view";
@@ -16,6 +16,7 @@ export interface IssueDetailsPaneProps {
   onTabChange: (tab: TabId) => void;
   completedSteps: Set<number>;
   onToggleStep: (step: number) => void;
+  scrollAreaRef?: Ref<HTMLDivElement>;
   isFocused: boolean;
   className?: string;
 }
@@ -26,6 +27,7 @@ export function IssueDetailsPane({
   onTabChange,
   completedSteps,
   onToggleStep,
+  scrollAreaRef,
   isFocused,
   className,
 }: IssueDetailsPaneProps) {
@@ -38,8 +40,8 @@ export function IssueDetailsPane({
 
   return (
     <FocusablePane isFocused={isFocused} className={cn("w-3/5 flex flex-col pl-4 min-h-0", className)}>
-      <div ref={tabsRef}>
-        <Tabs value={activeTab} onValueChange={onTabChange} className="flex flex-col flex-1">
+      <div ref={tabsRef} className="flex flex-1 min-h-0 flex-col">
+        <Tabs value={activeTab} onValueChange={onTabChange} className="flex flex-1 min-h-0 flex-col">
           <TabsList className="border-b border-tui-border pb-2 pt-2 mb-4" onKeyDown={tabsKeyDown}>
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="explain">Explain</TabsTrigger>
@@ -47,7 +49,7 @@ export function IssueDetailsPane({
             {hasPatch && <TabsTrigger value="patch">Patch</TabsTrigger>}
           </TabsList>
 
-          <div className="flex-1 overflow-y-auto scrollbar-hide pr-2">
+          <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0 pr-2">
             {issue ? (
               <>
                 <IssueHeader
@@ -81,7 +83,7 @@ export function IssueDetailsPane({
             ) : (
               <EmptyState message="Select an issue to view details" />
             )}
-          </div>
+          </ScrollArea>
         </Tabs>
       </div>
     </FocusablePane>
