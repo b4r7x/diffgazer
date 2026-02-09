@@ -122,7 +122,9 @@ export function HistoryPage() {
                     key={run.id}
                     run={run}
                     isSelected={run.id === selectedRunId}
-                    isActive={focusZone === "runs" && run.id === runsFocusedValue}
+                    isActive={
+                      focusZone === "runs" && run.id === runsFocusedValue
+                    }
                     onSelect={() => setSelectedRunId(run.id)}
                     onOpen={() => handleRunActivate(run.id)}
                   />
@@ -136,7 +138,10 @@ export function HistoryPage() {
           </div>
         </FocusablePane>
 
-        <FocusablePane isFocused={focusZone === "insights"} className="w-80 flex flex-col shrink-0 overflow-hidden">
+        <FocusablePane
+          isFocused={focusZone === "insights"}
+          className="w-80 min-h-0 flex flex-col shrink-0 overflow-hidden"
+        >
           <HistoryInsightsPane
             runId={selectedRun ? `#${selectedRun.id.slice(0, 4)}` : null}
             severityCounts={hasReviews ? severityCounts : null}

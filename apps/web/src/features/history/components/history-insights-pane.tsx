@@ -1,5 +1,5 @@
 import { cn } from "@/utils/cn";
-import { SectionHeader } from "@diffgazer/ui";
+import { ScrollArea, SectionHeader } from "@diffgazer/ui";
 import { SeverityBreakdown } from "@/components/ui/severity/severity-breakdown";
 import type { ReviewIssue } from "@diffgazer/schemas/review";
 import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
@@ -32,12 +32,12 @@ export function HistoryInsightsPane({
   }
 
   return (
-    <div className={cn("flex flex-col h-full", className)}>
+    <div className={cn("flex h-full min-h-0 flex-col overflow-hidden", className)}>
       <div className="p-3 text-xs text-tui-muted font-bold border-b border-tui-border">
         <span className="uppercase tracking-wider">Insights: Run</span> {runId}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <ScrollArea className="flex-1 min-h-0 p-4 pr-2 space-y-6">
         {/* Severity Breakdown */}
         {severityCounts && (
           <div>
@@ -77,7 +77,7 @@ export function HistoryInsightsPane({
             </div>
           </div>
         )}
-      </div>
+      </ScrollArea>
 
       {/* Duration footer */}
       {duration && (
