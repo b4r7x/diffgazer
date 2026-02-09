@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 180" role="img" aria-labelledby="title desc">
+  <title id="title">Diffgazer wordmark</title>
+  <desc id="desc">Diffgazer written in FIGlet Big style</desc>
+  <text x="8" y="12" fill="#e5e7eb" font-family="Consolas, Menlo, Monaco, 'Courier New', monospace" font-size="24" xml:space="preserve">
+    <tspan x="8" dy="1.2em">  _____ _____ ______ ______ _____           ____________ _____</tspan>
+    <tspan x="8" dy="1.2em"> |  __ \_   _|  ____|  ____/ ____|   /\    |___  /  ____|  __ \</tspan>
+    <tspan x="8" dy="1.2em"> | |  | || | | |__  | |__ | |  __   /  \      / /| |__  | |__) |</tspan>
+    <tspan x="8" dy="1.2em"> | |  | || | |  __| |  __|| | |_ | / /\ \    / / |  __| |  _  /</tspan>
+    <tspan x="8" dy="1.2em"> | |__| || |_| |    | |   | |__| |/ ____ \  / /__| |____| | \ \</tspan>
+    <tspan x="8" dy="1.2em"> |_____/_____|_|    |_|    \_____/_/    \_\/_____|______|_|  \_\</tspan>
+  </text>
+</svg>
