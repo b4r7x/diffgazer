@@ -1,6 +1,17 @@
 # Diffgazer
 
-<img src="docs/assets/logo.png" alt="Diffgazer logo" width="120" />
+<p align="center">
+  <img src="docs/assets/logo.png" alt="Diffgazer logo" width="120" />
+</p>
+
+```text
+  _____ _____ ______ ______ _____           ____________ _____
+ |  __ \_   _|  ____|  ____/ ____|   /\    |___  /  ____|  __ \
+ | |  | || | | |__  | |__ | |  __   /  \      / /| |__  | |__) |
+ | |  | || | |  __| |  __|| | |_ | / /\ \    / / |  __| |  _  /
+ | |__| || |_| |    | |   | |__| |/ ____ \  / /__| |____| | \ \
+ |_____/_____|_|    |_|    \_____/_/    \_\/_____|______|_|  \_\
+```
 
 Local AI code review. Run one command, get a review from AI agents, your code stays on your machine.
 
