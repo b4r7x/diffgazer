@@ -2,7 +2,13 @@ import type { AIProvider, SecretsStorage, AgentExecution } from "@diffgazer/sche
 import type { LensId } from "@diffgazer/schemas/review";
 import type { InputMethod } from "@/types/input-method";
 
-export type OnboardingStep = "storage" | "provider" | "api-key" | "model" | "analysis";
+export type OnboardingStep =
+  | "storage"
+  | "provider"
+  | "api-key"
+  | "model"
+  | "analysis"
+  | "execution";
 
 export interface WizardData {
   secretsStorage: SecretsStorage;

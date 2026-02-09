@@ -4,17 +4,26 @@ import type { AIProvider } from "@diffgazer/schemas/config";
 import { LENS_IDS } from "@diffgazer/schemas/review";
 import type { InputMethod } from "@/types/input-method";
 import { useConfigActions } from "@/app/providers/config-provider";
+import { setConfiguredGuardCache } from "@/lib/config-guards/config-guard-cache";
 import { api } from "@/lib/api";
 import type { OnboardingStep, WizardData } from "../types";
 
-const STEPS: OnboardingStep[] = ["storage", "provider", "api-key", "model", "analysis"];
+const STEPS: OnboardingStep[] = [
+  "storage",
+  "provider",
+  "api-key",
+  "model",
+  "analysis",
+  "execution",
+];
+const INITIAL_PROVIDER = AVAILABLE_PROVIDERS[0];
 
 const INITIAL_DATA: WizardData = {
   secretsStorage: "file",
-  provider: null,
+  provider: INITIAL_PROVIDER?.id ?? null,
   apiKey: "",
   inputMethod: "paste",
-  model: null,
+  model: INITIAL_PROVIDER?.defaultModel ?? null,
   defaultLenses: [...LENS_IDS],
   agentExecution: "sequential",
 };
@@ -42,6 +51,8 @@ export function useOnboarding() {
         return wizardData.model !== null;
       case "analysis":
         return wizardData.defaultLenses.length > 0;
+      case "execution":
+        return true;
     }
   })();
 
@@ -86,6 +97,7 @@ export function useOnboarding() {
         model: wizardData.model ?? undefined,
       });
       await refreshConfig(true);
+      setConfiguredGuardCache(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Setup failed");
       throw e;

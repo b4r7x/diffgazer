@@ -14,6 +14,7 @@ const SETTINGS_ROUTES: Record<SettingsAction, string> = {
   theme: "/settings/theme",
   provider: "/settings/providers",
   storage: "/settings/storage",
+  "agent-execution": "/settings/agent-execution",
   analysis: "/settings/analysis",
   diagnostics: "/settings/diagnostics",
 };
@@ -66,6 +67,14 @@ export function SettingsHubPage() {
     storage: {
       value: storageLabel,
       valueVariant: settings?.secretsStorage ? "default" : "muted",
+    },
+    "agent-execution": {
+      value: settings?.agentExecution
+        ? settings.agentExecution === "parallel"
+          ? "Parallel"
+          : "Sequential"
+        : "Sequential",
+      valueVariant: "default",
     },
     analysis: {
       value: settings?.defaultLenses?.length
