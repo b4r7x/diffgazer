@@ -4,11 +4,7 @@ Local AI code review. Run one command, get a review from AI agents, your code st
 
 > **Early release** - core review pipeline works, UI is getting polished. [Full context](docs/story.md).
 
-<!--
-  TODO: Add a screenshot or GIF of Diffgazer in action here.
-  A ~15s recording of the review streaming interface would work great.
-  Recommended size: 800-1200px wide.
--->
+![Diffgazer demo](docs/assets/diffgazer-demo.gif)
 
 ## Why
 
