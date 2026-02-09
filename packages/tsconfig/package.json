@@ -3,5 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "license": "MIT",
-  "files": ["*.json"]
+  "files": [
+    "*.json"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    "./*.json": "./*.json"
+  }
 }

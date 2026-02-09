@@ -17,9 +17,20 @@ function getCached(): { data: SettingsConfig; timestamp: number } | null {
   return cache;
 }
 
-function invalidateSettings(): void {
+export function invalidateSettingsCache(): void {
   cache = null;
   notify();
+}
+
+export async function refreshSettingsCache(): Promise<void> {
+  invalidateSettingsCache();
+  try {
+    const data = await api.getSettings();
+    cache = { data, timestamp: Date.now() };
+    notify();
+  } catch {
+    // refresh failed — cache stays null
+  }
 }
 
 let inflightPromise: Promise<SettingsConfig> | null = null;
@@ -57,14 +68,7 @@ export function useSettings() {
   }, [snapshot]);
 
   const refresh = async () => {
-    invalidateSettings();
-    try {
-      const data = await api.getSettings();
-      cache = { data, timestamp: Date.now() };
-      notify();
-    } catch {
-      // refresh failed — cache stays null
-    }
+    await refreshSettingsCache();
   };
 
   return {
@@ -72,6 +76,6 @@ export function useSettings() {
     isLoading: !snapshot && !getCached(),
     error: null,
     refresh,
-    invalidate: invalidateSettings,
+    invalidate: invalidateSettingsCache,
   };
 }

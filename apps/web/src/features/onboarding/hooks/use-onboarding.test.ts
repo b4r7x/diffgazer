@@ -2,11 +2,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/schemas/config";
 
-const { mockRefresh, mockSaveSettings, mockSaveConfig, mockSetConfiguredGuardCache } = vi.hoisted(() => ({
+const {
+  mockRefresh,
+  mockSaveSettings,
+  mockSaveConfig,
+  mockSetConfiguredGuardCache,
+  mockRefreshSettingsCache,
+} = vi.hoisted(() => ({
   mockRefresh: vi.fn(),
   mockSaveSettings: vi.fn(),
   mockSaveConfig: vi.fn(),
   mockSetConfiguredGuardCache: vi.fn(),
+  mockRefreshSettingsCache: vi.fn(),
 }));
 
 vi.mock("@/app/providers/config-provider", () => ({
@@ -22,7 +29,11 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
-vi.mock("@/app/config-guard-cache", () => ({
+vi.mock("@/hooks/use-settings", () => ({
+  refreshSettingsCache: mockRefreshSettingsCache,
+}));
+
+vi.mock("@/lib/config-guards/config-guard-cache", () => ({
   setConfiguredGuardCache: mockSetConfiguredGuardCache,
 }));
 
@@ -49,6 +60,7 @@ describe("useOnboarding initial state", () => {
     mockSaveSettings.mockResolvedValue(undefined);
     mockSaveConfig.mockResolvedValue(undefined);
     mockRefresh.mockResolvedValue(undefined);
+    mockRefreshSettingsCache.mockResolvedValue(undefined);
 
     const { result } = renderHook(() => useOnboarding());
     await result.current.complete();
@@ -56,6 +68,7 @@ describe("useOnboarding initial state", () => {
     expect(mockSaveSettings).toHaveBeenCalledTimes(1);
     expect(mockSaveConfig).toHaveBeenCalledTimes(1);
     expect(mockRefresh).toHaveBeenCalledWith(true);
+    expect(mockRefreshSettingsCache).toHaveBeenCalledTimes(1);
     expect(mockSetConfiguredGuardCache).toHaveBeenCalledWith(true);
   });
 });
