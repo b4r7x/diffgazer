@@ -107,6 +107,10 @@ export function ProviderList({
               <NavigationListItem
                 key={provider.id}
                 id={provider.id}
+                className={cn(
+                  'border-l-2 border-l-transparent',
+                  !isFocused && selectedId === provider.id && 'border-l-tui-blue/60 text-tui-fg'
+                )}
                 statusIndicator={getStatusIndicator(provider.displayStatus)}
                 badge={
                   <Badge
