@@ -1,5 +1,7 @@
 # Diffgazer
 
+<img src="docs/assets/logo.png" alt="Diffgazer logo" width="120" />
+
 Local AI code review. Run one command, get a review from AI agents, your code stays on your machine.
 
 > **Early release** - core review pipeline works, UI is getting polished. [Full context](docs/story.md).
