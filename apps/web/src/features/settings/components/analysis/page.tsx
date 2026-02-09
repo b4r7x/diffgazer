@@ -1,115 +1,137 @@
-import { useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Button, Badge, CheckboxGroup, CheckboxItem, ScrollArea, CardLayout } from "@stargazer/ui";
-import { useKey, useScope, useNavigation, useFocusZone } from "@stargazer/keyboard";
+import type { Shortcut } from "@stargazer/schemas/ui";
+import { Button, CardLayout } from "@stargazer/ui";
+import { useKey, useScope } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useSettings } from "@/hooks/use-settings";
-import { SETTINGS_SHORTCUTS } from "@/config/navigation";
 import { api } from "@/lib/api";
 import { cn } from "@/utils/cn";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@stargazer/schemas/events";
 import type { LensId } from "@stargazer/schemas/review";
+import { AnalysisSelectorContent, type AnalysisOption } from "./analysis-selector-content";
 
-const LENS_OPTIONS = (Object.entries(LENS_TO_AGENT) as Array<[LensId, keyof typeof AGENT_METADATA]>)
-  .map(([lensId, agentId]) => {
+type FocusZone = "list" | "buttons";
+type ViewState = "loading" | "empty" | "error" | "success";
+const BUTTONS_COUNT = 2;
+
+function buildLensOptions(): AnalysisOption[] {
+  return (Object.entries(LENS_TO_AGENT) as Array<[LensId, keyof typeof AGENT_METADATA]>).map(([lensId, agentId]) => {
     const meta = AGENT_METADATA[agentId];
     return {
       id: lensId,
       label: meta.name,
       badgeLabel: meta.badgeLabel,
-      badgeVariant: meta.badgeVariant,
+      badgeVariant: meta.badgeVariant ?? "info",
       description: meta.description,
     };
   });
+}
 
 export function SettingsAnalysisPage() {
   const navigate = useNavigate();
-  const { settings, isLoading } = useSettings();
+  const { settings, isLoading, error: settingsError, refresh } = useSettings();
   const [selectedLenses, setSelectedLenses] = useState<LensId[] | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  type FocusZone = "list" | "buttons";
-  const ZONES = ["list", "buttons"] as const;
-  const BUTTONS_COUNT = 2;
-
-  const checkboxRef = useRef<HTMLDivElement>(null);
-  const [checkboxFocused, setCheckboxFocused] = useState<string | null>(null);
+  const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [buttonIndex, setButtonIndex] = useState(0);
 
-  const effectiveLenses = selectedLenses ?? (settings?.defaultLenses?.length ? settings.defaultLenses : LENS_OPTIONS.map(l => l.id));
-
-  usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
-  useScope("settings-analysis");
-  useKey("Escape", () => navigate({ to: "/settings" }));
-
+  const lensOptions = buildLensOptions();
+  const defaultLenses = settings?.defaultLenses ?? [];
+  const availableLensIds = new Set(lensOptions.map((lens) => lens.id));
+  const persistedLenses = defaultLenses.filter((lens): lens is LensId => availableLensIds.has(lens as LensId));
+  const fallbackLenses = lensOptions.map((lens) => lens.id);
+  const currentLenses = persistedLenses.length > 0 ? persistedLenses : fallbackLenses;
+  const effectiveLenses = selectedLenses ?? currentLenses;
   const hasLensSelection = effectiveLenses.length > 0;
+
+  const viewState: ViewState = (() => {
+    if (isLoading) return "loading";
+    if (settingsError) return "error";
+    if (lensOptions.length === 0) return "empty";
+    return "success";
+  })();
 
   const isDirty = (() => {
     if (!settings || selectedLenses === null) return false;
-    const currentLenses = settings.defaultLenses ?? [];
     return (
       currentLenses.length !== selectedLenses.length ||
       currentLenses.some((lens) => !selectedLenses.includes(lens))
     );
   })();
 
-  const toggleLens = (value: string) => {
-    const lensId = value as LensId;
-    const newLenses = effectiveLenses.includes(lensId)
-      ? effectiveLenses.filter((l) => l !== lensId)
-      : [...effectiveLenses, lensId];
-    setSelectedLenses(newLenses);
-  };
+  useEffect(() => {
+    if (viewState === "success") {
+      setFocusZone("list");
+    }
+    setButtonIndex(0);
+  }, [viewState]);
 
-  const { zone, setZone } = useFocusZone<FocusZone>({
-    initial: "list",
-    zones: ZONES,
-    transitions: ({ zone: z, key }) => {
-      if (z === "list" && key === "ArrowUp") return null;
-      if (z === "buttons" && key === "ArrowUp") return "list";
-      return null;
-    },
+  useScope("settings-analysis");
+  useKey("Escape", () => navigate({ to: "/settings" }));
+
+  const isButtonsZone = viewState === "success" ? focusZone === "buttons" : true;
+  const canSave = viewState === "success" && !isSaving && isDirty && hasLensSelection;
+
+  const footerShortcuts: Shortcut[] = isButtonsZone
+    ? viewState === "success"
+      ? [
+          { key: "←/→", label: "Move Action" },
+          {
+            key: "Enter/Space",
+            label: buttonIndex === 0 ? "Cancel" : "Save",
+            disabled: buttonIndex === 1 && !canSave,
+          },
+        ]
+      : [{ key: "Enter/Space", label: "Back" }]
+    : [
+        { key: "↑/↓", label: "Navigate" },
+        { key: "Enter/Space", label: "Toggle Lens" },
+      ];
+
+  usePageFooter({
+    shortcuts: footerShortcuts,
+    rightShortcuts: [{ key: "Esc", label: "Back" }],
   });
 
-  const isButtonsZone = zone === "buttons";
+  useKey("ArrowUp", () => {
+    setFocusZone("list");
+    setButtonIndex(0);
+  }, { enabled: isButtonsZone && viewState === "success" });
+
+  useKey("ArrowDown", () => {}, { enabled: isButtonsZone && viewState === "success" });
 
   useKey("ArrowLeft", () => setButtonIndex(Math.max(0, buttonIndex - 1)), {
-    enabled: isButtonsZone,
+    enabled: isButtonsZone && viewState === "success",
   });
-  useKey("ArrowRight", () => setButtonIndex(Math.min(BUTTONS_COUNT - 1, buttonIndex + 1)), {
-    enabled: isButtonsZone,
-  });
-  useKey("ArrowDown", () => {}, { enabled: isButtonsZone });
-  useKey("Enter", () => {
-    if (buttonIndex === 0) navigate({ to: "/settings" });
-    else if (buttonIndex === 1) handleSave();
-  }, { enabled: isButtonsZone });
-  useKey(" ", () => {
-    if (buttonIndex === 0) navigate({ to: "/settings" });
-    else if (buttonIndex === 1) handleSave();
-  }, { enabled: isButtonsZone });
 
-  const { focusedValue: checkboxFocusedValue } = useNavigation({
-    containerRef: checkboxRef,
-    role: "checkbox",
-    value: checkboxFocused,
-    onValueChange: setCheckboxFocused,
-    onSelect: toggleLens,
-    onEnter: toggleLens,
-    wrap: false,
-    enabled: zone === "list",
-    onBoundaryReached: (direction) => {
-      if (direction === "down") setZone("buttons");
-    },
+  useKey("ArrowRight", () => setButtonIndex(Math.min(BUTTONS_COUNT - 1, buttonIndex + 1)), {
+    enabled: isButtonsZone && viewState === "success",
   });
+
+  const handleCancel = () => navigate({ to: "/settings" });
+
+  const activateButton = () => {
+    if (buttonIndex === 0) {
+      handleCancel();
+      return;
+    }
+    if (buttonIndex === 1 && canSave) {
+      void handleSave();
+    }
+  };
+
+  useKey("Enter", activateButton, { enabled: isButtonsZone });
+  useKey(" ", activateButton, { enabled: isButtonsZone });
 
   const handleSave = async () => {
-    if (!hasLensSelection) return;
+    if (!canSave) return;
     setIsSaving(true);
     setError(null);
     try {
       await api.saveSettings({ defaultLenses: effectiveLenses });
+      await refresh();
       navigate({ to: "/settings" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save settings");
@@ -125,7 +147,7 @@ export function SettingsAnalysisPage() {
         <>
           <Button
             variant="ghost"
-            onClick={() => navigate({ to: "/settings" })}
+            onClick={handleCancel}
             disabled={isSaving}
             className={cn(isButtonsZone && buttonIndex === 0 && "ring-2 ring-tui-blue")}
           >
@@ -134,7 +156,7 @@ export function SettingsAnalysisPage() {
           <Button
             variant="success"
             onClick={handleSave}
-            disabled={isSaving || !isDirty || !hasLensSelection}
+            disabled={!canSave}
             className={cn(isButtonsZone && buttonIndex === 1 && "ring-2 ring-tui-blue")}
           >
             {isSaving ? "Saving..." : "Save"}
@@ -142,40 +164,30 @@ export function SettingsAnalysisPage() {
         </>
       }
     >
-      {isLoading ? (
+      {viewState === "loading" ? (
         <p className="text-tui-muted">Loading settings...</p>
+      ) : viewState === "error" ? (
+        <p className="text-tui-red text-sm">{settingsError ?? "Failed to load settings"}</p>
+      ) : viewState === "empty" ? (
+        <p className="text-tui-muted text-sm">No analysis agents are currently available.</p>
       ) : (
-        <ScrollArea className="max-h-[360px] pr-2">
-          <div className="space-y-3">
-            <div className="text-xs text-tui-muted uppercase tracking-wider font-bold">
-              Active Agents
-            </div>
-            <CheckboxGroup
-              ref={checkboxRef}
-              value={effectiveLenses}
-              onValueChange={setSelectedLenses}
-              focusedValue={zone === "list" ? checkboxFocusedValue : null}
-              variant="bullet"
-            >
-              {LENS_OPTIONS.map((lens) => (
-                <CheckboxItem
-                  key={lens.id}
-                  value={lens.id}
-                  label={(
-                    <span className="flex items-center gap-2">
-                      <Badge variant={lens.badgeVariant ?? "info"} size="sm">{lens.badgeLabel}</Badge>
-                      <span>{lens.label}</span>
-                    </span>
-                  )}
-                  description={lens.description}
-                />
-              ))}
-            </CheckboxGroup>
-            {!hasLensSelection && (
-              <p className="text-tui-red text-xs">Select at least one agent.</p>
-            )}
-          </div>
-        </ScrollArea>
+        <div className="space-y-3">
+          <AnalysisSelectorContent
+            options={lensOptions}
+            value={effectiveLenses}
+            onChange={setSelectedLenses}
+            enabled={!isButtonsZone}
+            disabled={isSaving}
+            onBoundaryReached={(direction) => {
+              if (direction === "down") {
+                setFocusZone("buttons");
+              }
+            }}
+          />
+          {!hasLensSelection && (
+            <p className="text-tui-red text-xs">Select at least one agent.</p>
+          )}
+        </div>
       )}
       {error && <p className="text-tui-red text-sm">{error}</p>}
     </CardLayout>

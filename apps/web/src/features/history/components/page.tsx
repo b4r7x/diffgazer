@@ -27,6 +27,8 @@ export function HistoryPage() {
     severityCounts,
     sortedIssues,
     duration,
+    hasReviews,
+    emptyRunsMessage,
     handleTimelineBoundary,
     handleRunsBoundary,
     handleSearchEscape,
@@ -41,6 +43,8 @@ export function HistoryPage() {
     enabled: focusZone === "runs",
     value: selectedRunId,
     onValueChange: setSelectedRunId,
+    onSelect: handleRunActivate,
+    onEnter: handleRunActivate,
     wrap: false,
     onBoundaryReached: handleRunsBoundary,
   });
@@ -82,20 +86,16 @@ export function HistoryPage() {
           className="w-48 border-r border-tui-border flex flex-col shrink-0"
         >
           <div className="p-3 text-xs text-tui-muted font-bold uppercase tracking-wider border-b border-tui-border">
-            Timeline
+            Sections
           </div>
           <div className="flex-1 overflow-y-auto p-2">
-            {timelineItems.length > 0 ? (
-              <TimelineList
-                items={timelineItems}
-                selectedId={selectedDateId}
-                onSelect={setSelectedDateId}
-                keyboardEnabled={focusZone === "timeline"}
-                onBoundaryReached={handleTimelineBoundary}
-              />
-            ) : (
-              <div className="text-tui-muted text-sm p-2">No reviews yet</div>
-            )}
+            <TimelineList
+              items={timelineItems}
+              selectedId={selectedDateId}
+              onSelect={setSelectedDateId}
+              keyboardEnabled={focusZone === "timeline"}
+              onBoundaryReached={handleTimelineBoundary}
+            />
           </div>
         </FocusablePane>
 
@@ -130,7 +130,7 @@ export function HistoryPage() {
               </NavigationList>
             ) : (
               <div className="flex items-center justify-center h-full text-tui-muted">
-                No runs for this date
+                {emptyRunsMessage}
               </div>
             )}
           </div>
@@ -139,8 +139,8 @@ export function HistoryPage() {
         <FocusablePane isFocused={focusZone === "insights"} className="w-80 flex flex-col shrink-0 overflow-hidden">
           <HistoryInsightsPane
             runId={selectedRun ? `#${selectedRun.id.slice(0, 4)}` : null}
-            severityCounts={severityCounts}
-            issues={sortedIssues}
+            severityCounts={hasReviews ? severityCounts : null}
+            issues={hasReviews ? sortedIssues : []}
             duration={duration}
             onIssueClick={handleIssueClick}
           />

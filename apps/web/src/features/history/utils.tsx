@@ -1,5 +1,6 @@
 import type { ReviewMetadata } from "@stargazer/schemas/review";
 import type { TimelineItem } from "@stargazer/schemas/ui";
+import { HISTORY_SECTION_ALL_ID, HISTORY_SECTION_ALL_LABEL } from "@/features/history/constants";
 
 export function getDateKey(dateStr: string): string {
   return dateStr.slice(0, 10); // "2024-01-15T..." -> "2024-01-15"
@@ -53,6 +54,16 @@ export function formatDuration(durationMs: number | null | undefined): string {
 }
 
 export function buildTimelineItems(reviews: ReviewMetadata[]): TimelineItem[] {
+  const allItem: TimelineItem = {
+    id: HISTORY_SECTION_ALL_ID,
+    label: HISTORY_SECTION_ALL_LABEL,
+    count: reviews.length,
+  };
+
+  if (reviews.length === 0) {
+    return [allItem];
+  }
+
   const groups = new Map<string, { label: string; count: number }>();
 
   for (const review of reviews) {
@@ -65,7 +76,9 @@ export function buildTimelineItems(reviews: ReviewMetadata[]): TimelineItem[] {
     }
   }
 
-  return Array.from(groups.entries())
+  const datedItems = Array.from(groups.entries())
     .sort(([a], [b]) => b.localeCompare(a))
     .map(([id, { label, count }]) => ({ id, label, count }));
+
+  return [allItem, ...datedItems];
 }

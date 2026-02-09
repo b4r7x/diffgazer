@@ -6,6 +6,7 @@ import { useContextSnapshot } from '../hooks/use-context-snapshot';
 import { convertAgentEventsToLogEntries } from '@stargazer/core/review';
 import { mapStepsToProgressData } from './review-container.utils';
 import type { ReviewMode } from '@stargazer/schemas/review';
+import { usePageFooter } from "@/hooks/use-page-footer";
 
 export type { ReviewCompleteData };
 
@@ -13,6 +14,18 @@ export interface ReviewContainerProps {
   mode: ReviewMode;
   onComplete?: (data: ReviewCompleteData) => void;
   onReviewNotInSession?: (reviewId: string) => void;
+}
+
+function ReviewLoadingMessage({ message }: { message: string }) {
+  usePageFooter({ shortcuts: [] });
+
+  return (
+    <div className="flex flex-1 items-center justify-center">
+      <div className="text-tui-muted font-mono text-sm" role="status" aria-live="polite">
+        {message}
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -61,13 +74,7 @@ export function ReviewContainer({ mode, onComplete, onReviewNotInSession }: Revi
   })();
 
   if (loadingMessage) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <div className="text-tui-muted font-mono text-sm" role="status" aria-live="polite">
-          {loadingMessage}
-        </div>
-      </div>
-    );
+    return <ReviewLoadingMessage message={loadingMessage} />;
   }
 
   if (!isConfigured) {

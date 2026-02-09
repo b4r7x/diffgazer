@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { SecretsStorage } from "@stargazer/schemas/config";
+import type { Shortcut } from "@stargazer/schemas/ui";
 import { Button, Callout, CardLayout } from "@stargazer/ui";
 import { StorageSelectorContent } from "@/components/shared/storage-selector-content";
 import { useSettings } from "@/hooks/use-settings";
 import { api } from "@/lib/api";
-import { SETTINGS_SHORTCUTS } from "@/config/navigation";
 import { useKey, useScope } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { cn } from "@/utils/cn";
@@ -24,13 +24,31 @@ export function SettingsStoragePage() {
 
   const effectiveStorage = storageChoice ?? settings?.secretsStorage ?? null;
 
-  usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
-
   useScope("settings-storage");
   useKey("Escape", () => navigate({ to: "/settings" }));
 
   const isDirty = settings?.secretsStorage !== effectiveStorage;
   const isButtonsZone = focusZone === "buttons";
+  const canSave = !isSaving && !!effectiveStorage && isDirty;
+
+  const footerShortcuts: Shortcut[] = isButtonsZone
+    ? [
+        { key: "←/→", label: "Move Action" },
+        {
+          key: "Enter/Space",
+          label: buttonIndex === 0 ? "Cancel" : "Save",
+          disabled: buttonIndex === 1 && !canSave,
+        },
+      ]
+    : [
+        { key: "↑/↓", label: "Navigate" },
+        { key: "Enter/Space", label: "Select Storage" },
+      ];
+
+  usePageFooter({
+    shortcuts: footerShortcuts,
+    rightShortcuts: [{ key: "Esc", label: "Back" }],
+  });
 
   useKey("ArrowUp", () => {
     setFocusZone("list");
@@ -50,7 +68,7 @@ export function SettingsStoragePage() {
   const handleCancel = () => navigate({ to: "/settings" });
 
   const handleSave = async (): Promise<void> => {
-    if (!effectiveStorage) return;
+    if (!canSave) return;
     setIsSaving(true);
     setError(null);
     try {
@@ -64,7 +82,7 @@ export function SettingsStoragePage() {
 
   const activateButton = () => {
     if (buttonIndex === 0) handleCancel();
-    else if (buttonIndex === 1) handleSave();
+    else if (buttonIndex === 1 && canSave) handleSave();
   };
 
   useKey("Enter", activateButton, { enabled: isButtonsZone });
