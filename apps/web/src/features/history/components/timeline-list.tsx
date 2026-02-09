@@ -22,7 +22,7 @@ export function TimelineList({
 }: TimelineListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useNavigation({
+  const { focusedValue } = useNavigation({
     containerRef,
     role: "option",
     value: selectedId,
@@ -32,9 +32,12 @@ export function TimelineList({
     onBoundaryReached,
   });
 
+  const activeId = keyboardEnabled ? (focusedValue ?? selectedId) : null;
+
   return (
     <div ref={containerRef} role="listbox" className={cn("space-y-1", className)}>
       {items.map((item) => {
+        const isActive = item.id === activeId;
         const isSelected = item.id === selectedId;
         return (
           <div
@@ -46,17 +49,17 @@ export function TimelineList({
             onClick={() => onSelect(item.id)}
             className={cn(
               "flex items-center justify-between text-sm px-2 py-1 rounded cursor-pointer",
-              isSelected && "bg-tui-selection text-tui-blue font-bold",
-              !isSelected && "text-tui-muted hover:text-tui-fg hover:bg-tui-selection/30"
+              isActive && "bg-tui-selection text-tui-blue font-bold",
+              !isActive && "text-tui-muted hover:text-tui-fg hover:bg-tui-selection/30"
             )}
           >
             <span className="flex items-center gap-2">
-              <span className={cn("text-[10px]", isSelected ? "text-tui-blue" : "text-muted-foreground")}>
-                {isSelected ? "●" : "○"}
+              <span className={cn("text-[10px]", isActive ? "text-tui-blue" : "text-muted-foreground")}>
+                {isActive ? "●" : "○"}
               </span>
               {item.label}
             </span>
-            <span className={cn("text-xs", isSelected ? "opacity-70" : "opacity-50")}>
+            <span className={cn("text-xs", isActive ? "opacity-70" : "opacity-50")}>
               {item.count}
             </span>
           </div>

@@ -16,7 +16,8 @@ const HISTORY_FOOTER_RIGHT_SHORTCUTS = [
   { key: "Esc", label: "Back" },
 ];
 
-const ZONES = ["timeline", "runs", "insights", "search"] as const;
+const ZONES = ["timeline", "runs", "search"] as const;
+type KeyboardHistoryFocusZone = (typeof ZONES)[number];
 
 interface UseHistoryKeyboardOptions {
   focusZone: HistoryFocusZone;
@@ -32,17 +33,26 @@ export function useHistoryKeyboard({
   searchInputRef,
 }: UseHistoryKeyboardOptions) {
   const navigate = useNavigate();
+  const effectiveZone: KeyboardHistoryFocusZone = focusZone === "insights" ? "runs" : focusZone;
 
   useFocusZone({
-    initial: "runs" as HistoryFocusZone,
+    initial: "runs",
     zones: ZONES,
-    zone: focusZone,
-    onZoneChange: setFocusZone,
+    zone: effectiveZone,
+    onZoneChange: (zone) => setFocusZone(zone),
     scope: "history",
-    tabCycle: ["search", "timeline", "runs", "insights"],
+    tabCycle: ["search", "timeline", "runs"],
     transitions: ({ zone, key }) => {
-      const left: Record<string, HistoryFocusZone | null> = { timeline: null, runs: "timeline", insights: "runs", search: "insights" };
-      const right: Record<string, HistoryFocusZone | null> = { timeline: "runs", runs: "insights", insights: "search", search: null };
+      const left: Record<KeyboardHistoryFocusZone, KeyboardHistoryFocusZone | null> = {
+        timeline: null,
+        runs: "timeline",
+        search: "runs",
+      };
+      const right: Record<KeyboardHistoryFocusZone, KeyboardHistoryFocusZone | null> = {
+        timeline: "runs",
+        runs: null,
+        search: null,
+      };
       if (key === "ArrowLeft") return left[zone] ?? null;
       if (key === "ArrowRight") return right[zone] ?? null;
       return null;

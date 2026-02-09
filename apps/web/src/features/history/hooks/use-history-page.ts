@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { HistoryFocusZone } from "@/features/history/types";
 import type { Run } from "@/features/history/types";
@@ -105,8 +105,23 @@ export function useHistoryPage() {
     searchInputRef: search.searchInputRef,
   });
 
+  useEffect(() => {
+    if (focusZone !== "runs") return;
+    if (mappedRuns.length === 0) return;
+
+    const hasSelectedRun = mappedRuns.some((run) => run.id === data.selectedRunId);
+    if (!hasSelectedRun) {
+      data.setSelectedRunId(mappedRuns[0]!.id);
+    }
+  }, [focusZone, mappedRuns, data.selectedRunId, data.setSelectedRunId]);
+
   const handleTimelineBoundary = (direction: "up" | "down") => {
-    if (direction === "down") setFocusZone("runs");
+    if (direction === "up") {
+      setFocusZone("search");
+      search.searchInputRef.current?.focus();
+      return;
+    }
+    setFocusZone("runs");
   };
 
   const handleSearchEscape = () => {
