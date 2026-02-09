@@ -5,6 +5,7 @@ import { LENS_IDS } from "@diffgazer/schemas/review";
 import type { InputMethod } from "@/types/input-method";
 import { useConfigActions } from "@/app/providers/config-provider";
 import { setConfiguredGuardCache } from "@/lib/config-guards/config-guard-cache";
+import { refreshSettingsCache } from "@/hooks/use-settings";
 import { api } from "@/lib/api";
 import type { OnboardingStep, WizardData } from "../types";
 
@@ -97,6 +98,7 @@ export function useOnboarding() {
         model: wizardData.model ?? undefined,
       });
       await refreshConfig(true);
+      await refreshSettingsCache();
       setConfiguredGuardCache(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Setup failed");
