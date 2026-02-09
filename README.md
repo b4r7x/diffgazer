@@ -1,13 +1,10 @@
-<table align="center">
-  <tr>
-    <td valign="middle">
-      <img src="docs/assets/logo.png" alt="Diffgazer logo" width="96" />
-    </td>
-    <td valign="middle">
-      <img src="docs/assets/diffgazer-wordmark-figlet.svg" alt="Diffgazer" width="760" />
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <img src="docs/assets/diffgazer-wordmark-figlet.svg" alt="Diffgazer" width="820" />
+</p>
+
+<p align="center">
+  <img src="docs/assets/logo.png" alt="Diffgazer logo" width="112" />
+</p>
 
 Local AI code review. Run one command, get a review from AI agents, your code stays on your machine.
 
