@@ -1,6 +1,6 @@
 {
   "name": "diffgazer",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Diffgazer - Development toolkit",
   "license": "Apache-2.0",
   "repository": {
@@ -35,6 +35,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.19.9",
+    "@napi-rs/keyring": "^1.2.0",
     "chalk": "^5.6.2",
     "execa": "^9.6.1",
     "figlet": "^1.10.0",
