@@ -1,7 +1,12 @@
-import { createRoute, createRootRoute, createRouter, redirect, Outlet } from "@tanstack/react-router";
+import {
+  createRoute,
+  createRootRoute,
+  createRouter,
+  redirect,
+  Outlet,
+} from "@tanstack/react-router";
 import { z } from "zod";
 import { ReviewModeSchema } from "@diffgazer/schemas/review";
-import { api } from "@/lib/api";
 import { RootLayout } from "./routes/__root";
 import { HomePage } from "./routes/home";
 import { ReviewPage } from "./routes/review";
@@ -13,61 +18,13 @@ import { SettingsStoragePage } from "./routes/settings/storage";
 import { SettingsThemePage } from "./routes/settings/theme";
 import { TrustPermissionsPage } from "./routes/settings/trust-permissions";
 import { ProviderSettingsPage } from "./routes/settings/providers";
+import { SettingsAgentExecutionPage } from "./routes/settings/agent-execution";
 import { HelpPage } from "./routes/help";
 import { OnboardingPage } from "./routes/onboarding";
-
-// Route-guard cache: short TTL (30s) boolean for "is configured?" checks.
-// Separate from ConfigProvider's full config cache (5min TTL, different data shape).
-let configuredCache: { value: boolean; timestamp: number } | null = null;
-const CONFIG_CACHE_TTL = 30_000;
-
-export function invalidateConfigGuardCache() {
-  configuredCache = null;
-}
-
-function isRedirectError(error: unknown): error is { to: string } {
-  return Boolean(error) && typeof error === "object" && "to" in error;
-}
-
-function getCachedConfigured(): boolean | null {
-  if (!configuredCache) return null;
-  if (Date.now() - configuredCache.timestamp >= CONFIG_CACHE_TTL) return null;
-  return configuredCache.value;
-}
-
-async function fetchConfigured(): Promise<boolean> {
-  const result = await api.checkConfig();
-  configuredCache = { value: result.configured, timestamp: Date.now() };
-  return result.configured;
-}
-
-async function requireConfigured() {
-  const cached = getCachedConfigured();
-  if (cached === false) throw redirect({ to: "/onboarding" });
-  if (cached === true) return;
-
-  try {
-    const configured = await fetchConfigured();
-    if (!configured) throw redirect({ to: "/onboarding" });
-  } catch (e) {
-    if (isRedirectError(e)) throw e;
-    configuredCache = { value: false, timestamp: Date.now() };
-    throw redirect({ to: "/onboarding" });
-  }
-}
-
-async function requireNotConfigured() {
-  const cached = getCachedConfigured();
-  if (cached === true) throw redirect({ to: "/" });
-  if (cached === false) return;
-
-  try {
-    const configured = await fetchConfigured();
-    if (configured) throw redirect({ to: "/" });
-  } catch (e) {
-    if (isRedirectError(e)) throw e;
-  }
-}
+import {
+  requireConfigured,
+  requireNotConfigured,
+} from "../lib/config-guards/config-guards";
 
 const HomeSearchSchema = z.object({
   error: z.string().optional(),
@@ -81,7 +38,8 @@ const ReviewSearchSchema = z.object({
 
 export type ReviewSearch = z.infer<typeof ReviewSearchSchema>;
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function SettingsLayout() {
   return <Outlet />;
@@ -172,6 +130,12 @@ const settingsStorageRoute = createRoute({
   component: SettingsStoragePage,
 });
 
+const settingsAgentExecutionRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: "/agent-execution",
+  component: SettingsAgentExecutionPage,
+});
+
 const settingsAnalysisRoute = createRoute({
   getParentRoute: () => settingsRoute,
   path: "/analysis",
@@ -202,6 +166,7 @@ const routeTree = rootRoute.addChildren([
     settingsThemeRoute,
     settingsProvidersRoute,
     settingsStorageRoute,
+    settingsAgentExecutionRoute,
     settingsAnalysisRoute,
     settingsDiagnosticsRoute,
     settingsTrustPermissionsRoute,

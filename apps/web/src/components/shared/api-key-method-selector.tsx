@@ -34,7 +34,11 @@ export function ApiKeyMethodSelector({
       <div className="space-y-2 mb-4">
         <Radio
           checked={method === "paste"}
-          onCheckedChange={() => onMethodChange("paste")}
+          onCheckedChange={() => {
+            onMethodChange("paste");
+            onFocus("paste");
+          }}
+          onMouseEnter={() => onFocus("paste")}
           label="Paste Key Now"
           focused={focused === "paste"}
         />
@@ -80,12 +84,19 @@ export function ApiKeyMethodSelector({
       >
         <Radio
           checked={method === "env"}
-          onCheckedChange={() => onMethodChange("env")}
+          onCheckedChange={() => {
+            onMethodChange("env");
+            onFocus("env");
+          }}
+          onMouseEnter={() => onFocus("env")}
           label="Import from Env"
           focused={focused === "env"}
         />
         <div className="pl-9">
-          <div className="flex items-center bg-tui-bg border border-tui-border px-3 py-2 w-full text-tui-muted">
+          <div
+            className="flex items-center bg-tui-bg border border-tui-border px-3 py-2 w-full text-tui-muted"
+            onClick={() => onFocus("env")}
+          >
             <span className="mr-2 select-none text-muted-foreground">$</span>
             <span>{envVarName}</span>
           </div>

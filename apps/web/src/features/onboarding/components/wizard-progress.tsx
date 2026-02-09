@@ -7,6 +7,7 @@ const STEP_LABELS: Record<OnboardingStep, string> = {
   "api-key": "API Key",
   model: "Model",
   analysis: "Analysis",
+  execution: "Execution",
 };
 
 interface WizardProgressProps {
@@ -26,8 +27,13 @@ export function WizardProgress({ steps, currentStep }: WizardProgressProps) {
         return (
           <div key={step} className="flex items-center gap-1">
             {index > 0 && (
-              <span className={cn("mx-0.5", isCompleted ? "text-tui-green" : "text-tui-border")}>
-                ---
+              <span
+                className={cn(
+                  "mx-0.5",
+                  isCompleted ? "text-tui-green" : "text-tui-border",
+                )}
+              >
+                -
               </span>
             )}
             <span
@@ -35,7 +41,7 @@ export function WizardProgress({ steps, currentStep }: WizardProgressProps) {
                 "px-1.5 py-0.5",
                 isActive && "bg-tui-blue text-black font-bold",
                 isCompleted && "text-tui-green",
-                !isActive && !isCompleted && "text-tui-muted"
+                !isActive && !isCompleted && "text-tui-muted",
               )}
             >
               {STEP_LABELS[step]}

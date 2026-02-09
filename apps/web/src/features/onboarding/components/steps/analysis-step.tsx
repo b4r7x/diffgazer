@@ -1,9 +1,13 @@
 import { useRef, useState } from "react";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/schemas/events";
 import type { LensId } from "@diffgazer/schemas/review";
-import { CheckboxGroup, CheckboxItem, RadioGroup, RadioGroupItem, Badge, ScrollArea } from "@diffgazer/ui";
+import {
+  CheckboxGroup,
+  CheckboxItem,
+  Badge,
+  ScrollArea,
+} from "@diffgazer/ui";
 import { useNavigation } from "@diffgazer/keyboard";
-import type { AgentExecution } from "@diffgazer/schemas/config";
 
 const LENS_OPTIONS = (
   Object.entries(LENS_TO_AGENT) as Array<[LensId, keyof typeof AGENT_METADATA]>
@@ -13,7 +17,12 @@ const LENS_OPTIONS = (
     id: lensId,
     label: meta.name,
     badgeLabel: meta.badgeLabel,
-    badgeVariant: meta.badgeVariant as "success" | "warning" | "error" | "info" | "neutral",
+    badgeVariant: meta.badgeVariant as
+      | "success"
+      | "warning"
+      | "error"
+      | "info"
+      | "neutral",
     description: meta.description,
   };
 });
@@ -21,19 +30,24 @@ const LENS_OPTIONS = (
 interface AnalysisStepProps {
   lenses: LensId[];
   onLensesChange: (lenses: LensId[]) => void;
-  agentExecution: AgentExecution;
-  onAgentExecutionChange: (mode: AgentExecution) => void;
+  onCommit?: (nextValue: {
+    defaultLenses: LensId[];
+  }) => void;
+  enabled?: boolean;
+  onBoundaryReached?: (direction: "up" | "down") => void;
 }
 
 export function AnalysisStep({
   lenses,
   onLensesChange,
-  agentExecution,
-  onAgentExecutionChange,
+  onCommit,
+  enabled = true,
+  onBoundaryReached,
 }: AnalysisStepProps) {
   const checkboxRef = useRef<HTMLDivElement>(null);
-  const radioRef = useRef<HTMLDivElement>(null);
-  const [checkboxFocused, setCheckboxFocused] = useState<string | null>(null);
+  const [checkboxFocused, setCheckboxFocused] = useState<string | null>(
+    LENS_OPTIONS[0]?.id ?? null,
+  );
 
   const toggleLens = (value: string) => {
     const lensId = value as LensId;
@@ -41,28 +55,27 @@ export function AnalysisStep({
       ? lenses.filter((l) => l !== lensId)
       : [...lenses, lensId];
     onLensesChange(newLenses);
+    return newLenses;
   };
 
-  const { onKeyDown: checkboxKeyDown, focusedValue: checkboxFocusedValue } = useNavigation({
-    mode: "local",
+  const handleLensEnter = (value: string) => {
+    const nextLenses = toggleLens(value);
+    onCommit?.({
+      defaultLenses: nextLenses,
+    });
+  };
+
+  const { focusedValue: checkboxFocusedValue } = useNavigation({
     containerRef: checkboxRef,
     role: "checkbox",
     value: checkboxFocused,
+    initialValue: checkboxFocused ?? LENS_OPTIONS[0]?.id ?? null,
     onValueChange: setCheckboxFocused,
     onSelect: toggleLens,
-    onEnter: toggleLens,
-  });
-
-  const onExecutionChangeStr = onAgentExecutionChange as (value: string) => void;
-
-  const { onKeyDown: radioKeyDown, focusedValue: radioFocusedValue } = useNavigation({
-    mode: "local",
-    containerRef: radioRef,
-    role: "radio",
-    value: agentExecution,
-    onValueChange: onExecutionChangeStr,
-    onSelect: onExecutionChangeStr,
-    onEnter: onExecutionChangeStr,
+    onEnter: handleLensEnter,
+    wrap: false,
+    enabled,
+    onBoundaryReached,
   });
 
   return (
@@ -74,8 +87,7 @@ export function AnalysisStep({
             ref={checkboxRef}
             value={lenses}
             onValueChange={onLensesChange}
-            onKeyDown={checkboxKeyDown}
-            focusedValue={checkboxFocusedValue}
+            focusedValue={enabled ? checkboxFocusedValue : null}
             className="space-y-1"
           >
             {LENS_OPTIONS.map((option) => (
@@ -85,7 +97,11 @@ export function AnalysisStep({
                 label={
                   <span className="flex items-center gap-2">
                     {option.label}
-                    <Badge variant={option.badgeVariant} size="sm" className="text-[9px]">
+                    <Badge
+                      variant={option.badgeVariant}
+                      size="sm"
+                      className="text-[9px]"
+                    >
                       {option.badgeLabel}
                     </Badge>
                   </span>
@@ -95,22 +111,6 @@ export function AnalysisStep({
             ))}
           </CheckboxGroup>
         </ScrollArea>
-      </div>
-
-      <div className="space-y-3">
-        <div className="text-sm font-mono text-tui-fg/60">Agent Execution Mode:</div>
-        <RadioGroup ref={radioRef} value={agentExecution} onValueChange={onAgentExecutionChange} onKeyDown={radioKeyDown} focusedValue={radioFocusedValue} className="space-y-1">
-          <RadioGroupItem
-            value="sequential"
-            label="Sequential"
-            description="Agents run one after another. Works with all providers and tiers."
-          />
-          <RadioGroupItem
-            value="parallel"
-            label="Parallel"
-            description="All agents run at once. Faster, but may hit rate limits on free tiers."
-          />
-        </RadioGroup>
       </div>
     </div>
   );
