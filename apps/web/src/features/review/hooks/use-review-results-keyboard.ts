@@ -62,6 +62,7 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const detailsScrollRef = useRef<HTMLDivElement>(null);
 
   const filteredIssues = filterIssuesBySeverity(issues, severityFilter);
 
@@ -92,7 +93,6 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     scope: "review",
     tabCycle: ["filters", "list", "details"],
     transitions: ({ zone, key }) => {
-      if (zone === "details" && key === "ArrowLeft") return "list";
       if (zone === "list" && key === "ArrowRight") return "details";
       if (zone === "filters" && key === "ArrowRight" && focusedFilterIndex >= SEVERITY_ORDER.length - 1) return "details";
       if (zone === "filters" && key === "ArrowDown") return "list";
@@ -117,6 +117,33 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
   }, { enabled: focusZone === "filters" });
 
   useKey("j", () => setFocusZone("list"), { enabled: focusZone === "filters" });
+
+  const availableTabs: TabId[] = selectedIssue?.suggested_patch
+    ? ["details", "explain", "trace", "patch"]
+    : ["details", "explain", "trace"];
+
+  const moveTab = (delta: -1 | 1) => {
+    const index = availableTabs.indexOf(activeTab);
+    if (index < 0) return;
+    const nextIndex = index + delta;
+
+    if (nextIndex < 0) {
+      setFocusZone("list");
+      return;
+    }
+    if (nextIndex >= availableTabs.length) return;
+    setActiveTab(availableTabs[nextIndex]);
+  };
+
+  useKey("ArrowLeft", () => moveTab(-1), { enabled: focusZone === "details" });
+  useKey("ArrowRight", () => moveTab(1), { enabled: focusZone === "details" });
+
+  const scrollDetails = (delta: number) => {
+    detailsScrollRef.current?.scrollBy({ top: delta, behavior: "smooth" });
+  };
+
+  useKey("ArrowUp", () => scrollDetails(-80), { enabled: focusZone === "details" });
+  useKey("ArrowDown", () => scrollDetails(80), { enabled: focusZone === "details" });
 
   const handleToggleSeverityFilter = () => {
     const sev = SEVERITY_ORDER[focusedFilterIndex];
@@ -170,6 +197,7 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     focusedFilterIndex,
     focusedValue,
     listRef,
+    detailsScrollRef,
     completedSteps,
     handleToggleStep,
   };

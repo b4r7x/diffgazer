@@ -63,6 +63,7 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      if (event.defaultPrevented) return;
       if (!activeScope) return;
 
       const scopeHandlers = handlers.current.get(activeScope);
