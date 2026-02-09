@@ -1,5 +1,5 @@
 {
-  "name": "@stargazer/hooks",
+  "name": "@diffgazer/hooks",
   "version": "0.0.1",
   "type": "module",
   "sideEffects": false,
@@ -21,7 +21,7 @@
     "figlet": "^1.10.0"
   },
   "devDependencies": {
-    "@stargazer/tsconfig": "workspace:*",
+    "@diffgazer/tsconfig": "workspace:*",
     "@types/figlet": "^1.7.0",
     "@types/react": "^19.2.13",
     "typescript": "^5.9.3"

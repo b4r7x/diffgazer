@@ -4,27 +4,27 @@ How the codebase is organized.
 
 ## Overview
 
-Stargazer is a pnpm monorepo. All packages are ESM (`"type": "module"`) with `verbatimModuleSyntax: true`. Packages use subpath exports for tree-shaking and declare `"sideEffects": false`.
+Diffgazer is a pnpm monorepo. All packages are ESM (`"type": "module"`) with `verbatimModuleSyntax: true`. Packages use subpath exports for tree-shaking and declare `"sideEffects": false`.
 
 The CLI is the distribution unit. It bundles the Hono server and pre-built web assets into a single installable package. One command starts the server, serves the UI, and opens the browser.
 
 ## Monorepo structure
 
 ```
-stargazer/
+diffgazer/
 ├── apps/
-│   ├── cli/                # stargazer - Ink 6 launcher, bundles server + web
-│   ├── server/             # @stargazer/server - Hono backend (127.0.0.1:3000)
-│   └── web/                # @stargazer/web - React 19 + Vite 7 frontend
+│   ├── cli/                # diffgazer - Ink 6 launcher, bundles server + web
+│   ├── server/             # @diffgazer/server - Hono backend (127.0.0.1:3000)
+│   └── web/                # @diffgazer/web - React 19 + Vite 7 frontend
 │
 ├── packages/
 │   ├── tsconfig/           # Shared TypeScript configs (base, node, react, cli, test)
-│   ├── schemas/            # @stargazer/schemas - Zod v4 validation schemas
-│   ├── core/               # @stargazer/core - Result<T,E>, errors, review state, utilities
-│   ├── api/                # @stargazer/api - Type-safe API client
-│   ├── hooks/              # @stargazer/hooks - useTimer, getFigletText
-│   ├── keyboard/           # @stargazer/keyboard - useScope, useKey, useNavigation
-│   └── ui/                 # @stargazer/ui - Terminal-inspired component library
+│   ├── schemas/            # @diffgazer/schemas - Zod v4 validation schemas
+│   ├── core/               # @diffgazer/core - Result<T,E>, errors, review state, utilities
+│   ├── api/                # @diffgazer/api - Type-safe API client
+│   ├── hooks/              # @diffgazer/hooks - useTimer, getFigletText
+│   ├── keyboard/           # @diffgazer/keyboard - useScope, useKey, useNavigation
+│   └── ui/                 # @diffgazer/ui - Terminal-inspired component library
 │
 └── docs/                   # Documentation
 ```
@@ -32,21 +32,21 @@ stargazer/
 ## Package dependency graph
 
 ```
-                @stargazer/tsconfig (devDep for all)
+                @diffgazer/tsconfig (devDep for all)
                        │
           ┌────────────┼────────────┐
           v            v            v
-    @stargazer/   @stargazer/   @stargazer/
+    @diffgazer/   @diffgazer/   @diffgazer/
      schemas       keyboard       hooks
      (leaf)        (leaf)         (leaf)
           │
           v
-    @stargazer/core
+    @diffgazer/core
     (depends on: schemas)
           │
      ┌────┴────┐
      v         v
-@stargazer/  @stargazer/ui
+@diffgazer/  @diffgazer/ui
    api         (leaf)
 (depends on:
  core, schemas)
@@ -54,28 +54,28 @@ stargazer/
      v
 ┌────┴─────────────────────────┐
 v                              v
-@stargazer/server          @stargazer/web
+@diffgazer/server          @diffgazer/web
 (deps: api, core,          (deps: api, core, schemas,
  schemas)                   hooks, keyboard, ui)
 └──────────┐  ┌────────────────┘
            v  v
-       stargazer (CLI)
+       diffgazer (CLI)
        (bundles: core, hooks, server)
 ```
 
 ## Packages
 
-**@stargazer/schemas** - Zod v4 schemas. Single source of truth for all data shapes: reviews, issues, events, config, git status, UI types.
+**@diffgazer/schemas** - Zod v4 schemas. Single source of truth for all data shapes: reviews, issues, events, config, git status, UI types.
 
-**@stargazer/core** - `Result<T,E>` type with `ok()`/`err()` constructors, error definitions, severity constants, formatting utilities. Also has the shared review state reducer and SSE stream processor used by both web and CLI.
+**@diffgazer/core** - `Result<T,E>` type with `ok()`/`err()` constructors, error definitions, severity constants, formatting utilities. Also has the shared review state reducer and SSE stream processor used by both web and CLI.
 
-**@stargazer/api** - API client created via `createApi({ baseUrl })`. Used by both web and CLI for all server communication. No direct `fetch` calls in apps.
+**@diffgazer/api** - API client created via `createApi({ baseUrl })`. Used by both web and CLI for all server communication. No direct `fetch` calls in apps.
 
-**@stargazer/hooks** - Two shared React hooks: `useTimer` (elapsed time tracking) and `getFigletText` (ASCII art).
+**@diffgazer/hooks** - Two shared React hooks: `useTimer` (elapsed time tracking) and `getFigletText` (ASCII art).
 
-**@stargazer/keyboard** - Keyboard navigation: `useScope` sets context, `useKey` registers handlers, `useNavigation` provides arrow-key navigation within containers.
+**@diffgazer/keyboard** - Keyboard navigation: `useScope` sets context, `useKey` registers handlers, `useNavigation` provides arrow-key navigation within containers.
 
-**@stargazer/ui** - Terminal-inspired React component library. Primitives (Button, Badge, Input), layout (Panel, ScrollArea, FocusablePane), compound components (Dialog, Tabs, CodeBlock, DiffView). No Radix or shadcn.
+**@diffgazer/ui** - Terminal-inspired React component library. Primitives (Button, Badge, Input), layout (Panel, ScrollArea, FocusablePane), compound components (Dialog, Tabs, CodeBlock, DiffView). No Radix or shadcn.
 
 ## Server
 
@@ -97,7 +97,7 @@ Middleware stack (applied in order):
 
 React 19 + Vite 7 with TanStack Router, Tailwind 4, and a terminal-inspired design. JetBrains Mono throughout.
 
-Keyboard-first navigation via `@stargazer/keyboard`, all pages navigable without a mouse. Dynamic footer bar shows per-page shortcuts.
+Keyboard-first navigation via `@diffgazer/keyboard`, all pages navigable without a mouse. Dynamic footer bar shows per-page shortcuts.
 
 State management is pure React: context providers (config, theme, footer), `useReducer` with the shared core reducer for review state, `useSyncExternalStore` for module-level caches. No Redux or Zustand.
 
@@ -112,7 +112,7 @@ Ink 6 app that acts as a launcher, not an interactive TUI. It starts the server,
 ## Key decisions
 
 - ESM everywhere with `verbatimModuleSyntax: true`. No CommonJS.
-- Subpath exports for tree-shaking (e.g., `@stargazer/core/result`, not `@stargazer/core`).
+- Subpath exports for tree-shaking (e.g., `@diffgazer/core/result`, not `@diffgazer/core`).
 - `Result<T,E>` for error handling, not try/catch. Callers must handle both paths.
 - React 19 Compiler auto-memoizes. No manual `useCallback`/`useMemo`.
 - XML escaping for all user content in AI prompts (CVE-2025-53773).

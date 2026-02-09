@@ -1,10 +1,10 @@
 import { cn } from "@/utils/cn";
-import { SectionHeader } from "@stargazer/ui";
+import { SectionHeader } from "@diffgazer/ui";
 import { SeverityBreakdown } from "@/components/ui/severity/severity-breakdown";
-import type { ReviewIssue } from "@stargazer/schemas/review";
+import type { ReviewIssue } from "@diffgazer/schemas/review";
 import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
-import type { SeverityCounts } from "@stargazer/schemas/ui";
-import { capitalize } from "@stargazer/core/strings";
+import type { SeverityCounts } from "@diffgazer/schemas/ui";
+import { capitalize } from "@diffgazer/core/strings";
 
 export interface HistoryInsightsPaneProps {
   runId: string | null;

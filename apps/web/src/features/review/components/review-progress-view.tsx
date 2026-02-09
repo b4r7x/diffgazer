@@ -7,16 +7,16 @@ import {
   type BadgeProps,
   Button,
   Callout,
-} from "@stargazer/ui";
+} from "@diffgazer/ui";
 import { ProgressList, type ProgressStepData } from "@/components/ui/progress";
 import { ActivityLog, type LogEntryData } from "./activity-log";
 import { AgentBoard } from "./agent-board";
 import { ContextSnapshotPreview } from "./context-snapshot-preview";
 import { ReviewMetricsFooter } from "./review-metrics-footer";
 import { useReviewProgressKeyboard } from "../hooks/use-review-progress-keyboard";
-import type { AgentState } from "@stargazer/schemas/events";
-import type { ReviewContextResponse } from "@stargazer/api/types";
-import type { ReviewProgressMetrics } from "@stargazer/schemas/ui";
+import type { AgentState } from "@diffgazer/schemas/events";
+import type { ReviewContextResponse } from "@diffgazer/api/types";
+import type { ReviewProgressMetrics } from "@diffgazer/schemas/ui";
 
 export interface ReviewProgressData {
   steps: ProgressStepData[];

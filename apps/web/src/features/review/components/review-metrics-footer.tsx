@@ -1,7 +1,7 @@
-import { PanelHeader } from '@stargazer/ui';
+import { PanelHeader } from '@diffgazer/ui';
 import { MetricItem } from './metric-item';
 import { Timer } from './timer';
-import type { ReviewProgressMetrics } from '@stargazer/schemas/ui';
+import type { ReviewProgressMetrics } from '@diffgazer/schemas/ui';
 
 interface ReviewMetricsFooterProps {
   metrics: ReviewProgressMetrics;

@@ -7,7 +7,7 @@ import {
 import { ReviewContainer, type ReviewCompleteData } from "./review-container";
 import { ReviewSummaryView } from "./review-summary-view";
 import { ReviewResultsView } from "./review-results-view";
-import type { ReviewIssue } from "@stargazer/schemas/review";
+import type { ReviewIssue } from "@diffgazer/schemas/review";
 import { isApiError, useReviewErrorHandler } from "../hooks";
 import { api } from "@/lib/api";
 import { usePageFooter } from "@/hooks/use-page-footer";

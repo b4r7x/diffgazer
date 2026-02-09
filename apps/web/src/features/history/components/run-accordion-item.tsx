@@ -1,5 +1,5 @@
 import { cn } from "@/utils/cn";
-import { Badge } from "@stargazer/ui";
+import { Badge } from "@diffgazer/ui";
 import type { Run } from "@/features/history/types";
 
 export interface RunAccordionItemProps {

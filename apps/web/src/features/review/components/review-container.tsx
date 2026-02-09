@@ -3,9 +3,9 @@ import { ApiKeyMissingView } from './api-key-missing-view';
 import { NoChangesView } from './no-changes-view';
 import { useReviewLifecycle, type ReviewCompleteData } from '../hooks/use-review-lifecycle';
 import { useContextSnapshot } from '../hooks/use-context-snapshot';
-import { convertAgentEventsToLogEntries } from '@stargazer/core/review';
+import { convertAgentEventsToLogEntries } from '@diffgazer/core/review';
 import { mapStepsToProgressData } from './review-container.utils';
-import type { ReviewMode } from '@stargazer/schemas/review';
+import type { ReviewMode } from '@diffgazer/schemas/review';
 import { usePageFooter } from "@/hooks/use-page-footer";
 
 export type { ReviewCompleteData };

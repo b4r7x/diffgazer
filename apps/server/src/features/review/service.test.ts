@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { SSEWriter } from "../../shared/lib/http/types.js";
-import type { FullReviewStreamEvent } from "@stargazer/schemas/events";
+import type { FullReviewStreamEvent } from "@diffgazer/schemas/events";
 import type { ActiveSession } from "./sessions.js";
-import { ReviewErrorCode } from "@stargazer/schemas/review";
+import { ReviewErrorCode } from "@diffgazer/schemas/review";
 
 // Mock sessions module (boundary: in-memory session store)
 vi.mock("./sessions.js", () => ({

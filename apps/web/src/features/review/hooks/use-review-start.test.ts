@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useReviewStart } from "./use-review-start";
-import { ReviewErrorCode } from "@stargazer/schemas/review";
-import type { Result } from "@stargazer/core/result";
-import type { StreamReviewError } from "@stargazer/api/review";
+import { ReviewErrorCode } from "@diffgazer/schemas/review";
+import type { Result } from "@diffgazer/core/result";
+import type { StreamReviewError } from "@diffgazer/api/review";
 
 function defaultProps(overrides: Partial<Parameters<typeof useReviewStart>[0]> = {}) {
   return {

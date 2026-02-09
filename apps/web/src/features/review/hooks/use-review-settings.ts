@@ -1,5 +1,5 @@
 import { useSettings } from '@/hooks/use-settings';
-import { LensIdSchema, type LensId } from '@stargazer/schemas/review';
+import { LensIdSchema, type LensId } from '@diffgazer/schemas/review';
 
 const FALLBACK_LENSES: LensId[] = ["correctness", "security", "performance", "simplicity", "tests"];
 

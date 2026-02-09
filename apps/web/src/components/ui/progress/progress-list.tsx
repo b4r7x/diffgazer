@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react';
 import { cn } from '@/utils/cn';
 import { ProgressStep } from './progress-step';
-import type { ProgressStepData as BaseProgressStepData } from '@stargazer/schemas/ui';
+import type { ProgressStepData as BaseProgressStepData } from '@diffgazer/schemas/ui';
 
 // Extend with ReactNode content for runtime use
 export interface ProgressStepData extends BaseProgressStepData {

@@ -1,7 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
-import { TrustConfigSchema } from "@stargazer/schemas/config";
-import { ErrorCode } from "@stargazer/schemas/errors";
+import { TrustConfigSchema } from "@diffgazer/schemas/config";
+import { ErrorCode } from "@diffgazer/schemas/errors";
 import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
 import { createBodyLimitMiddleware } from "../../shared/middlewares/body-limit.js";
 import {

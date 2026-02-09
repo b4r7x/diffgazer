@@ -6,8 +6,8 @@ import { useReviewStart } from './use-review-start';
 import { useReviewCompletion } from './use-review-completion';
 import { useConfigData, useConfigActions } from '@/app/providers/config-provider';
 import { api } from '@/lib/api';
-import type { ReviewIssue } from '@stargazer/schemas/review';
-import type { ReviewMode } from '@stargazer/schemas/review';
+import type { ReviewIssue } from '@diffgazer/schemas/review';
+import type { ReviewMode } from '@diffgazer/schemas/review';
 
 export interface ReviewCompleteData {
   issues: ReviewIssue[];

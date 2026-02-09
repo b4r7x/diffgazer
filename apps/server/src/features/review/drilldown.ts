@@ -1,13 +1,13 @@
-import { type Result, ok, err } from "@stargazer/core/result";
-import { createError } from "@stargazer/core/errors";
+import { type Result, ok, err } from "@diffgazer/core/result";
+import { createError } from "@diffgazer/core/errors";
 import type {
   DrilldownResult,
   TraceRef,
   ReviewIssue,
   ReviewResult,
-} from "@stargazer/schemas/review";
-import { ErrorCode } from "@stargazer/schemas/errors";
-import type { AgentStreamEvent } from "@stargazer/schemas/events";
+} from "@diffgazer/schemas/review";
+import { ErrorCode } from "@diffgazer/schemas/errors";
+import type { AgentStreamEvent } from "@diffgazer/schemas/events";
 import type { AIClient, AIError } from "../../shared/lib/ai/types.js";
 import type { FileDiff, ParsedDiff } from "../../shared/lib/diff/types.js";
 import { parseDiff } from "../../shared/lib/diff/parser.js";

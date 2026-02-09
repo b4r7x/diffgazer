@@ -13,7 +13,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
 
   const projectHeaders: Record<string, string> = { ...baseHeaders };
   if (projectRoot) {
-    projectHeaders["x-stargazer-project-root"] = projectRoot;
+    projectHeaders["x-diffgazer-project-root"] = projectRoot;
   }
 
   /**

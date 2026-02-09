@@ -1,4 +1,4 @@
-import type { ReviewIssue, ReviewSeverity } from "@stargazer/schemas/review";
+import type { ReviewIssue, ReviewSeverity } from "@diffgazer/schemas/review";
 
 /**
  * Filter issues by severity level

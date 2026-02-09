@@ -10,9 +10,9 @@ import type {
   AIError,
   AIErrorCode,
 } from "./types.js";
-import { type Result, ok, err } from "@stargazer/core/result";
-import { createError, toError, getErrorMessage } from "@stargazer/core/errors";
-import { AVAILABLE_PROVIDERS, type AIProvider } from "@stargazer/schemas/config";
+import { type Result, ok, err } from "@diffgazer/core/result";
+import { createError, toError, getErrorMessage } from "@diffgazer/core/errors";
+import { AVAILABLE_PROVIDERS, type AIProvider } from "@diffgazer/schemas/config";
 import { getActiveProvider, getProviderApiKey } from "../config/store.js";
 import { classifyError, type ErrorRule } from "../errors.js";
 

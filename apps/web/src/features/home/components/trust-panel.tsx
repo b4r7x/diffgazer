@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { TrustCapabilities } from "@stargazer/schemas/config";
-import { CardLayout, Button, useToast } from "@stargazer/ui";
+import type { TrustCapabilities } from "@diffgazer/schemas/config";
+import { CardLayout, Button, useToast } from "@diffgazer/ui";
 import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
 import { useTrust } from "@/hooks/use-trust";
 
@@ -51,7 +51,7 @@ export function TrustPanel({
   return (
     <CardLayout
       title="Trust This Repository?"
-      subtitle="Stargazer needs permissions to review your code"
+      subtitle="Diffgazer needs permissions to review your code"
       footer={
         <Button variant="success" size="sm" onClick={handleTrust} disabled={isLoading}>
           {actionLabel}

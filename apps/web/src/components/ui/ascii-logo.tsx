@@ -1,12 +1,12 @@
 import { cn } from "@/utils/cn";
-import { getFigletText } from "@stargazer/hooks";
+import { getFigletText } from "@diffgazer/hooks";
 
 interface AsciiLogoProps {
   text?: string;
   className?: string;
 }
 
-export function AsciiLogo({ text = "STARGAZER", className }: AsciiLogoProps) {
+export function AsciiLogo({ text = "DIFFGAZER", className }: AsciiLogoProps) {
   const asciiText = getFigletText(text);
   const isReady = Boolean(asciiText);
 

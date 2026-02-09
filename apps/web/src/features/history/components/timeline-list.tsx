@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { cn } from "@/utils/cn";
-import { useNavigation } from "@stargazer/keyboard";
-import type { TimelineItem } from "@stargazer/schemas/ui";
+import { useNavigation } from "@diffgazer/keyboard";
+import type { TimelineItem } from "@diffgazer/schemas/ui";
 
 export interface TimelineListProps {
   items: TimelineItem[];

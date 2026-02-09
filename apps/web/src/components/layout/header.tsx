@@ -1,6 +1,6 @@
 import { cn } from "@/utils/cn";
 import { AsciiLogo } from "@/components/ui/ascii-logo";
-import { Button } from "@stargazer/ui";
+import { Button } from "@diffgazer/ui";
 
 type ProviderStatus = "active" | "idle";
 
@@ -32,7 +32,7 @@ export function Header({
 
       <div className="flex flex-col items-center pt-4 md:pt-6">
         <AsciiLogo
-          text="stargazer"
+          text="diffgazer"
           className={cn(
             "text-tui-blue font-bold whitespace-pre leading-none select-none",
             "text-[8px] md:text-[10px] lg:text-xs",

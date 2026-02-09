@@ -1,4 +1,4 @@
-// Re-export severity utilities from @stargazer/schemas/ui
+// Re-export severity utilities from @diffgazer/schemas/ui
 export {
   SEVERITY_ORDER,
   SEVERITY_LABELS,
@@ -8,4 +8,4 @@ export {
   calculateSeverityCounts,
   severityRank,
   type SeverityCounts,
-} from "@stargazer/schemas/ui";
+} from "@diffgazer/schemas/ui";

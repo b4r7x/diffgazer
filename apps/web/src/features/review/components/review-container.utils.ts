@@ -1,7 +1,7 @@
 import type { ProgressStepData, ProgressStatus } from '@/components/ui/progress';
-import type { StepState, AgentState, AgentStatus } from '@stargazer/schemas/events';
-import type { ProgressSubstepData } from '@stargazer/schemas/ui';
-import { truncate } from '@stargazer/core/strings';
+import type { StepState, AgentState, AgentStatus } from '@diffgazer/schemas/events';
+import type { ProgressSubstepData } from '@diffgazer/schemas/ui';
+import { truncate } from '@diffgazer/core/strings';
 
 function mapStepStatus(status: StepState['status']): ProgressStatus {
   return status === 'error' ? 'pending' : status;

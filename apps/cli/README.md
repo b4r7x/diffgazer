@@ -1,6 +1,6 @@
-# stargazer
+# diffgazer
 
-CLI tool that starts the Stargazer environment.
+CLI tool that starts the Diffgazer environment.
 
 ## What it does
 
@@ -27,8 +27,8 @@ pnpm start       # Run compiled version
 ## Global Install (npm)
 
 ```bash
-npm install -g stargazer
-stargazer        # Run from anywhere
+npm install -g diffgazer
+diffgazer        # Run from anywhere
 ```
 
 ## Exit

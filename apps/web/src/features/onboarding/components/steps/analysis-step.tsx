@@ -1,9 +1,9 @@
 import { useRef, useState } from "react";
-import { AGENT_METADATA, LENS_TO_AGENT } from "@stargazer/schemas/events";
-import type { LensId } from "@stargazer/schemas/review";
-import { CheckboxGroup, CheckboxItem, RadioGroup, RadioGroupItem, Badge, ScrollArea } from "@stargazer/ui";
-import { useNavigation } from "@stargazer/keyboard";
-import type { AgentExecution } from "@stargazer/schemas/config";
+import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/schemas/events";
+import type { LensId } from "@diffgazer/schemas/review";
+import { CheckboxGroup, CheckboxItem, RadioGroup, RadioGroupItem, Badge, ScrollArea } from "@diffgazer/ui";
+import { useNavigation } from "@diffgazer/keyboard";
+import type { AgentExecution } from "@diffgazer/schemas/config";
 
 const LENS_OPTIONS = (
   Object.entries(LENS_TO_AGENT) as Array<[LensId, keyof typeof AGENT_METADATA]>

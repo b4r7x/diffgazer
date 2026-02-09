@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import { ErrorCode } from "@stargazer/schemas/errors";
+import { ErrorCode } from "@diffgazer/schemas/errors";
 import type { core } from "zod";
 
 const VALID_ERROR_STATUSES: Record<number, ContentfulStatusCode> = {

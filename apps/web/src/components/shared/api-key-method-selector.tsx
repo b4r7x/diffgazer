@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { Input, Radio } from "@stargazer/ui";
+import { Input, Radio } from "@diffgazer/ui";
 import { cn } from "@/utils/cn";
 import type { FocusElement } from "@/types/focus-element";
 import type { InputMethod } from "@/types/input-method";

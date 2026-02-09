@@ -1,4 +1,4 @@
-// @stargazer/ui - TUI-themed component library
+// @diffgazer/ui - TUI-themed component library
 export { cn } from "./lib/cn";
 
 // Primitives

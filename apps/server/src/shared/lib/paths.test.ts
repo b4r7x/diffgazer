@@ -9,14 +9,14 @@ vi.mock("node:fs", () => ({
 
 import {
   resolveProjectRoot,
-  getGlobalStargazerDir,
+  getGlobalDiffgazerDir,
 } from "./paths.js";
 
 const home = homedir();
 
 beforeEach(() => {
   vi.clearAllMocks();
-  delete process.env.STARGAZER_HOME;
+  delete process.env.DIFFGAZER_HOME;
 });
 
 describe("resolveProjectRoot", () => {
@@ -105,15 +105,15 @@ describe("resolveProjectRoot", () => {
   });
 });
 
-describe("getGlobalStargazerDir", () => {
-  it("should use STARGAZER_HOME env var when set", () => {
-    process.env.STARGAZER_HOME = "/custom/home";
-    expect(getGlobalStargazerDir()).toBe("/custom/home");
+describe("getGlobalDiffgazerDir", () => {
+  it("should use DIFFGAZER_HOME env var when set", () => {
+    process.env.DIFFGAZER_HOME = "/custom/home";
+    expect(getGlobalDiffgazerDir()).toBe("/custom/home");
   });
 
-  it("should default to ~/.stargazer", () => {
+  it("should default to ~/.diffgazer", () => {
     const { homedir } = require("node:os");
-    expect(getGlobalStargazerDir()).toBe(path.join(homedir(), ".stargazer"));
+    expect(getGlobalDiffgazerDir()).toBe(path.join(homedir(), ".diffgazer"));
   });
 });
 

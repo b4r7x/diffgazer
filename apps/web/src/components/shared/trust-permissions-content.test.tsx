@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { KeyboardProvider } from "@stargazer/keyboard";
-import type { TrustCapabilities } from "@stargazer/schemas/config";
+import { KeyboardProvider } from "@diffgazer/keyboard";
+import type { TrustCapabilities } from "@diffgazer/schemas/config";
 import { TrustPermissionsContent } from "./trust-permissions-content";
 
 function hasClassToken(element: Element, token: string): boolean {
@@ -18,7 +18,7 @@ function TrustPermissionsTestHarness() {
   return (
     <KeyboardProvider>
       <TrustPermissionsContent
-        directory="~/dev/projects/stargazer-core"
+        directory="~/dev/projects/diffgazer-core"
         value={value}
         onChange={setValue}
         showActions

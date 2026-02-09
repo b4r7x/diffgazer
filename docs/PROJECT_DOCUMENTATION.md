@@ -1,12 +1,12 @@
-# Stargazer — Complete Project Documentation
+# Diffgazer — Complete Project Documentation
 
-> This document provides a comprehensive reference of the Stargazer project: architecture, features, APIs, packages, security, and configuration. It serves as the foundation for README writing and project onboarding.
+> This document provides a comprehensive reference of the Diffgazer project: architecture, features, APIs, packages, security, and configuration. It serves as the foundation for README writing and project onboarding.
 
 ---
 
 ## Table of Contents
 
-1. [What is Stargazer?](#1-what-is-stargazer)
+1. [What is Diffgazer?](#1-what-is-diffgazer)
 2. [Core Features](#2-core-features)
 3. [How It Works (User Journey)](#3-how-it-works-user-journey)
 4. [Technology Stack](#4-technology-stack)
@@ -26,9 +26,9 @@
 
 ---
 
-## 1. What is Stargazer?
+## 1. What is Diffgazer?
 
-Stargazer is a **local-only AI-powered code review CLI tool** with an embedded web UI. You run a single command from any git repository, and Stargazer spins up a local server with a browser-based interface where you can review AI-generated code issues categorized by severity.
+Diffgazer is a **local-only AI-powered code review CLI tool** with an embedded web UI. You run a single command from any git repository, and Diffgazer spins up a local server with a browser-based interface where you can review AI-generated code issues categorized by severity.
 
 Your code never leaves your machine except to the AI provider you choose — it runs entirely on localhost with defense-in-depth security.
 
@@ -104,9 +104,9 @@ API keys stored via OS keyring (macOS Keychain, Windows Credential Manager, Linu
 ## 3. How It Works (User Journey)
 
 ### First Launch
-1. **Install** — `npm install -g stargazer` (or build from monorepo)
+1. **Install** — `npm install -g diffgazer` (or build from monorepo)
 2. **Navigate** to any git repository — `cd my-project`
-3. **Run** — `stargazer`
+3. **Run** — `diffgazer`
 4. CLI shows ASCII art logo, starts embedded server (port 3000), opens browser automatically
 5. **Onboarding wizard** (5 steps):
    - Choose secrets storage (OS keyring or file)
@@ -192,7 +192,7 @@ API keys stored via OS keyring (macOS Keychain, Windows Credential Manager, Linu
 ## 5. Monorepo Architecture
 
 ```
-stargazer/
+diffgazer/
 ├── package.json                 # Root workspace config
 ├── pnpm-workspace.yaml          # pnpm workspace definition
 ├── CLAUDE.md                    # AI assistant instructions
@@ -205,24 +205,24 @@ stargazer/
 │   │   ├── cli.json             # CLI app (Node + JSX)
 │   │   └── test.json            # Test configs (vitest/globals)
 │   │
-│   ├── schemas/                 # @stargazer/schemas — Zod 4 validation
-│   ├── core/                    # @stargazer/core — Result<T,E>, errors, utilities
-│   ├── api/                     # @stargazer/api — Type-safe API client
-│   ├── hooks/                   # @stargazer/hooks — Shared React hooks
-│   ├── keyboard/                # @stargazer/keyboard — Keyboard navigation
-│   └── ui/                      # @stargazer/ui — Terminal-inspired UI components
+│   ├── schemas/                 # @diffgazer/schemas — Zod 4 validation
+│   ├── core/                    # @diffgazer/core — Result<T,E>, errors, utilities
+│   ├── api/                     # @diffgazer/api — Type-safe API client
+│   ├── hooks/                   # @diffgazer/hooks — Shared React hooks
+│   ├── keyboard/                # @diffgazer/keyboard — Keyboard navigation
+│   └── ui/                      # @diffgazer/ui — Terminal-inspired UI components
 │
 ├── apps/
-│   ├── server/                  # @stargazer/server — Hono backend
-│   ├── web/                     # @stargazer/web — React 19 + Vite frontend
-│   └── cli/                     # stargazer — Ink 6 CLI (bundles server + web)
+│   ├── server/                  # @diffgazer/server — Hono backend
+│   ├── web/                     # @diffgazer/web — React 19 + Vite frontend
+│   └── cli/                     # diffgazer — Ink 6 CLI (bundles server + web)
 │
 └── docs/                        # Documentation
 ```
 
 **Key architectural decisions:**
 - All ESM (`"type": "module"`) with `verbatimModuleSyntax: true`
-- Sub-path exports for tree-shaking (e.g., `@stargazer/core/result`, not `@stargazer/core`)
+- Sub-path exports for tree-shaking (e.g., `@diffgazer/core/result`, not `@diffgazer/core`)
 - All packages have `"sideEffects": false`
 - CLI is the distribution unit — bundles server + web into one binary
 
@@ -231,21 +231,21 @@ stargazer/
 ## 6. Package Dependency Graph
 
 ```
-                    @stargazer/tsconfig (devDep for all)
+                    @diffgazer/tsconfig (devDep for all)
                            │
               ┌────────────┼────────────┐
               ▼            ▼            ▼
-        @stargazer/   @stargazer/   @stargazer/
+        @diffgazer/   @diffgazer/   @diffgazer/
          schemas       keyboard       hooks
          (leaf)        (leaf)         (leaf)
               │
               ▼
-        @stargazer/core
+        @diffgazer/core
         (depends on: schemas)
               │
          ┌────┴────┐
          ▼         ▼
-   @stargazer/   @stargazer/ui
+   @diffgazer/   @diffgazer/ui
       api           (leaf)
    (depends on:
     core, schemas)
@@ -253,12 +253,12 @@ stargazer/
          ▼
    ┌─────┴─────────────────────────┐
    ▼                               ▼
-@stargazer/server              @stargazer/web
+@diffgazer/server              @diffgazer/web
 (deps: api, core, schemas)     (deps: api, core, schemas,
                                 hooks, keyboard, ui)
    └───────────┐  ┌────────────────┘
                ▼  ▼
-           stargazer (CLI)
+           diffgazer (CLI)
            (bundles: core, hooks, server)
 ```
 
@@ -266,19 +266,19 @@ stargazer/
 
 ## 7. Shared Packages
 
-### @stargazer/schemas
+### @diffgazer/schemas
 Zod v4 validation schemas — single source of truth for all data shapes.
 
 **Sub-path exports:**
 | Import | Description |
 |--------|-------------|
-| `@stargazer/schemas/errors` | Error codes, UUID schema, timestamp helpers |
-| `@stargazer/schemas/review` | Issue schemas, lenses, profiles, storage |
-| `@stargazer/schemas/events` | Agent, step, enrich, SSE stream events |
-| `@stargazer/schemas/config` | Providers, settings, trust |
-| `@stargazer/schemas/git` | Git status and file entries |
-| `@stargazer/schemas/context` | Project context graph |
-| `@stargazer/schemas/ui` | UI display types, severity constants |
+| `@diffgazer/schemas/errors` | Error codes, UUID schema, timestamp helpers |
+| `@diffgazer/schemas/review` | Issue schemas, lenses, profiles, storage |
+| `@diffgazer/schemas/events` | Agent, step, enrich, SSE stream events |
+| `@diffgazer/schemas/config` | Providers, settings, trust |
+| `@diffgazer/schemas/git` | Git status and file entries |
+| `@diffgazer/schemas/context` | Project context graph |
+| `@diffgazer/schemas/ui` | UI display types, severity constants |
 
 **Key schemas:**
 - `ReviewIssueSchema` — the main issue type with 20+ fields
@@ -288,19 +288,19 @@ Zod v4 validation schemas — single source of truth for all data shapes.
 - `SettingsConfigSchema` — user settings (theme, lenses, profile, storage, execution)
 - `InitResponseSchema` — full app initialization payload
 
-### @stargazer/core
+### @diffgazer/core
 Core utilities and shared business logic.
 
 **Sub-path exports:**
 | Import | Key Exports |
 |--------|-------------|
-| `@stargazer/core/result` | `Result<T,E>`, `ok()`, `err()` |
-| `@stargazer/core/errors` | `AppError`, `createError()`, `getErrorMessage()` |
-| `@stargazer/core/severity` | Severity constants, colors, icons, labels |
-| `@stargazer/core/strings` | `capitalize()`, `truncate()` |
-| `@stargazer/core/format` | `formatTime()`, `formatTimestamp()` |
-| `@stargazer/core/json` | `safeParseJson()` |
-| `@stargazer/core/review` | Review state reducer, stream processor, event conversion |
+| `@diffgazer/core/result` | `Result<T,E>`, `ok()`, `err()` |
+| `@diffgazer/core/errors` | `AppError`, `createError()`, `getErrorMessage()` |
+| `@diffgazer/core/severity` | Severity constants, colors, icons, labels |
+| `@diffgazer/core/strings` | `capitalize()`, `truncate()` |
+| `@diffgazer/core/format` | `formatTime()`, `formatTimestamp()` |
+| `@diffgazer/core/json` | `safeParseJson()` |
+| `@diffgazer/core/review` | Review state reducer, stream processor, event conversion |
 
 **Review state management** — shared between web and CLI:
 - `ReviewState` — unified state: steps, agents, issues, events, streaming status
@@ -308,7 +308,7 @@ Core utilities and shared business logic.
 - `processReviewStream()` — consumes SSE stream with typed callbacks
 - `convertAgentEventsToLogEntries()` — transforms events for UI log display
 
-### @stargazer/api
+### @diffgazer/api
 Type-safe API client used by both CLI and web.
 
 **Pattern:** `createApi({ baseUrl })` returns a bound API object:
@@ -322,24 +322,24 @@ api.getGitStatus();
 **Sub-path exports:**
 | Import | Functions |
 |--------|-----------|
-| `@stargazer/api` | `createApi()`, `BoundApi` type |
-| `@stargazer/api/review` | `streamReview`, `resumeReviewStream`, `getReviews`, `getReview`, `deleteReview`, `runReviewDrilldown`, `getReviewContext`, `refreshReviewContext` |
-| `@stargazer/api/config` | `loadInit`, `checkConfig`, `getConfig`, `saveConfig`, `deleteConfig`, `getProviderStatus`, `saveSettings`, `getSettings`, `getTrust`, `saveTrust`, etc. |
-| `@stargazer/api/git` | `getGitStatus`, `getGitDiff` |
+| `@diffgazer/api` | `createApi()`, `BoundApi` type |
+| `@diffgazer/api/review` | `streamReview`, `resumeReviewStream`, `getReviews`, `getReview`, `deleteReview`, `runReviewDrilldown`, `getReviewContext`, `refreshReviewContext` |
+| `@diffgazer/api/config` | `loadInit`, `checkConfig`, `getConfig`, `saveConfig`, `deleteConfig`, `getProviderStatus`, `saveSettings`, `getSettings`, `getTrust`, `saveTrust`, etc. |
+| `@diffgazer/api/git` | `getGitStatus`, `getGitDiff` |
 
-### @stargazer/hooks
+### @diffgazer/hooks
 Shared React hooks (2 exports):
 - `useTimer(options)` — elapsed time tracker (100ms interval)
 - `getFigletText(text, font?)` — ASCII art generation
 
-### @stargazer/keyboard
+### @diffgazer/keyboard
 Keyboard navigation system:
 - `useScope(name)` — sets keyboard scope
 - `useKey(key, handler)` — registers key handler
 - `useNavigation({ containerRef, ... })` — arrow key navigation
 - `useTabNavigation({ containerRef })` — tab navigation
 
-### @stargazer/ui
+### @diffgazer/ui
 Terminal-inspired React UI component library (custom-built, no Radix/shadcn):
 - **Primitives:** Button, Badge, Input, Textarea, Callout, Checkbox, Radio
 - **Layout:** Panel, CardLayout, FocusablePane, ScrollArea, SectionHeader, EmptyState
@@ -433,7 +433,7 @@ No Redux/Zustand — pure React context + hooks:
 - **Settings/reviews** (module-level caches with `useSyncExternalStore`)
 
 ### Keyboard Navigation
-Extensive keyboard-first navigation via `@stargazer/keyboard`:
+Extensive keyboard-first navigation via `@diffgazer/keyboard`:
 - Focus zone pattern with arrow keys within zones, Tab/special keys to switch zones
 - Per-page shortcuts displayed in dynamic footer bar
 - All pages fully navigable without mouse
@@ -444,8 +444,8 @@ Extensive keyboard-first navigation via `@stargazer/keyboard`:
 
 ### Usage
 ```bash
-stargazer          # Production mode — embedded server + browser
-stargazer --dev    # Dev mode — separate API + Vite servers
+diffgazer          # Production mode — embedded server + browser
+diffgazer --dev    # Dev mode — separate API + Vite servers
 ```
 
 ### Two Modes
@@ -462,7 +462,7 @@ stargazer --dev    # Dev mode — separate API + Vite servers
 
 ### Architecture
 The CLI is a **launcher, not an interactive TUI**. It:
-1. Shows ASCII "Stargazer" logo
+1. Shows ASCII "Diffgazer" logo
 2. Starts the server(s)
 3. Opens the browser
 4. Displays "Esc or ctrl+c to exit"
@@ -476,7 +476,7 @@ dist/
   index.js          # Bundled CLI (includes server + core + hooks via tsup)
   web/              # Pre-built Vite web UI assets
 bin/
-  stargazer.js      # Entry shim
+  diffgazer.js      # Entry shim
 ```
 
 ---
@@ -561,13 +561,13 @@ Deep-dive analysis on any specific issue returns: detailed analysis, root cause,
 ### Secrets Storage
 
 **File-based (`"file"`):**
-- Location: `~/.stargazer/secrets.json`
+- Location: `~/.diffgazer/secrets.json`
 - Permissions: `0o600` (owner read/write only)
 - Atomic writes (temp file + rename)
 
 **OS Keyring (`"keyring"`):**
 - macOS Keychain, Windows Credential Manager, Linux Secret Service
-- App name: `"stargazer"`, key format: `api_key_{provider}`
+- App name: `"diffgazer"`, key format: `api_key_{provider}`
 - Migration between modes supported
 
 ### Trust System
@@ -684,13 +684,13 @@ Terminal (Ink CLI)
 ## 16. Build Pipeline
 
 **Required build order:**
-1. `@stargazer/schemas` (leaf) — `tsc`
-2. `@stargazer/core` (depends on schemas) — `tsc`
-3. `@stargazer/api` (depends on core, schemas) — `tsc`
-4. `@stargazer/hooks`, `@stargazer/keyboard`, `@stargazer/ui` (leaves) — `tsc`
-5. `@stargazer/server` (depends on api, core, schemas) — `tsc`
-6. `@stargazer/web` (depends on api, core, schemas, hooks, keyboard, ui) — `vite build`
-7. `stargazer` CLI (bundles core, hooks, server + web output) — `tsup`
+1. `@diffgazer/schemas` (leaf) — `tsc`
+2. `@diffgazer/core` (depends on schemas) — `tsc`
+3. `@diffgazer/api` (depends on core, schemas) — `tsc`
+4. `@diffgazer/hooks`, `@diffgazer/keyboard`, `@diffgazer/ui` (leaves) — `tsc`
+5. `@diffgazer/server` (depends on api, core, schemas) — `tsc`
+6. `@diffgazer/web` (depends on api, core, schemas, hooks, keyboard, ui) — `vite build`
+7. `diffgazer` CLI (bundles core, hooks, server + web output) — `tsup`
 
 ### CLI Full Build
 ```bash
@@ -703,7 +703,7 @@ build:bundle  → tsup → bundles CLI with noExternal: core, hooks, server
 
 ## 17. File Storage Locations
 
-### Global (`~/.stargazer/`)
+### Global (`~/.diffgazer/`)
 | File | Contents |
 |------|----------|
 | `config.json` | Settings + provider status |
@@ -712,7 +712,7 @@ build:bundle  → tsup → bundles CLI with noExternal: core, hooks, server
 | `openrouter-models.json` | Cached model list (24h TTL) |
 | `triage-reviews/{uuid}.json` | Saved review results |
 
-### Per-Project (`{project}/.stargazer/`)
+### Per-Project (`{project}/.diffgazer/`)
 | File | Contents |
 |------|----------|
 | `project.json` | Project identity (UUID, repo root) |
@@ -723,8 +723,8 @@ build:bundle  → tsup → bundles CLI with noExternal: core, hooks, server
 ### Environment Variables
 | Variable | Purpose |
 |----------|---------|
-| `STARGAZER_HOME` | Override global config dir |
-| `STARGAZER_PROJECT_ROOT` | Override project root detection |
+| `DIFFGAZER_HOME` | Override global config dir |
+| `DIFFGAZER_PROJECT_ROOT` | Override project root detection |
 | `PORT` | Override API server port |
 | `GOOGLE_API_KEY` | Gemini API key (alternative to stored) |
 | `ZAI_API_KEY` | Z.AI API key (alternative to stored) |

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/utils/cn';
 import { LogEntry } from './log-entry';
-import { ScrollArea } from '@stargazer/ui';
-import type { LogEntryData as BaseLogEntryData } from '@stargazer/schemas/ui';
+import { ScrollArea } from '@diffgazer/ui';
+import type { LogEntryData as BaseLogEntryData } from '@diffgazer/schemas/ui';
 
 // Extend with React.ReactNode for message field
 export interface LogEntryData extends Omit<BaseLogEntryData, 'message'> {

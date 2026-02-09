@@ -1,7 +1,7 @@
 import { resolveProjectRoot } from "../paths.js";
-import { type Result, ok, err } from "@stargazer/core/result";
-import { createError } from "@stargazer/core/errors";
-import type { AIProvider, ProjectInfo, ProviderStatus, SecretsStorage, SettingsConfig, TrustConfig } from "@stargazer/schemas/config";
+import { type Result, ok, err } from "@diffgazer/core/result";
+import { createError } from "@diffgazer/core/errors";
+import type { AIProvider, ProjectInfo, ProviderStatus, SecretsStorage, SettingsConfig, TrustConfig } from "@diffgazer/schemas/config";
 import type { SecretsStorageError, SecretsStorageErrorCode, ConfigState, SecretsState, TrustState } from "./types.js";
 import {
   deleteKeyringSecret,
@@ -127,7 +127,7 @@ export function createConfigStore(): ConfigStore {
         removeSecretsFile();
       } catch (error) {
         console.warn(
-          `[stargazer] Failed to remove secrets file after migration: ${
+          `[diffgazer] Failed to remove secrets file after migration: ${
             error instanceof Error ? error.message : String(error)
           }`,
         );
@@ -159,7 +159,7 @@ export function createConfigStore(): ConfigStore {
         const deleteResult = deleteKeyringSecret(getApiKeyName(providerId));
         if (!deleteResult.ok) {
           console.warn(
-            `[stargazer] Failed to delete keyring secret for '${providerId}': ${deleteResult.error.message}`,
+            `[diffgazer] Failed to delete keyring secret for '${providerId}': ${deleteResult.error.message}`,
           );
         }
       }
@@ -222,7 +222,7 @@ export function createConfigStore(): ConfigStore {
   const getProjectInfo = (projectRoot?: string): ProjectInfo => {
     const resolvedRoot = resolveProjectRoot({
       header: projectRoot ?? null,
-      env: process.env.STARGAZER_PROJECT_ROOT ?? null,
+      env: process.env.DIFFGAZER_PROJECT_ROOT ?? null,
       cwd: process.cwd(),
     });
     const projectFile = readOrCreateProjectFile(resolvedRoot);

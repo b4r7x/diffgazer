@@ -45,16 +45,16 @@ importers:
         specifier: ^19.2.4
         version: 19.2.4
     devDependencies:
-      '@stargazer/core':
+      '@diffgazer/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@stargazer/hooks':
+      '@diffgazer/hooks':
         specifier: workspace:*
         version: link:../../packages/hooks
-      '@stargazer/server':
+      '@diffgazer/server':
         specifier: workspace:*
         version: link:../server
-      '@stargazer/tsconfig':
+      '@diffgazer/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@types/node':
@@ -90,13 +90,13 @@ importers:
       '@openrouter/ai-sdk-provider':
         specifier: ^2.1.1
         version: 2.1.1(ai@6.0.71(zod@4.3.6))(zod@4.3.6)
-      '@stargazer/api':
+      '@diffgazer/api':
         specifier: workspace:*
         version: link:../../packages/api
-      '@stargazer/core':
+      '@diffgazer/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@stargazer/schemas':
+      '@diffgazer/schemas':
         specifier: workspace:*
         version: link:../../packages/schemas
       ai:
@@ -112,7 +112,7 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
-      '@stargazer/tsconfig':
+      '@diffgazer/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@types/node':
@@ -127,22 +127,22 @@ importers:
 
   apps/web:
     dependencies:
-      '@stargazer/api':
+      '@diffgazer/api':
         specifier: workspace:*
         version: link:../../packages/api
-      '@stargazer/core':
+      '@diffgazer/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@stargazer/hooks':
+      '@diffgazer/hooks':
         specifier: workspace:*
         version: link:../../packages/hooks
-      '@stargazer/keyboard':
+      '@diffgazer/keyboard':
         specifier: workspace:*
         version: link:../../packages/keyboard
-      '@stargazer/schemas':
+      '@diffgazer/schemas':
         specifier: workspace:*
         version: link:../../packages/schemas
-      '@stargazer/ui':
+      '@diffgazer/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@tailwindcss/vite':
@@ -203,14 +203,14 @@ importers:
 
   packages/api:
     dependencies:
-      '@stargazer/core':
+      '@diffgazer/core':
         specifier: workspace:*
         version: link:../core
-      '@stargazer/schemas':
+      '@diffgazer/schemas':
         specifier: workspace:*
         version: link:../schemas
     devDependencies:
-      '@stargazer/tsconfig':
+      '@diffgazer/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/node':
@@ -222,14 +222,14 @@ importers:
 
   packages/core:
     dependencies:
-      '@stargazer/schemas':
+      '@diffgazer/schemas':
         specifier: workspace:*
         version: link:../schemas
       zod:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
-      '@stargazer/tsconfig':
+      '@diffgazer/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/node':
@@ -248,7 +248,7 @@ importers:
         specifier: ^18.0.0 || ^19.0.0
         version: 19.2.4
     devDependencies:
-      '@stargazer/tsconfig':
+      '@diffgazer/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/figlet':
@@ -263,7 +263,7 @@ importers:
 
   packages/keyboard:
     devDependencies:
-      '@stargazer/tsconfig':
+      '@diffgazer/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@testing-library/react':
@@ -294,7 +294,7 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
-      '@stargazer/tsconfig':
+      '@diffgazer/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/node':
@@ -318,7 +318,7 @@ importers:
         specifier: ^3.0.0
         version: 3.4.0
     devDependencies:
-      '@stargazer/tsconfig':
+      '@diffgazer/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@types/react':

@@ -2,16 +2,16 @@ import type { Context } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
-import { ErrorCode } from "@stargazer/schemas/errors";
+import { ErrorCode } from "@diffgazer/schemas/errors";
 import {
   errorResponse,
   zodErrorHandler,
 } from "../../shared/lib/http/response.js";
 import { createBodyLimitMiddleware } from "../../shared/middlewares/body-limit.js";
-import { getErrorMessage } from "@stargazer/core/errors";
+import { getErrorMessage } from "@diffgazer/core/errors";
 import { writeSSEError } from "../../shared/lib/http/sse.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
-import { getProjectStargazerDir } from "../../shared/lib/paths.js";
+import { getProjectDiffgazerDir } from "../../shared/lib/paths.js";
 import { isValidProjectPath } from "../../shared/lib/validation.js";
 import { createGitService } from "../../shared/lib/git/service.js";
 import { requireSetup } from "../../shared/middlewares/setup-guard.js";
@@ -33,7 +33,7 @@ import { initializeAIClient } from "../../shared/lib/ai/client.js";
 import { streamActiveSessionToSSE, streamReviewToSSE } from "./service.js";
 import { buildProjectContextSnapshot, loadContextSnapshot } from "./context.js";
 import { handleDrilldownRequest } from "./drilldown.js";
-import { ReviewErrorCode } from "@stargazer/schemas/review";
+import { ReviewErrorCode } from "@diffgazer/schemas/review";
 import { cancelSession, getActiveSessionForProject, getSession } from "./sessions.js";
 import { parseProjectPath, handleStoreError } from "./utils.js";
 
@@ -228,7 +228,7 @@ reviewRouter.get(
       );
     }
 
-    const contextDir = getProjectStargazerDir(projectRoot);
+    const contextDir = getProjectDiffgazerDir(projectRoot);
     const snapshot = await loadContextSnapshot(contextDir);
 
     if (!snapshot) {

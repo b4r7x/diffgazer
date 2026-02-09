@@ -1,7 +1,7 @@
 import type { ZodType } from "zod";
-import type { Result } from "@stargazer/core/result";
-import type { AppError } from "@stargazer/core/errors";
-import type { ReviewResult, LensId, ProfileId, DrilldownResult, ReviewMode } from "@stargazer/schemas/review";
+import type { Result } from "@diffgazer/core/result";
+import type { AppError } from "@diffgazer/core/errors";
+import type { ReviewResult, LensId, ProfileId, DrilldownResult, ReviewMode } from "@diffgazer/schemas/review";
 import type { ParsedDiff } from "../diff/types.js";
 
 export type StoreErrorCode =

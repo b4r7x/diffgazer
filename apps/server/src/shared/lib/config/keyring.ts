@@ -1,12 +1,12 @@
 import { createRequire } from "node:module";
-import { type Result, ok, err } from "@stargazer/core/result";
-import { createError } from "@stargazer/core/errors";
+import { type Result, ok, err } from "@diffgazer/core/result";
+import { createError } from "@diffgazer/core/errors";
 import type { SecretsStorageError, SecretsStorageErrorCode } from "./types.js";
 
 type KeyringModule = typeof import("@napi-rs/keyring");
 
-const KEYRING_APP_NAME = "stargazer";
-const KEYRING_TEST_KEY = "__stargazer_keyring_test__";
+const KEYRING_APP_NAME = "diffgazer";
+const KEYRING_TEST_KEY = "__diffgazer_keyring_test__";
 
 const requireModule = createRequire(import.meta.url);
 let cachedKeyring: KeyringModule | null | undefined;
@@ -20,7 +20,7 @@ const loadKeyring = (): KeyringModule | null => {
   } catch (error) {
     cachedKeyring = null;
     console.warn(
-      `[stargazer] Keyring module unavailable: ${
+      `[diffgazer] Keyring module unavailable: ${
         error instanceof Error ? error.message : String(error)
       }`
     );
@@ -39,7 +39,7 @@ const checkKeyringAvailability = (keyring: KeyringModule): boolean => {
       entry.deletePassword();
     } catch (cleanupError) {
       console.warn(
-        `[stargazer] Failed to clean up keyring test key: ${
+        `[diffgazer] Failed to clean up keyring test key: ${
           cleanupError instanceof Error ? cleanupError.message : String(cleanupError)
         }`
       );
@@ -47,7 +47,7 @@ const checkKeyringAvailability = (keyring: KeyringModule): boolean => {
     return readBack === testValue;
   } catch (error) {
     console.warn(
-      `[stargazer] Keyring availability check failed: ${
+      `[diffgazer] Keyring availability check failed: ${
         error instanceof Error ? error.message : String(error)
       }`
     );

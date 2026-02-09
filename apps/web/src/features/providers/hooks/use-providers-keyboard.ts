@@ -1,8 +1,8 @@
 import { useState, type RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useKey, useFocusZone } from "@stargazer/keyboard";
+import { useKey, useFocusZone } from "@diffgazer/keyboard";
 import { PROVIDER_FILTER_VALUES, type ProviderFilter } from "@/features/providers/constants";
-import type { AIProvider } from "@stargazer/schemas/config";
+import type { AIProvider } from "@diffgazer/schemas/config";
 
 type FocusZone = "input" | "filters" | "list" | "buttons";
 

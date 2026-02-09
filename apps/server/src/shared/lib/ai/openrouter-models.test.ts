@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("../fs.js");
 
-const TEST_HOME = "/tmp/stargazer-test";
+const TEST_HOME = "/tmp/diffgazer-test";
 
 import { readJsonFileSync, writeJsonFileSync } from "../fs.js";
 import {
@@ -14,13 +14,13 @@ import {
 } from "./openrouter-models.js";
 
 beforeEach(() => {
-  process.env.STARGAZER_HOME = TEST_HOME;
+  process.env.DIFFGAZER_HOME = TEST_HOME;
   vi.clearAllMocks();
   vi.restoreAllMocks();
 });
 
 afterEach(() => {
-  delete process.env.STARGAZER_HOME;
+  delete process.env.DIFFGAZER_HOME;
 });
 
 describe("loadOpenRouterModelCache", () => {

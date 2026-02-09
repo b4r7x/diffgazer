@@ -1,7 +1,7 @@
-import type { LensId, ProfileId, ReviewMode } from "@stargazer/schemas/review";
-import type { ReviewResult, ReviewError } from "@stargazer/schemas/review";
-import type { AgentStreamEvent, EnrichEvent, FullReviewStreamEvent, StepEvent } from "@stargazer/schemas/events";
-import { FullReviewStreamEventSchema } from "@stargazer/schemas/events";
+import type { LensId, ProfileId, ReviewMode } from "@diffgazer/schemas/review";
+import type { ReviewResult, ReviewError } from "@diffgazer/schemas/review";
+import type { AgentStreamEvent, EnrichEvent, FullReviewStreamEvent, StepEvent } from "@diffgazer/schemas/events";
+import { FullReviewStreamEventSchema } from "@diffgazer/schemas/events";
 import { parseSSEStream } from "../streaming/sse-parser.js";
 import { ok, err, type Result } from "../result.js";
 

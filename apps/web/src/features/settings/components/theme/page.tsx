@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import type { Shortcut } from "@stargazer/schemas/ui";
+import type { Shortcut } from "@diffgazer/schemas/ui";
 import type { WebTheme, ResolvedTheme } from "@/types/theme";
-import { Panel, PanelContent, PanelHeader, Callout, Button } from "@stargazer/ui";
+import { Panel, PanelContent, PanelHeader, Callout, Button } from "@diffgazer/ui";
 import { ThemeSelectorContent } from "../theme-selector-content";
 import { ThemePreviewCard } from "../theme-preview-card";
 import { useTheme } from "@/hooks/use-theme";
-import { useKey, useScope } from "@stargazer/keyboard";
+import { useKey, useScope } from "@diffgazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { cn } from "@/utils/cn";
 

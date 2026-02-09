@@ -1,5 +1,5 @@
 {
-  "name": "@stargazer/server",
+  "name": "@diffgazer/server",
   "version": "0.1.0",
   "type": "module",
   "exports": {
@@ -21,9 +21,9 @@
     "@hono/zod-validator": "^0.7.6",
     "@napi-rs/keyring": "^1.2.0",
     "@openrouter/ai-sdk-provider": "^2.1.1",
-    "@stargazer/api": "workspace:*",
-    "@stargazer/core": "workspace:*",
-    "@stargazer/schemas": "workspace:*",
+    "@diffgazer/api": "workspace:*",
+    "@diffgazer/core": "workspace:*",
+    "@diffgazer/schemas": "workspace:*",
     "ai": "^6.0.71",
     "hono": "^4.11.7",
     "zhipu-ai-provider": "^0.2.2",
@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "@napi-rs/keyring": "^1.1.6",
-    "@stargazer/tsconfig": "workspace:*",
+    "@diffgazer/tsconfig": "workspace:*",
     "@types/node": "^25.2.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"

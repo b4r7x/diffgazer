@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
-import { useToast } from "@stargazer/ui";
-import type { AIProvider } from "@stargazer/schemas/config";
+import { useToast } from "@diffgazer/ui";
+import type { AIProvider } from "@diffgazer/schemas/config";
 import { useProviders } from "./use-providers";
 
 function useSubmitGuard() {

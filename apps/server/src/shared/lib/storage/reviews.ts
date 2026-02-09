@@ -7,12 +7,12 @@ import {
   type ReviewMetadata,
   type ReviewGitContext,
   type DrilldownResult,
-} from "@stargazer/schemas/review";
+} from "@diffgazer/schemas/review";
 import { createCollection } from "./persistence.js";
 import type { StoreError, DateFieldsOf, SaveReviewOptions } from "./types.js";
-import { getGlobalStargazerDir } from "../paths.js";
-import { type Result, ok } from "@stargazer/core/result";
-import { calculateSeverityCounts } from "@stargazer/core/severity";
+import { getGlobalDiffgazerDir } from "../paths.js";
+import { type Result, ok } from "@diffgazer/core/result";
+import { calculateSeverityCounts } from "@diffgazer/core/severity";
 
 function filterByProjectAndSort<T extends { projectPath: string }>(
   items: T[],
@@ -27,7 +27,7 @@ function filterByProjectAndSort<T extends { projectPath: string }>(
 }
 
 // Legacy on-disk directory name kept as "triage-reviews" to avoid data migration
-const REVIEWS_DIR = join(getGlobalStargazerDir(), "triage-reviews");
+const REVIEWS_DIR = join(getGlobalDiffgazerDir(), "triage-reviews");
 const getReviewFile = (reviewId: string): string =>
   join(REVIEWS_DIR, `${reviewId}.json`);
 

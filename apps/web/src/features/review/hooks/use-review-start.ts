@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react';
-import type { Result } from '@stargazer/core/result';
-import type { StreamReviewError } from '@stargazer/api/review';
-import { ReviewErrorCode } from '@stargazer/schemas/review';
-import type { LensId } from '@stargazer/schemas/review';
+import type { Result } from '@diffgazer/core/result';
+import type { StreamReviewError } from '@diffgazer/api/review';
+import { ReviewErrorCode } from '@diffgazer/schemas/review';
+import type { LensId } from '@diffgazer/schemas/review';
 
-import type { ReviewMode } from '@stargazer/schemas/review';
+import type { ReviewMode } from '@diffgazer/schemas/review';
 
 interface ActiveReviewSessionResult {
   session: { reviewId: string } | null;

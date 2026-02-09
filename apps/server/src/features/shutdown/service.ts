@@ -31,7 +31,7 @@ const requestShutdown = (): ShutdownResult => {
     return { ok: true };
   }
 
-  const cliPid = parseCliPid(process.env.STARGAZER_CLI_PID);
+  const cliPid = parseCliPid(process.env.DIFFGAZER_CLI_PID);
   if (!cliPid) {
     return {
       ok: false,
