@@ -28,7 +28,7 @@ export function getReviewResultsFooter(
         { key: "Enter/Space", label: "Toggle Filter" },
         { key: "j", label: "Issue List" },
       ],
-      rightShortcuts: [],
+      rightShortcuts: [{ key: "Esc", label: "Back" }],
     };
   }
 
@@ -38,7 +38,7 @@ export function getReviewResultsFooter(
         { key: canUsePatchTab ? "1-4" : "1-3", label: "Switch Tab" },
         { key: "←", label: "Issue List" },
       ],
-      rightShortcuts: [],
+      rightShortcuts: [{ key: "Esc", label: "Back" }],
     };
   }
 
@@ -104,7 +104,7 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
 
   const handleBack = () => router.history.back();
 
-  useKey("Escape", handleBack, { enabled: focusZone === "list" });
+  useKey("Escape", handleBack);
 
   useKey("ArrowLeft", () => {
     if (focusedFilterIndex > 0) setFocusedFilterIndex((i) => i - 1);
