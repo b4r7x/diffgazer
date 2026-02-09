@@ -28,6 +28,7 @@ export function HistoryPage() {
     sortedIssues,
     duration,
     handleTimelineBoundary,
+    handleRunsBoundary,
     handleSearchEscape,
     handleSearchArrowDown,
     handleRunActivate,
@@ -41,6 +42,7 @@ export function HistoryPage() {
     value: selectedRunId,
     onValueChange: setSelectedRunId,
     wrap: false,
+    onBoundaryReached: handleRunsBoundary,
   });
 
   if (isLoading) {
@@ -110,15 +112,17 @@ export function HistoryPage() {
               <NavigationList
                 ref={runsListRef}
                 selectedId={selectedRunId}
-                focusedValue={runsFocusedValue}
+                focusedValue={focusZone === "runs" ? runsFocusedValue : null}
                 onSelect={setSelectedRunId}
                 onActivate={handleRunActivate}
+                isFocused={focusZone === "runs"}
               >
                 {mappedRuns.map((run) => (
                   <RunAccordionItem
                     key={run.id}
                     run={run}
                     isSelected={run.id === selectedRunId}
+                    isActive={focusZone === "runs" && run.id === runsFocusedValue}
                     onSelect={() => setSelectedRunId(run.id)}
                     onOpen={() => handleRunActivate(run.id)}
                   />

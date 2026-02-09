@@ -1,8 +1,8 @@
 # AI Providers
 
-Stargazer supports multiple AI providers for code review. You pick one during onboarding and can switch anytime from Settings > Providers. Multiple providers can be configured simultaneously -- one is active at a time.
+Stargazer supports multiple AI providers for code review (will be supporting more). You pick one during onboarding and can switch anytime from Settings -> Providers. You can have multiple providers configured, one is active at a time.
 
-## Provider Comparison
+## Provider comparison
 
 | Provider | Default Model | Free Tier | Env Var | Parallel Agents | Speed | Review Quality |
 |----------|--------------|-----------|---------|-----------------|-------|----------------|
@@ -13,41 +13,40 @@ Stargazer supports multiple AI providers for code review. You pick one during on
 
 OpenRouter gives you access to Claude, GPT, Llama, and dozens of other models through a single API key. The model list is fetched dynamically and cached for 24 hours.
 
-## Why Gemini Is the Default
+## Why Gemini is the default
 
-Honest take: I don't love Gemini for writing code, but for review it hits a sweet spot.
+I don't like Gemini for writing code, but for review it does fine.
 
-During testing across providers, Gemini Flash consistently came out ahead on the metrics that matter for this use case:
+During testing, Gemini Flash came out ahead for this use case:
 
-- **Fast.** Reviews complete quickly, even with all 5 lenses running in parallel.
-- **Cheap.** The free tier quota allows 2-3 full reviews on large PRs per rate limit cycle. For a tool you run before pushing, that's enough.
-- **Accurate for review.** Code review is a different task than code generation. You need a model that reads carefully and finds real issues without hallucinating false positives. Gemini Flash does this well.
-- **Parallel execution works reliably.** Other providers had issues handling 5 concurrent requests. Gemini handles it without dropping connections or returning errors.
-- **Best quality-to-cost ratio** found during development and real-world usage.
+- **Fast.** Reviews complete quickly, even with all 5 lenses in parallel.
+- **Cheap.** Free tier allows 2-3 full reviews on large PRs per rate limit cycle. For running before a push, that's enough for me.
+- **Parallel execution works.** Other providers had issues with 5 concurrent requests (I got errors with GLM Coding Plan for example). Gemini didn't drop connections.
+- **Decent quality-to-cost ratio** from what I've seen.
 
-If you have a preferred provider or want to use a specific model (say, Claude via OpenRouter), go for it. But if you just want something that works out of the box, Gemini is the recommendation.
+If you have a preferred provider or want to use something specific (say, Claude via OpenRouter), go for it.
 
 ## Configuration
 
 Two ways to provide API keys:
 
-**During onboarding** -- the setup wizard walks you through selecting a provider and entering your key. Keys are stored in either:
+**During onboarding** - the setup wizard walks you through selecting a provider and entering your key. Keys are stored in either:
 - OS keyring (macOS Keychain, Windows Credential Manager, Linux Secret Service)
-- Encrypted file (`~/.stargazer/secrets.json` with `0600` permissions)
+- File storage (`~/.stargazer/secrets.json` with `0600` permissions)
 
-**Via environment variables** -- set `GOOGLE_API_KEY`, `ZAI_API_KEY`, or `OPENROUTER_API_KEY` in your shell. Environment variables override stored keys, so you can use them for temporary overrides or CI environments.
+**Via environment variables** - set `GOOGLE_API_KEY`, `ZAI_API_KEY`, or `OPENROUTER_API_KEY` in your shell. Environment variables override stored keys, so you can use them for temporary overrides or CI environments.
 
-## Agent Execution Modes
+## Agent execution modes
 
-Stargazer runs up to 5 specialized review agents (lenses). How they execute depends on your chosen mode:
+Stargazer runs up to 5 review agents (lenses). How they run depends on your chosen mode:
 
-**Parallel** -- all lenses run simultaneously. Faster, but requires a provider that handles concurrent requests well. Gemini works great for this. This is the mode you want if your provider supports it.
+**Parallel** - all lenses run at the same time. Faster, but needs a provider that handles concurrent requests. Gemini handles it, others might not.
 
-**Sequential** -- one lens at a time. Slower but works reliably with any provider. This mode exists because some providers couldn't handle 5 parallel requests without dropping connections or hitting rate limits.
+**Sequential** - one lens at a time. Slower but works with any provider. This mode exists because some providers couldn't handle 5 parallel requests without dropping connections or hitting rate limits.
 
 You can change this anytime in Settings > Analysis.
 
-## Switching Providers
+## Switching providers
 
 Open Settings > Providers. You can:
 - Add credentials for a new provider
@@ -55,13 +54,13 @@ Open Settings > Providers. You can:
 - Delete a provider's credentials
 - Test that a provider is working
 
-Your review history is independent of the provider -- switching doesn't affect past reviews.
+Your review history is independent of the provider, switching doesn't affect past reviews.
 
-## Future Providers
+## Future providers
 
-Planned integrations:
-- **Anthropic (Claude)** and **OpenAI** direct -- no OpenRouter middleman
-- **Local providers** (Ollama, LM Studio) -- for full privacy, no data leaves your machine at all
+Planned:
+- **Anthropic (Claude)** and **OpenAI** direct, no OpenRouter middleman
+- **Local providers** (Ollama, LM Studio) for full privacy, nothing leaves your machine
 
 ---
 

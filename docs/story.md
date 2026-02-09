@@ -1,53 +1,58 @@
-# Why I Built Stargazer
+# About Stargazer
 
-I wanted my own code reviewer.
+I just wanted to have my own code reviewer. Most of what I'm writing here is roast on myself, because of being guilty of being lazy.
 
-Claude Code, Codex, Cursor — great tools for writing code. But every review cycle burns tokens that could go toward building. I kept thinking: why am I spending money to have AI look at code when I could spend it to ship features?
+Claude Codex, Codex - great tools for writing code, but when it comes to code review, I'd like not to burn my tokens that could go towards development for that. Yes, that's my part of responsibility to do a review myself, but I'm just a human, I can miss things. So instead of spending tokens from these tools to review the code (that's mostly written by them lol), I wanted to create a alternative with a free providers, and yes... it comes with a cost of your privacy, that's why I really want to warn you to be with what you are giving it to review. Yes, it skips env files and secrets or any sensitive information by default, but please be causion what you are put there anyway.
 
-Then I looked at it differently. Code review in the age of AI isn't optional — it's more important than it's ever been. We're generating code faster than we can understand it. Vibe coding is real, and the output needs a second pair of eyes. Even without AI, humans write bugs. We always have. The point of review is catching them early, before they compound.
+While builiding this project it really confirmed one's belief in the part, where I miss a lot of things while developing... and sometimes you want to skip those reviews and go with the "vibe"... that's the worst possible thing you can do in the age of AI, and me, myself, I'm not immune to that. It's more important than it's ever been, we are generating code faster than we can understand it. Even without AI humans write bugs, we always have, and sometimes it's pain to go through changes you've made and focus to find out all the things that are wrong with it, so I wanted to help myself, and others with that.
 
-## The solo dev problem
+## My problem
 
-Most solo developers don't get their code reviewed. Ever.
+Most solo developers don't get their code reviewed. Ever. 
 
-Sometimes it's privacy — you don't want to share your codebase with strangers or third parties. Sometimes it's fear of being judged. Sometimes there's just nobody available to ask. But the need is there. You want to know if your code has security holes. You want someone to catch an edge case you missed. You want to hear "this is over-engineered" before you ship it.
+Sometimes they care about privacy of their code, doesn't want to share it with strangers to get a review done, sometimes it's a fear of being judged by others. But the need to review is there, you want to find out what stupid mistakes you could possibly make. To improve in the future, to not follow the same mistakes again. Sometimes it the edge case you've missed, sometimes it's the security hole that you might not even thought about.
 
-Stargazer is how I solve that for myself. A local tool that reviews my code, keeps everything on my machine, and only sends the diff to an AI provider I choose.
+That's how I wanted to solve for myself especially. 
 
-## Why Gemini
+## Why did I use Gemini as default
 
-This project started during a Gemini hackathon, so Gemini became the default provider. But it stayed the default because it genuinely works well for this use case.
+This project started as a entry to Gemini hackathon, so Gemini became the default provider. But it stayed the default because it genuinely works well for this use case.
 
-I'll be honest — I don't love Gemini for writing code with AI. But for review? Different story entirely. Gemini Flash is fast, cheap, and surprisingly accurate. The benchmarks are solid, but more importantly, my own experience during months of development confirmed it.
+I really don't like Geminit for coding, it's not there yet for me, but for the review it does pretty solid work. I've been using Gemini Flash for that usecase - cheap, fast and to my surprise, pretty accurate.
 
 Some specifics from real usage:
 
-- **Free tier was enough** — the quota allowed 2-3 full reviews on large PRs within a single limit cycle. That's usable.
-- **Speed** — noticeably faster than GLM (Z.AI Coding Plan) and most models through OpenRouter.
-- **Parallel agents** — Gemini handled concurrent multi-agent requests reliably. Other providers choked on this, which is why I added a sequential execution mode as a fallback.
-- **Quality-to-cost ratio** — best I found across everything I tested.
+- **Free tier is enough for me** - quota allowed me to do 2-3 full reviews on large PRs wihin a single limit cycle, without any optimizations for it (which I plan to do)
+- **Speed** - the output was quicker than the providers I tested (GLM Coding Plan, OpenRouter free models)
+- **Parallel agents** - which didn't work correctly with other providers, I tent to get errors while trying to do this with GLM Coding Plan to my surprise, but it works fine with Gemini Flash (probably skill issue within my implementation lol)
+- **Quality-to-cost ratio** - as mentioned, faster than GLM, but similar output quality (or even better)
 
-I still support Z.AI and OpenRouter because provider lock-in is bad and people have preferences. But if you're asking me what to use, start with Gemini.
+I still support Z.AI and OpenRouter because provider lock-in is bad and I don't want to be vendor-locked, but for this usecase, I'd recommend give Gemini Flash a try.
 
-## On AI-generated code
+## About the vibes...
 
-Let me be upfront about something. Most of the code in this repo was generated by Claude and Codex during the hackathon. The goal was shipping a working MVP, and it worked.
+Yes, I'll be honest, most of the code in this repo was generated by Claude and Codex during the hackathon. With the goal of shipping a working MVP, I don't really like it, I can't say with confidence that I reviewed each line of the code (which my own tool was also helping during the development), but I'm really willing to drop this approach, because it didn't feel right to me.
 
-But it also proved the tool's own point. Reviewing AI-generated code during development showed me exactly where quality dropped — especially in the frontend, where I spent the least time doing review. I assumed generated UI code wouldn't carry serious issues. That assumption was wrong. The experience reinforced my conviction that continuous code review is one of the most important parts of building software. Ironically, building a review tool taught me that by making me skip reviews under time pressure.
+It proved the tool's point to myself. Reviewing the code that was AI generated showed me how the engineering with AI generated code is way behind in the develooment cycle, quality drops, and I hate it myself, that I came to a point where I want to drop this approach, because it might feel rapid, but the quality for me wasn't there. Ironic.
 
-Going forward, the approach changes completely. Quality over quantity. Less AI-generated code, more actually understanding what's in the codebase. Not because AI code is inherently bad — but because I want to know my code. I want to learn from the process, not just ship output.
+I came to a point where I want quality over quantity. Know your code. Know your quality.
 
-There's also a practical side to this. The hackathon pace was not sustainable. Moving fast feels productive until it stops feeling like anything at all. I'd rather ship less and keep enjoying the work. Preserving programming skills, learning new things, avoiding burnout — these matter more than velocity.
+Of course there is a practical side of this, because the hackathon pace couldn't be sustained. Moving fast feels productive until it stops feeling like anything at all. I want to enjoy the work again, ship less, preserving my programming skills, learning new things, avoiding burnout - these things matter more than velocity.
 
 **Know your code. No need to race.**
 
-## What's next
+## So what's comming to stargazer
 
-Until April 2026, Stargazer stays roughly where it is. Bug fixes, quality improvements, maybe small features — but no breaking changes. The priority is stabilizing what's already here.
+Until April 2026, I'll be taking a little of the break. To focus on bug fixes, quality improvements, maybe small features, but not on the breaking changes. The priority is stability.
 
-Starting April 2026, development gets more deliberate. I'm planning a proper roadmap with phased priorities: local provider support (Ollama, LM Studio), better UI, more provider integrations, GitHub Actions workflows, and eventually a headless CLI mode.
+Starting April 2026, development would get more deliberate (I hope I still have a strength for that lol). I did a small roadmap with phased priorites: 
+- Local provider support (Olama, LM Studio)
+- Improvements to the UI and UX
+- more provider integration
+- Github Actions workflows
+- eventually a headless CLI mode
 
-The pace will be intentionally slower. I don't want this to be another vibecodeded project that ships fast and breaks faster. I want it to be a tool I'm proud of and that actually helps people review their code.
+The pace will be intentionally slower, I don't want this to be another vibecoded slop that ships fast and breaks faster. I want to be proud of it and want to deliver something that will be useful also for you.
 
 See the [Roadmap](roadmap.md) for the full list.
 
