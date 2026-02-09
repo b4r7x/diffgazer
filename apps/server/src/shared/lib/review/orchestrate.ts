@@ -1,13 +1,13 @@
 import { randomUUID } from "node:crypto";
-import type { LensId } from "@stargazer/schemas/review";
+import type { LensId } from "@diffgazer/schemas/review";
 import type {
   ReviewIssue,
   ReviewOptions,
-} from "@stargazer/schemas/review";
-import { type Result, ok, err } from "@stargazer/core/result";
-import { getErrorMessage } from "@stargazer/core/errors";
-import type { AgentStreamEvent, LensStat, StepEvent } from "@stargazer/schemas/events";
-import { AGENT_METADATA, LENS_TO_AGENT } from "@stargazer/schemas/events";
+} from "@diffgazer/schemas/review";
+import { type Result, ok, err } from "@diffgazer/core/result";
+import { getErrorMessage } from "@diffgazer/core/errors";
+import type { AgentStreamEvent, LensStat, StepEvent } from "@diffgazer/schemas/events";
+import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/schemas/events";
 import type { AIClient } from "../ai/types.js";
 import type { ParsedDiff } from "../diff/types.js";
 import { getLenses } from "./lenses.js";

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import type { Shortcut } from "@stargazer/schemas/ui";
-import { useKey, useScope } from "@stargazer/keyboard";
+import type { Shortcut } from "@diffgazer/schemas/ui";
+import { useKey, useScope } from "@diffgazer/keyboard";
 import { useFooterNavigation } from "@/hooks/use-footer-navigation";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useConfigData } from "@/app/providers/config-provider";
@@ -133,7 +133,7 @@ export function DiagnosticsPage() {
             <div className="flex flex-col">
               <span className="text-tui-muted text-xs uppercase tracking-wider mb-1">Version Info</span>
               <div className="flex items-center gap-2">
-                <span className="text-tui-blue">Stargazer Web</span>
+                <span className="text-tui-blue">Diffgazer Web</span>
                 <span className="text-tui-border">|</span>
                 <span className="text-tui-green">{import.meta.env.MODE.toUpperCase()}</span>
               </div>

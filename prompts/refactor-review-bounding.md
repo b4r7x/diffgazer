@@ -1,11 +1,11 @@
-# Stargazer: feature/review-bounding Refactor Prompt
+# Diffgazer: feature/review-bounding Refactor Prompt
 
 > This document contains all findings and instructions for refactoring the `feature/review-bounding` branch.
 > Written for an AI coding agent with empty context. All file paths are absolute from project root.
 
 ## Project Overview
 
-Stargazer is a TypeScript monorepo (pnpm workspaces) that performs AI-powered code reviews. It has:
+Diffgazer is a TypeScript monorepo (pnpm workspaces) that performs AI-powered code reviews. It has:
 
 - `apps/server/` — Hono-based HTTP server (REST + SSE streaming)
 - `apps/web/` — React SPA (Vite + TanStack Router)
@@ -280,24 +280,24 @@ Search for any remaining `[Tt]riage` references with: `grep -ri "triage" --inclu
 ## Phase 6: Fix Type Sharing (schemas as source of truth)
 
 **Priority: MEDIUM**
-**Goal:** Server and API client both derive types from `@stargazer/schemas`. Remove duplicates.
+**Goal:** Server and API client both derive types from `@diffgazer/schemas`. Remove duplicates.
 
 ### Current State
 
-`packages/api/src/types.ts` (351 lines) redefines types that already exist as Zod schemas in `@stargazer/schemas`:
+`packages/api/src/types.ts` (351 lines) redefines types that already exist as Zod schemas in `@diffgazer/schemas`:
 - `AIProvider`, `ProviderStatus`, `TrustConfig`, `SettingsConfig`, `OpenRouterModel`, `ConfigCheckResponse`, `SaveConfigRequest`, etc.
 
-The server imports from `@stargazer/api` (its own client SDK) which is backwards.
+The server imports from `@diffgazer/api` (its own client SDK) which is backwards.
 
 ### Instructions
 
-1. In `packages/api/package.json`, add `@stargazer/schemas` as a dependency
+1. In `packages/api/package.json`, add `@diffgazer/schemas` as a dependency
 2. In `packages/api/src/types.ts`:
    - Replace hand-written interfaces with `z.infer<>` re-exports from schemas where possible
    - For types that don't have a Zod schema (HTTP response wrappers), keep as interfaces but import the domain types from schemas
    - Example: `export type ReviewIssue = z.infer<typeof ReviewIssueSchema>` (from schemas) instead of redefining
 3. In `apps/server/src/features/*/types.ts`:
-   - Import directly from `@stargazer/schemas` instead of `@stargazer/api`
+   - Import directly from `@diffgazer/schemas` instead of `@diffgazer/api`
    - Or remove these barrel re-export files if they add no value (config/types.ts, review/types.ts, pr-review/types.ts are just re-exports)
 
 ---
@@ -446,7 +446,7 @@ These files are just re-exports that add indirection:
 - `apps/server/src/features/review/types.ts`
 - `apps/server/src/features/pr-review/types.ts`
 
-If the feature service files already import directly from `@stargazer/schemas`, these barrels add no value. Remove them and update imports.
+If the feature service files already import directly from `@diffgazer/schemas`, these barrels add no value. Remove them and update imports.
 
 ---
 
@@ -455,10 +455,10 @@ If the feature service files already import directly from `@stargazer/schemas`, 
 After all changes:
 
 1. `pnpm install` — verify no dependency issues
-2. `pnpm -F @stargazer/schemas build` — schemas build
-3. `pnpm -F @stargazer/schemas test` — all schema tests pass
-4. `pnpm -F @stargazer/core build` — core builds with new schema names
-5. `pnpm -F @stargazer/api build` — api builds with new types
+2. `pnpm -F @diffgazer/schemas build` — schemas build
+3. `pnpm -F @diffgazer/schemas test` — all schema tests pass
+4. `pnpm -F @diffgazer/core build` — core builds with new schema names
+5. `pnpm -F @diffgazer/api build` — api builds with new types
 6. `pnpm -F server build` — server builds
 7. `pnpm -F web build` — web builds
 8. `grep -ri "triage" --include="*.ts" --include="*.tsx" apps/ packages/` — no remaining triage references (except possibly on-disk directory names in storage)

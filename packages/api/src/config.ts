@@ -10,7 +10,7 @@ import type {
   SaveConfigRequest,
   SettingsConfig,
   TrustConfig,
-} from "@stargazer/schemas/config";
+} from "@diffgazer/schemas/config";
 import type { ApiClient, TrustListResponse, TrustResponse } from "./types.js";
 
 export async function getProviderStatus(

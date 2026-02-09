@@ -1,6 +1,6 @@
-import type { AgentStreamEvent, AgentState, EnrichEvent, StepEvent, StepState, StepId } from "@stargazer/schemas/events";
-import { createInitialSteps, isStepEvent } from "@stargazer/schemas/events";
-import type { ReviewIssue } from "@stargazer/schemas/review";
+import type { AgentStreamEvent, AgentState, EnrichEvent, StepEvent, StepState, StepId } from "@diffgazer/schemas/events";
+import { createInitialSteps, isStepEvent } from "@diffgazer/schemas/events";
+import type { ReviewIssue } from "@diffgazer/schemas/review";
 
 export interface FileProgress {
   total: number;

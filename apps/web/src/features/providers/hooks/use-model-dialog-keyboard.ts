@@ -1,6 +1,6 @@
 import { useState, useEffect, type RefObject } from "react";
-import type { ModelInfo } from "@stargazer/schemas/config";
-import { useKey, useFocusZone, useNavigation } from "@stargazer/keyboard";
+import type { ModelInfo } from "@diffgazer/schemas/config";
+import { useKey, useFocusZone, useNavigation } from "@diffgazer/keyboard";
 import { TIER_FILTERS, type TierFilter } from "@/features/providers/constants";
 
 type FocusZone = "search" | "filters" | "list" | "footer";

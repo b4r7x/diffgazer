@@ -1,6 +1,6 @@
 
 
-import { useToast } from "@stargazer/ui";
+import { useToast } from "@diffgazer/ui";
 import { useNavigate } from "@tanstack/react-router";
 
 interface ApiError {

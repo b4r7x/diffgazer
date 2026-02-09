@@ -1,5 +1,5 @@
 import type { Ref } from "react";
-import { Menu, MenuDivider, MenuItem, Panel, PanelHeader } from "@stargazer/ui";
+import { Menu, MenuDivider, MenuItem, Panel, PanelHeader } from "@diffgazer/ui";
 
 export interface MenuItemDefinition {
   id: string;

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ok, err } from "@stargazer/core/result";
+import { ok, err } from "@diffgazer/core/result";
 
 vi.mock("../../shared/lib/storage/reviews.js");
 vi.mock("../../shared/lib/git/service.js");
@@ -14,7 +14,7 @@ import { createGitService } from "../../shared/lib/git/service.js";
 import { parseDiff } from "../../shared/lib/diff/parser.js";
 import { buildDrilldownPrompt } from "../../shared/lib/review/prompts.js";
 import type { AIClient } from "../../shared/lib/ai/types.js";
-import type { ReviewIssue } from "@stargazer/schemas/review";
+import type { ReviewIssue } from "@diffgazer/schemas/review";
 import type { ParsedDiff, FileDiff } from "../../shared/lib/diff/types.js";
 import {
   drilldownIssue,

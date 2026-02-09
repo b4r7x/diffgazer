@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
-import type { ReviewMetadata } from "@stargazer/schemas/review";
+import type { ReviewMetadata } from "@diffgazer/schemas/review";
 
 export function useReviews(projectPath?: string) {
   const [reviews, setReviews] = useState<ReviewMetadata[]>([]);

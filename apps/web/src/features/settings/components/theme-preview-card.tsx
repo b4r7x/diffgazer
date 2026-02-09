@@ -1,4 +1,4 @@
-import { Panel, PanelHeader, PanelContent, Menu, MenuItem, Badge } from "@stargazer/ui";
+import { Panel, PanelHeader, PanelContent, Menu, MenuItem, Badge } from "@diffgazer/ui";
 import type { ResolvedTheme } from "@/types/theme";
 import "./theme-preview-card.css";
 
@@ -47,7 +47,7 @@ export function ThemePreviewCard({ previewTheme }: ThemePreviewCardProps) {
             </div>
           </PanelContent>
           <div className="px-3 py-1 text-center text-[10px] text-tui-muted border-t border-tui-border">
-            Stargazer v2.0
+            Diffgazer v2.0
           </div>
         </Panel>
       </div>

@@ -1,4 +1,4 @@
-import type { ProfileId, ReviewProfile } from "@stargazer/schemas/review";
+import type { ProfileId, ReviewProfile } from "@diffgazer/schemas/review";
 
 const PROFILES: Record<ProfileId, ReviewProfile> = {
   quick: {

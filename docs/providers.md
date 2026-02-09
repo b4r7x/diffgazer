@@ -1,6 +1,6 @@
 # AI Providers
 
-Stargazer supports multiple AI providers for code review (will be supporting more). You pick one during onboarding and can switch anytime from Settings -> Providers. You can have multiple providers configured, one is active at a time.
+Diffgazer supports multiple AI providers for code review (will be supporting more). You pick one during onboarding and can switch anytime from Settings -> Providers. You can have multiple providers configured, one is active at a time.
 
 ## Provider comparison
 
@@ -32,13 +32,13 @@ Two ways to provide API keys:
 
 **During onboarding** - the setup wizard walks you through selecting a provider and entering your key. Keys are stored in either:
 - OS keyring (macOS Keychain, Windows Credential Manager, Linux Secret Service)
-- File storage (`~/.stargazer/secrets.json` with `0600` permissions)
+- File storage (`~/.diffgazer/secrets.json` with `0600` permissions)
 
 **Via environment variables** - set `GOOGLE_API_KEY`, `ZAI_API_KEY`, or `OPENROUTER_API_KEY` in your shell. Environment variables override stored keys, so you can use them for temporary overrides or CI environments.
 
 ## Agent execution modes
 
-Stargazer runs up to 5 review agents (lenses). How they run depends on your chosen mode:
+Diffgazer runs up to 5 review agents (lenses). How they run depends on your chosen mode:
 
 **Parallel** - all lenses run at the same time. Faster, but needs a provider that handles concurrent requests. Gemini handles it, others might not.
 

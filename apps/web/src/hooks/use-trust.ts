@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { TrustConfig } from "@stargazer/schemas/config";
+import type { TrustConfig } from "@diffgazer/schemas/config";
 import { api } from "@/lib/api";
 import { useConfigActions } from "@/app/providers/config-provider";
 

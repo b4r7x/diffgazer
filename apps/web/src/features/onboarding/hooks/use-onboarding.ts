@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { AVAILABLE_PROVIDERS } from "@stargazer/schemas/config";
-import type { AIProvider } from "@stargazer/schemas/config";
-import { LENS_IDS } from "@stargazer/schemas/review";
+import { AVAILABLE_PROVIDERS } from "@diffgazer/schemas/config";
+import type { AIProvider } from "@diffgazer/schemas/config";
+import { LENS_IDS } from "@diffgazer/schemas/review";
 import type { InputMethod } from "@/types/input-method";
 import { useConfigActions } from "@/app/providers/config-provider";
 import { api } from "@/lib/api";

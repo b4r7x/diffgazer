@@ -1,4 +1,4 @@
-import type { ModelInfo } from "@stargazer/schemas/config";
+import type { ModelInfo } from "@diffgazer/schemas/config";
 import { ModelListItem } from "./model-list-item";
 
 interface ModelListProps {

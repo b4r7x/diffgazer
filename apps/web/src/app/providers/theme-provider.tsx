@@ -14,7 +14,7 @@ function getSystemTheme(): ResolvedTheme {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
-const STORAGE_KEY = "stargazer-theme";
+const STORAGE_KEY = "diffgazer-theme";
 
 export const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 

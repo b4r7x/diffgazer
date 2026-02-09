@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { convertAgentEventsToLogEntries } from "./event-to-log.js";
-import type { AgentStreamEvent, StepEvent, EnrichEvent } from "@stargazer/schemas/events";
+import type { AgentStreamEvent, StepEvent, EnrichEvent } from "@diffgazer/schemas/events";
 
 function makeTimestamp() {
   return "2025-02-01T10:00:00Z";

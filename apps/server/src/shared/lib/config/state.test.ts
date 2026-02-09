@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("../fs.js");
 
-const TEST_HOME = "/tmp/stargazer-test";
+const TEST_HOME = "/tmp/diffgazer-test";
 
 import { readJsonFileSync, writeJsonFileSync, removeFileSync } from "../fs.js";
 import {
@@ -22,12 +22,12 @@ import {
 
 describe("config state", () => {
   beforeEach(() => {
-    process.env.STARGAZER_HOME = TEST_HOME;
+    process.env.DIFFGAZER_HOME = TEST_HOME;
     vi.resetAllMocks();
   });
 
   afterEach(() => {
-    delete process.env.STARGAZER_HOME;
+    delete process.env.DIFFGAZER_HOME;
   });
 
   describe("loadConfig", () => {
@@ -258,7 +258,7 @@ describe("config state", () => {
       expect(result.projectId).toBeDefined();
       expect(result.repoRoot).toBe("/projects/new");
       expect(vi.mocked(writeJsonFileSync)).toHaveBeenCalledWith(
-        "/projects/new/.stargazer/project.json",
+        "/projects/new/.diffgazer/project.json",
         expect.objectContaining({ repoRoot: "/projects/new" }),
         0o600
       );

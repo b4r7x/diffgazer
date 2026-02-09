@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import type { Shortcut } from "@stargazer/schemas/ui";
-import { Button, CardLayout } from "@stargazer/ui";
-import { useKey, useScope } from "@stargazer/keyboard";
+import type { Shortcut } from "@diffgazer/schemas/ui";
+import { Button, CardLayout } from "@diffgazer/ui";
+import { useKey, useScope } from "@diffgazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useSettings } from "@/hooks/use-settings";
 import { api } from "@/lib/api";
 import { cn } from "@/utils/cn";
-import { AGENT_METADATA, LENS_TO_AGENT } from "@stargazer/schemas/events";
-import type { LensId } from "@stargazer/schemas/review";
+import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/schemas/events";
+import type { LensId } from "@diffgazer/schemas/review";
 import { AnalysisSelectorContent, type AnalysisOption } from "./analysis-selector-content";
 
 type FocusZone = "list" | "buttons";

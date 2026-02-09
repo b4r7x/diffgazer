@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { SavedReview } from "@stargazer/schemas/review";
+import type { SavedReview } from "@diffgazer/schemas/review";
 import { useReviews } from "@/features/history/hooks/use-reviews";
 import { api } from "@/lib/api";
 

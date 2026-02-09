@@ -1,6 +1,6 @@
 import { IssueListPane } from "@/features/review/components/issue-list-pane";
 import { IssueDetailsPane } from "@/features/review/components/issue-details-pane";
-import type { ReviewIssue } from "@stargazer/schemas/review";
+import type { ReviewIssue } from "@diffgazer/schemas/review";
 import { useReviewResultsKeyboard } from "../hooks/use-review-results-keyboard";
 
 interface ReviewResultsViewProps {

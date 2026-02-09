@@ -51,6 +51,6 @@ mocks
 **/.omc
 **/.omc/
 
-# Stargazer runtime artifacts
-**/.stargazer
-**/.stargazer/
+# Diffgazer runtime artifacts
+**/.diffgazer
+**/.diffgazer/

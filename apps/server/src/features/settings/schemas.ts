@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SettingsConfigSchema } from "@stargazer/schemas/config";
+import { SettingsConfigSchema } from "@diffgazer/schemas/config";
 
 export const SettingsSchema = SettingsConfigSchema.partial();
 

@@ -1,11 +1,11 @@
-import { getErrorMessage } from "@stargazer/core/errors";
-import { type Result, ok, err } from "@stargazer/core/result";
+import { getErrorMessage } from "@diffgazer/core/errors";
+import { type Result, ok, err } from "@diffgazer/core/result";
 import {
   OpenRouterModelCacheSchema,
   OpenRouterModelSchema,
   type OpenRouterModel,
   type OpenRouterModelCache,
-} from "@stargazer/schemas/config";
+} from "@diffgazer/schemas/config";
 import { getGlobalOpenRouterModelsPath } from "../paths.js";
 import { readJsonFileSync, writeJsonFileSync } from "../fs.js";
 

@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Shortcut } from "@stargazer/schemas/ui";
+import type { Shortcut } from "@diffgazer/schemas/ui";
 
 const mockSetShortcuts = vi.fn();
 const mockSetRightShortcuts = vi.fn();

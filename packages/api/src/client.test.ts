@@ -114,7 +114,7 @@ describe("createApiClient", () => {
       await projectClient.get("/api/test");
 
       const [, options] = lastCall();
-      expect((options.headers as Record<string, string>)["x-stargazer-project-root"]).toBe("/home/user/project");
+      expect((options.headers as Record<string, string>)["x-diffgazer-project-root"]).toBe("/home/user/project");
     });
 
     it("includes custom base headers", async () => {

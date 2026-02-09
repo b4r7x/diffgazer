@@ -1,6 +1,6 @@
-import type { FullReviewStreamEvent, StepId } from "@stargazer/schemas/events";
-import type { LensId, ProfileId, ReviewIssue, ReviewMode } from "@stargazer/schemas/review";
-import type { ErrorCode } from "@stargazer/schemas/errors";
+import type { FullReviewStreamEvent, StepId } from "@diffgazer/schemas/events";
+import type { LensId, ProfileId, ReviewIssue, ReviewMode } from "@diffgazer/schemas/review";
+import type { ErrorCode } from "@diffgazer/schemas/errors";
 import type { AIError } from "../../shared/lib/ai/types.js";
 import type { StoreError } from "../../shared/lib/storage/types.js";
 import type { getProfile } from "../../shared/lib/review/profiles.js";

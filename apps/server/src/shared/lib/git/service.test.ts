@@ -388,8 +388,8 @@ describe("createGitService", () => {
       expect(hash).toBe("");
     });
 
-    it("should ignore .stargazer workspace files when hashing", async () => {
-      setupExecResult("?? .stargazer/context.md\n?? .stargazer/context.json\n");
+    it("should ignore .diffgazer workspace files when hashing", async () => {
+      setupExecResult("?? .diffgazer/context.md\n?? .diffgazer/context.json\n");
       const git = createGitService({ cwd: "/test" });
 
       const hash = await git.getStatusHash();
@@ -397,8 +397,8 @@ describe("createGitService", () => {
       expect(hash).toBe("");
     });
 
-    it("should hash user changes even when .stargazer files are present", async () => {
-      setupExecResult(" M src/app.ts\n?? .stargazer/context.md\n");
+    it("should hash user changes even when .diffgazer files are present", async () => {
+      setupExecResult(" M src/app.ts\n?? .diffgazer/context.md\n");
       const git = createGitService({ cwd: "/test" });
 
       const hash = await git.getStatusHash();
@@ -407,7 +407,7 @@ describe("createGitService", () => {
     });
 
     it("should include similarly named top-level directories in hash", async () => {
-      setupExecResult(" M .stargazer-backup/config.json\n");
+      setupExecResult(" M .diffgazer-backup/config.json\n");
       const git = createGitService({ cwd: "/test" });
 
       const hash = await git.getStatusHash();
@@ -415,8 +415,8 @@ describe("createGitService", () => {
       expect(hash).toMatch(/^[0-9a-f]{16}$/);
     });
 
-    it("should include nested .stargazer directories in hash", async () => {
-      setupExecResult(" M src/.stargazer/config.json\n");
+    it("should include nested .diffgazer directories in hash", async () => {
+      setupExecResult(" M src/.diffgazer/config.json\n");
       const git = createGitService({ cwd: "/test" });
 
       const hash = await git.getStatusHash();

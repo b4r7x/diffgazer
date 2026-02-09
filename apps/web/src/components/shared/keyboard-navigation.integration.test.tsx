@@ -8,8 +8,8 @@ import {
   MenuItem,
   RadioGroup,
   RadioGroupItem,
-} from "@stargazer/ui";
-import { useNavigation, KeyboardProvider } from "@stargazer/keyboard";
+} from "@diffgazer/ui";
+import { useNavigation, KeyboardProvider } from "@diffgazer/keyboard";
 
 function CheckboxGroupWithKeyboard() {
   const containerRef = useRef<HTMLDivElement>(null);

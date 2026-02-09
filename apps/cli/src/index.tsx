@@ -9,6 +9,6 @@ function parseCliMode(args: string[]): CliMode {
 }
 
 const mode = parseCliMode(process.argv.slice(2));
-process.env.STARGAZER_CLI_PID ??= String(process.pid);
+process.env.DIFFGAZER_CLI_PID ??= String(process.pid);
 
 render(<App mode={mode} />, { exitOnCtrlC: false });

@@ -1,14 +1,14 @@
 import { useRef } from "react";
 import { cn } from "@/utils/cn";
-import { Tabs, TabsList, TabsTrigger, TabsContent, FocusablePane, SectionHeader, EmptyState } from "@stargazer/ui";
-import { useTabNavigation } from "@stargazer/keyboard";
+import { Tabs, TabsList, TabsTrigger, TabsContent, FocusablePane, SectionHeader, EmptyState } from "@diffgazer/ui";
+import { useTabNavigation } from "@diffgazer/keyboard";
 import { CodeSnippet, type CodeLine } from "./code-snippet";
 import { DiffView } from "./diff-view";
 import { FixPlanChecklist } from "./fix-plan-checklist";
 import { IssueHeader } from "./issue-header";
 
-import type { ReviewIssue } from "@stargazer/schemas/review";
-import type { IssueTab as TabId } from "@stargazer/schemas/ui";
+import type { ReviewIssue } from "@diffgazer/schemas/review";
+import type { IssueTab as TabId } from "@diffgazer/schemas/ui";
 
 export interface IssueDetailsPaneProps {
   issue: ReviewIssue | null;

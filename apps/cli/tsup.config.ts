@@ -6,5 +6,5 @@ export default defineConfig({
   target: "node20",
   outDir: "dist",
   clean: false,
-  noExternal: ["@stargazer/core", "@stargazer/hooks", "@stargazer/server"],
+  noExternal: ["@diffgazer/core", "@diffgazer/hooks", "@diffgazer/server"],
 });

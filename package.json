@@ -1,14 +1,14 @@
 {
-  "name": "stargazer-workspace",
+  "name": "diffgazer-workspace",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "pnpm run --parallel dev:web dev:cli",
-    "dev:cli": "pnpm --filter stargazer dev",
-    "dev:web": "pnpm --filter @stargazer/web dev",
+    "dev:cli": "pnpm --filter diffgazer dev",
+    "dev:web": "pnpm --filter @diffgazer/web dev",
     "build": "pnpm -r build",
-    "cli": "pnpm --filter stargazer dev",
-    "web": "pnpm --filter @stargazer/web dev",
+    "cli": "pnpm --filter diffgazer dev",
+    "web": "pnpm --filter @diffgazer/web dev",
     "test": "pnpm -r test"
   },
   "devDependencies": {

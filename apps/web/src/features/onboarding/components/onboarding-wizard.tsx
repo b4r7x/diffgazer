@@ -1,7 +1,5 @@
-import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { CardLayout, Button, Callout } from "@stargazer/ui";
-import { useConfigData } from "@/app/providers/config-provider";
+import { CardLayout, Button, Callout } from "@diffgazer/ui";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useOnboarding } from "../hooks/use-onboarding";
 import { WizardProgress } from "./wizard-progress";
@@ -10,7 +8,7 @@ import { ProviderStep } from "./steps/provider-step";
 import { ApiKeyStep } from "./steps/api-key-step";
 import { ModelStep } from "./steps/model-step";
 import { AnalysisStep } from "./steps/analysis-step";
-import type { AgentExecution } from "@stargazer/schemas/config";
+import type { AgentExecution } from "@diffgazer/schemas/config";
 
 const STEP_TITLES: Record<string, string> = {
   storage: "Secrets Storage",
@@ -22,7 +20,6 @@ const STEP_TITLES: Record<string, string> = {
 
 export function OnboardingWizard() {
   const navigate = useNavigate();
-  const { isConfigured } = useConfigData();
   const {
     currentStep,
     wizardData,
@@ -40,14 +37,6 @@ export function OnboardingWizard() {
   } = useOnboarding();
 
   usePageFooter({ shortcuts: [] });
-
-  useEffect(() => {
-    if (isConfigured) {
-      navigate({ to: "/", replace: true });
-    }
-  }, [isConfigured, navigate]);
-
-  if (isConfigured) return null;
 
   const handleComplete = async () => {
     try {
@@ -108,7 +97,7 @@ export function OnboardingWizard() {
   return (
     <CardLayout
       title={STEP_TITLES[currentStep] ?? "Setup"}
-      subtitle="Stargazer Setup Wizard"
+      subtitle="Diffgazer Setup Wizard"
       footer={
         <>
           {!isFirstStep && (

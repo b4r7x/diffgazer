@@ -1,5 +1,5 @@
 import { useState, useEffect, type RefObject } from "react";
-import { useKey, useFocusZone, useScope } from "@stargazer/keyboard";
+import { useKey, useFocusZone, useScope } from "@diffgazer/keyboard";
 import type { FocusElement } from "@/types/focus-element";
 import type { InputMethod } from "@/types/input-method";
 

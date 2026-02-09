@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { KeyboardProvider } from "@stargazer/keyboard";
+import { KeyboardProvider } from "@diffgazer/keyboard";
 import type { ResolvedTheme, WebTheme } from "@/types/theme";
 
 const mockNavigate = vi.fn();

@@ -1,12 +1,12 @@
 # Security
 
-Stargazer is local-only by design. The server binds to `127.0.0.1` only, it never listens on `0.0.0.0` or any network interface. Your code never leaves your machine except for the diff sent to the AI provider you choose.
+Diffgazer is local-only by design. The server binds to `127.0.0.1` only, it never listens on `0.0.0.0` or any network interface. Your code never leaves your machine except for the diff sent to the AI provider you choose.
 
 ## Why secure a local tool?
 
 "Localhost" sounds safe, but it's always the truth. Not automatically. A malicious website you visit in the same browser can talk to your `localhost` services through something called [DNS rebinding](https://nvd.nist.gov/vuln/detail/CVE-2024-28224). This already happened to real tools (Ollama, Jupyter). Without CORS and host validation, any website could trigger reviews, read your code diffs, or steal your API keys, all while you're just browsing.
 
-On top of that, Stargazer sends your code to AI models. If someone slips instructions into a diff (a renamed variable, a comment), the AI might follow those instructions instead of reviewing the code. This is [prompt injection](https://nvd.nist.gov/vuln/detail/CVE-2025-53773), it already hit GitHub Copilot. We XML-escape everything before it reaches the AI.
+On top of that, Diffgazer sends your code to AI models. If someone slips instructions into a diff (a renamed variable, a comment), the AI might follow those instructions instead of reviewing the code. This is [prompt injection](https://nvd.nist.gov/vuln/detail/CVE-2025-53773), it already hit GitHub Copilot. We XML-escape everything before it reaches the AI.
 
 So yeah, **local doesn't mean safe, it also requires at least some security measures, and I don't want to cut corners just because there's no login screen.** (at least what AI told me lol)
 
@@ -37,7 +37,7 @@ So yeah, **local doesn't mean safe, it also requires at least some security meas
 
 **Body limits** - POST endpoints enforce body size limits (10-50KB depending on the route) to prevent oversized payloads.
 
-**Trust model** - per-project, capability-based trust system. Before Stargazer can read files or run git commands in a directory, you have to explicitly grant trust with specific capabilities (`readFiles`, `runCommands`).
+**Trust model** - per-project, capability-based trust system. Before Diffgazer can read files or run git commands in a directory, you have to explicitly grant trust with specific capabilities (`readFiles`, `runCommands`).
 
 **Credential storage** - API keys are stored via OS keyring when available, or in a JSON file with `0600` permissions using atomic writes (temp file + rename).
 

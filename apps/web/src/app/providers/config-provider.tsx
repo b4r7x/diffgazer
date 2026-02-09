@@ -6,9 +6,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { AIProviderSchema } from "@stargazer/schemas/config";
-import { SetupStatusSchema } from "@stargazer/schemas/config";
-import type { AIProvider, ProviderStatus, TrustConfig, SetupStatus } from "@stargazer/schemas/config";
+import { AIProviderSchema } from "@diffgazer/schemas/config";
+import { SetupStatusSchema } from "@diffgazer/schemas/config";
+import type { AIProvider, ProviderStatus, TrustConfig, SetupStatus } from "@diffgazer/schemas/config";
 import { DEFAULT_TTL } from "@/config/constants";
 import { api } from "@/lib/api";
 

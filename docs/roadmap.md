@@ -11,10 +11,10 @@ Small fixes, quality improvements, refactors. No breaking changes. The codebase 
 Roughly in this order:
 
 1. **Local providers** - Ollama, LM Studio, and other local inference options so your data never leaves your machine at all
-2. **UI quality pass** - improve the web interface, clean up the component library, maybe extract `@stargazer/ui` as a standalone package
+2. **UI quality pass** - improve the web interface, clean up the component library, maybe extract `@diffgazer/ui` as a standalone package
 3. **More cloud providers** - Anthropic (Claude) and OpenAI direct integrations
 4. **File and session review** - review individual files or past sessions, not just full diffs
-5. **GitHub Actions workflow** - run Stargazer in CI to review PRs automatically
+5. **GitHub Actions workflow** - run Diffgazer in CI to review PRs automatically
 6. **Smarter analysis** - data-flow graphs, better project context, clearer context for agents to work with
 7. **Headless CLI mode** - run reviews without the web UI, get results in terminal or JSON
 8. **Whatever makes sense** - based on real feedback, if anyone actually uses this

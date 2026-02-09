@@ -1,4 +1,4 @@
-# Stargazer Documentation
+# Diffgazer Documentation
 
 Start with the [main README](../README.md) for the project overview and quick start.
 
@@ -14,4 +14,4 @@ Start with the [main README](../README.md) for the project overview and quick st
 | [Security](security.md) | Threat model, protections, CVE references |
 | [Roadmap](roadmap.md) | What's planned |
 | [Contributing](contributing.md) | Dev setup, code style |
-| [Technical Reference](PROJECT_DOCUMENTATION.md) | Full API reference, schemas, internals |
+| [API Reference](api.md) | Endpoints |

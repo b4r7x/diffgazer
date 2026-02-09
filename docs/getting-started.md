@@ -9,26 +9,26 @@
 ## Install
 
 ```bash
-npm install -g stargazer
+npm install -g diffgazer
 ```
 
 ## Install from source
 
 ```bash
-git clone https://github.com/b4r7x/stargazer
-cd stargazer
+git clone https://github.com/b4r7x/diffgazer
+cd diffgazer
 pnpm install
 pnpm build
 cd apps/cli && npm link
 ```
 
-After linking, `stargazer` is available globally.
+After linking, `diffgazer` is available globally.
 
 ## First run
 
 ```bash
 cd your-project
-stargazer
+diffgazer
 ```
 
 The CLI prints an ASCII logo, starts a local server on port 3000, and opens your browser. Everything happens in the browser, the terminal just shows "Esc or ctrl+c to exit."
@@ -37,7 +37,7 @@ The CLI prints an ASCII logo, starts a local server on port 3000, and opens your
 
 On first launch, a 5-step wizard walks you through setup:
 
-1. **Secrets storage** - choose OS keyring (macOS Keychain, Windows Credential Manager, Linux Secret Service) or file-based storage (`~/.stargazer/secrets.json`, mode 0600).
+1. **Secrets storage** - choose OS keyring (macOS Keychain, Windows Credential Manager, Linux Secret Service) or file-based storage (`~/.diffgazer/secrets.json`, mode 0600).
 2. **Provider** - pick an AI provider: Google Gemini (free tier available), Z.AI (free tier), or OpenRouter (access to Claude, GPT, and others).
 3. **API key** - paste your key. It gets stored using the method you chose in step 1.
 4. **Model** - select from available models for your provider.
@@ -52,7 +52,7 @@ On first launch, a 5-step wizard walks you through setup:
 
 ## Configuration
 
-Settings are stored in `~/.stargazer/config.json`.
+Settings are stored in `~/.diffgazer/config.json`.
 
 | Setting | Default | Description |
 |---------|---------|-------------|
@@ -67,7 +67,7 @@ Settings are stored in `~/.stargazer/config.json`.
 
 | Variable | Purpose |
 |----------|---------|
-| `STARGAZER_HOME` | Override global config directory |
+| `DIFFGAZER_HOME` | Override global config directory |
 | `PORT` | Override server port (default: 3000) |
 | `GOOGLE_API_KEY` | Gemini API key (alternative to stored) |
 | `ZAI_API_KEY` | Z.AI API key (alternative to stored) |
@@ -75,7 +75,7 @@ Settings are stored in `~/.stargazer/config.json`.
 
 ## File locations
 
-### Global (`~/.stargazer/`)
+### Global (`~/.diffgazer/`)
 
 | File | Contents |
 |------|----------|
@@ -84,7 +84,7 @@ Settings are stored in `~/.stargazer/config.json`.
 | `trust.json` | Per-project trust grants |
 | `triage-reviews/*.json` | Saved review results |
 
-### Per-project (`{project}/.stargazer/`)
+### Per-project (`{project}/.diffgazer/`)
 
 | File | Contents |
 |------|----------|
@@ -96,8 +96,8 @@ Settings are stored in `~/.stargazer/config.json`.
 ## Uninstall
 
 ```bash
-npm uninstall -g stargazer
-rm -rf ~/.stargazer  # remove config and saved reviews
+npm uninstall -g diffgazer
+rm -rf ~/.diffgazer  # remove config and saved reviews
 ```
 
 ---

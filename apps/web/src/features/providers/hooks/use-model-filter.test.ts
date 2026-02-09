@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { ModelInfo } from "@stargazer/schemas/config";
+import type { ModelInfo } from "@diffgazer/schemas/config";
 
 // We can't import filterModels directly since it's not exported,
 // but we can test it through the hook. Instead, let's replicate the

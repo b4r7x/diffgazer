@@ -1,25 +1,37 @@
 {
-  "name": "stargazer",
+  "name": "diffgazer",
   "version": "0.1.0",
-  "description": "Stargazer - Development toolkit",
+  "description": "Diffgazer - Development toolkit",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/b4r7x/diffgazer.git",
+    "directory": "apps/cli"
+  },
+  "homepage": "https://github.com/b4r7x/diffgazer#readme",
+  "bugs": {
+    "url": "https://github.com/b4r7x/diffgazer/issues"
+  },
   "type": "module",
   "bin": {
-    "stargazer": "bin/stargazer.js"
+    "diffgazer": "bin/diffgazer.js"
   },
   "files": [
     "dist",
-    "bin"
+    "bin/diffgazer.js"
   ],
   "engines": {
     "node": ">=20.0.0"
   },
   "scripts": {
-    "build": "pnpm build:deps && pnpm build:web && pnpm build:bundle",
-    "build:deps": "pnpm --filter @stargazer/core build && pnpm --filter @stargazer/hooks build && pnpm --filter @stargazer/server build",
-    "build:web": "pnpm --filter @stargazer/web exec tsc -b && pnpm --filter @stargazer/web exec vite build --outDir ../cli/dist/web",
+    "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "pnpm run clean && pnpm build:deps && pnpm build:web && pnpm build:bundle",
+    "build:deps": "pnpm --filter @diffgazer/core build && pnpm --filter @diffgazer/hooks build && pnpm --filter @diffgazer/server build",
+    "build:web": "pnpm --filter @diffgazer/web exec tsc -b && pnpm --filter @diffgazer/web exec vite build --outDir ../cli/dist/web",
     "build:bundle": "tsup",
+    "prepack": "pnpm run build",
     "dev": "tsx --tsconfig tsconfig.json src/index.tsx --dev",
-    "start": "node bin/stargazer.js"
+    "start": "node bin/diffgazer.js"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.9",
@@ -33,10 +45,10 @@
     "react": "^19.2.4"
   },
   "devDependencies": {
-    "@stargazer/core": "workspace:*",
-    "@stargazer/hooks": "workspace:*",
-    "@stargazer/server": "workspace:*",
-    "@stargazer/tsconfig": "workspace:*",
+    "@diffgazer/core": "workspace:*",
+    "@diffgazer/hooks": "workspace:*",
+    "@diffgazer/server": "workspace:*",
+    "@diffgazer/tsconfig": "workspace:*",
     "@types/node": "^25.2.0",
     "@types/react": "^19.2.13",
     "tsup": "^8.5.1",

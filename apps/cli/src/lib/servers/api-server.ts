@@ -15,7 +15,7 @@ export function createApiServer(config: ApiServerConfig): ServerController {
     args: ["tsx", "src/dev.ts"],
     cwd: config.cwd,
     port: config.port,
-    env: { PORT: String(config.port), STARGAZER_PROJECT_ROOT: projectRoot },
+    env: { PORT: String(config.port), DIFFGAZER_PROJECT_ROOT: projectRoot },
     readyPattern: "Server running",
   });
 }

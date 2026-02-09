@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AIProviderSchema, SaveConfigRequestSchema } from "@stargazer/schemas/config";
+import { AIProviderSchema, SaveConfigRequestSchema } from "@diffgazer/schemas/config";
 
 export const SaveConfigSchema = SaveConfigRequestSchema;
 

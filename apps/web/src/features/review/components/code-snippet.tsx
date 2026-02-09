@@ -1,5 +1,5 @@
 import { cn } from "@/utils/cn";
-import type { CodeLine } from "@stargazer/schemas/ui";
+import type { CodeLine } from "@diffgazer/schemas/ui";
 
 export type { CodeLine };
 

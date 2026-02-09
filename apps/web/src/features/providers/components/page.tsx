@@ -1,13 +1,13 @@
 import { useRef } from "react";
-import { useNavigation } from "@stargazer/keyboard";
-import type { Shortcut } from "@stargazer/schemas/ui";
+import { useNavigation } from "@diffgazer/keyboard";
+import type { Shortcut } from "@diffgazer/schemas/ui";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ProviderList } from "@/features/providers/components/provider-list";
 import { ProviderDetails } from "@/features/providers/components/provider-details";
 import { ApiKeyDialog } from "@/features/providers/components/api-key-dialog/api-key-dialog";
 import { ModelSelectDialog } from "@/features/providers/components/model-select-dialog/model-select-dialog";
 import { useProvidersPageState } from "@/features/providers/hooks/use-providers-page-state";
-import { PROVIDER_ENV_VARS } from "@stargazer/schemas/config";
+import { PROVIDER_ENV_VARS } from "@diffgazer/schemas/config";
 
 export function getProvidersFooter(
   focusZone: "input" | "filters" | "list" | "buttons",

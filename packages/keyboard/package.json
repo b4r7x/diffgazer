@@ -1,11 +1,11 @@
 {
-  "name": "@stargazer/keyboard",
+  "name": "@diffgazer/keyboard",
   "version": "0.0.1",
   "description": "Composable keyboard navigation hooks for React 19",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/b4r7x/stargazer",
+    "url": "https://github.com/b4r7x/diffgazer",
     "directory": "packages/keyboard"
   },
   "keywords": [
@@ -42,7 +42,7 @@
     "react": "^19.0.0"
   },
   "devDependencies": {
-    "@stargazer/tsconfig": "workspace:*",
+    "@diffgazer/tsconfig": "workspace:*",
     "@testing-library/react": "^16.0.0",
     "@types/react": "^19.0.0",
     "jsdom": "^28.0.0",

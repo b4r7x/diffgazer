@@ -1,5 +1,5 @@
-import type { Lens, SeverityRubric } from "@stargazer/schemas/review";
-import type { ReviewIssue } from "@stargazer/schemas/review";
+import type { Lens, SeverityRubric } from "@diffgazer/schemas/review";
+import type { ReviewIssue } from "@diffgazer/schemas/review";
 import type { ParsedDiff, FileDiff } from "../diff/types.js";
 
 const escapeXml = (value: string): string =>

@@ -3,7 +3,7 @@ import {
   LensIdSchema,
   ProfileIdSchema,
   ReviewModeSchema,
-} from "@stargazer/schemas/review";
+} from "@diffgazer/schemas/review";
 
 export const ReviewIdParamSchema = z.object({
   id: z.string().uuid(),

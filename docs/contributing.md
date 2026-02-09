@@ -8,13 +8,13 @@ That said, here's how to get the project running and what to know about the code
 
 - **Node.js 20+**
 - **pnpm 9+** - enable via Corepack: `corepack enable`
-- A git repo to test reviews against (any repo with uncommitted changes works, can be stargazer itself)
+- A git repo to test reviews against (any repo with uncommitted changes works, can be diffgazer itself)
 
 ## Setup
 
 ```bash
-git clone https://github.com/b4r7x/stargazer
-cd stargazer
+git clone https://github.com/b4r7x/diffgazer
+cd diffgazer
 pnpm install
 pnpm dev
 ```
@@ -59,7 +59,7 @@ See [architecture.md](./architecture.md) for the full dependency graph.
 - TypeScript strict mode
 - kebab-case file names (`review-display.tsx`, not `ReviewDisplay.tsx`)
 - `Result<T, E>` for error handling, not try/catch (see `packages/core/src/result.ts`)
-- Zod v4 schemas from `@stargazer/schemas` for all validation
+- Zod v4 schemas from `@diffgazer/schemas` for all validation
 - Tailwind 4 + CVA for styling in the web app
 - No manual `useCallback`/`useMemo`, React 19 Compiler handles it
 - Safe index access with `??` fallback, no `!` assertions

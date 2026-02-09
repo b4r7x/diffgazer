@@ -1,4 +1,4 @@
-# Stargazer
+# Diffgazer
 
 Local-only AI code review CLI tool with embedded web UI. TypeScript monorepo (pnpm).
 
@@ -29,10 +29,10 @@ packages/tsconfig/ → Shared TS configs
 ## Architecture Rules
 
 - Web is source of truth for UI structure. CLI mirrors web in Ink format.
-- Shared data lives in `@stargazer/core` — labels, types, utilities.
-- Both apps use `@stargazer/api` client for API calls — no direct fetch in apps.
+- Shared data lives in `@diffgazer/core` — labels, types, utilities.
+- Both apps use `@diffgazer/api` client for API calls — no direct fetch in apps.
 - Use `Result<T, E>` for error handling, NOT try/catch. See @.claude/docs/decisions.md (ADR-0001).
-- Use Zod 4 schemas from `@stargazer/schemas` for all validation.
+- Use Zod 4 schemas from `@diffgazer/schemas` for all validation.
 - No manual `useCallback`/`useMemo` — React 19 Compiler auto-memoizes.
 - No mock data in web — everything connects to real backend.
 

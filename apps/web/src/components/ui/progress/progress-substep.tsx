@@ -1,7 +1,7 @@
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/utils/cn";
-import { Badge } from "@stargazer/ui";
-import type { ProgressSubstepData } from "@stargazer/schemas/ui";
+import { Badge } from "@diffgazer/ui";
+import type { ProgressSubstepData } from "@diffgazer/schemas/ui";
 
 const substepVariants = cva("flex items-center gap-2 py-1 text-sm", {
   variants: {
