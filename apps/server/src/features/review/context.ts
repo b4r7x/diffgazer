@@ -5,7 +5,7 @@ import type {
   ProjectContextGraph,
   ProjectContextMeta,
   ProjectContextSnapshot,
-} from "@stargazer/schemas/context";
+} from "@diffgazer/schemas/context";
 import { createGitService } from "../../shared/lib/git/service.js";
 import { readJsonFile, atomicWriteFile } from "../../shared/lib/fs.js";
 
@@ -112,7 +112,7 @@ function formatWorkspaceGraph(packages: WorkspacePackage[]): string {
 
 const CONTEXT_EXCLUDE_DIRS = new Set([
   ".git",
-  ".stargazer",
+  ".diffgazer",
   "node_modules",
   "dist",
   "build",
@@ -204,7 +204,7 @@ export async function buildProjectContextSnapshot(
   projectPath: string,
   options: { force?: boolean } = {},
 ): Promise<ProjectContextSnapshot> {
-  const contextDir = path.join(projectPath, ".stargazer");
+  const contextDir = path.join(projectPath, ".diffgazer");
   await mkdir(contextDir, { recursive: true });
 
   const gitService = createGitService({ cwd: projectPath });

@@ -7,8 +7,8 @@ import {
   DEFAULT_RUBRIC,
 } from "./prompts.js";
 import type { ParsedDiff, FileDiff } from "../diff/types.js";
-import type { Lens } from "@stargazer/schemas/review";
-import type { ReviewIssue } from "@stargazer/schemas/review";
+import type { Lens } from "@diffgazer/schemas/review";
+import type { ReviewIssue } from "@diffgazer/schemas/review";
 
 // ---------------------------------------------------------------------------
 // escapeXml is not directly exported, but we can test it through buildReviewPrompt

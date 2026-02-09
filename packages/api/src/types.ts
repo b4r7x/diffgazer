@@ -1,11 +1,11 @@
-import type { TrustConfig } from "@stargazer/schemas/config";
+import type { TrustConfig } from "@diffgazer/schemas/config";
 import type {
   ReviewMode,
   ReviewMetadata,
   SavedReview,
   DrilldownResult,
-} from "@stargazer/schemas/review";
-import type { ProjectContextGraph, ProjectContextMeta } from "@stargazer/schemas/context";
+} from "@diffgazer/schemas/review";
+import type { ProjectContextGraph, ProjectContextMeta } from "@diffgazer/schemas/context";
 
 // API client types (unique to this package)
 export interface ApiError extends Error {

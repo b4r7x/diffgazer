@@ -1,6 +1,6 @@
-import type { AgentStreamEvent, AgentId, StepEvent, EnrichEvent } from "@stargazer/schemas/events";
-import { AGENT_METADATA, STEP_METADATA } from "@stargazer/schemas/events";
-import type { LogEntryData } from "@stargazer/schemas/ui";
+import type { AgentStreamEvent, AgentId, StepEvent, EnrichEvent } from "@diffgazer/schemas/events";
+import { AGENT_METADATA, STEP_METADATA } from "@diffgazer/schemas/events";
+import type { LogEntryData } from "@diffgazer/schemas/ui";
 import { truncate } from "../strings.js";
 
 function getAgent(agentId: AgentId): { label: string; name: string } {

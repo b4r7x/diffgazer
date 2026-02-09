@@ -1,4 +1,4 @@
-# About Stargazer
+# About Diffgazer
 
 I just wanted to have my own code reviewer. Most of what I'm writing here is roast on myself, because of being guilty of being lazy.
 
@@ -41,7 +41,7 @@ Of course there is a practical side of this, because the hackathon pace couldn't
 
 **Know your code. No need to race.**
 
-## So what's comming to stargazer
+## So what's comming to diffgazer
 
 Until April 2026, I'll be taking a little of the break. To focus on bug fixes, quality improvements, maybe small features, but not on the breaking changes. The priority is stability.
 

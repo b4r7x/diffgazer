@@ -1,6 +1,6 @@
 @import "tailwindcss";
-@import "@stargazer/ui/sources.css";
-@import "@stargazer/ui/theme.css";
+@import "@diffgazer/ui/sources.css";
+@import "@diffgazer/ui/theme.css";
 
 html,
 body {

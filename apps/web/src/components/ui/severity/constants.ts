@@ -1,4 +1,4 @@
-import type { ReviewSeverity } from "@stargazer/schemas/review";
+import type { ReviewSeverity } from "@diffgazer/schemas/review";
 
 export interface SeverityConfig {
   icon: string;

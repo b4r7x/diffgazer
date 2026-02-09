@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ModelInfo } from "@stargazer/schemas/config";
+import type { ModelInfo } from "@diffgazer/schemas/config";
 import { TIER_FILTERS, type TierFilter } from "@/features/providers/constants";
 
 export type { TierFilter };

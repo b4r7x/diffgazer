@@ -6,7 +6,7 @@ import {
   DialogTitle,
   DialogBody,
   Badge,
-} from "@stargazer/ui";
+} from "@diffgazer/ui";
 import { useApiKeyForm } from "../../hooks/use-api-key-form";
 import { useApiKeyDialogKeyboard } from "../../hooks/use-api-key-dialog-keyboard";
 import { ApiKeyMethodSelector } from "./api-key-method-selector";

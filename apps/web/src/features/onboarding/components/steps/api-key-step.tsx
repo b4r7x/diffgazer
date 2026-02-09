@@ -1,6 +1,6 @@
 import { useRef } from "react";
-import { AVAILABLE_PROVIDERS, PROVIDER_ENV_VARS } from "@stargazer/schemas/config";
-import type { AIProvider } from "@stargazer/schemas/config";
+import { AVAILABLE_PROVIDERS, PROVIDER_ENV_VARS } from "@diffgazer/schemas/config";
+import type { AIProvider } from "@diffgazer/schemas/config";
 import { ApiKeyMethodSelector } from "@/components/shared/api-key-method-selector";
 import type { InputMethod } from "@/types/input-method";
 

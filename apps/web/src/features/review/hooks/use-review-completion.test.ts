@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useReviewCompletion } from "./use-review-completion";
-import type { StepState } from "@stargazer/schemas/events";
-import type { ReviewIssue } from "@stargazer/schemas/review";
+import type { StepState } from "@diffgazer/schemas/events";
+import type { ReviewIssue } from "@diffgazer/schemas/review";
 
 const REPORT_COMPLETE_DELAY_MS = 2300;
 const DEFAULT_COMPLETE_DELAY_MS = 400;

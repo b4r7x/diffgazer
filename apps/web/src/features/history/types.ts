@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { ReviewIssue } from "@stargazer/schemas/review";
+import type { ReviewIssue } from "@diffgazer/schemas/review";
 
 export type HistoryFocusZone = "timeline" | "runs" | "insights" | "search";
 

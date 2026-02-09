@@ -1,8 +1,8 @@
 import { useRef } from "react";
-import { NavigationList, NavigationListItem, Badge } from "@stargazer/ui";
-import { useNavigation } from "@stargazer/keyboard";
-import { AVAILABLE_PROVIDERS } from "@stargazer/schemas/config";
-import type { AIProvider } from "@stargazer/schemas/config";
+import { NavigationList, NavigationListItem, Badge } from "@diffgazer/ui";
+import { useNavigation } from "@diffgazer/keyboard";
+import { AVAILABLE_PROVIDERS } from "@diffgazer/schemas/config";
+import type { AIProvider } from "@diffgazer/schemas/config";
 import { PROVIDER_CAPABILITIES } from "@/config/constants";
 
 interface ProviderStepProps {

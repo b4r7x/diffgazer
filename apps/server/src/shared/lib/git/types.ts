@@ -1,4 +1,4 @@
-import type { GitFileEntry } from "@stargazer/schemas/git";
+import type { GitFileEntry } from "@diffgazer/schemas/git";
 
 export type GitDiffErrorCode =
   | "GIT_NOT_FOUND"

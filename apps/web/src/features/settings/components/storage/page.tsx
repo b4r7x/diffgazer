@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import type { SecretsStorage } from "@stargazer/schemas/config";
-import type { Shortcut } from "@stargazer/schemas/ui";
-import { Button, Callout, CardLayout } from "@stargazer/ui";
+import type { SecretsStorage } from "@diffgazer/schemas/config";
+import type { Shortcut } from "@diffgazer/schemas/ui";
+import { Button, Callout, CardLayout } from "@diffgazer/ui";
 import { StorageSelectorContent } from "@/components/shared/storage-selector-content";
 import { useSettings } from "@/hooks/use-settings";
 import { api } from "@/lib/api";
-import { useKey, useScope } from "@stargazer/keyboard";
+import { useKey, useScope } from "@diffgazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { cn } from "@/utils/cn";
 

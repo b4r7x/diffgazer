@@ -1,4 +1,4 @@
-import { getErrorMessage } from "@stargazer/core/errors";
+import { getErrorMessage } from "@diffgazer/core/errors";
 import type { GitDiffErrorCode } from "./types.js";
 import { classifyError, type ErrorRule } from "../errors.js";
 

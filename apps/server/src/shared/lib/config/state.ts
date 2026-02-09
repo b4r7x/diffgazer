@@ -6,7 +6,7 @@ import {
   getProjectInfoPath,
 } from "../paths.js";
 import { readJsonFileSync, writeJsonFileSync, writeJsonFile, removeFileSync } from "../fs.js";
-import { AI_PROVIDERS, type AIProvider, type ProviderStatus, type SettingsConfig, type SecretsStorage, type TrustCapabilities } from "@stargazer/schemas/config";
+import { AI_PROVIDERS, type AIProvider, type ProviderStatus, type SettingsConfig, type SecretsStorage, type TrustCapabilities } from "@diffgazer/schemas/config";
 import type {
   ConfigState,
   ProjectFile,

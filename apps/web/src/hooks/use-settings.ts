@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from "react";
-import type { SettingsConfig } from "@stargazer/schemas/config";
+import type { SettingsConfig } from "@diffgazer/schemas/config";
 import { DEFAULT_TTL } from "@/config/constants";
 import { api } from "@/lib/api";
 

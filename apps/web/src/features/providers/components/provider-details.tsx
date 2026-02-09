@@ -1,4 +1,4 @@
-import { Badge, Button, SectionHeader, KeyValueRow } from '@stargazer/ui';
+import { Badge, Button, SectionHeader, KeyValueRow } from '@diffgazer/ui';
 import { CapabilityCard } from './capability-card';
 import { PROVIDER_CAPABILITIES, OPENROUTER_PROVIDER_ID } from '@/config/constants';
 import type { ProviderWithStatus } from '../types';

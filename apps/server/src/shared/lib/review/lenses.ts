@@ -1,4 +1,4 @@
-import type { Lens, LensId } from "@stargazer/schemas/review";
+import type { Lens, LensId } from "@diffgazer/schemas/review";
 import {
   CORRECTNESS_SYSTEM_PROMPT,
   CORRECTNESS_SEVERITY_RUBRIC,

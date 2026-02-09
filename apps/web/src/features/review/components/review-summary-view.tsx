@@ -1,9 +1,9 @@
 import { AnalysisSummary, type IssuePreview } from "@/features/review/components/analysis-summary";
 import type { LensStats } from "@/features/review/components/lens-stats-table";
-import type { ReviewIssue } from "@stargazer/schemas/review";
-import { useScope, useKey } from "@stargazer/keyboard";
+import type { ReviewIssue } from "@diffgazer/schemas/review";
+import { useScope, useKey } from "@diffgazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { calculateSeverityCounts } from "@stargazer/core/severity";
+import { calculateSeverityCounts } from "@diffgazer/core/severity";
 
 const CATEGORY_META: Record<string, { icon: string; iconColor: string }> = {
   security: { icon: "shield", iconColor: "text-tui-red" },

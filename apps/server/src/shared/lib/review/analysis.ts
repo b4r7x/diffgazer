@@ -1,16 +1,16 @@
 import { randomUUID } from "node:crypto";
-import type { Lens } from "@stargazer/schemas/review";
+import type { Lens } from "@diffgazer/schemas/review";
 import type {
   ReviewIssue,
   ReviewResult,
-} from "@stargazer/schemas/review";
-import { ReviewResultSchema } from "@stargazer/schemas/review";
-import type { AgentStreamEvent, StepEvent } from "@stargazer/schemas/events";
-import { AGENT_METADATA, LENS_TO_AGENT } from "@stargazer/schemas/events";
+} from "@diffgazer/schemas/review";
+import { ReviewResultSchema } from "@diffgazer/schemas/review";
+import type { AgentStreamEvent, StepEvent } from "@diffgazer/schemas/events";
+import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/schemas/events";
 import type { AIClient, AIError } from "../ai/types.js";
 import type { ParsedDiff } from "../diff/types.js";
-import type { Result } from "@stargazer/core/result";
-import { ok } from "@stargazer/core/result";
+import type { Result } from "@diffgazer/core/result";
+import { ok } from "@diffgazer/core/result";
 import { ensureIssueEvidence } from "./issues.js";
 import { estimateTokens, getThinkingMessage } from "./utils.js";
 import { buildReviewPrompt } from "./prompts.js";

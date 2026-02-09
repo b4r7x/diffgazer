@@ -1,4 +1,4 @@
-import { Button } from "@stargazer/ui";
+import { Button } from "@diffgazer/ui";
 import { cn } from "@/utils/cn";
 
 interface Hint {

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, cleanup } from "@testing-library/react";
-import type { ReviewStartedEvent, StepEvent } from "@stargazer/schemas/events";
-import type { AgentStreamEvent } from "@stargazer/schemas/events";
-import { createInitialSteps } from "@stargazer/schemas/events";
-import { ReviewErrorCode } from "@stargazer/schemas/review";
+import type { ReviewStartedEvent, StepEvent } from "@diffgazer/schemas/events";
+import type { AgentStreamEvent } from "@diffgazer/schemas/events";
+import { createInitialSteps } from "@diffgazer/schemas/events";
+import { ReviewErrorCode } from "@diffgazer/schemas/review";
 
 // Mock the api module at the boundary
 vi.mock("@/lib/api", () => ({

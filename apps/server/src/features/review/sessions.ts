@@ -1,5 +1,5 @@
-import type { FullReviewStreamEvent } from "@stargazer/schemas/events";
-import { ReviewErrorCode, type ReviewMode } from "@stargazer/schemas/review";
+import type { FullReviewStreamEvent } from "@diffgazer/schemas/events";
+import { ReviewErrorCode, type ReviewMode } from "@diffgazer/schemas/review";
 
 export interface ActiveSession {
   reviewId: string;

@@ -7,8 +7,8 @@ import {
 } from "./review.js";
 import type { ApiClient } from "./types.js";
 
-vi.mock("@stargazer/core/review", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@stargazer/core/review")>();
+vi.mock("@diffgazer/core/review", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@diffgazer/core/review")>();
   return {
     ...actual,
     processReviewStream: vi.fn(),
@@ -94,7 +94,7 @@ describe("resumeReviewStream", () => {
   });
 
   it("should return ok result when stream completes successfully", async () => {
-    const { processReviewStream } = await import("@stargazer/core/review");
+    const { processReviewStream } = await import("@diffgazer/core/review");
     vi.mocked(processReviewStream).mockResolvedValue({
       ok: true,
       value: {
@@ -170,7 +170,7 @@ describe("streamReviewWithEvents", () => {
   });
 
   it("should call processReviewStream with reader and handlers", async () => {
-    const { processReviewStream } = await import("@stargazer/core/review");
+    const { processReviewStream } = await import("@diffgazer/core/review");
     const mockResult = {
       ok: true as const,
       value: {

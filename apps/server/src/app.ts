@@ -53,7 +53,7 @@ export const createApp = (): Hono => {
         return isLocalhostOrigin(origin) ? origin : "";
       },
       allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      allowHeaders: ["Content-Type", "Authorization", "x-stargazer-project-root"],
+      allowHeaders: ["Content-Type", "Authorization", "x-diffgazer-project-root"],
     })
   );
 

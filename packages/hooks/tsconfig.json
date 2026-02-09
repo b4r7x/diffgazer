@@ -1,5 +1,5 @@
 {
-  "extends": "@stargazer/tsconfig/react.json",
+  "extends": "@diffgazer/tsconfig/react.json",
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",

@@ -137,7 +137,7 @@ describe("ThemeProvider", () => {
     expect(capturedSetTheme).toBeDefined();
     capturedSetTheme!("dark");
 
-    expect(localStorage.getItem("stargazer-theme")).toBe("dark");
+    expect(localStorage.getItem("diffgazer-theme")).toBe("dark");
     expect(mockSaveSettings).toHaveBeenCalledWith({ theme: "dark" });
   });
 

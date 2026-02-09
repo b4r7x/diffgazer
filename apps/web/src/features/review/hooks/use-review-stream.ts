@@ -1,15 +1,15 @@
 import { useReducer, useRef, useEffect } from "react";
 import { api } from "@/lib/api";
-import type { StreamReviewRequest, StreamReviewError } from "@stargazer/api/review";
-import type { AgentStreamEvent, EnrichEvent, StepEvent } from "@stargazer/schemas/events";
-import type { Result } from "@stargazer/core/result";
+import type { StreamReviewRequest, StreamReviewError } from "@diffgazer/api/review";
+import type { AgentStreamEvent, EnrichEvent, StepEvent } from "@diffgazer/schemas/events";
+import type { Result } from "@diffgazer/core/result";
 import {
   reviewReducer,
   createInitialReviewState,
   type ReviewState as CoreReviewState,
   type ReviewAction as CoreReviewAction,
-} from "@stargazer/core/review";
-import { ReviewErrorCode } from "@stargazer/schemas/review";
+} from "@diffgazer/core/review";
+import { ReviewErrorCode } from "@diffgazer/schemas/review";
 
 interface WebReviewState extends CoreReviewState {
   reviewId: string | null;

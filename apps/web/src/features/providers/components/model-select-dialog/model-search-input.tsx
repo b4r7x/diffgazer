@@ -1,4 +1,4 @@
-import { Button } from "@stargazer/ui";
+import { Button } from "@diffgazer/ui";
 
 interface ModelSearchInputProps {
   value: string;

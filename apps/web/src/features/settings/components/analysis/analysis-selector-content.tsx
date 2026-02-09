@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { LensId } from "@stargazer/schemas/review";
-import { Badge, CheckboxGroup, CheckboxItem, ScrollArea } from "@stargazer/ui";
-import { useNavigation } from "@stargazer/keyboard";
+import type { LensId } from "@diffgazer/schemas/review";
+import { Badge, CheckboxGroup, CheckboxItem, ScrollArea } from "@diffgazer/ui";
+import { useNavigation } from "@diffgazer/keyboard";
 
 export interface AnalysisOption {
   id: LensId;

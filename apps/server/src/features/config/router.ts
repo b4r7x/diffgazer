@@ -14,7 +14,7 @@ import {
 import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
 import { createBodyLimitMiddleware } from "../../shared/middlewares/body-limit.js";
-import { ErrorCode } from "@stargazer/schemas/errors";
+import { ErrorCode } from "@diffgazer/schemas/errors";
 import { SaveConfigSchema, ProviderParamSchema, ActivateProviderBodySchema } from "./schemas.js";
 
 const configRouter = new Hono();

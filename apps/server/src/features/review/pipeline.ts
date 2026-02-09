@@ -8,21 +8,21 @@ import {
   LensIdSchema,
   type ProfileId,
   type ReviewMode,
-} from "@stargazer/schemas/review";
-import { ErrorCode } from "@stargazer/schemas/errors";
+} from "@diffgazer/schemas/review";
+import { ErrorCode } from "@diffgazer/schemas/errors";
 import type {
   ReviewIssue,
   ReviewResult,
   ReviewSeverity,
-} from "@stargazer/schemas/review";
+} from "@diffgazer/schemas/review";
 import type {
   StepId,
   ReviewStartedEvent,
   EnrichProgressEvent,
-} from "@stargazer/schemas/events";
+} from "@diffgazer/schemas/events";
 import { getSettings } from "../../shared/lib/config/store.js";
 import { getProfile } from "../../shared/lib/review/profiles.js";
-import { severityRank } from "@stargazer/core/severity";
+import { severityRank } from "@diffgazer/core/severity";
 import { orchestrateReview } from "../../shared/lib/review/orchestrate.js";
 import { buildProjectContextSnapshot } from "./context.js";
 import { enrichIssues } from "./enrichment.js";

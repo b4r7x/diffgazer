@@ -1,16 +1,16 @@
 import { useEffect, useRef } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import type { ContextInfo } from "@stargazer/schemas/ui";
-import type { Shortcut } from "@stargazer/schemas/ui";
+import type { ContextInfo } from "@diffgazer/schemas/ui";
+import type { Shortcut } from "@diffgazer/schemas/ui";
 import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@/config/navigation";
-import { useKey, useScope, useNavigation } from "@stargazer/keyboard";
+import { useKey, useScope, useNavigation } from "@diffgazer/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ContextSidebar } from "@/features/home/components/context-sidebar";
 import { HomeMenu } from "@/features/home/components/home-menu";
 import { useConfigData } from "@/app/providers/config-provider";
 import { useReviewHistory } from "@/features/history/hooks/use-review-history";
-import { useToast } from "@stargazer/ui";
+import { useToast } from "@diffgazer/ui";
 import { shutdown } from "@/features/home/utils/shutdown";
 import { TrustPanel } from "./trust-panel";
 

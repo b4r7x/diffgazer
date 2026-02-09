@@ -44,22 +44,22 @@ describe("loadContextSnapshot", () => {
       .mockResolvedValueOnce(JSON.stringify(graph) as never) // context.json
       .mockResolvedValueOnce(JSON.stringify(meta) as never); // context.meta.json
 
-    const result = await loadContextSnapshot("/project/.stargazer");
+    const result = await loadContextSnapshot("/project/.diffgazer");
 
     expect(result).toEqual({
       markdown: "# markdown",
       graph,
       meta,
     });
-    expect(readFile).toHaveBeenCalledWith("/project/.stargazer/context.md", "utf8");
-    expect(readFile).toHaveBeenCalledWith("/project/.stargazer/context.json", "utf8");
-    expect(readFile).toHaveBeenCalledWith("/project/.stargazer/context.meta.json", "utf8");
+    expect(readFile).toHaveBeenCalledWith("/project/.diffgazer/context.md", "utf8");
+    expect(readFile).toHaveBeenCalledWith("/project/.diffgazer/context.json", "utf8");
+    expect(readFile).toHaveBeenCalledWith("/project/.diffgazer/context.meta.json", "utf8");
   });
 
   it("should return null on missing files", async () => {
     vi.mocked(readFile).mockRejectedValue(new Error("ENOENT"));
 
-    const result = await loadContextSnapshot("/project/.stargazer");
+    const result = await loadContextSnapshot("/project/.diffgazer");
 
     expect(result).toBeNull();
   });
@@ -69,7 +69,7 @@ describe("loadContextSnapshot", () => {
       .mockResolvedValueOnce("# markdown" as never) // context.md
       .mockResolvedValueOnce("not valid json" as never); // context.json (corrupt)
 
-    const result = await loadContextSnapshot("/project/.stargazer");
+    const result = await loadContextSnapshot("/project/.diffgazer");
 
     expect(result).toBeNull();
   });
@@ -155,7 +155,7 @@ describe("buildProjectContextSnapshot", () => {
         .mockResolvedValueOnce({ name: "@repo/web", dependencies: { react: "19" } }) // apps/web/package.json
         .mockResolvedValueOnce({ name: "@repo/cli", dependencies: { ink: "6" }, devDependencies: { vitest: "1" } }) // apps/cli/package.json
         .mockResolvedValueOnce({ name: "@repo/core", peerDependencies: { zod: "4" } }) // packages/core/package.json
-        .mockResolvedValueOnce({ name: "stargazer", version: "1.0.0" }); // root package.json
+        .mockResolvedValueOnce({ name: "diffgazer", version: "1.0.0" }); // root package.json
 
       // README
       vi.mocked(readFile).mockRejectedValue(new Error("ENOENT"));

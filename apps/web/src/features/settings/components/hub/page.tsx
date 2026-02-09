@@ -1,8 +1,8 @@
 import { useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Menu, MenuItem, Panel, PanelHeader } from "@stargazer/ui";
+import { Menu, MenuItem, Panel, PanelHeader } from "@diffgazer/ui";
 import { useConfigData } from "@/app/providers/config-provider";
-import { useScope, useKey, useNavigation } from "@stargazer/keyboard";
+import { useScope, useKey, useNavigation } from "@diffgazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useTheme } from "@/hooks/use-theme";
@@ -110,7 +110,7 @@ export function SettingsHubPage() {
         </Panel>
 
         <div className="mt-6 flex gap-4 text-xs text-muted-foreground font-mono select-none">
-          <span>config path: ~/.stargazer/config.json</span>
+          <span>config path: ~/.diffgazer/config.json</span>
           <span className="text-muted-foreground">|</span>
           <span>{settingsError ? settingsError : "local settings"}</span>
         </div>

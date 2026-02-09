@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
-import type { SavedReview } from "@stargazer/schemas/review";
+import type { SavedReview } from "@diffgazer/schemas/review";
 
 export function useReviewDetail(reviewId: string | null) {
   const [review, setReview] = useState<SavedReview | null>(null);

@@ -1,8 +1,8 @@
 import { useRef } from "react";
-import { AVAILABLE_PROVIDERS, GEMINI_MODEL_INFO, GLM_MODEL_INFO } from "@stargazer/schemas/config";
-import type { AIProvider, ModelInfo } from "@stargazer/schemas/config";
-import { RadioGroup, RadioGroupItem, Badge } from "@stargazer/ui";
-import { useNavigation } from "@stargazer/keyboard";
+import { AVAILABLE_PROVIDERS, GEMINI_MODEL_INFO, GLM_MODEL_INFO } from "@diffgazer/schemas/config";
+import type { AIProvider, ModelInfo } from "@diffgazer/schemas/config";
+import { RadioGroup, RadioGroupItem, Badge } from "@diffgazer/ui";
+import { useNavigation } from "@diffgazer/keyboard";
 import { useOpenRouterModels } from "@/hooks/use-openrouter-models";
 
 interface ModelStepProps {

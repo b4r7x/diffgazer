@@ -7,12 +7,12 @@ import {
   DialogBody,
   DialogFooter,
   DialogClose,
-} from "@stargazer/ui";
+} from "@diffgazer/ui";
 import {
   GEMINI_MODEL_INFO,
   GLM_MODEL_INFO,
   type AIProvider,
-} from "@stargazer/schemas/config";
+} from "@diffgazer/schemas/config";
 import { OPENROUTER_PROVIDER_ID } from "@/config/constants";
 import { useModelFilter } from "../../hooks/use-model-filter";
 import { useOpenRouterModels } from "@/hooks/use-openrouter-models";

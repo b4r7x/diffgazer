@@ -1,7 +1,7 @@
 import { useRef } from "react";
-import type { SecretsStorage } from '@stargazer/schemas/config';
-import { RadioGroup, RadioGroupItem } from '@stargazer/ui';
-import { useNavigation } from "@stargazer/keyboard";
+import type { SecretsStorage } from '@diffgazer/schemas/config';
+import { RadioGroup, RadioGroupItem } from '@diffgazer/ui';
+import { useNavigation } from "@diffgazer/keyboard";
 
 export interface StorageSelectorContentProps {
   value: SecretsStorage | null;

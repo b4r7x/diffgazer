@@ -1,4 +1,4 @@
-import type { Lens } from "@stargazer/schemas/review";
+import type { Lens } from "@diffgazer/schemas/review";
 
 export function estimateTokens(text: string): number {
   if (!text) return 0;

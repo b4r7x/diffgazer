@@ -147,14 +147,14 @@ describe("shutdown route", () => {
   let originalCliPid: string | undefined;
 
   beforeEach(() => {
-    originalCliPid = process.env.STARGAZER_CLI_PID;
+    originalCliPid = process.env.DIFFGAZER_CLI_PID;
   });
 
   afterEach(() => {
     if (originalCliPid === undefined) {
-      delete process.env.STARGAZER_CLI_PID;
+      delete process.env.DIFFGAZER_CLI_PID;
     } else {
-      process.env.STARGAZER_CLI_PID = originalCliPid;
+      process.env.DIFFGAZER_CLI_PID = originalCliPid;
     }
     resetShutdownStateForTests();
     vi.useRealTimers();
@@ -162,7 +162,7 @@ describe("shutdown route", () => {
   });
 
   it("returns 503 when CLI pid is unavailable", async () => {
-    delete process.env.STARGAZER_CLI_PID;
+    delete process.env.DIFFGAZER_CLI_PID;
     const app = createApp();
     const killSpy = vi.spyOn(process, "kill");
 
@@ -179,7 +179,7 @@ describe("shutdown route", () => {
   });
 
   it.each(["abc", "1"])("returns 503 when CLI pid is invalid: %s", async (pid) => {
-    process.env.STARGAZER_CLI_PID = pid;
+    process.env.DIFFGAZER_CLI_PID = pid;
     const app = createApp();
     const killSpy = vi.spyOn(process, "kill");
 
@@ -196,7 +196,7 @@ describe("shutdown route", () => {
   });
 
   it("schedules CLI termination when PID is present", async () => {
-    process.env.STARGAZER_CLI_PID = "4321";
+    process.env.DIFFGAZER_CLI_PID = "4321";
     const app = createApp();
     vi.useFakeTimers();
     const killSpy = vi.spyOn(process, "kill").mockImplementation(() => true);
@@ -216,7 +216,7 @@ describe("shutdown route", () => {
   });
 
   it("logs failure when process termination throws", async () => {
-    process.env.STARGAZER_CLI_PID = "4321";
+    process.env.DIFFGAZER_CLI_PID = "4321";
     const app = createApp();
     vi.useFakeTimers();
     const killError = new Error("kill failed");
@@ -243,7 +243,7 @@ describe("shutdown route", () => {
   });
 
   it("is idempotent while shutdown is already scheduled", async () => {
-    process.env.STARGAZER_CLI_PID = "4321";
+    process.env.DIFFGAZER_CLI_PID = "4321";
     const app = createApp();
     vi.useFakeTimers();
     const killSpy = vi.spyOn(process, "kill").mockImplementation(() => true);

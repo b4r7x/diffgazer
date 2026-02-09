@@ -1,11 +1,11 @@
-# Stargazer
+# Diffgazer
 
 Local AI code review. Run one command, get a review from AI agents, your code stays on your machine.
 
 > **Early release** - core review pipeline works, UI is getting polished. [Full context](docs/story.md).
 
 <!--
-  TODO: Add a screenshot or GIF of Stargazer in action here.
+  TODO: Add a screenshot or GIF of Diffgazer in action here.
   A ~15s recording of the review streaming interface would work great.
   Recommended size: 800-1200px wide.
 -->
@@ -14,11 +14,11 @@ Local AI code review. Run one command, get a review from AI agents, your code st
 
 I wanted my own code reviewer. Tools like Claude Code and Codex are great for writing code, but burning tokens on review when you could spend them building felt wrong.
 
-Code review matters, especially now that we're all shipping AI-generated code faster than we can read it. Solo devs rarely get their code reviewed. Privacy, fear of judgment, or just nobody around. Stargazer is my answer to that.
+Code review matters, especially now that we're all shipping AI-generated code faster than we can read it. Solo devs rarely get their code reviewed. Privacy, fear of judgment, or just nobody around. Diffgazer is my answer to that.
 
 Run one command, get a review. Only the diff goes to the provider you choose.
 
-> [Why I Built Stargazer](docs/story.md) - the full story.
+> [Why I Built Diffgazer](docs/story.md) - the full story.
 
 ## Features
 
@@ -38,9 +38,9 @@ Run one command, get a review. Only the diff goes to the provider you choose.
 Node.js 20+ required.
 
 ```bash
-npm install -g stargazer
+npm install -g diffgazer
 cd your-project
-stargazer
+diffgazer
 ```
 
 First run walks you through setup - secrets storage, provider, API key, model, preferences.
@@ -50,10 +50,10 @@ First run walks you through setup - secrets storage, provider, API key, model, p
 ### From source
 
 ```bash
-git clone https://github.com/b4r7x/stargazer
-cd stargazer && pnpm install && pnpm build
+git clone https://github.com/b4r7x/diffgazer
+cd diffgazer && pnpm install && pnpm build
 cd apps/cli && npm link
-stargazer   # now works from any git repo
+diffgazer   # now works from any git repo
 ```
 
 ## How it works
@@ -92,7 +92,7 @@ Issues ranked: **Blocker** · **High** · **Medium** · **Low** · **Nit**
 - [Security](docs/security.md) - threat model, CORS, prompt injection
 - [Roadmap](docs/roadmap.md) - what's planned
 - [Contributing](docs/contributing.md) - dev setup, code style
-- [Technical Reference](docs/PROJECT_DOCUMENTATION.md) - API, schemas, internals
+- [API Reference](docs/api.md) - endpoints
 
 ## Contributing
 

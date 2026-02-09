@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { mapStepsToProgressData } from "./review-container.utils";
-import type { StepState, AgentState } from "@stargazer/schemas/events";
+import type { StepState, AgentState } from "@diffgazer/schemas/events";
 
 function makeStep(id: string, label: string, status: StepState["status"] = "pending"): StepState {
   return { id, label, status } as StepState;

@@ -1,6 +1,6 @@
 import { cn } from '@/utils/cn';
-import { PanelHeader, Badge } from '@stargazer/ui';
-import type { AgentState } from '@stargazer/schemas/events';
+import { PanelHeader, Badge } from '@diffgazer/ui';
+import type { AgentState } from '@diffgazer/schemas/events';
 
 const AGENT_STATUS_META = {
   queued: { label: "WAIT", variant: "neutral", bar: "bg-tui-border" },

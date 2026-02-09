@@ -1,6 +1,6 @@
 import { cn } from "@/utils/cn";
-import type { ReviewSeverity } from "@stargazer/schemas/review";
-import { type UISeverityFilter, SEVERITY_ORDER } from "@stargazer/schemas/ui";
+import type { ReviewSeverity } from "@diffgazer/schemas/review";
+import { type UISeverityFilter, SEVERITY_ORDER } from "@diffgazer/schemas/ui";
 import { SeverityFilterButton } from "./severity-filter-button";
 
 export type SeverityFilter = UISeverityFilter;

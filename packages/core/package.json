@@ -1,5 +1,5 @@
 {
-  "name": "@stargazer/core",
+  "name": "@diffgazer/core",
   "version": "0.0.1",
   "type": "module",
   "sideEffects": false,
@@ -46,11 +46,11 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@stargazer/schemas": "workspace:*",
+    "@diffgazer/schemas": "workspace:*",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@stargazer/tsconfig": "workspace:*",
+    "@diffgazer/tsconfig": "workspace:*",
     "@types/node": "^25.2.0",
     "typescript": "^5.9.3"
   }

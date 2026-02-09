@@ -1,9 +1,9 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { GIT_FILE_STATUS_CODES, type GitStatus, type GitStatusFiles, type GitFileEntry, type GitFileStatusCode } from "@stargazer/schemas/git";
-import type { GitBlameInfo, ReviewMode } from "@stargazer/schemas/review";
-import { type Result, ok, err } from "@stargazer/core/result";
-import { getErrorMessage } from "@stargazer/core/errors";
+import { GIT_FILE_STATUS_CODES, type GitStatus, type GitStatusFiles, type GitFileEntry, type GitFileStatusCode } from "@diffgazer/schemas/git";
+import type { GitBlameInfo, ReviewMode } from "@diffgazer/schemas/review";
+import { type Result, ok, err } from "@diffgazer/core/result";
+import { getErrorMessage } from "@diffgazer/core/errors";
 import type { BranchInfo, CategorizedFile } from "./types.js";
 
 const execFileAsync = promisify(execFile);
@@ -43,7 +43,7 @@ function parseBranchLine(line: string): BranchInfo {
 }
 
 const STATUS_CODES: Set<string> = new Set(GIT_FILE_STATUS_CODES);
-const INTERNAL_STARGAZER_DIR = ".stargazer";
+const INTERNAL_DIFFGAZER_DIR = ".diffgazer";
 
 function toStatusCode(char: string): GitFileStatusCode {
   return STATUS_CODES.has(char) ? (char as GitFileStatusCode) : " ";
@@ -108,9 +108,9 @@ function parseGitStatusOutput(output: string): {
   return { branch, remoteBranch, ahead, behind, files: { staged, unstaged, untracked }, conflicted };
 }
 
-function isInternalStargazerPath(pathPart: string): boolean {
+function isInternalDiffgazerPath(pathPart: string): boolean {
   const normalized = pathPart.trim();
-  return normalized === INTERNAL_STARGAZER_DIR || normalized.startsWith(`${INTERNAL_STARGAZER_DIR}/`);
+  return normalized === INTERNAL_DIFFGAZER_DIR || normalized.startsWith(`${INTERNAL_DIFFGAZER_DIR}/`);
 }
 
 function shouldIncludeStatusLineForHash(line: string): boolean {
@@ -119,7 +119,7 @@ function shouldIncludeStatusLineForHash(line: string): boolean {
   if (!pathPart) return false;
 
   const paths = pathPart.split(" -> ").map((part) => part.trim()).filter(Boolean);
-  return paths.every((path) => !isInternalStargazerPath(path));
+  return paths.every((path) => !isInternalDiffgazerPath(path));
 }
 
 export function createGitService(options: { cwd?: string; timeout?: number } = {}) {

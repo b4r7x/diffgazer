@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ok, err } from "@stargazer/core/result";
-import type { Lens, LensId, ReviewIssue } from "@stargazer/schemas/review";
+import { ok, err } from "@diffgazer/core/result";
+import type { Lens, LensId, ReviewIssue } from "@diffgazer/schemas/review";
 import type { ParsedDiff } from "../diff/types.js";
 import type { AIClient } from "../ai/types.js";
 import { orchestrateReview } from "./orchestrate.js";

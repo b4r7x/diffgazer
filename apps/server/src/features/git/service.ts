@@ -1,8 +1,8 @@
 import { join, sep } from "node:path";
 import { realpath } from "node:fs/promises";
-import { type Result, ok, err } from "@stargazer/core/result";
-import type { AppError } from "@stargazer/core/errors";
-import { ErrorCode } from "@stargazer/schemas/errors";
+import { type Result, ok, err } from "@diffgazer/core/result";
+import type { AppError } from "@diffgazer/core/errors";
+import { ErrorCode } from "@diffgazer/schemas/errors";
 import { createGitService } from "../../shared/lib/git/service.js";
 
 const isRelativePath = (value: string): boolean => {

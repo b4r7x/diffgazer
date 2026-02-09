@@ -1,4 +1,4 @@
-import { useFocusZone, useKey } from "@stargazer/keyboard";
+import { useFocusZone, useKey } from "@diffgazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 
 interface UseReviewProgressKeyboardOptions {

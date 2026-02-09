@@ -1,6 +1,6 @@
 import { createRoute, createRootRoute, createRouter, redirect, Outlet } from "@tanstack/react-router";
 import { z } from "zod";
-import { ReviewModeSchema } from "@stargazer/schemas/review";
+import { ReviewModeSchema } from "@diffgazer/schemas/review";
 import { api } from "@/lib/api";
 import { RootLayout } from "./routes/__root";
 import { HomePage } from "./routes/home";
@@ -25,22 +25,47 @@ export function invalidateConfigGuardCache() {
   configuredCache = null;
 }
 
+function isRedirectError(error: unknown): error is { to: string } {
+  return Boolean(error) && typeof error === "object" && "to" in error;
+}
+
+function getCachedConfigured(): boolean | null {
+  if (!configuredCache) return null;
+  if (Date.now() - configuredCache.timestamp >= CONFIG_CACHE_TTL) return null;
+  return configuredCache.value;
+}
+
+async function fetchConfigured(): Promise<boolean> {
+  const result = await api.checkConfig();
+  configuredCache = { value: result.configured, timestamp: Date.now() };
+  return result.configured;
+}
+
 async function requireConfigured() {
-  if (configuredCache && Date.now() - configuredCache.timestamp < CONFIG_CACHE_TTL) {
-    if (!configuredCache.value) {
-      throw redirect({ to: "/onboarding" });
-    }
-    return;
-  }
+  const cached = getCachedConfigured();
+  if (cached === false) throw redirect({ to: "/onboarding" });
+  if (cached === true) return;
+
   try {
-    const result = await api.checkConfig();
-    configuredCache = { value: result.configured, timestamp: Date.now() };
-    if (!result.configured) {
-      throw redirect({ to: "/onboarding" });
-    }
+    const configured = await fetchConfigured();
+    if (!configured) throw redirect({ to: "/onboarding" });
   } catch (e) {
-    // Re-throw redirect errors from TanStack Router
-    if (e && typeof e === "object" && "to" in e) throw e;
+    if (isRedirectError(e)) throw e;
+    configuredCache = { value: false, timestamp: Date.now() };
+    throw redirect({ to: "/onboarding" });
+  }
+}
+
+async function requireNotConfigured() {
+  const cached = getCachedConfigured();
+  if (cached === true) throw redirect({ to: "/" });
+  if (cached === false) return;
+
+  try {
+    const configured = await fetchConfigured();
+    if (configured) throw redirect({ to: "/" });
+  } catch (e) {
+    if (isRedirectError(e)) throw e;
   }
 }
 
@@ -113,6 +138,7 @@ const onboardingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/onboarding",
   component: OnboardingPage,
+  beforeLoad: requireNotConfigured,
 });
 
 const settingsRoute = createRoute({

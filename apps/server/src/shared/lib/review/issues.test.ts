@@ -6,7 +6,7 @@ import {
   ensureIssueEvidence,
   validateIssueCompleteness,
 } from "./issues.js";
-import type { ReviewIssue } from "@stargazer/schemas/review";
+import type { ReviewIssue } from "@diffgazer/schemas/review";
 import type { ParsedDiff, FileDiff, DiffHunk } from "../diff/types.js";
 
 function makeIssue(overrides: Partial<ReviewIssue> = {}): ReviewIssue {

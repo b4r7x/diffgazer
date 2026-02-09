@@ -1,14 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { createGitService } from "../../shared/lib/git/service.js";
 import type { AIClient } from "../../shared/lib/ai/types.js";
-import { getErrorMessage } from "@stargazer/core/errors";
+import { getErrorMessage } from "@diffgazer/core/errors";
 import {
   ReviewErrorCode,
   type ReviewErrorCode as ReviewErrorCodeType,
   type ReviewMode,
-} from "@stargazer/schemas/review";
+} from "@diffgazer/schemas/review";
 import type { SSEWriter } from "../../shared/lib/http/sse.js";
-import type { StepId, FullReviewStreamEvent } from "@stargazer/schemas/events";
+import type { StepId, FullReviewStreamEvent } from "@diffgazer/schemas/events";
 import {
   createSession,
   markReady,

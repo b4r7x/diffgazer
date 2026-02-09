@@ -1,16 +1,16 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import { getFigletText } from "@stargazer/hooks";
+import { getFigletText } from "@diffgazer/hooks";
 
 interface LogoProps {
   color?: string;
 }
 
 export function Logo({ color = "cyan" }: LogoProps): ReactElement {
-  const text = getFigletText("Stargazer", "Big");
+  const text = getFigletText("Diffgazer", "Big");
 
   if (!text) {
-    return <Text color={color}>Stargazer</Text>;
+    return <Text color={color}>Diffgazer</Text>;
   }
 
   const lines = text.split("\n").filter((line) => line.trim());

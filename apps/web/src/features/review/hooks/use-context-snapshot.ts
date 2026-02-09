@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ReviewContextResponse } from '@stargazer/api/types';
+import type { ReviewContextResponse } from '@diffgazer/api/types';
 import { api } from '@/lib/api';
 
 export function useContextSnapshot(reviewId: string | null | undefined, isStreaming: boolean, contextStepCompleted: boolean) {

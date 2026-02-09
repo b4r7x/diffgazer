@@ -1,4 +1,4 @@
-import { createApi } from "@stargazer/api";
+import { createApi } from "@diffgazer/api";
 
 function getDefaultApiUrl(): string {
   if (typeof window !== "undefined") {

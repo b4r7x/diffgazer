@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { enrichIssues, type EnrichGitService } from "./enrichment.js";
-import type { ReviewIssue } from "@stargazer/schemas/review";
+import type { ReviewIssue } from "@diffgazer/schemas/review";
 
 const makeIssue = (overrides: Partial<ReviewIssue> = {}): ReviewIssue =>
   ({

@@ -1,4 +1,4 @@
-import { DialogFooter, Button } from "@stargazer/ui";
+import { DialogFooter, Button } from "@diffgazer/ui";
 import { cn } from "@/utils/cn";
 import type { FocusElement } from "@/types/focus-element";
 

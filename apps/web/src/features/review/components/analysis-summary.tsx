@@ -1,9 +1,9 @@
 import { cn } from '@/utils/cn';
-import { Panel, PanelHeader, PanelContent, Button } from '@stargazer/ui';
+import { Panel, PanelHeader, PanelContent, Button } from '@diffgazer/ui';
 import { SeverityBreakdown } from '@/components/ui/severity';
 import { IssuePreviewItem } from './issue-preview-item';
 import { LensStatsTable, type LensStats } from './lens-stats-table';
-import type { AnalysisStats, SeverityCounts, IssuePreview } from '@stargazer/schemas/ui';
+import type { AnalysisStats, SeverityCounts, IssuePreview } from '@diffgazer/schemas/ui';
 
 export type { AnalysisStats, SeverityCounts, IssuePreview };
 

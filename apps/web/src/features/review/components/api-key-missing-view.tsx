@@ -1,7 +1,7 @@
-import type { AIProvider } from '@stargazer/schemas/config';
-import { useScope, useKey } from '@stargazer/keyboard';
+import type { AIProvider } from '@diffgazer/schemas/config';
+import { useScope, useKey } from '@diffgazer/keyboard';
 import { usePageFooter } from '@/hooks/use-page-footer';
-import { Button } from '@stargazer/ui';
+import { Button } from '@diffgazer/ui';
 
 const FOOTER_SHORTCUTS = [{ key: 'Enter', label: 'Setup Provider' }];
 const FOOTER_RIGHT_SHORTCUTS = [{ key: 'Esc', label: 'Back' }];

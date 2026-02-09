@@ -44,14 +44,14 @@ async function loadStore() {
 
 describe("config store", () => {
   beforeEach(() => {
-    process.env.STARGAZER_HOME = "/tmp/stargazer-test";
+    process.env.DIFFGAZER_HOME = "/tmp/diffgazer-test";
     vi.resetAllMocks();
     vi.resetModules();
     setupDefaults();
   });
 
   afterEach(() => {
-    delete process.env.STARGAZER_HOME;
+    delete process.env.DIFFGAZER_HOME;
   });
 
   describe("getProviders", () => {

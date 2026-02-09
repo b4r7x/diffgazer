@@ -1,5 +1,5 @@
-import type { ReviewIssue, EnrichmentData } from "@stargazer/schemas/review";
-import type { EnrichProgressEvent } from "@stargazer/schemas/events";
+import type { ReviewIssue, EnrichmentData } from "@diffgazer/schemas/review";
+import type { EnrichProgressEvent } from "@diffgazer/schemas/events";
 
 const CONTEXT_LINES = 5;
 

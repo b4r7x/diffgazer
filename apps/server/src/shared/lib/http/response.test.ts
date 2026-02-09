@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { z } from "zod";
 import { errorResponse, zodErrorHandler } from "./response.js";
-import { ErrorCode } from "@stargazer/schemas/errors";
+import { ErrorCode } from "@diffgazer/schemas/errors";
 
 function createMockContext() {
   const jsonFn = vi.fn((body: unknown, status?: number) => ({

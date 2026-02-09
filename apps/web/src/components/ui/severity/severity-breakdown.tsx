@@ -1,6 +1,6 @@
-import type { SeverityCounts } from '@stargazer/schemas/ui';
-import type { ReviewSeverity } from '@stargazer/schemas/review';
-import { SEVERITY_ORDER } from '@stargazer/schemas/ui';
+import type { SeverityCounts } from '@diffgazer/schemas/ui';
+import type { ReviewSeverity } from '@diffgazer/schemas/review';
+import { SEVERITY_ORDER } from '@diffgazer/schemas/ui';
 import { SeverityBar } from './severity-bar';
 import { cn } from '@/utils/cn';
 

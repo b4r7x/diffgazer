@@ -1,11 +1,11 @@
 {
-  "name": "@stargazer/ui",
+  "name": "@diffgazer/ui",
   "version": "0.0.1",
   "description": "Terminal-inspired React UI components",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/b4r7x/stargazer",
+    "url": "https://github.com/b4r7x/diffgazer",
     "directory": "packages/ui"
   },
   "keywords": [
@@ -48,7 +48,7 @@
     "react-dom": "^18.0.0 || ^19.0.0"
   },
   "devDependencies": {
-    "@stargazer/tsconfig": "workspace:*",
+    "@diffgazer/tsconfig": "workspace:*",
     "@types/react": "^19.2.13",
     "@types/react-dom": "^19.2.3",
     "react": "^19.2.4",

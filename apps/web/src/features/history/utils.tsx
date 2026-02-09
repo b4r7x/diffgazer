@@ -1,5 +1,5 @@
-import type { ReviewMetadata } from "@stargazer/schemas/review";
-import type { TimelineItem } from "@stargazer/schemas/ui";
+import type { ReviewMetadata } from "@diffgazer/schemas/review";
+import type { TimelineItem } from "@diffgazer/schemas/ui";
 import { HISTORY_SECTION_ALL_ID, HISTORY_SECTION_ALL_LABEL } from "@/features/history/constants";
 
 export function getDateKey(dateStr: string): string {

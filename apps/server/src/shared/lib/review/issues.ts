@@ -1,10 +1,10 @@
-import { SEVERITY_ORDER, severityRank } from "@stargazer/core/severity";
+import { SEVERITY_ORDER, severityRank } from "@diffgazer/core/severity";
 import type {
   ReviewIssue,
   ReviewSeverity,
   EvidenceRef,
   SeverityFilter,
-} from "@stargazer/schemas/review";
+} from "@diffgazer/schemas/review";
 import type { ParsedDiff, FileDiff, DiffHunk } from "../diff/types.js";
 
 function severityMeetsMinimum(severity: ReviewSeverity, minSeverity: ReviewSeverity): boolean {

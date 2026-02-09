@@ -19,15 +19,15 @@ vi.mock("./persistence.js", () => ({
 }));
 
 vi.mock("../paths.js", () => ({
-  getGlobalStargazerDir: vi.fn(() => "/tmp/test-stargazer"),
-  getGlobalConfigPath: vi.fn(() => "/tmp/test-stargazer/config.json"),
-  getGlobalSecretsPath: vi.fn(() => "/tmp/test-stargazer/secrets.json"),
-  getGlobalTrustPath: vi.fn(() => "/tmp/test-stargazer/trust.json"),
-  getGlobalOpenRouterModelsPath: vi.fn(() => "/tmp/test-stargazer/openrouter-models.json"),
-  getProjectStargazerDir: vi.fn((root: string) => `${root}/.stargazer`),
-  getProjectInfoPath: vi.fn((root: string) => `${root}/.stargazer/project.json`),
+  getGlobalDiffgazerDir: vi.fn(() => "/tmp/test-diffgazer"),
+  getGlobalConfigPath: vi.fn(() => "/tmp/test-diffgazer/config.json"),
+  getGlobalSecretsPath: vi.fn(() => "/tmp/test-diffgazer/secrets.json"),
+  getGlobalTrustPath: vi.fn(() => "/tmp/test-diffgazer/trust.json"),
+  getGlobalOpenRouterModelsPath: vi.fn(() => "/tmp/test-diffgazer/openrouter-models.json"),
+  getProjectDiffgazerDir: vi.fn((root: string) => `${root}/.diffgazer`),
+  getProjectInfoPath: vi.fn((root: string) => `${root}/.diffgazer/project.json`),
   resolveProjectRoot: vi.fn(() => "/tmp/test-project"),
-  PROJECT_ROOT_HEADER: "x-stargazer-project-root",
+  PROJECT_ROOT_HEADER: "x-diffgazer-project-root",
 }));
 
 import { saveReview, listReviews, getReview, deleteReview, addDrilldownToReview } from "./reviews.js";

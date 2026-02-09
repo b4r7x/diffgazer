@@ -5,7 +5,7 @@ import {
   type ReviewState,
   type ReviewAction,
 } from "./review-state.js";
-import type { ReviewStartedEvent, AgentStreamEvent, StepEvent, EnrichEvent } from "@stargazer/schemas/events";
+import type { ReviewStartedEvent, AgentStreamEvent, StepEvent, EnrichEvent } from "@diffgazer/schemas/events";
 
 const ts = "2025-02-01T10:00:00Z";
 

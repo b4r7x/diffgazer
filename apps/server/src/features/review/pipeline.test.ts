@@ -5,7 +5,7 @@ import {
   generateReport,
 } from "./pipeline.js";
 import type { ParsedDiff } from "../../shared/lib/diff/types.js";
-import type { ReviewIssue } from "@stargazer/schemas/review";
+import type { ReviewIssue } from "@diffgazer/schemas/review";
 
 const makeFile = (filePath: string, additions = 1, deletions = 0) => ({
   filePath,

@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import { ErrorCode } from "@stargazer/schemas/errors";
+import { ErrorCode } from "@diffgazer/schemas/errors";
 import {
   errorResponse,
 } from "../../shared/lib/http/response.js";
@@ -9,7 +9,7 @@ import type {
   StoreError,
   StoreErrorCode,
 } from "../../shared/lib/storage/types.js";
-import type { TraceRef } from "@stargazer/schemas/review";
+import type { TraceRef } from "@diffgazer/schemas/review";
 import type { ReviewAbort } from "./types.js";
 
 export const parseProjectPath = (

@@ -1,9 +1,9 @@
-import { type Result, ok, err } from "@stargazer/core/result";
-import { createError } from "@stargazer/core/errors";
-import type { AIProvider, SetupField, SetupStatus } from "@stargazer/schemas/config";
-import { ErrorCode } from "@stargazer/schemas/errors";
+import { type Result, ok, err } from "@diffgazer/core/result";
+import { createError } from "@diffgazer/core/errors";
+import type { AIProvider, SetupField, SetupStatus } from "@diffgazer/schemas/config";
+import { ErrorCode } from "@diffgazer/schemas/errors";
 import type { SecretsStorageError } from "../../shared/lib/config/types.js";
-import type { AppError } from "@stargazer/core/errors";
+import type { AppError } from "@diffgazer/core/errors";
 import type {
   ActivateProviderResponse,
   ConfigCheckResponse,
@@ -15,7 +15,7 @@ import type {
   ProviderStatus,
   ProvidersStatusResponse,
   SaveConfigRequest,
-} from "@stargazer/schemas/config";
+} from "@diffgazer/schemas/config";
 import {
   activateProvider as activateProviderInStore,
   deleteProviderCredentials,

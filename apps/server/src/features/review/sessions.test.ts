@@ -11,7 +11,7 @@ import {
   cancelStaleSessionsForProjectMode,
   getActiveSessionForProject,
 } from "./sessions.js";
-import type { FullReviewStreamEvent } from "@stargazer/schemas/events";
+import type { FullReviewStreamEvent } from "@diffgazer/schemas/events";
 
 beforeEach(() => {
   vi.useFakeTimers();

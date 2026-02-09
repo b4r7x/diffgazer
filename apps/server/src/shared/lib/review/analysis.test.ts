@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { AIClient } from "../ai/types.js";
-import type { Lens, ReviewIssue } from "@stargazer/schemas/review";
-import type { AgentStreamEvent, StepEvent } from "@stargazer/schemas/events";
+import type { Lens, ReviewIssue } from "@diffgazer/schemas/review";
+import type { AgentStreamEvent, StepEvent } from "@diffgazer/schemas/events";
 import type { ParsedDiff } from "../diff/types.js";
 import type { AgentRunContext } from "./types.js";
-import { ok, err } from "@stargazer/core/result";
+import { ok, err } from "@diffgazer/core/result";
 import { runLensAnalysis } from "./analysis.js";
 
 const CORRECTNESS_LENS: Lens = {

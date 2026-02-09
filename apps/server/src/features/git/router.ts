@@ -1,7 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import type { Context } from "hono";
-import { ErrorCode } from "@stargazer/schemas/errors";
+import { ErrorCode } from "@diffgazer/schemas/errors";
 import { errorResponse, zodErrorHandler } from "../../shared/lib/http/response.js";
 import { getProjectRoot } from "../../shared/lib/http/request.js";
 import { requireRepoAccess } from "../../shared/middlewares/trust-guard.js";
@@ -36,7 +36,7 @@ gitRouter.get("/status", async (c): Promise<Response> => {
     }
     return c.json(status);
   } catch (error) {
-    console.error("[stargazer] git status error:", error);
+    console.error("[diffgazer] git status error:", error);
     return errorResponse(c, "Failed to retrieve git status", ErrorCode.COMMAND_FAILED, 500);
   }
 });
@@ -57,7 +57,7 @@ gitRouter.get("/diff", zValidator("query", GitDiffQuerySchema, zodErrorHandler),
     const diff = await result.service.getDiff(mode);
     return c.json({ diff, mode });
   } catch (error) {
-    console.error("[stargazer] git diff error:", error);
+    console.error("[diffgazer] git diff error:", error);
     return errorResponse(c, "Failed to retrieve git diff", ErrorCode.COMMAND_FAILED, 500);
   }
 });

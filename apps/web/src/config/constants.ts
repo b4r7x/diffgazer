@@ -1,4 +1,4 @@
-import type { AIProvider } from "@stargazer/schemas/config";
+import type { AIProvider } from "@diffgazer/schemas/config";
 
 export const DEFAULT_TTL = 5 * 60 * 1000;
 

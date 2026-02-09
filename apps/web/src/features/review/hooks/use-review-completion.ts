@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import type { ReviewIssue } from '@stargazer/schemas/review';
-import type { StepState } from '@stargazer/schemas/events';
+import type { ReviewIssue } from '@diffgazer/schemas/review';
+import type { StepState } from '@diffgazer/schemas/events';
 
 const REPORT_COMPLETE_DELAY_MS = 2300;
 const DEFAULT_COMPLETE_DELAY_MS = 400;

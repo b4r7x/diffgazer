@@ -1,5 +1,5 @@
 import { cn } from "@/utils/cn";
-import type { ReviewSeverity } from "@stargazer/schemas/review";
+import type { ReviewSeverity } from "@diffgazer/schemas/review";
 import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
 
 export interface SeverityFilterButtonProps {

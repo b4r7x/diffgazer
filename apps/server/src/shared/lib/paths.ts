@@ -2,9 +2,9 @@ import { homedir } from "node:os";
 import * as path from "node:path";
 import * as fs from "node:fs";
 
-export const PROJECT_ROOT_HEADER = "x-stargazer-project-root";
+export const PROJECT_ROOT_HEADER = "x-diffgazer-project-root";
 
-const DEFAULT_GLOBAL_DIR = path.join(homedir(), ".stargazer");
+const DEFAULT_GLOBAL_DIR = path.join(homedir(), ".diffgazer");
 
 const normalizePath = (input: string): string => path.resolve(input.trim());
 
@@ -59,26 +59,26 @@ export const resolveProjectRoot = (options?: {
   return findGitRoot(normalized) ?? normalized;
 };
 
-export const getGlobalStargazerDir = (): string => {
-  const override = process.env.STARGAZER_HOME?.trim();
+export const getGlobalDiffgazerDir = (): string => {
+  const override = process.env.DIFFGAZER_HOME?.trim();
   if (override) return normalizePath(override);
   return DEFAULT_GLOBAL_DIR;
 };
 
 export const getGlobalConfigPath = (): string =>
-  path.join(getGlobalStargazerDir(), "config.json");
+  path.join(getGlobalDiffgazerDir(), "config.json");
 
 export const getGlobalSecretsPath = (): string =>
-  path.join(getGlobalStargazerDir(), "secrets.json");
+  path.join(getGlobalDiffgazerDir(), "secrets.json");
 
 export const getGlobalTrustPath = (): string =>
-  path.join(getGlobalStargazerDir(), "trust.json");
+  path.join(getGlobalDiffgazerDir(), "trust.json");
 
 export const getGlobalOpenRouterModelsPath = (): string =>
-  path.join(getGlobalStargazerDir(), "openrouter-models.json");
+  path.join(getGlobalDiffgazerDir(), "openrouter-models.json");
 
-export const getProjectStargazerDir = (projectRoot: string): string =>
-  path.join(projectRoot, ".stargazer");
+export const getProjectDiffgazerDir = (projectRoot: string): string =>
+  path.join(projectRoot, ".diffgazer");
 
 export const getProjectInfoPath = (projectRoot: string): string =>
-  path.join(getProjectStargazerDir(projectRoot), "project.json");
+  path.join(getProjectDiffgazerDir(projectRoot), "project.json");

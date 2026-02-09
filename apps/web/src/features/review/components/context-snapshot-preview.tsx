@@ -1,6 +1,6 @@
-import { PanelHeader, Button } from "@stargazer/ui";
+import { PanelHeader, Button } from "@diffgazer/ui";
 import { downloadAsFile } from "@/utils/download";
-import type { ReviewContextResponse } from "@stargazer/api/types";
+import type { ReviewContextResponse } from "@diffgazer/api/types";
 
 interface ContextSnapshotPreviewProps {
   snapshot: ReviewContextResponse;

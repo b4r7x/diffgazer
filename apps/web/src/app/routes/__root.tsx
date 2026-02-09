@@ -1,6 +1,6 @@
 import React from "react";
 import { Outlet } from "@tanstack/react-router";
-import { Button, ToastProvider } from "@stargazer/ui";
+import { Button, ToastProvider } from "@diffgazer/ui";
 import { GlobalLayout } from "@/components/layout";
 import { FooterProvider } from "@/components/layout";
 import { useServerStatus } from "@/hooks/use-server-status";
@@ -58,7 +58,7 @@ export function RootLayout() {
           Server Disconnected
         </h1>
         <p className="text-[--tui-fg] opacity-60">
-          {state.message || "Could not connect to Stargazer server."}
+          {state.message || "Could not connect to Diffgazer server."}
         </p>
         <Button onClick={retry}>Retry Connection</Button>
       </div>

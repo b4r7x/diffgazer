@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-import type { Shortcut } from "@stargazer/schemas/ui";
+import type { Shortcut } from "@diffgazer/schemas/ui";
 
 export type { Shortcut };
 

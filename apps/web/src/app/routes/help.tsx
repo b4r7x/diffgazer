@@ -1,4 +1,4 @@
-import { Panel, PanelContent, PanelHeader } from "@stargazer/ui";
+import { Panel, PanelContent, PanelHeader } from "@diffgazer/ui";
 import { usePageFooter } from "@/hooks/use-page-footer";
 
 export function HelpPage() {

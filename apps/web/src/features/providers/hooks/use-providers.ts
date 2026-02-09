@@ -1,5 +1,5 @@
 import { useConfigData, useConfigActions } from '@/app/providers/config-provider';
-import { AVAILABLE_PROVIDERS } from '@stargazer/schemas/config';
+import { AVAILABLE_PROVIDERS } from '@diffgazer/schemas/config';
 import type { ProviderWithStatus } from '../types';
 
 export function useProviders() {

@@ -1,13 +1,13 @@
 import { useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 import type { SeverityFilter } from "@/features/review/components/severity-filter-group";
-import type { ReviewIssue } from "@stargazer/schemas/review";
-import type { Shortcut } from "@stargazer/schemas/ui";
-import type { IssueTab as TabId } from "@stargazer/schemas/ui";
-import { SEVERITY_ORDER } from "@stargazer/schemas/ui";
-import { useFocusZone, useKey, useNavigation } from "@stargazer/keyboard";
+import type { ReviewIssue } from "@diffgazer/schemas/review";
+import type { Shortcut } from "@diffgazer/schemas/ui";
+import type { IssueTab as TabId } from "@diffgazer/schemas/ui";
+import { SEVERITY_ORDER } from "@diffgazer/schemas/ui";
+import { useFocusZone, useKey, useNavigation } from "@diffgazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { filterIssuesBySeverity } from "@stargazer/core/review";
+import { filterIssuesBySeverity } from "@diffgazer/core/review";
 
 type FocusZone = "filters" | "list" | "details";
 

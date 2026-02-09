@@ -1,5 +1,5 @@
-import type { Result } from "@stargazer/core/result";
-import { ok, err } from "@stargazer/core/result";
+import type { Result } from "@diffgazer/core/result";
+import { ok, err } from "@diffgazer/core/result";
 import {
   buildReviewQueryParams,
   processReviewStream,
@@ -7,8 +7,8 @@ import {
   type StreamReviewOptions as CoreStreamReviewOptions,
   type StreamReviewResult,
   type StreamReviewError,
-} from "@stargazer/core/review";
-import { ReviewErrorCode, type ReviewMode } from "@stargazer/schemas/review";
+} from "@diffgazer/core/review";
+import { ReviewErrorCode, type ReviewMode } from "@diffgazer/schemas/review";
 import type {
   ApiClient,
   ActiveReviewSessionResponse,

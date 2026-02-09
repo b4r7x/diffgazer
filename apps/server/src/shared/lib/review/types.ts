@@ -1,6 +1,6 @@
-import type { Lens, LensId } from "@stargazer/schemas/review";
-import type { ReviewIssue } from "@stargazer/schemas/review";
-import type { LensStat } from "@stargazer/schemas/events";
+import type { Lens, LensId } from "@diffgazer/schemas/review";
+import type { ReviewIssue } from "@diffgazer/schemas/review";
+import type { LensStat } from "@diffgazer/schemas/events";
 
 export interface LensResult {
   lensId: Lens["id"];

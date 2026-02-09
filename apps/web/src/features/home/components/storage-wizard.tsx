@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { SecretsStorage } from "@stargazer/schemas/config";
-import { Button, Callout, CardLayout } from "@stargazer/ui";
+import type { SecretsStorage } from "@diffgazer/schemas/config";
+import { Button, Callout, CardLayout } from "@diffgazer/ui";
 import { StorageSelectorContent } from "@/components/shared/storage-selector-content";
 
 export interface StorageWizardProps {

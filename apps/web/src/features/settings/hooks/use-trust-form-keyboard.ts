@@ -1,4 +1,4 @@
-import { useKey, useScope } from "@stargazer/keyboard";
+import { useKey, useScope } from "@diffgazer/keyboard";
 
 type FocusZone = "list" | "buttons";
 

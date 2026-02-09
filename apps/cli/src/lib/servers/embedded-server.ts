@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { createApp } from "@stargazer/server";
+import { createApp } from "@diffgazer/server";
 import type { ServerController } from "./create-process-server.js";
 
 export interface EmbeddedServerConfig {
@@ -31,7 +31,7 @@ export function createEmbeddedServer(
     }
 
     if (config.projectRoot) {
-      process.env.STARGAZER_PROJECT_ROOT = config.projectRoot;
+      process.env.DIFFGAZER_PROJECT_ROOT = config.projectRoot;
     }
 
     const app = createApp();

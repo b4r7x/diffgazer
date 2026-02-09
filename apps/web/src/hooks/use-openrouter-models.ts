@@ -1,8 +1,8 @@
 import { useReducer, useEffect } from "react";
-import type { ModelInfo } from "@stargazer/schemas/config";
+import type { ModelInfo } from "@diffgazer/schemas/config";
 import { api } from "@/lib/api";
 import { OPENROUTER_PROVIDER_ID } from "@/config/constants";
-import type { AIProvider } from "@stargazer/schemas/config";
+import type { AIProvider } from "@diffgazer/schemas/config";
 
 function isOpenRouterCompatible(model: {
   supportedParameters?: string[];

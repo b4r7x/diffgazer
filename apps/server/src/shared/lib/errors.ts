@@ -1,4 +1,4 @@
-import { getErrorMessage } from "@stargazer/core/errors";
+import { getErrorMessage } from "@diffgazer/core/errors";
 
 export interface ErrorRule<C extends string> {
   patterns: string[];
