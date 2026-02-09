@@ -24,7 +24,7 @@ export const selectableItemContainerVariants = cva(
   "flex items-center gap-3 px-3 py-2"
 );
 
-export const selectableItemIndicatorVariants = cva("font-bold", {
+export const selectableItemIndicatorVariants = cva("font-bold shrink-0 whitespace-pre", {
   variants: {
     size: {
       sm: "text-sm min-w-4",

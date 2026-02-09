@@ -1,10 +1,17 @@
 import { type ReactNode } from "react";
-import { useCanGoBack, useRouter } from "@tanstack/react-router";
+import { useCanGoBack, useLocation, useRouter } from "@tanstack/react-router";
 import { Header } from "./header";
 import { Footer, useFooterData } from "./footer";
-import { useConfigData, useConfigActions } from "@/app/providers/config-provider";
+import {
+  useConfigData,
+  useConfigActions,
+} from "@/app/providers/config-provider";
+import { resolveBackAction } from "@/lib/back-navigation";
 
-function getProviderStatus(isLoading: boolean, isConfigured: boolean): "active" | "idle" {
+function getProviderStatus(
+  isLoading: boolean,
+  isConfigured: boolean,
+): "active" | "idle" {
   if (isLoading) return "idle";
   return isConfigured ? "active" : "idle";
 }
@@ -18,22 +25,30 @@ function getProviderDisplay(provider?: string, model?: string): string {
 function ConnectedHeader() {
   const router = useRouter();
   const canGoBack = useCanGoBack();
+  const { pathname } = useLocation();
   const { provider, model, isConfigured } = useConfigData();
   const { isLoading } = useConfigActions();
 
   const providerStatus = getProviderStatus(isLoading, isConfigured);
   const providerName = getProviderDisplay(provider, model);
-  const showBack = canGoBack && router.state.location.pathname !== "/";
+  const backAction = resolveBackAction(pathname, canGoBack);
 
   const onBack = () => {
-    router.history.back();
+    if (backAction.type === "navigate") {
+      void router.navigate({ to: backAction.to });
+      return;
+    }
+
+    if (backAction.type === "history") {
+      router.history.back();
+    }
   };
 
   return (
     <Header
       providerName={providerName}
       providerStatus={providerStatus}
-      onBack={showBack ? onBack : undefined}
+      onBack={backAction.type === "none" ? undefined : onBack}
     />
   );
 }

@@ -67,11 +67,8 @@ export function useProvidersKeyboard({
     return current;
   };
 
-  const focusBoundaryProvider = (target: "first" | "last") => {
-    const targetId =
-      target === "last"
-        ? filteredProviders[filteredProviders.length - 1]?.id
-        : filteredProviders[0]?.id;
+  const focusBoundaryProvider = (target: "first") => {
+    const targetId = target === "first" ? filteredProviders[0]?.id : undefined;
     if (targetId) setSelectedId(targetId);
   };
 
@@ -131,7 +128,6 @@ export function useProvidersKeyboard({
     const next = getNextButtonIndex(buttonIndex, -1);
     if (next === buttonIndex) {
       setZone("list");
-      focusBoundaryProvider("last");
     } else {
       setButtonIndex(next);
     }

@@ -36,8 +36,15 @@ export function ProviderDetails({
 }: ProviderDetailsProps) {
   if (!provider) {
     return (
-      <div className="flex-1 flex items-center justify-center text-tui-muted text-sm">
-        Select a provider to view details
+      <div className="flex-1 flex flex-col overflow-y-auto">
+        <div className="p-3 border-b border-tui-border bg-tui-selection/30 flex justify-between items-center">
+          <h2 className="text-sm font-bold text-tui-fg uppercase tracking-wide">
+            Provider Details
+          </h2>
+        </div>
+        <div className="flex-1 flex items-center justify-center text-tui-muted text-sm">
+          Select a provider to view details
+        </div>
       </div>
     );
   }
@@ -45,8 +52,15 @@ export function ProviderDetails({
   const capabilities = PROVIDER_CAPABILITIES[provider.id];
   if (!capabilities) {
     return (
-      <div className="flex-1 flex items-center justify-center text-tui-muted text-sm">
-        Unknown provider: {provider.id}
+      <div className="flex-1 flex flex-col overflow-y-auto">
+        <div className="p-3 border-b border-tui-border bg-tui-selection/30 flex justify-between items-center">
+          <h2 className="text-sm font-bold text-tui-fg uppercase tracking-wide">
+            Provider Details: {provider.name}
+          </h2>
+        </div>
+        <div className="flex-1 flex items-center justify-center text-tui-muted text-sm">
+          Unknown provider: {provider.id}
+        </div>
       </div>
     );
   }
