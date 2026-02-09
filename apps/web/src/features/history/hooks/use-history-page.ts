@@ -8,6 +8,7 @@ import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useReviews } from "@/features/history/hooks/use-reviews";
 import { useReviewDetail } from "@/features/history/hooks/use-review-detail";
 import { useHistoryKeyboard } from "@/features/history/hooks/use-history-keyboard";
+import { HISTORY_SECTION_ALL_ID } from "@/features/history/constants";
 import { getDateKey, getTimestamp, getRunSummary, buildTimelineItems, formatDuration } from "@/features/history/utils";
 
 function useHistoryData() {
@@ -51,7 +52,7 @@ function useHistoryData() {
 function useHistorySelection(reviews: ReviewMetadata[]) {
   const timelineItems = buildTimelineItems(reviews);
 
-  const defaultDateId = timelineItems[0]?.id ?? "";
+  const defaultDateId = timelineItems[0]?.id ?? HISTORY_SECTION_ALL_ID;
   const [selectedDateId, setSelectedDateId] = useScopedRouteState("date", defaultDateId);
 
   return { selectedDateId, setSelectedDateId, timelineItems };
@@ -65,9 +66,11 @@ function useHistorySearch() {
 }
 
 function useFilteredRuns(reviews: ReviewMetadata[], selectedDateId: string, searchQuery: string) {
-  const byDate = reviews.filter((r) => getDateKey(r.createdAt) === selectedDateId);
+  const bySection = selectedDateId === HISTORY_SECTION_ALL_ID
+    ? reviews
+    : reviews.filter((r) => getDateKey(r.createdAt) === selectedDateId);
   const query = searchQuery.trim().toLowerCase();
-  const filteredRuns = !query ? byDate : byDate.filter((r) => {
+  const filteredRuns = !query ? bySection : bySection.filter((r) => {
     if (r.id.toLowerCase().includes(query)) return true;
     if (`#${r.id.slice(0, 4)}`.toLowerCase().includes(query)) return true;
     const branchText = r.mode === "staged" ? "staged" : (r.branch?.toLowerCase() ?? "main");
@@ -104,6 +107,13 @@ export function useHistoryPage() {
     selectedRunId: data.selectedRunId,
     searchInputRef: search.searchInputRef,
   });
+
+  useEffect(() => {
+    const hasSection = selection.timelineItems.some((item) => item.id === selection.selectedDateId);
+    if (!hasSection && selection.timelineItems.length > 0) {
+      selection.setSelectedDateId(selection.timelineItems[0]!.id);
+    }
+  }, [selection.selectedDateId, selection.setSelectedDateId, selection.timelineItems]);
 
   useEffect(() => {
     if (focusZone !== "runs") return;
@@ -155,6 +165,16 @@ export function useHistoryPage() {
     }
   };
 
+  const hasReviews = data.reviews.length > 0;
+  const hasSearchQuery = search.searchQuery.trim().length > 0;
+  const emptyRunsMessage = !hasReviews
+    ? "No reviews yet"
+    : hasSearchQuery
+      ? "No runs match this search"
+      : selection.selectedDateId === HISTORY_SECTION_ALL_ID
+        ? "No runs available"
+        : "No runs for this date";
+
   return {
     isLoading: data.isLoading,
     error: data.error,
@@ -173,6 +193,8 @@ export function useHistoryPage() {
     severityCounts: data.severityCounts,
     sortedIssues: data.sortedIssues,
     duration: data.duration,
+    hasReviews,
+    emptyRunsMessage,
     handleTimelineBoundary,
     handleSearchEscape,
     handleSearchArrowDown,

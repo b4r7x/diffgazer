@@ -9,8 +9,6 @@ import { useTheme } from "@/hooks/use-theme";
 import { useSettings } from "@/hooks/use-settings";
 import { SETTINGS_MENU_ITEMS, SETTINGS_SHORTCUTS, type SettingsAction } from "@/config/navigation";
 
-const FOOTER_RIGHT = [{ key: "", label: "HUB-MODE" }];
-
 const SETTINGS_ROUTES: Record<SettingsAction, string> = {
   trust: "/settings/trust-permissions",
   theme: "/settings/theme",
@@ -29,7 +27,7 @@ export function SettingsHubPage() {
   const isTrusted = Boolean(trust?.capabilities.readFiles);
   const { settings, error: settingsError } = useSettings();
 
-  usePageFooter({ shortcuts: SETTINGS_SHORTCUTS, rightShortcuts: FOOTER_RIGHT });
+  usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
 
   useScope("settings-hub");
   useKey("Escape", () => navigate({ to: "/" }));

@@ -83,3 +83,8 @@ export interface ActiveReviewSession {
 export interface ActiveReviewSessionResponse {
   session: ActiveReviewSession | null;
 }
+
+export interface ShutdownResponse {
+  ok: boolean;
+  message?: string;
+}

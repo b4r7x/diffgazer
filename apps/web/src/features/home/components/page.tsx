@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { ContextInfo } from "@stargazer/schemas/ui";
+import type { Shortcut } from "@stargazer/schemas/ui";
 import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@/config/navigation";
 import { useKey, useScope, useNavigation } from "@stargazer/keyboard";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
@@ -14,6 +15,10 @@ import { shutdown } from "@/features/home/utils/shutdown";
 import { TrustPanel } from "./trust-panel";
 
 type RouteConfig = { to: string; search?: Record<string, string> };
+const SHOW_HELP_IN_MAIN_MENU = false;
+const MAIN_MENU_ITEMS = SHOW_HELP_IN_MAIN_MENU
+  ? MENU_ITEMS
+  : MENU_ITEMS.filter((item) => item.id !== "help");
 
 const MENU_ROUTES: Record<string, RouteConfig> = {
   "review-unstaged": { to: "/review" },
@@ -59,12 +64,32 @@ export function HomePage() {
     trustedDir: isTrusted ? trust?.repoRoot : undefined,
   };
 
-  const [selectedId, setSelectedId] = useScopedRouteState<string | null>("menuId", MENU_ITEMS[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useScopedRouteState<string | null>(
+    "menuId",
+    MAIN_MENU_ITEMS[0]?.id ?? null
+  );
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    if (MAIN_MENU_ITEMS.some((item) => item.id === selectedId)) return;
+    setSelectedId(MAIN_MENU_ITEMS[0]?.id ?? null);
+  }, [selectedId, setSelectedId]);
+
+  const handleQuit = async () => {
+    const result = await shutdown();
+    if (result.status === "closed") return;
+
+    showToast({
+      variant: result.status === "error" ? "error" : "warning",
+      title: result.status === "error" ? "Quit Failed" : "Close Tab Manually",
+      message: result.message,
+    });
+  };
 
   const handleActivate = (id: string) => {
     if (id === "quit") {
-      void shutdown();
+      void handleQuit();
       return;
     }
 
@@ -84,7 +109,21 @@ export function HomePage() {
     }
   };
 
-  usePageFooter({ shortcuts: MAIN_MENU_SHORTCUTS });
+  const trustFooterShortcuts: Shortcut[] = [
+    { key: "↑/↓", label: "Navigate Permissions" },
+    { key: "Enter/Space", label: "Toggle Permission" },
+    { key: "q", label: "Quit" },
+  ];
+
+  usePageFooter({
+    shortcuts: needsTrust ? trustFooterShortcuts : MAIN_MENU_SHORTCUTS,
+    rightShortcuts: needsTrust
+      ? [
+          { key: "s", label: "Settings" },
+          { key: "h", label: "Help" },
+        ]
+      : [],
+  });
   const { focusedValue } = useNavigation({
     containerRef: menuRef,
     role: "option",
@@ -95,7 +134,7 @@ export function HomePage() {
 
   useScope("home");
   useKey("q", () => {
-    void shutdown();
+    void handleQuit();
   });
   useKey("s", () => navigate({ to: "/settings" }));
   useKey("h", () => handleActivate("help"));
@@ -117,7 +156,7 @@ export function HomePage() {
         focusedValue={focusedValue}
         onSelect={setSelectedId}
         onActivate={handleActivate}
-        items={MENU_ITEMS}
+        items={MAIN_MENU_ITEMS}
         isTrusted={isTrusted}
         hasLastReview={hasLastReview}
       />

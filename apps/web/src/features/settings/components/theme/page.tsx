@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import type { Shortcut } from "@stargazer/schemas/ui";
 import type { WebTheme, ResolvedTheme } from "@/types/theme";
 import { Panel, PanelContent, PanelHeader, Callout, Button } from "@stargazer/ui";
 import { ThemeSelectorContent } from "../theme-selector-content";
@@ -8,13 +9,6 @@ import { useTheme } from "@/hooks/use-theme";
 import { useKey, useScope } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { cn } from "@/utils/cn";
-
-const FOOTER_SHORTCUTS = [
-  { key: "↑/↓", label: "Navigate" },
-  { key: "Space", label: "Select" },
-  { key: "Enter", label: "Save & Exit" },
-  { key: "Esc", label: "Cancel" },
-];
 
 function resolveTheme(theme: WebTheme, systemResolved?: ResolvedTheme | null): ResolvedTheme {
   return theme === "auto" ? (systemResolved ?? "dark") : theme;
@@ -38,19 +32,36 @@ export function SettingsThemePage() {
 
   const previewTheme = focusedTheme ?? selectedTheme;
   const previewResolved = resolveTheme(previewTheme, systemResolved);
-
-  usePageFooter({ shortcuts: FOOTER_SHORTCUTS });
   useScope("settings-theme");
 
-  const isDirty = selectedTheme !== savedTheme;
+  const canSave = selectedTheme !== savedTheme;
   const isButtonsZone = focusZone === "buttons";
+
+  const footerShortcuts: Shortcut[] = isButtonsZone
+    ? [
+        { key: "←/→", label: "Move Action" },
+        {
+          key: "Enter/Space",
+          label: buttonIndex === 0 ? "Cancel" : "Save",
+          disabled: buttonIndex === 1 && !canSave,
+        },
+      ]
+    : [
+        { key: "↑/↓", label: "Navigate" },
+        { key: "Space", label: "Select Theme" },
+        { key: "Enter", label: "Save & Exit" },
+      ];
+
+  usePageFooter({
+    shortcuts: footerShortcuts,
+    rightShortcuts: [{ key: "Esc", label: "Cancel" }],
+  });
 
   const handleCancel = () => navigate({ to: "/settings" });
 
   const handleSave = () => {
-    if (isDirty) {
-      setTheme(selectedTheme);
-    }
+    if (!canSave) return;
+    setTheme(selectedTheme);
     navigate({ to: "/settings" });
   };
 
@@ -89,7 +100,7 @@ export function SettingsThemePage() {
 
   const activateButton = () => {
     if (buttonIndex === 0) handleCancel();
-    else if (buttonIndex === 1) handleSave();
+    else if (buttonIndex === 1 && canSave) handleSave();
   };
 
   useKey("Enter", activateButton, { enabled: isButtonsZone });
@@ -134,7 +145,7 @@ export function SettingsThemePage() {
                 <Button
                   variant="success"
                   onClick={handleSave}
-                  disabled={!isDirty}
+                  disabled={!canSave}
                   className={cn(isButtonsZone && buttonIndex === 1 && "ring-2 ring-tui-blue")}
                 >
                   Save

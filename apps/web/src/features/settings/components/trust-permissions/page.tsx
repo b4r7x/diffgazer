@@ -1,18 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { TrustCapabilities } from "@stargazer/schemas/config";
+import type { Shortcut } from "@stargazer/schemas/ui";
 import { useKey } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useToast, Panel, PanelHeader, PanelContent } from "@stargazer/ui";
 import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
 import { useConfigData } from "@/app/providers/config-provider";
 import { useTrust } from "@/hooks/use-trust";
-
-const FOOTER_SHORTCUTS = [
-  { key: "Space", label: "Toggle" },
-  { key: "Enter", label: "Save" },
-  { key: "Esc", label: "Back" },
-];
 
 const DEFAULT_CAPABILITIES: TrustCapabilities = {
   readFiles: true,
@@ -29,10 +24,19 @@ export function TrustPermissionsPage() {
     () => ({ ...(trust?.capabilities ?? DEFAULT_CAPABILITIES), runCommands: false }),
   );
 
-  usePageFooter({ shortcuts: FOOTER_SHORTCUTS });
+  const footerShortcuts: Shortcut[] = [
+    { key: "↑/↓", label: "Navigate" },
+    { key: "Enter/Space", label: "Toggle / Activate" },
+  ];
+
+  usePageFooter({
+    shortcuts: footerShortcuts,
+    rightShortcuts: [{ key: "Esc", label: "Back" }],
+  });
   useKey("Escape", () => navigate({ to: "/settings" }));
 
   async function handleSave(): Promise<void> {
+    if (isLoading) return;
     if (!projectId || !repoRoot) {
       showToast({
         variant: "error",
@@ -66,6 +70,7 @@ export function TrustPermissionsPage() {
   }
 
   async function handleRevoke(): Promise<void> {
+    if (isLoading) return;
     try {
       await revoke();
       showToast({

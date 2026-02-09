@@ -4,18 +4,6 @@ import { useFocusZone, useKey } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import type { HistoryFocusZone } from "@/features/history/types";
 
-const HISTORY_FOOTER_SHORTCUTS = [
-  { key: "Tab", label: "Switch Focus" },
-  { key: "Enter", label: "Expand" },
-  { key: "o", label: "Open" },
-];
-
-const HISTORY_FOOTER_RIGHT_SHORTCUTS = [
-  { key: "r", label: "Resume" },
-  { key: "e", label: "Export" },
-  { key: "Esc", label: "Back" },
-];
-
 const ZONES = ["timeline", "runs", "search"] as const;
 type KeyboardHistoryFocusZone = (typeof ZONES)[number];
 
@@ -24,6 +12,38 @@ interface UseHistoryKeyboardOptions {
   setFocusZone: (zone: HistoryFocusZone) => void;
   selectedRunId: string | null;
   searchInputRef: RefObject<HTMLInputElement | null>;
+}
+
+export function getHistoryFooter(focusZone: HistoryFocusZone) {
+  if (focusZone === "search") {
+    return {
+      shortcuts: [{ key: "↓", label: "Timeline" }],
+      rightShortcuts: [{ key: "Esc", label: "Clear Search" }],
+    };
+  }
+
+  if (focusZone === "timeline") {
+    return {
+      shortcuts: [
+        { key: "Tab", label: "Switch Focus" },
+        { key: "↑/↓", label: "Navigate" },
+        { key: "Enter/Space", label: "Select Date" },
+        { key: "/", label: "Search" },
+      ],
+      rightShortcuts: [{ key: "Esc", label: "Back" }],
+    };
+  }
+
+  return {
+    shortcuts: [
+      { key: "Tab", label: "Switch Focus" },
+      { key: "↑/↓", label: "Navigate" },
+      { key: "Enter/Space", label: "Open Review" },
+      { key: "o", label: "Open Review" },
+      { key: "/", label: "Search" },
+    ],
+    rightShortcuts: [{ key: "Esc", label: "Back" }],
+  };
 }
 
 export function useHistoryKeyboard({
@@ -77,8 +97,10 @@ export function useHistoryKeyboard({
     navigate({ to: "/" });
   });
 
+  const { shortcuts, rightShortcuts } = getHistoryFooter(focusZone);
+
   usePageFooter({
-    shortcuts: HISTORY_FOOTER_SHORTCUTS,
-    rightShortcuts: HISTORY_FOOTER_RIGHT_SHORTCUTS,
+    shortcuts,
+    rightShortcuts,
   });
 }

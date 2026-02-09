@@ -25,6 +25,10 @@
     "./git": {
       "types": "./dist/git.d.ts",
       "import": "./dist/git.js"
+    },
+    "./shutdown": {
+      "types": "./dist/shutdown.d.ts",
+      "import": "./dist/shutdown.js"
     }
   },
   "scripts": {
