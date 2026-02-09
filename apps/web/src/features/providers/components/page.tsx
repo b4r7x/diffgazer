@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { useNavigation } from "@stargazer/keyboard";
+import type { Shortcut } from "@stargazer/schemas/ui";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ProviderList } from "@/features/providers/components/provider-list";
 import { ProviderDetails } from "@/features/providers/components/provider-details";
@@ -8,13 +9,52 @@ import { ModelSelectDialog } from "@/features/providers/components/model-select-
 import { useProvidersPageState } from "@/features/providers/hooks/use-providers-page-state";
 import { PROVIDER_ENV_VARS } from "@stargazer/schemas/config";
 
-const FOOTER_SHORTCUTS = [
-  { key: "↑/↓", label: "Navigate" },
-  { key: "←/→", label: "Switch Panel" },
-  { key: "/", label: "Search" },
-  { key: "Enter", label: "Activate" },
-  { key: "Esc", label: "Back" },
-];
+export function getProvidersFooter(
+  focusZone: "input" | "filters" | "list" | "buttons",
+  hasSelectedProvider: boolean,
+): { shortcuts: Shortcut[]; rightShortcuts: Shortcut[] } {
+  if (focusZone === "input") {
+    return {
+      shortcuts: [
+        { key: "↓", label: "Filters" },
+        { key: "Esc", label: "Exit Search" },
+      ],
+      rightShortcuts: [],
+    };
+  }
+
+  if (focusZone === "filters") {
+    return {
+      shortcuts: [
+        { key: "←/→", label: "Move Filter" },
+        { key: "Enter/Space", label: "Apply Filter" },
+        { key: "↑/↓", label: "Switch Zone" },
+        { key: "/", label: "Search" },
+      ],
+      rightShortcuts: [{ key: "Esc", label: "Back" }],
+    };
+  }
+
+  if (focusZone === "buttons") {
+    return {
+      shortcuts: [
+        { key: "←/→/↑/↓", label: "Move Action" },
+        { key: "Enter/Space", label: "Activate Action" },
+        { key: "/", label: "Search" },
+      ],
+      rightShortcuts: [{ key: "Esc", label: "Back" }],
+    };
+  }
+
+  return {
+    shortcuts: [
+      { key: "↑/↓", label: "Navigate Providers" },
+      ...(hasSelectedProvider ? [{ key: "→", label: "Actions" }] : []),
+      { key: "/", label: "Search" },
+    ],
+    rightShortcuts: [{ key: "Esc", label: "Back" }],
+  };
+}
 
 export function ProvidersPage() {
   const {
@@ -29,7 +69,11 @@ export function ProvidersPage() {
     keyboard,
   } = useProvidersPageState();
 
-  usePageFooter({ shortcuts: FOOTER_SHORTCUTS });
+  const footer = dialogs.anyOpen
+    ? { shortcuts: [] as Shortcut[], rightShortcuts: [] as Shortcut[] }
+    : getProvidersFooter(keyboard.focusZone, Boolean(selectedProvider));
+
+  usePageFooter({ shortcuts: footer.shortcuts, rightShortcuts: footer.rightShortcuts });
 
   const listRef = useRef<HTMLDivElement>(null);
   const listBridgeActive = keyboard.focusZone === "list" && !dialogs.anyOpen;

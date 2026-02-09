@@ -2,22 +2,12 @@ import { useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 import type { SeverityFilter } from "@/features/review/components/severity-filter-group";
 import type { ReviewIssue } from "@stargazer/schemas/review";
+import type { Shortcut } from "@stargazer/schemas/ui";
 import type { IssueTab as TabId } from "@stargazer/schemas/ui";
 import { SEVERITY_ORDER } from "@stargazer/schemas/ui";
 import { useFocusZone, useKey, useNavigation } from "@stargazer/keyboard";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { filterIssuesBySeverity } from "@stargazer/core/review";
-
-const SHORTCUTS = [
-  { key: "j/k", label: "Select" },
-  { key: "←/→", label: "Navigate" },
-  { key: "1-4", label: "Tab" },
-];
-
-const RIGHT_SHORTCUTS = [
-  { key: "Space", label: "Toggle" },
-  { key: "Esc", label: "Back" },
-];
 
 type FocusZone = "filters" | "list" | "details";
 
@@ -25,6 +15,40 @@ const ZONES = ["filters", "list", "details"] as const;
 
 interface UseReviewResultsKeyboardOptions {
   issues: ReviewIssue[];
+}
+
+export function getReviewResultsFooter(
+  focusZone: FocusZone,
+  canUsePatchTab: boolean,
+): { shortcuts: Shortcut[]; rightShortcuts: Shortcut[] } {
+  if (focusZone === "filters") {
+    return {
+      shortcuts: [
+        { key: "←/→", label: "Move Filter" },
+        { key: "Enter/Space", label: "Toggle Filter" },
+        { key: "j", label: "Issue List" },
+      ],
+      rightShortcuts: [],
+    };
+  }
+
+  if (focusZone === "details") {
+    return {
+      shortcuts: [
+        { key: canUsePatchTab ? "1-4" : "1-3", label: "Switch Tab" },
+        { key: "←", label: "Issue List" },
+      ],
+      rightShortcuts: [],
+    };
+  }
+
+  return {
+    shortcuts: [
+      { key: "j/k", label: "Select Issue" },
+      { key: "→", label: "Issue Details" },
+    ],
+    rightShortcuts: [{ key: "Esc", label: "Back" }],
+  };
 }
 
 export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOptions) {
@@ -126,7 +150,12 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     });
   };
 
-  usePageFooter({ shortcuts: SHORTCUTS, rightShortcuts: RIGHT_SHORTCUTS });
+  const footer = getReviewResultsFooter(
+    focusZone,
+    Boolean(selectedIssue?.suggested_patch),
+  );
+
+  usePageFooter({ shortcuts: footer.shortcuts, rightShortcuts: footer.rightShortcuts });
 
   return {
     filteredIssues,

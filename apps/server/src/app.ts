@@ -5,6 +5,7 @@ import { configRouter } from "./features/config/router.js";
 import { settingsRouter } from "./features/settings/router.js";
 import { gitRouter } from "./features/git/router.js";
 import { reviewRouter } from "./features/review/router.js";
+import { shutdownRouter } from "./features/shutdown/router.js";
 
 const isLocalhostOrigin = (origin: string): boolean => {
   try {
@@ -63,6 +64,7 @@ export const createApp = (): Hono => {
   app.route("/api/settings", settingsRouter);
   app.route("/api/git", gitRouter);
   app.route("/api/review", reviewRouter);
+  app.route("/api/shutdown", shutdownRouter);
 
   app.notFound((c) => {
     return c.json({ error: { message: "Not Found" } }, 404);

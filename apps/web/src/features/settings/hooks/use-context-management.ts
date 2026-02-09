@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
 type ContextStatus = "loading" | "ready" | "missing" | "error";
@@ -9,6 +9,7 @@ interface ContextManagement {
   isRefreshing: boolean;
   error: string | null;
   setError: (error: string | null) => void;
+  reloadContextStatus: () => Promise<void>;
   handleRefreshContext: () => Promise<void>;
 }
 
@@ -18,20 +19,33 @@ export function useContextManagement(): ContextManagement {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    api.getReviewContext()
-      .then((context) => {
-        if (!active) return;
-        setContextStatus("ready");
-        setContextGeneratedAt(context.meta.generatedAt);
-      })
-      .catch(() => {
-        if (!active) return;
+  const reloadContextStatus = useCallback(async () => {
+    setContextStatus("loading");
+    setError(null);
+    try {
+      const context = await api.getReviewContext();
+      setContextStatus("ready");
+      setContextGeneratedAt(context.meta.generatedAt);
+    } catch (err) {
+      const status = err && typeof err === "object" && "status" in err
+        ? (err as { status?: number }).status
+        : undefined;
+
+      if (status === 404) {
         setContextStatus("missing");
-      });
-    return () => { active = false; };
+        setContextGeneratedAt(null);
+        return;
+      }
+
+      setContextStatus("error");
+      setContextGeneratedAt(null);
+      setError(err instanceof Error ? err.message : "Failed to load context status");
+    }
   }, []);
+
+  useEffect(() => {
+    void reloadContextStatus();
+  }, [reloadContextStatus]);
 
   const handleRefreshContext = async () => {
     setIsRefreshing(true);
@@ -48,5 +62,13 @@ export function useContextManagement(): ContextManagement {
     }
   };
 
-  return { contextStatus, contextGeneratedAt, isRefreshing, error, setError, handleRefreshContext };
+  return {
+    contextStatus,
+    contextGeneratedAt,
+    isRefreshing,
+    error,
+    setError,
+    reloadContextStatus,
+    handleRefreshContext,
+  };
 }

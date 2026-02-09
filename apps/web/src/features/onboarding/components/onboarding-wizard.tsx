@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { CardLayout, Button, Callout } from "@stargazer/ui";
 import { useConfigData } from "@/app/providers/config-provider";
+import { usePageFooter } from "@/hooks/use-page-footer";
 import { useOnboarding } from "../hooks/use-onboarding";
 import { WizardProgress } from "./wizard-progress";
 import { StorageStep } from "./steps/storage-step";
@@ -37,6 +38,8 @@ export function OnboardingWizard() {
     setProvider,
     complete,
   } = useOnboarding();
+
+  usePageFooter({ shortcuts: [] });
 
   useEffect(() => {
     if (isConfigured) {

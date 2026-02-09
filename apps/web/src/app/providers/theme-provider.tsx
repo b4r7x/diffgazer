@@ -48,7 +48,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const { settings, refresh } = useSettings();
 
-  const systemTheme = useSyncExternalStore(
+  const systemTheme: ResolvedTheme = useSyncExternalStore(
     subscribeToSystemTheme,
     getSystemTheme,
     () => "dark"
@@ -71,7 +71,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [settingsTheme, localOverride]);
 
   const effectiveTheme = localOverride ?? theme;
-  const resolved: ResolvedTheme = effectiveTheme === "auto" ? systemTheme : effectiveTheme;
+  const resolved: ResolvedTheme =
+    effectiveTheme === "auto"
+      ? systemTheme
+      : effectiveTheme === "dark"
+        ? "dark"
+        : "light";
 
   const setTheme = (newTheme: WebTheme) => {
     setThemeState(newTheme);

@@ -37,6 +37,15 @@ export function useFooterNavigation({
     requireFocusWithin: Boolean(targetRef),
   } as const;
 
+  const enterOptions = {
+    enabled: enabled && !inFooter,
+    targetRef,
+    requireFocusWithin: Boolean(targetRef),
+  } as const;
+
+  // ArrowDown enters footer actions when focus is outside the footer.
+  useKey("ArrowDown", () => enterFooter(0), enterOptions);
+
   // ArrowUp returns to options
   useKey("ArrowUp", exitFooter, keyOptions);
 
