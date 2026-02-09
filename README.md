@@ -1,8 +1,8 @@
 # Stargazer
 
-**Local AI code review for developers who'd rather spend their tokens on building.**
+Local AI code review. Run one command, get a review from AI agents, your code stays on your machine.
 
-> **Early release** — core review pipeline works well, UI is getting polished. [Full context](docs/story.md).
+> **Early release** - core review pipeline works, UI is getting polished. [Full context](docs/story.md).
 
 <!--
   TODO: Add a screenshot or GIF of Stargazer in action here.
@@ -12,28 +12,28 @@
 
 ## Why
 
-I wanted my own code reviewer. Tools like Claude Code and Codex are great for writing code, but burning tokens on review when you could spend them building things felt wrong.
+I wanted my own code reviewer. Tools like Claude Code and Codex are great for writing code, but burning tokens on review when you could spend them building felt wrong.
 
-Code review matters — especially now that we're all shipping AI-generated code faster than ever. Solo devs rarely get their code reviewed. Privacy, fear of judgment, or just nobody around. Stargazer is my answer to that.
+Code review matters, especially now that we're all shipping AI-generated code faster than we can read it. Solo devs rarely get their code reviewed. Privacy, fear of judgment, or just nobody around. Stargazer is my answer to that.
 
-Run one command, get a full review from specialized AI agents. Your code stays local — only the diff goes to the provider you choose.
+Run one command, get a review. Only the diff goes to the provider you choose.
 
-> [Why I Built Stargazer](docs/story.md) — the full story, the philosophy, the honest take.
+> [Why I Built Stargazer](docs/story.md) - the full story.
 
 ## Features
 
-- **Five review lenses** — Correctness, Security, Performance, Simplicity, Tests. Each is a specialized agent with its own expert prompt.
-- **Review profiles** — Quick, Strict, Perf, Security. Pick the depth that fits the moment.
-- **Real-time streaming** — Watch agents work through your code live via SSE.
-- **Issue drilldowns** — Deep-dive any finding: root cause, impact, suggested fix, patch.
-- **Git blame enrichment** — Each issue shows who last touched the code and the surrounding context.
-- **Review history** — Browse past reviews with search, filters, and severity breakdowns.
-- **Embedded web UI** — Full React app served by the CLI. One command, browser opens.
-- **Multiple providers** — Gemini (recommended), Z.AI, OpenRouter. Bring your own API key.
-- **Security-first** — Localhost only, strict CORS, prompt injection hardening, OS keyring for secrets.
-- **Parallel or sequential** — Run all lenses at once or one by one.
+- **Five review lenses** - Correctness, Security, Performance, Simplicity, Tests. Each is a separate AI agent with its own prompt.
+- **Review profiles** - Quick, Strict, Perf, Security. Pick what fits.
+- **Streaming** - watch the review happen in real time via SSE.
+- **Issue drilldowns** - click any issue to get more detail: root cause, impact, fix, patch.
+- **Git blame enrichment** - each issue shows who last touched the code and surrounding context.
+- **Review history** - browse past reviews with search, filters, severity breakdowns.
+- **Embedded web UI** - the CLI serves a React app. One command, browser opens.
+- **Multiple providers** - Gemini, Z.AI, OpenRouter. Bring your own API key.
+- **Security** - localhost only, CORS, prompt injection hardening, OS keyring for secrets. [Why this matters for a local tool.](docs/security.md#why-secure-a-local-tool)
+- **Parallel or sequential** - run all lenses at once or one by one.
 
-## Quick Start
+## Quick start
 
 Node.js 20+ required.
 
@@ -43,11 +43,11 @@ cd your-project
 stargazer
 ```
 
-First run walks you through setup — secrets storage, provider, API key, model, preferences.
+First run walks you through setup - secrets storage, provider, API key, model, preferences.
 
-> [Detailed setup guide](docs/getting-started.md) — providers, config, first review walkthrough.
+> [Setup guide](docs/getting-started.md)
 
-### From Source
+### From source
 
 ```bash
 git clone https://github.com/b4r7x/stargazer
@@ -56,43 +56,43 @@ cd apps/cli && npm link
 stargazer   # now works from any git repo
 ```
 
-## How It Works
+## How it works
 
 ```
-git diff → parse → build context → run lenses → enrich → report
+git diff -> parse -> build context -> run lenses -> enrich -> report
 ```
 
-1. **Diff** — Parse staged or unstaged changes, validate size
-2. **Context** — Analyze project structure for smarter reviews
-3. **Review** — Agents examine the diff through their specialty lens
-4. **Enrich** — Add git blame and surrounding code to each finding
-5. **Report** — Deduplicate, filter, sort, save
+1. **Diff** - parse staged or unstaged changes, validate size
+2. **Context** - analyze project structure for context-aware reviews
+3. **Review** - agents go through the diff, each through its own lens
+4. **Enrich** - add git blame and surrounding code to each issue
+5. **Report** - deduplicate, filter, sort, save
 
 Issues ranked: **Blocker** · **High** · **Medium** · **Low** · **Nit**
 
-> [Full pipeline breakdown](docs/how-it-works.md) — lenses, profiles, drilldowns, streaming.
+> [Full breakdown](docs/how-it-works.md)
 
 ## Providers
 
 | Provider | Default Model | Free Tier | Notes |
 |----------|--------------|-----------|-------|
-| **Gemini** | gemini-2.5-flash | Yes | Recommended. Fast, cheap, parallel agents work well. |
-| **Z.AI** | glm-4.7 | Yes | |
-| **OpenRouter** | varies | Varies | Access to Claude, GPT, and more. |
+| Gemini | gemini-2.5-flash | Yes | Default. Parallel agents work. |
+| Z.AI | glm-4.7 | Yes | |
+| OpenRouter | varies | Varies | Access to Claude, GPT, and others. |
 
-> [Why Gemini? Full comparison and configuration.](docs/providers.md)
+> [Provider comparison and config](docs/providers.md)
 
 ## Documentation
 
-- **[Why I Built This](docs/story.md)** — the story and philosophy behind the project
-- **[Getting Started](docs/getting-started.md)** — installation, providers, your first review
-- **[How It Works](docs/how-it-works.md)** — lenses, agents, pipeline, profiles, drilldowns
-- **[Architecture](docs/architecture.md)** — monorepo, packages, build pipeline, key decisions
-- **[Providers](docs/providers.md)** — Gemini, Z.AI, OpenRouter — comparison and config
-- **[Security](docs/security.md)** — threat model, CORS, prompt injection hardening
-- **[Roadmap](docs/roadmap.md)** — what's planned next
-- **[Contributing](docs/contributing.md)** — dev setup, code style, PR workflow
-- **[Technical Reference](docs/PROJECT_DOCUMENTATION.md)** — full API, schemas, internals
+- [Why I Built This](docs/story.md) - the story behind the project
+- [Getting Started](docs/getting-started.md) - installation, providers, first review
+- [How It Works](docs/how-it-works.md) - lenses, pipeline, profiles, drilldowns
+- [Architecture](docs/architecture.md) - monorepo, packages, build, decisions
+- [Providers](docs/providers.md) - Gemini, Z.AI, OpenRouter, config
+- [Security](docs/security.md) - threat model, CORS, prompt injection
+- [Roadmap](docs/roadmap.md) - what's planned
+- [Contributing](docs/contributing.md) - dev setup, code style
+- [Technical Reference](docs/PROJECT_DOCUMENTATION.md) - API, schemas, internals
 
 ## Contributing
 
@@ -100,9 +100,9 @@ Issues ranked: **Blocker** · **High** · **Medium** · **Low** · **Nit**
 pnpm install && pnpm dev
 ```
 
-Starts the API server and web UI. See the [Contributing Guide](docs/contributing.md) for details.
+Starts the API server and web UI. See [contributing](docs/contributing.md) for details.
 
-## Built With
+## Built with
 
 TypeScript · Hono · React 19 · Ink 6 · Vite · Zod 4 · Vercel AI SDK · pnpm monorepo
 
