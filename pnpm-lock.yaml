@@ -158,8 +158,8 @@ importers:
         specifier: ^2.1.1
         version: 2.1.1
       keyscope:
-        specifier: file:../../../keyscope
-        version: file:../keyscope(react@19.2.4)
+        specifier: ^0.1.1
+        version: 0.1.1(react@19.2.4)
       react:
         specifier: ^19.2.4
         version: 19.2.4
@@ -290,6 +290,9 @@ importers:
       clsx:
         specifier: ^2.1.0
         version: 2.1.1
+      keyscope:
+        specifier: ^0.1.1
+        version: 0.1.1(react@19.2.4)
       tailwind-merge:
         specifier: ^3.0.0
         version: 3.4.0
@@ -1601,8 +1604,8 @@ packages:
     engines: {node: '>=6'}
     hasBin: true
 
-  keyscope@file:../keyscope:
-    resolution: {directory: ../keyscope, type: directory}
+  keyscope@0.1.1:
+    resolution: {integrity: sha512-uUYOc5BHvMGGnjBr2ZdNGRHH/eE9qmB3mIU0mfjuOBp+G6XOzxs98dSQya45YaNtIwiA/O2SzhBiIxy2e1R5Zg==}
     peerDependencies:
       react: ^19.0.0
 
@@ -3430,7 +3433,7 @@ snapshots:
 
   json5@2.2.3: {}
 
-  keyscope@file:../keyscope(react@19.2.4):
+  keyscope@0.1.1(react@19.2.4):
     dependencies:
       react: 19.2.4
 
