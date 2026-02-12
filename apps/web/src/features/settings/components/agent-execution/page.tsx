@@ -4,13 +4,11 @@ import type { AgentExecution } from "@diffgazer/schemas/config";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import { Button, CardLayout, RadioGroup, RadioGroupItem } from "@diffgazer/ui";
 import { useNavigation, useKey, useScope } from "keyscope";
+import { useFooterNavigation } from "@/hooks/use-footer-navigation";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useSettings } from "@/hooks/use-settings";
 import { api } from "@/lib/api";
 import { cn } from "@/utils/cn";
-
-type FocusZone = "list" | "buttons";
-const BUTTONS_COUNT = 2;
 
 export function SettingsAgentExecutionPage() {
   const navigate = useNavigate();
@@ -19,8 +17,6 @@ export function SettingsAgentExecutionPage() {
   const [focusedMode, setFocusedMode] = useState<AgentExecution>("sequential");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [focusZone, setFocusZone] = useState<FocusZone>("list");
-  const [buttonIndex, setButtonIndex] = useState(0);
   const radioRef = useRef<HTMLDivElement>(null);
 
   const effectiveMode = modeChoice ?? settings?.agentExecution ?? "sequential";
@@ -29,27 +25,55 @@ export function SettingsAgentExecutionPage() {
     setFocusedMode(effectiveMode);
   }, [effectiveMode]);
 
-  useEffect(() => {
-    if (!isLoading && !settingsError) {
-      setFocusZone("list");
-      setButtonIndex(0);
-    }
-  }, [isLoading, settingsError]);
-
   useScope("settings-agent-execution");
   useKey("Escape", () => navigate({ to: "/settings" }));
 
   const isDirty = settings ? settings.agentExecution !== effectiveMode : false;
-  const isButtonsZone = focusZone === "buttons";
   const canSave = !isSaving && isDirty;
+
+  const handleCancel = () => navigate({ to: "/settings" });
+
+  const handleSave = async (): Promise<void> => {
+    if (!canSave) return;
+    setIsSaving(true);
+    setError(null);
+    try {
+      await api.saveSettings({ agentExecution: effectiveMode });
+      await refresh();
+      navigate({ to: "/settings" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save settings");
+      setIsSaving(false);
+    }
+  };
+
+  const activateButton = (index: number) => {
+    if (index === 0) handleCancel();
+    else if (index === 1 && canSave) void handleSave();
+  };
+
+  const { inFooter, focusedIndex, enterFooter, reset } = useFooterNavigation({
+    enabled: !isLoading && !settingsError,
+    buttonCount: 2,
+    onAction: activateButton,
+    autoEnter: false,
+  });
+
+  useEffect(() => {
+    if (!isLoading && !settingsError) {
+      reset();
+    }
+  }, [isLoading, settingsError]);
+
+  const isButtonsZone = inFooter;
 
   const footerShortcuts: Shortcut[] = isButtonsZone
     ? [
         { key: "←/→", label: "Move Action" },
         {
           key: "Enter/Space",
-          label: buttonIndex === 0 ? "Cancel" : "Save",
-          disabled: buttonIndex === 1 && !canSave,
+          label: focusedIndex === 0 ? "Cancel" : "Save",
+          disabled: focusedIndex === 1 && !canSave,
         },
       ]
     : [
@@ -80,48 +104,9 @@ export function SettingsAgentExecutionPage() {
     wrap: false,
     enabled: navigationEnabled,
     onBoundaryReached: (direction) => {
-      if (direction === "down") setFocusZone("buttons");
+      if (direction === "down") enterFooter();
     },
   });
-
-  useKey("ArrowUp", () => {
-    setFocusZone("list");
-    setButtonIndex(0);
-  }, { enabled: isButtonsZone, preventDefault: true });
-
-  useKey("ArrowDown", () => {}, { enabled: isButtonsZone, preventDefault: true });
-
-  useKey("ArrowLeft", () => setButtonIndex(Math.max(0, buttonIndex - 1)), {
-    enabled: isButtonsZone, preventDefault: true,
-  });
-
-  useKey("ArrowRight", () => setButtonIndex(Math.min(BUTTONS_COUNT - 1, buttonIndex + 1)), {
-    enabled: isButtonsZone, preventDefault: true,
-  });
-
-  const handleCancel = () => navigate({ to: "/settings" });
-
-  const handleSave = async (): Promise<void> => {
-    if (!canSave) return;
-    setIsSaving(true);
-    setError(null);
-    try {
-      await api.saveSettings({ agentExecution: effectiveMode });
-      await refresh();
-      navigate({ to: "/settings" });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save settings");
-      setIsSaving(false);
-    }
-  };
-
-  const activateButton = () => {
-    if (buttonIndex === 0) handleCancel();
-    else if (buttonIndex === 1 && canSave) void handleSave();
-  };
-
-  useKey("Enter", activateButton, { enabled: isButtonsZone });
-  useKey(" ", activateButton, { enabled: isButtonsZone, preventDefault: true });
 
   return (
     <CardLayout
@@ -133,7 +118,7 @@ export function SettingsAgentExecutionPage() {
             variant="ghost"
             onClick={handleCancel}
             disabled={isSaving}
-            className={cn(isButtonsZone && buttonIndex === 0 && "ring-2 ring-tui-blue")}
+            className={cn(isButtonsZone && focusedIndex === 0 && "ring-2 ring-tui-blue")}
           >
             Cancel
           </Button>
@@ -141,7 +126,7 @@ export function SettingsAgentExecutionPage() {
             variant="success"
             onClick={handleSave}
             disabled={!canSave}
-            className={cn(isButtonsZone && buttonIndex === 1 && "ring-2 ring-tui-blue")}
+            className={cn(isButtonsZone && focusedIndex === 1 && "ring-2 ring-tui-blue")}
           >
             {isSaving ? "Saving..." : "Save"}
           </Button>

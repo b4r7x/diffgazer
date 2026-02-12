@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { TrustCapabilities } from "@diffgazer/schemas/config";
 import { Badge, Callout, Button, CheckboxGroup, CheckboxItem } from "@diffgazer/ui";
-import { useNavigation } from "keyscope";
-import { useTrustFormKeyboard } from "@/features/settings/hooks/use-trust-form-keyboard";
+import { useNavigation, useScope } from "keyscope";
+import { useFooterNavigation } from "@/hooks/use-footer-navigation";
 import { cn } from "@/utils/cn";
 
 export interface TrustPermissionsContentProps {
@@ -46,12 +46,8 @@ export function TrustPermissionsContent({
   isTrusted = false,
   isLoading = false,
 }: TrustPermissionsContentProps) {
-  type FocusZone = "list" | "buttons";
-  const [focusZone, setFocusZone] = useState<FocusZone>("list");
-  const [buttonIndex, setButtonIndex] = useState(0);
   const [listFocused, setListFocused] = useState<string | null>(() => getInitialFocusedCapability(value));
   const checkboxRef = useRef<HTMLDivElement>(null);
-  const BUTTONS_COUNT = 2;
 
   const selectedCapabilities = value.readFiles ? ["readFiles"] : [];
   const initialFocusedCapability = getInitialFocusedCapability(value);
@@ -76,18 +72,21 @@ export function TrustPermissionsContent({
     );
   };
 
-  useTrustFormKeyboard({
+  useScope("trust-form");
+
+  const activateButton = (index: number) => {
+    if (index === 0 && onSave) onSave();
+    else if (index === 1 && onRevoke) onRevoke();
+  };
+
+  const { inFooter, focusedIndex, enterFooter } = useFooterNavigation({
     enabled: showActions,
-    focusZone,
-    buttonIndex,
-    buttonsCount: BUTTONS_COUNT,
-    onButtonIndexChange: setButtonIndex,
-    onFocusZoneChange: setFocusZone,
-    onSave,
-    onRevoke,
+    buttonCount: 2,
+    onAction: activateButton,
+    autoEnter: false,
   });
 
-  const isListZone = focusZone === "list";
+  const isListZone = !inFooter;
 
   const { focusedValue: listFocusedValue } = useNavigation({
     containerRef: checkboxRef,
@@ -99,7 +98,7 @@ export function TrustPermissionsContent({
     enabled: isListZone,
     onBoundaryReached: (direction) => {
       if (direction === "down" && showActions) {
-        setFocusZone("buttons");
+        enterFooter();
       }
     },
     onSelect: toggleCapability,
@@ -155,7 +154,7 @@ export function TrustPermissionsContent({
             variant="success"
             onClick={onSave}
             disabled={isLoading}
-            className={cn(focusZone === 'buttons' && buttonIndex === 0 && 'ring-2 ring-tui-blue')}
+            className={cn(inFooter && focusedIndex === 0 && 'ring-2 ring-tui-blue')}
           >
             {isLoading ? "[ Saving... ]" : "[ Save Changes ]"}
           </Button>
@@ -163,7 +162,7 @@ export function TrustPermissionsContent({
             variant="error"
             onClick={onRevoke}
             disabled={isLoading}
-            className={cn(focusZone === 'buttons' && buttonIndex === 1 && 'ring-2 ring-tui-blue')}
+            className={cn(inFooter && focusedIndex === 1 && 'ring-2 ring-tui-blue')}
           >
             {isLoading ? "[ Revoking... ]" : "[ Revoke Trust ]"}
           </Button>

@@ -7,11 +7,9 @@ import { StorageSelectorContent } from "@/components/shared/storage-selector-con
 import { useSettings } from "@/hooks/use-settings";
 import { api } from "@/lib/api";
 import { useKey, useScope } from "keyscope";
+import { useFooterNavigation } from "@/hooks/use-footer-navigation";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { cn } from "@/utils/cn";
-
-type FocusZone = "list" | "buttons";
-const BUTTONS_COUNT = 2;
 
 export function SettingsStoragePage() {
   const navigate = useNavigate();
@@ -19,8 +17,6 @@ export function SettingsStoragePage() {
   const [storageChoice, setStorageChoice] = useState<SecretsStorage | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [focusZone, setFocusZone] = useState<FocusZone>("list");
-  const [buttonIndex, setButtonIndex] = useState(0);
 
   const effectiveStorage = storageChoice ?? settings?.secretsStorage ?? null;
 
@@ -28,42 +24,7 @@ export function SettingsStoragePage() {
   useKey("Escape", () => navigate({ to: "/settings" }));
 
   const isDirty = settings?.secretsStorage !== effectiveStorage;
-  const isButtonsZone = focusZone === "buttons";
   const canSave = !isSaving && !!effectiveStorage && isDirty;
-
-  const footerShortcuts: Shortcut[] = isButtonsZone
-    ? [
-        { key: "←/→", label: "Move Action" },
-        {
-          key: "Enter/Space",
-          label: buttonIndex === 0 ? "Cancel" : "Save",
-          disabled: buttonIndex === 1 && !canSave,
-        },
-      ]
-    : [
-        { key: "↑/↓", label: "Navigate" },
-        { key: "Enter/Space", label: "Select Storage" },
-      ];
-
-  usePageFooter({
-    shortcuts: footerShortcuts,
-    rightShortcuts: [{ key: "Esc", label: "Back" }],
-  });
-
-  useKey("ArrowUp", () => {
-    setFocusZone("list");
-    setButtonIndex(0);
-  }, { enabled: isButtonsZone, preventDefault: true });
-
-  useKey("ArrowDown", () => {}, { enabled: isButtonsZone, preventDefault: true });
-
-  useKey("ArrowLeft", () => setButtonIndex(Math.max(0, buttonIndex - 1)), {
-    enabled: isButtonsZone, preventDefault: true,
-  });
-
-  useKey("ArrowRight", () => setButtonIndex(Math.min(BUTTONS_COUNT - 1, buttonIndex + 1)), {
-    enabled: isButtonsZone, preventDefault: true,
-  });
 
   const handleCancel = () => navigate({ to: "/settings" });
 
@@ -80,13 +41,38 @@ export function SettingsStoragePage() {
     }
   };
 
-  const activateButton = () => {
-    if (buttonIndex === 0) handleCancel();
-    else if (buttonIndex === 1 && canSave) handleSave();
+  const activateButton = (index: number) => {
+    if (index === 0) handleCancel();
+    else if (index === 1 && canSave) handleSave();
   };
 
-  useKey("Enter", activateButton, { enabled: isButtonsZone });
-  useKey(" ", activateButton, { enabled: isButtonsZone, preventDefault: true });
+  const { inFooter, focusedIndex, enterFooter } = useFooterNavigation({
+    enabled: true,
+    buttonCount: 2,
+    onAction: activateButton,
+    autoEnter: false,
+  });
+
+  const isButtonsZone = inFooter;
+
+  const footerShortcuts: Shortcut[] = isButtonsZone
+    ? [
+        { key: "←/→", label: "Move Action" },
+        {
+          key: "Enter/Space",
+          label: focusedIndex === 0 ? "Cancel" : "Save",
+          disabled: focusedIndex === 1 && !canSave,
+        },
+      ]
+    : [
+        { key: "↑/↓", label: "Navigate" },
+        { key: "Enter/Space", label: "Select Storage" },
+      ];
+
+  usePageFooter({
+    shortcuts: footerShortcuts,
+    rightShortcuts: [{ key: "Esc", label: "Back" }],
+  });
 
   return (
     <CardLayout
@@ -98,7 +84,7 @@ export function SettingsStoragePage() {
             variant="ghost"
             onClick={handleCancel}
             disabled={isSaving}
-            className={cn(isButtonsZone && buttonIndex === 0 && "ring-2 ring-tui-blue")}
+            className={cn(isButtonsZone && focusedIndex === 0 && "ring-2 ring-tui-blue")}
           >
             Cancel
           </Button>
@@ -106,7 +92,7 @@ export function SettingsStoragePage() {
             variant="success"
             onClick={handleSave}
             disabled={isSaving || !effectiveStorage || !isDirty}
-            className={cn(isButtonsZone && buttonIndex === 1 && "ring-2 ring-tui-blue")}
+            className={cn(isButtonsZone && focusedIndex === 1 && "ring-2 ring-tui-blue")}
           >
             {isSaving ? "Saving..." : "Save"}
           </Button>
@@ -124,7 +110,7 @@ export function SettingsStoragePage() {
             enabled={!isButtonsZone}
             onBoundaryReached={(direction) => {
               if (direction === "down") {
-                setFocusZone("buttons");
+                enterFooter();
               }
             }}
           />
