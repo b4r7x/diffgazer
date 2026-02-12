@@ -7,6 +7,7 @@ import { ThemeSelectorContent } from "../theme-selector-content";
 import { ThemePreviewCard } from "../theme-preview-card";
 import { useTheme } from "@/hooks/use-theme";
 import { useKey, useScope } from "keyscope";
+import { useFooterNavigation } from "@/hooks/use-footer-navigation";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { cn } from "@/utils/cn";
 
@@ -14,16 +15,11 @@ function resolveTheme(theme: WebTheme, systemResolved?: ResolvedTheme | null): R
   return theme === "auto" ? (systemResolved ?? "dark") : theme;
 }
 
-type FocusZone = "list" | "buttons";
-const BUTTONS_COUNT = 2;
-
 export function SettingsThemePage() {
   const navigate = useNavigate();
   const { theme: savedTheme, resolved: systemResolved, setTheme } = useTheme();
   const [selectedTheme, setSelectedTheme] = useState<WebTheme>(savedTheme);
   const [focusedTheme, setFocusedTheme] = useState<WebTheme | null>(savedTheme);
-  const [focusZone, setFocusZone] = useState<FocusZone>("list");
-  const [buttonIndex, setButtonIndex] = useState(0);
 
   useEffect(() => {
     setSelectedTheme(savedTheme);
@@ -35,15 +31,36 @@ export function SettingsThemePage() {
   useScope("settings-theme");
 
   const canSave = selectedTheme !== savedTheme;
-  const isButtonsZone = focusZone === "buttons";
+
+  const handleCancel = () => navigate({ to: "/settings" });
+
+  const handleSave = () => {
+    if (!canSave) return;
+    setTheme(selectedTheme);
+    navigate({ to: "/settings" });
+  };
+
+  const activateButton = (index: number) => {
+    if (index === 0) handleCancel();
+    else if (index === 1 && canSave) handleSave();
+  };
+
+  const { inFooter, focusedIndex, enterFooter } = useFooterNavigation({
+    enabled: true,
+    buttonCount: 2,
+    onAction: activateButton,
+    autoEnter: false,
+  });
+
+  const isButtonsZone = inFooter;
 
   const footerShortcuts: Shortcut[] = isButtonsZone
     ? [
         { key: "←/→", label: "Move Action" },
         {
           key: "Enter/Space",
-          label: buttonIndex === 0 ? "Cancel" : "Save",
-          disabled: buttonIndex === 1 && !canSave,
+          label: focusedIndex === 0 ? "Cancel" : "Save",
+          disabled: focusedIndex === 1 && !canSave,
         },
       ]
     : [
@@ -56,14 +73,6 @@ export function SettingsThemePage() {
     shortcuts: footerShortcuts,
     rightShortcuts: [{ key: "Esc", label: "Cancel" }],
   });
-
-  const handleCancel = () => navigate({ to: "/settings" });
-
-  const handleSave = () => {
-    if (!canSave) return;
-    setTheme(selectedTheme);
-    navigate({ to: "/settings" });
-  };
 
   const selectTheme = (theme: WebTheme) => {
     setSelectedTheme(theme);
@@ -83,29 +92,6 @@ export function SettingsThemePage() {
 
   useKey("Escape", handleCancel);
 
-  useKey("ArrowUp", () => {
-    setFocusZone("list");
-    setButtonIndex(0);
-  }, { enabled: isButtonsZone, preventDefault: true });
-
-  useKey("ArrowDown", () => {}, { enabled: isButtonsZone, preventDefault: true });
-
-  useKey("ArrowLeft", () => setButtonIndex(Math.max(0, buttonIndex - 1)), {
-    enabled: isButtonsZone, preventDefault: true,
-  });
-
-  useKey("ArrowRight", () => setButtonIndex(Math.min(BUTTONS_COUNT - 1, buttonIndex + 1)), {
-    enabled: isButtonsZone, preventDefault: true,
-  });
-
-  const activateButton = () => {
-    if (buttonIndex === 0) handleCancel();
-    else if (buttonIndex === 1 && canSave) handleSave();
-  };
-
-  useKey("Enter", activateButton, { enabled: isButtonsZone });
-  useKey(" ", activateButton, { enabled: isButtonsZone, preventDefault: true });
-
   return (
     <div className="flex-1 flex flex-col p-6 min-h-0">
       <div className="grid grid-cols-[2fr_3fr] gap-6 w-full h-full min-h-0">
@@ -124,7 +110,7 @@ export function SettingsThemePage() {
               enabled={!isButtonsZone}
               onBoundaryReached={(direction) => {
                 if (direction === "down") {
-                  setFocusZone("buttons");
+                  enterFooter();
                 }
               }}
             />
@@ -138,7 +124,7 @@ export function SettingsThemePage() {
                 <Button
                   variant="ghost"
                   onClick={handleCancel}
-                  className={cn(isButtonsZone && buttonIndex === 0 && "ring-2 ring-tui-blue")}
+                  className={cn(isButtonsZone && focusedIndex === 0 && "ring-2 ring-tui-blue")}
                 >
                   Cancel
                 </Button>
@@ -146,7 +132,7 @@ export function SettingsThemePage() {
                   variant="success"
                   onClick={handleSave}
                   disabled={!canSave}
-                  className={cn(isButtonsZone && buttonIndex === 1 && "ring-2 ring-tui-blue")}
+                  className={cn(isButtonsZone && focusedIndex === 1 && "ring-2 ring-tui-blue")}
                 >
                   Save
                 </Button>

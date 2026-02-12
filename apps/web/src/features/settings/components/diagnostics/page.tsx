@@ -94,6 +94,7 @@ export function DiagnosticsPage() {
     enabled: true,
     buttonCount: BUTTON_COUNT,
     onAction: handleButtonAction,
+    wrap: true,
   });
 
   useEffect(() => {
