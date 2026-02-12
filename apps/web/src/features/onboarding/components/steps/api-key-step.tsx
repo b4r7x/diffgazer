@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AVAILABLE_PROVIDERS, PROVIDER_ENV_VARS } from "@diffgazer/schemas/config";
-import { useKey } from "@diffgazer/keyboard";
+import { useKey } from "keyscope";
 import type { AIProvider } from "@diffgazer/schemas/config";
 import { ApiKeyMethodSelector } from "@/components/shared/api-key-method-selector";
 import type { FocusElement } from "@/types/focus-element";
@@ -63,7 +63,7 @@ export function ApiKeyStep({
     if (focused === "env") {
       onBoundaryReached?.("down");
     }
-  }, { enabled, allowInInput: true });
+  }, { enabled, allowInInput: true, preventDefault: true });
 
   useKey("ArrowUp", () => {
     if (focused === "env") {
@@ -79,7 +79,7 @@ export function ApiKeyStep({
       inputRef.current?.blur();
       setFocused("paste");
     }
-  }, { enabled, allowInInput: true });
+  }, { enabled, allowInInput: true, preventDefault: true });
 
   useKey(" ", () => {
     if (focused === "paste") {
@@ -87,7 +87,7 @@ export function ApiKeyStep({
     } else if (focused === "env") {
       onMethodChange("env");
     }
-  }, { enabled });
+  }, { enabled, preventDefault: true });
 
   useKey("Enter", () => {
     if (focused === "paste") {

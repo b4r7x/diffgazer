@@ -209,7 +209,6 @@ diffgazer/
 │   ├── core/                    # @diffgazer/core — Result<T,E>, errors, utilities
 │   ├── api/                     # @diffgazer/api — Type-safe API client
 │   ├── hooks/                   # @diffgazer/hooks — Shared React hooks
-│   ├── keyboard/                # @diffgazer/keyboard — Keyboard navigation
 │   └── ui/                      # @diffgazer/ui — Terminal-inspired UI components
 │
 ├── apps/
@@ -236,27 +235,24 @@ diffgazer/
               ┌────────────┼────────────┐
               ▼            ▼            ▼
         @diffgazer/   @diffgazer/   @diffgazer/
-         schemas       keyboard       hooks
+         schemas        hooks          ui
          (leaf)        (leaf)         (leaf)
               │
               ▼
         @diffgazer/core
         (depends on: schemas)
               │
-         ┌────┴────┐
-         ▼         ▼
-   @diffgazer/   @diffgazer/ui
-      api           (leaf)
-   (depends on:
-    core, schemas)
-         │
-         ▼
-   ┌─────┴─────────────────────────┐
-   ▼                               ▼
+              ▼
+        @diffgazer/api
+        (depends on: core, schemas)
+              │
+              ▼
+   ┌──────────┴───────────────────────┐
+   ▼                                  ▼
 @diffgazer/server              @diffgazer/web
 (deps: api, core, schemas)     (deps: api, core, schemas,
-                                hooks, keyboard, ui)
-   └───────────┐  ┌────────────────┘
+                                hooks, ui)
+   └───────────┐  ┌───────────────────┘
                ▼  ▼
            diffgazer (CLI)
            (bundles: core, hooks, server)
@@ -331,13 +327,6 @@ api.getGitStatus();
 Shared React hooks (2 exports):
 - `useTimer(options)` — elapsed time tracker (100ms interval)
 - `getFigletText(text, font?)` — ASCII art generation
-
-### @diffgazer/keyboard
-Keyboard navigation system:
-- `useScope(name)` — sets keyboard scope
-- `useKey(key, handler)` — registers key handler
-- `useNavigation({ containerRef, ... })` — arrow key navigation
-- `useTabNavigation({ containerRef })` — tab navigation
 
 ### @diffgazer/ui
 Terminal-inspired React UI component library (custom-built, no Radix/shadcn):
@@ -433,7 +422,7 @@ No Redux/Zustand — pure React context + hooks:
 - **Settings/reviews** (module-level caches with `useSyncExternalStore`)
 
 ### Keyboard Navigation
-Extensive keyboard-first navigation via `@diffgazer/keyboard`:
+Extensive keyboard-first navigation via `keyscope`:
 - Focus zone pattern with arrow keys within zones, Tab/special keys to switch zones
 - Per-page shortcuts displayed in dynamic footer bar
 - All pages fully navigable without mouse
@@ -687,9 +676,9 @@ Terminal (Ink CLI)
 1. `@diffgazer/schemas` (leaf) — `tsc`
 2. `@diffgazer/core` (depends on schemas) — `tsc`
 3. `@diffgazer/api` (depends on core, schemas) — `tsc`
-4. `@diffgazer/hooks`, `@diffgazer/keyboard`, `@diffgazer/ui` (leaves) — `tsc`
+4. `@diffgazer/hooks`, `@diffgazer/ui` (leaves) — `tsc`
 5. `@diffgazer/server` (depends on api, core, schemas) — `tsc`
-6. `@diffgazer/web` (depends on api, core, schemas, hooks, keyboard, ui) — `vite build`
+6. `@diffgazer/web` (depends on api, core, schemas, hooks, ui) — `vite build`
 7. `diffgazer` CLI (bundles core, hooks, server + web output) — `tsup`
 
 ### CLI Full Build

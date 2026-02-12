@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { TrustCapabilities } from "@diffgazer/schemas/config";
 import type { Shortcut } from "@diffgazer/schemas/ui";
-import { useKey } from "@diffgazer/keyboard";
+import { useKey } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useToast, Panel, PanelHeader, PanelContent } from "@diffgazer/ui";
 import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";

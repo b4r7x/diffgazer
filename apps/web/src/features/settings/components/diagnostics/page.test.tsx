@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { KeyboardProvider } from "@diffgazer/keyboard";
+import { KeyboardProvider } from "keyscope";
 
 const { mockNavigate, mockRetry, mockReloadContextStatus, mockHandleRefreshContext } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),

@@ -1,6 +1,6 @@
 import { useState, type RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useKey, useFocusZone } from "@diffgazer/keyboard";
+import { useKey, useFocusZone } from "keyscope";
 import { PROVIDER_FILTER_VALUES, type ProviderFilter } from "@/features/providers/constants";
 import type { AIProvider } from "@diffgazer/schemas/config";
 
@@ -45,7 +45,7 @@ export function useProvidersKeyboard({
   const [filterIndex, setFilterIndex] = useState(0);
   const [buttonIndex, setButtonIndex] = useState(0);
 
-  const { zone: internalZone, setZone, inZone } = useFocusZone({
+  const { zone: internalZone, setZone, inZone, forZone } = useFocusZone({
     initial: "list" as FocusZone,
     zones: ["input", "filters", "list", "buttons"] as const,
     scope: "providers",
@@ -82,73 +82,71 @@ export function useProvidersKeyboard({
     }
   };
 
-  const inInput = effectiveFocusZone === "input";
-  const inFilters = effectiveFocusZone === "filters";
-  const inButtons = effectiveFocusZone === "buttons";
-
   // Input zone — useFocusZone can't handle transitions from input (no allowInInput)
   // so we manually change zone AND blur
   useKey("ArrowDown", () => {
     setZone("filters");
     inputRef.current?.blur();
-  }, { enabled: !dialogOpen && inInput, allowInInput: true });
+  }, forZone("input", { enabled: !dialogOpen, allowInInput: true, preventDefault: true }));
+
   useKey("Escape", () => {
     setZone("filters");
     inputRef.current?.blur();
-  }, { enabled: !dialogOpen && inInput, allowInInput: true });
+  }, forZone("input", { enabled: !dialogOpen, allowInInput: true }));
 
   // Filters zone — side-effects for transitions + horizontal nav + actions
-  useKey("ArrowUp", () => {
-    setZone("input");
-    inputRef.current?.focus();
-  }, { enabled: !dialogOpen && inFilters });
-  useKey("ArrowDown", () => {
-    if (filteredProviders.length > 0) {
-      setZone("list");
-      focusBoundaryProvider("first");
-    }
-  }, { enabled: !dialogOpen && inFilters });
-  useKey("ArrowLeft", () => setFilterIndex((i) => Math.max(0, i - 1)),
-    { enabled: !dialogOpen && inFilters });
-  useKey("ArrowRight", () => setFilterIndex((i) => Math.min(PROVIDER_FILTER_VALUES.length - 1, i + 1)),
-    { enabled: !dialogOpen && inFilters });
+  useKey({
+    ArrowUp: () => {
+      setZone("input");
+      inputRef.current?.focus();
+    },
+    ArrowDown: () => {
+      if (filteredProviders.length > 0) {
+        setZone("list");
+        focusBoundaryProvider("first");
+      }
+    },
+    ArrowLeft: () => setFilterIndex((i) => Math.max(0, i - 1)),
+    ArrowRight: () => setFilterIndex((i) => Math.min(PROVIDER_FILTER_VALUES.length - 1, i + 1)),
+    " ": () => setFilter(PROVIDER_FILTER_VALUES[filterIndex]),
+  }, forZone("filters", { enabled: !dialogOpen, preventDefault: true }));
+
   useKey("Enter", () => setFilter(PROVIDER_FILTER_VALUES[filterIndex]),
-    { enabled: !dialogOpen && inFilters });
-  useKey(" ", () => setFilter(PROVIDER_FILTER_VALUES[filterIndex]),
-    { enabled: !dialogOpen && inFilters });
+    forZone("filters", { enabled: !dialogOpen }));
 
   // List zone — side-effect for transition to buttons
   useKey("ArrowRight", () => {
     setZone("buttons");
     setButtonIndex(getNextButtonIndex(-1, 1));
-  }, { enabled: !dialogOpen && inZone("list") && !!selectedProvider });
+  }, forZone("list", { enabled: !dialogOpen && !!selectedProvider, preventDefault: true }));
 
   // Buttons zone — horizontal/vertical nav + actions
-  useKey("ArrowLeft", () => {
-    const next = getNextButtonIndex(buttonIndex, -1);
-    if (next === buttonIndex) {
-      setZone("list");
-    } else {
-      setButtonIndex(next);
-    }
-  }, { enabled: !dialogOpen && inButtons });
-  useKey("ArrowRight", () => setButtonIndex((i) => getNextButtonIndex(i, 1)),
-    { enabled: !dialogOpen && inButtons });
-  useKey("ArrowUp", () => setButtonIndex((i) => getNextButtonIndex(i, -1)),
-    { enabled: !dialogOpen && inButtons });
-  useKey("ArrowDown", () => setButtonIndex((i) => getNextButtonIndex(i, 1)),
-    { enabled: !dialogOpen && inButtons });
+  useKey({
+    ArrowLeft: () => {
+      const next = getNextButtonIndex(buttonIndex, -1);
+      if (next === buttonIndex) {
+        setZone("list");
+      } else {
+        setButtonIndex(next);
+      }
+    },
+    ArrowRight: () => setButtonIndex((i) => getNextButtonIndex(i, 1)),
+    ArrowUp: () => setButtonIndex((i) => getNextButtonIndex(i, -1)),
+    ArrowDown: () => setButtonIndex((i) => getNextButtonIndex(i, 1)),
+    " ": () => handleButtonAction(buttonIndex),
+  }, forZone("buttons", { enabled: !dialogOpen, preventDefault: true }));
+
   useKey("Enter", () => handleButtonAction(buttonIndex),
-    { enabled: !dialogOpen && inButtons });
-  useKey(" ", () => handleButtonAction(buttonIndex),
-    { enabled: !dialogOpen && inButtons });
+    forZone("buttons", { enabled: !dialogOpen }));
 
   // Global shortcuts
-  useKey("Escape", () => navigate({ to: "/settings" }), { enabled: !dialogOpen && !inInput });
-  useKey("/", () => {
-    setZone("input");
-    inputRef.current?.focus();
-  }, { enabled: !dialogOpen && !inInput });
+  useKey({
+    Escape: () => navigate({ to: "/settings" }),
+    "/": () => {
+      setZone("input");
+      inputRef.current?.focus();
+    },
+  }, { enabled: !dialogOpen && !inZone("input") });
 
   const handleListBoundary = (direction: "up" | "down") => {
     if (direction === "up") {

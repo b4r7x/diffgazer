@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { FocusablePane, NavigationList } from "@diffgazer/ui";
-import { useNavigation } from "@diffgazer/keyboard";
+import { useNavigation } from "keyscope";
 import { RunAccordionItem } from "@/features/history/components/run-accordion-item";
 import { TimelineList } from "@/features/history/components/timeline-list";
 import { HistoryInsightsPane } from "@/features/history/components/history-insights-pane";

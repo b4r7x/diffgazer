@@ -9,7 +9,7 @@ import {
   RadioGroup,
   RadioGroupItem,
 } from "@diffgazer/ui";
-import { useNavigation, KeyboardProvider } from "@diffgazer/keyboard";
+import { useNavigation, KeyboardProvider } from "keyscope";
 
 function CheckboxGroupWithKeyboard() {
   const containerRef = useRef<HTMLDivElement>(null);

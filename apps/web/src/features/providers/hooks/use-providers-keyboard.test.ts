@@ -10,15 +10,32 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-vi.mock("@diffgazer/keyboard", () => ({
+vi.mock("keyscope", () => ({
   useFocusZone: () => ({
     zone: mockZone,
     setZone: mockSetZone,
     inZone: (...zones: string[]) => zones.includes(mockZone),
+    forZone: (zone: string, extra?: Record<string, unknown>) => ({
+      ...extra,
+      enabled: mockZone === zone && (extra?.enabled ?? true),
+    }),
   }),
-  useKey: (key: string, handler: () => void, options?: { enabled?: boolean }) => {
-    if (options?.enabled === false) return;
-    keyHandlers.set(key, handler);
+  useKey: (
+    keyOrHandlers: string | Record<string, () => void>,
+    handlerOrOptions?: (() => void) | { enabled?: boolean },
+    maybeOptions?: { enabled?: boolean },
+  ) => {
+    if (typeof keyOrHandlers === "string") {
+      const options = maybeOptions ?? (typeof handlerOrOptions === "object" ? handlerOrOptions : undefined);
+      if ((options as { enabled?: boolean })?.enabled === false) return;
+      keyHandlers.set(keyOrHandlers, handlerOrOptions as () => void);
+    } else {
+      const options = handlerOrOptions as { enabled?: boolean } | undefined;
+      if (options?.enabled === false) return;
+      for (const [key, handler] of Object.entries(keyOrHandlers)) {
+        keyHandlers.set(key, handler);
+      }
+    }
   },
 }));
 

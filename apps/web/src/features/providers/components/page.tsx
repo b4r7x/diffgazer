@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { useNavigation } from "@diffgazer/keyboard";
+import { useNavigation } from "keyscope";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ProviderList } from "@/features/providers/components/provider-list";

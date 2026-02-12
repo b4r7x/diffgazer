@@ -5,7 +5,7 @@ import type { ReviewIssue } from "@diffgazer/schemas/review";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import type { IssueTab as TabId } from "@diffgazer/schemas/ui";
 import { SEVERITY_ORDER } from "@diffgazer/schemas/ui";
-import { useFocusZone, useKey, useNavigation } from "@diffgazer/keyboard";
+import { useFocusZone, useKey, useNavigation } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { filterIssuesBySeverity } from "@diffgazer/core/review";
 
@@ -85,7 +85,7 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     },
   });
 
-  useFocusZone({
+  const { forZone } = useFocusZone({
     initial: "list" as FocusZone,
     zones: ZONES,
     zone: focusZone,
@@ -94,7 +94,6 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     tabCycle: ["filters", "list", "details"],
     transitions: ({ zone, key }) => {
       if (zone === "list" && key === "ArrowRight") return "details";
-      if (zone === "filters" && key === "ArrowRight" && focusedFilterIndex >= SEVERITY_ORDER.length - 1) return "details";
       if (zone === "filters" && key === "ArrowDown") return "list";
       return null;
     },
@@ -106,18 +105,32 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
 
   useKey("Escape", handleBack);
 
-  useKey("ArrowLeft", () => {
-    if (focusedFilterIndex > 0) setFocusedFilterIndex((i) => i - 1);
-  }, { enabled: focusZone === "filters" });
+  const handleToggleSeverityFilter = () => {
+    const sev = SEVERITY_ORDER[focusedFilterIndex];
+    setSeverityFilter((f) => (f === sev ? "all" : sev));
+  };
 
-  useKey("ArrowRight", () => {
-    if (focusedFilterIndex < SEVERITY_ORDER.length - 1) {
-      setFocusedFilterIndex((i) => i + 1);
-    }
-  }, { enabled: focusZone === "filters" });
+  // Filters zone
+  useKey({
+    ArrowLeft: () => {
+      if (focusedFilterIndex > 0) setFocusedFilterIndex((i) => i - 1);
+    },
+    ArrowRight: () => {
+      if (focusedFilterIndex < SEVERITY_ORDER.length - 1) {
+        setFocusedFilterIndex((i) => i + 1);
+      } else {
+        setFocusZone("details");
+      }
+    },
+    " ": handleToggleSeverityFilter,
+  }, forZone("filters", { preventDefault: true }));
 
-  useKey("j", () => setFocusZone("list"), { enabled: focusZone === "filters" });
+  useKey({
+    j: () => setFocusZone("list"),
+    Enter: handleToggleSeverityFilter,
+  }, forZone("filters"));
 
+  // Details zone
   const availableTabs: TabId[] = selectedIssue?.suggested_patch
     ? ["details", "explain", "trace", "patch"]
     : ["details", "explain", "trace"];
@@ -135,38 +148,26 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     setActiveTab(availableTabs[nextIndex]);
   };
 
-  useKey("ArrowLeft", () => moveTab(-1), { enabled: focusZone === "details" });
-  useKey("ArrowRight", () => moveTab(1), { enabled: focusZone === "details" });
-
   const scrollDetails = (delta: number) => {
     detailsScrollRef.current?.scrollBy({ top: delta, behavior: "smooth" });
   };
 
-  useKey("ArrowUp", () => scrollDetails(-80), { enabled: focusZone === "details" });
-  useKey("ArrowDown", () => scrollDetails(80), { enabled: focusZone === "details" });
+  useKey({
+    ArrowLeft: () => moveTab(-1),
+    ArrowRight: () => moveTab(1),
+    ArrowUp: () => scrollDetails(-80),
+    ArrowDown: () => scrollDetails(80),
+  }, forZone("details", { preventDefault: true }));
 
-  const handleToggleSeverityFilter = () => {
-    const sev = SEVERITY_ORDER[focusedFilterIndex];
-    setSeverityFilter((f) => (f === sev ? "all" : sev));
-  };
+  useKey({
+    "1": () => setActiveTab("details"),
+    "2": () => setActiveTab("explain"),
+    "3": () => setActiveTab("trace"),
+  }, forZone("details"));
 
-  useKey("Enter", handleToggleSeverityFilter, {
-    enabled: focusZone === "filters",
-  });
-  useKey(" ", handleToggleSeverityFilter, { enabled: focusZone === "filters" });
-
-  useKey("1", () => setActiveTab("details"), {
-    enabled: focusZone === "details",
-  });
-  useKey("2", () => setActiveTab("explain"), {
-    enabled: focusZone === "details",
-  });
-  useKey("3", () => setActiveTab("trace"), {
-    enabled: focusZone === "details",
-  });
-  useKey("4", () => setActiveTab("patch"), {
-    enabled: focusZone === "details" && !!selectedIssue?.suggested_patch,
-  });
+  useKey("4", () => setActiveTab("patch"), forZone("details", {
+    enabled: !!selectedIssue?.suggested_patch,
+  }));
 
   const handleToggleStep = (step: number) => {
     setCompletedSteps((prev) => {

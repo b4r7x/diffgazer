@@ -20,6 +20,9 @@ importers:
       '@hono/node-server':
         specifier: ^1.19.9
         version: 1.19.9(hono@4.11.7)
+      '@napi-rs/keyring':
+        specifier: ^1.2.0
+        version: 1.2.0
       chalk:
         specifier: ^5.6.2
         version: 5.6.2
@@ -78,6 +81,15 @@ importers:
       '@ai-sdk/google':
         specifier: ^3.0.21
         version: 3.0.21(zod@4.3.6)
+      '@diffgazer/api':
+        specifier: workspace:*
+        version: link:../../packages/api
+      '@diffgazer/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@diffgazer/schemas':
+        specifier: workspace:*
+        version: link:../../packages/schemas
       '@hono/node-server':
         specifier: ^1.19.9
         version: 1.19.9(hono@4.11.7)
@@ -90,15 +102,6 @@ importers:
       '@openrouter/ai-sdk-provider':
         specifier: ^2.1.1
         version: 2.1.1(ai@6.0.71(zod@4.3.6))(zod@4.3.6)
-      '@diffgazer/api':
-        specifier: workspace:*
-        version: link:../../packages/api
-      '@diffgazer/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@diffgazer/schemas':
-        specifier: workspace:*
-        version: link:../../packages/schemas
       ai:
         specifier: ^6.0.71
         version: 6.0.71(zod@4.3.6)
@@ -136,9 +139,6 @@ importers:
       '@diffgazer/hooks':
         specifier: workspace:*
         version: link:../../packages/hooks
-      '@diffgazer/keyboard':
-        specifier: workspace:*
-        version: link:../../packages/keyboard
       '@diffgazer/schemas':
         specifier: workspace:*
         version: link:../../packages/schemas
@@ -157,6 +157,9 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      keyscope:
+        specifier: file:../../../keyscope
+        version: file:../keyscope(react@19.2.4)
       react:
         specifier: ^19.2.4
         version: 19.2.4
@@ -260,33 +263,6 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
-
-  packages/keyboard:
-    devDependencies:
-      '@diffgazer/tsconfig':
-        specifier: workspace:*
-        version: link:../tsconfig
-      '@testing-library/react':
-        specifier: ^16.0.0
-        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.13))(@types/react@19.2.13)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@types/react':
-        specifier: ^19.0.0
-        version: 19.2.13
-      jsdom:
-        specifier: ^28.0.0
-        version: 28.0.0
-      react:
-        specifier: ^19.0.0
-        version: 19.2.4
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.2.4(react@19.2.4)
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-      vitest:
-        specifier: ^3.0.0
-        version: 3.2.4(@types/node@25.2.0)(jiti@2.6.1)(jsdom@28.0.0)(lightningcss@1.30.2)(tsx@4.21.0)
 
   packages/schemas:
     dependencies:
@@ -1624,6 +1600,11 @@ packages:
     resolution: {integrity: sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg==}
     engines: {node: '>=6'}
     hasBin: true
+
+  keyscope@file:../keyscope:
+    resolution: {directory: ../keyscope, type: directory}
+    peerDependencies:
+      react: ^19.0.0
 
   lightningcss-android-arm64@1.30.2:
     resolution: {integrity: sha512-BH9sEdOCahSgmkVhBLeU7Hc9DWeZ1Eb6wNS6Da8igvUwAe0sqROHddIlvU06q3WyXVEOYDZ6ykBZQnjTbmo4+A==}
@@ -3448,6 +3429,10 @@ snapshots:
   json-schema@0.4.0: {}
 
   json5@2.2.3: {}
+
+  keyscope@file:../keyscope(react@19.2.4):
+    dependencies:
+      react: 19.2.4
 
   lightningcss-android-arm64@1.30.2:
     optional: true

@@ -1,5 +1,5 @@
 import { useState, type RefObject } from "react";
-import { useKey } from "@diffgazer/keyboard";
+import { useKey } from "keyscope";
 
 interface UseFooterNavigationOptions {
   enabled: boolean;
@@ -43,43 +43,16 @@ export function useFooterNavigation({
     requireFocusWithin: Boolean(targetRef),
   } as const;
 
-  // ArrowDown enters footer actions when focus is outside the footer.
-  useKey("ArrowDown", () => enterFooter(0), enterOptions);
+  useKey("ArrowDown", () => enterFooter(0), { ...enterOptions, preventDefault: true });
 
-  // ArrowUp returns to options
-  useKey("ArrowUp", exitFooter, keyOptions);
+  useKey({
+    ArrowUp: exitFooter,
+    ArrowLeft: () => setFocusedIndex((prev) => (prev > 0 ? prev - 1 : buttonCount - 1)),
+    ArrowRight: () => setFocusedIndex((prev) => (prev < buttonCount - 1 ? prev + 1 : 0)),
+    " ": () => onAction(focusedIndex),
+  }, { ...keyOptions, preventDefault: true });
 
-  // ArrowLeft to navigate between buttons
-  useKey(
-    "ArrowLeft",
-    () => {
-      setFocusedIndex((prev) => (prev > 0 ? prev - 1 : buttonCount - 1));
-    },
-    keyOptions
-  );
-
-  // ArrowRight to navigate between buttons
-  useKey(
-    "ArrowRight",
-    () => {
-      setFocusedIndex((prev) => (prev < buttonCount - 1 ? prev + 1 : 0));
-    },
-    keyOptions
-  );
-
-  // Enter triggers focused button
-  useKey(
-    "Enter",
-    () => onAction(focusedIndex),
-    keyOptions
-  );
-
-  // Space triggers focused button
-  useKey(
-    " ",
-    () => onAction(focusedIndex),
-    keyOptions
-  );
+  useKey("Enter", () => onAction(focusedIndex), keyOptions);
 
   return {
     inFooter,

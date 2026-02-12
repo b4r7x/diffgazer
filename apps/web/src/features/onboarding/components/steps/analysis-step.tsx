@@ -7,7 +7,7 @@ import {
   Badge,
   ScrollArea,
 } from "@diffgazer/ui";
-import { useNavigation } from "@diffgazer/keyboard";
+import { useNavigation } from "keyscope";
 
 const LENS_OPTIONS = (
   Object.entries(LENS_TO_AGENT) as Array<[LensId, keyof typeof AGENT_METADATA]>

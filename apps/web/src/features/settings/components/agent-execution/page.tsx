@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import type { AgentExecution } from "@diffgazer/schemas/config";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import { Button, CardLayout, RadioGroup, RadioGroupItem } from "@diffgazer/ui";
-import { useNavigation, useKey, useScope } from "@diffgazer/keyboard";
+import { useNavigation, useKey, useScope } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useSettings } from "@/hooks/use-settings";
 import { api } from "@/lib/api";
@@ -87,16 +87,16 @@ export function SettingsAgentExecutionPage() {
   useKey("ArrowUp", () => {
     setFocusZone("list");
     setButtonIndex(0);
-  }, { enabled: isButtonsZone });
+  }, { enabled: isButtonsZone, preventDefault: true });
 
-  useKey("ArrowDown", () => {}, { enabled: isButtonsZone });
+  useKey("ArrowDown", () => {}, { enabled: isButtonsZone, preventDefault: true });
 
   useKey("ArrowLeft", () => setButtonIndex(Math.max(0, buttonIndex - 1)), {
-    enabled: isButtonsZone,
+    enabled: isButtonsZone, preventDefault: true,
   });
 
   useKey("ArrowRight", () => setButtonIndex(Math.min(BUTTONS_COUNT - 1, buttonIndex + 1)), {
-    enabled: isButtonsZone,
+    enabled: isButtonsZone, preventDefault: true,
   });
 
   const handleCancel = () => navigate({ to: "/settings" });
@@ -121,7 +121,7 @@ export function SettingsAgentExecutionPage() {
   };
 
   useKey("Enter", activateButton, { enabled: isButtonsZone });
-  useKey(" ", activateButton, { enabled: isButtonsZone });
+  useKey(" ", activateButton, { enabled: isButtonsZone, preventDefault: true });
 
   return (
     <CardLayout

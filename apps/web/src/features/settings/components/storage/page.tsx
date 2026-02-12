@@ -6,7 +6,7 @@ import { Button, Callout, CardLayout } from "@diffgazer/ui";
 import { StorageSelectorContent } from "@/components/shared/storage-selector-content";
 import { useSettings } from "@/hooks/use-settings";
 import { api } from "@/lib/api";
-import { useKey, useScope } from "@diffgazer/keyboard";
+import { useKey, useScope } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { cn } from "@/utils/cn";
 
@@ -53,16 +53,16 @@ export function SettingsStoragePage() {
   useKey("ArrowUp", () => {
     setFocusZone("list");
     setButtonIndex(0);
-  }, { enabled: isButtonsZone });
+  }, { enabled: isButtonsZone, preventDefault: true });
 
-  useKey("ArrowDown", () => {}, { enabled: isButtonsZone });
+  useKey("ArrowDown", () => {}, { enabled: isButtonsZone, preventDefault: true });
 
   useKey("ArrowLeft", () => setButtonIndex(Math.max(0, buttonIndex - 1)), {
-    enabled: isButtonsZone,
+    enabled: isButtonsZone, preventDefault: true,
   });
 
   useKey("ArrowRight", () => setButtonIndex(Math.min(BUTTONS_COUNT - 1, buttonIndex + 1)), {
-    enabled: isButtonsZone,
+    enabled: isButtonsZone, preventDefault: true,
   });
 
   const handleCancel = () => navigate({ to: "/settings" });
@@ -86,7 +86,7 @@ export function SettingsStoragePage() {
   };
 
   useKey("Enter", activateButton, { enabled: isButtonsZone });
-  useKey(" ", activateButton, { enabled: isButtonsZone });
+  useKey(" ", activateButton, { enabled: isButtonsZone, preventDefault: true });
 
   return (
     <CardLayout

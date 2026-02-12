@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { TrustCapabilities } from "@diffgazer/schemas/config";
 import { Badge, Callout, Button, CheckboxGroup, CheckboxItem } from "@diffgazer/ui";
-import { useNavigation } from "@diffgazer/keyboard";
+import { useNavigation } from "keyscope";
 import { useTrustFormKeyboard } from "@/features/settings/hooks/use-trust-form-keyboard";
 import { cn } from "@/utils/cn";
 

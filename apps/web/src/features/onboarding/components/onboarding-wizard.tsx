@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { CardLayout, Button, Callout } from "@diffgazer/ui";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { useKey, useScope } from "@diffgazer/keyboard";
+import { useKey, useScope } from "keyscope";
 import { cn } from "@/utils/cn";
 import { useOnboarding } from "../hooks/use-onboarding";
 import { WizardProgress } from "./wizard-progress";
@@ -175,22 +175,22 @@ export function OnboardingWizard() {
   useKey("ArrowUp", () => {
     setFocusZone("content");
     setButtonIndex(0);
-  }, { enabled: isButtonsZone, allowInInput: true });
+  }, { enabled: isButtonsZone, allowInInput: true, preventDefault: true });
 
-  useKey("ArrowDown", () => {}, { enabled: isButtonsZone, allowInInput: true });
+  useKey("ArrowDown", () => {}, { enabled: isButtonsZone, allowInInput: true, preventDefault: true });
 
   useKey("ArrowLeft", () => {
     if (buttonCount <= 1) return;
     setButtonIndex((index) => Math.max(0, index - 1));
-  }, { enabled: isButtonsZone, allowInInput: true });
+  }, { enabled: isButtonsZone, allowInInput: true, preventDefault: true });
 
   useKey("ArrowRight", () => {
     if (buttonCount <= 1) return;
     setButtonIndex((index) => Math.min(buttonCount - 1, index + 1));
-  }, { enabled: isButtonsZone, allowInInput: true });
+  }, { enabled: isButtonsZone, allowInInput: true, preventDefault: true });
 
   useKey("Enter", activateButton, { enabled: isButtonsZone, allowInInput: true });
-  useKey(" ", activateButton, { enabled: isButtonsZone, allowInInput: true });
+  useKey(" ", activateButton, { enabled: isButtonsZone, allowInInput: true, preventDefault: true });
 
   const handleStepBoundary = (direction: "up" | "down") => {
     if (direction !== "down") return;
