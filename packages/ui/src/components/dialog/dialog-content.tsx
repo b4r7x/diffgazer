@@ -1,62 +1,9 @@
-import { useRef, useEffect, type HTMLAttributes, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type RefObject } from "react";
+import { useRef, type HTMLAttributes, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { useFocusTrap, useScrollLock } from "keyscope";
 import { cn } from "../../lib/cn";
 import { Portal } from "../../internal/portal";
 import { useDialogContext } from "./dialog-context";
-
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-function useFocusTrap(containerRef: RefObject<HTMLDivElement | null>) {
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, []);
-
-  useEffect(() => {
-    const previousFocus = document.activeElement as HTMLElement | null;
-    const container = containerRef.current;
-    if (!container) return;
-
-    const focusables = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-    const firstFocusable = focusables[0];
-    if (firstFocusable) {
-      firstFocusable.focus();
-    } else {
-      container.focus();
-    }
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Tab") return;
-      const focusableEls = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-      if (focusableEls.length === 0) return;
-
-      const first = focusableEls[0];
-      const last = focusableEls[focusableEls.length - 1];
-
-      if (e.shiftKey) {
-        if (document.activeElement === first) {
-          e.preventDefault();
-          last?.focus();
-        }
-      } else {
-        if (document.activeElement === last) {
-          e.preventDefault();
-          first?.focus();
-        }
-      }
-    };
-
-    container.addEventListener("keydown", handleKeyDown);
-    return () => {
-      container.removeEventListener("keydown", handleKeyDown);
-      previousFocus?.focus();
-    };
-  }, []);
-}
 
 const dialogContentVariants = cva(
   "relative w-full max-h-[90vh] flex flex-col bg-tui-bg text-tui-fg border-[6px] border-double border-tui-fg shadow-[0_0_0_1px_rgb(48_54_61),0_30px_60px_-12px_rgba(0,0,0,0.9)]",
@@ -92,6 +39,7 @@ function DialogContentInner({
 }: DialogContentProps & { onClose: () => void; titleId: string; descriptionId: string }) {
   const contentRef = useRef<HTMLDivElement>(null);
   useFocusTrap(contentRef);
+  useScrollLock();
 
   const handleKeyDown = (event: ReactKeyboardEvent) => {
     if (event.key === "Escape") {
