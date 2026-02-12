@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { KeyboardProvider } from "@diffgazer/keyboard";
+import { KeyboardProvider } from "keyscope";
 import type { TrustCapabilities } from "@diffgazer/schemas/config";
 import { TrustPermissionsContent } from "./trust-permissions-content";
 

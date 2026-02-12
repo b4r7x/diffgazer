@@ -3,7 +3,7 @@ import { renderHook } from "@testing-library/react";
 
 const mockUsePageFooter = vi.fn();
 
-vi.mock("@diffgazer/keyboard", () => ({
+vi.mock("keyscope", () => ({
   useFocusZone: () => ({ zone: "progress" }),
   useKey: vi.fn(),
 }));

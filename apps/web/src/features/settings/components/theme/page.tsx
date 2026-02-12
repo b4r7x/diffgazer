@@ -6,7 +6,7 @@ import { Panel, PanelContent, PanelHeader, Callout, Button } from "@diffgazer/ui
 import { ThemeSelectorContent } from "../theme-selector-content";
 import { ThemePreviewCard } from "../theme-preview-card";
 import { useTheme } from "@/hooks/use-theme";
-import { useKey, useScope } from "@diffgazer/keyboard";
+import { useKey, useScope } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { cn } from "@/utils/cn";
 
@@ -86,16 +86,16 @@ export function SettingsThemePage() {
   useKey("ArrowUp", () => {
     setFocusZone("list");
     setButtonIndex(0);
-  }, { enabled: isButtonsZone });
+  }, { enabled: isButtonsZone, preventDefault: true });
 
-  useKey("ArrowDown", () => {}, { enabled: isButtonsZone });
+  useKey("ArrowDown", () => {}, { enabled: isButtonsZone, preventDefault: true });
 
   useKey("ArrowLeft", () => setButtonIndex(Math.max(0, buttonIndex - 1)), {
-    enabled: isButtonsZone,
+    enabled: isButtonsZone, preventDefault: true,
   });
 
   useKey("ArrowRight", () => setButtonIndex(Math.min(BUTTONS_COUNT - 1, buttonIndex + 1)), {
-    enabled: isButtonsZone,
+    enabled: isButtonsZone, preventDefault: true,
   });
 
   const activateButton = () => {
@@ -104,7 +104,7 @@ export function SettingsThemePage() {
   };
 
   useKey("Enter", activateButton, { enabled: isButtonsZone });
-  useKey(" ", activateButton, { enabled: isButtonsZone });
+  useKey(" ", activateButton, { enabled: isButtonsZone, preventDefault: true });
 
   return (
     <div className="flex-1 flex flex-col p-6 min-h-0">

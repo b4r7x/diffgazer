@@ -1,5 +1,5 @@
 import { useState, useEffect, type RefObject } from "react";
-import { useKey, useFocusZone, useScope } from "@diffgazer/keyboard";
+import { useKey, useFocusZone, useScope } from "keyscope";
 import type { FocusElement } from "@/types/focus-element";
 import type { InputMethod } from "@/types/input-method";
 
@@ -57,7 +57,7 @@ export function useApiKeyDialogKeyboard({
   useScope("api-key-dialog", { enabled: open });
 
   // Zone transitions are handled manually (radios navigation depends on focused element)
-  const { zone, setZone, inZone } = useFocusZone<FocusZone>({
+  const { zone, setZone, inZone, forZone } = useFocusZone<FocusZone>({
     initial: "radios",
     zones: ["radios", "input", "footer"] as const,
     enabled: open,
@@ -73,31 +73,28 @@ export function useApiKeyDialogKeyboard({
   }, [open]);
 
   // --- Radios zone ---
-  useKey("ArrowUp", () => {
-    if (focused === "env") {
-      setFocused("paste");
-    }
-    // At paste, nowhere to go up
-  }, { enabled: open && inZone("radios") });
+  useKey({
+    ArrowUp: () => {
+      if (focused === "env") {
+        setFocused("paste");
+      }
+    },
+    ArrowDown: () => {
+      if (focused === "paste" && method === "paste") {
+        setFocused("input");
+        inputRef.current?.focus();
+      } else if (focused === "paste") {
+        setFocused("env");
+      } else {
+        setFocused(footerElements[0]!);
+      }
+    },
+    " ": () => {
+      if (focused === "paste") setMethod("paste");
+      else if (focused === "env") setMethod("env");
+    },
+  }, forZone("radios", { enabled: open, preventDefault: true }));
 
-  useKey("ArrowDown", () => {
-    if (focused === "paste" && method === "paste") {
-      setFocused("input");
-      inputRef.current?.focus();
-    } else if (focused === "paste") {
-      setFocused("env");
-    } else {
-      setFocused(footerElements[0]!);
-    }
-  }, { enabled: open && inZone("radios") });
-
-  // Space on radios: select the radio option
-  useKey(" ", () => {
-    if (focused === "paste") setMethod("paste");
-    else if (focused === "env") setMethod("env");
-  }, { enabled: open && inZone("radios") });
-
-  // Enter on radios: select and confirm
   useKey("Enter", () => {
     if (focused === "paste") {
       setMethod("paste");
@@ -106,7 +103,7 @@ export function useApiKeyDialogKeyboard({
       setMethod("env");
       onSubmit();
     }
-  }, { enabled: open && inZone("radios") });
+  }, forZone("radios", { enabled: open }));
 
   // --- Input zone ---
   useEffect(() => {
@@ -115,37 +112,39 @@ export function useApiKeyDialogKeyboard({
     }
   }, [open, zone, inputRef]);
 
-  useKey("ArrowUp", () => {
-    inputRef.current?.blur();
-    setFocused("paste");
-  }, { enabled: open && inZone("input"), allowInInput: true });
-
-  useKey("ArrowDown", () => {
-    inputRef.current?.blur();
-    setFocused("env");
-  }, { enabled: open && inZone("input"), allowInInput: true });
+  useKey({
+    ArrowUp: () => {
+      inputRef.current?.blur();
+      setFocused("paste");
+    },
+    ArrowDown: () => {
+      inputRef.current?.blur();
+      setFocused("env");
+    },
+  }, forZone("input", { enabled: open, allowInInput: true, preventDefault: true }));
 
   // --- Footer zone ---
-  useKey("ArrowLeft", () => {
-    const idx = footerElements.indexOf(focused);
-    if (idx > 0) setFocused(footerElements[idx - 1]!);
-  }, { enabled: open && inZone("footer") });
-
-  useKey("ArrowRight", () => {
-    const idx = footerElements.indexOf(focused);
-    if (idx < footerElements.length - 1) setFocused(footerElements[idx + 1]!);
-  }, { enabled: open && inZone("footer") });
-
-  useKey("ArrowUp", () => {
-    setFocused("env");
-  }, { enabled: open && inZone("footer") });
-
   const handleFooterAction = () => {
     if (focused === "cancel") onClose();
     else if (focused === "confirm" && canSubmit) onSubmit();
   };
-  useKey("Enter", handleFooterAction, { enabled: open && inZone("footer") });
-  useKey(" ", handleFooterAction, { enabled: open && inZone("footer") });
+
+  useKey({
+    ArrowLeft: () => {
+      const idx = footerElements.indexOf(focused);
+      if (idx > 0) setFocused(footerElements[idx - 1]!);
+    },
+    ArrowRight: () => {
+      const idx = footerElements.indexOf(focused);
+      if (idx < footerElements.length - 1) setFocused(footerElements[idx + 1]!);
+    },
+    ArrowUp: () => {
+      setFocused("env");
+    },
+    " ": handleFooterAction,
+  }, forZone("footer", { enabled: open, preventDefault: true }));
+
+  useKey("Enter", handleFooterAction, forZone("footer", { enabled: open }));
 
   // Escape closes from any zone
   useKey("Escape", onClose, { enabled: open && !inZone("input") });

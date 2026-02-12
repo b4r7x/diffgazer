@@ -4,11 +4,11 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "predev": "pnpm --filter @diffgazer/keyboard build && pnpm --filter @diffgazer/ui build",
+    "predev": "pnpm --filter @diffgazer/ui build",
     "dev": "vite",
-    "prebuild": "pnpm --filter @diffgazer/keyboard build && pnpm --filter @diffgazer/ui build",
+    "prebuild": "pnpm --filter @diffgazer/ui build",
     "build": "tsc -b && vite build",
-    "pretest": "pnpm --filter @diffgazer/keyboard build && pnpm --filter @diffgazer/ui build",
+    "pretest": "pnpm --filter @diffgazer/ui build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -17,7 +17,7 @@
     "@diffgazer/api": "workspace:*",
     "@diffgazer/core": "workspace:*",
     "@diffgazer/hooks": "workspace:*",
-    "@diffgazer/keyboard": "workspace:*",
+    "keyscope": "file:../../../keyscope",
     "@diffgazer/schemas": "workspace:*",
     "@diffgazer/ui": "workspace:*",
     "@tailwindcss/vite": "^4.1.18",

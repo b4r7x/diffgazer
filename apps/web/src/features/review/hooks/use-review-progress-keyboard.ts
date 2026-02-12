@@ -1,4 +1,4 @@
-import { useFocusZone, useKey } from "@diffgazer/keyboard";
+import { useFocusZone, useKey } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 
 interface UseReviewProgressKeyboardOptions {

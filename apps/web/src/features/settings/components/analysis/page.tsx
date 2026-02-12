@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import { Button, CardLayout } from "@diffgazer/ui";
-import { useKey, useScope } from "@diffgazer/keyboard";
+import { useKey, useScope } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useSettings } from "@/hooks/use-settings";
 import { api } from "@/lib/api";
@@ -98,16 +98,16 @@ export function SettingsAnalysisPage() {
   useKey("ArrowUp", () => {
     setFocusZone("list");
     setButtonIndex(0);
-  }, { enabled: isButtonsZone && viewState === "success" });
+  }, { enabled: isButtonsZone && viewState === "success", preventDefault: true });
 
-  useKey("ArrowDown", () => {}, { enabled: isButtonsZone && viewState === "success" });
+  useKey("ArrowDown", () => {}, { enabled: isButtonsZone && viewState === "success", preventDefault: true });
 
   useKey("ArrowLeft", () => setButtonIndex(Math.max(0, buttonIndex - 1)), {
-    enabled: isButtonsZone && viewState === "success",
+    enabled: isButtonsZone && viewState === "success", preventDefault: true,
   });
 
   useKey("ArrowRight", () => setButtonIndex(Math.min(BUTTONS_COUNT - 1, buttonIndex + 1)), {
-    enabled: isButtonsZone && viewState === "success",
+    enabled: isButtonsZone && viewState === "success", preventDefault: true,
   });
 
   const handleCancel = () => navigate({ to: "/settings" });
@@ -123,7 +123,7 @@ export function SettingsAnalysisPage() {
   };
 
   useKey("Enter", activateButton, { enabled: isButtonsZone });
-  useKey(" ", activateButton, { enabled: isButtonsZone });
+  useKey(" ", activateButton, { enabled: isButtonsZone, preventDefault: true });
 
   const handleSave = async () => {
     if (!canSave) return;

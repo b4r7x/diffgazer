@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import type { SecretsStorage } from '@diffgazer/schemas/config';
 import { RadioGroup, RadioGroupItem } from '@diffgazer/ui';
-import { useNavigation } from "@diffgazer/keyboard";
+import { useNavigation } from "keyscope";
 
 export interface StorageSelectorContentProps {
   value: SecretsStorage | null;

@@ -1,7 +1,7 @@
 import { AnalysisSummary, type IssuePreview } from "@/features/review/components/analysis-summary";
 import type { LensStats } from "@/features/review/components/lens-stats-table";
 import type { ReviewIssue } from "@diffgazer/schemas/review";
-import { useScope, useKey } from "@diffgazer/keyboard";
+import { useScope, useKey } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { calculateSeverityCounts } from "@diffgazer/core/severity";
 

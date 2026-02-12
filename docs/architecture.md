@@ -23,7 +23,6 @@ diffgazer/
 │   ├── core/               # @diffgazer/core - Result<T,E>, errors, review state, utilities
 │   ├── api/                # @diffgazer/api - Type-safe API client
 │   ├── hooks/              # @diffgazer/hooks - useTimer, getFigletText
-│   ├── keyboard/           # @diffgazer/keyboard - useScope, useKey, useNavigation
 │   └── ui/                 # @diffgazer/ui - Terminal-inspired component library
 │
 └── docs/                   # Documentation
@@ -37,27 +36,24 @@ diffgazer/
           ┌────────────┼────────────┐
           v            v            v
     @diffgazer/   @diffgazer/   @diffgazer/
-     schemas       keyboard       hooks
+     schemas        hooks          ui
      (leaf)        (leaf)         (leaf)
           │
           v
     @diffgazer/core
     (depends on: schemas)
           │
-     ┌────┴────┐
-     v         v
-@diffgazer/  @diffgazer/ui
-   api         (leaf)
-(depends on:
- core, schemas)
-     │
-     v
-┌────┴─────────────────────────┐
-v                              v
+          v
+    @diffgazer/api
+    (depends on: core, schemas)
+          │
+          v
+┌─────────┴───────────────────────┐
+v                                 v
 @diffgazer/server          @diffgazer/web
 (deps: api, core,          (deps: api, core, schemas,
- schemas)                   hooks, keyboard, ui)
-└──────────┐  ┌────────────────┘
+ schemas)                   hooks, ui)
+└──────────┐  ┌────────────────────┘
            v  v
        diffgazer (CLI)
        (bundles: core, hooks, server)
@@ -72,8 +68,6 @@ v                              v
 **@diffgazer/api** - API client created via `createApi({ baseUrl })`. Used by both web and CLI for all server communication. No direct `fetch` calls in apps.
 
 **@diffgazer/hooks** - Two shared React hooks: `useTimer` (elapsed time tracking) and `getFigletText` (ASCII art).
-
-**@diffgazer/keyboard** - Keyboard navigation: `useScope` sets context, `useKey` registers handlers, `useNavigation` provides arrow-key navigation within containers.
 
 **@diffgazer/ui** - Terminal-inspired React component library. Primitives (Button, Badge, Input), layout (Panel, ScrollArea, FocusablePane), compound components (Dialog, Tabs, CodeBlock, DiffView). No Radix or shadcn.
 
@@ -97,7 +91,7 @@ Middleware stack (applied in order):
 
 React 19 + Vite 7 with TanStack Router, Tailwind 4, and a terminal-inspired design. JetBrains Mono throughout.
 
-Keyboard-first navigation via `@diffgazer/keyboard`, all pages navigable without a mouse. Dynamic footer bar shows per-page shortcuts.
+Keyboard-first navigation via `keyscope`, all pages navigable without a mouse. Dynamic footer bar shows per-page shortcuts.
 
 State management is pure React: context providers (config, theme, footer), `useReducer` with the shared core reducer for review state, `useSyncExternalStore` for module-level caches. No Redux or Zustand.
 
@@ -126,7 +120,7 @@ Packages build in dependency order:
 1. schemas          (tsc)       - leaf
 2. core             (tsc)       - depends on schemas
 3. api              (tsc)       - depends on core, schemas
-4. hooks, keyboard, ui  (tsc)   - leaves, can build in parallel
+4. hooks, ui            (tsc)   - leaves, can build in parallel
 5. server           (tsc)       - depends on api, core, schemas
 6. web              (vite build)- depends on all packages
 7. CLI              (tsup)      - bundles core, hooks, server + web output

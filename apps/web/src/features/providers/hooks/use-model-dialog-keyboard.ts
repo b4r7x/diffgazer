@@ -1,6 +1,6 @@
 import { useState, useEffect, type RefObject } from "react";
 import type { ModelInfo } from "@diffgazer/schemas/config";
-import { useKey, useFocusZone, useNavigation } from "@diffgazer/keyboard";
+import { useKey, useFocusZone, useNavigation } from "keyscope";
 import { TIER_FILTERS, type TierFilter } from "@/features/providers/constants";
 
 type FocusZone = "search" | "filters" | "list" | "footer";
@@ -58,7 +58,7 @@ export function useModelDialogKeyboard({
   const [filterIndex, setFilterIndex] = useState(0);
   const [footerButtonIndex, setFooterButtonIndex] = useState(1);
 
-  const { zone: focusZone, setZone: setFocusZone, inZone } = useFocusZone({
+  const { zone: focusZone, setZone: setFocusZone, inZone, forZone } = useFocusZone({
     initial: "list" as FocusZone,
     zones: ["search", "filters", "list", "footer"] as const,
     enabled: open,
@@ -137,33 +137,37 @@ export function useModelDialogKeyboard({
   useKey("ArrowDown", () => {
     setFocusZone("filters");
     searchInputRef.current?.blur();
-  },
-    { enabled: open && inZone("search") });
+  }, forZone("search", { enabled: open, preventDefault: true }));
 
   // Filters zone — manually set zone because these handlers override useFocusZone transitions
-  useKey("ArrowUp", () => {
-    setFocusZone("search");
-    searchInputRef.current?.focus();
-  },
-    { enabled: open && inZone("filters") });
-  useKey("ArrowDown", () => {
-    setFocusZone("list");
-    focusBoundaryModel("first");
-  }, { enabled: open && inZone("filters") });
-  useKey("ArrowLeft", () => setFilterIndex((prev) => (prev > 0 ? prev - 1 : 2)), { enabled: open && inZone("filters") });
-  useKey("ArrowRight", () => setFilterIndex((prev) => (prev < 2 ? prev + 1 : 0)), { enabled: open && inZone("filters") });
-  useKey("Enter", () => setTierFilter(TIER_FILTERS[filterIndex]), { enabled: open && inZone("filters") });
-  useKey(" ", () => setTierFilter(TIER_FILTERS[filterIndex]), { enabled: open && inZone("filters") });
+  useKey({
+    ArrowUp: () => {
+      setFocusZone("search");
+      searchInputRef.current?.focus();
+    },
+    ArrowDown: () => {
+      setFocusZone("list");
+      focusBoundaryModel("first");
+    },
+    ArrowLeft: () => setFilterIndex((prev) => (prev > 0 ? prev - 1 : 2)),
+    ArrowRight: () => setFilterIndex((prev) => (prev < 2 ? prev + 1 : 0)),
+    " ": () => setTierFilter(TIER_FILTERS[filterIndex]),
+  }, forZone("filters", { enabled: open, preventDefault: true }));
+
+  useKey("Enter", () => setTierFilter(TIER_FILTERS[filterIndex]), forZone("filters", { enabled: open }));
 
   // Footer zone — manually set zone because this handler overrides useFocusZone transition
-  useKey("ArrowLeft", () => setFooterButtonIndex(0), { enabled: open && inZone("footer") });
-  useKey("ArrowRight", () => setFooterButtonIndex(1), { enabled: open && inZone("footer") });
-  useKey("ArrowUp", () => {
-    setFocusZone("list");
-    focusBoundaryModel("last");
-  }, { enabled: open && inZone("footer") });
-  useKey("Enter", () => footerButtonIndex === 0 ? handleCancel() : handleConfirm(), { enabled: open && inZone("footer") });
-  useKey(" ", () => footerButtonIndex === 0 ? handleCancel() : handleConfirm(), { enabled: open && inZone("footer") });
+  useKey({
+    ArrowLeft: () => setFooterButtonIndex(0),
+    ArrowRight: () => setFooterButtonIndex(1),
+    ArrowUp: () => {
+      setFocusZone("list");
+      focusBoundaryModel("last");
+    },
+    " ": () => footerButtonIndex === 0 ? handleCancel() : handleConfirm(),
+  }, forZone("footer", { enabled: open, preventDefault: true }));
+
+  useKey("Enter", () => footerButtonIndex === 0 ? handleCancel() : handleConfirm(), forZone("footer", { enabled: open }));
 
   // Global shortcuts
   useKey("/", () => {
@@ -172,8 +176,8 @@ export function useModelDialogKeyboard({
       searchInputRef.current?.focus();
     }
   }, { enabled: open });
-  useKey("f", cycleTierFilter, { enabled: open && !inZone("search") });
-  useKey("Escape", handleCancel, { enabled: open && !inZone("search") });
+
+  useKey({ f: cycleTierFilter, Escape: handleCancel }, { enabled: open && !inZone("search") });
 
   const handleSearchEscape = () => {
     if (searchQuery) {

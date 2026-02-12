@@ -1,6 +1,6 @@
 import { type RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useFocusZone, useKey } from "@diffgazer/keyboard";
+import { useFocusZone, useKey } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import type { HistoryFocusZone } from "@/features/history/types";
 
@@ -91,7 +91,7 @@ export function useHistoryKeyboard({
   };
 
   useKey("o", navigateToSelectedRun, { enabled: focusZone === "runs" });
-  useKey(" ", navigateToSelectedRun, { enabled: focusZone === "runs" });
+  useKey(" ", navigateToSelectedRun, { enabled: focusZone === "runs", preventDefault: true });
 
   useKey("Escape", () => {
     navigate({ to: "/" });

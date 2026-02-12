@@ -1,7 +1,7 @@
 import { useRef, type Ref } from "react";
 import { cn } from "@/utils/cn";
 import { Tabs, TabsList, TabsTrigger, TabsContent, FocusablePane, SectionHeader, EmptyState, ScrollArea } from "@diffgazer/ui";
-import { useTabNavigation } from "@diffgazer/keyboard";
+import { useTabNavigation } from "keyscope";
 import { CodeSnippet, type CodeLine } from "./code-snippet";
 import { DiffView } from "./diff-view";
 import { FixPlanChecklist } from "./fix-plan-checklist";

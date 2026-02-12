@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { KeyboardProvider } from "@diffgazer/keyboard";
+import { KeyboardProvider } from "keyscope";
 import type { ReviewIssue } from "@diffgazer/schemas/review";
 
 vi.mock("@tanstack/react-router", () => ({

@@ -1,4 +1,4 @@
-import { useKey, useScope } from "@diffgazer/keyboard";
+import { useKey, useScope } from "keyscope";
 
 type FocusZone = "list" | "buttons";
 
@@ -27,38 +27,20 @@ export function useTrustFormKeyboard({
 
   const isButtonsZone = focusZone === "buttons" && enabled;
 
-  useKey("ArrowUp", () => {
-    onFocusZoneChange("list");
-    onButtonIndexChange(0);
-  }, { enabled: isButtonsZone });
+  const handleAction = () => {
+    if (buttonIndex === 0 && onSave) onSave();
+    else if (buttonIndex === 1 && onRevoke) onRevoke();
+  };
 
-  useKey("ArrowDown", () => {}, { enabled: isButtonsZone });
-
-  useKey("ArrowLeft", () => onButtonIndexChange(Math.max(0, buttonIndex - 1)), {
-    enabled: isButtonsZone,
-  });
-
-  useKey(
-    "ArrowRight",
-    () => onButtonIndexChange(Math.min(buttonsCount - 1, buttonIndex + 1)),
-    { enabled: isButtonsZone }
-  );
-
-  useKey(
-    "Enter",
-    () => {
-      if (buttonIndex === 0 && onSave) onSave();
-      else if (buttonIndex === 1 && onRevoke) onRevoke();
+  useKey({
+    ArrowUp: () => {
+      onFocusZoneChange("list");
+      onButtonIndexChange(0);
     },
-    { enabled: isButtonsZone }
-  );
+    ArrowLeft: () => onButtonIndexChange(Math.max(0, buttonIndex - 1)),
+    ArrowRight: () => onButtonIndexChange(Math.min(buttonsCount - 1, buttonIndex + 1)),
+    " ": handleAction,
+  }, { enabled: isButtonsZone, preventDefault: true });
 
-  useKey(
-    " ",
-    () => {
-      if (buttonIndex === 0 && onSave) onSave();
-      else if (buttonIndex === 1 && onRevoke) onRevoke();
-    },
-    { enabled: isButtonsZone }
-  );
+  useKey("Enter", handleAction, { enabled: isButtonsZone });
 }
