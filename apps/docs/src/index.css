@@ -1,0 +1,3 @@
+@import "tailwindcss";
+@import "../vendor/styles/theme.css";
+@source "../vendor/registry/ui";

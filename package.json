@@ -9,7 +9,10 @@
     "build": "pnpm -r build",
     "cli": "pnpm --filter diffgazer dev",
     "web": "pnpm --filter @diffgazer/web dev",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "dev:docs": "pnpm --filter @diffgazer/docs dev",
+    "docs": "pnpm --filter @diffgazer/docs dev",
+    "build:docs": "pnpm --filter @diffgazer/docs build"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
