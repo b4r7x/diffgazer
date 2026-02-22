@@ -1,6 +1,7 @@
 .output/
 .nitro/
 .vite/
+.cache/
 .source/
 src/routeTree.gen.ts
 src/generated/

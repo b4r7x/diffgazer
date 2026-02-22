@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://diffgazer.com/schema/keyscope.json",
+  "title": "keyscope CLI Config",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "aliases": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hooks": {
+          "type": "string"
+        }
+      }
+    },
+    "hooksFsPath": {
+      "type": "string"
+    },
+    "installedHooks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "installedAt": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "copy",
+              "package"
+            ]
+          },
+          "keyscopeVersion": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "installedAt"
+        ]
+      }
+    }
+  }
+}
