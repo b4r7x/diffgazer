@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   cpSync,
   existsSync,
@@ -8,7 +9,6 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,26 +17,29 @@ const WORKSPACE_ROOT = resolve(DOCS_ROOT, "../../..");
 const DIFF_UI_ROOT = resolve(WORKSPACE_ROOT, "diff-ui");
 const KEYSCOPE_ROOT = resolve(WORKSPACE_ROOT, "keyscope");
 
-const DIFF_UI_MANIFEST_PATH = resolve(DIFF_UI_ROOT, "internal-docs-manifest.json");
-const KEYSCOPE_MANIFEST_PATH = resolve(KEYSCOPE_ROOT, "internal-docs-manifest.json");
-
 const DOCS_CONTENT_DIR = resolve(DOCS_ROOT, "content/docs");
 const DOCS_GENERATED_DIR = resolve(DOCS_ROOT, "src/generated");
 const DOCS_REGISTRY_DIR = resolve(DOCS_ROOT, "registry");
 const DOCS_STYLES_DIR = resolve(DOCS_ROOT, "styles");
 const DOCS_PUBLIC_REGISTRY_DIR = resolve(DOCS_ROOT, "public/r");
+const DOCS_KEYSCOPE_ASSETS_DIR = resolve(DOCS_ROOT, "public/keyscope-assets");
+const DOCS_CACHE_DIR = resolve(DOCS_ROOT, ".cache");
+const DOCS_SYNC_STATE_FILE = resolve(DOCS_CACHE_DIR, "sync-artifacts-state.json");
 
-const DEFAULT_REGISTRY_ORIGIN = "https://diffui.dev";
+const DEFAULT_REGISTRY_ORIGIN = "https://diffgazer.com";
 const KEYSCOPE_SECTION_SEPARATOR = "---Keyscope---";
 const KEYSCOPE_SECTION_FOLDER = "...keyscope";
 
-function readJson(filePath) {
-  return JSON.parse(readFileSync(filePath, "utf-8"));
-}
-
-function writeJson(filePath, value) {
-  writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
-}
+const LIBRARIES = {
+  diffui: {
+    id: "diff-ui",
+    root: DIFF_UI_ROOT,
+  },
+  keyscope: {
+    id: "keyscope",
+    root: KEYSCOPE_ROOT,
+  },
+};
 
 function ensureExists(path, label) {
   if (!existsSync(path)) {
@@ -49,6 +52,14 @@ function resetDir(path) {
   mkdirSync(path, { recursive: true });
 }
 
+function readJson(filePath) {
+  return JSON.parse(readFileSync(filePath, "utf-8"));
+}
+
+function writeJson(filePath, value) {
+  writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
 function normalizeOrigin(raw) {
   const value = (raw ?? DEFAULT_REGISTRY_ORIGIN).trim();
   if (!/^https?:\/\//.test(value)) {
@@ -57,19 +68,17 @@ function normalizeOrigin(raw) {
   return value.replace(/\/+$/, "");
 }
 
-function rewriteOrigin(value, origin) {
-  if (typeof value === "string") {
-    return value.replaceAll(DEFAULT_REGISTRY_ORIGIN, origin);
+function collectAllFiles(rootDir, out = []) {
+  for (const entry of readdirSync(rootDir)) {
+    const fullPath = resolve(rootDir, entry);
+    const stats = statSync(fullPath);
+    if (stats.isDirectory()) {
+      collectAllFiles(fullPath, out);
+      continue;
+    }
+    out.push(fullPath);
   }
-  if (Array.isArray(value)) {
-    return value.map((item) => rewriteOrigin(item, origin));
-  }
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value).map(([k, v]) => [k, rewriteOrigin(v, origin)]),
-    );
-  }
-  return value;
+  return out;
 }
 
 function collectJsonFiles(rootDir, out = []) {
@@ -87,96 +96,23 @@ function collectJsonFiles(rootDir, out = []) {
   return out;
 }
 
-function run(command, args, cwd) {
-  const result = spawnSync(command, args, { cwd, stdio: "inherit" });
-  if (result.status !== 0) {
-    throw new Error(`${command} ${args.join(" ")} failed with exit code ${result.status}`);
+function rewriteOrigin(value, origin) {
+  if (typeof value === "string") {
+    return value.replaceAll(DEFAULT_REGISTRY_ORIGIN, origin);
   }
-}
-
-function syncDiffUiArtifacts(diffManifest) {
-  const diffContentDir = resolve(DIFF_UI_ROOT, diffManifest.docs.contentDir);
-  const diffGeneratedDir = resolve(DIFF_UI_ROOT, diffManifest.docs.generatedDir);
-  const diffRegistryDir = resolve(DIFF_UI_ROOT, diffManifest.registry.sourceDir);
-  const diffStylesDir = resolve(DIFF_UI_ROOT, diffManifest.registry.stylesDir);
-
-  ensureExists(diffContentDir, "diff-ui docs content");
-  ensureExists(diffGeneratedDir, "diff-ui docs generated");
-  ensureExists(diffRegistryDir, "diff-ui registry source");
-  ensureExists(diffStylesDir, "diff-ui styles");
-
-  resetDir(DOCS_CONTENT_DIR);
-  resetDir(DOCS_GENERATED_DIR);
-  resetDir(DOCS_REGISTRY_DIR);
-  resetDir(DOCS_STYLES_DIR);
-
-  cpSync(diffContentDir, DOCS_CONTENT_DIR, { recursive: true });
-  cpSync(diffGeneratedDir, DOCS_GENERATED_DIR, { recursive: true });
-  cpSync(diffRegistryDir, DOCS_REGISTRY_DIR, { recursive: true });
-  cpSync(diffStylesDir, DOCS_STYLES_DIR, { recursive: true });
-
-  const demoIndexPath = resolve(DOCS_GENERATED_DIR, "demo-index.ts");
-  if (existsSync(demoIndexPath)) {
-    const raw = readFileSync(demoIndexPath, "utf-8");
-    const rewritten = raw.replaceAll(
-      "../../../../registry/examples/",
-      "../../registry/examples/",
-    );
-    if (rewritten !== raw) {
-      writeFileSync(demoIndexPath, rewritten);
-    }
+  if (Array.isArray(value)) {
+    return value.map((item) => rewriteOrigin(item, origin));
   }
-}
-
-function syncKeyscopeDocs(keyscopeManifest) {
-  const keyscopeContentDir = resolve(KEYSCOPE_ROOT, keyscopeManifest.docs.contentDir);
-  ensureExists(keyscopeContentDir, "keyscope docs content");
-
-  const keyscopeOutputDir = resolve(DOCS_CONTENT_DIR, "keyscope");
-  resetDir(keyscopeOutputDir);
-  cpSync(keyscopeContentDir, keyscopeOutputDir, { recursive: true, force: true });
-
-  const rootMetaPath = resolve(DOCS_CONTENT_DIR, "meta.json");
-  const rootMeta = readJson(rootMetaPath);
-  const pagesWithoutKeyscope = (rootMeta.pages ?? []).filter(
-    (entry) => entry !== KEYSCOPE_SECTION_SEPARATOR && entry !== KEYSCOPE_SECTION_FOLDER,
-  );
-  rootMeta.pages = [...pagesWithoutKeyscope, KEYSCOPE_SECTION_SEPARATOR, KEYSCOPE_SECTION_FOLDER];
-  writeJson(rootMetaPath, rootMeta);
-}
-
-function syncRegistries(diffManifest, keyscopeManifest, origin) {
-  const diffPublicRegistryDir = resolve(DIFF_UI_ROOT, diffManifest.registry.publicDir);
-  const keyscopePublicRegistryDir = resolve(KEYSCOPE_ROOT, keyscopeManifest.registry.publicDir);
-
-  ensureExists(diffPublicRegistryDir, "diff-ui public registry");
-  ensureExists(keyscopePublicRegistryDir, "keyscope public registry");
-
-  const diffOutput = resolve(DOCS_PUBLIC_REGISTRY_DIR, "diff-ui");
-  const keyscopeOutput = resolve(DOCS_PUBLIC_REGISTRY_DIR, "keyscope");
-
-  resetDir(DOCS_PUBLIC_REGISTRY_DIR);
-  resetDir(diffOutput);
-  resetDir(keyscopeOutput);
-
-  for (const entry of readdirSync(diffPublicRegistryDir, { withFileTypes: true })) {
-    if (entry.name === "keyscope") continue;
-    cpSync(
-      resolve(diffPublicRegistryDir, entry.name),
-      resolve(diffOutput, entry.name),
-      { recursive: true, force: true },
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([k, v]) => [k, rewriteOrigin(v, origin)]),
     );
   }
+  return value;
+}
 
-  for (const entry of readdirSync(keyscopePublicRegistryDir, { withFileTypes: true })) {
-    cpSync(
-      resolve(keyscopePublicRegistryDir, entry.name),
-      resolve(keyscopeOutput, entry.name),
-      { recursive: true, force: true },
-    );
-  }
-
-  for (const jsonFile of collectJsonFiles(DOCS_PUBLIC_REGISTRY_DIR)) {
+function rewriteOriginsInDir(dir, origin) {
+  for (const jsonFile of collectJsonFiles(dir)) {
     const raw = readJson(jsonFile);
     const rewritten = rewriteOrigin(raw, origin);
     writeJson(jsonFile, rewritten);
@@ -201,38 +137,261 @@ function assertNoDefaultOrigin(dir, origin) {
   }
 }
 
-function syncKeyscopeAssets(keyscopeManifest) {
-  const assetsDir = keyscopeManifest.docs.assetsDir
-    ? resolve(KEYSCOPE_ROOT, keyscopeManifest.docs.assetsDir)
-    : null;
-  if (!assetsDir || !existsSync(assetsDir)) return;
+function relative(base, filePath) {
+  return filePath.startsWith(`${base}/`) ? filePath.slice(base.length + 1) : filePath;
+}
 
-  const outputDir = resolve(DOCS_ROOT, "public/keyscope-assets");
-  resetDir(outputDir);
-  cpSync(assetsDir, outputDir, { recursive: true, force: true });
+function computeInputsFingerprint(rootDir, inputs) {
+  const hash = createHash("sha256");
+
+  for (const inputRel of inputs) {
+    const inputAbs = resolve(rootDir, inputRel);
+    if (!existsSync(inputAbs)) continue;
+    const stats = statSync(inputAbs);
+
+    if (stats.isDirectory()) {
+      const files = collectAllFiles(inputAbs).sort((a, b) => a.localeCompare(b));
+      for (const filePath of files) {
+        hash.update(relative(rootDir, filePath));
+        hash.update("\n");
+        hash.update(readFileSync(filePath));
+        hash.update("\n");
+      }
+      continue;
+    }
+
+    hash.update(inputRel);
+    hash.update("\n");
+    hash.update(readFileSync(inputAbs));
+    hash.update("\n");
+  }
+
+  return hash.digest("hex");
+}
+
+function validateManifest(manifestPath, libId) {
+  const manifest = readJson(manifestPath);
+  if (manifest?.schemaVersion !== 1) {
+    throw new Error(`${libId} manifest has unsupported schemaVersion (expected 1): ${manifestPath}`);
+  }
+  if (!Array.isArray(manifest.inputs) || manifest.inputs.length === 0) {
+    throw new Error(`${libId} manifest is missing non-empty "inputs": ${manifestPath}`);
+  }
+  if (!manifest?.integrity?.fingerprintFile) {
+    throw new Error(`${libId} manifest is missing integrity.fingerprintFile: ${manifestPath}`);
+  }
+  if (!manifest?.docs?.contentDir || !manifest?.docs?.metaFile) {
+    throw new Error(`${libId} manifest is missing docs contentDir/metaFile: ${manifestPath}`);
+  }
+  if (!manifest?.registry?.publicDir || !manifest?.registry?.index) {
+    throw new Error(`${libId} manifest is missing registry publicDir/index: ${manifestPath}`);
+  }
+  return manifest;
+}
+
+function loadLibraryArtifacts(library) {
+  const manifestPath = resolve(library.root, "dist/artifacts/artifact-manifest.json");
+  ensureExists(
+    manifestPath,
+    `${library.id} artifact manifest`,
+  );
+
+  const manifest = validateManifest(manifestPath, library.id);
+  const artifactRoot = resolve(library.root, manifest.artifactRoot);
+  const fingerprintPath = resolve(artifactRoot, manifest.integrity.fingerprintFile);
+  ensureExists(fingerprintPath, `${library.id} artifact fingerprint`);
+
+  const expectedFingerprint = readFileSync(fingerprintPath, "utf-8").trim();
+  const currentFingerprint = computeInputsFingerprint(library.root, manifest.inputs);
+
+  if (expectedFingerprint !== currentFingerprint) {
+    throw new Error(
+      [
+        `${library.id} artifacts are stale.`,
+        `Expected fingerprint: ${expectedFingerprint}`,
+        `Current fingerprint:  ${currentFingerprint}`,
+        `Run: pnpm --dir ${library.root} build:publish-artifacts`,
+      ].join("\n"),
+    );
+  }
+
+  return {
+    ...library,
+    manifest,
+    manifestPath,
+    artifactRoot,
+    fingerprintPath,
+    fingerprint: expectedFingerprint,
+  };
+}
+
+function docsOutputsExist() {
+  const required = [
+    resolve(DOCS_CONTENT_DIR, "meta.json"),
+    resolve(DOCS_GENERATED_DIR, "component-list.json"),
+    resolve(DOCS_GENERATED_DIR, "diffui-hooks.json"),
+    resolve(DOCS_GENERATED_DIR, "keyscope-hooks.json"),
+    resolve(DOCS_REGISTRY_DIR, "registry.json"),
+    resolve(DOCS_STYLES_DIR, "styles.css"),
+    resolve(DOCS_PUBLIC_REGISTRY_DIR, "diff-ui/registry.json"),
+    resolve(DOCS_PUBLIC_REGISTRY_DIR, "keyscope/registry.json"),
+  ];
+  return required.every((filePath) => existsSync(filePath));
+}
+
+function computeSyncFingerprint(origin, diffuiArtifacts, keyscopeArtifacts) {
+  const hash = createHash("sha256");
+  hash.update(`origin:${origin}\n`);
+
+  for (const artifact of [diffuiArtifacts, keyscopeArtifacts]) {
+    hash.update(`${artifact.id}:manifest:${artifact.manifestPath}\n`);
+    hash.update(readFileSync(artifact.manifestPath, "utf-8"));
+    hash.update("\n");
+    hash.update(`${artifact.id}:fingerprint:${artifact.fingerprintPath}\n`);
+    hash.update(artifact.fingerprint);
+    hash.update("\n");
+  }
+
+  return hash.digest("hex");
+}
+
+function readSyncState() {
+  if (!existsSync(DOCS_SYNC_STATE_FILE)) return null;
+  try {
+    return JSON.parse(readFileSync(DOCS_SYNC_STATE_FILE, "utf-8"));
+  } catch {
+    return null;
+  }
+}
+
+function writeSyncState(state) {
+  mkdirSync(DOCS_CACHE_DIR, { recursive: true });
+  writeFileSync(DOCS_SYNC_STATE_FILE, `${JSON.stringify(state, null, 2)}\n`);
+}
+
+function syncDiffUiArtifacts(diffuiArtifacts) {
+  const docsDir = resolve(diffuiArtifacts.artifactRoot, diffuiArtifacts.manifest.docs.contentDir);
+  const generatedDir = resolve(diffuiArtifacts.artifactRoot, diffuiArtifacts.manifest.docs.generatedDir);
+  const sourceRegistryDir = resolve(
+    diffuiArtifacts.artifactRoot,
+    diffuiArtifacts.manifest.source.registryDir,
+  );
+  const sourceStylesDir = resolve(
+    diffuiArtifacts.artifactRoot,
+    diffuiArtifacts.manifest.source.stylesDir,
+  );
+
+  ensureExists(docsDir, "diff-ui artifact docs");
+  ensureExists(generatedDir, "diff-ui artifact generated data");
+  ensureExists(sourceRegistryDir, "diff-ui artifact source registry");
+  ensureExists(sourceStylesDir, "diff-ui artifact source styles");
+
+  resetDir(DOCS_CONTENT_DIR);
+  resetDir(DOCS_GENERATED_DIR);
+  resetDir(DOCS_REGISTRY_DIR);
+  resetDir(DOCS_STYLES_DIR);
+
+  cpSync(docsDir, DOCS_CONTENT_DIR, { recursive: true });
+  cpSync(generatedDir, DOCS_GENERATED_DIR, { recursive: true });
+  cpSync(sourceRegistryDir, DOCS_REGISTRY_DIR, { recursive: true });
+  cpSync(sourceStylesDir, DOCS_STYLES_DIR, { recursive: true });
+
+  const demoIndexPath = resolve(DOCS_GENERATED_DIR, "demo-index.ts");
+  if (existsSync(demoIndexPath)) {
+    const raw = readFileSync(demoIndexPath, "utf-8");
+    const rewritten = raw.replaceAll(
+      "../../../../registry/examples/",
+      "../../registry/examples/",
+    );
+    if (rewritten !== raw) {
+      writeFileSync(demoIndexPath, rewritten);
+    }
+  }
+}
+
+function syncKeyscopeArtifacts(keyscopeArtifacts) {
+  const docsDir = resolve(keyscopeArtifacts.artifactRoot, keyscopeArtifacts.manifest.docs.contentDir);
+  ensureExists(docsDir, "keyscope artifact docs");
+
+  const keyscopeOutputDir = resolve(DOCS_CONTENT_DIR, "keyscope");
+  resetDir(keyscopeOutputDir);
+  cpSync(docsDir, keyscopeOutputDir, { recursive: true, force: true });
+
+  const keyscopeHooksFile = resolve(
+    keyscopeArtifacts.artifactRoot,
+    keyscopeArtifacts.manifest.generated.keyscopeHooksFile,
+  );
+  ensureExists(keyscopeHooksFile, "keyscope hooks generated artifact");
+  cpSync(keyscopeHooksFile, resolve(DOCS_GENERATED_DIR, "keyscope-hooks.json"), { force: true });
+
+  const rootMetaPath = resolve(DOCS_CONTENT_DIR, "meta.json");
+  const rootMeta = readJson(rootMetaPath);
+  const pagesWithoutKeyscope = (rootMeta.pages ?? []).filter(
+    (entry) => entry !== KEYSCOPE_SECTION_SEPARATOR && entry !== KEYSCOPE_SECTION_FOLDER,
+  );
+  rootMeta.pages = [...pagesWithoutKeyscope, KEYSCOPE_SECTION_SEPARATOR, KEYSCOPE_SECTION_FOLDER];
+  writeJson(rootMetaPath, rootMeta);
+
+  if (keyscopeArtifacts.manifest.docs.assetsDir) {
+    const assetsDir = resolve(keyscopeArtifacts.artifactRoot, keyscopeArtifacts.manifest.docs.assetsDir);
+    resetDir(DOCS_KEYSCOPE_ASSETS_DIR);
+    if (existsSync(assetsDir)) {
+      cpSync(assetsDir, DOCS_KEYSCOPE_ASSETS_DIR, { recursive: true, force: true });
+    }
+  }
+}
+
+function syncRegistries(diffuiArtifacts, keyscopeArtifacts, origin) {
+  const diffRegistryDir = resolve(
+    diffuiArtifacts.artifactRoot,
+    diffuiArtifacts.manifest.registry.publicDir,
+  );
+  const keyscopeRegistryDir = resolve(
+    keyscopeArtifacts.artifactRoot,
+    keyscopeArtifacts.manifest.registry.publicDir,
+  );
+  ensureExists(diffRegistryDir, "diff-ui artifact public registry");
+  ensureExists(keyscopeRegistryDir, "keyscope artifact public registry");
+
+  const diffOutput = resolve(DOCS_PUBLIC_REGISTRY_DIR, "diff-ui");
+  const keyscopeOutput = resolve(DOCS_PUBLIC_REGISTRY_DIR, "keyscope");
+  resetDir(DOCS_PUBLIC_REGISTRY_DIR);
+  resetDir(diffOutput);
+  resetDir(keyscopeOutput);
+
+  cpSync(diffRegistryDir, diffOutput, { recursive: true, force: true });
+  cpSync(keyscopeRegistryDir, keyscopeOutput, { recursive: true, force: true });
+
+  rewriteOriginsInDir(DOCS_PUBLIC_REGISTRY_DIR, origin);
+  assertNoDefaultOrigin(DOCS_PUBLIC_REGISTRY_DIR, origin);
 }
 
 function main() {
-  ensureExists(DIFF_UI_MANIFEST_PATH, "diff-ui internal docs manifest");
-  ensureExists(KEYSCOPE_MANIFEST_PATH, "keyscope internal docs manifest");
-
-  const diffManifest = readJson(DIFF_UI_MANIFEST_PATH);
-  const keyscopeManifest = readJson(KEYSCOPE_MANIFEST_PATH);
   const origin = normalizeOrigin(process.env.REGISTRY_ORIGIN);
+  const diffuiArtifacts = loadLibraryArtifacts(LIBRARIES.diffui);
+  const keyscopeArtifacts = loadLibraryArtifacts(LIBRARIES.keyscope);
+  const syncFingerprint = computeSyncFingerprint(origin, diffuiArtifacts, keyscopeArtifacts);
+  const syncState = readSyncState();
 
-  console.log("[docs-sync] Building diff-ui docs data...");
-  run("pnpm", ["--dir", DIFF_UI_ROOT, "build:docs-data"], WORKSPACE_ROOT);
+  if (syncState?.fingerprint === syncFingerprint && docsOutputsExist()) {
+    console.log("[docs-sync] Artifacts unchanged; skipping sync.");
+    return;
+  }
 
-  console.log("[docs-sync] Syncing diff-ui docs, generated JSON, registry source and styles...");
-  syncDiffUiArtifacts(diffManifest);
+  console.log("[docs-sync] Syncing diff-ui artifacts...");
+  syncDiffUiArtifacts(diffuiArtifacts);
 
-  console.log("[docs-sync] Syncing keyscope docs content...");
-  syncKeyscopeDocs(keyscopeManifest);
-  syncKeyscopeAssets(keyscopeManifest);
+  console.log("[docs-sync] Syncing keyscope artifacts...");
+  syncKeyscopeArtifacts(keyscopeArtifacts);
 
   console.log(`[docs-sync] Syncing registries with origin ${origin}...`);
-  syncRegistries(diffManifest, keyscopeManifest, origin);
-  assertNoDefaultOrigin(DOCS_PUBLIC_REGISTRY_DIR, origin);
+  syncRegistries(diffuiArtifacts, keyscopeArtifacts, origin);
+
+  writeSyncState({
+    fingerprint: syncFingerprint,
+    origin,
+    syncedAt: new Date().toISOString(),
+  });
 
   console.log("[docs-sync] Done.");
 }

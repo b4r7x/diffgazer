@@ -50,13 +50,8 @@ export function docsDataRebuild(): Plugin {
       let timer: ReturnType<typeof setTimeout> | null = null
 
       const watchPaths = [
-        resolve(DIFF_UI_ROOT, "registry"),
-        resolve(DIFF_UI_ROOT, "docs/content"),
-        resolve(DIFF_UI_ROOT, "docs/generated"),
-        resolve(DIFF_UI_ROOT, "public/r"),
-        resolve(DIFF_UI_ROOT, "styles"),
-        resolve(KEYSCOPE_ROOT, "docs"),
-        resolve(KEYSCOPE_ROOT, "public/r"),
+        resolve(DIFF_UI_ROOT, "dist/artifacts"),
+        resolve(KEYSCOPE_ROOT, "dist/artifacts"),
       ]
 
       for (const dir of watchPaths) {
