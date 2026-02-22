@@ -1,0 +1,64 @@
+---
+title: Navigation
+description: DOM-driven navigation hooks for lists, menus, and tab bars with arrow keys, Home/End, and Enter/Space.
+---
+
+DOM-driven navigation hooks for lists, menus, and tab bars. Query elements by `[role]` and `data-value` attributes, handle arrow keys, Home/End, Enter/Space, and scroll-into-view.
+
+> For the complete API reference, see the [keyscope documentation](https://github.com/b4r7x/keyscope).
+
+---
+
+## useNavigation
+
+Standalone hook — no `KeyboardProvider` required. Returns an `onKeyDown` handler for manual attachment.
+
+```tsx
+import { useNavigation } from "keyscope"
+// or in copy mode:
+// import { useNavigation } from "@/hooks/use-navigation"
+
+function FileList() {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const { highlighted, isHighlighted, onKeyDown } = useNavigation({
+    containerRef,
+    role: "option",
+    onSelect: (value) => toggleItem(value),
+    onEnter: (value) => openItem(value),
+    wrap: true,
+  })
+
+  return (
+    <div ref={containerRef} role="listbox" onKeyDown={onKeyDown}>
+      <div role="option" data-value="readme" data-focused={isHighlighted("readme")}>
+        README.md
+      </div>
+      <div role="option" data-value="package" data-focused={isHighlighted("package")}>
+        package.json
+      </div>
+    </div>
+  )
+}
+```
+
+### Key options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `containerRef` | — | Ref to the scrollable container |
+| `role` | — | `"radio"` \| `"checkbox"` \| `"option"` \| `"menuitem"` \| `"button"` \| `"tab"` |
+| `wrap` | `true` | Wrap around at boundaries |
+| `orientation` | `"vertical"` | `"vertical"` or `"horizontal"` (determines arrow key direction) |
+| `onSelect` | — | Space key callback |
+| `onEnter` | — | Enter key callback (falls back to `onSelect`) |
+
+### DOM requirements
+
+- Items must have `[role="${role}"]` and `data-value` attributes
+- Calls `scrollIntoView({ block: "nearest" })` on focus changes
+- Skips `[aria-disabled="true"]` elements by default
+
+### With diffui components
+
+All navigation-enabled diffui components (Menu, Tabs, Select, RadioGroup, etc.) use `useNavigation` internally. See [Patterns](/docs/integrations/keyscope-patterns) for integration examples.

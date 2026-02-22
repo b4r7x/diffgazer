@@ -1,0 +1,52 @@
+---
+title: useKey
+description: Bind keyboard shortcuts with single key, array, and key map overloads. Requires KeyboardProvider.
+---
+
+The primary hook for binding keyboard shortcuts. Requires `KeyboardProvider` (silently does nothing without one). Not available in copy mode — install the full keyscope package.
+
+> For the complete API reference including hotkey format and all options, see the [keyscope documentation](https://github.com/b4r7x/keyscope).
+
+## Usage
+
+Three overloads:
+
+```tsx
+// Single key
+useKey("Escape", () => close())
+useKey("mod+s", (e) => save(), { preventDefault: true })
+
+// Array of keys
+useKey(["ArrowUp", "ArrowDown"], (e) => {
+  navigate(e.key === "ArrowUp" ? -1 : 1)
+})
+
+// Key map
+useKey({
+  ArrowUp: () => move(-1),
+  ArrowDown: () => move(1),
+  Enter: () => select(),
+})
+```
+
+`mod` maps to `Meta` on Mac and `Ctrl` on Windows/Linux. Uppercase single letter implies Shift: `"G"` matches `Shift+G`.
+
+---
+
+## useScope
+
+Pushes a named scope onto the stack. While active, only handlers registered in this scope fire. Pops automatically on unmount.
+
+```tsx
+import { useScope } from "keyscope"
+
+function Modal({ open }: { open: boolean }) {
+  useScope("modal", { enabled: open })
+  useKey("Escape", () => close())
+
+  if (!open) return null
+  return <div>...</div>
+}
+```
+
+When a scope is pushed, all `useKey` hooks in the previous scope stop receiving events. This is how dialogs and modals isolate their keyboard handling.

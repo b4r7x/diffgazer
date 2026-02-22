@@ -1,0 +1,130 @@
+---
+title: Keyboard Navigation
+description: How diffui's headless-friendly component philosophy works with keyboard handling.
+---
+
+## Philosophy
+
+diffui components are **headless-friendly primitives**. They render the UI layer and expose controlled props/events/ARIA hooks so keyboard behavior can be composed at the app level.
+
+Components like `Menu`, `NavigationList`, `CheckboxGroup`, and `RadioGroup` expose focus and keyboard hooks. In this project, we pair those APIs with **Keyscope recipes** to handle arrows, Enter, Escape, and app-wide shortcuts consistently.
+
+## Why This Approach
+
+- **Simple and predictable** -- state and interactions stay explicit
+- **No hidden navigation policy** -- keyboard movement is opt-in and explicit
+- **No conflicts** -- component behavior doesn't fight app-level shortcuts
+- **Full control** -- you decide which keys do what, in which contexts
+- **Composes with Keyscope** -- same primitives work with your own handlers or Keyscope recipes
+
+## Without Keyboard Support
+
+Not every context needs keyboard navigation. A menu in a toolbar might only need click support. This is valid:
+
+```tsx
+import { useState } from "react"
+import { Menu, MenuItem } from "@/components/ui/menu"
+
+function BasicMenu() {
+  const [selected, setSelected] = useState<string | null>(null)
+
+  return (
+    <Menu selectedId={selected} onSelect={setSelected} aria-label="File menu">
+      <MenuItem id="file-new">New File</MenuItem>
+      <MenuItem id="file-open">Open File</MenuItem>
+      <MenuItem id="file-save">Save</MenuItem>
+    </Menu>
+  )
+}
+```
+
+Items are clickable and selectable. Arrow keys do nothing. This is fine for many use cases.
+
+## Adding Keyboard Support
+
+To add keyboard navigation, manage `highlighted` state and handle `onKeyDown`:
+
+```tsx
+import { useState, useCallback } from "react"
+import { Menu, MenuItem } from "@/components/ui/menu"
+
+const items = ["file-new", "file-open", "file-save", "file-close"]
+
+function KeyboardMenu() {
+  const [selected, setSelected] = useState<string | null>(null)
+  const [focused, setFocused] = useState<string | null>(null)
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      const currentIndex = items.indexOf(focused ?? "")
+
+      switch (event.key) {
+        case "ArrowDown": {
+          event.preventDefault()
+          const next = currentIndex < items.length - 1 ? currentIndex + 1 : 0
+          setFocused(items[next])
+          break
+        }
+        case "ArrowUp": {
+          event.preventDefault()
+          const prev = currentIndex > 0 ? currentIndex - 1 : items.length - 1
+          setFocused(items[prev])
+          break
+        }
+        case "Enter": {
+          if (focused) {
+            setSelected(focused)
+          }
+          break
+        }
+      }
+    },
+    [focused],
+  )
+
+  return (
+    <Menu
+      selectedId={selected}
+      onSelect={setSelected}
+      highlighted={focused}
+      onKeyDown={handleKeyDown}
+      aria-label="File menu"
+    >
+      <MenuItem id="file-new">New File</MenuItem>
+      <MenuItem id="file-open">Open File</MenuItem>
+      <MenuItem id="file-save">Save</MenuItem>
+      <MenuItem id="file-close">Close</MenuItem>
+    </Menu>
+  )
+}
+```
+
+This gives you arrow key navigation with wrapping, plus Enter to select. You can add Escape handling, Home/End keys, type-ahead search, or any other behavior your app needs.
+
+## Keyboard-Aware Components
+
+The following components expose keyboard integration points:
+
+| Component | Props |
+|---|---|
+| `Menu` | `onKeyDown`, `highlighted`, `selectedId`, `onSelect`, `onActivate` |
+| `NavigationList` | `onKeyDown`, `highlighted`, `selectedId`, `onSelect`, `onActivate`, `isHighlighted` |
+| `CheckboxGroup` | `onKeyDown`, `highlighted`, `onHighlightChange`, `onValueChange` |
+| `RadioGroup` | `onKeyDown`, `highlighted`, `onHighlightChange`, `onValueChange`, `orientation` |
+| `ToggleGroup` | `onKeyDown`, `highlighted`, `onHighlightChange`, `onValueChange` |
+| `TabsList` + `Tabs` | `onKeyDown` (TabsList) + controlled `value`/`onValueChange` (Tabs) |
+| `Select` + `SelectContent` | controlled `highlighted`/`onHighlightChange` + `onKeyDown` on content |
+| `CommandPalette` stack | controlled `selectedId`/`onSelectedIdChange` + `onKeyDown` on input |
+
+- **`highlighted` / `selectedId`** -- controls which item appears highlighted (visual highlight)
+- **`onKeyDown`** -- receives keyboard events for app-level handlers
+- **`selectedId`** -- the currently selected item
+- **`onSelect`** -- called when an item is selected (via click)
+- **`onActivate`** -- called when an item is activated (distinct from selection, e.g. double-click or Enter)
+- **`isHighlighted`** (NavigationList only) -- whether the list itself is highlighted
+
+## Accessibility
+
+Components ship with proper ARIA attributes regardless of whether you add keyboard handling. Roles, labels, and states are built in.
+
+Adding keyboard support makes components fully accessible -- users can navigate and activate items without a mouse. If your app is used in contexts where keyboard access matters (and it usually does), adding `onKeyDown` and `highlighted` is the way to get there.

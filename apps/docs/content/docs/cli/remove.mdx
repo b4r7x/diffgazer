@@ -1,0 +1,46 @@
+---
+title: diffui remove
+description: Remove installed diffui component files from your project.
+---
+
+## Usage
+
+```bash
+npx diffui remove <component> [component...]
+```
+
+## Examples
+
+```bash
+# Remove a single component
+npx diffui remove button
+
+# Remove multiple components
+npx diffui remove tabs menu command-palette
+
+# Preview removal without writing changes
+npx diffui remove tabs --dry-run
+```
+
+## What It Does
+
+1. Validates component names against the registry.
+2. Resolves installed files for those components.
+3. Skips files still used by other installed components.
+4. Removes selected files and cleans empty directories.
+5. Updates the local diffui manifest.
+6. Prints potentially orphaned npm dependencies.
+
+## Options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--cwd <path>` | Working directory | `.` |
+| `-y, --yes` | Skip confirmation prompt | `false` |
+| `--dry-run` | Preview changes without removing files | `false` |
+
+## Notes
+
+- The command prompts for confirmation unless `--yes` is used.
+- `--dry-run` prints the exact files that would be removed.
+- If no matching installed files are found, nothing is deleted.

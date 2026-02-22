@@ -1,0 +1,36 @@
+---
+title: diffui CLI
+description: Command line reference for initializing, adding, listing, diffing, and removing diffui components.
+---
+
+The `diffui` CLI manages the full component lifecycle in your app:
+
+- `init` configures project structure and baseline files.
+- `add` installs component source files from the registry.
+- `list` shows available or installed components.
+- `diff` compares local files against current registry versions.
+- `remove` deletes installed component files safely.
+
+## Usage
+
+```bash
+npx diffui <command> [options]
+```
+
+## Commands
+
+| Command | Purpose | Docs |
+|---------|---------|------|
+| `init` | Initialize diffui in a project | [/docs/cli/init](/docs/cli/init) |
+| `add` | Add one or more components | [/docs/cli/add](/docs/cli/add) |
+| `list` | List available or installed components | [/docs/cli/list](/docs/cli/list) |
+| `diff` | Compare local components with registry | [/docs/cli/diff](/docs/cli/diff) |
+| `remove` | Remove installed components | [/docs/cli/remove](/docs/cli/remove) |
+
+## Global Option
+
+All commands support the top-level flag:
+
+| Flag | Description |
+|------|-------------|
+| `-s, --silent` | Suppress non-error output |

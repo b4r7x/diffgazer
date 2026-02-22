@@ -1,0 +1,12 @@
+.output/
+.nitro/
+.vite/
+.source/
+src/routeTree.gen.ts
+src/generated/
+content/docs/components/
+content/docs/keyscope/
+registry/
+styles/
+public/r/diff-ui/
+public/r/keyscope/

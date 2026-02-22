@@ -1,0 +1,56 @@
+---
+title: Typography
+description: JetBrains Mono font configuration and sizing used across diffui components.
+---
+
+diffui uses JetBrains Mono for all text. Monospace is not just for code -- it IS the design.
+
+## Font Configuration
+
+In docs, the font is loaded from Google Fonts in the app `<head>`:
+
+```html
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap"
+/>
+```
+
+If you use diffui outside this docs app, add the same links in your app layout/head.
+
+Apply the base font via the `tui-base` class or the CSS variable:
+
+```css
+font-family: var(--tui-font-mono);
+```
+
+## Font Stack
+
+```
+"JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono",
+Menlo, Consolas, "Liberation Mono", monospace
+```
+
+The fallback chain ensures monospace rendering even if JetBrains Mono fails to load.
+
+## Sizes Used in diffui
+
+| Size | Tailwind Class | Used For |
+|------|---------------|----------|
+| 10px | `text-[10px]` | Toast dismiss button, tiny labels |
+| 12px | `text-xs` | Code blocks, props tables, badges, inline code |
+| 14px | `text-sm` | Body text, menu items, input text |
+| 16px | `text-base` | Section headers, larger labels |
+
+## Weights
+
+| Weight | Tailwind Class | Used For |
+|--------|---------------|----------|
+| 400 | `font-normal` | Body text, code |
+| 700 | `font-bold` | Headers, labels, emphasis |
+
+## No Variable Sizing
+
+diffui does not use `rem`-based fluid typography or responsive font scaling. Sizes are fixed. This is intentional: terminals use fixed-size fonts.
