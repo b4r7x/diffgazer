@@ -2,22 +2,7 @@
   "title": "Documentation",
   "root": true,
   "pages": [
-    "---Getting Started---",
-    "...getting-started",
-    "---Project---",
-    "contributing",
-    "changelog",
-    "---Components---",
-    "...components",
-    "---Theme---",
-    "...theme",
-    "---Patterns---",
-    "...patterns",
-    "---Integrations---",
-    "...integrations",
-    "---CLI---",
-    "...cli",
-    "---Keyscope---",
+    "...diff-ui",
     "...keyscope"
   ]
 }

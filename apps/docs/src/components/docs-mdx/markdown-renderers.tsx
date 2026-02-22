@@ -1,14 +1,9 @@
 import type { MDXComponents } from "mdx/types"
 import { createContext, isValidElement, useContext, type ReactElement, type ReactNode } from "react"
-import { useLocation } from "@tanstack/react-router"
 import { Callout } from "@/components/ui/callout"
 import { CodeBlock } from "@/components/ui/code-block/code-block"
 import { SectionHeader } from "@/components/ui/section-header/section-header"
 import { cn } from "@/lib/utils"
-import {
-  getDocsLibraryFromPathname,
-  rewriteLegacyDocsHref,
-} from "@/lib/docs-library"
 
 type CalloutVariant = "warning" | "error" | "success" | "info"
 const PreCodeContext = createContext(false)
@@ -117,9 +112,7 @@ export const markdownMdxComponents: MDXComponents = {
     </td>
   ),
   a: ({ children, href }) => {
-    const pathname = useLocation({ select: (location) => location.pathname })
-    const library = getDocsLibraryFromPathname(pathname) ?? "diff-ui"
-    const resolvedHref = href ? rewriteLegacyDocsHref(href, library) : href
+    const resolvedHref = href
     const isExternal = resolvedHref?.startsWith("http")
 
     return (

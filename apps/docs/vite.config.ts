@@ -63,6 +63,7 @@ function getPreRenderPages(): Array<{ path: string }> {
 
 const config = defineConfig(() => {
   const isVitest = Boolean(process.env.VITEST)
+  const prerenderEnabled = !isVitest && process.env.DOCS_PRERENDER !== "0"
 
   const plugins: PluginOption[] = [
     mdx(MdxConfig),
@@ -74,7 +75,7 @@ const config = defineConfig(() => {
     !isVitest
       ? tanstackStart({
           prerender: {
-            enabled: true,
+            enabled: prerenderEnabled,
             crawlLinks: false,
           },
           pages: getPreRenderPages(),

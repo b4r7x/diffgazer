@@ -9,7 +9,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const DOCS_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -22,24 +22,24 @@ const DOCS_GENERATED_DIR = resolve(DOCS_ROOT, "src/generated");
 const DOCS_REGISTRY_DIR = resolve(DOCS_ROOT, "registry");
 const DOCS_STYLES_DIR = resolve(DOCS_ROOT, "styles");
 const DOCS_PUBLIC_REGISTRY_DIR = resolve(DOCS_ROOT, "public/r");
-const DOCS_KEYSCOPE_ASSETS_DIR = resolve(DOCS_ROOT, "public/keyscope-assets");
+const DOCS_LIBRARY_ASSETS_DIR = resolve(DOCS_ROOT, "public/library-assets");
 const DOCS_CACHE_DIR = resolve(DOCS_ROOT, ".cache");
 const DOCS_SYNC_STATE_FILE = resolve(DOCS_CACHE_DIR, "sync-artifacts-state.json");
 
 const DEFAULT_REGISTRY_ORIGIN = "https://diffgazer.com";
-const KEYSCOPE_SECTION_SEPARATOR = "---Keyscope---";
-const KEYSCOPE_SECTION_FOLDER = "...keyscope";
+const PRIMARY_LIBRARY_ID = "diff-ui";
+const SYNC_SCHEMA_VERSION = 2;
 
-const LIBRARIES = {
-  diffui: {
+const LIBRARIES = [
+  {
     id: "diff-ui",
     root: DIFF_UI_ROOT,
   },
-  keyscope: {
+  {
     id: "keyscope",
     root: KEYSCOPE_ROOT,
   },
-};
+];
 
 function ensureExists(path, label) {
   if (!existsSync(path)) {
@@ -173,12 +173,17 @@ function validateManifest(manifestPath, libId) {
   return manifest;
 }
 
+function getGeneratedFiles(manifest) {
+  if (!manifest?.generated || typeof manifest.generated !== "object") {
+    return [];
+  }
+
+  return Object.values(manifest.generated).filter((value) => typeof value === "string");
+}
+
 function loadLibraryArtifacts(library) {
   const manifestPath = resolve(library.root, "dist/artifacts/artifact-manifest.json");
-  ensureExists(
-    manifestPath,
-    `${library.id} artifact manifest`,
-  );
+  ensureExists(manifestPath, `${library.id} artifact manifest`);
 
   const manifest = validateManifest(manifestPath, library.id);
   const artifactRoot = resolve(library.root, manifest.artifactRoot);
@@ -206,28 +211,34 @@ function loadLibraryArtifacts(library) {
     artifactRoot,
     fingerprintPath,
     fingerprint: expectedFingerprint,
+    generatedFiles: getGeneratedFiles(manifest),
   };
 }
 
-function docsOutputsExist() {
+function docsOutputsExist(artifacts) {
   const required = [
     resolve(DOCS_CONTENT_DIR, "meta.json"),
-    resolve(DOCS_GENERATED_DIR, "component-list.json"),
-    resolve(DOCS_GENERATED_DIR, "diffui-hooks.json"),
-    resolve(DOCS_GENERATED_DIR, "keyscope-hooks.json"),
     resolve(DOCS_REGISTRY_DIR, "registry.json"),
     resolve(DOCS_STYLES_DIR, "styles.css"),
-    resolve(DOCS_PUBLIC_REGISTRY_DIR, "diff-ui/registry.json"),
-    resolve(DOCS_PUBLIC_REGISTRY_DIR, "keyscope/registry.json"),
   ];
+
+  for (const artifact of artifacts) {
+    required.push(resolve(DOCS_CONTENT_DIR, artifact.id, "meta.json"));
+    required.push(resolve(DOCS_PUBLIC_REGISTRY_DIR, artifact.id, "registry.json"));
+    for (const generatedFile of artifact.generatedFiles) {
+      required.push(resolve(DOCS_GENERATED_DIR, basename(generatedFile)));
+    }
+  }
+
   return required.every((filePath) => existsSync(filePath));
 }
 
-function computeSyncFingerprint(origin, diffuiArtifacts, keyscopeArtifacts) {
+function computeSyncFingerprint(origin, artifacts) {
   const hash = createHash("sha256");
   hash.update(`origin:${origin}\n`);
+  hash.update(`sync-schema:${SYNC_SCHEMA_VERSION}\n`);
 
-  for (const artifact of [diffuiArtifacts, keyscopeArtifacts]) {
+  for (const artifact of artifacts) {
     hash.update(`${artifact.id}:manifest:${artifact.manifestPath}\n`);
     hash.update(readFileSync(artifact.manifestPath, "utf-8"));
     hash.update("\n");
@@ -253,29 +264,25 @@ function writeSyncState(state) {
   writeFileSync(DOCS_SYNC_STATE_FILE, `${JSON.stringify(state, null, 2)}\n`);
 }
 
-function syncDiffUiArtifacts(diffuiArtifacts) {
-  const docsDir = resolve(diffuiArtifacts.artifactRoot, diffuiArtifacts.manifest.docs.contentDir);
-  const generatedDir = resolve(diffuiArtifacts.artifactRoot, diffuiArtifacts.manifest.docs.generatedDir);
+function syncPrimaryArtifacts(primaryArtifact) {
+  const generatedDir = resolve(primaryArtifact.artifactRoot, primaryArtifact.manifest.docs.generatedDir);
   const sourceRegistryDir = resolve(
-    diffuiArtifacts.artifactRoot,
-    diffuiArtifacts.manifest.source.registryDir,
+    primaryArtifact.artifactRoot,
+    primaryArtifact.manifest.source.registryDir,
   );
   const sourceStylesDir = resolve(
-    diffuiArtifacts.artifactRoot,
-    diffuiArtifacts.manifest.source.stylesDir,
+    primaryArtifact.artifactRoot,
+    primaryArtifact.manifest.source.stylesDir,
   );
 
-  ensureExists(docsDir, "diff-ui artifact docs");
-  ensureExists(generatedDir, "diff-ui artifact generated data");
-  ensureExists(sourceRegistryDir, "diff-ui artifact source registry");
-  ensureExists(sourceStylesDir, "diff-ui artifact source styles");
+  ensureExists(generatedDir, `${primaryArtifact.id} artifact generated data`);
+  ensureExists(sourceRegistryDir, `${primaryArtifact.id} artifact source registry`);
+  ensureExists(sourceStylesDir, `${primaryArtifact.id} artifact source styles`);
 
-  resetDir(DOCS_CONTENT_DIR);
   resetDir(DOCS_GENERATED_DIR);
   resetDir(DOCS_REGISTRY_DIR);
   resetDir(DOCS_STYLES_DIR);
 
-  cpSync(docsDir, DOCS_CONTENT_DIR, { recursive: true });
   cpSync(generatedDir, DOCS_GENERATED_DIR, { recursive: true });
   cpSync(sourceRegistryDir, DOCS_REGISTRY_DIR, { recursive: true });
   cpSync(sourceStylesDir, DOCS_STYLES_DIR, { recursive: true });
@@ -293,82 +300,81 @@ function syncDiffUiArtifacts(diffuiArtifacts) {
   }
 }
 
-function syncKeyscopeArtifacts(keyscopeArtifacts) {
-  const docsDir = resolve(keyscopeArtifacts.artifactRoot, keyscopeArtifacts.manifest.docs.contentDir);
-  ensureExists(docsDir, "keyscope artifact docs");
+function syncLibraryDocs(artifact) {
+  const docsDir = resolve(artifact.artifactRoot, artifact.manifest.docs.contentDir);
+  ensureExists(docsDir, `${artifact.id} artifact docs`);
+  ensureExists(resolve(docsDir, "meta.json"), `${artifact.id} docs meta`);
 
-  const keyscopeOutputDir = resolve(DOCS_CONTENT_DIR, "keyscope");
-  resetDir(keyscopeOutputDir);
-  cpSync(docsDir, keyscopeOutputDir, { recursive: true, force: true });
+  const outputDir = resolve(DOCS_CONTENT_DIR, artifact.id);
+  resetDir(outputDir);
+  cpSync(docsDir, outputDir, { recursive: true, force: true });
 
-  const keyscopeHooksFile = resolve(
-    keyscopeArtifacts.artifactRoot,
-    keyscopeArtifacts.manifest.generated.keyscopeHooksFile,
-  );
-  ensureExists(keyscopeHooksFile, "keyscope hooks generated artifact");
-  cpSync(keyscopeHooksFile, resolve(DOCS_GENERATED_DIR, "keyscope-hooks.json"), { force: true });
-
-  const rootMetaPath = resolve(DOCS_CONTENT_DIR, "meta.json");
-  const rootMeta = readJson(rootMetaPath);
-  const pagesWithoutKeyscope = (rootMeta.pages ?? []).filter(
-    (entry) => entry !== KEYSCOPE_SECTION_SEPARATOR && entry !== KEYSCOPE_SECTION_FOLDER,
-  );
-  rootMeta.pages = [...pagesWithoutKeyscope, KEYSCOPE_SECTION_SEPARATOR, KEYSCOPE_SECTION_FOLDER];
-  writeJson(rootMetaPath, rootMeta);
-
-  if (keyscopeArtifacts.manifest.docs.assetsDir) {
-    const assetsDir = resolve(keyscopeArtifacts.artifactRoot, keyscopeArtifacts.manifest.docs.assetsDir);
-    resetDir(DOCS_KEYSCOPE_ASSETS_DIR);
-    if (existsSync(assetsDir)) {
-      cpSync(assetsDir, DOCS_KEYSCOPE_ASSETS_DIR, { recursive: true, force: true });
-    }
+  for (const generatedFile of artifact.generatedFiles) {
+    const sourcePath = resolve(artifact.artifactRoot, generatedFile);
+    ensureExists(sourcePath, `${artifact.id} generated artifact ${generatedFile}`);
+    cpSync(sourcePath, resolve(DOCS_GENERATED_DIR, basename(generatedFile)), { force: true });
   }
+
+  if (!artifact.manifest.docs.assetsDir) return;
+
+  const assetsDir = resolve(artifact.artifactRoot, artifact.manifest.docs.assetsDir);
+  if (!existsSync(assetsDir)) return;
+  const targetAssetsDir = resolve(DOCS_LIBRARY_ASSETS_DIR, artifact.id);
+  resetDir(targetAssetsDir);
+  cpSync(assetsDir, targetAssetsDir, { recursive: true, force: true });
 }
 
-function syncRegistries(diffuiArtifacts, keyscopeArtifacts, origin) {
-  const diffRegistryDir = resolve(
-    diffuiArtifacts.artifactRoot,
-    diffuiArtifacts.manifest.registry.publicDir,
-  );
-  const keyscopeRegistryDir = resolve(
-    keyscopeArtifacts.artifactRoot,
-    keyscopeArtifacts.manifest.registry.publicDir,
-  );
-  ensureExists(diffRegistryDir, "diff-ui artifact public registry");
-  ensureExists(keyscopeRegistryDir, "keyscope artifact public registry");
+function writeRootMeta(artifacts) {
+  const pages = artifacts.map((artifact) => `...${artifact.id}`);
+  writeJson(resolve(DOCS_CONTENT_DIR, "meta.json"), {
+    title: "Documentation",
+    root: true,
+    pages,
+  });
+}
 
-  const diffOutput = resolve(DOCS_PUBLIC_REGISTRY_DIR, "diff-ui");
-  const keyscopeOutput = resolve(DOCS_PUBLIC_REGISTRY_DIR, "keyscope");
+function syncRegistries(artifacts, origin) {
   resetDir(DOCS_PUBLIC_REGISTRY_DIR);
-  resetDir(diffOutput);
-  resetDir(keyscopeOutput);
 
-  cpSync(diffRegistryDir, diffOutput, { recursive: true, force: true });
-  cpSync(keyscopeRegistryDir, keyscopeOutput, { recursive: true, force: true });
+  for (const artifact of artifacts) {
+    const sourceDir = resolve(artifact.artifactRoot, artifact.manifest.registry.publicDir);
+    ensureExists(sourceDir, `${artifact.id} artifact public registry`);
+
+    const outputDir = resolve(DOCS_PUBLIC_REGISTRY_DIR, artifact.id);
+    resetDir(outputDir);
+    cpSync(sourceDir, outputDir, { recursive: true, force: true });
+  }
 
   assertNoDefaultOrigin(DOCS_PUBLIC_REGISTRY_DIR, origin);
 }
 
 function main() {
   const origin = normalizeOrigin(process.env.REGISTRY_ORIGIN);
-  const diffuiArtifacts = loadLibraryArtifacts(LIBRARIES.diffui);
-  const keyscopeArtifacts = loadLibraryArtifacts(LIBRARIES.keyscope);
-  const syncFingerprint = computeSyncFingerprint(origin, diffuiArtifacts, keyscopeArtifacts);
+  const artifacts = LIBRARIES.map(loadLibraryArtifacts);
+  const primaryArtifact = artifacts.find((artifact) => artifact.id === PRIMARY_LIBRARY_ID);
+  if (!primaryArtifact) {
+    throw new Error(`Primary docs artifact "${PRIMARY_LIBRARY_ID}" is not configured.`);
+  }
+
+  const syncFingerprint = computeSyncFingerprint(origin, artifacts);
   const syncState = readSyncState();
 
-  if (syncState?.fingerprint === syncFingerprint && docsOutputsExist()) {
+  if (syncState?.fingerprint === syncFingerprint && docsOutputsExist(artifacts)) {
     console.log("[docs-sync] Artifacts unchanged; skipping sync.");
     return;
   }
 
-  console.log("[docs-sync] Syncing diff-ui artifacts...");
-  syncDiffUiArtifacts(diffuiArtifacts);
-
-  console.log("[docs-sync] Syncing keyscope artifacts...");
-  syncKeyscopeArtifacts(keyscopeArtifacts);
+  console.log("[docs-sync] Syncing docs and generated artifacts...");
+  resetDir(DOCS_CONTENT_DIR);
+  resetDir(DOCS_LIBRARY_ASSETS_DIR);
+  syncPrimaryArtifacts(primaryArtifact);
+  for (const artifact of artifacts) {
+    syncLibraryDocs(artifact);
+  }
+  writeRootMeta(artifacts);
 
   console.log(`[docs-sync] Syncing registries (origin asserted: ${origin})...`);
-  syncRegistries(diffuiArtifacts, keyscopeArtifacts, origin);
+  syncRegistries(artifacts, origin);
 
   writeSyncState({
     fingerprint: syncFingerprint,
