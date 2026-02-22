@@ -1,0 +1,79 @@
+---
+title: Utilities
+description: Standalone hooks for focus trapping, scroll locking, and key mapping that work independently of KeyboardProvider.
+---
+
+Standalone hooks for focus trapping, scroll locking, and key mapping. These work independently of `KeyboardProvider` and are available in copy mode.
+
+> For the complete API reference, see the [keyscope documentation](https://github.com/b4r7x/keyscope).
+
+---
+
+## useFocusTrap
+
+Traps Tab/Shift+Tab focus within a container. Works independently of `KeyboardProvider`.
+
+```tsx
+import { useFocusTrap } from "keyscope"
+// or in copy mode:
+// import { useFocusTrap } from "@/hooks/use-focus-trap"
+
+function Dialog({ open }: { open: boolean }) {
+  const contentRef = useRef<HTMLDivElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
+
+  useFocusTrap(contentRef, {
+    initialFocus: closeRef,
+    restoreFocus: true,
+    enabled: open,
+  })
+
+  if (!open) return null
+  return (
+    <div ref={contentRef} role="dialog">
+      <p>Are you sure?</p>
+      <button ref={closeRef}>Close</button>
+    </div>
+  )
+}
+```
+
+Used internally by diffui's `DialogContent` and `CommandPaletteContent` components.
+
+---
+
+## useScrollLock
+
+Reference-counted scroll lock. Sets `overflow: hidden` on an element, restores the original value when all locks are released.
+
+```tsx
+import { useScrollLock } from "keyscope"
+// or in copy mode:
+// import { useScrollLock } from "@/hooks/use-scroll-lock"
+
+// Lock document.body
+useScrollLock()
+
+// Lock a specific element, conditionally
+const panelRef = useRef<HTMLDivElement>(null)
+useScrollLock(panelRef, isOpen)
+```
+
+Used internally by diffui's `DialogContent` component.
+
+---
+
+## keys()
+
+Utility to map multiple hotkeys to the same handler. Requires the full keyscope package (not available in copy mode).
+
+```tsx
+import { useKey, keys } from "keyscope"
+
+useKey({
+  ...keys(["j", "ArrowDown"], () => move(1)),
+  ...keys(["k", "ArrowUp"], () => move(-1)),
+  "/": () => focusSearch(),
+  Escape: () => clearSearch(),
+})
+```

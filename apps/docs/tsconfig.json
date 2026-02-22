@@ -1,0 +1,34 @@
+{
+  "include": ["**/*.ts", "**/*.tsx", "src/generated/*.json"],
+  "compilerOptions": {
+    "target": "ES2022",
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": false,
+    "noEmit": true,
+
+    /* Linting */
+    "skipLibCheck": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@/lib/utils": ["./src/lib/utils.ts"],
+      "@/components/ui/*": ["./registry/ui/*"],
+      "@/hooks/*": ["./registry/hooks/*"],
+      "keyscope": ["../../../keyscope/src/index.ts"],
+      "fumadocs-mdx:collections/*": [".source/*"]
+    }
+  }
+}

@@ -1,0 +1,104 @@
+---
+title: Dark Mode
+description: Theme switching with the data-theme attribute, persistence, and flash prevention.
+---
+
+Dark mode is the default. diffui uses the `[data-theme]` attribute for theme switching.
+
+## How It Works
+
+```css
+/* Dark mode (default) */
+:root,
+[data-theme="dark"] {
+  --tui-bg: #0d1117;
+  --tui-fg: #c9d1d9;
+  /* ... */
+}
+
+/* Light mode */
+[data-theme="light"] {
+  --tui-bg: #ffffff;
+  --tui-fg: #24292f;
+  /* ... */
+}
+```
+
+All diffui components use semantic CSS variables (`var(--background)`, `var(--foreground)`, etc.) which reference the primitives. Changing the `data-theme` attribute switches every component instantly.
+
+## Switching Themes
+
+Set the `data-theme` attribute on the root element:
+
+```tsx
+function ThemeToggle() {
+  const [theme, setTheme] = useState<"dark" | "light">("dark")
+
+  const toggle = () => {
+    const next = theme === "dark" ? "light" : "dark"
+    setTheme(next)
+    document.documentElement.setAttribute("data-theme", next)
+  }
+
+  return (
+    <Button variant="ghost" onClick={toggle}>
+      {theme === "dark" ? "light" : "dark"}
+    </Button>
+  )
+}
+```
+
+## Persisting Theme Preference
+
+Store the user's choice in `localStorage`:
+
+```tsx
+// On mount: restore preference
+useEffect(() => {
+  const saved = localStorage.getItem("diffui-theme")
+  if (saved === "light" || saved === "dark") {
+    document.documentElement.setAttribute("data-theme", saved)
+  }
+}, [])
+
+// On change: persist
+const setTheme = (theme: "dark" | "light") => {
+  document.documentElement.setAttribute("data-theme", theme)
+  localStorage.setItem("diffui-theme", theme)
+}
+```
+
+## Respecting System Preference
+
+```tsx
+useEffect(() => {
+  const saved = localStorage.getItem("diffui-theme")
+  if (saved) {
+    document.documentElement.setAttribute("data-theme", saved)
+    return
+  }
+
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)")
+  document.documentElement.setAttribute(
+    "data-theme",
+    prefersDark.matches ? "dark" : "light"
+  )
+}, [])
+```
+
+> **Tip**: diffui defaults to dark mode. If no `data-theme` attribute is set, the `:root` selector applies dark mode variables.
+
+## Flash Prevention
+
+To prevent a flash of wrong theme on page load, set the attribute before React hydrates:
+
+```html
+<head>
+  <script>
+    (function() {
+      var t = localStorage.getItem("diffui-theme");
+      if (t) document.documentElement.setAttribute("data-theme", t);
+    })();
+  </script>
+</head>
+```

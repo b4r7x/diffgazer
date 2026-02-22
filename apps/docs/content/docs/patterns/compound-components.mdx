@@ -1,0 +1,265 @@
+---
+title: Compound Components
+description: How diffui uses the compound component pattern with React Context for Dialog, Tabs, Menu, and more.
+---
+
+## What is a compound component?
+
+A compound component is a component split across multiple sub-components that share implicit state through React Context. Think of HTML's native `<select>` and `<option>` elements -- they only make sense together, and the parent manages shared state that the children consume.
+
+In diffui, several components use this pattern: **Dialog**, **Tabs**, **Menu**, **NavigationList**, and **Toast**. Each has a root component that provides context and child components that consume it.
+
+**Stepper** also uses the compound structure (`Stepper` > `StepperStep` > `StepperSubstep`) but passes state through props rather than context.
+
+## Anatomy
+
+### Dialog
+
+Dialog is the most complete example of the compound pattern:
+
+```tsx
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogBody,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+
+<Dialog>                          {/* Root: manages open state via Context */}
+  <DialogTrigger>                 {/* Opens the dialog */}
+    <Button>Open</Button>
+  </DialogTrigger>
+  <DialogContent>                 {/* Portal + overlay + modal container */}
+    <DialogHeader>                {/* Header wrapper */}
+      <DialogTitle>Title</DialogTitle>
+      <DialogDescription>Description</DialogDescription>
+    </DialogHeader>
+    <DialogBody>                  {/* Scrollable content area */}
+      {/* Your content */}
+    </DialogBody>
+    <DialogFooter>                {/* Action buttons */}
+      <DialogClose>               {/* Closes the dialog */}
+        <Button>Cancel</Button>
+      </DialogClose>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+```
+
+Each sub-component has a specific role but relies on the shared context from `Dialog` to function.
+
+### Tabs
+
+```tsx
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+
+<Tabs defaultValue="tab1">
+  <TabsList>
+    <TabsTrigger value="tab1">Tab 1</TabsTrigger>
+    <TabsTrigger value="tab2">Tab 2</TabsTrigger>
+  </TabsList>
+  <TabsContent value="tab1">Content 1</TabsContent>
+  <TabsContent value="tab2">Content 2</TabsContent>
+</Tabs>
+```
+
+## How Context works
+
+Every compound component follows the same pattern. Here's how Dialog implements it:
+
+### 1. Define the context type
+
+```tsx
+interface DialogContextValue {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  titleId: string
+  descriptionId: string
+}
+```
+
+### 2. Create the context with undefined default
+
+```tsx
+const DialogContext = createContext<DialogContextValue | undefined>(undefined)
+```
+
+### 3. Create a hook with error boundary
+
+```tsx
+function useDialogContext() {
+  const context = useContext(DialogContext)
+  if (!context) {
+    throw new Error("Dialog compound components must be used within a Dialog")
+  }
+  return context
+}
+```
+
+This ensures you get a clear error message if you accidentally use a sub-component outside its root.
+
+### 4. Root component provides the context
+
+```tsx
+function Dialog({ children, open, onOpenChange }: DialogProps) {
+  return (
+    <DialogContext.Provider value={{ open, onOpenChange, titleId, descriptionId }}>
+      {children}
+    </DialogContext.Provider>
+  )
+}
+```
+
+### 5. Child components consume the context
+
+```tsx
+function DialogTrigger({ children }: DialogTriggerProps) {
+  const { onOpenChange } = useDialogContext()
+  return <button onClick={() => onOpenChange(true)}>{children}</button>
+}
+```
+
+This is the same pattern used by Tabs, Menu, NavigationList, and Toast. The root provides, the children consume.
+
+## Controlled vs Uncontrolled
+
+All compound components support both controlled and uncontrolled usage.
+
+### Uncontrolled
+
+The component manages its own state internally. You just set defaults:
+
+```tsx
+{/* Dialog manages its own open state */}
+<Dialog>
+  <DialogTrigger>Open</DialogTrigger>
+  <DialogContent>...</DialogContent>
+</Dialog>
+
+{/* Tabs manages its own selected tab */}
+<Tabs defaultValue="tab1">
+  <TabsList>
+    <TabsTrigger value="tab1">Tab 1</TabsTrigger>
+    <TabsTrigger value="tab2">Tab 2</TabsTrigger>
+  </TabsList>
+  <TabsContent value="tab1">Content 1</TabsContent>
+  <TabsContent value="tab2">Content 2</TabsContent>
+</Tabs>
+```
+
+### Controlled
+
+You own the state and pass it in:
+
+```tsx
+const [open, setOpen] = useState(false)
+
+<Dialog open={open} onOpenChange={setOpen}>
+  <DialogContent>...</DialogContent>
+</Dialog>
+```
+
+The same pattern applies across components:
+
+- **Dialog**: `open` / `onOpenChange`
+- **Tabs**: `value` / `onValueChange`
+- **Menu**: `selectedId` / `onSelect`
+- **NavigationList**: `selectedId` / `onSelect`
+
+## Composition
+
+The compound pattern gives you full control over structure. You can:
+
+**Skip sub-components you don't need:**
+
+```tsx
+<Dialog open={open} onOpenChange={setOpen}>
+  {/* No DialogTrigger -- you control open state yourself */}
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Confirm</DialogTitle>
+      {/* No DialogDescription */}
+    </DialogHeader>
+    <DialogFooter>
+      <DialogClose>
+        <Button>OK</Button>
+      </DialogClose>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+```
+
+**Wrap sub-components in your own components:**
+
+```tsx
+function ConfirmDialog({ title, onConfirm, children }) {
+  return (
+    <Dialog>
+      <DialogTrigger>{children}</DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <DialogFooter>
+          <DialogClose>
+            <Button variant="ghost">Cancel</Button>
+          </DialogClose>
+          <Button onClick={onConfirm}>Confirm</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+```
+
+Because each sub-component consumes context independently, they work no matter how deep they're nested inside the root.
+
+## Toast: Dual Context Pattern
+
+Toast uses a unique variation -- it splits context into two separate providers:
+
+```tsx
+// Data context (read-only state)
+interface ToastDataContextValue {
+  toasts: Toast[]
+  dismissingIds: Set<string>
+}
+
+// Actions context (mutations)
+interface ToastActionsContextValue {
+  showToast: (options: Omit<Toast, "id">) => void
+  dismissToast: (id: string) => void
+  removeToast: (id: string) => void
+}
+```
+
+This separation means components that only call `showToast` won't re-render when the toast list changes, and components that only display toasts won't re-render when action callbacks are recreated.
+
+A composite hook combines both contexts for convenience:
+
+```tsx
+function useToast() {
+  const data = useContext(ToastDataContext)
+  const actions = useContext(ToastActionsContext)
+  return { ...data, ...actions }
+}
+```
+
+## Summary
+
+| Component | Root | Sub-components | Shared State |
+|-----------|------|---------------|--------------|
+| Dialog | `Dialog` | `DialogTrigger`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogBody`, `DialogFooter`, `DialogClose` | `open`, `onOpenChange`, `titleId`, `descriptionId` |
+| Tabs | `Tabs` | `TabsList`, `TabsTrigger`, `TabsContent` | `value`, `onValueChange`, `orientation` |
+| Menu | `Menu` | `MenuItem`, `MenuDivider` | `selectedId`, `highlighted`, `onSelect`, `onActivate`, `variant` |
+| NavigationList | `NavigationList` | `NavigationListItem` | `selectedId`, `highlighted`, `onSelect`, `onActivate`, `isHighlighted` |
+| Toast | `ToastProvider` | `ToastContainer`, `Toast` | `toasts`, `dismissingIds`, `showToast`, `dismissToast`, `removeToast` |
+| Stepper | `Stepper` | `StepperStep`, `StepperSubstep` | Props-based (no context) |
+
+> **Note**: `MenuItem` uses `children` for its label: `<MenuItem id="copy">Copy</MenuItem>`, not a `label` prop.

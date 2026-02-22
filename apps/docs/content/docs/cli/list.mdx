@@ -1,0 +1,72 @@
+---
+title: diffui list
+description: List all available components in the registry.
+---
+
+## Usage
+
+```bash
+npx diffui list
+```
+
+## Output
+
+```bash
+$ npx diffui list
+
+  Available components (28):
+
+    badge              Terminal-styled badge for labels and status indicators
+    block-bar          Segmented block-character bar for data visualization
+    button             Terminal-inspired button with variants
+    callout            Highlighted message block for tips, warnings, and errors
+    card               Simple bordered card primitives with optional inside-border header
+    checkbox           Terminal-styled checkbox with bracket notation
+    checklist          Terminal-styled checklist with bracket notation
+    code-block         Code display with line numbers and scroll area
+    dialog             Modal dialog with compound components
+    diff-view          Side-by-side or unified diff display
+    empty-state        Placeholder for empty content areas
+    focusable-pane     Container that visually indicates focus state
+    horizontal-stepper Horizontal step-by-step progress indicator
+    input              Terminal-styled text input
+    key-value          Key-value pair display
+    key-value-row      Single key-value pair display row
+    labeled-field      Form field with terminal-style label
+    menu               Terminal-styled dropdown menu
+    navigation-list    Terminal-styled navigation sidebar list
+    panel              Card-like container panel with composable terminal and section headers
+    radio-group        Terminal-styled radio group with parenthesis notation
+    scroll-area        Custom scrollable area with styled scrollbars
+    search-input       Terminal-styled search input with icon
+    section-header     Section heading with terminal-style decoration
+    stepper            Step-by-step progress indicator
+    tabs               Terminal-styled tabbed interface
+    toast              Terminal-styled toast notification system
+    toggle-group       Group of toggle buttons for single/multi selection
+```
+
+## Options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--json` | Output as JSON | `false` |
+| `--installed` | Show only installed components | `false` |
+
+## JSON Output
+
+```bash
+$ npx diffui list --json
+```
+
+```json
+[
+  {
+    "name": "button",
+    "title": "Button",
+    "description": "Terminal-inspired button with variants",
+    "dependencies": ["class-variance-authority", "clsx", "tailwind-merge"],
+    "files": ["button.tsx"]
+  }
+]
+```
