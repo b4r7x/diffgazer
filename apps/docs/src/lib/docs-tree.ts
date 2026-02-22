@@ -35,9 +35,6 @@ function normalizeSeparators(nodes: PageTreeNode[]): PageTreeNode[] {
 
 function mapNodeForLibrary(node: PageTreeNode, library: DocsLibraryId): PageTreeNode | null {
   if (node.type === "separator") {
-    if (library === "diff-ui" && /keyscope/i.test(node.name)) {
-      return null;
-    }
     return { ...node };
   }
 
@@ -80,15 +77,8 @@ export function mapPageTreeForLibrary(inputTree: PageTree, library: DocsLibraryI
   );
 
   let children = mappedChildren;
-
-  if (library === "keyscope") {
-    const keyscopeFolder = mappedChildren.find(
-      (node) => node.type === "folder" && node.name.toLowerCase() === "keyscope",
-    );
-
-    if (keyscopeFolder?.children?.length) {
-      children = normalizeSeparators(keyscopeFolder.children);
-    }
+  if (mappedChildren.length === 1 && mappedChildren[0]?.type === "folder") {
+    children = normalizeSeparators(mappedChildren[0].children ?? []);
   }
 
   return {

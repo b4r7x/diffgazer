@@ -39,8 +39,6 @@ const LIBRARY_CONFIG: Record<DocsLibraryId, DocsLibraryConfig> = {
 };
 
 const SOURCE_DOCS_PREFIX = "/docs/";
-const SOURCE_KEYSCOPE_PREFIX = "keyscope";
-const LEGACY_DOCS_PREFIX = "/docs";
 
 function normalizeRouteSlugs(slugs: string[]): string[] {
   return slugs.map((slug) => slug.trim()).filter(Boolean);
@@ -75,9 +73,6 @@ export function getDocsLibraryFromPathname(pathname: string): DocsLibraryId | nu
   if (library && segments.length >= 2 && segments[1] === "docs" && isDocsLibraryId(library)) {
     return library;
   }
-  if (pathname === "/docs" || pathname.startsWith("/docs/")) {
-    return "diff-ui";
-  }
   return null;
 }
 
@@ -109,39 +104,14 @@ export function docsPath(library: DocsLibraryId, slugs?: string[] | string): str
   return `/${library}/docs/${normalized.join("/")}`;
 }
 
-export function rewriteLegacyDocsHref(href: string, library: DocsLibraryId): string {
-  if (library === "keyscope") {
-    if (href === "/docs/keyscope") {
-      return "/keyscope/docs";
-    }
-
-    if (href.startsWith("/docs/keyscope/")) {
-      const rel = href.slice("/docs/keyscope/".length);
-      return docsPath("keyscope", rel);
-    }
-  }
-
-  if (href === LEGACY_DOCS_PREFIX || href.startsWith(`${LEGACY_DOCS_PREFIX}/`)) {
-    return `/${library}${href}`;
-  }
-  return href;
-}
-
 export function sourceSlugsForLibrary(library: DocsLibraryId, routeSlugs: string[]): string[] {
   const normalized = normalizeRouteSlugs(routeSlugs);
 
-  if (library === "keyscope") {
-    if (normalized.length === 0) {
-      return [SOURCE_KEYSCOPE_PREFIX, ...LIBRARY_CONFIG[library].defaultRouteSlugs];
-    }
-    return [SOURCE_KEYSCOPE_PREFIX, ...normalized];
-  }
-
   if (normalized.length === 0) {
-    return [...LIBRARY_CONFIG[library].defaultRouteSlugs];
+    return [library, ...LIBRARY_CONFIG[library].defaultRouteSlugs];
   }
 
-  return normalized;
+  return [library, ...normalized];
 }
 
 export function routeSlugsFromSourcePath(library: DocsLibraryId, sourcePath: string): string[] | null {
@@ -150,21 +120,13 @@ export function routeSlugsFromSourcePath(library: DocsLibraryId, sourcePath: str
   }
 
   const rawSlugs = normalizeRouteSlugs(sourcePath.slice(SOURCE_DOCS_PREFIX.length).split("/"));
-
-  if (library === "keyscope") {
-    if (rawSlugs[0] !== SOURCE_KEYSCOPE_PREFIX) {
-      return null;
-    }
-    const slugs = rawSlugs.slice(1);
-    if (slugs.length === 1 && slugs[0] === "index") {
-      return [];
-    }
-    return slugs;
-  }
-
-  if (rawSlugs[0] === SOURCE_KEYSCOPE_PREFIX) {
+  if (rawSlugs[0] !== library) {
     return null;
   }
 
-  return rawSlugs;
+  const slugs = rawSlugs.slice(1);
+  if (slugs.length === 1 && slugs[0] === "index") {
+    return [];
+  }
+  return slugs;
 }

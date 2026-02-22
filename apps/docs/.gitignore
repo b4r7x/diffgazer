@@ -6,8 +6,10 @@
 src/routeTree.gen.ts
 src/generated/
 content/docs/components/
+content/docs/diff-ui/
 content/docs/keyscope/
 registry/
 styles/
+public/library-assets/
 public/r/diff-ui/
 public/r/keyscope/
