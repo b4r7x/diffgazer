@@ -96,29 +96,6 @@ function collectJsonFiles(rootDir, out = []) {
   return out;
 }
 
-function rewriteOrigin(value, origin) {
-  if (typeof value === "string") {
-    return value.replaceAll(DEFAULT_REGISTRY_ORIGIN, origin);
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => rewriteOrigin(item, origin));
-  }
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value).map(([k, v]) => [k, rewriteOrigin(v, origin)]),
-    );
-  }
-  return value;
-}
-
-function rewriteOriginsInDir(dir, origin) {
-  for (const jsonFile of collectJsonFiles(dir)) {
-    const raw = readJson(jsonFile);
-    const rewritten = rewriteOrigin(raw, origin);
-    writeJson(jsonFile, rewritten);
-  }
-}
-
 function assertNoDefaultOrigin(dir, origin) {
   if (origin === DEFAULT_REGISTRY_ORIGIN) return;
 
@@ -132,7 +109,14 @@ function assertNoDefaultOrigin(dir, origin) {
 
   if (offenders.length > 0) {
     throw new Error(
-      `Found unreplaced origin "${DEFAULT_REGISTRY_ORIGIN}" in registry output:\n${offenders.join("\n")}`,
+      [
+        `Found unreplaced origin "${DEFAULT_REGISTRY_ORIGIN}" in registry output:`,
+        ...offenders,
+        "",
+        `Rebuild library artifacts with REGISTRY_ORIGIN=${origin}:`,
+        `  pnpm --dir ${DIFF_UI_ROOT} build:artifacts`,
+        `  pnpm --dir ${KEYSCOPE_ROOT} build:artifacts`,
+      ].join("\n"),
     );
   }
 }
@@ -210,7 +194,7 @@ function loadLibraryArtifacts(library) {
         `${library.id} artifacts are stale.`,
         `Expected fingerprint: ${expectedFingerprint}`,
         `Current fingerprint:  ${currentFingerprint}`,
-        `Run: pnpm --dir ${library.root} build:publish-artifacts`,
+        `Run: pnpm --dir ${library.root} build:artifacts`,
       ].join("\n"),
     );
   }
@@ -362,7 +346,6 @@ function syncRegistries(diffuiArtifacts, keyscopeArtifacts, origin) {
   cpSync(diffRegistryDir, diffOutput, { recursive: true, force: true });
   cpSync(keyscopeRegistryDir, keyscopeOutput, { recursive: true, force: true });
 
-  rewriteOriginsInDir(DOCS_PUBLIC_REGISTRY_DIR, origin);
   assertNoDefaultOrigin(DOCS_PUBLIC_REGISTRY_DIR, origin);
 }
 
@@ -384,7 +367,7 @@ function main() {
   console.log("[docs-sync] Syncing keyscope artifacts...");
   syncKeyscopeArtifacts(keyscopeArtifacts);
 
-  console.log(`[docs-sync] Syncing registries with origin ${origin}...`);
+  console.log(`[docs-sync] Syncing registries (origin asserted: ${origin})...`);
   syncRegistries(diffuiArtifacts, keyscopeArtifacts, origin);
 
   writeSyncState({
