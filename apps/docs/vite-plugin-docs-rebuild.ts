@@ -1,12 +1,12 @@
 import type { Plugin, ViteDevServer } from "vite"
 import { exec } from "node:child_process"
 import { resolve } from "node:path"
+import { getLibrariesWithArtifacts } from "./src/lib/docs-library"
 
 export function docsDataRebuild(): Plugin {
   const APP_ROOT = resolve(import.meta.dirname)
   const WORKSPACE_ROOT = resolve(APP_ROOT, "../../..")
-  const DIFF_UI_ROOT = resolve(WORKSPACE_ROOT, "diff-ui")
-  const KEYSCOPE_ROOT = resolve(WORKSPACE_ROOT, "keyscope")
+  const IS_DEV = Boolean(process.env.DIFFGAZER_DEV)
   const isVitest = Boolean(process.env.VITEST)
   let server: ViteDevServer
   let rebuilding = false
@@ -49,10 +49,12 @@ export function docsDataRebuild(): Plugin {
 
       let timer: ReturnType<typeof setTimeout> | null = null
 
-      const watchPaths = [
-        resolve(DIFF_UI_ROOT, "dist/artifacts"),
-        resolve(KEYSCOPE_ROOT, "dist/artifacts"),
-      ]
+      // Only watch workspace artifact dirs in dev mode
+      if (!IS_DEV) return
+
+      const watchPaths = getLibrariesWithArtifacts().map((lib) =>
+        resolve(WORKSPACE_ROOT, lib.artifactSource.workspaceDir, "dist/artifacts"),
+      )
 
       for (const dir of watchPaths) {
         server.watcher.add(dir)
