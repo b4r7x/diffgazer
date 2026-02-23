@@ -2,8 +2,8 @@ import { useState } from "react"
 import { SectionHeader } from "@/components/ui/section-header/section-header"
 import { CodeBlock } from "@/components/ui/code-block/code-block"
 import { CopyButton } from "./copy-button"
-import keyscopeHooksData from "@/generated/keyscope-hooks.json"
-import diffuiHooksData from "@/generated/diffui-hooks.json"
+import keyscopeHooksData from "@/generated/keyscope/keyscope-hooks.json"
+import diffuiHooksData from "@/generated/diff-ui/diffui-hooks.json"
 import type { CodeBlockLine } from "@/components/ui/code-block/code-block"
 
 interface HookData {

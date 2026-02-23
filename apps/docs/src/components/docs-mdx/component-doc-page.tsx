@@ -1,4 +1,4 @@
-import componentList from "@/generated/component-list.json"
+import componentList from "@/generated/diff-ui/component-list.json"
 import { ComponentPage } from "@/components/component-page"
 import { useComponentDocData } from "./component-doc-context"
 

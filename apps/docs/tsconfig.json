@@ -1,5 +1,5 @@
 {
-  "include": ["**/*.ts", "**/*.tsx", "src/generated/*.json"],
+  "include": ["**/*.ts", "**/*.tsx", "src/generated/**/*.json"],
   "compilerOptions": {
     "target": "ES2022",
     "jsx": "react-jsx",
@@ -27,7 +27,6 @@
       "@/lib/utils": ["./src/lib/utils.ts"],
       "@/components/ui/*": ["./registry/ui/*"],
       "@/hooks/*": ["./registry/hooks/*"],
-      "keyscope": ["../../../keyscope/src/index.ts"],
       "fumadocs-mdx:collections/*": [".source/*"]
     }
   }

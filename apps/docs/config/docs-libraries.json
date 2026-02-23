@@ -1,0 +1,37 @@
+{
+  "primaryLibraryId": "diff-ui",
+  "libraries": [
+    {
+      "id": "diff-ui",
+      "displayName": "Diff UI",
+      "logoText": "diff-ui/docs",
+      "githubUrl": "https://github.com/diffgazer/diff-ui",
+      "enabled": true,
+      "defaultRouteSlugs": ["getting-started", "installation"],
+      "artifactSource": {
+        "workspaceDir": "diff-ui",
+        "packageName": "@b4r7x/diff-ui-artifacts"
+      }
+    },
+    {
+      "id": "keyscope",
+      "displayName": "Keyscope",
+      "logoText": "keyscope/docs",
+      "githubUrl": "https://github.com/b4r7x/keyscope",
+      "enabled": true,
+      "defaultRouteSlugs": ["getting-started", "installation"],
+      "artifactSource": {
+        "workspaceDir": "keyscope",
+        "packageName": "@b4r7x/keyscope-artifacts"
+      }
+    },
+    {
+      "id": "diffgazer",
+      "displayName": "Diffgazer",
+      "logoText": "diffgazer/docs",
+      "githubUrl": "https://github.com/diffgazer",
+      "enabled": false,
+      "defaultRouteSlugs": []
+    }
+  ]
+}

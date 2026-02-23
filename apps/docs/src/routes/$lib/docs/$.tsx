@@ -40,7 +40,7 @@ export const Route = createFileRoute("/$lib/docs/$")({
 
     let componentData: ComponentData | null = null
     if (data.component && /^[a-z0-9-]+$/.test(data.component)) {
-      const mod = await import(`../../../generated/components/${data.component}.json`)
+      const mod = await import(`../../../generated/${library}/components/${data.component}.json`)
       componentData = mod.default as ComponentData
     }
 

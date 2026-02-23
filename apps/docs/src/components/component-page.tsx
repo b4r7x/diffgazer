@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import type { ComponentData, ExampleRef } from "@/types/docs-data"
-import { demos } from "@/generated/demo-index"
+import { demos } from "@/generated/diff-ui/demo-index"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { DemoPreview } from "./demo-preview"
 import { PropsTable } from "./props-table"

@@ -10,16 +10,15 @@ import * as MdxConfig from './source.config'
 import tailwindcss from '@tailwindcss/vite'
 import { nitro } from 'nitro/vite'
 import { docsDataRebuild } from './vite-plugin-docs-rebuild'
+import { getEnabledDocsLibraries } from './src/lib/docs-library'
 import type { PluginOption } from 'vite'
 
-const KEYSCOPE_ENTRY = resolve(import.meta.dirname, "../../../keyscope/src/index.ts")
-
 function getPreRenderPages(): Array<{ path: string }> {
+  const enabledLibraries = getEnabledDocsLibraries()
   const pages: Array<{ path: string }> = [
     { path: '/' },
     { path: '/docs' },
-    { path: '/diff-ui/docs' },
-    { path: '/keyscope/docs' },
+    ...enabledLibraries.map((lib) => ({ path: `/${lib.id}/docs` })),
   ]
 
   const contentDir = resolve(import.meta.dirname, 'content/docs')
@@ -34,29 +33,26 @@ function getPreRenderPages(): Array<{ path: string }> {
           .replace(/\.mdx$/, '')
         if (rel === 'index') continue
 
-        if (rel.startsWith('keyscope/')) {
-          const keyscopeRel = rel
-            .slice('keyscope/'.length)
-            .replace(/\/index$/, '')
-          if (keyscopeRel.length > 0) {
-            pages.push({ path: `/keyscope/docs/${keyscopeRel}` })
+        const lib = enabledLibraries.find((l) => rel.startsWith(`${l.id}/`))
+        if (lib) {
+          const libRel = rel.slice(`${lib.id}/`.length).replace(/\/index$/, '')
+          if (libRel.length > 0) {
+            pages.push({ path: `/${lib.id}/docs/${libRel}` })
           }
-          continue
         }
-
-        const diffUiRel = rel.replace(/\/index$/, '')
-        pages.push({ path: `/diff-ui/docs/${diffUiRel}` })
       }
     }
   }
   walkMdx(contentDir)
 
-  const registry = JSON.parse(
-    readFileSync(resolve(import.meta.dirname, "registry/registry.json"), "utf-8"),
-  )
-  for (const item of registry.items) {
-    pages.push({ path: `/diff-ui/docs/components/${item.name}` })
-  }
+  try {
+    const registry = JSON.parse(
+      readFileSync(resolve(import.meta.dirname, "registry/registry.json"), "utf-8"),
+    )
+    for (const item of registry.items) {
+      pages.push({ path: `/diff-ui/docs/components/${item.name}` })
+    }
+  } catch { /* registry not yet built */ }
 
   return pages
 }
@@ -104,7 +100,6 @@ const config = defineConfig(() => {
     },
     resolve: {
       alias: {
-        keyscope: KEYSCOPE_ENTRY,
         "@/components/ui": resolve(import.meta.dirname, "registry/ui"),
         "@/hooks": resolve(import.meta.dirname, "registry/hooks"),
         "@": resolve(import.meta.dirname, "./src"),

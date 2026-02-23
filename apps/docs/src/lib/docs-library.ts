@@ -1,42 +1,19 @@
-export const DOCS_LIBRARY_IDS = ["diff-ui", "keyscope", "diffgazer"] as const;
+import {
+  docsLibrariesConfig,
+  type ArtifactSourceConfig,
+  type DocsLibraryConfigData,
+} from "./docs-libraries-config";
 
-export type DocsLibraryId = (typeof DOCS_LIBRARY_IDS)[number];
+export type DocsLibraryId = string;
+export type ArtifactSource = ArtifactSourceConfig;
+export type DocsLibraryConfig = DocsLibraryConfigData;
 
-export interface DocsLibraryConfig {
-  id: DocsLibraryId;
-  displayName: string;
-  logoText: string;
-  githubUrl: string;
-  enabled: boolean;
-  defaultRouteSlugs: string[];
-}
+export const DOCS_LIBRARY_IDS = docsLibrariesConfig.libraries.map((library) => library.id);
+export const PRIMARY_DOCS_LIBRARY_ID = docsLibrariesConfig.primaryLibraryId;
 
-const LIBRARY_CONFIG: Record<DocsLibraryId, DocsLibraryConfig> = {
-  "diff-ui": {
-    id: "diff-ui",
-    displayName: "Diff UI",
-    logoText: "diff-ui/docs",
-    githubUrl: "https://github.com/diffgazer/diff-ui",
-    enabled: true,
-    defaultRouteSlugs: ["getting-started", "installation"],
-  },
-  keyscope: {
-    id: "keyscope",
-    displayName: "Keyscope",
-    logoText: "keyscope/docs",
-    githubUrl: "https://github.com/b4r7x/keyscope",
-    enabled: true,
-    defaultRouteSlugs: ["getting-started", "installation"],
-  },
-  diffgazer: {
-    id: "diffgazer",
-    displayName: "Diffgazer",
-    logoText: "diffgazer/docs",
-    githubUrl: "https://github.com/diffgazer",
-    enabled: false,
-    defaultRouteSlugs: [],
-  },
-};
+const LIBRARY_CONFIG = Object.fromEntries(
+  docsLibrariesConfig.libraries.map((library) => [library.id, library]),
+) as Record<string, DocsLibraryConfig>;
 
 const SOURCE_DOCS_PREFIX = "/docs/";
 
@@ -49,22 +26,35 @@ function splitPathname(pathname: string): string[] {
 }
 
 export function isDocsLibraryId(value: string): value is DocsLibraryId {
-  return DOCS_LIBRARY_IDS.some((id) => id === value);
+  return DOCS_LIBRARY_IDS.includes(value);
 }
 
 export function getDocsLibraryConfig(lib: DocsLibraryId): DocsLibraryConfig {
-  return LIBRARY_CONFIG[lib];
+  const config = LIBRARY_CONFIG[lib];
+  if (!config) {
+    throw new Error(`Unknown docs library: "${lib}"`);
+  }
+  return config;
 }
 
 export function getEnabledDocsLibraries(): DocsLibraryConfig[] {
-  return DOCS_LIBRARY_IDS.map((id) => LIBRARY_CONFIG[id]).filter((config) => config.enabled);
+  return docsLibrariesConfig.libraries.filter((config) => config.enabled);
+}
+
+export function getLibrariesWithArtifacts(): (DocsLibraryConfig & { artifactSource: ArtifactSource })[] {
+  return getEnabledDocsLibraries().filter(
+    (c): c is DocsLibraryConfig & { artifactSource: ArtifactSource } => !!c.artifactSource,
+  );
 }
 
 export function parseDocsLibrary(value: string | null | undefined): DocsLibraryId {
   if (value && isDocsLibraryId(value)) {
     return value;
   }
-  return "diff-ui";
+  if (isDocsLibraryId(PRIMARY_DOCS_LIBRARY_ID)) {
+    return PRIMARY_DOCS_LIBRARY_ID;
+  }
+  return DOCS_LIBRARY_IDS[0] ?? "diff-ui";
 }
 
 export function getDocsLibraryFromPathname(pathname: string): DocsLibraryId | null {

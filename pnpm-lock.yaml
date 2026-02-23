@@ -78,6 +78,9 @@ importers:
 
   apps/docs:
     dependencies:
+      '@b4r7x/registry-kit':
+        specifier: link:../../../registry-kit
+        version: link:../../../registry-kit
       '@tailwindcss/vite':
         specifier: ^4.0.6
         version: 4.1.18(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0))
@@ -105,6 +108,9 @@ importers:
       fumadocs-mdx:
         specifier: ^14.2.7
         version: 14.2.8(@types/mdast@4.0.4)(@types/mdx@2.0.13)(@types/react@19.2.13)(fumadocs-core@16.6.5(@mdx-js/mdx@3.1.1)(@tanstack/react-router@1.158.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@types/estree-jsx@1.0.5)(@types/hast@3.0.4)(@types/mdast@4.0.4)(@types/react@19.2.13)(lucide-react@0.561.0(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(zod@4.3.6))(react@19.2.4)(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0))
+      keyscope:
+        specifier: link:../../../keyscope
+        version: link:../../../keyscope
       nitro:
         specifier: latest
         version: 3.0.1-alpha.2(chokidar@5.0.0)(lru-cache@11.2.5)(rollup@4.57.1)(vite@7.3.1(@types/node@22.19.11)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0))
