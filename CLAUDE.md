@@ -50,6 +50,14 @@ packages/tsconfig/ → Shared TS configs
 - Security headers: X-Frame-Options, X-Content-Type-Options
 - Details: @.claude/docs/security.md
 
+### Docs App (apps/docs)
+Unified documentation portal for diff-ui, keyscope, and (future) diffgazer docs.
+- TanStack Start SSR + Fumadocs MDX
+- Routes at /:lib/docs/* with library switcher
+- Consumes artifacts from keyscope and diff-ui via registry-kit's syncDocsFromArtifacts()
+- Serves shadcn-compatible registry endpoints at /r/{lib}/*.json
+- Config: apps/docs/config/docs-libraries.json
+
 ## Reference Docs (Read On Demand)
 
 - @.claude/docs/decisions.md — ADRs (error handling, providers, CORS, prompts, AI output)
