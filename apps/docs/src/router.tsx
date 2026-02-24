@@ -30,7 +30,7 @@ export const getRouter = () =>
 		routeTree,
 		defaultNotFoundComponent: DefaultNotFound,
 		scrollRestoration: true,
-		scrollRestorationBehavior: "smooth",
+		scrollRestorationBehavior: "instant",
 		scrollToTopSelectors: ["#main-content"],
 		defaultHashScrollIntoView: {
 			behavior: "smooth",

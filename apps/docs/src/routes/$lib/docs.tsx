@@ -27,6 +27,7 @@ const docsShellLoader = createServerFn({ method: "GET" })
   })
 
 export const Route = createFileRoute("/$lib/docs")({
+  staleTime: Infinity,
   beforeLoad: ({ params }) => {
     if (!isDocsLibraryId(params.lib)) {
       throw redirect({

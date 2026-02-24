@@ -6,6 +6,7 @@ import { DocsContentLayout } from "@/layouts/docs-content-layout"
 import { Route as DocsRoute } from "@/routes/$lib/docs"
 import { NotFoundState } from "@/components/not-found-state"
 import { Button } from "@/components/ui/button/button"
+import { Spinner } from "@/components/ui/spinner/spinner"
 import {
   DocsPageBody,
   DocsPageHeader,
@@ -142,6 +143,14 @@ function Page() {
   )
 }
 
+function ContentSpinner() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <Spinner size="md" label="loading..." />
+    </div>
+  )
+}
+
 function MdxDocsPage({
   path,
   tree,
@@ -156,7 +165,7 @@ function MdxDocsPage({
   return (
     <DocsContentLayout tree={tree} library={library}>
       <ComponentDocDataProvider value={componentData}>
-        <Suspense>
+        <Suspense fallback={<ContentSpinner />}>
           <MdxContent path={path} />
         </Suspense>
       </ComponentDocDataProvider>

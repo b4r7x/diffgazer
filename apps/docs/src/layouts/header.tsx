@@ -1,7 +1,8 @@
 import { useState } from "react"
-import { useLocation } from "@tanstack/react-router"
+import { useLocation, useNavigate } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { Logo } from "@/components/ui/logo/logo"
+import { Spinner } from "@/components/ui/spinner/spinner"
 import { Divider } from "@/components/ui/divider/divider"
 import { Breadcrumbs } from "@/components/breadcrumbs"
 import { useSearchOpen } from "@/features/search/search-context"
@@ -42,6 +43,7 @@ interface HeaderProps {
 export function Header({ library }: HeaderProps) {
   const { setOpen } = useSearchOpen()
   const pathname = useLocation({ select: (location) => location.pathname })
+  const navigate = useNavigate()
   const [switching, setSwitching] = useState(false)
   const activeLibrary = getDocsLibraryConfig(library)
 
@@ -61,17 +63,29 @@ export function Header({ library }: HeaderProps) {
         },
       })
 
-      window.location.assign(targetPath)
+      // Parse targetPath to extract library and slugs
+      const pathSegments = targetPath.split("/").filter(Boolean)
+      const targetLib = pathSegments[0]
+      const slugs = pathSegments.slice(2) // Skip lib and "docs"
+
+      await navigate({
+        to: "/$lib/docs/$",
+        params: { lib: targetLib, _splat: slugs.join("/") },
+      })
     } finally {
       setSwitching(false)
     }
   }
 
   return (
-    <header className="shrink-0 bg-background z-20 flex flex-col border-b border-border">
+    <header className="shrink-0 bg-background z-20 flex flex-col border-b border-border" aria-busy={switching}>
       <div className="px-6 h-24 flex justify-between items-center w-full">
         <div className="flex items-start gap-2 mt-2">
-          <Logo text={activeLibrary.logoText} className="text-foreground text-[6px] sm:text-[8px]" />
+          {switching ? (
+            <Spinner size="sm" className="mt-4" />
+          ) : (
+            <Logo text={activeLibrary.logoText} className="text-foreground text-[6px] sm:text-[8px]" />
+          )}
           <span className="bg-border text-foreground px-1.5 py-0.5 text-xs rounded-sm mt-2">
             {activeLibrary.displayName}
           </span>

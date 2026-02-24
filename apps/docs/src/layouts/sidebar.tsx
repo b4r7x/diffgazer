@@ -1,4 +1,4 @@
-import { useLocation } from "@tanstack/react-router";
+import { useLocation, useRouterState, Link } from "@tanstack/react-router";
 import {
   useEffectEvent,
   useEffect,
@@ -7,6 +7,7 @@ import {
   type FocusEvent,
 } from "react";
 import { useNavigation } from "keyscope";
+import { Spinner } from "@/components/ui/spinner/spinner";
 import {
   Sidebar,
   SidebarHeader,
@@ -74,8 +75,15 @@ function groupBySection(children: PageTreeNode[]): Section[] {
   return sections;
 }
 
+function splatFromUrl(url: string): string {
+  return url.split("/").slice(3).join("/");
+}
+
 export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
   const pathname = useLocation({ select: (l) => l.pathname });
+  const pendingPathname = useRouterState({
+    select: (s) => s.pendingLocation?.pathname,
+  });
   const navContainerRef = useRef<HTMLDivElement>(null);
 
   const { onKeyDown: keyScopeKeyDown, highlight } = useNavigation({
@@ -151,25 +159,32 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
                   const label = item.name.trim() || slug;
                   const indented = isIndentedItem(url);
 
+                  const isPending = pendingPathname === url;
+
                   return (
-                    <a
+                    <Link
                       key={url}
-                      href={url}
+                      to="/$lib/docs/$"
+                      params={{ lib: library, _splat: splatFromUrl(url) }}
                       onClick={onNavigate}
                       data-value={url}
                       role="menuitem"
                     >
-                      <SidebarItem active={pathname === url}>
-                        <span
-                          className={cn(
-                            "text-xs font-mono",
-                            indented ? "pl-5 text-muted-foreground" : "pl-2",
-                          )}
-                        >
-                          {indented ? `· ${label}` : label}
-                        </span>
+                      <SidebarItem active={pathname === url || isPending}>
+                        {isPending ? (
+                          <Spinner size="sm" className="ml-2" />
+                        ) : (
+                          <span
+                            className={cn(
+                              "text-xs font-mono",
+                              indented ? "pl-5 text-muted-foreground" : "pl-2",
+                            )}
+                          >
+                            {indented ? `· ${label}` : label}
+                          </span>
+                        )}
                       </SidebarItem>
-                    </a>
+                    </Link>
                   );
                 })}
               </SidebarSection>
