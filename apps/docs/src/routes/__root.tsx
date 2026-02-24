@@ -14,6 +14,7 @@ import { SearchDialog } from "@/features/search/components/search-dialog";
 import { SearchProvider } from "@/features/search/search-context";
 import { NotFoundState } from "@/components/not-found-state";
 import { Button } from "@/components/ui/button/button";
+import { PRIMARY_DOCS_LIBRARY_ID } from "@/lib/docs-library";
 
 export const Route = createRootRoute({
 	head: () => ({
@@ -108,7 +109,7 @@ function RootErrorBoundary({ reset }: { reset: () => void }) {
 					</Button>
 				}
 				secondaryAction={
-					<Link to="/$lib/docs" params={{ lib: "diff-ui" }}>
+					<Link to="/$lib/docs" params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}>
 						<Button variant="ghost">Open docs</Button>
 					</Link>
 				}
@@ -125,7 +126,7 @@ function RootNotFound() {
 				title="Page not found"
 				description="The requested route does not exist."
 				primaryAction={
-					<Link to="/$lib/docs" params={{ lib: "diff-ui" }}>
+					<Link to="/$lib/docs" params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}>
 						<Button variant="primary">Open docs</Button>
 					</Link>
 				}

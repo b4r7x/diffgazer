@@ -9,6 +9,7 @@ import {
   getDocsLibraryConfig,
   isDocsLibraryId,
   parseDocsLibrary,
+  PRIMARY_DOCS_LIBRARY_ID,
   type DocsLibraryId,
 } from "@/lib/docs-library"
 import { mapPageTreeForLibrary, type PageTree } from "@/lib/docs-tree"
@@ -30,14 +31,14 @@ export const Route = createFileRoute("/$lib/docs")({
     if (!isDocsLibraryId(params.lib)) {
       throw redirect({
         to: "/$lib/docs",
-        params: { lib: "diff-ui" },
+        params: { lib: PRIMARY_DOCS_LIBRARY_ID },
       })
     }
 
     if (!getDocsLibraryConfig(params.lib).enabled) {
       throw redirect({
         to: "/$lib/docs",
-        params: { lib: "diff-ui" },
+        params: { lib: PRIMARY_DOCS_LIBRARY_ID },
       })
     }
   },
