@@ -4,7 +4,7 @@
     {
       "id": "diff-ui",
       "displayName": "Diff UI",
-      "logoText": "diff-ui/docs",
+      "logoText": "diff-ui",
       "githubUrl": "https://github.com/diffgazer/diff-ui",
       "enabled": true,
       "defaultRouteSlugs": ["getting-started", "installation"],
@@ -16,7 +16,7 @@
     {
       "id": "keyscope",
       "displayName": "Keyscope",
-      "logoText": "keyscope/docs",
+      "logoText": "keyscope",
       "githubUrl": "https://github.com/b4r7x/keyscope",
       "enabled": true,
       "defaultRouteSlugs": ["getting-started", "installation"],
@@ -28,7 +28,7 @@
     {
       "id": "diffgazer",
       "displayName": "Diffgazer",
-      "logoText": "diffgazer/docs",
+      "logoText": "diffgazer",
       "githubUrl": "https://github.com/diffgazer",
       "enabled": false,
       "defaultRouteSlugs": []
