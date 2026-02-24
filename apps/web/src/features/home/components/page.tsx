@@ -3,7 +3,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { ContextInfo } from "@diffgazer/schemas/ui";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@/config/navigation";
-import { useKey, useScope, useNavigation } from "@diffgazer/keyboard";
+import { useKey, useScope, useNavigation } from "keyscope";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ContextSidebar } from "@/features/home/components/context-sidebar";
@@ -124,7 +124,7 @@ export function HomePage() {
         ]
       : [],
   });
-  const { focusedValue } = useNavigation({
+  const { highlighted: focusedValue } = useNavigation({
     containerRef: menuRef,
     role: "option",
     value: selectedId,

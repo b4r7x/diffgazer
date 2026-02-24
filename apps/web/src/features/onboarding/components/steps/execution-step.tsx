@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import type { AgentExecution } from "@diffgazer/schemas/config";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui";
-import { useNavigation } from "@diffgazer/keyboard";
+import { useNavigation } from "keyscope";
 
 interface ExecutionStepProps {
   value: AgentExecution;
@@ -33,7 +33,7 @@ export function ExecutionStep({
     onCommit?.(nextMode);
   };
 
-  const { focusedValue: radioFocusedValue } = useNavigation({
+  const { highlighted: radioFocusedValue } = useNavigation({
     containerRef: radioRef,
     role: "radio",
     value: focusedValue,

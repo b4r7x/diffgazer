@@ -6,7 +6,7 @@ import { Button, Callout, CardLayout } from "@diffgazer/ui";
 import { StorageSelectorContent } from "@/components/shared/storage-selector-content";
 import { useSettings } from "@/hooks/use-settings";
 import { api } from "@/lib/api";
-import { useKey, useScope } from "@diffgazer/keyboard";
+import { useKey, useScope } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { cn } from "@/utils/cn";
 

@@ -10,7 +10,7 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
 }));
 
-vi.mock("@diffgazer/keyboard", () => ({
+vi.mock("keyscope", () => ({
   useFocusZone: () => ({
     zone: mockZone,
     setZone: mockSetZone,

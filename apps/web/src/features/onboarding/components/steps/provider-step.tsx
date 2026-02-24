@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Badge, RadioGroup, RadioGroupItem } from "@diffgazer/ui";
-import { useNavigation } from "@diffgazer/keyboard";
+import { useNavigation } from "keyscope";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/schemas/config";
 import type { AIProvider } from "@diffgazer/schemas/config";
 import { PROVIDER_CAPABILITIES } from "@/config/constants";
@@ -49,7 +49,7 @@ export function ProviderStep({
     onCommit?.(resolvedProvider);
   };
 
-  const { focusedValue } = useNavigation({
+  const { highlighted: focusedValue } = useNavigation({
     containerRef,
     role: "radio",
     value: focusedProvider,

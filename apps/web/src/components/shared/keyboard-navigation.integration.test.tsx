@@ -9,7 +9,7 @@ import {
   RadioGroup,
   RadioGroupItem,
 } from "@diffgazer/ui";
-import { useNavigation, KeyboardProvider } from "@diffgazer/keyboard";
+import { useNavigation, KeyboardProvider } from "keyscope";
 
 function CheckboxGroupWithKeyboard() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -22,8 +22,7 @@ function CheckboxGroupWithKeyboard() {
     );
   };
 
-  const { onKeyDown, focusedValue } = useNavigation({
-    mode: "local",
+  const { onKeyDown, highlighted: focusedValue } = useNavigation({
     containerRef,
     role: "checkbox",
     value: focused,
@@ -51,8 +50,7 @@ function RadioGroupWithKeyboard() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [value, setValue] = useState("alpha");
 
-  const { onKeyDown, focusedValue } = useNavigation({
-    mode: "local",
+  const { onKeyDown, highlighted: focusedValue } = useNavigation({
     containerRef,
     role: "radio",
     value,
@@ -85,8 +83,7 @@ function MenuWithKeyboard({ onActivate }: { onActivate: (id: string) => void }) 
     onActivate(id);
   };
 
-  const { onKeyDown, focusedValue } = useNavigation({
-    mode: "local",
+  const { onKeyDown, highlighted: focusedValue } = useNavigation({
     containerRef,
     role: "option",
     value: selectedId,

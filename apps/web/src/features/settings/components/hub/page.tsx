@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Menu, MenuItem, Panel, PanelHeader } from "@diffgazer/ui";
 import { useConfigData } from "@/app/providers/config-provider";
-import { useScope, useKey, useNavigation } from "@diffgazer/keyboard";
+import { useScope, useKey, useNavigation } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useTheme } from "@/hooks/use-theme";
@@ -38,7 +38,7 @@ export function SettingsHubPage() {
     if (route) navigate({ to: route });
   };
 
-  const { focusedValue } = useNavigation({
+  const { highlighted: focusedValue } = useNavigation({
     containerRef: menuRef,
     role: "option",
     value: selectedId,

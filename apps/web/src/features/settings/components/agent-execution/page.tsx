@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import type { AgentExecution } from "@diffgazer/schemas/config";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import { Button, CardLayout, RadioGroup, RadioGroupItem } from "@diffgazer/ui";
-import { useNavigation, useKey, useScope } from "@diffgazer/keyboard";
+import { useNavigation, useKey, useScope } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useSettings } from "@/hooks/use-settings";
 import { api } from "@/lib/api";
@@ -70,7 +70,7 @@ export function SettingsAgentExecutionPage() {
     setModeChoice(mode);
   };
 
-  const { focusedValue } = useNavigation({
+  const { highlighted: focusedValue } = useNavigation({
     containerRef: radioRef,
     role: "radio",
     value: focusedMode,

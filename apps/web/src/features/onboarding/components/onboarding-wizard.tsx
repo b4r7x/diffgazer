@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { CardLayout, Button, Callout } from "@diffgazer/ui";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { useKey, useScope } from "@diffgazer/keyboard";
+import { useKey, useScope } from "keyscope";
 import { cn } from "@/utils/cn";
 import { useOnboarding } from "../hooks/use-onboarding";
 import { WizardProgress } from "./wizard-progress";

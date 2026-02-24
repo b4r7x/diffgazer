@@ -1,4 +1,4 @@
-import { useScope, useKey } from '@diffgazer/keyboard';
+import { useScope, useKey } from 'keyscope';
 import { usePageFooter } from '@/hooks/use-page-footer';
 import { Button } from '@diffgazer/ui';
 import type { ReviewMode } from '@diffgazer/schemas/review';
