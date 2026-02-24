@@ -5,7 +5,7 @@ import type { ReviewIssue } from "@diffgazer/schemas/review";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import type { IssueTab as TabId } from "@diffgazer/schemas/ui";
 import { SEVERITY_ORDER } from "@diffgazer/schemas/ui";
-import { useFocusZone, useKey, useNavigation } from "@diffgazer/keyboard";
+import { useFocusZone, useKey, useNavigation } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { filterIssuesBySeverity } from "@diffgazer/core/review";
 
@@ -71,7 +71,7 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     ? selectedIssueId
     : filteredIssues[0]?.id ?? null;
 
-  const { focusedValue } = useNavigation({
+  const { highlighted: focusedValue } = useNavigation({
     containerRef: listRef,
     role: "option",
     enabled: focusZone === "list",

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AVAILABLE_PROVIDERS, PROVIDER_ENV_VARS } from "@diffgazer/schemas/config";
-import { useKey } from "@diffgazer/keyboard";
+import { useKey } from "keyscope";
 import type { AIProvider } from "@diffgazer/schemas/config";
 import { ApiKeyMethodSelector } from "@/components/shared/api-key-method-selector";
 import type { FocusElement } from "@/types/focus-element";

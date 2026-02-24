@@ -1,7 +1,7 @@
 import { useRef, type Ref } from "react";
 import { cn } from "@/utils/cn";
 import { Tabs, TabsList, TabsTrigger, TabsContent, FocusablePane, SectionHeader, EmptyState, ScrollArea } from "@diffgazer/ui";
-import { useTabNavigation } from "@diffgazer/keyboard";
+import { useNavigation } from "keyscope";
 import { CodeSnippet, type CodeLine } from "./code-snippet";
 import { DiffView } from "./diff-view";
 import { FixPlanChecklist } from "./fix-plan-checklist";
@@ -34,8 +34,9 @@ export function IssueDetailsPane({
   const hasPatch = !!issue?.suggested_patch;
   const tabsRef = useRef<HTMLDivElement>(null);
 
-  const { onKeyDown: tabsKeyDown } = useTabNavigation({
+  const { onKeyDown: tabsKeyDown } = useNavigation({
     containerRef: tabsRef,
+    role: "tab",
   });
 
   return (

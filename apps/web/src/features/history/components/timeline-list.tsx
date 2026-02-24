@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { cn } from "@/utils/cn";
-import { useNavigation } from "@diffgazer/keyboard";
+import { useNavigation } from "keyscope";
 import type { TimelineItem } from "@diffgazer/schemas/ui";
 
 export interface TimelineListProps {
@@ -22,7 +22,7 @@ export function TimelineList({
 }: TimelineListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { focusedValue } = useNavigation({
+  const { highlighted: focusedValue } = useNavigation({
     containerRef,
     role: "option",
     value: selectedId,

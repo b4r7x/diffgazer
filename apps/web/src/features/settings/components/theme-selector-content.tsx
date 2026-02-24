@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import type { Theme } from '@diffgazer/schemas/config';
 import { RadioGroup, RadioGroupItem } from '@diffgazer/ui';
-import { useNavigation } from "@diffgazer/keyboard";
+import { useNavigation } from "keyscope";
 
 export interface ThemeSelectorContentProps {
   value: Theme;
@@ -45,7 +45,7 @@ export function ThemeSelectorContent({
     onFocus?.(nextValue);
   };
 
-  const { focusedValue: navigationFocusedValue, focus } = useNavigation({
+  const { highlighted: navigationFocusedValue, highlight: focus } = useNavigation({
     containerRef,
     role: "radio",
     value: focusedValue ?? undefined,

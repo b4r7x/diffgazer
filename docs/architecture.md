@@ -23,7 +23,6 @@ diffgazer/
 │   ├── core/               # @diffgazer/core - Result<T,E>, errors, review state, utilities
 │   ├── api/                # @diffgazer/api - Type-safe API client
 │   ├── hooks/              # @diffgazer/hooks - useTimer, getFigletText
-│   ├── keyboard/           # @diffgazer/keyboard - useScope, useKey, useNavigation
 │   └── ui/                 # @diffgazer/ui - Terminal-inspired component library
 │
 └── docs/                   # Documentation
@@ -73,7 +72,7 @@ v                              v
 
 **@diffgazer/hooks** - Two shared React hooks: `useTimer` (elapsed time tracking) and `getFigletText` (ASCII art).
 
-**@diffgazer/keyboard** - Keyboard navigation: `useScope` sets context, `useKey` registers handlers, `useNavigation` provides arrow-key navigation within containers.
+**keyscope** - Keyboard navigation (external package): `useScope` sets context, `useKey` registers handlers, `useNavigation` provides arrow-key navigation within containers. Replaced internal `@diffgazer/keyboard`.
 
 **@diffgazer/ui** - Terminal-inspired React component library. Primitives (Button, Badge, Input), layout (Panel, ScrollArea, FocusablePane), compound components (Dialog, Tabs, CodeBlock, DiffView). No Radix or shadcn.
 
@@ -97,7 +96,7 @@ Middleware stack (applied in order):
 
 React 19 + Vite 7 with TanStack Router, Tailwind 4, and a terminal-inspired design. JetBrains Mono throughout.
 
-Keyboard-first navigation via `@diffgazer/keyboard`, all pages navigable without a mouse. Dynamic footer bar shows per-page shortcuts.
+Keyboard-first navigation via `keyscope`, all pages navigable without a mouse. Dynamic footer bar shows per-page shortcuts.
 
 State management is pure React: context providers (config, theme, footer), `useReducer` with the shared core reducer for review state, `useSyncExternalStore` for module-level caches. No Redux or Zustand.
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { LensId } from "@diffgazer/schemas/review";
 import { Badge, CheckboxGroup, CheckboxItem, ScrollArea } from "@diffgazer/ui";
-import { useNavigation } from "@diffgazer/keyboard";
+import { useNavigation } from "keyscope";
 
 export interface AnalysisOption {
   id: LensId;
@@ -67,7 +67,7 @@ export function AnalysisSelectorContent({
     onChange(nextValue);
   };
 
-  const { focusedValue } = useNavigation({
+  const { highlighted: focusedValue } = useNavigation({
     containerRef: checkboxRef,
     role: "checkbox",
     value: focusedLens,

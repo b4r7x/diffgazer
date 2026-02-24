@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { ThemeProvider } from "./theme-provider";
 import { ConfigProvider } from "./config-provider";
-import { KeyboardProvider } from "@diffgazer/keyboard";
+import { KeyboardProvider } from "keyscope";
 
 interface AppProvidersProps {
   children: ReactNode;

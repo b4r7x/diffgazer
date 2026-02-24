@@ -1,6 +1,6 @@
 import { useState, useEffect, type RefObject } from "react";
 import type { ModelInfo } from "@diffgazer/schemas/config";
-import { useKey, useFocusZone, useNavigation } from "@diffgazer/keyboard";
+import { useKey, useFocusZone, useNavigation } from "keyscope";
 import { TIER_FILTERS, type TierFilter } from "@/features/providers/constants";
 
 type FocusZone = "search" | "filters" | "list" | "footer";
@@ -65,7 +65,7 @@ export function useModelDialogKeyboard({
   });
 
   // Use useNavigation for the model list — DOM-based navigation with role="radio"
-  const { focusedValue: focusedModelId, focus: focusModel } = useNavigation({
+  const { highlighted: focusedModelId, highlight: focusModel } = useNavigation({
     containerRef: listContainerRef,
     role: "radio",
     enabled: open && inZone("list") && filteredModels.length > 0,

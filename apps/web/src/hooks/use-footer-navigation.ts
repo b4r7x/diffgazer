@@ -1,5 +1,5 @@
 import { useState, type RefObject } from "react";
-import { useKey } from "@diffgazer/keyboard";
+import { useKey } from "keyscope";
 
 interface UseFooterNavigationOptions {
   enabled: boolean;

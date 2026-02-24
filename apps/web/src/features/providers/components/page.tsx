@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { useNavigation } from "@diffgazer/keyboard";
+import { useNavigation } from "keyscope";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ProviderList } from "@/features/providers/components/provider-list";
@@ -77,7 +77,7 @@ export function ProvidersPage() {
 
   const listRef = useRef<HTMLDivElement>(null);
   const listBridgeActive = keyboard.focusZone === "list" && !dialogs.anyOpen;
-  const { focusedValue: listFocusedValue } = useNavigation({
+  const { highlighted: listFocusedValue } = useNavigation({
     containerRef: listRef,
     role: "option",
     enabled: listBridgeActive,
