@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button/button";
+import { PRIMARY_DOCS_LIBRARY_ID } from "@/lib/docs-library";
 
 export const Route = createFileRoute("/")({ component: LandingPage });
 
@@ -19,7 +20,7 @@ function LandingPage() {
 				</p>
 
 				<div className="flex items-center justify-center gap-3">
-					<Link to="/$lib/docs" params={{ lib: "diff-ui" }}>
+					<Link to="/$lib/docs" params={{ lib: PRIMARY_DOCS_LIBRARY_ID }}>
 						<Button variant="primary" bracket>
 							Get Started
 						</Button>

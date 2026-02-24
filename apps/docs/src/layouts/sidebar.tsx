@@ -1,6 +1,6 @@
 import { useLocation } from "@tanstack/react-router";
 import {
-  useCallback,
+  useEffectEvent,
   useEffect,
   useRef,
   type KeyboardEvent,
@@ -95,17 +95,16 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
     },
   });
 
-  const handleKeyDown = useCallback(
+  const handleKeyDown = useEffectEvent(
     (e: KeyboardEvent<HTMLElement>) => {
       if (["ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)) {
         e.preventDefault();
       }
       keyScopeKeyDown(e);
     },
-    [keyScopeKeyDown],
   );
 
-  const handleFocus = useCallback(
+  const handleFocus = useEffectEvent(
     (e: FocusEvent<HTMLDivElement>) => {
       const target = (e.target as HTMLElement).closest<HTMLElement>(
         "[data-value]",
@@ -113,7 +112,6 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
       const url = target?.dataset.value;
       if (url) highlight(url);
     },
-    [highlight],
   );
 
   useEffect(() => {
