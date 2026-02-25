@@ -1,0 +1,80 @@
+---
+title: Installation
+description: Install diffgazer globally or use npx.
+---
+
+# Installation
+
+## Quick Install
+
+```bash
+npm install -g diffgazer
+```
+
+Or run without installing:
+
+```bash
+npx diffgazer
+```
+
+## System Requirements
+
+| Requirement | Minimum |
+|-------------|---------|
+| **Node.js** | 20.0+ |
+| **Git** | 2.20+ |
+| **OS** | macOS, Linux, Windows |
+
+## Verify Installation
+
+```bash
+diffgazer --help
+```
+
+## First Run
+
+On first launch, diffgazer creates its configuration directory at `~/.diffgazer/` and starts the onboarding wizard in your browser.
+
+```bash
+cd your-project
+diffgazer
+```
+
+The wizard walks through five steps:
+
+1. **Secrets storage** — OS keyring (recommended) or encrypted file
+2. **AI provider** — Gemini (free), Z.AI (free), or OpenRouter
+3. **API key** — Your provider API key
+4. **Model selection** — Choose from available models
+5. **Review preferences** — Default lenses, profile, and severity threshold
+
+Configuration is stored at `~/.diffgazer/config.json`.
+
+## Environment Variables
+
+Override default behavior with environment variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | Server port | `3000` |
+| `DIFFGAZER_HOME` | Config directory | `~/.diffgazer` |
+| `GOOGLE_API_KEY` | Gemini API key (overrides stored key) | — |
+| `ZAI_API_KEY` | Z.AI API key (overrides stored key) | — |
+| `OPENROUTER_API_KEY` | OpenRouter API key (overrides stored key) | — |
+
+## Development Mode
+
+For local development with hot-reload:
+
+```bash
+diffgazer --dev
+```
+
+This starts the API server on port 3000 and the web dev server on port 3001 as separate processes.
+
+## Uninstall
+
+```bash
+npm uninstall -g diffgazer
+rm -rf ~/.diffgazer
+```

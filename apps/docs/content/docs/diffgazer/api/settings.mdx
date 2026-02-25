@@ -1,0 +1,93 @@
+---
+title: Settings API
+description: Read and update settings via REST.
+---
+
+# Settings API
+
+Read and update application settings and manage project trust.
+
+## Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/settings` | Get all settings |
+| POST | `/api/settings` | Update settings |
+| GET | `/api/settings/trust` | Get trust config for a project |
+| GET | `/api/settings/trust/list` | List all trusted projects |
+| POST | `/api/settings/trust` | Save trust config |
+| DELETE | `/api/settings/trust` | Remove trust for a project |
+
+## Get Settings
+
+```bash
+curl http://127.0.0.1:3000/api/settings
+```
+
+```json
+{
+  "theme": "auto",
+  "defaultLenses": ["correctness", "security", "performance", "simplicity", "tests"],
+  "defaultProfile": null,
+  "severityThreshold": "low",
+  "secretsStorage": "keyring",
+  "agentExecution": "parallel"
+}
+```
+
+## Update Settings
+
+```bash
+curl -X POST http://127.0.0.1:3000/api/settings \
+  -H "Content-Type: application/json" \
+  -d '{
+    "theme": "terminal",
+    "defaultProfile": "strict",
+    "severityThreshold": "medium",
+    "agentExecution": "sequential"
+  }'
+```
+
+Body limit: 10 MB. Validated with Zod schemas. Partial updates are supported — only include fields you want to change.
+
+## Trust Management
+
+### Get Trust Status
+
+```bash
+curl "http://127.0.0.1:3000/api/settings/trust?projectId=my-project"
+```
+
+Returns the trust configuration for a specific project, or 404 if not trusted.
+
+### List Trusted Projects
+
+```bash
+curl http://127.0.0.1:3000/api/settings/trust/list
+```
+
+Returns all projects with active trust configurations.
+
+### Trust a Project
+
+```bash
+curl -X POST http://127.0.0.1:3000/api/settings/trust \
+  -H "Content-Type: application/json" \
+  -d '{
+    "projectId": "my-project",
+    "repoRoot": "/Users/dev/projects/my-project",
+    "capabilities": {
+      "readFiles": true,
+      "runCommands": true
+    },
+    "trustMode": "persistent"
+  }'
+```
+
+### Revoke Trust
+
+```bash
+curl -X DELETE "http://127.0.0.1:3000/api/settings/trust?projectId=my-project"
+```
+
+Removes trust for the specified project. The project's files will no longer be accessible to diffgazer until re-trusted.

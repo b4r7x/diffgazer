@@ -1,0 +1,59 @@
+---
+title: Git API
+description: Access repository status and diffs.
+---
+
+# Git API
+
+Read git repository status and diffs. All git endpoints require project trust (trust guard middleware).
+
+## Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/git/status` | Get repository status |
+| GET | `/api/git/diff` | Get diff for changes |
+
+## Get Repository Status
+
+```bash
+curl "http://127.0.0.1:3000/api/git/status?path=/path/to/repo"
+```
+
+### Query Parameters
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `path` | Yes | Absolute path to the git repository |
+
+### Response
+
+Returns information about the repository state:
+
+- Staged files
+- Unstaged modifications
+- Untracked files
+- Current branch and HEAD commit
+
+## Get Diff
+
+```bash
+curl "http://127.0.0.1:3000/api/git/diff?mode=staged"
+```
+
+### Query Parameters
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `mode` | No | `staged` (default) or `unstaged` |
+
+### Modes
+
+| Mode | Git Equivalent | Description |
+|------|----------------|-------------|
+| `staged` | `git diff --cached` | Changes in the staging area |
+| `unstaged` | `git diff` | Uncommitted working tree changes |
+
+### Response
+
+Returns the unified diff output for the requested mode. The diff is capped at 512 KB to prevent excessive API costs when sent to AI providers.

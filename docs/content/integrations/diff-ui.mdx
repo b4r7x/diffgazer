@@ -1,0 +1,53 @@
+---
+title: diff-ui Integration
+description: Using diff-ui terminal components in your project.
+---
+
+# diff-ui Integration
+
+[diff-ui](/diff-ui/docs) is a terminal-inspired React UI component library that powers diffgazer's browser interface. It provides 45 registry items including components, hooks, and a theme system.
+
+## Relationship to Diffgazer
+
+Diffgazer's web UI is built with diff-ui components. The terminal aesthetic — monospace fonts, command-line styling, and keyboard-first navigation — comes from diff-ui.
+
+If you're building tools with a similar aesthetic, you can use diff-ui in your own React projects.
+
+## Installation
+
+Install components individually using the diff-ui CLI:
+
+```bash
+npx diffui add button
+npx diffui add card
+npx diffui add command-palette
+```
+
+Or use the shadcn CLI for online installation:
+
+```bash
+npx shadcn add --registry https://diffgazer.com/r/diff-ui button
+```
+
+Components are copied into your project (shadcn-style) — no runtime dependency on diff-ui.
+
+## Key Components
+
+| Component | Description |
+|-----------|-------------|
+| `button` | Terminal-styled button with variants |
+| `card` | Content container with terminal borders |
+| `command-palette` | Keyboard-driven command launcher |
+| `code-block` | Syntax-highlighted code display |
+| `diff-viewer` | Side-by-side diff visualization |
+| `terminal` | Terminal emulator component |
+
+## Tech Stack
+
+- **React 19** with TypeScript
+- **Tailwind CSS v4** with CVA for variants
+- **Keyscope hooks** for keyboard navigation
+
+## Learn More
+
+See the [diff-ui documentation](/diff-ui/docs) for the full component registry, API reference, and usage guides.

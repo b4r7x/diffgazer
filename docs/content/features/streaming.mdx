@@ -1,0 +1,77 @@
+---
+title: Streaming Reviews
+description: Watch reviews happen in real-time as AI agents analyze your code.
+---
+
+# Streaming Reviews
+
+Diffgazer streams review results in real-time using Server-Sent Events (SSE). You see findings as each lens completes its analysis — no waiting for the entire review to finish.
+
+## How It Works
+
+When you start a review:
+
+1. The server creates a review session
+2. Each selected lens begins analyzing the diff
+3. Results stream to the browser as SSE events
+4. The UI updates incrementally as findings arrive
+
+## Execution Modes
+
+### Parallel
+
+All selected lenses run simultaneously. Faster overall completion, but requires a provider that supports concurrent requests.
+
+Best with: Gemini, OpenRouter (depending on model)
+
+### Sequential
+
+Lenses run one at a time. Slower, but compatible with all providers and avoids rate limits.
+
+Best with: Z.AI, rate-limited models
+
+Configure in settings:
+
+```json
+{
+  "agentExecution": "parallel"
+}
+```
+
+## Session Management
+
+Each review creates a session that tracks progress:
+
+- **Maximum concurrent sessions**: 50
+- **Session timeout**: 30 minutes
+- **Resumable**: If the browser disconnects, reconnect to the same session to continue receiving results
+
+### Active Sessions
+
+Check for an active session:
+
+```bash
+curl http://127.0.0.1:3000/api/review/sessions/active
+```
+
+### Resume a Session
+
+Reconnect to a running review:
+
+```bash
+curl http://127.0.0.1:3000/api/review/reviews/:id/stream
+```
+
+## SSE Event Stream
+
+The `/api/review/stream` endpoint returns a stream of events:
+
+```
+GET /api/review/stream?mode=staged&lenses=correctness,security
+```
+
+The stream delivers events as each lens produces findings, allowing the UI to render results progressively. The connection stays open until all lenses complete or the session times out.
+
+## Diff Size Limits
+
+To prevent excessive API costs and timeouts, diffs are capped at **512 KB**. Large diffs should be split into smaller commits or reviewed in parts.

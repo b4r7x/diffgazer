@@ -1,0 +1,67 @@
+---
+title: Issue Drilldowns
+description: Deep-dive into any issue for root cause analysis and suggested fixes.
+---
+
+# Issue Drilldowns
+
+When a review surfaces an issue, you can drill down for a detailed analysis. Drilldowns use the AI to provide deeper context about a specific finding.
+
+## What You Get
+
+Each drilldown provides:
+
+### Root Cause
+
+Why the issue exists. The AI analyzes the surrounding code context, git blame data, and the nature of the change to explain what introduced the problem.
+
+### Impact Assessment
+
+What could go wrong if the issue isn't addressed. Ranges from theoretical edge cases to production-breaking scenarios.
+
+### Suggested Fix
+
+A concrete explanation of how to resolve the issue, including the reasoning behind the approach.
+
+### Patch
+
+A code diff you can apply directly. Shows the exact changes needed in the affected files.
+
+### Related Issues
+
+Links to other findings in the same review that may be connected — for example, a missing null check (correctness) that also causes a potential crash (security).
+
+## Using Drilldowns
+
+### In the UI
+
+Click any issue in the review results to expand its drilldown. The AI generates the analysis on demand.
+
+### Via API
+
+```bash
+curl -X POST http://127.0.0.1:3000/api/review/reviews/:id/drilldown \
+  -H "Content-Type: application/json" \
+  -d '{"issueId": "issue-1"}'
+```
+
+The response includes all drilldown fields:
+
+```json
+{
+  "rootCause": "The variable is read before the null check on line 42...",
+  "impact": "Throws TypeError in production when user has no profile...",
+  "suggestedFix": "Move the null check above the property access...",
+  "patch": "--- a/src/user.ts\n+++ b/src/user.ts\n@@ -40,3 +40,4 @@...",
+  "relatedIssues": ["issue-3"]
+}
+```
+
+## When to Drill Down
+
+Drilldowns are most useful for:
+
+- **Complex findings** where the severity isn't obvious
+- **Unfamiliar code** where you need more context
+- **Disputed findings** where you want to verify the AI's reasoning
+- **Teaching moments** where junior developers can learn from the analysis

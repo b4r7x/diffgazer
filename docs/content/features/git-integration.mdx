@@ -1,0 +1,78 @@
+---
+title: Git Integration
+description: Review staged or unstaged changes with blame enrichment.
+---
+
+# Git Integration
+
+Diffgazer reads your git repository directly to analyze changes. No manual copy-pasting of diffs — point it at a repo and review.
+
+## Review Modes
+
+### Staged
+
+Reviews only changes in the git staging area (`git add`). This is the recommended workflow — stage what you want reviewed, then run diffgazer.
+
+```bash
+git add -p           # Stage specific changes
+diffgazer            # Review staged changes
+```
+
+### Unstaged
+
+Reviews all uncommitted changes in the working tree, including untracked files. Useful for reviewing work-in-progress before staging.
+
+Select the mode in the UI or via the API:
+
+```bash
+curl "http://127.0.0.1:3000/api/git/diff?mode=staged"
+curl "http://127.0.0.1:3000/api/git/diff?mode=unstaged"
+```
+
+## Git Blame Enrichment
+
+Diffgazer enriches diffs with git blame data. The AI knows:
+
+- **Who wrote** the surrounding code
+- **When** lines were last modified
+- **Which commit** introduced specific patterns
+
+This context helps the AI distinguish between new issues introduced by your changes and pre-existing patterns in the codebase.
+
+## Repository Status
+
+Check the current state of the repository:
+
+```bash
+curl "http://127.0.0.1:3000/api/git/status?path=/path/to/repo"
+```
+
+Returns information about:
+
+- Staged files
+- Unstaged modifications
+- Untracked files
+- Current branch
+
+## Project Context
+
+Beyond the diff, diffgazer builds a project context snapshot that includes:
+
+- **File tree** — Directory structure for understanding project layout
+- **README** — Project description and setup instructions
+- **Config files** — `package.json`, `tsconfig.json`, etc.
+- **Dependency graph** — Understanding of project dependencies
+
+This context is sent to the AI alongside the diff so it can make informed suggestions that fit your project's patterns.
+
+Refresh the context manually:
+
+```bash
+curl -X POST http://127.0.0.1:3000/api/review/context/refresh
+```
+
+Or retrieve the current snapshot:
+
+```bash
+curl http://127.0.0.1:3000/api/review/context
+```

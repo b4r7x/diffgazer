@@ -14,7 +14,9 @@ import {
 } from "@/components/docs-page"
 import { useMDXComponents } from "@/mdx-components"
 import type { ComponentData } from "@/types/docs-data"
+import type { HookData } from "@/components/docs-mdx/hook-doc-context"
 import { ComponentDocDataProvider, useComponentDocData } from "@/components/docs-mdx"
+import { HookDocDataProvider, useHookDocData } from "@/components/docs-mdx"
 import {
   getDocsLibraryConfig,
   parseDocsLibrary,
@@ -28,6 +30,7 @@ interface LoaderData {
   title: string
   description?: string
   component?: string
+  hook?: string
   library: DocsLibraryId
 }
 
@@ -45,11 +48,21 @@ export const Route = createFileRoute("/$lib/docs/$")({
       componentData = mod.default as ComponentData
     }
 
+    let hookData: HookData | null = null
+    if (data.hook && /^[a-z0-9-]+$/.test(data.hook)) {
+      try {
+        const mod = await import(`../../../generated/${library}/hooks/${data.hook}.json`)
+        hookData = mod.default as HookData
+      } catch {
+        // Hook data not available yet
+      }
+    }
+
     if (typeof window !== "undefined") {
       await clientLoader.preload(data.path)
     }
 
-    return { ...data, componentData }
+    return { ...data, componentData, hookData }
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -75,17 +88,21 @@ const serverLoader = createServerFn({ method: "GET" })
       title: page.data.title,
       description: page.data.description,
       component: page.data.component,
+      hook: page.data.hook,
       library: data.library,
     }
   })
 
 const clientLoader = browserCollections.docs.createClientLoader({
   component({ toc, frontmatter, default: MDX }) {
-    const showToc = typeof frontmatter.component !== "string"
+    const showToc = typeof frontmatter.component !== "string" && typeof frontmatter.hook !== "string"
     const componentData = useComponentDocData(frontmatter.component)
-    const title = componentData?.title ?? frontmatter.title
+    const hookData = useHookDocData(frontmatter.hook)
+    const title = componentData?.title ?? hookData?.title ?? frontmatter.title
     const description = componentData?.docs?.description
       ?? componentData?.description
+      ?? hookData?.docs?.description
+      ?? hookData?.description
       ?? frontmatter.description
 
     return (
@@ -93,7 +110,7 @@ const clientLoader = browserCollections.docs.createClientLoader({
         <DocsPageHeader
           title={title}
           description={description}
-          tags={componentData?.docs?.tags}
+          tags={componentData?.docs?.tags ?? hookData?.docs?.tags}
         />
         <DocsPageBody>
           <MDX components={useMDXComponents()} />
@@ -139,6 +156,7 @@ function Page() {
       tree={pageTree}
       library={library}
       componentData={data.componentData}
+      hookData={data.hookData}
     />
   )
 }
@@ -156,18 +174,22 @@ function MdxDocsPage({
   tree,
   library,
   componentData,
+  hookData,
 }: {
   path: string
   tree: PageTree
   library: DocsLibraryId
   componentData: ComponentData | null
+  hookData: HookData | null
 }) {
   return (
     <DocsContentLayout tree={tree} library={library}>
       <ComponentDocDataProvider value={componentData}>
-        <Suspense fallback={<ContentSpinner />}>
-          <MdxContent path={path} />
-        </Suspense>
+        <HookDocDataProvider value={hookData}>
+          <Suspense fallback={<ContentSpinner />}>
+            <MdxContent path={path} />
+          </Suspense>
+        </HookDocDataProvider>
       </ComponentDocDataProvider>
     </DocsContentLayout>
   )

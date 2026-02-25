@@ -1,0 +1,116 @@
+---
+title: Review API
+description: Start reviews, stream results, and manage review sessions.
+---
+
+# Review API
+
+Start AI code reviews, stream results in real-time, manage sessions, and access review history.
+
+All review endpoints require project trust and a configured AI provider (setup guard).
+
+## Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/review/stream` | Start a new review (SSE stream) |
+| GET | `/api/review/reviews/:id/stream` | Resume an active review session |
+| GET | `/api/review/sessions/active` | Get active session for project |
+| GET | `/api/review/context` | Get project context snapshot |
+| POST | `/api/review/context/refresh` | Rebuild project context |
+| GET | `/api/review/reviews` | List all reviews for project |
+| GET | `/api/review/reviews/:id` | Get a specific review |
+| DELETE | `/api/review/reviews/:id` | Delete a review |
+| POST | `/api/review/reviews/:id/drilldown` | Deep-dive analysis on an issue |
+
+## Start Review (SSE)
+
+```bash
+curl -N "http://127.0.0.1:3000/api/review/stream?mode=staged&lenses=correctness,security"
+```
+
+### Query Parameters
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `mode` | Yes | `staged` or `unstaged` |
+| `lenses` | Yes | Comma-separated lens IDs |
+| `files` | No | Comma-separated file paths to filter |
+
+Returns a Server-Sent Events stream. The connection stays open until all lenses complete or the session times out (30 minutes).
+
+## Resume Review
+
+```bash
+curl -N http://127.0.0.1:3000/api/review/reviews/:id/stream
+```
+
+Reconnects to an in-progress review session. Useful if the browser disconnects during a review.
+
+## Active Session
+
+```bash
+curl http://127.0.0.1:3000/api/review/sessions/active
+```
+
+Returns the currently active review session for the project, if any.
+
+## Project Context
+
+### Get Context
+
+```bash
+curl http://127.0.0.1:3000/api/review/context
+```
+
+Returns the project context snapshot including file tree, README content, configuration metadata, and dependency graph. This context is sent to AI alongside the diff.
+
+### Refresh Context
+
+```bash
+curl -X POST http://127.0.0.1:3000/api/review/context/refresh
+```
+
+Rebuilds the project context from the current state of the repository.
+
+## Review History
+
+### List Reviews
+
+```bash
+curl http://127.0.0.1:3000/api/review/reviews
+```
+
+Returns all stored reviews for the current project. Includes review metadata, lens results, and finding counts.
+
+### Get Review
+
+```bash
+curl http://127.0.0.1:3000/api/review/reviews/:id
+```
+
+Returns the full review including all findings from each lens.
+
+### Delete Review
+
+```bash
+curl -X DELETE http://127.0.0.1:3000/api/review/reviews/:id
+```
+
+## Issue Drilldown
+
+```bash
+curl -X POST http://127.0.0.1:3000/api/review/reviews/:id/drilldown \
+  -H "Content-Type: application/json" \
+  -d '{"issueId": "issue-1"}'
+```
+
+Performs a deep-dive analysis on a specific issue from a review. Returns root cause, impact, suggested fix, patch, and related issues.
+
+## Session Limits
+
+| Limit | Value |
+|-------|-------|
+| Maximum concurrent sessions | 50 |
+| Session timeout | 30 minutes |
+| Maximum diff size | 512 KB |

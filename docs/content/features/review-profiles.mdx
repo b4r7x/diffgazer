@@ -1,0 +1,95 @@
+---
+title: Review Profiles
+description: Preset lens combinations for different review scenarios.
+---
+
+# Review Profiles
+
+Review profiles are preset combinations of lenses and severity filters. Instead of manually selecting lenses for each review, pick a profile that matches your intent.
+
+## Available Profiles
+
+### Quick
+
+Fast check for obvious issues. Best for small changes and WIP reviews.
+
+| Setting | Value |
+|---------|-------|
+| **Lenses** | Correctness |
+| **Min Severity** | High |
+
+Runs only the correctness lens and filters out everything below high severity. Fastest review possible.
+
+### Strict
+
+Thorough analysis across multiple domains. Best for pre-merge reviews.
+
+| Setting | Value |
+|---------|-------|
+| **Lenses** | Correctness, Security, Tests |
+| **Min Severity** | None (all severities) |
+
+Covers correctness, security vulnerabilities, and test coverage. Shows all findings including nits.
+
+### Perf
+
+Focused on correctness and performance. Best for performance-sensitive changes.
+
+| Setting | Value |
+|---------|-------|
+| **Lenses** | Correctness, Performance |
+| **Min Severity** | Medium |
+
+Catches bugs and performance issues, filtering out low-priority items.
+
+### Security
+
+Security-focused audit. Best for code touching auth, data handling, or external inputs.
+
+| Setting | Value |
+|---------|-------|
+| **Lenses** | Security, Correctness |
+| **Min Severity** | None (all severities) |
+
+Prioritizes security findings alongside correctness checks. Shows all severities — even nits can matter for security.
+
+## Profile Comparison
+
+| Profile | Lenses | Filter | Speed | Depth |
+|---------|--------|--------|-------|-------|
+| **Quick** | 1 | High+ | ⚡ Fast | Shallow |
+| **Strict** | 3 | All | 🐢 Slow | Deep |
+| **Perf** | 2 | Medium+ | ⚡ Medium | Focused |
+| **Security** | 2 | All | ⚡ Medium | Deep (security) |
+
+## Using Profiles
+
+### In the UI
+
+Select a profile from the dropdown before starting a review. The lens toggles update automatically.
+
+### In Settings
+
+Set a default profile that applies to all new reviews:
+
+```json
+{
+  "defaultProfile": "strict"
+}
+```
+
+Set to `null` to use manual lens selection by default.
+
+### Override Per Review
+
+Selecting a profile in the UI pre-fills the lens selection. You can still toggle individual lenses before starting the review — the profile is a starting point, not a lock.
+
+## When to Use Each
+
+| Scenario | Profile |
+|----------|---------|
+| Quick sanity check during development | Quick |
+| PR ready for merge | Strict |
+| Optimizing a hot path | Perf |
+| Code handling user input, auth, or secrets | Security |
+| Custom lens selection needed | No profile |

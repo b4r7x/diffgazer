@@ -7,6 +7,7 @@ export const docs = defineDocs({
   docs: {
     schema: frontmatterSchema.extend({
       component: z.string().optional(),
+      hook: z.string().optional(),
     }),
   },
 })
