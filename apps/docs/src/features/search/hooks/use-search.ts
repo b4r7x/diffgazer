@@ -1,11 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react"
-import { useLocation } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { searchAPI } from "@/lib/search-server"
 import {
   docsPath,
-  getDocsLibraryFromPathname,
   routeSlugsFromSourcePath,
+  DOCS_LIBRARY_IDS,
 } from "@/lib/docs-library"
 
 export interface SearchResult {
@@ -14,6 +13,7 @@ export interface SearchResult {
   title: string
   excerpt: string
   section: string
+  library: string
 }
 
 interface ServerSearchResult {
@@ -28,7 +28,7 @@ const doSearch = createServerFn({ method: "GET" })
   .inputValidator((query: string) => query)
   .handler(async ({ data: query }): Promise<ServerSearchResult[]> => {
     const results = await searchAPI.search(query)
-    return results.slice(0, 8).map((result) => ({
+    return results.slice(0, 16).map((result) => ({
       id: result.id,
       url: result.url,
       type: result.type,
@@ -37,12 +37,23 @@ const doSearch = createServerFn({ method: "GET" })
     }))
   })
 
+function stripMarkTags(html: string): string {
+  return html.replace(/<\/?mark>/g, "")
+}
+
+const SOURCE_DOCS_PREFIX = "/docs/"
+
+function parseLibraryFromUrl(url: string): string | null {
+  if (!url.startsWith(SOURCE_DOCS_PREFIX)) return null
+  const rest = url.slice(SOURCE_DOCS_PREFIX.length)
+  const lib = rest.split("/")[0]
+  return lib && DOCS_LIBRARY_IDS.includes(lib) ? lib : null
+}
+
 export function useSearch() {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<SearchResult[]>([])
   const generation = useRef(0)
-  const pathname = useLocation({ select: (location) => location.pathname })
-  const activeLibrary = getDocsLibraryFromPathname(pathname) ?? "diff-ui"
 
   useEffect(() => {
     if (!query.trim()) {
@@ -58,19 +69,24 @@ export function useSearch() {
 
         setResults(
           items.flatMap((item) => {
-            const routeSlugs = routeSlugsFromSourcePath(activeLibrary, item.url)
+            const library = parseLibraryFromUrl(item.url)
+            if (!library) return []
+
+            const routeSlugs = routeSlugsFromSourcePath(library, item.url)
             if (!routeSlugs) return []
 
-            const url = docsPath(activeLibrary, routeSlugs)
+            const url = docsPath(library, routeSlugs)
             return [{
               id: item.id,
               url,
-              title:
+              title: stripMarkTags(
                 item.type === "page"
                   ? item.content
-                  : (item.breadcrumbs[item.breadcrumbs.length - 1] ?? item.content),
-              excerpt: item.type !== "page" ? item.content : "",
+                  : (item.breadcrumbs[item.breadcrumbs.length - 1] ?? item.content)
+              ),
+              excerpt: item.type !== "page" ? stripMarkTags(item.content) : "",
               section: url.match(/^\/[^/]+\/docs\/([^/]+)/)?.[1] ?? "general",
+              library,
             }]
           }),
         )
@@ -80,7 +96,7 @@ export function useSearch() {
         if (import.meta.env.DEV) console.warn("Search failed:", err)
         setResults([])
       })
-  }, [activeLibrary, query])
+  }, [query])
 
   const reset = useCallback(() => {
     setQuery("")

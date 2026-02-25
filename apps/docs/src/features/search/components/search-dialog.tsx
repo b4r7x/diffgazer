@@ -22,7 +22,16 @@ const SECTION_LABELS: Record<string, string> = {
   keyscope: "Keyscope",
   api: "API",
   guides: "Guides",
+  hooks: "Hooks",
+  features: "Features",
+  configuration: "Configuration",
   general: "Docs",
+}
+
+const LIBRARY_LABELS: Record<string, string> = {
+  "diff-ui": "diff-ui",
+  keyscope: "keyscope",
+  diffgazer: "diffgazer",
 }
 
 export function SearchDialog() {
@@ -71,12 +80,14 @@ export function SearchDialog() {
                     <span className="text-[10px] text-muted-foreground">
                       {SECTION_LABELS[result.section] ?? result.section}
                     </span>
+                    <span className="text-[10px] text-muted-foreground/50">
+                      {LIBRARY_LABELS[result.library] ?? result.library}
+                    </span>
                   </div>
                   {result.excerpt && (
-                    <span
-                      className="text-xs text-muted-foreground truncate [&_mark]:text-foreground [&_mark]:bg-transparent [&_mark]:font-medium"
-                      dangerouslySetInnerHTML={{ __html: result.excerpt }}
-                    />
+                    <span className="text-xs text-muted-foreground truncate">
+                      {result.excerpt}
+                    </span>
                   )}
                 </div>
               </CommandPaletteItem>
@@ -85,13 +96,13 @@ export function SearchDialog() {
         <CommandPaletteFooter>
           <div className="flex gap-3">
             <span className="flex items-center gap-1">
-              <span className="bg-border px-1 rounded text-gray-300">
+              <span className="bg-border px-1 rounded text-muted-foreground">
                 ↑↓
               </span>{" "}
               Navigate
             </span>
             <span className="flex items-center gap-1">
-              <span className="bg-border px-1 rounded text-gray-300">
+              <span className="bg-border px-1 rounded text-muted-foreground">
                 ↵
               </span>{" "}
               Select
