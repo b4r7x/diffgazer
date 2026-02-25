@@ -1,0 +1,18 @@
+{
+  "title": "Diffgazer",
+  "root": true,
+  "pages": [
+    "---Getting Started---",
+    "...getting-started",
+    "---Features---",
+    "...features",
+    "---Configuration---",
+    "...configuration",
+    "---CLI---",
+    "...cli",
+    "---API Reference---",
+    "...api",
+    "---Integrations---",
+    "...integrations"
+  ]
+}

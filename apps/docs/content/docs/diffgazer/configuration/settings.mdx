@@ -1,0 +1,112 @@
+---
+title: Settings
+description: Customize diffgazer behavior and preferences.
+---
+
+# Settings
+
+Diffgazer settings control default behavior for reviews, UI appearance, and agent execution. Configuration is stored at `~/.diffgazer/config.json`.
+
+## Settings Schema
+
+```json
+{
+  "theme": "auto",
+  "defaultLenses": ["correctness", "security", "performance", "simplicity", "tests"],
+  "defaultProfile": null,
+  "severityThreshold": "low",
+  "secretsStorage": "keyring",
+  "agentExecution": "parallel"
+}
+```
+
+## Options
+
+### theme
+
+Controls the UI color scheme.
+
+| Value | Description |
+|-------|-------------|
+| `"auto"` | Follow system preference |
+| `"dark"` | Dark theme |
+| `"light"` | Light theme |
+| `"terminal"` | Terminal-inspired theme |
+
+### defaultLenses
+
+Array of lens IDs to enable by default when starting a new review.
+
+```json
+["correctness", "security", "performance", "simplicity", "tests"]
+```
+
+Valid values: `"correctness"`, `"security"`, `"performance"`, `"simplicity"`, `"tests"`
+
+### defaultProfile
+
+Default review profile. Set to a profile ID or `null` for manual lens selection.
+
+Valid values: `"quick"`, `"strict"`, `"perf"`, `"security"`, `null`
+
+### severityThreshold
+
+Minimum severity level to display in review results.
+
+| Value | Shows |
+|-------|-------|
+| `"blocker"` | Blockers only |
+| `"high"` | Blocker + High |
+| `"medium"` | Blocker + High + Medium |
+| `"low"` | All except Nit |
+| `"nit"` | Everything |
+
+### secretsStorage
+
+How API keys are stored.
+
+| Value | Description |
+|-------|-------------|
+| `"keyring"` | OS credential manager (recommended) |
+| `"file"` | Encrypted file in `~/.diffgazer/` |
+
+### agentExecution
+
+How lenses run during a review.
+
+| Value | Description |
+|-------|-------------|
+| `"parallel"` | All lenses run simultaneously (faster) |
+| `"sequential"` | Lenses run one at a time (rate-limit safe) |
+
+## Reading Settings
+
+### Via API
+
+```bash
+curl http://127.0.0.1:3000/api/settings
+```
+
+### Via Config File
+
+```bash
+cat ~/.diffgazer/config.json
+```
+
+## Updating Settings
+
+### Via API
+
+```bash
+curl -X POST http://127.0.0.1:3000/api/settings \
+  -H "Content-Type: application/json" \
+  -d '{
+    "theme": "terminal",
+    "defaultProfile": "strict",
+    "severityThreshold": "medium"
+  }'
+```
+
+### Via UI
+
+Open settings from the diffgazer interface to modify preferences interactively.

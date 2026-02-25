@@ -1,0 +1,82 @@
+---
+title: Quick Start
+description: Run your first code review in under a minute.
+---
+
+# Quick Start
+
+Get your first AI code review in under a minute.
+
+## 1. Install
+
+```bash
+npm install -g diffgazer
+```
+
+## 2. Get an API Key
+
+Diffgazer needs an AI provider. The fastest option is **Google Gemini** — it's the default and has a generous free tier.
+
+1. Go to [Google AI Studio](https://aistudio.google.com/apikey)
+2. Create an API key
+3. Copy it to your clipboard
+
+## 3. Start Diffgazer
+
+```bash
+cd your-project
+diffgazer
+```
+
+Your browser opens to `http://localhost:3000`. Complete the onboarding wizard:
+
+- Select **OS keyring** for secrets storage
+- Choose **Gemini** as your provider
+- Paste your API key
+- Select **gemini-2.5-flash** (recommended)
+- Keep default review preferences
+
+## 4. Trust the Project
+
+Diffgazer asks you to trust the project before accessing its files. Click **Trust** to proceed.
+
+## 5. Make Some Changes
+
+Stage changes in your project:
+
+```bash
+git add -p
+```
+
+## 6. Run a Review
+
+In the diffgazer UI:
+
+1. Select **Staged** mode to review your staged changes
+2. Choose a review profile — **Quick** for a fast check, **Strict** for thorough analysis
+3. Click **Start Review**
+
+Results stream in real-time. Each lens produces findings with severity levels:
+
+| Severity | Meaning |
+|----------|---------|
+| **Blocker** | Must fix before merging |
+| **High** | Serious issue, should fix |
+| **Medium** | Worth addressing |
+| **Low** | Minor improvement |
+| **Nit** | Style or preference |
+
+## 7. Drill Down
+
+Click any issue to get a detailed drilldown:
+
+- **Root cause** — Why the issue exists
+- **Impact** — What could go wrong
+- **Suggested fix** — How to resolve it
+- **Patch** — Code diff you can apply
+
+## Next Steps
+
+- [Review Lenses](/diffgazer/docs/features/review-lenses) — What each AI agent looks for
+- [Review Profiles](/diffgazer/docs/features/review-profiles) — Preset configurations
+- [AI Providers](/diffgazer/docs/configuration/providers) — Configure Gemini, Z.AI, or OpenRouter

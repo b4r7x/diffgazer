@@ -1,0 +1,92 @@
+---
+title: Project Trust
+description: Manage which projects diffgazer can review.
+---
+
+# Project Trust
+
+Diffgazer requires explicit trust before accessing any repository. This prevents accidental review of sensitive projects and ensures you control which codebases diffgazer can read.
+
+## Trust Model
+
+Each trusted project has:
+
+```json
+{
+  "projectId": "my-project",
+  "repoRoot": "/Users/dev/projects/my-project",
+  "trustedAt": "2025-01-15T10:30:00.000Z",
+  "capabilities": {
+    "readFiles": true,
+    "runCommands": true
+  },
+  "trustMode": "persistent"
+}
+```
+
+### Fields
+
+| Field | Description |
+|-------|-------------|
+| `projectId` | Unique identifier for the project |
+| `repoRoot` | Absolute path to the git repository root |
+| `trustedAt` | ISO 8601 timestamp when trust was granted |
+| `capabilities.readFiles` | Allow diffgazer to read project files |
+| `capabilities.runCommands` | Allow diffgazer to run git commands in the project |
+| `trustMode` | `"persistent"` (survives restarts) or `"session"` (current session only) |
+
+## Trust Modes
+
+### Persistent
+
+Trust persists across diffgazer restarts. Stored in configuration. Use for projects you review regularly.
+
+### Session
+
+Trust is granted only for the current diffgazer session. When the server stops, trust is revoked. Use for one-off reviews of unfamiliar projects.
+
+## Managing Trust
+
+### Via UI
+
+When you navigate to a new project, diffgazer prompts you to trust it. You can also manage trusted projects from the settings page.
+
+### List Trusted Projects
+
+```bash
+curl http://127.0.0.1:3000/api/settings/trust/list
+```
+
+### Check Trust Status
+
+```bash
+curl "http://127.0.0.1:3000/api/settings/trust?projectId=my-project"
+```
+
+### Trust a Project
+
+```bash
+curl -X POST http://127.0.0.1:3000/api/settings/trust \
+  -H "Content-Type: application/json" \
+  -d '{
+    "projectId": "my-project",
+    "repoRoot": "/Users/dev/projects/my-project",
+    "capabilities": {
+      "readFiles": true,
+      "runCommands": true
+    },
+    "trustMode": "persistent"
+  }'
+```
+
+### Revoke Trust
+
+```bash
+curl -X DELETE "http://127.0.0.1:3000/api/settings/trust?projectId=my-project"
+```
+
+## Security
+
+- The trust guard middleware blocks all git and review API calls for untrusted projects
+- Path traversal is prevented — `..` in paths is rejected, and all paths are validated with `realpath`
+- Trust decisions are explicit — diffgazer never auto-trusts a project

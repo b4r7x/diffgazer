@@ -1,0 +1,15 @@
+{
+  "library": "diffgazer",
+  "displayName": "Diffgazer",
+  "docs": {
+    "format": "mdx",
+    "contentDir": "docs/content",
+    "metaFile": "docs/content/meta.json",
+    "assetsDir": "docs/assets"
+  },
+  "registry": {
+    "namespace": "@diffgazer",
+    "basePath": "/r/diffgazer",
+    "publicDir": "public/r"
+  }
+}

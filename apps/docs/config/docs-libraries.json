@@ -30,8 +30,12 @@
       "displayName": "Diffgazer",
       "logoText": "diffgazer",
       "githubUrl": "https://github.com/diffgazer",
-      "enabled": false,
-      "defaultRouteSlugs": []
+      "enabled": true,
+      "defaultRouteSlugs": ["getting-started"],
+      "artifactSource": {
+        "workspaceDir": "diffgazer",
+        "packageName": "@b4r7x/diffgazer-artifacts"
+      }
     }
   ]
 }

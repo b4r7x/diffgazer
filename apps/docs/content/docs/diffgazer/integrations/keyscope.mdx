@@ -1,0 +1,68 @@
+---
+title: Keyscope Integration
+description: Keyboard navigation hooks used in diffgazer.
+---
+
+# Keyscope Integration
+
+[Keyscope](/keyscope/docs) is a React 19 keyboard navigation library that provides scoped hotkeys, list navigation, focus zones, and focus trapping. Diffgazer uses keyscope hooks throughout its UI for keyboard-driven interaction.
+
+## Relationship to Diffgazer
+
+Diffgazer's browser UI is keyboard-navigable by default. Keyscope provides the hooks that power:
+
+- **Scoped hotkeys** — Keyboard shortcuts that only fire within specific UI regions
+- **List navigation** — Arrow key navigation through review findings, file lists, and menus
+- **Focus trapping** — Modal dialogs and panels trap focus for accessibility
+- **Focus zones** — Logical groups of focusable elements
+
+## Hook Categories
+
+Keyscope provides two categories of hooks:
+
+### Standalone Hooks (Copy-Paste)
+
+These hooks work independently — no provider required:
+
+| Hook | Description |
+|------|-------------|
+| `useNavigation` | Arrow key list navigation |
+| `useFocusTrap` | Trap focus within a container |
+| `useScrollLock` | Prevent body scroll |
+
+Install with:
+
+```bash
+npx keyscope add useNavigation --mode copy
+```
+
+### Provider-Dependent Hooks (Package)
+
+These hooks require the `KeyboardProvider` context:
+
+| Hook | Description |
+|------|-------------|
+| `useKey` | Register scoped keyboard shortcuts |
+| `useScope` | Manage keyboard scope activation |
+| `useScopedNavigation` | Navigation within a scope |
+| `useFocusZone` | Create focus zones |
+
+Install with:
+
+```bash
+npx keyscope add useKey --mode package
+```
+
+## Usage in diff-ui
+
+Several diff-ui components depend on keyscope hooks:
+
+- **8 components** use `@keyscope/navigation`
+- **2 components** use `@keyscope/focus-trap`
+- **2 components** use `@keyscope/scroll-lock`
+
+When you install these diff-ui components, the keyscope hooks are included as registry dependencies.
+
+## Learn More
+
+See the [keyscope documentation](/keyscope/docs) for the full API reference, hook guides, and examples.

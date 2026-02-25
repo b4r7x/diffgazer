@@ -1,0 +1,110 @@
+---
+title: Review Lenses
+description: Five specialized AI agents analyze your code from different angles.
+---
+
+# Review Lenses
+
+Diffgazer uses five specialized AI agents — called **lenses** — to analyze your code from different perspectives. Each lens has its own system prompt, severity rubric, and area of focus.
+
+## The Five Lenses
+
+### Correctness (Detective — DET)
+
+Finds logic errors, incorrect behavior, and bugs.
+
+**Looks for:**
+- Off-by-one errors
+- Null/undefined handling
+- Incorrect conditionals
+- Race conditions
+- Missing error handling
+- Type mismatches
+
+### Security (Guardian — SEC)
+
+Identifies security vulnerabilities and unsafe patterns.
+
+**Looks for:**
+- Injection vulnerabilities (SQL, XSS, command)
+- Authentication/authorization flaws
+- Insecure data handling
+- Hardcoded secrets
+- Path traversal
+- Unsafe deserialization
+
+### Performance (Optimizer — PERF)
+
+Spots performance issues and optimization opportunities.
+
+**Looks for:**
+- Unnecessary re-renders
+- Missing memoization
+- N+1 queries
+- Memory leaks
+- Inefficient algorithms
+- Unbounded operations
+
+### Simplicity (Simplifier — SIM)
+
+Suggests ways to reduce complexity and improve readability.
+
+**Looks for:**
+- Overly complex logic
+- Dead code
+- Redundant operations
+- Poor naming
+- Missing abstractions
+- Code duplication
+
+### Tests (Tester — TEST)
+
+Evaluates test coverage and quality.
+
+**Looks for:**
+- Missing test cases
+- Untested edge cases
+- Brittle tests
+- Missing assertions
+- Test isolation issues
+- Inadequate error path coverage
+
+## Severity Levels
+
+Each lens assigns a severity to every finding:
+
+| Severity | Description | Action |
+|----------|-------------|--------|
+| **Blocker** | Critical issue that prevents merging | Must fix |
+| **High** | Serious problem that should be addressed | Should fix |
+| **Medium** | Notable issue worth addressing | Consider fixing |
+| **Low** | Minor improvement opportunity | Optional |
+| **Nit** | Style preference or suggestion | At your discretion |
+
+Each lens has its own severity rubric that defines what constitutes a blocker vs. a nit for that specific domain. A security lens blocker (e.g., SQL injection) differs from a simplicity lens blocker (e.g., deeply nested logic making code unmaintainable).
+
+## Selecting Lenses
+
+You can select which lenses to run per review:
+
+- **In the UI** — Toggle individual lenses before starting a review
+- **Via settings** — Set `defaultLenses` in your configuration
+- **Via profiles** — Use a [review profile](/diffgazer/docs/features/review-profiles) for preset combinations
+
+```json
+{
+  "defaultLenses": ["correctness", "security", "performance", "simplicity", "tests"]
+}
+```
+
+## Severity Threshold
+
+Filter out low-priority findings by setting a minimum severity:
+
+```json
+{
+  "severityThreshold": "medium"
+}
+```
+
+This hides `low` and `nit` findings from the review results.

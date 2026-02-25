@@ -1,0 +1,132 @@
+---
+title: AI Providers
+description: Configure Gemini, Z.AI, or OpenRouter for AI-powered reviews.
+---
+
+# AI Providers
+
+Diffgazer supports three AI providers. You need at least one configured to run reviews.
+
+## Google Gemini (Default)
+
+The default provider. Fast, supports parallel execution, and has a generous free tier.
+
+### Setup
+
+1. Get an API key from [Google AI Studio](https://aistudio.google.com/apikey)
+2. Enter it during onboarding or via settings
+
+### Available Models
+
+| Model | Recommended | Notes |
+|-------|-------------|-------|
+| `gemini-2.5-flash` | ✅ | Best balance of speed and quality |
+| `gemini-2.5-flash-lite` | | Fastest, lower quality |
+| `gemini-2.5-pro` | | Highest quality, slower |
+| `gemini-3-flash-preview` | | Preview model |
+| `gemini-3-pro-preview` | | Preview model |
+
+### Environment Variable
+
+```bash
+export GOOGLE_API_KEY=your-key-here
+```
+
+## Z.AI
+
+Free provider with no API key purchase required.
+
+### Setup
+
+1. Get an API key from the Z.AI platform
+2. Enter it during onboarding or via settings
+
+### Available Models
+
+| Model | Recommended | Notes |
+|-------|-------------|-------|
+| `glm-4.7` | ✅ | Best quality |
+| `glm-4.7-flashx` | | Faster variant |
+| `glm-4.7-flash` | | Fastest |
+
+### Environment Variable
+
+```bash
+export ZAI_API_KEY=your-key-here
+```
+
+## OpenRouter
+
+Gateway to Claude, GPT, Llama, and dozens of other models. Requires an OpenRouter account with credits.
+
+### Setup
+
+1. Create an account at [openrouter.ai](https://openrouter.ai)
+2. Add credits and generate an API key
+3. Enter the key during onboarding or via settings
+4. Browse and select from available models
+
+### Model Selection
+
+OpenRouter models are fetched dynamically:
+
+```bash
+curl http://127.0.0.1:3000/api/config/provider/openrouter/models
+```
+
+### Environment Variable
+
+```bash
+export OPENROUTER_API_KEY=your-key-here
+```
+
+## Switching Providers
+
+### Via UI
+
+Go to settings and select a different provider. Your existing provider keys are preserved.
+
+### Via API
+
+Activate a provider with a specific model:
+
+```bash
+curl -X POST http://127.0.0.1:3000/api/config/provider/gemini/activate \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gemini-2.5-flash"}'
+```
+
+Remove a provider:
+
+```bash
+curl -X DELETE http://127.0.0.1:3000/api/config/provider/openrouter
+```
+
+## Provider Comparison
+
+| Provider | Cost | Parallel Execution | Model Quality | Setup Effort |
+|----------|------|--------------------|---------------|--------------|
+| **Gemini** | Free tier | ✅ Full support | High | Low |
+| **Z.AI** | Free tier | ⚠️ Sequential recommended | Good | Low |
+| **OpenRouter** | Pay-per-use | Depends on model | Varies | Medium |
+
+## Execution Mode
+
+Parallel execution runs all lenses simultaneously for faster reviews. Sequential runs them one at a time.
+
+```json
+{
+  "agentExecution": "parallel"
+}
+```
+
+Use `"sequential"` if your provider has strict rate limits or doesn't support concurrent requests.
+
+## Credential Storage
+
+API keys are stored securely:
+
+- **OS keyring** (recommended) — Uses the system credential manager (macOS Keychain, Windows Credential Vault, Linux Secret Service)
+- **File** — Stored in `~/.diffgazer/` with `0600` permissions
+
+Environment variables override stored keys when set.

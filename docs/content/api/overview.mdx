@@ -1,0 +1,78 @@
+---
+title: API Overview
+description: Local REST API running on localhost for programmatic access.
+---
+
+# API Overview
+
+Diffgazer exposes a REST API on `127.0.0.1:3000/api` for all operations. The browser UI communicates through this API, and you can use it directly for scripting and automation.
+
+## Base URL
+
+```
+http://127.0.0.1:3000/api
+```
+
+The port is configurable via the `PORT` environment variable.
+
+## Security
+
+- **Localhost only** — The server binds to `127.0.0.1`, not `0.0.0.0`
+- **CORS** — Restricted to localhost origins
+- **Security headers** — `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`
+- **Host validation** — Protects against DNS rebinding attacks
+- **Body limits** — Request bodies capped at 10–50 MB depending on endpoint
+- **Trust guard** — Git and review endpoints require project trust
+
+## Route Groups
+
+| Group | Prefix | Description |
+|-------|--------|-------------|
+| [Health](#health) | `/health`, `/api/health` | Server health checks |
+| [Config](/diffgazer/docs/api/config) | `/api/config` | Provider and configuration management |
+| [Settings](/diffgazer/docs/api/settings) | `/api/settings` | Application settings and trust |
+| [Git](/diffgazer/docs/api/git) | `/api/git` | Repository status and diffs |
+| [Review](/diffgazer/docs/api/review) | `/api/review` | Reviews, streaming, drilldowns, history |
+| Shutdown | `/api/shutdown` | Graceful server shutdown |
+
+## Health Check
+
+```bash
+curl http://127.0.0.1:3000/health
+```
+
+```bash
+curl http://127.0.0.1:3000/api/health
+```
+
+Both endpoints return a health status. Use either for monitoring or container probes.
+
+## Middleware Stack
+
+The server applies a 7-layer middleware stack to all requests:
+
+1. **Security headers** — Frame protection, MIME sniffing prevention
+2. **CORS** — Localhost-only origin restriction
+3. **Host validation** — DNS rebinding protection
+4. **Body parsing** — Size limits per route group
+5. **Error handling** — Consistent error response format
+6. **Trust guard** — Project trust verification (git/review routes)
+7. **Setup guard** — Configuration validation (review routes)
+
+## Error Format
+
+All error responses follow a consistent structure:
+
+```json
+{
+  "error": "Description of what went wrong"
+}
+```
+
+## Shutdown
+
+```bash
+curl -X POST http://127.0.0.1:3000/api/shutdown
+```
+
+Initiates a graceful shutdown of the server process.

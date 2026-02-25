@@ -1,0 +1,60 @@
+---
+title: What is Diffgazer?
+description: AI-powered local code review that runs entirely on your machine.
+---
+
+# What is Diffgazer?
+
+Diffgazer is an AI code review tool that runs locally on your machine. A single command launches a browser UI and a local API server — no cloud services, no data leaving your machine.
+
+## Key Features
+
+- **Local & Private** — Everything runs on `localhost`. Your code never leaves your machine.
+- **Five Review Lenses** — Specialized AI agents analyze code for correctness, security, performance, simplicity, and test coverage.
+- **Review Profiles** — Preset lens combinations (Quick, Strict, Perf, Security) for different review scenarios.
+- **Streaming Results** — Watch reviews happen in real-time via Server-Sent Events.
+- **Issue Drilldowns** — Deep-dive into any issue for root cause analysis, impact assessment, and suggested patches.
+- **Git Integration** — Review staged or unstaged changes with blame enrichment.
+- **Free Providers** — Works with Gemini (default) and Z.AI at no cost. OpenRouter available for Claude, GPT, and other models.
+
+## How It Works
+
+```bash
+diffgazer
+```
+
+That's it. Diffgazer starts a local server on port 3000 and opens your browser. On first run, a setup wizard walks you through:
+
+1. **Secrets storage** — Choose OS keyring or encrypted file
+2. **AI provider** — Pick Gemini, Z.AI, or OpenRouter
+3. **API key** — Enter your provider credentials
+4. **Model** — Select which model to use
+5. **Preferences** — Configure default lenses and review profile
+
+After setup, navigate to any git repository and start reviewing.
+
+## Architecture
+
+Diffgazer is a monorepo with three main components:
+
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| **CLI** | Node.js + Ink 6 | Launcher — starts server and opens browser |
+| **Server** | Hono.js | Local REST API with SSE streaming |
+| **Web** | React 19 + Vite 7 | Browser-based review interface |
+
+The server exposes a REST API on `127.0.0.1:3000/api` for all operations. The web UI communicates exclusively with this local API.
+
+## Privacy Model
+
+- All processing happens on `localhost` — the only external calls are to your chosen AI provider
+- CORS restricted to localhost origins
+- API keys stored in OS keyring or encrypted file with `0600` permissions
+- Per-project trust model controls which repositories diffgazer can access
+- Prompt injection hardening via XML-escaping of all user content
+
+## Next Steps
+
+- [Installation](/diffgazer/docs/getting-started/installation) — Install diffgazer
+- [Quick Start](/diffgazer/docs/getting-started/quick-start) — Run your first review
+- [Review Lenses](/diffgazer/docs/features/review-lenses) — Understand the five AI agents

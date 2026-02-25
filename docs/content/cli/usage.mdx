@@ -1,0 +1,81 @@
+---
+title: CLI Usage
+description: Command-line options and flags for diffgazer.
+---
+
+# CLI Usage
+
+Diffgazer has a minimal CLI — it's a launcher that starts the server and opens your browser. All interaction happens in the browser UI.
+
+## Basic Usage
+
+```bash
+diffgazer
+```
+
+Starts the server on port 3000 and opens `http://localhost:3000` in your default browser.
+
+## Flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--dev` | Development mode — runs API and web servers separately | `false` |
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | Server port | `3000` |
+| `DIFFGAZER_HOME` | Configuration directory | `~/.diffgazer` |
+| `DIFFGAZER_CLI_PID` | CLI process PID (set automatically) | — |
+| `GOOGLE_API_KEY` | Gemini API key (overrides stored key) | — |
+| `ZAI_API_KEY` | Z.AI API key (overrides stored key) | — |
+| `OPENROUTER_API_KEY` | OpenRouter API key (overrides stored key) | — |
+
+## Development Mode
+
+```bash
+diffgazer --dev
+```
+
+In dev mode:
+
+- **API server** runs on port `3000`
+- **Web dev server** runs on port `3001` with hot-reload
+- Both servers run as separate processes
+
+This is for developing diffgazer itself, not for normal usage.
+
+## Custom Port
+
+```bash
+PORT=8080 diffgazer
+```
+
+## Production Mode (Default)
+
+In production mode (no `--dev` flag):
+
+1. The embedded web app and API server run on a single port
+2. The browser opens automatically
+3. Shutting down the CLI stops the server
+
+## Graceful Shutdown
+
+The server can be shut down from the API:
+
+```bash
+curl -X POST http://127.0.0.1:3000/api/shutdown
+```
+
+Or press `Ctrl+C` in the terminal.
+
+## npx Usage
+
+Run without global installation:
+
+```bash
+npx diffgazer
+```
+
+This downloads and runs the latest version. Useful for one-off reviews or trying diffgazer without installing.

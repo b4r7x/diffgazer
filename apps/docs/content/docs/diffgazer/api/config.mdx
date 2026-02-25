@@ -1,0 +1,112 @@
+---
+title: Config API
+description: Manage providers and configuration via REST.
+---
+
+# Config API
+
+Manage AI provider configuration and credentials.
+
+## Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/config` | Get full configuration |
+| GET | `/api/config/init` | Get initial configuration state |
+| GET | `/api/config/check` | Validate configuration |
+| GET | `/api/config/providers` | Get status of all providers |
+| GET | `/api/config/provider/openrouter/models` | List available OpenRouter models |
+| POST | `/api/config` | Save configuration |
+| POST | `/api/config/provider/:providerId/activate` | Activate a provider |
+| DELETE | `/api/config/provider/:providerId` | Remove a provider |
+| DELETE | `/api/config` | Delete entire configuration |
+
+## Get Configuration
+
+```bash
+curl http://127.0.0.1:3000/api/config
+```
+
+Returns the full configuration including active provider, model, and settings.
+
+## Check Configuration
+
+```bash
+curl http://127.0.0.1:3000/api/config/check
+```
+
+Returns setup status:
+
+```json
+{
+  "hasSecretsStorage": true,
+  "hasProvider": true,
+  "hasModel": true,
+  "hasTrust": true,
+  "isConfigured": true,
+  "isReady": true,
+  "missing": []
+}
+```
+
+The `missing` array lists fields that still need configuration: `"secretsStorage"`, `"provider"`, `"model"`, `"trust"`.
+
+## Get Initial State
+
+```bash
+curl http://127.0.0.1:3000/api/config/init
+```
+
+Returns the initial configuration state for a project, used by the onboarding wizard.
+
+## Provider Status
+
+```bash
+curl http://127.0.0.1:3000/api/config/providers
+```
+
+Returns the status of all configured providers with their active models.
+
+## Activate Provider
+
+```bash
+curl -X POST http://127.0.0.1:3000/api/config/provider/gemini/activate \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gemini-2.5-flash"}'
+```
+
+Valid provider IDs: `gemini`, `zai`, `zai-coding`, `openrouter`
+
+## OpenRouter Models
+
+```bash
+curl http://127.0.0.1:3000/api/config/provider/openrouter/models
+```
+
+Fetches the current list of available models from the OpenRouter API. Requires an OpenRouter API key to be configured.
+
+## Remove Provider
+
+```bash
+curl -X DELETE http://127.0.0.1:3000/api/config/provider/openrouter
+```
+
+Removes the provider configuration and stored credentials.
+
+## Save Configuration
+
+```bash
+curl -X POST http://127.0.0.1:3000/api/config \
+  -H "Content-Type: application/json" \
+  -d '{ ... }'
+```
+
+Body limit: 50 MB. Request body is validated with Zod schemas.
+
+## Delete Configuration
+
+```bash
+curl -X DELETE http://127.0.0.1:3000/api/config
+```
+
+Removes the entire configuration file. Diffgazer will re-run the onboarding wizard on next launch.
