@@ -1,11 +1,19 @@
 import { useState } from "react"
-import { useLocation, useNavigate } from "@tanstack/react-router"
+import { useLocation, useNavigate, useRouterState } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { Logo } from "@/components/ui/logo/logo"
 import { Spinner } from "@/components/ui/spinner/spinner"
 import { Divider } from "@/components/ui/divider/divider"
+import {
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/ui/select"
 import { Breadcrumbs } from "@/components/breadcrumbs"
 import { useSearchOpen } from "@/features/search/search-context"
+import { cn } from "@/lib/utils"
 import {
   DOCS_LIBRARY_IDS,
   docsPath,
@@ -40,12 +48,25 @@ interface HeaderProps {
   library: DocsLibraryId
 }
 
+function isDocsPath(pathname?: string | null): boolean {
+  if (!pathname) return false
+  return /^\/[^/]+\/docs(?:\/|$)/.test(pathname)
+}
+
 export function Header({ library }: HeaderProps) {
   const { setOpen } = useSearchOpen()
   const pathname = useLocation({ select: (location) => location.pathname })
+  const pendingDocsPathname = useRouterState({
+    select: (state) => {
+      const pendingMatches = state.pendingMatches
+      const nextPathname = pendingMatches?.[pendingMatches.length - 1]?.pathname
+      return isDocsPath(nextPathname) ? nextPathname : null
+    },
+  })
   const navigate = useNavigate()
   const [switching, setSwitching] = useState(false)
   const activeLibrary = getDocsLibraryConfig(library)
+  const isHeaderBusy = switching || pendingDocsPathname !== null
 
   const handleLibraryChange = async (nextValue: string) => {
     if (!isDocsLibraryId(nextValue)) return
@@ -78,42 +99,52 @@ export function Header({ library }: HeaderProps) {
   }
 
   return (
-    <header className="shrink-0 bg-background z-20 flex flex-col border-b border-border" aria-busy={switching}>
+    <header className="shrink-0 bg-background z-20 flex flex-col border-b border-border" aria-busy={isHeaderBusy}>
       <div className="px-6 h-24 flex justify-between items-center w-full">
         <div className="flex items-start gap-2 mt-2">
-          {switching ? (
-            <Spinner size="sm" className="mt-4" />
-          ) : (
-            <Logo text={activeLibrary.logoText} className="text-foreground text-[6px] sm:text-[8px]" />
-          )}
+          <Logo
+            text={activeLibrary.logoText}
+            className="text-foreground text-[6px] sm:text-[8px] transition-opacity duration-150"
+          />
           <span className="bg-border text-foreground px-1.5 py-0.5 text-xs rounded-sm mt-2">
             {activeLibrary.displayName}
           </span>
         </div>
 
         <div className="flex items-center gap-4">
-          <label className="text-xs text-muted-foreground font-mono flex items-center gap-2">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
             <span>docs:</span>
-            <select
-              className="bg-background border border-border px-2 py-1 rounded-sm text-foreground text-xs font-mono"
-              value={library}
-              onChange={(event) => void handleLibraryChange(event.target.value)}
-              disabled={switching}
-              aria-label="Select documentation library"
+            <div className={cn(switching && "opacity-50 pointer-events-none")}>
+              <Select
+                value={library}
+                onValueChange={(v) => void handleLibraryChange(v as string)}
+              >
+                <SelectTrigger
+                  className="px-2 py-1 text-xs font-mono w-auto min-w-[120px]"
+                  aria-label="Select documentation library"
+                >
+                  <SelectValue placeholder="Select library..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {DOCS_LIBRARY_IDS.map((id) => {
+                    const config = getDocsLibraryConfig(id)
+                    return (
+                      <SelectItem key={id} value={id} disabled={!config.enabled}>
+                        {config.enabled ? config.displayName : `${config.displayName} (coming soon)`}
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            <span
+              className="inline-flex h-4 w-4 items-center justify-center"
+              aria-live="polite"
+              aria-label={isHeaderBusy ? "Switching docs" : undefined}
             >
-              {DOCS_LIBRARY_IDS.map((id) => {
-                const config = getDocsLibraryConfig(id)
-                const label = config.enabled
-                  ? config.displayName
-                  : `${config.displayName} (coming soon)`
-                return (
-                  <option key={id} value={id} disabled={!config.enabled}>
-                    {label}
-                  </option>
-                )
-              })}
-            </select>
-          </label>
+              {isHeaderBusy ? <Spinner size="sm" /> : null}
+            </span>
+          </div>
 
           <a
             href={activeLibrary.githubUrl}
