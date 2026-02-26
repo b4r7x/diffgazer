@@ -102,6 +102,7 @@ const config = defineConfig(() => {
       alias: {
         "@/components/ui": resolve(import.meta.dirname, "registry/ui"),
         "@/hooks": resolve(import.meta.dirname, "registry/hooks"),
+        "@/lib/compose-refs": resolve(import.meta.dirname, "registry/lib/compose-refs"),
         "@": resolve(import.meta.dirname, "./src"),
       },
       dedupe: ["react", "react-dom"],
