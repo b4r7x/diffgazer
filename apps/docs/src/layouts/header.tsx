@@ -9,7 +9,6 @@ import {
   SelectTrigger,
   SelectContent,
   SelectItem,
-  SelectValue,
 } from "@/components/ui/select"
 import { Breadcrumbs } from "@/components/breadcrumbs"
 import { useSearchOpen } from "@/features/search/search-context"
@@ -117,13 +116,13 @@ export function Header({ library }: HeaderProps) {
             <div className={cn(switching && "opacity-50 pointer-events-none")}>
               <Select
                 value={library}
-                onValueChange={(v) => void handleLibraryChange(v as string)}
+                onChange={(v) => void handleLibraryChange(v as string)}
               >
                 <SelectTrigger
                   className="px-2 py-1 text-xs font-mono w-auto min-w-[120px]"
                   aria-label="Select documentation library"
                 >
-                  <SelectValue placeholder="Select library..." />
+                  <span>{activeLibrary.displayName}</span>
                 </SelectTrigger>
                 <SelectContent>
                   {DOCS_LIBRARY_IDS.map((id) => {
