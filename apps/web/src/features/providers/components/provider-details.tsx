@@ -1,4 +1,4 @@
-import { Badge, Button, SectionHeader, KeyValueRow } from '@diffgazer/ui';
+import { Badge, Button, SectionHeader, KeyValue } from '@diffgazer/ui';
 import { CapabilityCard } from './capability-card';
 import { PROVIDER_CAPABILITIES, OPENROUTER_PROVIDER_ID } from '@/config/constants';
 import type { ProviderWithStatus } from '../types';
@@ -107,30 +107,34 @@ export function ProviderDetails({
       {/* Status Rows */}
       <section className="mb-6">
         <SectionHeader className="text-tui-violet mb-4 tracking-widest flex items-center">Status <span className="ml-2 flex-1 h-px bg-tui-border" /></SectionHeader>
-        <KeyValueRow
-          label="API Key Status"
-          value={
-            provider.hasApiKey ? (
-              <Badge variant="info">[ STORED ]</Badge>
-            ) : (
-              <span className="text-tui-muted">Not configured</span>
-            )
-          }
-        />
-        <KeyValueRow
-          label="Selected Model"
-          value={
-            provider.model ? (
-              <span className="text-tui-fg">{provider.model}</span>
-            ) : (
-              <span className="text-tui-muted">
-                {provider.id === OPENROUTER_PROVIDER_ID
-                  ? "Model required"
-                  : `${provider.defaultModel} (default)`}
-              </span>
-            )
-          }
-        />
+        <KeyValue>
+          <KeyValue.Item
+            label="API Key Status"
+            value={
+              provider.hasApiKey ? (
+                <Badge variant="info">[ STORED ]</Badge>
+              ) : (
+                <span className="text-tui-muted">Not configured</span>
+              )
+            }
+            bordered
+          />
+          <KeyValue.Item
+            label="Selected Model"
+            value={
+              provider.model ? (
+                <span className="text-tui-fg">{provider.model}</span>
+              ) : (
+                <span className="text-tui-muted">
+                  {provider.id === OPENROUTER_PROVIDER_ID
+                    ? "Model required"
+                    : `${provider.defaultModel} (default)`}
+                </span>
+              )
+            }
+            bordered
+          />
+        </KeyValue>
       </section>
 
       {/* Action Buttons */}
