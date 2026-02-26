@@ -18,7 +18,6 @@ export { CardLayout, type CardLayoutProps } from "./components/card-layout";
 export { BlockBar, type BlockBarProps } from "./components/block-bar";
 export { SectionHeader, type SectionHeaderProps } from "./components/section-header";
 export { EmptyState, type EmptyStateProps } from "./components/empty-state";
-export { KeyValueRow, type KeyValueRowProps } from "./components/key-value-row";
 
 // Compound: Toast
 export {
@@ -90,7 +89,7 @@ export { SearchInput, type SearchInputProps } from "./components/search-input";
 export { ToggleGroup, type ToggleGroupProps, type ToggleGroupItem } from "./components/toggle-group";
 export { CodeBlock, type CodeBlockProps, type CodeBlockLine } from "./components/code-block";
 export { DiffView, type DiffViewProps } from "./components/diff-view";
-export { KeyValue, type KeyValueProps } from "./components/key-value";
+export { KeyValue, type KeyValueProps, type KeyValueItemProps, type KeyValueVariant, type KeyValueLayout } from "./components/key-value";
 export { LabeledField, type LabeledFieldProps, type LabeledFieldColor } from "./components/labeled-field";
 export { Checklist, type ChecklistProps, type ChecklistItem } from "./components/checklist";
 export { HorizontalStepper, type HorizontalStepperProps, type HorizontalStepperStep } from "./components/horizontal-stepper";

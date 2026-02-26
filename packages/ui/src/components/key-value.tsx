@@ -1,14 +1,22 @@
+import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "../lib/cn";
 
-export interface KeyValueProps {
-  label: React.ReactNode;
-  value: React.ReactNode;
-  variant?: "default" | "warning" | "info" | "success" | "error";
-  layout?: "horizontal" | "vertical";
-  className?: string;
+export type KeyValueVariant = "default" | "warning" | "info" | "success" | "error";
+export type KeyValueLayout = "horizontal" | "vertical";
+
+export interface KeyValueProps extends HTMLAttributes<HTMLDListElement> {
+  children: ReactNode;
 }
 
-const valueVariants = {
+export interface KeyValueItemProps extends HTMLAttributes<HTMLDivElement> {
+  label: ReactNode;
+  value: ReactNode;
+  variant?: KeyValueVariant;
+  layout?: KeyValueLayout;
+  bordered?: boolean;
+}
+
+const valueVariants: Record<KeyValueVariant, string> = {
   default: "font-bold text-tui-fg",
   warning: "font-bold text-tui-yellow",
   info: "font-mono text-tui-blue",
@@ -16,24 +24,36 @@ const valueVariants = {
   error: "font-bold text-tui-red",
 };
 
-export function KeyValue({
+function KeyValueRoot({ children, className, ...props }: KeyValueProps) {
+  return (
+    <dl className={cn("", className)} {...props}>
+      {children}
+    </dl>
+  );
+}
+
+function KeyValueItem({
   label,
   value,
   variant = "default",
   layout = "horizontal",
+  bordered = false,
   className,
-}: KeyValueProps) {
+  ...props
+}: KeyValueItemProps) {
   return (
     <div
       className={cn(
-        layout === "horizontal"
-          ? "flex justify-between items-center"
-          : "flex flex-col gap-1",
+        layout === "horizontal" ? "flex justify-between items-center" : "flex flex-col gap-1",
+        bordered && "py-4 border-b border-tui-border",
         className
       )}
+      {...props}
     >
-      <span className="text-sm text-tui-muted">{label}</span>
-      <span className={valueVariants[variant]}>{value}</span>
+      <dt className={cn("text-tui-muted", bordered ? "text-xs" : "text-sm")}>{label}</dt>
+      <dd className={cn(valueVariants[variant], bordered && "text-xs")}>{value}</dd>
     </div>
   );
 }
+
+export const KeyValue = Object.assign(KeyValueRoot, { Item: KeyValueItem });
