@@ -12,6 +12,10 @@ Local AI code review. Run one command, get a review from AI agents, your code st
 
 ![Diffgazer demo](docs/assets/diffgazer-demo.gif)
 
+## Demo
+
+[![Diffgazer demo presentation](https://img.youtube.com/vi/0eo4txnsg9w/maxresdefault.jpg)](https://www.youtube.com/watch?v=0eo4txnsg9w)
+
 ## Why
 
 I wanted my own code reviewer. Tools like Claude Code and Codex are great for writing code, but burning tokens on review when you could spend them building felt wrong.
