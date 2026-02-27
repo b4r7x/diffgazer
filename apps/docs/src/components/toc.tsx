@@ -78,11 +78,42 @@ export function TableOfContentsPanel({
 	});
 
 	// Keep active TOC item visible in the sidebar scroll area.
+	// Don't use scrollIntoView — it scrolls ALL scrollable ancestors,
+	// which would unintentionally move the main content area.
 	useEffect(() => {
 		if (!activeId) return;
 		const el = itemRefs.current.get(activeId);
-		if (typeof el?.scrollIntoView === "function") {
-			el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+		if (!el) return;
+
+		// Walk up to find the TOC's own scrollable container, stopping
+		// before main-content to avoid moving the page.
+		let scrollParent: HTMLElement | null = el.parentElement;
+		while (scrollParent) {
+			if (scrollParent.id === "main-content") return;
+			const style = getComputedStyle(scrollParent);
+			if (
+				(style.overflowY === "auto" || style.overflowY === "scroll") &&
+				scrollParent.scrollHeight > scrollParent.clientHeight
+			) {
+				break;
+			}
+			scrollParent = scrollParent.parentElement;
+		}
+
+		if (!scrollParent) return;
+
+		const parentRect = scrollParent.getBoundingClientRect();
+		const elRect = el.getBoundingClientRect();
+		if (elRect.top < parentRect.top) {
+			scrollParent.scrollBy({
+				top: elRect.top - parentRect.top - 8,
+				behavior: "smooth",
+			});
+		} else if (elRect.bottom > parentRect.bottom) {
+			scrollParent.scrollBy({
+				top: elRect.bottom - parentRect.bottom + 8,
+				behavior: "smooth",
+			});
 		}
 	}, [activeId]);
 
