@@ -1,6 +1,6 @@
 import { Suspense, type ComponentType, type LazyExoticComponent } from "react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { CodeBlock, CodeBlockHeader, CodeBlockLabel, CodeBlockContent, CodeBlockLine, type CodeBlockLineProps } from "@/components/ui/code-block"
+import { CodeBlock, CodeBlockContent, CodeBlockHeader, CodeBlockLabel, CodeBlockLine, type CodeBlockLineProps } from "@/components/ui/code-block"
 import { CopyButton } from "./copy-button"
 
 interface DemoPreviewProps {
