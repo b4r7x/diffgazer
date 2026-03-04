@@ -1,5 +1,5 @@
 import { SectionHeader } from "@/components/ui/section-header/section-header"
-import { CodeBlock, CodeBlockHeader, CodeBlockLabel, CodeBlockContent, CodeBlockLine, type CodeBlockLineProps } from "@/components/ui/code-block"
+import { CodeBlock, CodeBlockContent, CodeBlockHeader, CodeBlockLabel, CodeBlockLine, type CodeBlockLineProps } from "@/components/ui/code-block"
 import {
   Accordion,
   AccordionItem,

@@ -9,7 +9,7 @@ import { SourceViewer } from "./source-viewer"
 import { AnatomyDiagram } from "./anatomy-diagram"
 import { CopyButton } from "./copy-button"
 import { Pager, PagerPrevious, PagerNext } from "@/components/ui/pager"
-import { CodeBlock, CodeBlockHeader, CodeBlockLabel, CodeBlockContent, CodeBlockLine } from "@/components/ui/code-block"
+import { CodeBlock, CodeBlockContent, CodeBlockHeader, CodeBlockLabel, CodeBlockLine } from "@/components/ui/code-block"
 import { getDocsLibraryFromPathname } from "@/lib/docs-library"
 
 interface ComponentPageProps {

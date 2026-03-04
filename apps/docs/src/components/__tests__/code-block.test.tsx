@@ -2,7 +2,7 @@
 
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
-import { CodeBlock, CodeBlockHeader, CodeBlockLabel, CodeBlockContent, CodeBlockLine } from "@/components/ui/code-block"
+import { CodeBlock, CodeBlockContent, CodeBlockHeader, CodeBlockLabel, CodeBlockLine } from "@/components/ui/code-block"
 
 describe("CodeBlock", () => {
   it("renders token-based highlighted content from line data", () => {

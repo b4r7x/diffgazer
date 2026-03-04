@@ -1,5 +1,5 @@
 import { CopyButton } from "@/components/copy-button"
-import { CodeBlock, CodeBlockHeader, CodeBlockLabel, CodeBlockContent } from "@/components/ui/code-block"
+import { CodeBlock, CodeBlockContent, CodeBlockHeader, CodeBlockLabel } from "@/components/ui/code-block"
 
 interface CssOutputProps {
   primitives: Record<string, string>
