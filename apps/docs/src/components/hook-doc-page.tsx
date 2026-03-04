@@ -1,5 +1,5 @@
 import { SectionHeader } from "@/components/ui/section-header/section-header"
-import { CodeBlock } from "@/components/ui/code-block/code-block"
+import { CodeBlock, CodeBlockHeader, CodeBlockLabel, CodeBlockContent, CodeBlockLine, type CodeBlockLineProps } from "@/components/ui/code-block"
 import {
   Accordion,
   AccordionItem,
@@ -7,7 +7,6 @@ import {
   AccordionContent,
 } from "@/components/ui/accordion"
 import { CopyButton } from "./copy-button"
-import type { CodeBlockLine } from "@/components/ui/code-block/code-block"
 
 interface HookParameter {
   name: string
@@ -22,7 +21,7 @@ export interface HookDocPageProps {
     name: string
     title: string
     description: string
-    source: { raw: string; highlighted: CodeBlockLine[] }
+    source: { raw: string; highlighted: CodeBlockLineProps[] }
     docs: {
       description?: string
       usage?: { code?: string; example?: string; lang?: string }
@@ -37,9 +36,9 @@ export interface HookDocPageProps {
       tags?: string[]
     } | null
     usageSnippet?: string
-    usageSnippetHighlighted?: CodeBlockLine[]
+    usageSnippetHighlighted?: CodeBlockLineProps[]
     examples: string[]
-    exampleSource: Record<string, { raw: string; highlighted: CodeBlockLine[] }>
+    exampleSource: Record<string, { raw: string; highlighted: CodeBlockLineProps[] }>
   }
 }
 
@@ -55,13 +54,17 @@ export function HookDocPage({ data }: HookDocPageProps) {
           <SectionHeader as="h2" id="hook-usage" className="scroll-mt-24">
             Usage
           </SectionHeader>
-          <CodeBlock
-            label={docs?.usage?.lang ?? "tsx"}
-            lines={data.usageSnippetHighlighted}
-            headerAction={
-              data.usageSnippet ? <CopyButton text={data.usageSnippet} /> : undefined
-            }
-          />
+          <CodeBlock>
+            <CodeBlockHeader>
+              <CodeBlockLabel>{docs?.usage?.lang ?? "tsx"}</CodeBlockLabel>
+              {data.usageSnippet ? <CopyButton text={data.usageSnippet} /> : undefined}
+            </CodeBlockHeader>
+            <CodeBlockContent>
+              {data.usageSnippetHighlighted.map(line => (
+                <CodeBlockLine key={line.number} {...line} />
+              ))}
+            </CodeBlockContent>
+          </CodeBlock>
         </div>
       )}
 
@@ -111,7 +114,13 @@ export function HookDocPage({ data }: HookDocPageProps) {
                     </span>
                     <CopyButton text={src.raw} />
                   </div>
-                  <CodeBlock lines={src.highlighted} />
+                  <CodeBlock>
+                    <CodeBlockContent>
+                      {src.highlighted.map(line => (
+                        <CodeBlockLine key={line.number} {...line} />
+                      ))}
+                    </CodeBlockContent>
+                  </CodeBlock>
                 </div>
               )
             })}
@@ -153,7 +162,13 @@ export function HookDocPage({ data }: HookDocPageProps) {
               View hook source
             </AccordionTrigger>
             <AccordionContent>
-              <CodeBlock lines={data.source.highlighted} />
+              <CodeBlock>
+                <CodeBlockContent>
+                  {data.source.highlighted.map(line => (
+                    <CodeBlockLine key={line.number} {...line} />
+                  ))}
+                </CodeBlockContent>
+              </CodeBlock>
             </AccordionContent>
           </AccordionItem>
         </Accordion>

@@ -1,12 +1,12 @@
 import { Suspense, type ComponentType, type LazyExoticComponent } from "react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { CodeBlock, type CodeBlockLine } from "@/components/ui/code-block/code-block"
+import { CodeBlock, CodeBlockHeader, CodeBlockLabel, CodeBlockContent, CodeBlockLine, type CodeBlockLineProps } from "@/components/ui/code-block"
 import { CopyButton } from "./copy-button"
 
 interface DemoPreviewProps {
   title?: string
   demo: LazyExoticComponent<ComponentType> | null
-  code: CodeBlockLine[]
+  code: CodeBlockLineProps[]
   rawCode: string
   variant?: "tabbed" | "stacked"
 }
@@ -28,14 +28,19 @@ function PreviewPane({ demo: Demo }: { demo: LazyExoticComponent<ComponentType> 
   )
 }
 
-function CodePane({ code, rawCode }: { code: CodeBlockLine[]; rawCode: string }) {
+function CodePane({ code, rawCode }: { code: CodeBlockLineProps[]; rawCode: string }) {
   return (
-    <CodeBlock
-      label="tsx"
-      lines={code}
-      headerAction={<CopyButton text={rawCode} />}
-      className="rounded-none"
-    />
+    <CodeBlock className="rounded-none">
+      <CodeBlockHeader>
+        <CodeBlockLabel>tsx</CodeBlockLabel>
+        <CopyButton text={rawCode} />
+      </CodeBlockHeader>
+      <CodeBlockContent>
+        {code.map(line => (
+          <CodeBlockLine key={line.number} {...line} />
+        ))}
+      </CodeBlockContent>
+    </CodeBlock>
   )
 }
 

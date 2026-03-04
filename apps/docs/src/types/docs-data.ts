@@ -1,4 +1,4 @@
-import type { CodeBlockLine } from "@/components/ui/code-block/code-block"
+import type { CodeBlockLineProps } from "@/components/ui/code-block"
 import type { ExampleRef, AnatomyNode, ComponentNote, KeyboardSection, ComponentDoc } from "../../registry/component-docs/types"
 
 export type { ExampleRef, AnatomyNode, ComponentNote, KeyboardSection, ComponentDoc }
@@ -12,7 +12,7 @@ export interface PropInfo {
 
 export interface SourceFile {
   raw: string
-  highlighted: CodeBlockLine[]
+  highlighted: CodeBlockLineProps[]
 }
 
 export interface ComponentData {
@@ -24,9 +24,9 @@ export interface ComponentData {
   props: Record<string, Record<string, PropInfo>>
   source: Record<string, SourceFile>
   mergedSource: string
-  mergedSourceHighlighted: CodeBlockLine[]
+  mergedSourceHighlighted: CodeBlockLineProps[]
   usageSnippet: string
-  usageSnippetHighlighted: CodeBlockLine[]
+  usageSnippetHighlighted: CodeBlockLineProps[]
   examples: string[]
   exampleSource: Record<string, SourceFile>
   docs: ComponentDoc | null

@@ -1,7 +1,7 @@
 import type { MDXComponents } from "mdx/types"
 import { createContext, isValidElement, useContext, type ReactElement, type ReactNode } from "react"
 import { Callout } from "@/components/ui/callout"
-import { CodeBlock } from "@/components/ui/code-block/code-block"
+import { CodeBlock, CodeBlockHeader, CodeBlockLabel, CodeBlockContent } from "@/components/ui/code-block"
 import { SectionHeader } from "@/components/ui/section-header/section-header"
 import { cn } from "@/lib/utils"
 
@@ -85,10 +85,17 @@ export const markdownMdxComponents: MDXComponents = {
     )
   },
   pre: ({ children, className }) => (
-    <CodeBlock label={getLanguageLabel(children)} className="mb-4" preClassName={className}>
-      <PreCodeContext.Provider value>
-        {children}
-      </PreCodeContext.Provider>
+    <CodeBlock className="mb-4">
+      {getLanguageLabel(children) && (
+        <CodeBlockHeader>
+          <CodeBlockLabel>{getLanguageLabel(children)}</CodeBlockLabel>
+        </CodeBlockHeader>
+      )}
+      <CodeBlockContent className={className}>
+        <PreCodeContext.Provider value>
+          {children}
+        </PreCodeContext.Provider>
+      </CodeBlockContent>
     </CodeBlock>
   ),
   table: ({ children }) => (
