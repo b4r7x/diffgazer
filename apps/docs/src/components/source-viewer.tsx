@@ -1,5 +1,5 @@
 import { SectionHeader } from "@/components/ui/section-header/section-header"
-import { CodeBlock } from "@/components/ui/code-block/code-block"
+import { CodeBlock, CodeBlockContent, CodeBlockLine } from "@/components/ui/code-block"
 import {
   Accordion,
   AccordionItem,
@@ -41,7 +41,13 @@ export function SourceViewer({ files, mergedSource }: SourceViewerProps) {
                   </span>
                   <CopyButton text={file.raw} />
                 </div>
-                <CodeBlock lines={file.highlighted} />
+                <CodeBlock>
+                  <CodeBlockContent>
+                    {file.highlighted.map(line => (
+                      <CodeBlockLine key={line.number} {...line} />
+                    ))}
+                  </CodeBlockContent>
+                </CodeBlock>
               </div>
             ))}
           </AccordionContent>

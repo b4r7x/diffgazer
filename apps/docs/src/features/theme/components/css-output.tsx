@@ -1,5 +1,5 @@
 import { CopyButton } from "@/components/copy-button"
-import { CodeBlock } from "@/components/ui/code-block/code-block"
+import { CodeBlock, CodeBlockHeader, CodeBlockLabel, CodeBlockContent } from "@/components/ui/code-block"
 
 interface CssOutputProps {
   primitives: Record<string, string>
@@ -22,8 +22,14 @@ export function CssOutput({ primitives, defaults }: CssOutputProps) {
   const css = `:root {\n${changed.map(([k, v]) => `  ${k}: ${v};`).join("\n")}\n}`
 
   return (
-    <CodeBlock label="css" headerAction={<CopyButton text={css} />}>
-      <code>{css}</code>
+    <CodeBlock>
+      <CodeBlockHeader>
+        <CodeBlockLabel>css</CodeBlockLabel>
+        <CopyButton text={css} />
+      </CodeBlockHeader>
+      <CodeBlockContent>
+        <code>{css}</code>
+      </CodeBlockContent>
     </CodeBlock>
   )
 }

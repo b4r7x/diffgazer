@@ -1,10 +1,9 @@
 import { useState } from "react"
 import { SectionHeader } from "@/components/ui/section-header/section-header"
-import { CodeBlock } from "@/components/ui/code-block/code-block"
+import { CodeBlock, CodeBlockContent, CodeBlockLine, type CodeBlockLineProps } from "@/components/ui/code-block"
 import { CopyButton } from "./copy-button"
 import keyscopeHooksData from "@/generated/keyscope/keyscope-hooks.json"
 import diffuiHooksData from "@/generated/diff-ui/diffui-hooks.json"
-import type { CodeBlockLine } from "@/components/ui/code-block/code-block"
 
 interface HookData {
   name: string
@@ -12,7 +11,7 @@ interface HookData {
   description: string
   source: {
     raw: string
-    highlighted: CodeBlockLine[]
+    highlighted: CodeBlockLineProps[]
   }
 }
 
@@ -61,7 +60,13 @@ function HookSourceBlock({ hook }: { hook: HookData }) {
         <CopyButton text={hook.source.raw} label={`Copy ${hook.title}`} />
       </div>
       {expanded && (
-        <CodeBlock lines={hook.source.highlighted} />
+        <CodeBlock>
+          <CodeBlockContent>
+            {hook.source.highlighted.map(line => (
+              <CodeBlockLine key={line.number} {...line} />
+            ))}
+          </CodeBlockContent>
+        </CodeBlock>
       )}
     </div>
   )

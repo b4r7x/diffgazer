@@ -9,7 +9,7 @@ import { SourceViewer } from "./source-viewer"
 import { AnatomyDiagram } from "./anatomy-diagram"
 import { CopyButton } from "./copy-button"
 import { Pager, PagerPrevious, PagerNext } from "@/components/ui/pager"
-import { CodeBlock } from "@/components/ui/code-block/code-block"
+import { CodeBlock, CodeBlockHeader, CodeBlockLabel, CodeBlockContent, CodeBlockLine } from "@/components/ui/code-block"
 import { getDocsLibraryFromPathname } from "@/lib/docs-library"
 
 interface ComponentPageProps {
@@ -123,11 +123,17 @@ export function ComponentPage({ data, prev, next }: ComponentPageProps) {
             <h3 id="component-usage" className="font-bold text-sm text-foreground mb-3 scroll-mt-24">
               Usage
             </h3>
-            <CodeBlock
-              label="tsx"
-              lines={data.usageSnippetHighlighted}
-              headerAction={<CopyButton text={data.usageSnippet} />}
-            />
+            <CodeBlock>
+              <CodeBlockHeader>
+                <CodeBlockLabel>tsx</CodeBlockLabel>
+                <CopyButton text={data.usageSnippet} />
+              </CodeBlockHeader>
+              <CodeBlockContent>
+                {data.usageSnippetHighlighted.map(line => (
+                  <CodeBlockLine key={line.number} {...line} />
+                ))}
+              </CodeBlockContent>
+            </CodeBlock>
           </div>
         </TabsContent>
 
