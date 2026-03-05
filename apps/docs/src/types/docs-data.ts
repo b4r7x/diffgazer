@@ -30,6 +30,7 @@ export interface ComponentData {
   examples: string[]
   exampleSource: Record<string, SourceFile>
   docs: ComponentDoc | null
+  keyscopeDeps?: string[]
 }
 
 export type DocsData = Record<string, ComponentData>

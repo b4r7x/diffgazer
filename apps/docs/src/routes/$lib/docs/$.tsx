@@ -164,7 +164,7 @@ function Page() {
 function ContentSpinner() {
   return (
     <div className="flex h-full items-center justify-center">
-      <Spinner size="md" label="loading..." />
+      <Spinner size="md">loading...</Spinner>
     </div>
   )
 }

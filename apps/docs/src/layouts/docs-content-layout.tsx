@@ -35,7 +35,7 @@ function RegionReloadOverlay({
 			)}
 		>
 			<div className="rounded-sm border border-border bg-background/90 px-3 py-2 shadow-sm">
-				<Spinner size={size} label={label} />
+				<Spinner size={size}>{label}</Spinner>
 			</div>
 		</div>
 	);

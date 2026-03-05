@@ -11,6 +11,7 @@ import { CopyButton } from "./copy-button"
 import { Pager, PagerPrevious, PagerNext } from "@/components/ui/pager"
 import { CodeBlock, CodeBlockContent, CodeBlockHeader, CodeBlockLabel, CodeBlockLine } from "@/components/ui/code-block"
 import { getDocsLibraryFromPathname } from "@/lib/docs-library"
+import keyscopeHooksData from "@/generated/keyscope/keyscope-hooks.json"
 
 interface ComponentPageProps {
   data: ComponentData
@@ -66,6 +67,19 @@ export function ComponentPage({ data, prev, next }: ComponentPageProps) {
     raw: file.raw,
     highlighted: file.highlighted,
   }))
+
+  if (data.keyscopeDeps?.length) {
+    for (const hookName of data.keyscopeDeps) {
+      const hookData = (keyscopeHooksData as Record<string, { source: { raw: string; highlighted: any[] } }>)[hookName]
+      if (hookData) {
+        sourceFiles.push({
+          path: `hooks/use-${hookName}.ts`,
+          raw: hookData.source.raw,
+          highlighted: hookData.source.highlighted,
+        })
+      }
+    }
+  }
 
   useEffect(() => {
     const tabFromHash = getTabFromHash(hash)
