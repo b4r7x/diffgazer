@@ -103,6 +103,7 @@ const config = defineConfig(() => {
         "@/components/ui": resolve(import.meta.dirname, "registry/ui"),
         "@/hooks": resolve(import.meta.dirname, "registry/hooks"),
         "@/lib/compose-refs": resolve(import.meta.dirname, "registry/lib/compose-refs"),
+        "@/lib/selectable-variants": resolve(import.meta.dirname, "registry/lib/selectable-variants"),
         "@": resolve(import.meta.dirname, "./src"),
       },
       dedupe: ["react", "react-dom"],
