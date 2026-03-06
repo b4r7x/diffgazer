@@ -1,6 +1,6 @@
 import { defineDocs, defineConfig, frontmatterSchema } from "fumadocs-mdx/config"
 import { z } from "zod"
-import { docsCodeTheme } from "./code-theme"
+import { docsCodeTheme } from "@b4r7x/registry-kit"
 
 export const docs = defineDocs({
   dir: "content/docs",
