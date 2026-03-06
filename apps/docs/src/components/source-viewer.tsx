@@ -12,9 +12,10 @@ import { CopyButton } from "./copy-button"
 interface SourceViewerProps {
   files: (SourceFile & { path: string })[]
   mergedSource?: string
+  name?: string
 }
 
-export function SourceViewer({ files, mergedSource }: SourceViewerProps) {
+export function SourceViewer({ files, mergedSource, name }: SourceViewerProps) {
   if (files.length === 0) return null
 
   return (
@@ -25,6 +26,10 @@ export function SourceViewer({ files, mergedSource }: SourceViewerProps) {
           <CopyButton text={mergedSource} label="Copy Component" />
         )}
       </div>
+      <p className="text-xs text-muted-foreground mb-3 mt-1">
+        Use <code className="text-[0.7rem] bg-muted px-1 py-0.5 rounded">npx diffui add{name ? ` ${name}` : ""}</code> to install with all dependencies.
+        For standalone keyboard hooks without the full keyscope package, use <code className="text-[0.7rem] bg-muted px-1 py-0.5 rounded">--integration copy</code>.
+      </p>
 
       <Accordion collapsible className="divide-y-0">
         <AccordionItem value="source" className="py-0">
