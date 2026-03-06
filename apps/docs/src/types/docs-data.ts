@@ -31,6 +31,8 @@ export interface ComponentData {
   exampleSource: Record<string, SourceFile>
   docs: ComponentDoc | null
   keyscopeDeps?: string[]
+  diffuiHookDeps?: string[]
+  diffuiLibDeps?: string[]
 }
 
 export type DocsData = Record<string, ComponentData>
