@@ -5,9 +5,10 @@ interface CopyButtonProps {
   text: string
   className?: string
   label?: string
+  title?: string
 }
 
-export function CopyButton({ text, className, label }: CopyButtonProps) {
+export function CopyButton({ text, className, label, title }: CopyButtonProps) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
@@ -24,6 +25,7 @@ export function CopyButton({ text, className, label }: CopyButtonProps) {
       size={label ? "sm" : "icon"}
       onClick={handleCopy}
       className={className}
+      title={title}
       aria-label={copied ? "Copied" : "Copy to clipboard"}
     >
       <span className="text-xs font-mono">
