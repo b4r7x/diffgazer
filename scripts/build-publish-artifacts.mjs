@@ -1,7 +1,10 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildRegistryArtifacts } from "@b4r7x/registry-kit";
+import {
+  buildRegistryArtifacts,
+  createArtifactManifest,
+} from "@b4r7x/registry-kit";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -14,8 +17,6 @@ const INPUTS = [
 ];
 
 function main() {
-  const pkg = JSON.parse(readFileSync(resolve(ROOT, "package.json"), "utf-8"));
-
   // Create minimal generated dir so docs sync validation passes
   const generatedDir = resolve(ROOT, "docs/generated");
   mkdirSync(generatedDir, { recursive: true });
@@ -24,12 +25,9 @@ function main() {
     JSON.stringify({ id: "diffgazer", type: "content-only" }),
   );
 
-  const manifest = {
-    schemaVersion: 1,
+  const manifest = createArtifactManifest({
+    rootDir: ROOT,
     library: "diffgazer",
-    package: pkg.name ?? "diffgazer",
-    version: pkg.version ?? "0.0.0",
-    artifactRoot: "dist/artifacts",
     inputs: INPUTS,
     docs: {
       contentDir: "docs",
@@ -46,11 +44,7 @@ function main() {
       publicDir: "registry",
       index: "registry/registry.json",
     },
-    integrity: {
-      algorithm: "sha256",
-      fingerprintFile: "fingerprint.sha256",
-    },
-  };
+  });
 
   const copyDirs = [
     { from: "docs/content", to: "docs" },
@@ -65,7 +59,6 @@ function main() {
 
   const result = buildRegistryArtifacts({
     rootDir: ROOT,
-    inputs: INPUTS,
     manifest,
     defaultOrigin: "https://diffgazer.com",
     requiredPaths: [
