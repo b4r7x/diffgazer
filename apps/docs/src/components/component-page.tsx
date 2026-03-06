@@ -263,6 +263,7 @@ export function ComponentPage({ data, prev, next }: ComponentPageProps) {
           files={sourceFiles}
           mergedSource={data.mergedSource}
           name={data.name}
+          hasKeyscopeDeps={!!data.keyscopeDeps?.length}
         />
       </div>
 

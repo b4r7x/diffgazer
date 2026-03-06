@@ -13,9 +13,10 @@ interface SourceViewerProps {
   files: (SourceFile & { path: string })[]
   mergedSource?: string
   name?: string
+  hasKeyscopeDeps?: boolean
 }
 
-export function SourceViewer({ files, mergedSource, name }: SourceViewerProps) {
+export function SourceViewer({ files, mergedSource, name, hasKeyscopeDeps }: SourceViewerProps) {
   if (files.length === 0) return null
 
   return (
@@ -23,12 +24,22 @@ export function SourceViewer({ files, mergedSource, name }: SourceViewerProps) {
       <div className="flex items-center justify-between">
         <SectionHeader as="h3">Source</SectionHeader>
         {mergedSource && (
-          <CopyButton text={mergedSource} label="Copy Component" />
+          <CopyButton
+            text={mergedSource}
+            label="Copy Full Source"
+            title="Copies all component files, hooks, and utilities merged into a single standalone file"
+          />
         )}
       </div>
       <p className="text-xs text-muted-foreground mb-3 mt-1">
-        Use <code className="text-[0.7rem] bg-muted px-1 py-0.5 rounded">npx diffui add{name ? ` ${name}` : ""}</code> to install with all dependencies.
-        For standalone keyboard hooks without the full keyscope package, use <code className="text-[0.7rem] bg-muted px-1 py-0.5 rounded">--integration copy</code>.
+        Install via CLI: <code className="text-[0.7rem] bg-muted px-1 py-0.5 rounded">npx diffui add{name ? ` ${name}` : ""}</code>.
+        {hasKeyscopeDeps && (
+          <>
+            {" "}Keyboard hooks are included as standalone copies by default.
+            For the full keyscope experience (scoped navigation, key bindings, focus zones), use{" "}
+            <code className="text-[0.7rem] bg-muted px-1 py-0.5 rounded">--integration keyscope</code>.
+          </>
+        )}
       </p>
 
       <Accordion collapsible className="divide-y-0">
