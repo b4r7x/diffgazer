@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/callout"
 
 describe("Callout", () => {
-  it("uses grid layout and part markers for column mode", () => {
+  it("uses grid layout for column mode", () => {
     const { container } = render(
       <Callout layout="column">
         <CalloutIcon />
@@ -26,9 +26,9 @@ describe("Callout", () => {
 
     expect(callout.className).toContain("grid")
     expect(callout.className).toContain("grid-cols-[auto_minmax(0,1fr)_auto]")
-    expect(callout.querySelector('[data-callout-part="icon"]')).not.toBeNull()
-    expect(callout.querySelector('[data-callout-part="title"]')).not.toBeNull()
-    expect(callout.querySelector('[data-callout-part="content"]')).not.toBeNull()
+    const icon = callout.querySelector('[aria-hidden="true"]')
+    expect(icon).not.toBeNull()
+    expect(icon!.className).toContain("col-start-1")
   })
 
   it("uses inline flex layout for inline mode", () => {

@@ -1,7 +1,7 @@
+import { Fragment } from "react"
 import { useLocation } from "@tanstack/react-router"
 import {
   Breadcrumbs as BreadcrumbsBase,
-  BreadcrumbsItem,
 } from "@/components/ui/breadcrumbs"
 import { isDocsLibraryId } from "@/lib/docs-library"
 
@@ -19,14 +19,25 @@ export function Breadcrumbs() {
 
   return (
     <BreadcrumbsBase className="capitalize">
-      {pathParts.map((part, i) => {
-        const href = "/" + [library, "docs", ...pathParts.slice(0, i + 1)].join("/")
-        return (
-          <BreadcrumbsItem key={href} href={href}>
-            {part.replace(/-/g, " ")}
-          </BreadcrumbsItem>
-        )
-      })}
+      <BreadcrumbsBase.List>
+        {pathParts.map((part, i) => {
+          const href = "/" + [library, "docs", ...pathParts.slice(0, i + 1)].join("/")
+          const isLast = i === pathParts.length - 1
+
+          return (
+            <Fragment key={href}>
+              {i > 0 ? <BreadcrumbsBase.Separator /> : null}
+              <BreadcrumbsBase.Item>
+                {isLast ? (
+                  <BreadcrumbsBase.Page>{part.replace(/-/g, " ")}</BreadcrumbsBase.Page>
+                ) : (
+                  <BreadcrumbsBase.Link href={href}>{part.replace(/-/g, " ")}</BreadcrumbsBase.Link>
+                )}
+              </BreadcrumbsBase.Item>
+            </Fragment>
+          )
+        })}
+      </BreadcrumbsBase.List>
     </BreadcrumbsBase>
   )
 }
