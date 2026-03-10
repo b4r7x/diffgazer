@@ -51,11 +51,9 @@ export function NotFoundState({
             </h1>
           </EmptyStateMessage>
           <EmptyStateDescription>{description}</EmptyStateDescription>
-          <EmptyStateActions>
-            <div className="mt-5 flex items-center justify-center gap-3">
-              {primaryAction}
-              {secondaryAction}
-            </div>
+          <EmptyStateActions className="mt-5 gap-3 justify-center">
+            {primaryAction}
+            {secondaryAction}
           </EmptyStateActions>
         </EmptyState>
       </div>
