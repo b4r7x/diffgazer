@@ -27,6 +27,7 @@
       "@/lib/utils": ["./src/lib/utils.ts"],
       "@/lib/compose-refs": ["./registry/lib/compose-refs.ts"],
       "@/lib/selectable-variants": ["./registry/lib/selectable-variants.ts"],
+      "@/lib/input-variants": ["./registry/lib/input-variants.ts"],
       "@/components/ui/*": ["./registry/ui/*"],
       "@/hooks/*": ["./registry/hooks/*"],
       "fumadocs-mdx:collections/*": [".source/*"]
