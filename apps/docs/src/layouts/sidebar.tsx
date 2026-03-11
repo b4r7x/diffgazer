@@ -165,29 +165,31 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
                   const isPending = pendingPathname === url;
 
                   return (
-                    <Link
-                      key={url}
-                      to="/$lib/docs/$"
-                      params={{ lib: library, _splat: splatFromUrl(url) }}
-                      onClick={onNavigate}
-                      data-value={url}
-                      role="menuitem"
-                    >
-                      <SidebarItem active={pathname === url || isPending}>
-                        {isPending ? (
-                          <Spinner size="sm" className="ml-2" />
-                        ) : (
-                          <span
-                            className={cn(
-                              "text-xs font-mono",
-                              indented ? "pl-5 text-muted-foreground" : "pl-2",
-                            )}
-                          >
-                            {indented ? `· ${label}` : label}
-                          </span>
-                        )}
-                      </SidebarItem>
-                    </Link>
+                    <SidebarItem key={url} active={pathname === url || isPending}>
+                      {(itemProps) => (
+                        <Link
+                          to="/$lib/docs/$"
+                          params={{ lib: library, _splat: splatFromUrl(url) }}
+                          onClick={onNavigate}
+                          data-value={url}
+                          role="menuitem"
+                          {...itemProps}
+                        >
+                          {isPending ? (
+                            <Spinner size="sm" className="ml-2" />
+                          ) : (
+                            <span
+                              className={cn(
+                                "text-xs font-mono",
+                                indented ? "pl-5 text-muted-foreground" : "pl-2",
+                              )}
+                            >
+                              {indented ? `· ${label}` : label}
+                            </span>
+                          )}
+                        </Link>
+                      )}
+                    </SidebarItem>
                   );
                 })}
               </SidebarSection>
