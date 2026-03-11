@@ -8,7 +8,7 @@ import { PropsTable } from "./props-table"
 import { SourceViewer } from "./source-viewer"
 import { AnatomyDiagram } from "./anatomy-diagram"
 import { CopyButton } from "./copy-button"
-import { Pager, PagerPrevious, PagerNext } from "@/components/ui/pager"
+import { Pager, PagerPrevious, PagerNext, PagerLink } from "@/components/ui/pager"
 import { CodeBlock, CodeBlockContent, CodeBlockHeader, CodeBlockLabel, CodeBlockLine } from "@/components/ui/code-block"
 import { getDocsLibraryFromPathname } from "@/lib/docs-library"
 import keyscopeHooksData from "@/generated/keyscope/keyscope-hooks.json"
@@ -270,16 +270,24 @@ export function ComponentPage({ data, prev, next }: ComponentPageProps) {
       <Pager className="mt-auto">
         {prev && (
           <PagerPrevious>
-            <Link to="/$lib/docs/$" params={{ lib: library, _splat: `components/${prev}` }}>
-              {prev}
-            </Link>
+            <PagerLink>
+              {({ className }) => (
+                <Link className={className} to="/$lib/docs/$" params={{ lib: library, _splat: `components/${prev}` }}>
+                  {prev}
+                </Link>
+              )}
+            </PagerLink>
           </PagerPrevious>
         )}
         {next && (
           <PagerNext>
-            <Link to="/$lib/docs/$" params={{ lib: library, _splat: `components/${next}` }}>
-              {next}
-            </Link>
+            <PagerLink>
+              {({ className }) => (
+                <Link className={className} to="/$lib/docs/$" params={{ lib: library, _splat: `components/${next}` }}>
+                  {next}
+                </Link>
+              )}
+            </PagerLink>
           </PagerNext>
         )}
       </Pager>
