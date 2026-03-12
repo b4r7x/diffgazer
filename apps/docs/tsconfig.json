@@ -28,6 +28,7 @@
       "@/lib/compose-refs": ["./registry/lib/compose-refs.ts"],
       "@/lib/selectable-variants": ["./registry/lib/selectable-variants.ts"],
       "@/lib/input-variants": ["./registry/lib/input-variants.ts"],
+      "@/lib/resolve-tab-target": ["./registry/lib/resolve-tab-target.ts"],
       "@/components/ui/*": ["./registry/ui/*"],
       "@/hooks/*": ["./registry/hooks/*"],
       "fumadocs-mdx:collections/*": [".source/*"]
