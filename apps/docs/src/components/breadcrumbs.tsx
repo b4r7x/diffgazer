@@ -23,9 +23,9 @@ export function Breadcrumbs() {
         const isLast = i === pathParts.length - 1
 
         return (
-          <BreadcrumbsBase.Item key={href}>
+          <BreadcrumbsBase.Item key={href} current={isLast}>
             {isLast ? (
-              <BreadcrumbsBase.Page>{part.replace(/-/g, " ")}</BreadcrumbsBase.Page>
+              part.replace(/-/g, " ")
             ) : (
               <BreadcrumbsBase.Link href={href}>{part.replace(/-/g, " ")}</BreadcrumbsBase.Link>
             )}
