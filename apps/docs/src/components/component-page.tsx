@@ -128,9 +128,9 @@ export function ComponentPage({ data, prev, next }: ComponentPageProps) {
 
   return (
     <div className="max-w-4xl flex-1 flex flex-col" data-pagefind-body>
-      <Tabs<ComponentPageTab>
+      <Tabs
         value={activeTab}
-        onChange={handleTabChange}
+        onValueChange={handleTabChange}
         variant="underline"
         className="mb-8"
       >
