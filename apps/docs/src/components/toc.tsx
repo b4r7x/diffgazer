@@ -1,7 +1,7 @@
 import type { TableOfContents } from "fumadocs-core/toc";
 import { type MouseEvent, useEffect, useMemo, useRef } from "react";
 import {
-	type ActiveHeadingActivationMode,
+	type ActiveHeadingActivation,
 	useActiveHeading,
 } from "@/hooks/use-active-heading";
 import { ScrollArea } from "@/components/ui/scroll-area/scroll-area";
@@ -31,12 +31,7 @@ function isPlainLeftClick(event: MouseEvent<HTMLAnchorElement>): boolean {
 
 interface TableOfContentsPanelProps {
 	toc: TableOfContents;
-	activationMode?: ActiveHeadingActivationMode;
-	/**
-	 * Continuous activation position (0–1) within the viewport.
-	 * Overrides `activationMode` when set.
-	 */
-	activationPosition?: number;
+	activation?: ActiveHeadingActivation;
 	topOffset?: number;
 	scrollOffset?: number;
 	bottomLock?: boolean;
@@ -44,8 +39,7 @@ interface TableOfContentsPanelProps {
 
 export function TableOfContentsPanel({
 	toc,
-	activationMode = "top-line",
-	activationPosition,
+	activation = "top-line",
 	topOffset = 96,
 	scrollOffset = topOffset,
 	bottomLock = true,
@@ -70,8 +64,7 @@ export function TableOfContentsPanel({
 	const { activeId, scrollTo } = useActiveHeading({
 		ids: headingIds,
 		containerId: "main-content",
-		activationMode,
-		activationPosition,
+		activation,
 		topOffset,
 		scrollOffset,
 		bottomLock,

@@ -118,15 +118,13 @@ function appendHeading({
 
 function HookHarness({
 	ids,
-	activationMode,
-	activationPosition,
+	activation,
 	bottomLock = true,
 	topOffset = 96,
 	children,
 }: {
 	ids: string[];
-	activationMode?: "top-line" | "viewport-center";
-	activationPosition?: number;
+	activation?: "top-line" | "viewport-center" | number;
 	bottomLock?: boolean;
 	topOffset?: number;
 	children?: ReactNode;
@@ -134,8 +132,7 @@ function HookHarness({
 	const { activeId } = useActiveHeading({
 		ids,
 		containerId: "main-content",
-		activationMode,
-		activationPosition,
+		activation,
 		bottomLock,
 		topOffset,
 	});
@@ -237,7 +234,7 @@ describe("useActiveHeading", () => {
 		render(
 			<HookHarness
 				ids={["intro", "api"]}
-				activationMode="viewport-center"
+				activation="viewport-center"
 			/>,
 		);
 		expect(screen.getByTestId("active").textContent).toBe("intro");
@@ -391,16 +388,16 @@ describe("useActiveHeading", () => {
 		vi.useRealTimers();
 	});
 
-	it("activates heading based on activationPosition fraction", async () => {
+	it("activates heading based on numeric activation fraction", async () => {
 		vi.useFakeTimers();
 
-		// Container height = 600, so activationPosition=0.5 → line at 300px
+		// Container height = 600, so activation=0.5 → line at 300px
 		const { main, getScrollTop } = createMainContent();
 		appendHeading({ id: "intro", absoluteTop: 80, getScrollTop, parent: main });
 		appendHeading({ id: "api", absoluteTop: 420, getScrollTop, parent: main });
 
 		render(
-			<HookHarness ids={["intro", "api"]} activationPosition={0.5} />,
+			<HookHarness ids={["intro", "api"]} activation={0.5} />,
 		);
 
 		await act(() => vi.advanceTimersByTimeAsync(16));
@@ -417,7 +414,7 @@ describe("useActiveHeading", () => {
 		vi.useRealTimers();
 	});
 
-	it("activationPosition=0 activates at the very top of the container", async () => {
+	it("activation=0 activates at the very top of the container", async () => {
 		vi.useFakeTimers();
 
 		const { main, getScrollTop } = createMainContent();
@@ -425,11 +422,11 @@ describe("useActiveHeading", () => {
 		appendHeading({ id: "api", absoluteTop: 420, getScrollTop, parent: main });
 
 		render(
-			<HookHarness ids={["intro", "api"]} activationPosition={0} />,
+			<HookHarness ids={["intro", "api"]} activation={0} />,
 		);
 
 		await act(() => vi.advanceTimersByTimeAsync(16));
-		// With activationPosition=0, the activation line is at the very top (y=0).
+		// With activation=0, the activation line is at the very top (y=0).
 		// "intro" heading is at y=80 which is BELOW the line, so still first element wins.
 		expect(screen.getByTestId("active").textContent).toBe("intro");
 
@@ -443,30 +440,27 @@ describe("useActiveHeading", () => {
 		vi.useRealTimers();
 	});
 
-	it("activationPosition overrides activationMode", async () => {
+	it("numeric activation places line at the given viewport fraction", async () => {
 		vi.useFakeTimers();
 
-		// activationMode="top-line" with topOffset=96 would place activation at y=96.
-		// activationPosition=0.5 with container height=600 places it at y=300.
+		// activation=0.5 with container height=600 places line at y=300.
+		// topOffset=96 is irrelevant when activation is numeric.
 		const { main, getScrollTop } = createMainContent();
 		appendHeading({ id: "intro", absoluteTop: 80, getScrollTop, parent: main });
-		// Place "api" heading at 200 — below top-line (96) but above center (300).
 		appendHeading({ id: "api", absoluteTop: 200, getScrollTop, parent: main });
 
 		render(
 			<HookHarness
 				ids={["intro", "api"]}
-				activationMode="top-line"
-				activationPosition={0.5}
+				activation={0.5}
 				topOffset={96}
 			/>,
 		);
 
 		await act(() => vi.advanceTimersByTimeAsync(16));
 
-		// With activationPosition=0.5 (line at 300), both headings are above it:
-		// intro at y=80 < 300 → candidate, api at y=200 < 300 → candidate.
-		// Last candidate wins → "api".
+		// Both headings are above the line at 300:
+		// intro at y=80, api at y=200. Last candidate wins → "api".
 		expect(screen.getByTestId("active").textContent).toBe("api");
 
 		vi.useRealTimers();
