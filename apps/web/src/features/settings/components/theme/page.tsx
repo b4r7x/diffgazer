@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import type { WebTheme, ResolvedTheme } from "@/types/theme";
-import { Panel, PanelContent, PanelHeader, Callout, Button } from "@diffgazer/ui";
+import { Panel, PanelContent, Callout, Button } from "@diffgazer/ui";
 import { ThemeSelectorContent } from "../theme-selector-content";
 import { ThemePreviewCard } from "../theme-preview-card";
 import { useTheme } from "@/hooks/use-theme";
@@ -110,9 +110,9 @@ export function SettingsThemePage() {
     <div className="flex-1 flex flex-col p-6 min-h-0">
       <div className="grid grid-cols-[2fr_3fr] gap-6 w-full h-full min-h-0">
         <Panel className="relative pt-4 flex flex-col h-full">
-          <PanelHeader variant="floating" className="text-tui-violet">
+          <div className="absolute -top-3 left-4 bg-tui-bg px-2 text-xs font-bold uppercase tracking-wider text-tui-violet">
             Theme Settings
-          </PanelHeader>
+          </div>
           <PanelContent className="flex-1 flex flex-col">
             <ThemeSelectorContent
               value={selectedTheme}
@@ -156,9 +156,9 @@ export function SettingsThemePage() {
         </Panel>
 
         <Panel className="relative pt-4 flex flex-col h-full overflow-hidden">
-          <PanelHeader variant="floating" className="text-tui-blue">
+          <div className="absolute -top-3 left-4 bg-tui-bg px-2 text-xs font-bold uppercase tracking-wider text-tui-blue">
             Live Preview
-          </PanelHeader>
+          </div>
           <PanelContent className="flex-1 flex items-center justify-center p-0">
             <ThemePreviewCard previewTheme={previewResolved} />
           </PanelContent>

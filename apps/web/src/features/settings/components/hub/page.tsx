@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Menu, MenuItem, Panel, PanelHeader } from "@diffgazer/ui";
+import { Menu, MenuItem, Panel } from "@diffgazer/ui";
 import { useConfigData } from "@/app/providers/config-provider";
 import { useScope, useKey, useNavigation } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
@@ -92,7 +92,7 @@ export function SettingsHubPage() {
     <div className="flex-1 flex flex-col items-center justify-center px-4 pb-12">
       <div className="w-full max-w-3xl">
         <Panel className="bg-tui-bg shadow-2xl">
-          <PanelHeader variant="floating">SETTINGS HUB</PanelHeader>
+          <div className="absolute -top-3 left-4 bg-tui-bg px-2 text-xs font-bold uppercase tracking-wider text-tui-muted">SETTINGS HUB</div>
           <Menu
             ref={menuRef}
             selectedId={selectedId}

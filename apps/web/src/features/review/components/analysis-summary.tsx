@@ -1,5 +1,5 @@
 import { cn } from '@/utils/cn';
-import { Panel, PanelHeader, PanelContent, Button } from '@diffgazer/ui';
+import { Panel, PanelContent, SectionHeader, Button } from '@diffgazer/ui';
 import { SeverityBreakdown } from '@/components/ui/severity';
 import { IssuePreviewItem } from './issue-preview-item';
 import { LensStatsTable, type LensStats } from './lens-stats-table';
@@ -46,18 +46,18 @@ export function AnalysisSummary({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Panel className="bg-tui-selection/10">
-          <PanelHeader variant="section" className="mb-4">
+          <SectionHeader variant="muted" className="mb-4">
             Severity Breakdown
-          </PanelHeader>
+          </SectionHeader>
           <PanelContent spacing="sm" className="pt-0">
             <SeverityBreakdown counts={severityCounts} />
           </PanelContent>
         </Panel>
 
         <Panel className="bg-tui-selection/10">
-          <PanelHeader variant="section" className="mb-4">
+          <SectionHeader variant="muted" className="mb-4">
             Issues by Lens
-          </PanelHeader>
+          </SectionHeader>
           <PanelContent spacing="none" className="pt-0">
             <LensStatsTable lenses={lensStats} />
           </PanelContent>

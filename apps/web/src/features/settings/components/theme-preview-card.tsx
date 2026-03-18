@@ -16,8 +16,9 @@ export function ThemePreviewCard({ previewTheme }: ThemePreviewCardProps) {
     >
       <div className="w-full max-w-sm font-mono text-xs isolate">
         <Panel className="bg-tui-bg border-tui-border">
-          <PanelHeader variant="default" value="RO">
-            PREVIEW.tsx
+          <PanelHeader>
+            <span>PREVIEW.tsx</span>
+            <span className="text-foreground">RO</span>
           </PanelHeader>
           <PanelContent spacing="none">
             <Menu selectedId="selected" onSelect={() => {}}>

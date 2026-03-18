@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { cn } from "@/utils/cn";
 import {
-  PanelHeader,
+  SectionHeader,
   Badge,
   type BadgeProps,
   Button,
@@ -202,7 +202,7 @@ export function ReviewProgressView({
       >
         <div className="flex-1 overflow-y-auto scrollbar-hide pr-2">
           <div className="mb-8 pt-2">
-            <PanelHeader variant="section">Progress Overview</PanelHeader>
+            <SectionHeader variant="muted" className="mb-4">Progress Overview</SectionHeader>
             <ProgressList
               steps={steps}
               expandedIds={expandedIds}
@@ -232,9 +232,9 @@ export function ReviewProgressView({
         )}
       >
         <div className="flex justify-between items-end mb-2 pt-2 border-b border-tui-border pb-2">
-          <PanelHeader variant="section" className="mb-0">
+          <SectionHeader variant="muted" className="mb-0">
             Live Activity Log
-          </PanelHeader>
+          </SectionHeader>
           <span className="text-[10px] text-muted-foreground font-mono">
             tail -f agent.log
           </span>
