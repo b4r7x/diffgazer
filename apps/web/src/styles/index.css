@@ -8,3 +8,7 @@ body {
   background-color: var(--tui-bg);
   color: var(--tui-fg);
 }
+
+[data-focused] {
+  @apply ring-1 ring-tui-blue ring-inset;
+}
