@@ -1,4 +1,4 @@
-import { PanelHeader } from '@diffgazer/ui';
+import { SectionHeader } from '@diffgazer/ui';
 import { MetricItem } from './metric-item';
 import { Timer } from './timer';
 import type { ReviewProgressMetrics } from '@diffgazer/schemas/ui';
@@ -12,7 +12,7 @@ interface ReviewMetricsFooterProps {
 export function ReviewMetricsFooter({ metrics, startTime, isRunning }: ReviewMetricsFooterProps) {
   return (
     <div className="shrink-0 pt-4 pb-6 border-t border-tui-border">
-      <PanelHeader variant="section-bordered">Metrics</PanelHeader>
+      <SectionHeader variant="muted" bordered>Metrics</SectionHeader>
       <div className="space-y-3 pt-2">
         <MetricItem
           label="Files Processed"

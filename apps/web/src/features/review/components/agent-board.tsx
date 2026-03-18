@@ -1,5 +1,5 @@
 import { cn } from '@/utils/cn';
-import { PanelHeader, Badge } from '@diffgazer/ui';
+import { SectionHeader, Badge } from '@diffgazer/ui';
 import type { AgentState } from '@diffgazer/schemas/events';
 
 const AGENT_STATUS_META = {
@@ -18,7 +18,7 @@ export function AgentBoard({ agents }: AgentBoardProps) {
 
   return (
     <div className="mb-8">
-      <PanelHeader variant="section-bordered">Agent Board</PanelHeader>
+      <SectionHeader variant="muted" bordered>Agent Board</SectionHeader>
       <div className="space-y-2">
         {agents.map((agent) => {
           const status = AGENT_STATUS_META[agent.status];

@@ -1,4 +1,4 @@
-import { PanelHeader, Button } from "@diffgazer/ui";
+import { SectionHeader, Button } from "@diffgazer/ui";
 import { downloadAsFile } from "@/utils/download";
 import type { ReviewContextResponse } from "@diffgazer/api/types";
 
@@ -15,7 +15,7 @@ export function ContextSnapshotPreview({ snapshot }: ContextSnapshotPreviewProps
 
   return (
     <div className="mb-8">
-      <PanelHeader variant="section-bordered">Context Snapshot</PanelHeader>
+      <SectionHeader variant="muted" bordered>Context Snapshot</SectionHeader>
       <div className="text-xs text-tui-muted">
         {snapshot.meta.charCount.toLocaleString()} chars
       </div>
