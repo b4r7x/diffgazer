@@ -13,7 +13,6 @@ export { Radio, type RadioProps, RadioGroup, type RadioGroupProps, RadioGroupIte
 export { Panel, PanelHeader, PanelContent, type PanelProps, type PanelHeaderProps, type PanelContentProps } from "./components/panel";
 export { Stepper, StepperStep, StepperSubstep, type StepperProps, type StepData, type StepperStepProps, type StepStatus, type StepperSubstepProps, type SubstepData, type SubstepStatus } from "./components/stepper";
 export { ScrollArea, type ScrollAreaProps } from "./components/scroll-area";
-export { FocusablePane, type FocusablePaneProps } from "./components/focusable-pane";
 export { CardLayout, type CardLayoutProps } from "./components/card-layout";
 export { BlockBar, type BlockBarProps } from "./components/block-bar";
 export { SectionHeader, type SectionHeaderProps } from "./components/section-header";

@@ -74,7 +74,7 @@ v                              v
 
 **keyscope** - Keyboard navigation (external package): `useScope` sets context, `useKey` registers handlers, `useNavigation` provides arrow-key navigation within containers. Replaced internal `@diffgazer/keyboard`.
 
-**@diffgazer/ui** - Terminal-inspired React component library. Primitives (Button, Badge, Input), layout (Panel, ScrollArea, FocusablePane), compound components (Dialog, Tabs, CodeBlock, DiffView). No Radix or shadcn.
+**@diffgazer/ui** - Terminal-inspired React component library. Primitives (Button, Badge, Input), layout (Panel, ScrollArea), compound components (Dialog, Tabs, CodeBlock, DiffView). No Radix or shadcn.
 
 ## Server
 

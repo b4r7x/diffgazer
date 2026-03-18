@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { FocusablePane, NavigationList } from "@diffgazer/ui";
+import { NavigationList } from "@diffgazer/ui";
 import { useNavigation } from "keyscope";
 import { RunAccordionItem } from "@/features/history/components/run-accordion-item";
 import { TimelineList } from "@/features/history/components/timeline-list";
@@ -81,8 +81,8 @@ export function HistoryPage() {
       />
 
       <div className="flex flex-1 overflow-hidden border-x border-b border-tui-border">
-        <FocusablePane
-          isFocused={focusZone === "timeline"}
+        <div
+          data-focused={focusZone === "timeline" || undefined}
           className="w-48 border-r border-tui-border flex flex-col shrink-0"
         >
           <div className="p-3 text-xs text-tui-muted font-bold uppercase tracking-wider border-b border-tui-border">
@@ -97,10 +97,10 @@ export function HistoryPage() {
               onBoundaryReached={handleTimelineBoundary}
             />
           </div>
-        </FocusablePane>
+        </div>
 
-        <FocusablePane
-          isFocused={focusZone === "runs"}
+        <div
+          data-focused={focusZone === "runs" || undefined}
           className="flex-1 min-w-0 border-r border-tui-border flex flex-col overflow-hidden"
         >
           <div className="p-3 text-xs text-tui-muted font-bold uppercase tracking-wider border-b border-tui-border flex justify-between overflow-hidden">
@@ -136,10 +136,10 @@ export function HistoryPage() {
               </div>
             )}
           </div>
-        </FocusablePane>
+        </div>
 
-        <FocusablePane
-          isFocused={focusZone === "insights"}
+        <div
+          data-focused={focusZone === "insights" || undefined}
           className="w-80 min-h-0 flex flex-col shrink-0 overflow-hidden"
         >
           <HistoryInsightsPane
@@ -149,7 +149,7 @@ export function HistoryPage() {
             duration={duration}
             onIssueClick={handleIssueClick}
           />
-        </FocusablePane>
+        </div>
       </div>
     </div>
   );

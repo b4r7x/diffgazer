@@ -1,6 +1,6 @@
 import { useRef, type Ref } from "react";
 import { cn } from "@/utils/cn";
-import { Tabs, TabsList, TabsTrigger, TabsContent, FocusablePane, SectionHeader, EmptyState, ScrollArea } from "@diffgazer/ui";
+import { Tabs, TabsList, TabsTrigger, TabsContent, SectionHeader, EmptyState, ScrollArea } from "@diffgazer/ui";
 import { useNavigation } from "keyscope";
 import { CodeSnippet, type CodeLine } from "./code-snippet";
 import { DiffView } from "./diff-view";
@@ -40,7 +40,7 @@ export function IssueDetailsPane({
   });
 
   return (
-    <FocusablePane isFocused={isFocused} className={cn("w-3/5 flex flex-col pl-4 min-h-0", className)}>
+    <div data-focused={isFocused || undefined} className={cn("w-3/5 flex flex-col pl-4 min-h-0", className)}>
       <div ref={tabsRef} className="flex flex-1 min-h-0 flex-col">
         <Tabs value={activeTab} onValueChange={onTabChange} className="flex flex-1 min-h-0 flex-col">
           <TabsList className="border-b border-tui-border pb-2 pt-2 mb-4" onKeyDown={tabsKeyDown}>
@@ -87,7 +87,7 @@ export function IssueDetailsPane({
           </ScrollArea>
         </Tabs>
       </div>
-    </FocusablePane>
+    </div>
   );
 }
 

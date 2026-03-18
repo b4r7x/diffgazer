@@ -342,7 +342,7 @@ Keyboard navigation system (replaced internal `@diffgazer/keyboard`):
 ### @diffgazer/ui
 Terminal-inspired React UI component library (custom-built, no Radix/shadcn):
 - **Primitives:** Button, Badge, Input, Textarea, Callout, Checkbox, Radio
-- **Layout:** Panel, CardLayout, FocusablePane, ScrollArea, SectionHeader, EmptyState
+- **Layout:** Panel, CardLayout, ScrollArea, SectionHeader, EmptyState
 - **Compound:** Dialog, Tabs, Menu, NavigationList, Stepper, Toast, CodeBlock, DiffView, SearchInput, ToggleGroup
 
 ---

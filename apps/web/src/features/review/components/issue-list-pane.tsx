@@ -2,7 +2,6 @@ import type { Ref } from "react";
 import { cn } from "@/utils/cn";
 import { IssueListItem } from "@/components/ui/issue";
 import { SeverityFilterGroup, type SeverityFilter } from "./severity-filter-group";
-import { FocusablePane } from "@diffgazer/ui";
 import { calculateSeverityCounts } from "@diffgazer/core/severity";
 import type { ReviewIssue } from "@diffgazer/schemas/review";
 
@@ -40,8 +39,8 @@ export function IssueListPane({
   const counts = calculateSeverityCounts(allIssues);
 
   return (
-    <FocusablePane
-      isFocused={isFocused}
+    <div
+      data-focused={isFocused || undefined}
       className={cn("w-2/5 flex flex-col border-r border-tui-border pr-4 min-h-0", className)}
     >
       <div className="pb-4 pt-2">
@@ -68,6 +67,6 @@ export function IssueListPane({
           <div className="text-tui-muted text-sm p-2">No issues match filter</div>
         )}
       </div>
-    </FocusablePane>
+    </div>
   );
 }
