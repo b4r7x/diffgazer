@@ -104,6 +104,7 @@ export function collectArtifactSyncValidationErrors(params) {
     "content/docs/meta.json",
     "registry/registry.json",
     "styles/styles.css",
+    "src/generated/demo-loaders.ts",
   ];
 
   for (const relPath of requiredRootFiles) {

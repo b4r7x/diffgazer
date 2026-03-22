@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/sidebar";
 import { ScrollArea } from "@/components/ui/scroll-area/scroll-area";
 import { cn } from "@/lib/utils";
-import type { DocsLibraryId } from "@/lib/docs-library";
+import { DOCS_LIBRARY_IDS, type DocsLibraryId } from "@/lib/docs-library";
 import type { PageTree, PageTreeNode } from "@/lib/docs-tree";
 
 interface DocsSidebarProps {
@@ -46,7 +46,7 @@ function isCliCommandPath(path: string): boolean {
 
 export function isIndentedItem(path: string): boolean {
   const slug = getSlug(path);
-  if (slug.startsWith("keyscope-") && slug !== "keyscope") return true;
+  if (DOCS_LIBRARY_IDS.some((id) => slug.startsWith(`${id}-`) && slug !== id)) return true;
   return isCliCommandPath(path);
 }
 
@@ -166,13 +166,12 @@ export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
 
                   return (
                     <SidebarItem key={url} active={pathname === url || isPending}>
-                      {(itemProps) => (
+                      {({ ref: _ref, ...itemProps }) => (
                         <Link
                           to="/$lib/docs/$"
                           params={{ lib: library, _splat: splatFromUrl(url) }}
                           onClick={onNavigate}
                           data-value={url}
-                          role="menuitem"
                           {...itemProps}
                         >
                           {isPending ? (

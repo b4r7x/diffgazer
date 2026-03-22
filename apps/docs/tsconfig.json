@@ -1,10 +1,11 @@
 {
   "include": ["**/*.ts", "**/*.tsx", "src/generated/**/*.json"],
+  "exclude": ["**/*.test.ts", "**/*.test.tsx", "registry/hooks/testing/**"],
   "compilerOptions": {
     "target": "ES2022",
     "jsx": "react-jsx",
     "module": "ESNext",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],
 
     /* Bundler mode */
@@ -29,6 +30,7 @@
       "@/lib/selectable-variants": ["./registry/lib/selectable-variants.ts"],
       "@/lib/input-variants": ["./registry/lib/input-variants.ts"],
       "@/lib/resolve-tab-target": ["./registry/lib/resolve-tab-target.ts"],
+      "@/lib/diff": ["./registry/lib/diff/index.ts"],
       "@/components/ui/*": ["./registry/ui/*"],
       "@/hooks/*": ["./registry/hooks/*"],
       "fumadocs-mdx:collections/*": [".source/*"]

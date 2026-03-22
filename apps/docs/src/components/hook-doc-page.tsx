@@ -6,7 +6,11 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from "@/components/ui/accordion"
+import { DemoPreview } from "./demo-preview"
+import { ParameterTable } from "./parameter-table"
+import { useDemos } from "@/lib/use-demos"
 import { CopyButton } from "./copy-button"
+import { resolveExamples } from "@/lib/resolve-examples"
 
 interface HookParameter {
   name: string
@@ -17,6 +21,7 @@ interface HookParameter {
 }
 
 export interface HookDocPageProps {
+  library: string
   data: {
     name: string
     title: string
@@ -42,9 +47,10 @@ export interface HookDocPageProps {
   }
 }
 
-export function HookDocPage({ data }: HookDocPageProps) {
+export function HookDocPage({ library, data }: HookDocPageProps) {
   const docs = data.docs
   const resolvedExamples = resolveExamples(data)
+  const demos = useDemos(library)
 
   return (
     <div className="max-w-4xl flex-1 flex flex-col space-y-8" data-pagefind-body>
@@ -74,7 +80,7 @@ export function HookDocPage({ data }: HookDocPageProps) {
           <SectionHeader as="h2" id="hook-parameters" className="scroll-mt-24">
             Parameters
           </SectionHeader>
-          <ParamTable params={docs.parameters} />
+          <ParameterTable params={docs.parameters} />
         </div>
       )}
 
@@ -91,7 +97,7 @@ export function HookDocPage({ data }: HookDocPageProps) {
             )}
           </div>
           {docs.returns.properties && docs.returns.properties.length > 0 && (
-            <ParamTable params={docs.returns.properties} />
+            <ParameterTable params={docs.returns.properties} />
           )}
         </div>
       )}
@@ -106,6 +112,18 @@ export function HookDocPage({ data }: HookDocPageProps) {
             {resolvedExamples.map((ex) => {
               const src = data.exampleSource[ex.name]
               if (!src) return null
+              const demo = demos[ex.name] ?? null
+              if (demo) {
+                return (
+                  <DemoPreview
+                    key={ex.name}
+                    title={ex.title}
+                    demo={demo}
+                    code={src.highlighted}
+                    rawCode={src.raw}
+                  />
+                )
+              }
               return (
                 <div key={ex.name} className="border border-border rounded-sm overflow-hidden">
                   <div className="px-3 py-2 bg-secondary/30 border-b border-border flex items-center justify-between">
@@ -135,9 +153,9 @@ export function HookDocPage({ data }: HookDocPageProps) {
             Notes
           </SectionHeader>
           <div className="space-y-3">
-            {docs.notes.map((note, i) => (
+            {docs.notes.map((note) => (
               <div
-                key={i}
+                key={note.title}
                 className="border-l-2 border-border pl-3 py-1"
               >
                 <h4 className="text-sm font-bold text-foreground mb-0.5">
@@ -177,51 +195,4 @@ export function HookDocPage({ data }: HookDocPageProps) {
   )
 }
 
-function ParamTable({ params }: { params: HookParameter[] }) {
-  return (
-    <div>
-      {params.map((param, index) => (
-        <div key={param.name}>
-          {index > 0 && (
-            <div className="w-full border-t border-border border-dashed opacity-50" />
-          )}
-          <div className="py-4">
-            <div className="flex items-center gap-2 flex-wrap mb-1">
-              <span className="text-base font-bold text-foreground">{param.name}</span>
-              <span className="text-xs text-muted-foreground font-mono">: {param.type}</span>
-              {param.required && (
-                <span className="px-1.5 py-0.5 border border-border text-[10px] text-muted-foreground rounded bg-background font-mono">
-                  required
-                </span>
-              )}
-              {param.defaultValue && (
-                <span className="px-1.5 py-0.5 border border-border text-[10px] text-muted-foreground rounded bg-background font-mono">
-                  default: {param.defaultValue}
-                </span>
-              )}
-            </div>
-            {param.description && (
-              <p className="text-muted-foreground text-sm max-w-2xl">
-                {param.description}
-              </p>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
 
-function resolveExamples(
-  data: HookDocPageProps["data"]
-): Array<{ name: string; title: string }> {
-  if (data.docs?.examples && data.docs.examples.length > 0) {
-    return data.docs.examples
-  }
-  return data.examples.map((name) => ({
-    name,
-    title: name
-      .replace(/[-_]/g, " ")
-      .replace(/\b\w/g, (c) => c.toUpperCase()),
-  }))
-}

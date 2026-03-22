@@ -2,8 +2,7 @@ import { useState } from "react"
 import { SectionHeader } from "@/components/ui/section-header/section-header"
 import { CodeBlock, CodeBlockContent, CodeBlockLine, type CodeBlockLineProps } from "@/components/ui/code-block"
 import { CopyButton } from "./copy-button"
-import keyscopeHooksData from "@/generated/keyscope/keyscope-hooks.json"
-import diffuiHooksData from "@/generated/diff-ui/diffui-hooks.json"
+import { hooksData } from "@/generated/library-data"
 
 interface HookData {
   name: string
@@ -16,12 +15,30 @@ interface HookData {
 }
 
 interface HookSourceProps {
+  library: string
+  hook: string
+}
+
+export function HookSource({ library, hook }: HookSourceProps) {
+  const data = (hooksData[library] ?? {}) as Record<string, HookData>
+  const entry = data[hook]
+
+  if (!entry) return null
+
+  return (
+    <div className="space-y-6">
+      <HookSourceBlock hook={entry} />
+    </div>
+  )
+}
+
+interface HookSourceAllProps {
   data: Record<string, HookData>
   sectionTitle: string
   hint: React.ReactNode
 }
 
-export function HookSource({ data, sectionTitle, hint }: HookSourceProps) {
+function HookSourceAll({ data, sectionTitle, hint }: HookSourceAllProps) {
   const entries = Object.values(data)
 
   if (entries.length === 0) return null
@@ -72,34 +89,13 @@ function HookSourceBlock({ hook }: { hook: HookData }) {
   )
 }
 
-// Pre-configured exports for MDX component registry
-export function KeyscopeHookSource() {
-  return (
-    <HookSource
-      data={keyscopeHooksData as Record<string, HookData>}
-      sectionTitle="Standalone Hook Source Code"
-      hint={
-        <>
-          Copy these hooks into your project to use them without installing keyscope.
-          Place them in your hooks directory (e.g.{" "}
-          <code className="text-xs bg-border px-1 rounded">src/hooks/</code>).
-        </>
-      }
-    />
-  )
+interface LibraryHookSourceProps {
+  library: string
+  sectionTitle: string
+  hint: React.ReactNode
 }
 
-export function DiffuiHookSource() {
-  return (
-    <HookSource
-      data={diffuiHooksData as Record<string, HookData>}
-      sectionTitle="Utility Hook Source Code"
-      hint={
-        <>
-          Copy these hooks into your project or install via CLI:{" "}
-          <code className="text-xs bg-border px-1 rounded">npx diffui add controllable-state</code>
-        </>
-      }
-    />
-  )
+export function LibraryHookSource({ library, sectionTitle, hint }: LibraryHookSourceProps) {
+  const data = (hooksData[library] ?? {}) as Record<string, HookData>
+  return <HookSourceAll data={data} sectionTitle={sectionTitle} hint={hint} />
 }

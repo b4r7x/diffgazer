@@ -1,15 +1,20 @@
-import { HookDocPage as HookDocPageRenderer } from "@/components/hook-doc-page"
-import { useHookDocData } from "./hook-doc-context"
+import { useLocation } from "@tanstack/react-router";
+import { HookDocPage as HookDocPageRenderer } from "@/components/hook-doc-page";
+import { useHookDocData } from "./hook-doc-context";
+import {
+  getDocsLibraryFromPathname,
+  PRIMARY_DOCS_LIBRARY_ID,
+} from "@/lib/docs-library";
 
 export function HookDocPageMdx() {
-  const data = useHookDocData()
+  const data = useHookDocData();
+  const pathname = useLocation({ select: (location) => location.pathname });
+  const library =
+    getDocsLibraryFromPathname(pathname) ?? PRIMARY_DOCS_LIBRARY_ID;
 
   if (!data) {
-    if (import.meta.env.DEV) {
-      console.warn("Hook docs data is unavailable for this page.")
-    }
-    return null
+    return null;
   }
 
-  return <HookDocPageRenderer data={data} />
+  return <HookDocPageRenderer library={library} data={data} />;
 }

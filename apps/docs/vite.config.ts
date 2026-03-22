@@ -45,14 +45,23 @@ function getPreRenderPages(): Array<{ path: string }> {
   }
   walkMdx(contentDir)
 
-  try {
-    const registry = JSON.parse(
-      readFileSync(resolve(import.meta.dirname, "registry/registry.json"), "utf-8"),
-    )
-    for (const item of registry.items) {
-      pages.push({ path: `/diff-ui/docs/components/${item.name}` })
-    }
-  } catch { /* registry not yet built */ }
+  for (const lib of enabledLibraries) {
+    try {
+      const componentListPath = resolve(import.meta.dirname, `src/generated/${lib.id}/component-list.json`)
+      const components = JSON.parse(readFileSync(componentListPath, "utf-8"))
+      for (const item of components) {
+        pages.push({ path: `/${lib.id}/docs/components/${item.name}` })
+      }
+    } catch { /* component list not yet built for this library */ }
+
+    try {
+      const hookListPath = resolve(import.meta.dirname, `src/generated/${lib.id}/hook-list.json`)
+      const hooks = JSON.parse(readFileSync(hookListPath, "utf-8"))
+      for (const item of hooks) {
+        pages.push({ path: `/${lib.id}/docs/hooks/${item.name}` })
+      }
+    } catch { /* hook list not yet built for this library */ }
+  }
 
   return pages
 }

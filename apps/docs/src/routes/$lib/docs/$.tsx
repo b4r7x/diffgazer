@@ -23,6 +23,7 @@ import {
   sourceSlugsForLibrary,
   type DocsLibraryId,
 } from "@/lib/docs-library"
+import { loadDocData } from "@/lib/load-doc-data"
 import type { PageTree } from "@/lib/docs-tree"
 
 interface LoaderData {
@@ -42,21 +43,8 @@ export const Route = createFileRoute("/$lib/docs/$")({
     const data = await serverLoader({ data: { library, routeSlugs } })
     if (!data) return null
 
-    let componentData: ComponentData | null = null
-    if (data.component && /^[a-z0-9-]+$/.test(data.component)) {
-      const mod = await import(`../../../generated/${library}/components/${data.component}.json`)
-      componentData = mod.default as ComponentData
-    }
-
-    let hookData: HookData | null = null
-    if (data.hook && /^[a-z0-9-]+$/.test(data.hook)) {
-      try {
-        const mod = await import(`../../../generated/${library}/hooks/${data.hook}.json`)
-        hookData = mod.default as HookData
-      } catch {
-        // Hook data not available yet
-      }
-    }
+    const componentData = await loadDocData<ComponentData>(library, "components", data.component)
+    const hookData = await loadDocData<HookData>(library, "hooks", data.hook, { optional: true })
 
     if (typeof window !== "undefined") {
       await clientLoader.preload(data.path)
