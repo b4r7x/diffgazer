@@ -118,7 +118,7 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
 							isDocsRoutePending && "opacity-80",
 						)}
 					>
-						<div className="max-w-5xl mx-auto px-12 py-10 min-h-full flex flex-col">
+						<div className="max-w-7xl mx-auto px-6 py-10 min-h-full flex flex-col">
 							{children}
 						</div>
 					</main>
