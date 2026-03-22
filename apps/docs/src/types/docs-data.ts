@@ -1,5 +1,5 @@
 import type { CodeBlockLineProps } from "@/components/ui/code-block"
-import type { ExampleRef, AnatomyNode, ComponentNote, KeyboardSection, ComponentDoc } from "../../registry/component-docs/types"
+import type { ExampleRef, AnatomyNode, ComponentNote, KeyboardSection, ComponentDoc } from "@b4r7x/registry-kit"
 
 export type { ExampleRef, AnatomyNode, ComponentNote, KeyboardSection, ComponentDoc }
 
@@ -30,9 +30,7 @@ export interface ComponentData {
   examples: string[]
   exampleSource: Record<string, SourceFile>
   docs: ComponentDoc | null
-  keyscopeDeps?: string[]
-  diffuiHookDeps?: string[]
-  diffuiLibDeps?: string[]
+  crossDeps?: Array<{ library: string; type: string; items: string[] }>
 }
 
 export type DocsData = Record<string, ComponentData>

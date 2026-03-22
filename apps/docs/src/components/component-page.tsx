@@ -1,19 +1,18 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
-import type { ComponentData, ExampleRef } from "@/types/docs-data"
-import { demos } from "@/generated/diff-ui/demo-index"
+import type { ComponentData } from "@/types/docs-data"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { DemoPreview } from "./demo-preview"
 import { PropsTable } from "./props-table"
 import { SourceViewer } from "./source-viewer"
 import { AnatomyDiagram } from "./anatomy-diagram"
 import { CopyButton } from "./copy-button"
-import { Pager, PagerPrevious, PagerNext, PagerLink } from "@/components/ui/pager"
+import { Pager, PagerLink } from "@/components/ui/pager"
 import { CodeBlock, CodeBlockContent, CodeBlockHeader, CodeBlockLabel, CodeBlockLine } from "@/components/ui/code-block"
-import { getDocsLibraryFromPathname } from "@/lib/docs-library"
-import keyscopeHooksData from "@/generated/keyscope/keyscope-hooks.json"
-import diffuiHooksData from "@/generated/diff-ui/diffui-hooks.json"
-import diffuiLibsData from "@/generated/diff-ui/diffui-libs.json"
+import { getDocsLibraryFromPathname, PRIMARY_DOCS_LIBRARY_ID, getDocsLibraryConfig } from "@/lib/docs-library"
+import { useDemos } from "@/lib/use-demos"
+import { resolveCrossDepFiles } from "@/lib/cross-deps-data"
+import { resolveExamples } from "@/lib/resolve-examples"
 
 interface ComponentPageProps {
   data: ComponentData
@@ -59,55 +58,33 @@ export function ComponentPage({ data, prev, next }: ComponentPageProps) {
   const hash = useLocation({ select: (location) => location.hash })
   const pathname = useLocation({ select: (location) => location.pathname })
   const navigate = useNavigate()
-  const library = getDocsLibraryFromPathname(pathname) ?? "diff-ui"
+  const library = getDocsLibraryFromPathname(pathname) ?? PRIMARY_DOCS_LIBRARY_ID
+  const demos = useDemos(library)
   const examples = resolveExamples(data)
   const [heroExample] = examples
   const [activeTab, setActiveTab] = useState<ComponentPageTab>("usage")
-  const installCommand = `npx diffui add ${data.name}`
+  const cliName = getDocsLibraryConfig(library).logoText
+  const installCommand = `npx ${cliName} add ${data.name}`
   const sourceFiles = Object.entries(data.source).map(([path, file]) => ({
     path,
     raw: file.raw,
     highlighted: file.highlighted,
   }))
 
-  if (data.keyscopeDeps?.length) {
-    for (const hookName of data.keyscopeDeps) {
-      const hookData = (keyscopeHooksData as Record<string, { source: { raw: string; highlighted: any[] } }>)[hookName]
-      if (hookData) {
-        sourceFiles.push({
-          path: `hooks/use-${hookName}.ts`,
-          raw: hookData.source.raw,
-          highlighted: hookData.source.highlighted,
-        })
-      }
-    }
+  if (data.crossDeps?.length) {
+    sourceFiles.push(...resolveCrossDepFiles(data.crossDeps) as typeof sourceFiles)
   }
 
-  if (data.diffuiHookDeps?.length) {
-    for (const hookName of data.diffuiHookDeps) {
-      const hookData = (diffuiHooksData as Record<string, { source: { raw: string; highlighted: any[] } }>)[hookName]
-      if (hookData) {
-        sourceFiles.push({
-          path: `hooks/${hookName}.ts`,
-          raw: hookData.source.raw,
-          highlighted: hookData.source.highlighted,
-        })
-      }
-    }
-  }
-
-  if (data.diffuiLibDeps?.length) {
-    for (const libName of data.diffuiLibDeps) {
-      const libData = (diffuiLibsData as Record<string, { source: { raw: string; highlighted: any[] } }>)[libName]
-      if (libData) {
-        sourceFiles.push({
-          path: `lib/${libName}.ts`,
-          raw: libData.source.raw,
-          highlighted: libData.source.highlighted,
-        })
-      }
-    }
-  }
+  const externalDeps = data.crossDeps?.filter(d => d.library !== library)
+  const integrationNote = externalDeps?.length ? (
+    <>
+      Keyboard hooks are included as standalone copies.
+      For the full experience, use{" "}
+      <code className="text-[0.7rem] bg-muted px-1 py-0.5 rounded">
+        --integration {externalDeps[0].library}
+      </code>.
+    </>
+  ) : undefined
 
   useEffect(() => {
     const tabFromHash = getTabFromHash(hash)
@@ -115,11 +92,12 @@ export function ComponentPage({ data, prev, next }: ComponentPageProps) {
     setActiveTab((previous) => (previous === nextTab ? previous : nextTab))
   }, [hash, data.name])
 
-  const handleTabChange = (tab: ComponentPageTab) => {
-    setActiveTab(tab)
+  const handleTabChange = (tab: string) => {
+    const typedTab = tab as ComponentPageTab
+    setActiveTab(typedTab)
     navigate({
       to: ".",
-      hash: TAB_TO_SECTION[tab],
+      hash: TAB_TO_SECTION[typedTab],
       replace: true,
       resetScroll: false,
       hashScrollIntoView: false,
@@ -263,46 +241,32 @@ export function ComponentPage({ data, prev, next }: ComponentPageProps) {
           files={sourceFiles}
           mergedSource={data.mergedSource}
           name={data.name}
-          hasKeyscopeDeps={!!data.keyscopeDeps?.length}
+          installCommand={installCommand}
+          integrationNote={integrationNote}
         />
       </div>
 
       <Pager className="mt-auto">
         {prev && (
-          <PagerPrevious>
-            <PagerLink>
-              {({ className }) => (
-                <Link className={className} to="/$lib/docs/$" params={{ lib: library, _splat: `components/${prev}` }}>
-                  {prev}
-                </Link>
-              )}
-            </PagerLink>
-          </PagerPrevious>
+          <PagerLink direction="previous">
+            {({ className }) => (
+              <Link className={className} to="/$lib/docs/$" params={{ lib: library, _splat: `components/${prev}` }}>
+                {prev}
+              </Link>
+            )}
+          </PagerLink>
         )}
         {next && (
-          <PagerNext>
-            <PagerLink>
-              {({ className }) => (
-                <Link className={className} to="/$lib/docs/$" params={{ lib: library, _splat: `components/${next}` }}>
-                  {next}
-                </Link>
-              )}
-            </PagerLink>
-          </PagerNext>
+          <PagerLink direction="next">
+            {({ className }) => (
+              <Link className={className} to="/$lib/docs/$" params={{ lib: library, _splat: `components/${next}` }}>
+                {next}
+              </Link>
+            )}
+          </PagerLink>
         )}
       </Pager>
     </div>
   )
 }
 
-function resolveExamples(data: ComponentData): ExampleRef[] {
-  if (data.docs?.examples && data.docs.examples.length > 0) {
-    return data.docs.examples
-  }
-  return data.examples.map((name) => ({
-    name,
-    title: name
-      .replace(/[-_]/g, " ")
-      .replace(/\b\w/g, (c) => c.toUpperCase()),
-  }))
-}

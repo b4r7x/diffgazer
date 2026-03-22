@@ -38,14 +38,11 @@ export function ThemePlayground() {
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Panel>
-          <PanelHeader
-            value={
-              <Button variant="ghost" size="sm" onClick={handleReset}>
-                Reset
-              </Button>
-            }
-          >
-            Primitives
+          <PanelHeader>
+            <span>Primitives</span>
+            <Button variant="ghost" size="sm" onClick={handleReset}>
+              Reset
+            </Button>
           </PanelHeader>
           <PanelContent spacing="sm">
             {Object.entries(primitives).map(([key, value]) => (

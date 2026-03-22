@@ -11,6 +11,11 @@ import {
   CommandPaletteFooter,
 } from "@/components/ui/command-palette"
 import { useSearch } from "../hooks/use-search"
+import { getEnabledDocsLibraries } from "@/lib/docs-library"
+
+const LIBRARY_LABELS: Record<string, string> = Object.fromEntries(
+  getEnabledDocsLibraries().map((lib) => [lib.id, lib.displayName]),
+)
 
 const SECTION_LABELS: Record<string, string> = {
   components: "Components",
@@ -26,12 +31,6 @@ const SECTION_LABELS: Record<string, string> = {
   features: "Features",
   configuration: "Configuration",
   general: "Docs",
-}
-
-const LIBRARY_LABELS: Record<string, string> = {
-  "diff-ui": "diff-ui",
-  keyscope: "keyscope",
-  diffgazer: "diffgazer",
 }
 
 export function SearchDialog() {

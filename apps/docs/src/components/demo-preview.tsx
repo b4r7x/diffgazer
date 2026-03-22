@@ -57,13 +57,7 @@ export function DemoPreview({ title, demo, code, rawCode, variant = "tabbed" }: 
         </>
       ) : (
         <Tabs defaultValue="preview">
-          <TabsContent value="preview">
-            <PreviewPane demo={demo} />
-          </TabsContent>
-          <TabsContent value="code">
-            <CodePane code={code} rawCode={rawCode} />
-          </TabsContent>
-          <TabsList className="flex mt-2">
+          <TabsList className="flex mb-2">
             <TabsTrigger value="preview" className="px-4 py-2 text-xs font-mono">
               Preview
             </TabsTrigger>
@@ -71,6 +65,12 @@ export function DemoPreview({ title, demo, code, rawCode, variant = "tabbed" }: 
               Code
             </TabsTrigger>
           </TabsList>
+          <TabsContent value="preview">
+            <PreviewPane demo={demo} />
+          </TabsContent>
+          <TabsContent value="code">
+            <CodePane code={code} rawCode={rawCode} />
+          </TabsContent>
         </Tabs>
       )}
     </div>

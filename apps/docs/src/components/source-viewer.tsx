@@ -8,15 +8,17 @@ import {
 } from "@/components/ui/accordion"
 import type { SourceFile } from "@/types/docs-data"
 import { CopyButton } from "./copy-button"
+import type React from "react"
 
 interface SourceViewerProps {
   files: (SourceFile & { path: string })[]
   mergedSource?: string
   name?: string
-  hasKeyscopeDeps?: boolean
+  installCommand?: string
+  integrationNote?: React.ReactNode
 }
 
-export function SourceViewer({ files, mergedSource, name, hasKeyscopeDeps }: SourceViewerProps) {
+export function SourceViewer({ files, mergedSource, name, installCommand, integrationNote }: SourceViewerProps) {
   if (files.length === 0) return null
 
   return (
@@ -32,14 +34,8 @@ export function SourceViewer({ files, mergedSource, name, hasKeyscopeDeps }: Sou
         )}
       </div>
       <p className="text-xs text-muted-foreground mb-3 mt-1">
-        Install via CLI: <code className="text-[0.7rem] bg-muted px-1 py-0.5 rounded">npx diffui add{name ? ` ${name}` : ""}</code>.
-        {hasKeyscopeDeps && (
-          <>
-            {" "}Keyboard hooks are included as standalone copies by default.
-            For the full keyscope experience (scoped navigation, key bindings, focus zones), use{" "}
-            <code className="text-[0.7rem] bg-muted px-1 py-0.5 rounded">--integration keyscope</code>.
-          </>
-        )}
+        Install via CLI: <code className="text-[0.7rem] bg-muted px-1 py-0.5 rounded">{installCommand ?? `npx diffui add${name ? ` ${name}` : ""}`}</code>.
+        {integrationNote && <>{" "}{integrationNote}</>}
       </p>
 
       <Accordion collapsible className="divide-y-0">

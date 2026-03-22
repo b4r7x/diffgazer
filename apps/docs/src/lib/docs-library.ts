@@ -54,7 +54,7 @@ export function parseDocsLibrary(value: string | null | undefined): DocsLibraryI
   if (isDocsLibraryId(PRIMARY_DOCS_LIBRARY_ID)) {
     return PRIMARY_DOCS_LIBRARY_ID;
   }
-  return DOCS_LIBRARY_IDS[0] ?? "diff-ui";
+  return DOCS_LIBRARY_IDS[0] ?? PRIMARY_DOCS_LIBRARY_ID;
 }
 
 export function getDocsLibraryFromPathname(pathname: string): DocsLibraryId | null {

@@ -5,8 +5,7 @@ import { ThemePlayground } from "@/features/theme/components/theme-playground"
 import { VariableDiagram } from "@/features/theme/components/variable-diagram"
 import { ComponentDocPage } from "./component-doc-page"
 import { HookDocPageMdx } from "./hook-doc-page-mdx"
-import { KeyscopeHookSource } from "@/components/hook-source"
-import { DiffuiHookSource } from "@/components/hook-source"
+import { HookSource, LibraryHookSource } from "@/components/hook-source"
 
 export const featureMdxComponents: MDXComponents = {
   ThemePlayground,
@@ -15,6 +14,6 @@ export const featureMdxComponents: MDXComponents = {
   DiffgazerPreview,
   ComponentDocPage,
   HookDocPage: HookDocPageMdx,
-  KeyscopeHookSource,
-  DiffuiHookSource,
+  HookSource,
+  LibraryHookSource,
 }
