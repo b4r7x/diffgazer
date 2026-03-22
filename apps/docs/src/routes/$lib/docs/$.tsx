@@ -14,9 +14,7 @@ import {
 } from "@/components/docs-page"
 import { useMDXComponents } from "@/mdx-components"
 import type { ComponentData } from "@/types/docs-data"
-import type { HookData } from "@/components/docs-mdx/hook-doc-context"
-import { ComponentDocDataProvider, useComponentDocData } from "@/components/docs-mdx"
-import { HookDocDataProvider, useHookDocData } from "@/components/docs-mdx"
+import { DocDataProvider, useDocData, type DocData, type HookData } from "@/components/docs-mdx/doc-data-context"
 import {
   getDocsLibraryConfig,
   parseDocsLibrary,
@@ -83,14 +81,12 @@ const serverLoader = createServerFn({ method: "GET" })
 
 const clientLoader = browserCollections.docs.createClientLoader({
   component({ toc, frontmatter, default: MDX }) {
-    const showToc = typeof frontmatter.component !== "string" && typeof frontmatter.hook !== "string"
-    const componentData = useComponentDocData(frontmatter.component)
-    const hookData = useHookDocData(frontmatter.hook)
-    const title = componentData?.title ?? hookData?.title ?? frontmatter.title
-    const description = componentData?.docs?.description
-      ?? componentData?.description
-      ?? hookData?.docs?.description
-      ?? hookData?.description
+    const showToc = true
+    const docData = useDocData()
+    const d = docData?.data
+    const title = d?.title ?? frontmatter.title
+    const description = d?.docs?.description
+      ?? d?.description
       ?? frontmatter.description
 
     return (
@@ -98,7 +94,7 @@ const clientLoader = browserCollections.docs.createClientLoader({
         <DocsPageHeader
           title={title}
           description={description}
-          tags={componentData?.docs?.tags ?? hookData?.docs?.tags}
+          tags={d?.docs?.tags}
         />
         <DocsPageBody>
           <MDX components={useMDXComponents()} />
@@ -157,6 +153,12 @@ function ContentSpinner() {
   )
 }
 
+function buildDocData(componentData: ComponentData | null, hookData: HookData | null): DocData | null {
+  if (componentData) return { type: "component", data: componentData }
+  if (hookData) return { type: "hook", data: hookData }
+  return null
+}
+
 function MdxDocsPage({
   path,
   tree,
@@ -170,15 +172,15 @@ function MdxDocsPage({
   componentData: ComponentData | null
   hookData: HookData | null
 }) {
+  const docData = buildDocData(componentData, hookData)
+
   return (
     <DocsContentLayout tree={tree} library={library}>
-      <ComponentDocDataProvider value={componentData}>
-        <HookDocDataProvider value={hookData}>
-          <Suspense fallback={<ContentSpinner />}>
-            <MdxContent path={path} />
-          </Suspense>
-        </HookDocDataProvider>
-      </ComponentDocDataProvider>
+      <DocDataProvider value={docData}>
+        <Suspense fallback={<ContentSpinner />}>
+          <MdxContent path={path} />
+        </Suspense>
+      </DocDataProvider>
     </DocsContentLayout>
   )
 }
