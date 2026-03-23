@@ -55,7 +55,6 @@ writeFileSync(join(DOCS_ROOT, "src/generated/demo-loaders.ts"), demoLoadersConte
 const libraryDataImports = [];
 const hooksDataEntries = [];
 const libsDataEntries = [];
-const componentListEntries = [];
 
 for (const lib of artifactLibraries) {
   const genDir = join(DOCS_ROOT, "src/generated", lib.id);
@@ -72,9 +71,6 @@ for (const lib of artifactLibraries) {
     } else if (file.endsWith("-libs.json")) {
       libraryDataImports.push(`import ${varName} from "./${lib.id}/${file}"`);
       libsDataEntries.push(`  "${lib.id}": ${varName},`);
-    } else if (file === "component-list.json") {
-      libraryDataImports.push(`import ${varName} from "./${lib.id}/${file}"`);
-      componentListEntries.push(`  "${lib.id}": ${varName},`);
     }
   }
 }
@@ -91,11 +87,6 @@ const libraryDataContent = [
   "// eslint-disable-next-line @typescript-eslint/no-explicit-any",
   `export const libsData: Record<string, Record<string, any>> = {`,
   ...libsDataEntries,
-  `}`,
-  "",
-  "// eslint-disable-next-line @typescript-eslint/no-explicit-any",
-  `export const componentLists: Record<string, any[]> = {`,
-  ...componentListEntries,
   `}`,
   "",
 ].join("\n");
