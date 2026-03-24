@@ -1,5 +1,4 @@
-import { useRef } from "react";
-import { useNavigation } from "keyscope";
+import { useState } from "react";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ProviderList } from "@/features/providers/components/provider-list";
@@ -75,17 +74,7 @@ export function ProvidersPage() {
 
   usePageFooter({ shortcuts: footer.shortcuts, rightShortcuts: footer.rightShortcuts });
 
-  const listRef = useRef<HTMLDivElement>(null);
-  const listBridgeActive = keyboard.focusZone === "list" && !dialogs.anyOpen;
-  const { highlighted: listFocusedValue } = useNavigation({
-    containerRef: listRef,
-    role: "option",
-    enabled: listBridgeActive,
-    value: selection.effectiveSelectedId,
-    onValueChange: selection.setSelectedId,
-    wrap: false,
-    onBoundaryReached: keyboard.handleListBoundary,
-  });
+  const [listHighlighted, setListHighlighted] = useState<string | null>(null);
 
   const actions = {
     onSetApiKey: () => dialogs.setApiKeyOpen(true),
@@ -116,8 +105,9 @@ export function ProvidersPage() {
           isFocused={keyboard.focusZone === "list"}
           inputRef={search.inputRef}
           focusedFilterIndex={keyboard.focusZone === "filters" ? keyboard.filterIndex : undefined}
-          listRef={listRef}
-          focusedValue={listFocusedValue}
+          highlightedId={listHighlighted}
+          onHighlightChange={setListHighlighted}
+          onBoundaryReached={keyboard.handleListBoundary}
         />
       </div>
       <div className="w-3/5 flex flex-col bg-tui-bg">

@@ -1,11 +1,10 @@
-import { useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Menu, MenuItem } from "diffui/components/menu";
 import { Panel } from "diffui/components/panel";
 import { useConfigData } from "@/app/providers/config-provider";
-import { useScope, useKey, useNavigation } from "keyscope";
+import { useScope, useKey } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
+import { useScopedRouteState, clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useTheme } from "@/hooks/use-theme";
 import { useSettings } from "@/hooks/use-settings";
 import { SETTINGS_MENU_ITEMS, SETTINGS_SHORTCUTS, type SettingsAction } from "@/config/navigation";
@@ -24,8 +23,11 @@ export function SettingsHubPage() {
   const navigate = useNavigate();
   const { provider, isConfigured, trust } = useConfigData();
   const { theme } = useTheme();
-  const [selectedId, setSelectedId] = useScopedRouteState<string | null>("menuId", SETTINGS_MENU_ITEMS[0]?.id ?? null);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [selectedId] = useScopedRouteState<string | null>("menuId", SETTINGS_MENU_ITEMS[0]?.id ?? null);
+  const [highlightedId, setHighlightedId] = useScopedRouteState<string | null>(
+    "highlightedId",
+    SETTINGS_MENU_ITEMS[0]?.id ?? null
+  );
   const isTrusted = Boolean(trust?.capabilities.readFiles);
   const { settings, error: settingsError } = useSettings();
 
@@ -36,16 +38,11 @@ export function SettingsHubPage() {
 
   const handleActivate = (id: string) => {
     const route = SETTINGS_ROUTES[id as SettingsAction];
-    if (route) navigate({ to: route });
+    if (route) {
+      clearScopedRouteState(route, "highlightedId");
+      navigate({ to: route });
+    }
   };
-
-  const { highlighted: focusedValue } = useNavigation({
-    containerRef: menuRef,
-    role: "option",
-    value: selectedId,
-    onValueChange: setSelectedId,
-    onEnter: handleActivate,
-  });
 
   const providerLabel = isConfigured && provider ? provider.toUpperCase() : "Not configured";
   const storageLabel = settings?.secretsStorage
@@ -95,13 +92,13 @@ export function SettingsHubPage() {
         <Panel className="bg-tui-bg shadow-2xl">
           <div className="absolute -top-3 left-4 bg-tui-bg px-2 text-xs font-bold uppercase tracking-wider text-tui-muted">SETTINGS HUB</div>
           <Menu
-            ref={menuRef}
             selectedId={selectedId}
-            highlightedId={focusedValue}
-            onHighlightChange={setSelectedId}
+            highlightedId={highlightedId}
+            onHighlightChange={setHighlightedId}
             onSelect={handleActivate}
             variant="hub"
             className="flex flex-col text-sm pt-2"
+            autoFocus
           >
             {SETTINGS_MENU_ITEMS.map((item) => {
               const meta = menuValues[item.id];

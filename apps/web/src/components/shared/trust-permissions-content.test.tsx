@@ -36,18 +36,23 @@ describe("TrustPermissionsContent", () => {
     const readFilesOption = screen.getByRole("checkbox", { name: /repository access/i });
     const saveButton = screen.getByRole("button", { name: /save changes/i });
 
-    expect(hasClassToken(readFilesOption, "bg-tui-selection")).toBe(true);
+    const group = screen.getByRole("group");
+
+    expect(hasClassToken(readFilesOption, "bg-secondary")).toBe(true);
     expect(readFilesOption.getAttribute("aria-checked")).toBe("true");
 
-    fireEvent.keyDown(window, { key: " " });
+    // Space toggles the focused checkbox — handled by checkbox element's onKeyDown
+    fireEvent.keyDown(readFilesOption, { key: " " });
     expect(readFilesOption.getAttribute("aria-checked")).toBe("false");
 
-    fireEvent.keyDown(window, { key: "ArrowDown" });
+    // ArrowDown on group transitions from list zone to button zone
+    fireEvent.keyDown(group, { key: "ArrowDown" });
     expect(hasClassToken(saveButton, "ring-tui-blue")).toBe(true);
-    expect(hasClassToken(readFilesOption, "bg-tui-selection")).toBe(false);
+    expect(hasClassToken(readFilesOption, "bg-secondary")).toBe(false);
 
+    // ArrowUp in button zone is handled globally via useKey (KeyboardProvider)
     fireEvent.keyDown(window, { key: "ArrowUp" });
     expect(hasClassToken(saveButton, "ring-tui-blue")).toBe(false);
-    expect(hasClassToken(readFilesOption, "bg-tui-selection")).toBe(true);
+    expect(hasClassToken(readFilesOption, "bg-secondary")).toBe(true);
   });
 });

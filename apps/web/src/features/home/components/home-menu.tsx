@@ -1,4 +1,3 @@
-import type { Ref } from "react";
 import { Menu, MenuDivider, MenuItem } from "diffui/components/menu";
 import { Panel, PanelHeader } from "diffui/components/panel";
 
@@ -18,7 +17,6 @@ interface HomeMenuProps {
   items: MenuItemDefinition[];
   isTrusted?: boolean;
   hasLastReview?: boolean;
-  menuRef?: Ref<HTMLDivElement>;
 }
 
 function groupItems(items: MenuItemDefinition[]) {
@@ -43,7 +41,6 @@ export function HomeMenu({
   items,
   isTrusted = false,
   hasLastReview = false,
-  menuRef,
 }: HomeMenuProps) {
   const { review, navigation, system } = groupItems(items);
   const reviewDisabled = !isTrusted;
@@ -54,11 +51,11 @@ export function HomeMenu({
       <PanelHeader variant="subtle">Main Menu</PanelHeader>
       <div className="flex flex-col py-2">
         <Menu
-          ref={menuRef}
           selectedId={selectedId}
           highlightedId={highlightedId}
           onHighlightChange={onHighlightChange}
           onSelect={onSelect}
+          autoFocus
         >
           {review.map((item) => {
             const disabled = item.id === "resume-review" ? resumeDisabled : reviewDisabled;

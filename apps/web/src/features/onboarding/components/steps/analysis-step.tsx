@@ -1,10 +1,9 @@
-import { useRef, useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/schemas/events";
 import type { LensId } from "@diffgazer/schemas/review";
 import { CheckboxGroup, CheckboxItem } from "diffui/components/checkbox";
 import { Badge } from "diffui/components/badge";
 import { ScrollArea } from "diffui/components/scroll-area";
-import { useNavigation } from "keyscope";
 
 const LENS_OPTIONS = (
   Object.entries(LENS_TO_AGENT) as Array<[LensId, keyof typeof AGENT_METADATA]>
@@ -41,39 +40,25 @@ export function AnalysisStep({
   enabled = true,
   onBoundaryReached,
 }: AnalysisStepProps) {
-  const checkboxRef = useRef<HTMLDivElement>(null);
-  const [checkboxFocused, setCheckboxFocused] = useState<string | null>(
+  const [highlighted, setHighlighted] = useState<string | null>(
     LENS_OPTIONS[0]?.id ?? null,
   );
 
-  const toggleLens = (value: string) => {
-    const lensId = value as LensId;
-    const newLenses = lenses.includes(lensId)
-      ? lenses.filter((l) => l !== lensId)
-      : [...lenses, lensId];
-    onLensesChange(newLenses);
-    return newLenses;
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Enter" && highlighted) {
+      const lensId = highlighted as LensId;
+      const newLenses = lenses.includes(lensId)
+        ? lenses.filter((l) => l !== lensId)
+        : [...lenses, lensId];
+      onLensesChange(newLenses);
+      onCommit?.({ defaultLenses: newLenses });
+      return;
+    }
+    if (!onBoundaryReached) return;
+    const idx = LENS_OPTIONS.findIndex((o) => o.id === highlighted);
+    if (e.key === "ArrowUp" && idx === 0) onBoundaryReached("up");
+    if (e.key === "ArrowDown" && idx === LENS_OPTIONS.length - 1) onBoundaryReached("down");
   };
-
-  const handleLensEnter = (value: string) => {
-    const nextLenses = toggleLens(value);
-    onCommit?.({
-      defaultLenses: nextLenses,
-    });
-  };
-
-  const { highlighted: checkboxFocusedValue } = useNavigation({
-    containerRef: checkboxRef,
-    role: "checkbox",
-    value: checkboxFocused,
-    initialValue: checkboxFocused ?? LENS_OPTIONS[0]?.id ?? null,
-    onValueChange: setCheckboxFocused,
-    onSelect: toggleLens,
-    onEnter: handleLensEnter,
-    wrap: false,
-    enabled,
-    onBoundaryReached,
-  });
 
   return (
     <div className="space-y-6">
@@ -81,10 +66,12 @@ export function AnalysisStep({
         <div className="text-sm font-mono text-tui-fg/60">Review Agents:</div>
         <ScrollArea className="max-h-[35vh]">
           <CheckboxGroup
-            ref={checkboxRef}
             value={lenses}
             onChange={onLensesChange}
-            highlighted={enabled ? checkboxFocusedValue : null}
+            highlighted={enabled ? highlighted : null}
+            onHighlightChange={setHighlighted}
+            onKeyDown={handleKeyDown}
+            wrap={false}
             className="space-y-1"
           >
             {LENS_OPTIONS.map((option) => (
