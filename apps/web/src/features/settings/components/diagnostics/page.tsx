@@ -6,8 +6,7 @@ import { useFooterNavigation } from "@/hooks/use-footer-navigation";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useConfigData } from "@/app/providers/config-provider";
 import { cn } from "@/utils/cn";
-import { useReviewContext, useRefreshReviewContext } from "@diffgazer/api/hooks";
-import { useServerStatus } from "@/hooks/use-server-status";
+import { useReviewContext, useRefreshReviewContext, useServerStatus } from "@diffgazer/api/hooks";
 
 const NA = "Unavailable";
 

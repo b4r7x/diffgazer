@@ -15,7 +15,7 @@ import { Toaster } from "../components/ui/toast.js";
 import { Spinner } from "../components/ui/spinner.js";
 import { devServerFactories } from "./modes/dev.js";
 import { prodServerFactories } from "./modes/prod.js";
-import { useServerStatus } from "../hooks/use-server-status.js";
+import { useServerStatus } from "@diffgazer/api/hooks";
 import { useConfigGuard } from "../hooks/use-config-guard.js";
 import { api } from "../lib/api.js";
 import { createCliQueryClient } from "../lib/query-client.js";

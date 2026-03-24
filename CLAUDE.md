@@ -72,10 +72,10 @@ Unified documentation portal for diff-ui, keyscope, and (future) diffgazer docs.
 - @.claude/docs/web-design-guidelines.md — Web UI design system
 
 ## Recent Changes
+- 007-shared-hooks-audit: Added TypeScript 5.x (strict: true), ESM only, `.js` extensions in imports + React 19, TanStack Query v5 (`@tanstack/react-query`), Ink 6 (CLI), Vite 7 (web), Hono (server)
 - 006-shared-api-hooks: Added TypeScript 5.x (strict: true), ESM only, `.js` extensions in imports + `@tanstack/react-query` v5 (new), React 19, Ink 6 (CLI), Vite 7 (web), `@diffgazer/api`, `@diffgazer/core`, `@diffgazer/schemas`
 - 005-cli-backend-integration: Added TypeScript 5.x (strict: true), ESM only, .js extensions in imports + Ink 6.8.0, React 19.2.4, `@diffgazer/api`, `@diffgazer/core`, `@diffgazer/schemas`, Hono (embedded server), ink-spinner, chalk, @inkjs/ui
-- 004-ink-diffui-components: Added TypeScript 5.x (strict: true), ESM only, .js extensions in imports + Ink 6.8.0, React 19.2.4, ink-spinner 5.0.0, chalk 5.6.2, @inkjs/ui (to add: Select, TextInput, ConfirmInput)
 
 ## Active Technologies
-- TypeScript 5.x (strict: true), ESM only, `.js` extensions in imports + `@tanstack/react-query` v5 (new), React 19, Ink 6 (CLI), Vite 7 (web), `@diffgazer/api`, `@diffgazer/core`, `@diffgazer/schemas` (006-shared-api-hooks)
-- N/A (hooks are a client-side concern; server storage unchanged) (006-shared-api-hooks)
+- TypeScript 5.x (strict: true), ESM only, `.js` extensions in imports + React 19, TanStack Query v5 (`@tanstack/react-query`), Ink 6 (CLI), Vite 7 (web), Hono (server) (007-shared-hooks-audit)
+- N/A (in-memory query cache, no persistence changes) (007-shared-hooks-audit)
