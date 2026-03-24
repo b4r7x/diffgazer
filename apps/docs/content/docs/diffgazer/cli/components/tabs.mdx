@@ -1,0 +1,99 @@
+---
+title: "Tabs"
+description: "Horizontal tab strip with keyboard-switchable content panels."
+---
+
+## Overview
+
+Tabs is a compound component providing a horizontal tab bar with content panels. Only the active tab's content is rendered. Users switch tabs with Left/Right arrow keys. Supports controlled and uncontrolled modes.
+
+## Web Equivalent
+
+Maps to diff-ui's `Tabs` component. The terminal version uses Left/Right arrows instead of click-to-select, and renders background-highlighted tab labels instead of CSS active states.
+
+## Import
+
+```tsx
+import { Tabs } from "../../components/ui/tabs.js";
+```
+
+## Props
+
+### Tabs
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `value` | `string` | -- | Controlled active tab value |
+| `defaultValue` | `string` | -- | Initial active tab (uncontrolled mode) |
+| `onValueChange` | `(value: string) => void` | -- | Called when the active tab changes |
+| `children` | `ReactNode` | -- | Should contain `Tabs.List` and `Tabs.Content` elements |
+
+### Tabs.List
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `loop` | `boolean` | `true` | Wrap navigation from last to first tab |
+| `isActive` | `boolean` | `true` | Whether the tab list accepts keyboard input |
+| `children` | `ReactNode` | -- | Should contain `Tabs.Trigger` elements |
+
+### Tabs.Trigger
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `value` | `string` | -- | Tab value (must match a `Tabs.Content` value) |
+| `disabled` | `boolean` | `false` | Disable this tab trigger |
+| `children` | `ReactNode` | -- | Tab label |
+
+### Tabs.Content
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `value` | `string` | -- | Tab value (renders when this matches the active tab) |
+| `children` | `ReactNode` | -- | Panel content |
+
+## Usage
+
+```tsx
+<Tabs defaultValue="summary">
+  <Tabs.List>
+    <Tabs.Trigger value="summary">Summary</Tabs.Trigger>
+    <Tabs.Trigger value="issues">Issues</Tabs.Trigger>
+    <Tabs.Trigger value="files">Files</Tabs.Trigger>
+  </Tabs.List>
+  <Tabs.Content value="summary">
+    <Text>Review summary content...</Text>
+  </Tabs.Content>
+  <Tabs.Content value="issues">
+    <Text>Issues list content...</Text>
+  </Tabs.Content>
+  <Tabs.Content value="files">
+    <Text>File breakdown content...</Text>
+  </Tabs.Content>
+</Tabs>
+```
+
+## Visual Rendering
+
+The tab list renders with a top border separator. The active tab label gets bold text, foreground color, and an accent background. Inactive tabs render in the muted color.
+
+```
+ Summary   Issues   Files
+─────────────────────────
+[active panel content]
+```
+
+## Keyboard Interaction
+
+| Key | Action |
+|-----|--------|
+| Left Arrow | Switch to previous tab |
+| Right Arrow | Switch to next tab |
+
+When `loop` is `true` (default), navigating past the last tab wraps to the first.
+
+## Notes
+
+- Uses React Context internally. `Tabs.List`, `Tabs.Trigger`, and `Tabs.Content` must be descendants of `Tabs`.
+- Disabled triggers are dimmed and skipped during navigation.
+- Only one `Tabs.Content` panel is rendered at a time; non-active panels return `null`.
+- The `Tabs.List` has a single-line top border using the theme's `border` token.

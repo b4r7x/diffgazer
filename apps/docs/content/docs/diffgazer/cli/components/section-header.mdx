@@ -1,0 +1,60 @@
+---
+title: "SectionHeader"
+description: "Uppercased section title with optional underline border."
+---
+
+## Overview
+
+SectionHeader renders a bold, uppercased heading for content sections. It optionally draws a horizontal rule below the text. Use it to visually separate groups of content within a screen.
+
+## Web Equivalent
+
+No direct diff-ui counterpart. This is a terminal-specific structural component, analogous to an `<h2>` or `<h3>` with a bottom border.
+
+## Import
+
+```tsx
+import { SectionHeader } from "../../components/ui/section-header.js";
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `variant` | `"default" \| "muted"` | `"default"` | `default` uses the foreground color; `muted` uses the muted color |
+| `bordered` | `boolean` | `false` | Draw a 40-character horizontal rule below the text |
+| `children` | `ReactNode` | -- | Header text (string children are auto-uppercased) |
+
+## Usage
+
+```tsx
+<SectionHeader>Review Settings</SectionHeader>
+```
+
+Renders: **REVIEW SETTINGS**
+
+## Bordered
+
+```tsx
+<SectionHeader bordered>Configuration</SectionHeader>
+```
+
+Renders:
+```
+CONFIGURATION
+────────────────────────────────────────
+```
+
+## Muted Variant
+
+```tsx
+<SectionHeader variant="muted">Optional</SectionHeader>
+```
+
+Renders the header in the theme's `muted` color instead of the foreground color.
+
+## Notes
+
+- String children are automatically converted to uppercase via `toUpperCase()`. Non-string children (e.g., JSX nodes) are rendered as-is.
+- The horizontal rule uses the theme's `border` token color and is 40 characters wide.
+- The text is always rendered bold.

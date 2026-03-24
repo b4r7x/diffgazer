@@ -1,0 +1,127 @@
+---
+title: "Routing"
+description: "Stack-based screen navigation with typed routes and back-navigation rules."
+---
+
+## Overview
+
+The CLI uses a simple stack-based router. Each screen corresponds to a variant in the `Route` discriminated union. The `NavigationProvider` maintains a route stack; `navigate()` pushes a new route, and `goBack()` pops the stack or follows a deterministic back target.
+
+## Route Type
+
+Routes are defined as a discriminated union in `apps/cli/src/app/routes.ts`:
+
+```ts
+export type Route =
+  | { screen: "home" }
+  | { screen: "onboarding" }
+  | { screen: "review"; reviewId?: string; mode?: "unstaged" | "staged" }
+  | { screen: "history" }
+  | { screen: "help" }
+  | { screen: "settings" }
+  | { screen: "settings/theme" }
+  | { screen: "settings/providers" }
+  | { screen: "settings/storage" }
+  | { screen: "settings/analysis" }
+  | { screen: "settings/agent-execution" }
+  | { screen: "settings/diagnostics" }
+  | { screen: "settings/trust-permissions" };
+
+export type ScreenName = Route["screen"];
+```
+
+Some route variants carry additional data (e.g., `review` has optional `reviewId` and `mode`).
+
+## NavigationProvider
+
+The provider (`apps/cli/src/app/navigation-context.tsx`) exposes four values via `useNavigation()`:
+
+| Value | Type | Description |
+|-------|------|-------------|
+| `route` | `Route` | Current active route |
+| `navigate` | `(route: Route) => void` | Push a new route onto the stack |
+| `goBack` | `() => void` | Return to the previous route |
+| `canGoBack` | `boolean` | Whether back navigation is available |
+
+### Navigation Stack
+
+The stack has a maximum depth of 20 entries. When `navigate()` is called, the current route is pushed onto the stack and the new route becomes active.
+
+### Back Navigation
+
+`goBack()` follows this priority:
+
+1. **Deterministic back target** -- if `getBackTarget(currentScreen)` returns a route, navigate there directly.
+2. **Stack pop** -- if the stack has entries, pop the last one.
+3. **Fallback** -- navigate to `{ screen: "home" }`.
+
+## Deterministic Back Targets
+
+Defined in `apps/cli/src/lib/back-navigation.ts`:
+
+```ts
+export function getBackTarget(currentScreen: ScreenName): Route | null {
+  if (currentScreen === "onboarding") return null;
+  if (currentScreen === "settings") return { screen: "home" };
+  if (currentScreen.startsWith("settings/")) return { screen: "settings" };
+  return null;
+}
+```
+
+| Current Screen | Back Target |
+|---------------|-------------|
+| `onboarding` | `null` (no back) |
+| `settings` | `home` |
+| `settings/*` | `settings` |
+| All others | Stack pop or `home` |
+
+This ensures settings sub-screens always return to the settings hub, regardless of how the user arrived there.
+
+## Screen Router
+
+The `ScreenRouter` component (`apps/cli/src/app/router.tsx`) maps each `ScreenName` to a component:
+
+```ts
+export const SCREEN_MAP: Record<ScreenName, () => ReactElement> = {
+  "home": () => <HomeScreen />,
+  "onboarding": () => <OnboardingScreen />,
+  "review": () => <ReviewScreen />,
+  "history": () => <HistoryScreen />,
+  "help": () => <HelpScreen />,
+  "settings": () => <SettingsHubScreen />,
+  "settings/theme": () => <ThemeScreen />,
+  "settings/providers": () => <ProvidersScreen />,
+  "settings/storage": () => <StorageScreen />,
+  "settings/analysis": () => <AnalysisScreen />,
+  "settings/agent-execution": () => <AgentExecutionScreen />,
+  "settings/diagnostics": () => <DiagnosticsScreen />,
+  "settings/trust-permissions": () => <TrustPermissionsScreen />,
+};
+```
+
+The router reads `route.screen` from the navigation context and calls the matching factory function.
+
+## Registering a New Screen
+
+1. Add a new variant to the `Route` union in `routes.ts`.
+2. Create the screen component in `apps/cli/src/app/screens/`.
+3. Add the mapping to `SCREEN_MAP` in `router.tsx`.
+4. Optionally add a deterministic back target in `back-navigation.ts`.
+
+## Usage in Screens
+
+```tsx
+import { useNavigation } from "../navigation-context.js";
+
+function MyScreen() {
+  const { navigate, goBack, canGoBack } = useNavigation();
+
+  return (
+    <Menu onSelect={(id) => {
+      if (id === "review") navigate({ screen: "review", mode: "staged" });
+    }}>
+      <Menu.Item id="review">Start Review</Menu.Item>
+    </Menu>
+  );
+}
+```

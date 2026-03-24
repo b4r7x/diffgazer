@@ -1,0 +1,56 @@
+---
+title: "Spinner"
+description: "Animated loading indicator with optional label."
+---
+
+## Overview
+
+Spinner renders an animated terminal spinner with an optional text label. It wraps `ink-spinner` and adds theme-aware coloring and size-based gap control.
+
+## Web Equivalent
+
+Maps to diff-ui's loading/spinner indicators. The terminal version uses character-based animation frames (dots, braille, line) instead of CSS animations.
+
+## Import
+
+```tsx
+import { Spinner } from "../../components/ui/spinner.js";
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `variant` | `"dots" \| "braille" \| "snake"` | `"dots"` | Animation style |
+| `label` | `ReactNode` | -- | Text displayed next to the spinner |
+| `size` | `"sm" \| "md" \| "lg"` | `"md"` | Gap between the spinner and label |
+
+## Usage
+
+```tsx
+<Spinner label="Loading review..." />
+```
+
+## Variants
+
+| Variant | ink-spinner type | Visual |
+|---------|-----------------|--------|
+| `dots` | `dots` | Cycling dot pattern |
+| `braille` | `dots8Bit` | Braille character animation |
+| `snake` | `line` | Rotating line character |
+
+## Sizes
+
+Size controls the gap between the spinner character and the label:
+
+| Size | Gap |
+|------|-----|
+| `sm` | 0 (no gap) |
+| `md` | 1 |
+| `lg` | 2 |
+
+## Notes
+
+- The spinner character is colored with the theme's `accent` token.
+- The label is rendered in the default text color.
+- When `label` is not provided, only the spinner character is rendered.

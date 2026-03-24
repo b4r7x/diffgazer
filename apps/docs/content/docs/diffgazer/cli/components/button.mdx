@@ -1,0 +1,81 @@
+---
+title: "Button"
+description: "Interactive bracketed action with Enter-to-press and loading state."
+---
+
+## Overview
+
+Button is an interactive element that responds to the Enter key when active. It renders as a bracketed label (`[ Label ]`) or a prefixed label (`> Label`) depending on the `bracket` prop. Supports loading spinners and disabled states.
+
+## Web Equivalent
+
+Maps to diff-ui's `Button` component. The terminal version replaces CSS hover/focus states with an `isActive` prop that gates keyboard input. Click is replaced by Enter keypress.
+
+## Import
+
+```tsx
+import { Button } from "../../components/ui/button.js";
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `variant` | `"primary" \| "secondary" \| "destructive" \| "success" \| "ghost" \| "outline"` | `"primary"` | Color variant |
+| `size` | `"sm" \| "md" \| "lg"` | `"md"` | Horizontal padding |
+| `bracket` | `boolean` | `true` | Use bracket style `[ ]` vs prefix style `> ` |
+| `loading` | `boolean` | `false` | Show a dots spinner before the label |
+| `disabled` | `boolean` | `false` | Dim the text and ignore input |
+| `isActive` | `boolean` | `false` | Whether this button currently accepts keyboard input |
+| `onPress` | `() => void` | -- | Called when Enter is pressed while active |
+| `children` | `ReactNode` | -- | Button label |
+
+## Usage
+
+```tsx
+<Button isActive onPress={() => console.log("pressed")}>
+  Submit
+</Button>
+```
+
+Renders: `[ Submit ]` in the accent color.
+
+## Variants
+
+```tsx
+<Button variant="primary">Primary</Button>       // accent color
+<Button variant="secondary">Secondary</Button>   // muted color
+<Button variant="destructive">Delete</Button>     // error color
+<Button variant="success">Confirm</Button>        // success color
+<Button variant="ghost">Ghost</Button>            // foreground color
+<Button variant="outline">Outline</Button>        // border color
+```
+
+## Loading State
+
+When `loading` is `true`, a dots spinner appears before the label:
+
+```tsx
+<Button loading>Saving...</Button>
+// Renders: [ ⠋ Saving... ]
+```
+
+The button ignores keyboard input while loading.
+
+## Bracket vs Prefix Style
+
+```tsx
+<Button bracket>Bracketed</Button>     // [ Bracketed ]
+<Button bracket={false}>Prefixed</Button>  // > Prefixed
+```
+
+## Keyboard Interaction
+
+| Key | Action |
+|-----|--------|
+| Enter | Calls `onPress` (only when `isActive` is `true`, `disabled` is `false`, and `loading` is `false`) |
+
+## Notes
+
+- Only one Button should have `isActive={true}` at a time in a given screen region. Multiple active buttons will all respond to Enter.
+- The `disabled` prop dims the text via Ink's `dimColor` attribute.

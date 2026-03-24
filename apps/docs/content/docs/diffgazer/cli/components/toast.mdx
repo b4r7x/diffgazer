@@ -1,0 +1,101 @@
+---
+title: "Toast"
+description: "Auto-dismissing notification system with imperative API."
+---
+
+## Overview
+
+The toast system provides transient notifications that auto-dismiss after a configurable duration. It consists of two parts: the `Toaster` component (renders active toasts) and the `toast()` function (imperatively creates toasts from anywhere in the app).
+
+## Web Equivalent
+
+Maps to diff-ui's toast/notification system. The terminal version uses a module-level store with `useSyncExternalStore` instead of DOM portals. The imperative API is identical in spirit: call `toast("message")` from any module.
+
+## Import
+
+```tsx
+// Imperative API (call from anywhere)
+import { toast } from "../../components/ui/toast.js";
+
+// Renderer component (mount once in the app shell)
+import { Toaster } from "../../components/ui/toast.js";
+```
+
+## Toaster Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `position` | `"top" \| "bottom"` | `"bottom"` | Vertical position; controls top/bottom margin |
+
+## toast() API
+
+### `toast(title, options?)`
+
+Create a toast notification. Returns the toast id.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `title` | `string` | -- | Primary notification text |
+| `options.message` | `string` | -- | Optional secondary text |
+| `options.variant` | `"success" \| "warning" \| "error" \| "info" \| "neutral"` | `"neutral"` | Color variant |
+| `options.duration` | `number` | `3000` | Auto-dismiss delay in milliseconds |
+
+### Convenience Methods
+
+```tsx
+toast.success(title, options?)  // variant: "success"
+toast.error(title, options?)    // variant: "error"
+toast.warning(title, options?)  // variant: "warning"
+```
+
+### `toast.dismiss(id?)`
+
+Dismiss a specific toast by id, or dismiss all toasts if no id is provided.
+
+## Usage
+
+### Mount the Toaster
+
+Place `<Toaster />` once in the app shell, typically after the main layout:
+
+```tsx
+<GlobalLayout>
+  <ScreenRouter />
+</GlobalLayout>
+<Toaster />
+```
+
+### Create Toasts
+
+```tsx
+// Basic
+toast("Settings saved");
+
+// With variant
+toast.success("Review complete", { message: "3 issues found" });
+
+// With custom duration
+toast.error("Connection failed", { duration: 5000 });
+
+// Dismiss all
+toast.dismiss();
+```
+
+## Variant Icons
+
+Each variant displays a Unicode icon:
+
+| Variant | Icon | Color |
+|---------|------|-------|
+| `success` | check mark | `tokens.success` |
+| `error` | cross mark | `tokens.error` |
+| `warning` | warning triangle | `tokens.warning` |
+| `info` | information symbol | `tokens.info` |
+| `neutral` | information symbol | `tokens.muted` |
+
+## Notes
+
+- The toast store is module-level (singleton). Multiple `Toaster` instances would render duplicate toasts.
+- Auto-dismiss uses `setTimeout` inside a `useEffect`. Each toast is independently timed.
+- The `Variant` type is imported from `../../types/components.js`.
+- Toasts stack vertically in the order they were created.

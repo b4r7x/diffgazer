@@ -1,0 +1,90 @@
+---
+title: "Terminal Component Library"
+description: "Overview of the Ink-based terminal UI component library for diffgazer CLI."
+---
+
+## Overview
+
+The diffgazer CLI ships with a purpose-built terminal component library. Every component is a React component rendered via [Ink 6](https://github.com/vadimdemedes/ink), targeting Node.js terminal emulators rather than browsers. The library mirrors the structure and naming of the web UI's diff-ui components so that both surfaces stay conceptually aligned.
+
+The library provides 18 UI components, 3 layout components, a theme system with 3 palettes, a scope-based keyboard manager, and a stack-based screen router.
+
+## Architecture
+
+- **Ink 6 + React 19** -- components use JSX and hooks, rendered to the terminal via Ink's reconciler.
+- **Theme system** -- all color values flow through `useTheme()`, which reads from `CliThemeProvider`. Three palettes ship by default (dark, light, high-contrast). Terminal background is auto-detected via `COLORFGBG`.
+- **Keyboard management** -- `TerminalKeyboardProvider` maintains a scope stack. Screens push/pop scopes; hotkeys are dispatched only to the active scope. Global shortcuts (q, s, ?) bypass the scope stack.
+- **Screen router** -- a simple `NavigationProvider` with `navigate(route)` / `goBack()`. Routes are a discriminated union; the router maps each `ScreenName` to a component.
+
+## Component Catalog
+
+### Core (P0)
+
+These are foundational primitives used across nearly every screen.
+
+| Component | Description |
+|-----------|-------------|
+| [Badge](/diffgazer/docs/cli/components/badge) | Bracketed status label with semantic color variants |
+| [Button](/diffgazer/docs/cli/components/button) | Interactive bracketed action with Enter-to-press |
+| [Callout](/diffgazer/docs/cli/components/callout) | Bordered alert box with icon and variant coloring |
+| [Panel](/diffgazer/docs/cli/components/panel) | Bordered container with header/content/footer slots |
+| [SectionHeader](/diffgazer/docs/cli/components/section-header) | Uppercased section title with optional underline |
+| [Spinner](/diffgazer/docs/cli/components/spinner) | Animated loading indicator with label |
+| [KeyValue](/diffgazer/docs/cli/components/key-value) | Label-value pair with aligned columns |
+
+### Forms and Navigation (P1)
+
+Interactive components for user input and list selection.
+
+| Component | Description |
+|-----------|-------------|
+| [Menu](/diffgazer/docs/cli/components/menu) | Keyboard-navigable vertical menu with hotkeys |
+| [NavigationList](/diffgazer/docs/cli/components/navigation-list) | Selectable list with title/badge/status sub-components |
+| [Input](/diffgazer/docs/cli/components/input) | Text input with password mode and size variants |
+| [CheckboxGroup](/diffgazer/docs/cli/components/checkbox) | Multi-select checkbox list with keyboard toggle |
+| [RadioGroup](/diffgazer/docs/cli/components/radio) | Single-select radio list with orientation support |
+| [Tabs](/diffgazer/docs/cli/components/tabs) | Horizontal tab strip with panel switching |
+| [ScrollArea](/diffgazer/docs/cli/components/scroll-area) | Scrollable viewport with arrow indicators |
+
+### Feedback and Overlay (P2)
+
+Specialized components for dialogs, notifications, and empty states.
+
+| Component | Description |
+|-----------|-------------|
+| [Dialog](/diffgazer/docs/cli/components/dialog) | Full-screen overlay with header/body/footer slots |
+| [Toast](/diffgazer/docs/cli/components/toast) | Auto-dismissing notification with imperative API |
+| [EmptyState](/diffgazer/docs/cli/components/empty-state) | Centered placeholder for zero-data screens |
+
+### Layout
+
+| Component | Description |
+|-----------|-------------|
+| [Header](/diffgazer/docs/cli/layout/header) | Top bar with provider name, status dot, and branding |
+| [Footer](/diffgazer/docs/cli/layout/footer) | Shortcut hint bar at the bottom of every screen |
+| [GlobalLayout](/diffgazer/docs/cli/layout/global-layout) | Full-screen shell combining Header, content area, and Footer |
+
+## Web-to-Terminal Mapping
+
+The terminal components are not 1:1 ports of their web counterparts. Terminal constraints (no mouse, monospace grid, 256-color palette) require different trade-offs:
+
+| Web (diff-ui) | Terminal (CLI) | Key Difference |
+|---------------|---------------|----------------|
+| CSS colors + Tailwind tokens | `CliColorTokens` via `useTheme()` | All colors are terminal-safe hex strings |
+| Click handlers | `useInput` / Enter key | No mouse; keyboard-only interaction |
+| CSS layout (flex/grid) | Ink `<Box>` flex model | Subset of flexbox; no grid, no absolute positioning |
+| Hover states | Highlight index | Arrow keys move highlight; no hover concept |
+| Portals / z-index | Full-screen `<Box>` overlay | Dialog fills the entire terminal viewport |
+| Toast via DOM portal | Toast via `useSyncExternalStore` | Module-level store; `toast()` callable from anywhere |
+
+## Technology Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Runtime | Node.js |
+| Rendering | Ink 6.8.0 |
+| UI framework | React 19.2.4 |
+| Spinner | ink-spinner 5.0.0 |
+| Text input | @inkjs/ui (TextInput) |
+| Type system | TypeScript 5.x (strict) |
+| Module format | ESM only (.js extensions) |
