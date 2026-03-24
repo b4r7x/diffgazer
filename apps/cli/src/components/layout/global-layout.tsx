@@ -4,7 +4,7 @@ import { Header } from "./header.js";
 import { Footer } from "./footer.js";
 import { useNavigation } from "../../app/navigation-context.js";
 import { useFooterContext } from "../../app/providers/footer-provider.js";
-import { useInit } from "../../hooks/use-init.js";
+import { useInit } from "@diffgazer/api/hooks";
 
 function getProviderStatus(
   isLoading: boolean,

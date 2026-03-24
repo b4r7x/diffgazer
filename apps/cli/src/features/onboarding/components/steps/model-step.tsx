@@ -1,9 +1,9 @@
-import { useEffect, useState, type ReactElement } from "react";
+import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import { RadioGroup } from "../../../../components/ui/radio.js";
 import { Badge } from "../../../../components/ui/badge.js";
 import { Spinner } from "../../../../components/ui/spinner.js";
-import { api } from "../../../../lib/api.js";
+import { useOpenRouterModels } from "@diffgazer/api/hooks";
 import type { ModelInfo, OpenRouterModel } from "@diffgazer/schemas/config";
 import { GEMINI_MODEL_INFO, GLM_MODEL_INFO } from "@diffgazer/schemas/config";
 
@@ -57,31 +57,14 @@ export function ModelStep({
   provider,
   isActive = true,
 }: ModelStepProps): ReactElement {
-  const [models, setModels] = useState<ModelOption[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const isOpenRouter = provider === "openrouter";
+  const openRouterQuery = useOpenRouterModels({ enabled: isOpenRouter });
 
-  useEffect(() => {
-    if (provider === "openrouter") {
-      setIsLoading(true);
-      setError(null);
-      api
-        .getOpenRouterModels()
-        .then((res) => {
-          setModels(res.models.map(openRouterToOption));
-        })
-        .catch((err) => {
-          setError(err instanceof Error ? err.message : "Failed to load models");
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-    } else {
-      setModels(getStaticModels(provider));
-      setError(null);
-      setIsLoading(false);
-    }
-  }, [provider]);
+  const isLoading = isOpenRouter && openRouterQuery.isLoading;
+  const error = openRouterQuery.error?.message ?? null;
+  const models: ModelOption[] = isOpenRouter
+    ? (openRouterQuery.data?.models ?? []).map(openRouterToOption)
+    : getStaticModels(provider);
 
   if (isLoading) {
     return <Spinner label="Loading models..." />;

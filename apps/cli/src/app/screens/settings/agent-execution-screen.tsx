@@ -5,8 +5,7 @@ import type { AgentExecution } from "@diffgazer/schemas/config";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
-import { useSettings } from "../../../hooks/use-settings.js";
-import { api } from "../../../lib/api.js";
+import { useSettings, useSaveSettings } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Spinner } from "../../../components/ui/spinner.js";
@@ -18,26 +17,21 @@ export function AgentExecutionScreen(): ReactElement {
   usePageFooter({ shortcuts: [{ key: "Esc", label: "Back" }, { key: "Enter", label: "Select" }] });
   useBackHandler();
 
-  const { settings, isLoading, error: loadError } = useSettings();
+  const { data: settings, isLoading, error: loadErrorObj } = useSettings();
+  const loadError = loadErrorObj?.message ?? null;
+  const saveSettings = useSaveSettings();
   const [mode, setMode] = useState<AgentExecution | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
 
+  const isSaving = saveSettings.isPending;
+  const saveError = saveSettings.error?.message ?? null;
   const current = mode ?? settings?.agentExecution ?? "parallel";
 
-  async function handleSave() {
-    setIsSaving(true);
+  function handleSave() {
     setSaved(false);
-    setSaveError(null);
-    try {
-      await api.saveSettings({ agentExecution: current });
-      setSaved(true);
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Failed to save settings");
-    } finally {
-      setIsSaving(false);
-    }
+    saveSettings.mutate({ agentExecution: current }, {
+      onSuccess: () => setSaved(true),
+    });
   }
 
   if (isLoading) {

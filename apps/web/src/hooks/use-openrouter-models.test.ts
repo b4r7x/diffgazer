@@ -1,52 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, waitFor, act } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 
-const mockGetOpenRouterModels = vi.fn();
+const mockUseSharedOpenRouterModels = vi.fn();
 
-vi.mock("@/lib/api", () => ({
-  api: {
-    getOpenRouterModels: (...args: unknown[]) => mockGetOpenRouterModels(...args),
-  },
+vi.mock("@diffgazer/api/hooks", () => ({
+  useOpenRouterModels: (...args: unknown[]) => mockUseSharedOpenRouterModels(...args),
 }));
 
 import { useOpenRouterModels } from "./use-openrouter-models";
 
-function createDeferred<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (error: unknown) => void;
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-  return { promise, resolve, reject };
-}
-
 describe("useOpenRouterModels", () => {
   beforeEach(() => {
-    mockGetOpenRouterModels.mockReset();
+    mockUseSharedOpenRouterModels.mockReset();
   });
 
-  it("finishes loading after models request resolves", async () => {
-    const request = createDeferred<{
-      models: Array<{
-        id: string;
-        name: string;
-        description?: string;
-        isFree: boolean;
-        supportedParameters?: string[];
-      }>;
-      fetchedAt: string;
-      cached: boolean;
-    }>();
-    mockGetOpenRouterModels.mockReturnValueOnce(request.promise);
-
-    const { result } = renderHook(() => useOpenRouterModels(true, "openrouter"));
-
-    expect(result.current.loading).toBe(true);
-    expect(mockGetOpenRouterModels).toHaveBeenCalledTimes(1);
-
-    await act(async () => {
-      request.resolve({
+  it("filters to compatible models and maps them", () => {
+    mockUseSharedOpenRouterModels.mockReturnValue({
+      data: {
         models: [
           {
             id: "openrouter/free-model",
@@ -65,14 +35,14 @@ describe("useOpenRouterModels", () => {
         ],
         fetchedAt: new Date().toISOString(),
         cached: false,
-      });
-      await Promise.resolve();
+      },
+      isLoading: false,
+      error: null,
     });
 
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-    });
+    const { result } = renderHook(() => useOpenRouterModels(true, "openrouter"));
 
+    expect(result.current.loading).toBe(false);
     expect(result.current.total).toBe(2);
     expect(result.current.compatible).toBe(1);
     expect(result.current.models).toEqual([
@@ -85,32 +55,45 @@ describe("useOpenRouterModels", () => {
     ]);
   });
 
-  it("returns error state when API rejects", async () => {
-    mockGetOpenRouterModels.mockRejectedValueOnce(new Error("Network error"));
+  it("returns error state when query has error", () => {
+    mockUseSharedOpenRouterModels.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: new Error("Network error"),
+    });
 
     const { result } = renderHook(() => useOpenRouterModels(true, "openrouter"));
 
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-    });
-
+    expect(result.current.loading).toBe(false);
     expect(result.current.error).toBe("Network error");
     expect(result.current.models).toEqual([]);
   });
 
   it("resets when provider is not openrouter", () => {
+    mockUseSharedOpenRouterModels.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+    });
+
     const { result } = renderHook(() => useOpenRouterModels(true, "google"));
 
     expect(result.current.loading).toBe(false);
     expect(result.current.models).toEqual([]);
-    expect(mockGetOpenRouterModels).not.toHaveBeenCalled();
+    expect(mockUseSharedOpenRouterModels).toHaveBeenCalledWith({ enabled: false });
   });
 
   it("resets when dialog is closed", () => {
+    mockUseSharedOpenRouterModels.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: null,
+    });
+
     const { result } = renderHook(() => useOpenRouterModels(false, "openrouter"));
 
     expect(result.current.loading).toBe(false);
     expect(result.current.models).toEqual([]);
-    expect(mockGetOpenRouterModels).not.toHaveBeenCalled();
+    expect(mockUseSharedOpenRouterModels).toHaveBeenCalledWith({ enabled: false });
   });
 });

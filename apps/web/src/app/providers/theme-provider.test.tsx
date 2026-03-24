@@ -4,27 +4,25 @@ import { useContext } from "react";
 import { ThemeProvider, ThemeContext } from "./theme-provider";
 import type { ThemeContextValue } from "@/types/theme";
 
-vi.mock("@/hooks/use-settings", () => ({
+vi.mock("@diffgazer/api/hooks", () => ({
   useSettings: vi.fn().mockReturnValue({
-    settings: null,
+    data: null,
     isLoading: false,
     error: null,
-    refresh: vi.fn(),
-    invalidate: vi.fn(),
+    refetch: vi.fn(),
+  }),
+  useSaveSettings: vi.fn().mockReturnValue({
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+    isPending: false,
+    error: null,
   }),
 }));
 
-vi.mock("@/lib/api", () => ({
-  api: {
-    saveSettings: vi.fn().mockResolvedValue({}),
-  },
-}));
-
-import { useSettings } from "@/hooks/use-settings";
-import { api } from "@/lib/api";
+import { useSettings, useSaveSettings } from "@diffgazer/api/hooks";
 
 const mockUseSettings = useSettings as ReturnType<typeof vi.fn>;
-const mockSaveSettings = api.saveSettings as ReturnType<typeof vi.fn>;
+const mockUseSaveSettings = useSaveSettings as ReturnType<typeof vi.fn>;
 
 const localStorageStore = new Map<string, string>();
 const storageMock: Storage = {
@@ -66,18 +64,25 @@ function ThemeConsumer({
   return null;
 }
 
+let mockMutate: ReturnType<typeof vi.fn>;
+
 describe("ThemeProvider", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     mockMatchMedia(false); // default: system theme = light
+    mockMutate = vi.fn();
+    mockUseSaveSettings.mockReturnValue({
+      mutate: mockMutate,
+      mutateAsync: vi.fn(),
+      isPending: false,
+      error: null,
+    });
     mockUseSettings.mockReturnValue({
-      settings: null,
+      data: null,
       isLoading: false,
       error: null,
-      refresh: vi.fn(),
-      invalidate: vi.fn(),
+      refetch: vi.fn(),
     });
-    mockSaveSettings.mockResolvedValue({});
     localStorageStore.clear();
     document.documentElement.removeAttribute("data-theme");
   });
@@ -88,11 +93,10 @@ describe("ThemeProvider", () => {
 
   it("should apply light theme when user setting is light", () => {
     mockUseSettings.mockReturnValue({
-      settings: { theme: "light" },
+      data: { theme: "light" },
       isLoading: false,
       error: null,
-      refresh: vi.fn(),
-      invalidate: vi.fn(),
+      refetch: vi.fn(),
     });
 
     render(
@@ -138,18 +142,17 @@ describe("ThemeProvider", () => {
     capturedSetTheme!("dark");
 
     expect(localStorage.getItem("diffgazer-theme")).toBe("dark");
-    expect(mockSaveSettings).toHaveBeenCalledWith({ theme: "dark" });
+    expect(mockMutate).toHaveBeenCalledWith({ theme: "dark" });
   });
 
   it("should apply setTheme immediately even when settings cache is stale", () => {
     let capturedSetTheme: ThemeContextValue["setTheme"] | undefined;
 
     mockUseSettings.mockReturnValue({
-      settings: { theme: "auto" },
+      data: { theme: "auto" },
       isLoading: false,
       error: null,
-      refresh: vi.fn(),
-      invalidate: vi.fn(),
+      refetch: vi.fn(),
     });
 
     render(
@@ -187,11 +190,10 @@ describe("ThemeProvider", () => {
 
   it("should map 'terminal' settings theme to dark", () => {
     mockUseSettings.mockReturnValue({
-      settings: { theme: "terminal" },
+      data: { theme: "terminal" },
       isLoading: false,
       error: null,
-      refresh: vi.fn(),
-      invalidate: vi.fn(),
+      refetch: vi.fn(),
     });
 
     render(

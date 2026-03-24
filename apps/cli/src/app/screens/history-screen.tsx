@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
 import type { ReviewMetadata } from "@diffgazer/schemas/review";
-import { api } from "../../lib/api.js";
+import { useReviews } from "@diffgazer/api/hooks";
 import { useScope } from "../../hooks/use-scope.js";
 import { usePageFooter } from "../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../hooks/use-back-handler.js";
@@ -118,38 +118,12 @@ export function HistoryScreen(): ReactElement {
   const { columns, rows } = useTerminalDimensions();
   const { navigate } = useNavigation();
 
-  const [reviews, setReviews] = useState<ReviewMetadata[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: reviewsData, isLoading, error: reviewsError } = useReviews();
+  const reviews = reviewsData?.reviews ?? [];
+  const error = reviewsError ? (reviewsError instanceof Error ? reviewsError.message : "Failed to fetch reviews") : null;
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedReviewId, setSelectedReviewId] = useState<string | undefined>(undefined);
   const [activeZone, setActiveZone] = useState<Zone>("timeline");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchReviews() {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await api.getReviews();
-        if (!cancelled) {
-          setReviews(response.reviews);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to fetch reviews");
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    fetchReviews();
-    return () => { cancelled = true; };
-  }, []);
 
   useInput((_input, key) => {
     if (key.tab) {

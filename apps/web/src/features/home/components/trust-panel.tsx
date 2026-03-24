@@ -4,7 +4,7 @@ import { CardLayout } from "@/components/ui/card-layout";
 import { toast } from "diffui/components/toast";
 import { Button } from "diffui/components/button";
 import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
-import { useTrust } from "@/hooks/use-trust";
+import { useSaveTrust } from "@diffgazer/api/hooks";
 
 export interface TrustPanelProps {
   directory: string;
@@ -20,14 +20,15 @@ export function TrustPanel({
   directory,
   projectId,
 }: TrustPanelProps) {
-  const { save, isLoading } = useTrust(projectId);
+  const saveTrust = useSaveTrust();
+  const isLoading = saveTrust.isPending;
   const [capabilities, setCapabilities] = useState<TrustCapabilities>(DEFAULT_CAPABILITIES);
   const hasRepoAccess = capabilities.readFiles;
 
   async function handleTrust(): Promise<void> {
     if (isLoading) return;
     try {
-      await save({
+      await saveTrust.mutateAsync({
         projectId,
         repoRoot: directory,
         capabilities,

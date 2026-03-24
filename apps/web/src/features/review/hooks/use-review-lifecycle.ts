@@ -1,11 +1,10 @@
 import { useEffect, useEffectEvent } from 'react';
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { useReviewStream } from './use-review-stream';
+import { useReviewStream, useApi } from '@diffgazer/api/hooks';
 import { useReviewSettings } from './use-review-settings';
 import { useReviewStart } from './use-review-start';
 import { useReviewCompletion } from './use-review-completion';
 import { useConfigData, useConfigActions } from '@/app/providers/config-provider';
-import { api } from '@/lib/api';
 import type { ReviewIssue } from '@diffgazer/schemas/review';
 import type { ReviewMode } from '@diffgazer/schemas/review';
 
@@ -23,9 +22,10 @@ interface UseReviewLifecycleOptions {
 export function useReviewLifecycle({ mode, onComplete, onReviewNotInSession }: UseReviewLifecycleOptions) {
   const navigate = useNavigate();
   const params = useParams({ strict: false });
+  const api = useApi();
   const { isConfigured, provider, model } = useConfigData();
   const { isLoading: configLoading } = useConfigActions();
-  const { state, start, stop, resume } = useReviewStream();
+  const { state, start: sharedStart, stop, resume } = useReviewStream();
   const { loading: settingsLoading, defaultLenses } = useReviewSettings();
 
   const stableOnComplete = useEffectEvent((data: ReviewCompleteData) => {
@@ -57,7 +57,7 @@ export function useReviewLifecycle({ mode, onComplete, onReviewNotInSession }: U
     isConfigured,
     defaultLenses,
     reviewId: params.reviewId,
-    start,
+    start: (options) => sharedStart(options.mode!, options.lenses),
     resume,
     getActiveSession: api.getActiveReviewSession,
     onNotFoundInSession: stableOnNotFound,

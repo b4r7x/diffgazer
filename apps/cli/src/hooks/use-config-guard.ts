@@ -1,30 +1,21 @@
-import { useEffect, useState } from "react";
-import { api } from "../lib/api.js";
+import { useEffect } from "react";
+import { useConfigCheck } from "@diffgazer/api/hooks";
 import { useNavigation } from "../app/navigation-context.js";
 
 type ConfigGuardState = "checking" | "configured" | "not-configured";
 
 export function useConfigGuard(): ConfigGuardState {
-  const [state, setState] = useState<ConfigGuardState>("checking");
+  const { data, isLoading, error } = useConfigCheck();
   const { navigate } = useNavigation();
 
   useEffect(() => {
-    const check = async () => {
-      try {
-        const result = await api.checkConfig();
-        if (result.configured) {
-          setState("configured");
-        } else {
-          setState("not-configured");
-          navigate({ screen: "onboarding" });
-        }
-      } catch {
-        setState("not-configured");
-        navigate({ screen: "onboarding" });
-      }
-    };
-    check();
-  }, []);
+    if (isLoading) return;
+    if (!data?.configured || error) {
+      navigate({ screen: "onboarding" });
+    }
+  }, [isLoading, data, error]);
 
-  return state;
+  if (isLoading) return "checking";
+  if (data?.configured) return "configured";
+  return "not-configured";
 }

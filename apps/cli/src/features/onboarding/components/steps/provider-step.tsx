@@ -1,8 +1,8 @@
-import { useEffect, useState, type ReactElement } from "react";
+import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import { RadioGroup } from "../../../../components/ui/radio.js";
 import { Spinner } from "../../../../components/ui/spinner.js";
-import { api } from "../../../../lib/api.js";
+import { useProviderStatus } from "@diffgazer/api/hooks";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/schemas/config";
 import type { ProviderStatus } from "@diffgazer/schemas/config";
 
@@ -32,36 +32,10 @@ export function ProviderStep({
   onChange,
   isActive = true,
 }: ProviderStepProps): ReactElement {
-  const [providers, setProviders] = useState<ProviderStatus[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | undefined>();
+  const { data: providers, isLoading, error: errorObj } = useProviderStatus();
+  const error = errorObj?.message;
 
-  useEffect(() => {
-    let cancelled = false;
-
-    api
-      .getProviderStatus()
-      .then((result) => {
-        if (!cancelled) {
-          setProviders(result);
-          setLoading(false);
-        }
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          const message =
-            err instanceof Error ? err.message : "Failed to load providers";
-          setError(message);
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
     return <Spinner label="Loading providers..." />;
   }
 
@@ -75,7 +49,7 @@ export function ProviderStep({
 
   return (
     <RadioGroup value={value} onChange={onChange} isActive={isActive}>
-      {providers.map((status) => (
+      {(providers ?? []).map((status) => (
         <RadioGroup.Item
           key={status.provider}
           value={status.provider}

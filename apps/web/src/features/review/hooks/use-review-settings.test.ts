@@ -1,15 +1,15 @@
 import { describe, it, expect, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 
-vi.mock("@/hooks/use-settings", () => ({
+vi.mock("@diffgazer/api/hooks", () => ({
   useSettings: vi.fn().mockReturnValue({
-    settings: null,
+    data: null,
     isLoading: false,
   }),
 }));
 
 import { useReviewSettings } from "./use-review-settings";
-import { useSettings } from "@/hooks/use-settings";
+import { useSettings } from "@diffgazer/api/hooks";
 
 const mockUseSettings = useSettings as ReturnType<typeof vi.fn>;
 
@@ -17,7 +17,7 @@ const FALLBACK_LENSES = ["correctness", "security", "performance", "simplicity",
 
 describe("useReviewSettings", () => {
   it("should return fallback lenses when settings is null", () => {
-    mockUseSettings.mockReturnValue({ settings: null, isLoading: false });
+    mockUseSettings.mockReturnValue({ data: null, isLoading: false });
 
     const { result } = renderHook(() => useReviewSettings());
 
@@ -26,7 +26,7 @@ describe("useReviewSettings", () => {
 
   it("should return valid lenses unchanged", () => {
     mockUseSettings.mockReturnValue({
-      settings: { defaultLenses: ["correctness", "security"] },
+      data: { defaultLenses: ["correctness", "security"] },
       isLoading: false,
     });
 
@@ -37,7 +37,7 @@ describe("useReviewSettings", () => {
 
   it("should filter out invalid lenses", () => {
     mockUseSettings.mockReturnValue({
-      settings: { defaultLenses: ["correctness", "invalid-lens", "security"] },
+      data: { defaultLenses: ["correctness", "invalid-lens", "security"] },
       isLoading: false,
     });
 
@@ -48,7 +48,7 @@ describe("useReviewSettings", () => {
 
   it("should return fallback when all lenses are invalid", () => {
     mockUseSettings.mockReturnValue({
-      settings: { defaultLenses: ["foo", "bar"] },
+      data: { defaultLenses: ["foo", "bar"] },
       isLoading: false,
     });
 

@@ -5,8 +5,7 @@ import Spinner from "ink-spinner";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
-import { useInit } from "../../../hooks/use-init.js";
-import { api } from "../../../lib/api.js";
+import { useInit, useSaveTrust, useDeleteTrust } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Button } from "../../../components/ui/button.js";
@@ -22,13 +21,18 @@ export function TrustPermissionsScreen(): ReactElement {
   usePageFooter({ shortcuts: [{ key: "Esc", label: "Back" }, { key: "Space", label: "Toggle" }] });
   useBackHandler();
 
-  const { data: initData, isLoading: initLoading, error: initError } = useInit();
+  const { data: initData, isLoading: initLoading, error: initErrorObj } = useInit();
+  const initError = initErrorObj?.message ?? null;
+
+  const saveTrust = useSaveTrust();
+  const deleteTrust = useDeleteTrust();
 
   const trust = initData?.project.trust ?? null;
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  const saving = saveTrust.isPending || deleteTrust.isPending;
+  const saveError = saveTrust.error?.message ?? deleteTrust.error?.message ?? null;
 
   // Derive effective capabilities: local edits take priority, then server trust, then defaults
   const effectiveCapabilities: Capabilities = capabilities ?? trust?.capabilities ?? {
@@ -36,42 +40,32 @@ export function TrustPermissionsScreen(): ReactElement {
     runCommands: false,
   };
 
-  async function handleSave() {
+  function handleSave() {
     if (!initData) return;
-    setSaving(true);
-    setSaveError(null);
     setSaveMessage(null);
-    try {
-      await api.saveTrust({
-        projectId: initData.project.projectId,
-        repoRoot: initData.project.path,
-        capabilities: effectiveCapabilities,
-        trustMode: trust?.trustMode ?? "persistent",
-        trustedAt: new Date().toISOString(),
-      });
-      setSaveMessage("Trust permissions saved.");
-      setCapabilities(null); // reset local edits so next render uses server data
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Failed to save trust permissions");
-    } finally {
-      setSaving(false);
-    }
+    saveTrust.mutate({
+      projectId: initData.project.projectId,
+      repoRoot: initData.project.path,
+      capabilities: effectiveCapabilities,
+      trustMode: trust?.trustMode ?? "persistent",
+      trustedAt: new Date().toISOString(),
+    }, {
+      onSuccess: () => {
+        setSaveMessage("Trust permissions saved.");
+        setCapabilities(null);
+      },
+    });
   }
 
-  async function handleRevoke() {
+  function handleRevoke() {
     if (!initData) return;
-    setSaving(true);
-    setSaveError(null);
     setSaveMessage(null);
-    try {
-      await api.deleteTrust(initData.project.projectId);
-      setCapabilities(null);
-      setSaveMessage("Trust permissions revoked.");
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Failed to revoke trust permissions");
-    } finally {
-      setSaving(false);
-    }
+    deleteTrust.mutate(initData.project.projectId, {
+      onSuccess: () => {
+        setCapabilities(null);
+        setSaveMessage("Trust permissions revoked.");
+      },
+    });
   }
 
   if (initLoading) {

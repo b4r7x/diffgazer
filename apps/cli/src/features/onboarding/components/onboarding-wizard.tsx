@@ -5,7 +5,7 @@ import type { LensId } from "@diffgazer/schemas/review";
 import type { AIProvider, SecretsStorage, AgentExecution } from "@diffgazer/schemas/config";
 import { useTheme } from "../../../theme/theme-context.js";
 import { useNavigation } from "../../../app/navigation-context.js";
-import { api } from "../../../lib/api.js";
+import { useSaveSettings, useSaveConfig } from "@diffgazer/api/hooks";
 import { Button } from "../../../components/ui/button.js";
 import { Spinner } from "../../../components/ui/spinner.js";
 import { Callout } from "../../../components/ui/callout.js";
@@ -45,7 +45,10 @@ export function OnboardingWizard(): ReactElement {
   const [secretsStorage, setSecretsStorage] = useState<SecretsStorage>("file");
   const [agentExecution, setAgentExecution] = useState<AgentExecution>("parallel");
 
-  const [isSaving, setIsSaving] = useState(false);
+  const saveSettings = useSaveSettings();
+  const saveConfig = useSaveConfig();
+
+  const isSaving = saveSettings.isPending || saveConfig.isPending;
   const [error, setError] = useState<string | null>(null);
 
   const isLastStep = currentStep === stepLabels.length - 1;
@@ -54,15 +57,14 @@ export function OnboardingWizard(): ReactElement {
   const [focusArea, setFocusArea] = useState<"step" | "nav">("step");
 
   async function handleComplete() {
-    setIsSaving(true);
     setError(null);
     try {
-      await api.saveSettings({
+      await saveSettings.mutateAsync({
         secretsStorage,
         defaultLenses: selectedLenses,
         agentExecution,
       });
-      await api.saveConfig({
+      await saveConfig.mutateAsync({
         provider,
         apiKey: apiKeyMethod === "env" ? "env" : apiKey,
         model: model || undefined,
@@ -70,8 +72,6 @@ export function OnboardingWizard(): ReactElement {
       navigate({ screen: "home" });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Setup failed");
-    } finally {
-      setIsSaving(false);
     }
   }
 

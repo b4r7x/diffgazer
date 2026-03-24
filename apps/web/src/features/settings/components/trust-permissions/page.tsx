@@ -8,7 +8,7 @@ import { Panel, PanelHeader, PanelContent } from "diffui/components/panel";
 import { toast } from "diffui/components/toast";
 import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
 import { useConfigData } from "@/app/providers/config-provider";
-import { useTrust } from "@/hooks/use-trust";
+import { useSaveTrust, useDeleteTrust } from "@diffgazer/api/hooks";
 
 const DEFAULT_CAPABILITIES: TrustCapabilities = {
   readFiles: true,
@@ -18,7 +18,9 @@ const DEFAULT_CAPABILITIES: TrustCapabilities = {
 export function TrustPermissionsPage() {
   const navigate = useNavigate();
   const { projectId, repoRoot, trust } = useConfigData();
-  const { save, revoke, isLoading } = useTrust(projectId);
+  const saveTrust = useSaveTrust();
+  const deleteTrust = useDeleteTrust();
+  const isLoading = saveTrust.isPending || deleteTrust.isPending;
 
   const [capabilities, setCapabilities] = useState<TrustCapabilities>(
     () => ({ ...(trust?.capabilities ?? DEFAULT_CAPABILITIES), runCommands: false }),
@@ -43,7 +45,7 @@ export function TrustPermissionsPage() {
     }
 
     try {
-      await save({
+      await saveTrust.mutateAsync({
         projectId,
         repoRoot,
         capabilities,
@@ -58,9 +60,9 @@ export function TrustPermissionsPage() {
   }
 
   async function handleRevoke(): Promise<void> {
-    if (isLoading) return;
+    if (isLoading || !projectId) return;
     try {
-      await revoke();
+      await deleteTrust.mutateAsync(projectId);
       toast.success("Revoked", { message: "Trust has been revoked for this directory" });
     } catch (error) {
       toast.error("Error", { message: error instanceof Error ? error.message : "Failed to revoke trust" });

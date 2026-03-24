@@ -6,8 +6,7 @@ import { Button } from "diffui/components/button";
 import { Callout } from "diffui/components/callout";
 import { CardLayout } from "@/components/ui/card-layout";
 import { StorageSelectorContent } from "@/components/shared/storage-selector-content";
-import { useSettings } from "@/hooks/use-settings";
-import { api } from "@/lib/api";
+import { useSettings, useSaveSettings } from "@diffgazer/api/hooks";
 import { useKey, useScope } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { cn } from "@/utils/cn";
@@ -17,10 +16,12 @@ const BUTTONS_COUNT = 2;
 
 export function SettingsStoragePage() {
   const navigate = useNavigate();
-  const { settings, isLoading, error: settingsError } = useSettings();
+  const { data: settings, isLoading, error: settingsQueryError } = useSettings();
+  const settingsError = settingsQueryError?.message ?? null;
+  const saveSettings = useSaveSettings();
   const [storageChoice, setStorageChoice] = useState<SecretsStorage | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isSaving = saveSettings.isPending;
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [buttonIndex, setButtonIndex] = useState(0);
 
@@ -71,14 +72,12 @@ export function SettingsStoragePage() {
 
   const handleSave = async (): Promise<void> => {
     if (!canSave) return;
-    setIsSaving(true);
     setError(null);
     try {
-      await api.saveSettings({ secretsStorage: effectiveStorage });
+      await saveSettings.mutateAsync({ secretsStorage: effectiveStorage });
       navigate({ to: "/settings" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save settings");
-      setIsSaving(false);
     }
   };
 

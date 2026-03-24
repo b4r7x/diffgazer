@@ -1,12 +1,10 @@
-import { useEffect, useState } from "react";
 import type { ReactElement } from "react";
 import { Box } from "ink";
 import { useNavigation } from "../navigation-context.js";
 import { useScope } from "../../hooks/use-scope.js";
 import { usePageFooter } from "../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../hooks/use-back-handler.js";
-import { useInit } from "../../hooks/use-init.js";
-import { api } from "../../lib/api.js";
+import { useInit, useReviews, useActiveReviewSession, useShutdown } from "@diffgazer/api/hooks";
 import { ContextSidebar } from "../../features/home/components/context-sidebar.js";
 import { HomeMenu } from "../../features/home/components/home-menu.js";
 import { TrustPanel } from "../../features/home/components/trust-panel.js";
@@ -19,39 +17,15 @@ export function HomeScreen(): ReactElement {
   useBackHandler();
 
   const { navigate } = useNavigation();
-  const { data: initData, refresh: refreshInit } = useInit();
+  const { data: initData, refetch: refreshInit } = useInit();
+  const { data: reviewsData } = useReviews();
+  const { data: sessionData } = useActiveReviewSession();
+  const shutdown = useShutdown();
 
-  const [lastReviewDate, setLastReviewDate] = useState<string | undefined>();
-  const [lastReviewIssues, setLastReviewIssues] = useState<number | undefined>();
-  const [hasActiveSession, setHasActiveSession] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchHomeData() {
-      try {
-        const [reviewsRes, sessionRes] = await Promise.all([
-          api.getReviews(),
-          api.getActiveReviewSession(),
-        ]);
-
-        if (cancelled) return;
-
-        const mostRecent = reviewsRes.reviews[0];
-        if (mostRecent) {
-          setLastReviewDate(mostRecent.createdAt);
-          setLastReviewIssues(mostRecent.issueCount);
-        }
-
-        setHasActiveSession(sessionRes.session !== null);
-      } catch {
-        // Non-critical — sidebar will show defaults
-      }
-    }
-
-    void fetchHomeData();
-    return () => { cancelled = true; };
-  }, []);
+  const mostRecent = reviewsData?.reviews[0];
+  const lastReviewDate = mostRecent?.createdAt;
+  const lastReviewIssues = mostRecent?.issueCount;
+  const hasActiveSession = sessionData?.session !== null;
 
   const trust = initData?.project.trust ?? null;
   const isTrusted = Boolean(trust?.capabilities.readFiles);
@@ -69,7 +43,7 @@ export function HomeScreen(): ReactElement {
       : "unknown";
 
   function handleTrustAccept(_caps: { readFiles: boolean; runCommands: boolean }) {
-    // Trust already persisted by TrustPanel via api.saveTrust().
+    // Trust already persisted by TrustPanel via useSaveTrust.
     // Refresh init data so the home screen reflects the new trust state.
     refreshInit();
   }
@@ -99,8 +73,8 @@ export function HomeScreen(): ReactElement {
         navigate({ screen: "help" });
         break;
       case "quit":
-        void api.shutdown().finally(() => {
-          process.exit(0);
+        shutdown.mutate(undefined, {
+          onSettled: () => process.exit(0),
         });
         break;
     }

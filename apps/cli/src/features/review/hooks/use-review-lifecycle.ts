@@ -1,8 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useReviewStream } from "./use-review-stream.js";
-import { api } from "../../../lib/api.js";
-import { useInit } from "../../../hooks/use-init.js";
-import { useSettings } from "../../../hooks/use-settings.js";
+import { useReviewStream, useInit, useSettings, useActiveReviewSession } from "@diffgazer/api/hooks";
 import type { ReviewIssue } from "@diffgazer/schemas/review";
 import { ReviewErrorCode, type ReviewMode } from "@diffgazer/schemas/review";
 import { LensIdSchema, type LensId } from "@diffgazer/schemas/review";
@@ -57,13 +54,19 @@ export function useReviewLifecycle(): {
   const [phase, setPhase] = useState<ReviewPhase>("idle");
   const stream = useReviewStream();
   const { data: initData, isLoading: configLoading } = useInit();
-  const { settings, isLoading: settingsLoading } = useSettings();
+  const { data: settings, isLoading: settingsLoading } = useSettings();
 
   const hasStartedRef = useRef(false);
   const hasStreamedRef = useRef(false);
   const completionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevIsStreamingRef = useRef(false);
-  const modeRef = useRef<ReviewMode>("staged");
+  const [mode, setMode] = useState<ReviewMode>("staged");
+
+  const {
+    data: sessionData,
+    isLoading: sessionLoading,
+    error: sessionError,
+  } = useActiveReviewSession(mode);
 
   const isConfigured = initData?.configured ?? false;
   const provider = initData?.config?.provider ?? null;
@@ -90,9 +93,10 @@ export function useReviewLifecycle(): {
           ? "Checking for changes..."
           : null;
 
-  function start(mode: string) {
+  function start(rawMode: string) {
     if (hasStartedRef.current) return;
-    modeRef.current = (mode === "unstaged" || mode === "files" ? mode : "staged") as ReviewMode;
+    const resolvedMode = (rawMode === "unstaged" || rawMode === "files" ? rawMode : "staged") as ReviewMode;
+    setMode(resolvedMode);
     hasStartedRef.current = true;
     setPhase("checking-config");
   }
@@ -109,9 +113,9 @@ export function useReviewLifecycle(): {
   // Check for active session, then start or resume the stream
   useEffect(() => {
     if (phase !== "checking-changes") return;
+    if (sessionLoading) return;
 
     let ignore = false;
-    const mode = modeRef.current;
     const lenses = defaultLenses;
 
     const startFresh = () => {
@@ -137,25 +141,21 @@ export function useReviewLifecycle(): {
       });
     };
 
-    void api
-      .getActiveReviewSession(mode)
-      .then((response) => {
-        if (ignore) return;
-        const activeReviewId = response.session?.reviewId;
-        if (!activeReviewId) {
-          startFresh();
-          return;
-        }
+    if (sessionError) {
+      startFresh();
+    } else {
+      const activeReviewId = sessionData?.session?.reviewId;
+      if (!activeReviewId) {
+        startFresh();
+      } else {
         resumeById(activeReviewId, startFresh);
-      })
-      .catch(() => {
-        if (!ignore) startFresh();
-      });
+      }
+    }
 
     return () => {
       ignore = true;
     };
-  }, [phase]);
+  }, [phase, sessionLoading, sessionData, sessionError]);
 
   // Detect stream completion and transition to completing -> summary
   useEffect(() => {

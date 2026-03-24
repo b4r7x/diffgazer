@@ -2,8 +2,7 @@ import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
-import { api } from "../../../lib/api.js";
-import { useInit } from "../../../hooks/use-init.js";
+import { useInit, useSaveTrust } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Button } from "../../../components/ui/button.js";
@@ -15,33 +14,30 @@ interface TrustPanelProps {
 }
 
 export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
-  const { data: initData, isLoading: initLoading, error: initError } = useInit();
+  const { data: initData, isLoading: initLoading, error: initErrorObj } = useInit();
+  const initError = initErrorObj?.message ?? null;
+  const saveTrust = useSaveTrust();
   const [checked, setChecked] = useState<string[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  async function handleAccept() {
+  const saving = saveTrust.isPending;
+  const error = saveTrust.error?.message ?? null;
+
+  function handleAccept() {
     if (!initData) return;
     const capabilities = {
       readFiles: checked.includes("readFiles"),
       runCommands: checked.includes("runCommands"),
     };
-    setSaving(true);
-    setError(null);
-    try {
-      await api.saveTrust({
+    saveTrust.mutate(
+      {
         projectId: initData.project.projectId,
         repoRoot: initData.project.path,
         capabilities,
         trustMode: "persistent",
         trustedAt: new Date().toISOString(),
-      });
-      onAccept(capabilities);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save trust permissions");
-    } finally {
-      setSaving(false);
-    }
+      },
+      { onSuccess: () => onAccept(capabilities) },
+    );
   }
 
   if (initLoading) {

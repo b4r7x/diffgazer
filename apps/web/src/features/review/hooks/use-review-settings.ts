@@ -1,10 +1,10 @@
-import { useSettings } from '@/hooks/use-settings';
+import { useSettings } from '@diffgazer/api/hooks';
 import { LensIdSchema, type LensId } from '@diffgazer/schemas/review';
 
 const FALLBACK_LENSES: LensId[] = ["correctness", "security", "performance", "simplicity", "tests"];
 
 export function useReviewSettings() {
-  const { settings, isLoading } = useSettings();
+  const { data: settings, isLoading } = useSettings();
 
   const parsed = settings?.defaultLenses?.filter(
     (lens): lens is LensId => LensIdSchema.safeParse(lens).success

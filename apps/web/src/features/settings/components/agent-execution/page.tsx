@@ -7,8 +7,7 @@ import { RadioGroup, RadioGroupItem } from "diffui/components/radio";
 import { CardLayout } from "@/components/ui/card-layout";
 import { useKey, useScope } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { useSettings } from "@/hooks/use-settings";
-import { api } from "@/lib/api";
+import { useSettings, useSaveSettings } from "@diffgazer/api/hooks";
 import { cn } from "@/utils/cn";
 
 type FocusZone = "list" | "buttons";
@@ -16,11 +15,13 @@ const BUTTONS_COUNT = 2;
 
 export function SettingsAgentExecutionPage() {
   const navigate = useNavigate();
-  const { settings, isLoading, error: settingsError, refresh } = useSettings();
+  const { data: settings, isLoading, error: settingsQueryError } = useSettings();
+  const settingsError = settingsQueryError?.message ?? null;
+  const saveSettings = useSaveSettings();
   const [modeChoice, setModeChoice] = useState<AgentExecution | null>(null);
   const [focusedMode, setFocusedMode] = useState<AgentExecution>("sequential");
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isSaving = saveSettings.isPending;
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [buttonIndex, setButtonIndex] = useState(0);
 
@@ -109,15 +110,12 @@ export function SettingsAgentExecutionPage() {
 
   const handleSave = async (): Promise<void> => {
     if (!canSave) return;
-    setIsSaving(true);
     setError(null);
     try {
-      await api.saveSettings({ agentExecution: effectiveMode });
-      await refresh();
+      await saveSettings.mutateAsync({ agentExecution: effectiveMode });
       navigate({ to: "/settings" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save settings");
-      setIsSaving(false);
     }
   };
 
