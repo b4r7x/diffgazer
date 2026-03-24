@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useReviewStream, useInit, useSettings, useActiveReviewSession } from "@diffgazer/api/hooks";
 import type { ReviewIssue } from "@diffgazer/schemas/review";
-import { ReviewErrorCode, type ReviewMode } from "@diffgazer/schemas/review";
-import { LensIdSchema, type LensId } from "@diffgazer/schemas/review";
+import type { ReviewMode } from "@diffgazer/schemas/review";
 import type { StepState, AgentState } from "@diffgazer/schemas/events";
-import type { ReviewEvent, FileProgress } from "@diffgazer/core/review";
+import { resolveDefaultLenses, type ReviewEvent, type FileProgress } from "@diffgazer/core/review";
 
 export type ReviewPhase =
   | "idle"
@@ -33,16 +32,7 @@ export interface ReviewLifecycleState {
   loadingMessage: string | null;
 }
 
-const FALLBACK_LENSES: LensId[] = ["correctness", "security", "performance", "simplicity", "tests"];
 const COMPLETION_DELAY_MS = 2300;
-
-function resolveDefaultLenses(rawLenses: string[] | undefined): LensId[] {
-  const parsed =
-    rawLenses?.filter(
-      (lens): lens is LensId => LensIdSchema.safeParse(lens).success,
-    ) ?? [];
-  return parsed.length > 0 ? parsed : FALLBACK_LENSES;
-}
 
 export function useReviewLifecycle(): {
   state: ReviewLifecycleState;
@@ -125,20 +115,11 @@ export function useReviewLifecycle(): {
       void stream.start(mode, lenses);
     };
 
-    const resumeById = (reviewId: string, onNotFound: () => void) => {
+    const resumeById = (reviewId: string) => {
       if (ignore) return;
       setPhase("streaming");
       hasStreamedRef.current = true;
-      void stream.resume(reviewId).then((result) => {
-        if (ignore) return;
-        if (result && !result.ok) {
-          if (result.error.code === ReviewErrorCode.SESSION_STALE) {
-            startFresh();
-          } else if (result.error.code === ReviewErrorCode.SESSION_NOT_FOUND) {
-            onNotFound();
-          }
-        }
-      });
+      void stream.resume(reviewId);
     };
 
     if (sessionError) {
@@ -148,7 +129,7 @@ export function useReviewLifecycle(): {
       if (!activeReviewId) {
         startFresh();
       } else {
-        resumeById(activeReviewId, startFresh);
+        resumeById(activeReviewId);
       }
     }
 

@@ -10,7 +10,7 @@ export { useInit } from "./use-init.js";
 export { useConfigCheck } from "./use-config-check.js";
 export { useProviderStatus } from "./use-provider-status.js";
 export { useOpenRouterModels } from "./use-openrouter-models.js";
-export { useServerStatus } from "./use-server-status.js";
+export { useServerStatus, type ServerState } from "./use-server-status.js";
 export { useReviews } from "./use-reviews.js";
 export { useReview } from "./use-review.js";
 export { useActiveReviewSession } from "./use-active-review-session.js";

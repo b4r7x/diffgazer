@@ -1,7 +1,5 @@
 import { useReducer, useRef, useEffect } from "react";
 import type { Dispatch } from "react";
-import type { Result } from "@diffgazer/core/result";
-import type { StreamReviewError } from "../review.js";
 import type { AgentStreamEvent, EnrichEvent, StepEvent } from "@diffgazer/schemas/events";
 import {
   reviewReducer,
@@ -73,26 +71,25 @@ export function useReviewStream(options?: UseReviewStreamOptions) {
     }
   };
 
-  const stop = () => {
+  const cancelStream = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
+  };
+
+  const stop = () => {
+    cancelStream();
     dispatch({ type: "COMPLETE" });
   };
 
   const abort = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
+    cancelStream();
     dispatch({ type: "RESET" });
   };
 
   const start = async (mode: ReviewMode, lenses?: LensId[]) => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
+    cancelStream();
 
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
@@ -122,10 +119,8 @@ export function useReviewStream(options?: UseReviewStreamOptions) {
     }
   };
 
-  const resume = async (reviewId: string): Promise<Result<void, StreamReviewError>> => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
+  const resume = async (reviewId: string): Promise<void> => {
+    cancelStream();
 
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
@@ -144,26 +139,22 @@ export function useReviewStream(options?: UseReviewStreamOptions) {
       if (result.ok) {
         dispatch({ type: "COMPLETE" });
       } else if (
-        result.error.code !== ReviewErrorCode.SESSION_STALE &&
-        result.error.code !== ReviewErrorCode.SESSION_NOT_FOUND
+        result.error.code === ReviewErrorCode.SESSION_STALE ||
+        result.error.code === ReviewErrorCode.SESSION_NOT_FOUND
       ) {
+        dispatch({ type: "RESET" });
+      } else {
         dispatch({ type: "ERROR", error: result.error.message });
       }
-      return result;
     } catch (e) {
       handleStreamError(e);
-      const message = e instanceof Error ? e.message : "Failed to resume review";
-      return { ok: false as const, error: { code: "STREAM_ERROR" as const, message } };
     } finally {
       abortControllerRef.current = null;
     }
   };
 
   useEffect(() => {
-    return () => {
-      abortControllerRef.current?.abort();
-      abortControllerRef.current = null;
-    };
+    return () => cancelStream();
   }, []);
 
   return { state, start, stop, abort, resume };

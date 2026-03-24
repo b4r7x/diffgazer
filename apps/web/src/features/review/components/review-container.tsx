@@ -13,7 +13,6 @@ export type { ReviewCompleteData };
 export interface ReviewContainerProps {
   mode: ReviewMode;
   onComplete?: (data: ReviewCompleteData) => void;
-  onReviewNotInSession?: (reviewId: string) => void;
 }
 
 function ReviewLoadingMessage({ message }: { message: string }) {
@@ -34,7 +33,7 @@ function ReviewLoadingMessage({ message }: { message: string }) {
  * 2. Shows ReviewProgressView during review
  * 3. Calls onComplete when done (parent can switch to results view)
  */
-export function ReviewContainer({ mode, onComplete, onReviewNotInSession }: ReviewContainerProps) {
+export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
   const {
     state,
     isConfigured,
@@ -46,7 +45,7 @@ export function ReviewContainer({ mode, onComplete, onReviewNotInSession }: Revi
     handleViewResults,
     handleSetupProvider,
     handleSwitchMode,
-  } = useReviewLifecycle({ mode, onComplete, onReviewNotInSession });
+  } = useReviewLifecycle({ mode, onComplete });
 
   const { data: contextData } = useReviewContext();
   // Suppress context display during streaming (matches old useContextSnapshot behavior)

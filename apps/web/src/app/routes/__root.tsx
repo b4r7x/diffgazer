@@ -4,7 +4,7 @@ import { Button } from "diffui/components/button";
 import { Toaster } from "diffui/components/toast";
 import { GlobalLayout } from "@/components/layout";
 import { FooterProvider } from "@/components/layout";
-import { useServerStatus } from "@/hooks/use-server-status";
+import { useServerStatus } from "@diffgazer/api/hooks";
 
 class RouteErrorBoundary extends React.Component<
   { children: React.ReactNode },
