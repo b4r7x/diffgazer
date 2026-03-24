@@ -1,0 +1,8 @@
+{
+  "title": "Components",
+  "pages": [
+    "badge", "button", "callout", "checkbox", "dialog", "empty-state",
+    "input", "key-value", "menu", "navigation-list", "panel", "radio",
+    "scroll-area", "section-header", "spinner", "tabs", "toast"
+  ]
+}

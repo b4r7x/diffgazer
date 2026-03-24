@@ -1,0 +1,158 @@
+---
+title: "Keyboard Management"
+description: "Scope-based keyboard handler system with global shortcuts."
+---
+
+## Overview
+
+The CLI uses a scope-based keyboard management system built on top of Ink's `useInput`. The `TerminalKeyboardProvider` maintains a stack of scopes. Each screen pushes a scope on mount and pops it on unmount. Hotkey handlers are dispatched only to the active (top) scope. Global handlers bypass the scope stack entirely.
+
+This system prevents multiple screens or components from competing for the same keystrokes.
+
+## Architecture
+
+```
+TerminalKeyboardProvider
+  |
+  +-- Scope stack: ["home", "dialog"]  (dialog is active)
+  |
+  +-- Scoped handlers: { "dialog": { "return": [handler1], "escape": [handler2] } }
+  |
+  +-- Global handlers: { "q": [quitHandler], "s": [settingsHandler], "?": [helpHandler] }
+```
+
+When a key is pressed:
+
+1. Convert Ink's `(input, key)` to a hotkey string (e.g., `"escape"`, `"return"`, `"up"`, `"a"`).
+2. Look up handlers in the active scope. If found, execute them and stop.
+3. If no scoped handler matched, look up global handlers. If found, execute them.
+
+## TerminalKeyboardProvider
+
+Defined in `apps/cli/src/app/providers/keyboard-provider.tsx`. Provides the `KeyboardContext`:
+
+```ts
+interface KeyboardContextValue {
+  registerHandler: (scope: string, hotkey: string, handler: () => void) => () => void;
+  registerGlobalHandler: (hotkey: string, handler: () => void) => () => void;
+  pushScope: (name: string) => void;
+  popScope: () => void;
+  activeScope: string | null;
+}
+```
+
+## Hotkey String Mapping
+
+Ink's key object is converted to a string identifier:
+
+| Ink Key | Hotkey String |
+|---------|--------------|
+| `key.escape` | `"escape"` |
+| `key.return` | `"return"` |
+| `key.upArrow` | `"up"` |
+| `key.downArrow` | `"down"` |
+| `key.leftArrow` | `"left"` |
+| `key.rightArrow` | `"right"` |
+| `key.tab` | `"tab"` |
+| `key.backspace` | `"backspace"` |
+| `key.delete` | `"delete"` |
+| Character input | The character itself (e.g., `"a"`, `"1"`, `"?"`) |
+
+## useScope Hook
+
+Pushes a keyboard scope on mount and pops it on unmount. Call this at the top of every screen component:
+
+```tsx
+import { useScope } from "../../hooks/use-scope.js";
+
+function MyScreen() {
+  useScope("my-screen");
+  // ...
+}
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | `string` | Scope name (should be unique across active screens) |
+
+## useKey Hook
+
+Registers a hotkey handler in the current scope (or a specific scope):
+
+```tsx
+import { useKey } from "../../hooks/use-key.js";
+
+function MyScreen() {
+  useScope("my-screen");
+
+  useKey("return", () => {
+    // Handle Enter key
+  });
+
+  useKey("d", () => {
+    // Handle 'd' key
+  });
+}
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `hotkey` | `string` | Hotkey string (see mapping table above) |
+| `handler` | `() => void` | Callback executed when the key is pressed |
+| `scope` | `string` | Optional; defaults to the current active scope |
+
+The handler is automatically cleaned up when the component unmounts.
+
+## Global Shortcuts
+
+Global shortcuts are registered via `registerGlobalHandler` and fire regardless of the active scope (unless a scoped handler already consumed the key). The app defines these in the `GlobalShortcuts` component at `apps/cli/src/app/index.tsx`:
+
+| Key | Action |
+|-----|--------|
+| `q` | Exit the process |
+| `s` | Navigate to settings (unless already on a settings screen) |
+| `?` | Navigate to help (unless already on help) |
+
+```tsx
+function GlobalShortcuts(): null {
+  const ctx = useContext(KeyboardContext);
+  const { navigate, route } = useNavigation();
+
+  useEffect(() => {
+    if (!ctx) return;
+    const unregisterQ = ctx.registerGlobalHandler("q", () => process.exit(0));
+    const unregisterS = ctx.registerGlobalHandler("s", () => {
+      if (route.screen !== "settings" && !route.screen.startsWith("settings/")) {
+        navigate({ screen: "settings" });
+      }
+    });
+    const unregisterHelp = ctx.registerGlobalHandler("?", () => {
+      if (route.screen !== "help") {
+        navigate({ screen: "help" });
+      }
+    });
+    return () => { unregisterQ(); unregisterS(); unregisterHelp(); };
+  }, [route.screen]);
+
+  return null;
+}
+```
+
+## Component-Level Input vs Scope System
+
+The keyboard provider coexists with Ink's `useInput` used directly in components. Components like `Menu`, `CheckboxGroup`, `RadioGroup`, and `ScrollArea` use `useInput` with an `isActive` guard. This is appropriate for self-contained interactive components.
+
+The scope system (via `useKey`) is for screen-level hotkeys that need centralized dispatch and conflict resolution.
+
+| Use Case | Mechanism |
+|----------|-----------|
+| Interactive component (Menu, Input, etc.) | `useInput` with `isActive` prop |
+| Screen-level hotkey | `useKey` within a `useScope` |
+| App-wide hotkey | `registerGlobalHandler` |
+
+## Notes
+
+- The scope stack is managed as React state, so scope changes trigger re-renders.
+- Handler references are stored in a `useRef`-backed `Map`, so handler registration/cleanup is synchronous and does not trigger re-renders.
+- If no scope is active (empty stack), only global handlers are dispatched.
+- Multiple handlers can be registered for the same hotkey in the same scope; all will fire.

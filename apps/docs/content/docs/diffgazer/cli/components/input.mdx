@@ -1,0 +1,80 @@
+---
+title: "Input"
+description: "Text input field with password mode, size variants, and error state."
+---
+
+## Overview
+
+Input renders a bordered text field for single-line user input. It supports text and password modes, three size presets, error styling, and disabled state. In text mode it delegates to `@inkjs/ui`'s `TextInput`. In password mode it uses a custom `useInput` handler that masks characters.
+
+## Web Equivalent
+
+Maps to diff-ui's `Input` component. The terminal version uses a bordered `<Box>` instead of an HTML `<input>` element. Focus is controlled via the `isActive` prop rather than DOM focus.
+
+## Import
+
+```tsx
+import { Input } from "../../components/ui/input.js";
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `value` | `string` | -- | Controlled input value |
+| `onChange` | `(value: string) => void` | -- | Called when the input value changes |
+| `placeholder` | `string` | -- | Placeholder text shown when the value is empty |
+| `size` | `"sm" \| "md" \| "lg"` | `"md"` | Width of the input box (20, 40, or 60 columns) |
+| `error` | `boolean` | `false` | Show error border color instead of default |
+| `disabled` | `boolean` | `false` | Render as read-only with dimmed text |
+| `type` | `"text" \| "password"` | `"text"` | Input type; password masks characters with `*` |
+| `isActive` | `boolean` | `false` | Whether the input accepts keyboard input |
+
+## Usage
+
+```tsx
+const [name, setName] = useState("");
+
+<Input
+  value={name}
+  onChange={setName}
+  placeholder="Enter your name"
+  isActive
+/>
+```
+
+## Password Mode
+
+When `type="password"`, characters are replaced with asterisks:
+
+```tsx
+<Input type="password" placeholder="API key" isActive />
+```
+
+The password input handles Backspace/Delete to remove characters and filters out control keys (Return, Escape, arrows, Tab, Ctrl, Meta).
+
+## Sizes
+
+| Size | Width |
+|------|-------|
+| `sm` | 20 columns |
+| `md` | 40 columns |
+| `lg` | 60 columns |
+
+## Error State
+
+When `error` is `true`, the border color switches from the theme's `border` token to the `error` token:
+
+```tsx
+<Input error placeholder="Invalid value" isActive />
+```
+
+## Disabled State
+
+When `disabled` is `true`, the input renders the current value (or placeholder) as dimmed text with a muted border. No keyboard input is processed.
+
+## Notes
+
+- The component maintains internal state even in controlled mode to support the `@inkjs/ui` TextInput's `defaultValue` behavior.
+- In text mode, `isActive` maps to TextInput's `isDisabled` (inverted).
+- In password mode, `isActive` controls the custom `useInput` hook directly.

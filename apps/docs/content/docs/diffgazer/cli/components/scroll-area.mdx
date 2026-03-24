@@ -1,0 +1,64 @@
+---
+title: "ScrollArea"
+description: "Scrollable viewport with arrow indicators and keyboard navigation."
+---
+
+## Overview
+
+ScrollArea renders a fixed-height viewport that scrolls through its children. Arrow indicators appear at the top and bottom when there is content above or below the visible region. Supports arrow keys, Page Up/Down, and Home/End.
+
+## Web Equivalent
+
+Maps to diff-ui's `ScrollArea` component. The terminal version uses discrete child-based scrolling (one child per line) rather than pixel-based smooth scrolling.
+
+## Import
+
+```tsx
+import { ScrollArea } from "../../components/ui/scroll-area.js";
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `height` | `number` | -- | Visible height in rows (number of children visible at once) |
+| `orientation` | `"vertical" \| "horizontal"` | `"vertical"` | Scroll direction (horizontal is accepted but only vertical is implemented) |
+| `isActive` | `boolean` | `false` | Whether the scroll area accepts keyboard input |
+| `children` | `ReactNode` | -- | Child elements to scroll through |
+
+## Usage
+
+```tsx
+<ScrollArea height={10} isActive>
+  {items.map((item) => (
+    <Text key={item.id}>{item.name}</Text>
+  ))}
+</ScrollArea>
+```
+
+## Keyboard Interaction
+
+| Key | Action |
+|-----|--------|
+| Up Arrow | Scroll up by 1 row |
+| Down Arrow | Scroll down by 1 row |
+| Page Up | Scroll up by `height` rows |
+| Page Down | Scroll down by `height` rows |
+| Home | Scroll to top |
+| End | Scroll to bottom |
+
+## Scroll Indicators
+
+When the content extends beyond the visible region, Unicode arrow characters appear:
+
+- Top arrow (up-pointing triangle) appears when content is scrolled down
+- Bottom arrow (down-pointing triangle) appears when more content exists below
+
+These indicators are rendered in the theme's `muted` color.
+
+## Notes
+
+- The scroll offset is tracked by child index, not by pixel. Each direct child counts as one row.
+- The component uses `Children.toArray` to count and slice children. Deeply nested content is not flattened.
+- The `overflow="hidden"` Ink prop clips content outside the viewport height.
+- The `orientation` prop is accepted for API consistency but only vertical scrolling is currently implemented.

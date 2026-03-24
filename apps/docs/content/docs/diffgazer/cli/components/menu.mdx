@@ -1,0 +1,104 @@
+---
+title: "Menu"
+description: "Keyboard-navigable vertical menu with hotkey support and two visual variants."
+---
+
+## Overview
+
+Menu is a compound component providing a vertical list of selectable items. It supports two visual variants (`default` and `hub`), hotkey shortcuts, dividers, disabled items, and Escape-to-close. This is the primary navigation primitive used on the home screen and settings hub.
+
+## Web Equivalent
+
+Maps to diff-ui's `NavigationMenu` or list-based selection components. The terminal version uses arrow keys and Enter instead of mouse clicks, and renders `>` prefix or background-highlighted items instead of hover states.
+
+## Import
+
+```tsx
+import { Menu } from "../../components/ui/menu.js";
+```
+
+## Props
+
+### Menu
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `selectedId` | `string \| null` | `null` | Currently selected item id |
+| `highlightedId` | `string \| null` | `null` | Controlled highlight; overrides internal tracking |
+| `onSelect` | `(id: string) => void` | -- | Called when an item is selected (Enter or hotkey) |
+| `onHighlightChange` | `(id: string) => void` | -- | Called when the highlighted item changes |
+| `onClose` | `() => void` | -- | Called when Escape is pressed |
+| `variant` | `"default" \| "hub"` | `"default"` | Visual style (see below) |
+| `wrap` | `boolean` | `true` | Wrap navigation from last to first item |
+| `isActive` | `boolean` | `true` | Whether the menu accepts keyboard input |
+| `children` | `ReactNode` | -- | Should contain `Menu.Item` and `Menu.Divider` elements |
+
+### Menu.Item
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `id` | `string` | -- | Unique identifier for this item |
+| `disabled` | `boolean` | `false` | Disable this item (dimmed, skipped during navigation) |
+| `variant` | `"default" \| "danger"` | `"default"` | Item color variant; `danger` uses the error token |
+| `hotkey` | `string \| number` | -- | Hotkey character or number that selects this item |
+| `value` | `ReactNode` | -- | Right-aligned secondary content (hub variant only) |
+| `children` | `ReactNode` | -- | Item label |
+
+### Menu.Divider
+
+No props. Renders a horizontal line separator.
+
+## Usage
+
+### Default Variant
+
+```tsx
+<Menu onSelect={handleSelect}>
+  <Menu.Item id="review">Start Review</Menu.Item>
+  <Menu.Item id="history">History</Menu.Item>
+  <Menu.Divider />
+  <Menu.Item id="quit" variant="danger">Quit</Menu.Item>
+</Menu>
+```
+
+Renders with `>` prefix on the highlighted item:
+
+```
+> Start Review
+  History
+  ────────────────────
+  Quit
+```
+
+### Hub Variant
+
+```tsx
+<Menu variant="hub" onSelect={handleSelect}>
+  <Menu.Item id="theme" hotkey={1} value="dark">Theme</Menu.Item>
+  <Menu.Item id="provider" hotkey={2} value="Gemini">Provider</Menu.Item>
+</Menu>
+```
+
+Renders with background highlighting and right-aligned values:
+
+```
+1. Theme                     dark
+2. Provider                  Gemini
+```
+
+## Keyboard Interaction
+
+| Key | Action |
+|-----|--------|
+| Up Arrow | Move highlight to previous item |
+| Down Arrow | Move highlight to next item |
+| Enter | Select the highlighted item |
+| Escape | Call `onClose` |
+| Hotkey character | Directly select the item with that hotkey |
+
+## Notes
+
+- Disabled items are skipped during arrow-key navigation but remain visible (dimmed).
+- The `hub` variant omits the `>` prefix and uses background-color highlighting with the accent token.
+- Hotkeys match against single-character input. Number hotkeys should be passed as numbers (e.g., `hotkey={1}`).
+- Uses React Context internally. `Menu.Item` and `Menu.Divider` must be direct children of `Menu`.

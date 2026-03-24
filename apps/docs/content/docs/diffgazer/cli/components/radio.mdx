@@ -1,0 +1,111 @@
+---
+title: "RadioGroup"
+description: "Single-select radio list with vertical and horizontal orientation."
+---
+
+## Overview
+
+RadioGroup is a compound component providing a single-select list. Items display `( * )` or `(   )` indicators. Users navigate with arrow keys and select with Enter or Space. Supports controlled and uncontrolled modes, plus both vertical and horizontal layouts.
+
+## Web Equivalent
+
+Maps to diff-ui's `RadioGroup` component. The terminal version uses ASCII indicators and arrow-key navigation instead of clickable radio buttons.
+
+## Import
+
+```tsx
+import { RadioGroup } from "../../components/ui/radio.js";
+```
+
+## Props
+
+### RadioGroup
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `value` | `string` | -- | Controlled selected value |
+| `defaultValue` | `string` | -- | Initial selected value (uncontrolled mode) |
+| `onChange` | `(value: string) => void` | -- | Called when the selected value changes |
+| `onHighlightChange` | `(value: string) => void` | -- | Called when the highlighted item changes |
+| `orientation` | `"vertical" \| "horizontal"` | `"vertical"` | Layout direction |
+| `wrap` | `boolean` | `true` | Wrap navigation from last to first item |
+| `disabled` | `boolean` | `false` | Disable all items |
+| `isActive` | `boolean` | `true` | Whether the group accepts keyboard input |
+| `children` | `ReactNode` | -- | Should contain `RadioGroup.Item` elements |
+
+### RadioGroup.Item
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `value` | `string` | -- | Unique value identifying this option |
+| `label` | `ReactNode` | -- | Display label |
+| `description` | `ReactNode` | -- | Optional secondary text below the label |
+| `disabled` | `boolean` | `false` | Disable this individual item |
+
+## Usage
+
+```tsx
+const [theme, setTheme] = useState("dark");
+
+<RadioGroup value={theme} onChange={setTheme} isActive>
+  <RadioGroup.Item value="dark" label="Dark" description="GitHub Dark Default" />
+  <RadioGroup.Item value="light" label="Light" description="GitHub Light Default" />
+  <RadioGroup.Item value="high-contrast" label="High Contrast" description="Maximum readability" />
+</RadioGroup>
+```
+
+## Orientation
+
+### Vertical (default)
+
+Items stack top-to-bottom. Up/Down arrows navigate.
+
+```
+( * ) Dark
+      GitHub Dark Default
+(   ) Light
+      GitHub Light Default
+(   ) High Contrast
+      Maximum readability
+```
+
+### Horizontal
+
+Items arrange left-to-right with a gap. Left/Right arrows navigate.
+
+```tsx
+<RadioGroup orientation="horizontal" isActive>
+  <RadioGroup.Item value="a" label="Alpha" />
+  <RadioGroup.Item value="b" label="Beta" />
+  <RadioGroup.Item value="c" label="Gamma" />
+</RadioGroup>
+```
+
+```
+( * ) Alpha  (   ) Beta  (   ) Gamma
+```
+
+## Keyboard Interaction
+
+| Key | Action (vertical) | Action (horizontal) |
+|-----|-------------------|---------------------|
+| Up Arrow | Previous item | -- |
+| Down Arrow | Next item | -- |
+| Left Arrow | -- | Previous item |
+| Right Arrow | -- | Next item |
+| Enter | Select highlighted | Select highlighted |
+| Space | Select highlighted | Select highlighted |
+
+## Visual Indicators
+
+- `( * )` -- selected item
+- `(   )` -- unselected item
+- Highlighted item is bold and colored with the accent token
+- Disabled items are dimmed
+- Descriptions are rendered in the muted color, indented below the label
+
+## Notes
+
+- Uses React Context internally. `RadioGroup.Item` must be a direct child of `RadioGroup`.
+- Disabled items are skipped during keyboard navigation.
+- In horizontal mode, items are separated by a gap of 2 units.
