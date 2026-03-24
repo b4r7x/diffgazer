@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { SecretsStorage } from "@diffgazer/schemas/config";
 import type { Shortcut } from "@diffgazer/schemas/ui";
-import { Button, Callout, CardLayout } from "@diffgazer/ui";
+import { Button } from "diffui/components/button";
+import { Callout } from "diffui/components/callout";
+import { CardLayout } from "@/components/ui/card-layout";
 import { StorageSelectorContent } from "@/components/shared/storage-selector-content";
 import { useSettings } from "@/hooks/use-settings";
 import { api } from "@/lib/api";
@@ -129,7 +131,7 @@ export function SettingsStoragePage() {
             }}
           />
 
-          <Callout variant="info">
+          <Callout variant="info" layout="none">
             Changes will take effect immediately after saving.
           </Callout>
 

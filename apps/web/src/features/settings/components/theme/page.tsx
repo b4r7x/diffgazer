@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import type { WebTheme, ResolvedTheme } from "@/types/theme";
-import { Panel, PanelContent, Callout, Button } from "@diffgazer/ui";
+import { Panel, PanelContent } from "diffui/components/panel";
+import { Callout } from "diffui/components/callout";
+import { Button } from "diffui/components/button";
 import { ThemeSelectorContent } from "../theme-selector-content";
 import { ThemePreviewCard } from "../theme-preview-card";
 import { useTheme } from "@/hooks/use-theme";
@@ -130,7 +132,7 @@ export function SettingsThemePage() {
             />
 
             <div className="mt-auto pt-6 space-y-4">
-              <Callout variant="info">
+              <Callout variant="info" layout="none">
                 Focus previews themes live. Space selects, Enter saves &amp; exits.
               </Callout>
 

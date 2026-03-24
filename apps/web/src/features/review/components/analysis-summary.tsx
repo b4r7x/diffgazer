@@ -1,5 +1,7 @@
 import { cn } from '@/utils/cn';
-import { Panel, PanelContent, SectionHeader, Button } from '@diffgazer/ui';
+import { Panel, PanelContent } from 'diffui/components/panel';
+import { SectionHeader } from 'diffui/components/section-header';
+import { Button } from 'diffui/components/button';
 import { SeverityBreakdown } from '@/components/ui/severity';
 import { IssuePreviewItem } from './issue-preview-item';
 import { LensStatsTable, type LensStats } from './lens-stats-table';

@@ -1,4 +1,4 @@
-import { Button } from "@diffgazer/ui";
+import { Button } from "diffui/components/button";
 
 interface ModelSearchInputProps {
   value: string;

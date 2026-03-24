@@ -1,5 +1,6 @@
 import type { Ref } from "react";
-import { Menu, MenuDivider, MenuItem, Panel, PanelHeader } from "@diffgazer/ui";
+import { Menu, MenuDivider, MenuItem } from "diffui/components/menu";
+import { Panel, PanelHeader } from "diffui/components/panel";
 
 export interface MenuItemDefinition {
   id: string;
@@ -11,9 +12,9 @@ export interface MenuItemDefinition {
 
 interface HomeMenuProps {
   selectedId: string | null;
-  focusedValue: string | null;
+  highlightedId: string | null;
+  onHighlightChange: (id: string) => void;
   onSelect: (id: string) => void;
-  onActivate: (id: string) => void;
   items: MenuItemDefinition[];
   isTrusted?: boolean;
   hasLastReview?: boolean;
@@ -36,9 +37,9 @@ function groupItems(items: MenuItemDefinition[]) {
 
 export function HomeMenu({
   selectedId,
-  focusedValue,
+  highlightedId,
+  onHighlightChange,
   onSelect,
-  onActivate,
   items,
   isTrusted = false,
   hasLastReview = false,
@@ -55,9 +56,9 @@ export function HomeMenu({
         <Menu
           ref={menuRef}
           selectedId={selectedId}
-          focusedValue={focusedValue}
+          highlightedId={highlightedId}
+          onHighlightChange={onHighlightChange}
           onSelect={onSelect}
-          onActivate={onActivate}
         >
           {review.map((item) => {
             const disabled = item.id === "resume-review" ? resumeDisabled : reviewDisabled;

@@ -68,3 +68,6 @@ Unified documentation portal for diff-ui, keyscope, and (future) diffgazer docs.
 - @.claude/docs/structure-packages.md — Package folder structure
 - @.claude/docs/structure-server.md — Server patterns (Hono)
 - @.claude/docs/web-design-guidelines.md — Web UI design system
+
+## Recent Changes
+- 001-diffui-web-integration: Re-export facade migration — @diffgazer/ui re-exports 8 components from diff-ui (workspace:*), CSS token override layer (theme-overrides.css) for GitHub palette, 5 local component files deleted

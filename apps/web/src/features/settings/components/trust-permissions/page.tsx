@@ -4,7 +4,8 @@ import type { TrustCapabilities } from "@diffgazer/schemas/config";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import { useKey } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { useToast, Panel, PanelHeader, PanelContent } from "@diffgazer/ui";
+import { Panel, PanelHeader, PanelContent } from "diffui/components/panel";
+import { toast } from "diffui/components/toast";
 import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
 import { useConfigData } from "@/app/providers/config-provider";
 import { useTrust } from "@/hooks/use-trust";
@@ -16,7 +17,6 @@ const DEFAULT_CAPABILITIES: TrustCapabilities = {
 
 export function TrustPermissionsPage() {
   const navigate = useNavigate();
-  const { showToast } = useToast();
   const { projectId, repoRoot, trust } = useConfigData();
   const { save, revoke, isLoading } = useTrust(projectId);
 
@@ -38,11 +38,7 @@ export function TrustPermissionsPage() {
   async function handleSave(): Promise<void> {
     if (isLoading) return;
     if (!projectId || !repoRoot) {
-      showToast({
-        variant: "error",
-        title: "Error",
-        message: "Project information not available",
-      });
+      toast.error("Error", { message: "Project information not available" });
       return;
     }
 
@@ -54,18 +50,10 @@ export function TrustPermissionsPage() {
         trustMode: "persistent",
         trustedAt: new Date().toISOString(),
       });
-      showToast({
-        variant: "success",
-        title: "Saved",
-        message: "Trust permissions updated",
-      });
+      toast.success("Saved", { message: "Trust permissions updated" });
       navigate({ to: "/settings" });
     } catch (error) {
-      showToast({
-        variant: "error",
-        title: "Error",
-        message: error instanceof Error ? error.message : "Failed to save trust settings",
-      });
+      toast.error("Error", { message: error instanceof Error ? error.message : "Failed to save trust settings" });
     }
   }
 
@@ -73,17 +61,9 @@ export function TrustPermissionsPage() {
     if (isLoading) return;
     try {
       await revoke();
-      showToast({
-        variant: "success",
-        title: "Revoked",
-        message: "Trust has been revoked for this directory",
-      });
+      toast.success("Revoked", { message: "Trust has been revoked for this directory" });
     } catch (error) {
-      showToast({
-        variant: "error",
-        title: "Error",
-        message: error instanceof Error ? error.message : "Failed to revoke trust",
-      });
+      toast.error("Error", { message: error instanceof Error ? error.message : "Failed to revoke trust" });
     }
   }
 

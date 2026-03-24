@@ -1,5 +1,6 @@
 import { cn } from '@/utils/cn';
-import { SectionHeader, Badge } from '@diffgazer/ui';
+import { SectionHeader } from 'diffui/components/section-header';
+import { Badge } from 'diffui/components/badge';
 import type { AgentState } from '@diffgazer/schemas/events';
 
 const AGENT_STATUS_META = {

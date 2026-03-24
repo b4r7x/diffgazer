@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { NavigationList } from "@diffgazer/ui";
+import { NavigationList } from "diffui/components/navigation-list";
 import { useNavigation } from "keyscope";
 import { RunAccordionItem } from "@/features/history/components/run-accordion-item";
 import { TimelineList } from "@/features/history/components/timeline-list";
@@ -112,10 +112,9 @@ export function HistoryPage() {
               <NavigationList
                 ref={runsListRef}
                 selectedId={selectedRunId}
-                focusedValue={focusZone === "runs" ? runsFocusedValue : null}
+                highlightedId={focusZone === "runs" ? runsFocusedValue : null}
                 onSelect={setSelectedRunId}
-                onActivate={handleRunActivate}
-                isFocused={focusZone === "runs"}
+                focused={focusZone === "runs"}
               >
                 {mappedRuns.map((run) => (
                   <RunAccordionItem

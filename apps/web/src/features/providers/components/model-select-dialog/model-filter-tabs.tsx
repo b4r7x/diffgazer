@@ -1,5 +1,5 @@
-import { Button } from "@diffgazer/ui";
-import { cn } from "@/utils/cn";
+import { Button } from "diffui/components/button";
+import { cn } from "diffui/lib/utils";
 import { TIER_FILTERS, type TierFilter } from "@/features/providers/constants";
 
 interface ModelFilterTabsProps {
@@ -22,7 +22,7 @@ export function ModelFilterTabs({
       {TIER_FILTERS.map((filter, idx) => (
         <Button
           key={filter}
-          variant="toggle"
+          variant="ghost"
           size="sm"
           data-active={value === filter}
           onClick={() => {

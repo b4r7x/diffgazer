@@ -7,7 +7,7 @@ import {
   DialogBody,
   DialogFooter,
   DialogClose,
-} from "@diffgazer/ui";
+} from "diffui/components/dialog";
 import {
   GEMINI_MODEL_INFO,
   GLM_MODEL_INFO,

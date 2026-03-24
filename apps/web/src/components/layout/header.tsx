@@ -1,6 +1,6 @@
 import { cn } from "@/utils/cn";
 import { AsciiLogo } from "@/components/ui/ascii-logo";
-import { Button } from "@diffgazer/ui";
+import { Button } from "diffui/components/button";
 
 type ProviderStatus = "active" | "idle";
 

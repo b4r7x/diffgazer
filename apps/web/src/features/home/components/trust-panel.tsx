@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { TrustCapabilities } from "@diffgazer/schemas/config";
-import { CardLayout, Button, useToast } from "@diffgazer/ui";
+import { CardLayout } from "@/components/ui/card-layout";
+import { toast } from "diffui/components/toast";
+import { Button } from "diffui/components/button";
 import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
 import { useTrust } from "@/hooks/use-trust";
 
@@ -18,7 +20,6 @@ export function TrustPanel({
   directory,
   projectId,
 }: TrustPanelProps) {
-  const { showToast } = useToast();
   const { save, isLoading } = useTrust(projectId);
   const [capabilities, setCapabilities] = useState<TrustCapabilities>(DEFAULT_CAPABILITIES);
   const hasRepoAccess = capabilities.readFiles;
@@ -34,11 +35,7 @@ export function TrustPanel({
         trustedAt: new Date().toISOString(),
       });
     } catch (error) {
-      showToast({
-        variant: "error",
-        title: "Failed to save trust settings",
-        message: error instanceof Error ? error.message : "Unknown error",
-      });
+      toast.error("Failed to save trust settings", { message: error instanceof Error ? error.message : "Unknown error" });
     }
   }
 

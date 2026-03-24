@@ -10,7 +10,7 @@ import { ContextSidebar } from "@/features/home/components/context-sidebar";
 import { HomeMenu } from "@/features/home/components/home-menu";
 import { useConfigData } from "@/app/providers/config-provider";
 import { useReviewHistory } from "@/features/history/hooks/use-review-history";
-import { useToast } from "@diffgazer/ui";
+import { toast } from "diffui/components/toast";
 import { shutdown } from "@/features/home/utils/shutdown";
 import { TrustPanel } from "./trust-panel";
 
@@ -32,7 +32,6 @@ const MENU_ROUTES: Record<string, RouteConfig> = {
 export function HomePage() {
   const { provider, model, trust, repoRoot, projectId } = useConfigData();
   const { reviews } = useReviewHistory();
-  const { showToast } = useToast();
   const navigate = useNavigate();
   const search = useSearch({ strict: false });
 
@@ -45,13 +44,9 @@ export function HomePage() {
     if (search.error !== "invalid-review-id") return;
     if (errorShownRef.current) return;
     errorShownRef.current = true;
-    showToast({
-      variant: "error",
-      title: "Invalid Review ID",
-      message: "The review ID format is invalid.",
-    });
+    toast.error("Invalid Review ID", { message: "The review ID format is invalid." });
     navigate({ to: "/", replace: true });
-  }, [search.error, showToast, navigate]);
+  }, [search.error, navigate]);
 
   const needsTrust = Boolean(projectId && repoRoot && trust === null);
 
@@ -80,11 +75,9 @@ export function HomePage() {
     const result = await shutdown();
     if (result.status === "closed") return;
 
-    showToast({
-      variant: result.status === "error" ? "error" : "warning",
-      title: result.status === "error" ? "Quit Failed" : "Close Tab Manually",
-      message: result.message,
-    });
+    const variant = result.status === "error" ? "error" : "warning";
+    const title = result.status === "error" ? "Quit Failed" : "Close Tab Manually";
+    toast[variant](title, { message: result.message });
   };
 
   const handleActivate = (id: string) => {
@@ -95,11 +88,7 @@ export function HomePage() {
 
     const reviewActions = ["review-unstaged", "review-staged", "review-files"];
     if (reviewActions.includes(id) && !isTrusted) {
-      showToast({
-        variant: "error",
-        title: "Directory Not Trusted",
-        message: "Grant permissions in Settings → Trust & Permissions first.",
-      });
+      toast.error("Directory Not Trusted", { message: "Grant permissions in Settings → Trust & Permissions first." });
       return;
     }
 
@@ -153,9 +142,9 @@ export function HomePage() {
       <HomeMenu
         menuRef={menuRef}
         selectedId={selectedId}
-        focusedValue={focusedValue}
-        onSelect={setSelectedId}
-        onActivate={handleActivate}
+        highlightedId={focusedValue}
+        onHighlightChange={setSelectedId}
+        onSelect={handleActivate}
         items={MAIN_MENU_ITEMS}
         isTrusted={isTrusted}
         hasLastReview={hasLastReview}

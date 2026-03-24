@@ -1,6 +1,6 @@
 
 
-import { useToast } from "@diffgazer/ui";
+import { toast } from "diffui/components/toast";
 import { useNavigate } from "@tanstack/react-router";
 
 interface ApiError {
@@ -20,7 +20,6 @@ export function isApiError(error: unknown): error is ApiError {
 }
 
 export function useReviewErrorHandler() {
-  const { showToast } = useToast();
   const navigate = useNavigate();
 
   const handleApiError = (error: unknown) => {
@@ -37,11 +36,7 @@ export function useReviewErrorHandler() {
       status === 404 ? "The review session was not found or has expired." :
       errorMessage || "An error occurred while loading the review.";
 
-    showToast({
-      variant: "error",
-      title,
-      message,
-    });
+    toast.error(title, { message });
     navigate({ to: "/" });
   };
 

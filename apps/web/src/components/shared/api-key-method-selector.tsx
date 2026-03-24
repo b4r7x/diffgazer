@@ -1,5 +1,6 @@
 import type { RefObject } from "react";
-import { Input, Radio } from "@diffgazer/ui";
+import { Input } from "diffui/components/input";
+import { Radio } from "diffui/components/radio";
 import { cn } from "@/utils/cn";
 import type { FocusElement } from "@/types/focus-element";
 import type { InputMethod } from "@/types/input-method";
@@ -34,13 +35,13 @@ export function ApiKeyMethodSelector({
       <div className="space-y-2 mb-4">
         <Radio
           checked={method === "paste"}
-          onCheckedChange={() => {
+          onChange={() => {
             onMethodChange("paste");
             onFocus("paste");
           }}
           onMouseEnter={() => onFocus("paste")}
           label="Paste Key Now"
-          focused={focused === "paste"}
+          highlighted={focused === "paste"}
         />
         <div className="pl-9">
           <div
@@ -84,13 +85,13 @@ export function ApiKeyMethodSelector({
       >
         <Radio
           checked={method === "env"}
-          onCheckedChange={() => {
+          onChange={() => {
             onMethodChange("env");
             onFocus("env");
           }}
           onMouseEnter={() => onFocus("env")}
           label="Import from Env"
-          focused={focused === "env"}
+          highlighted={focused === "env"}
         />
         <div className="pl-9">
           <div
