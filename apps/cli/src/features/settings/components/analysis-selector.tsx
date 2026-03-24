@@ -2,36 +2,61 @@ import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import { CheckboxGroup } from "../../../components/ui/checkbox.js";
 import { Badge } from "../../../components/ui/badge.js";
+import type { BadgeProps } from "../../../components/ui/badge.js";
+import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/schemas/events";
+import type { LensId } from "@diffgazer/schemas/review";
 
-interface AnalysisSelectorProps {
-  selectedAgents: string[];
-  onChange: (agents: string[]) => void;
-  isActive?: boolean;
+interface LensOption {
+  id: LensId;
+  label: string;
+  badgeLabel: string;
+  badgeVariant: BadgeProps["variant"];
 }
 
-const agents = [
-  { id: "security", label: "Security", variant: "error" as const },
-  { id: "performance", label: "Performance", variant: "warning" as const },
-  { id: "correctness", label: "Correctness", variant: "info" as const },
-  { id: "style", label: "Style", variant: "neutral" as const },
-  { id: "tests", label: "Tests", variant: "success" as const },
-];
+function buildLensOptions(): LensOption[] {
+  return (Object.entries(LENS_TO_AGENT) as Array<[LensId, keyof typeof AGENT_METADATA]>).map(
+    ([lensId, agentId]) => {
+      const meta = AGENT_METADATA[agentId];
+      return {
+        id: lensId,
+        label: meta.name,
+        badgeLabel: meta.badgeLabel,
+        badgeVariant: (meta.badgeVariant ?? "info") as BadgeProps["variant"],
+      };
+    },
+  );
+}
+
+export const lensOptions = buildLensOptions();
+
+interface AnalysisSelectorProps {
+  selectedLenses: LensId[];
+  onChange: (lenses: LensId[]) => void;
+  isActive?: boolean;
+  disabled?: boolean;
+}
 
 export function AnalysisSelector({
-  selectedAgents,
+  selectedLenses,
   onChange,
   isActive = true,
+  disabled = false,
 }: AnalysisSelectorProps): ReactElement {
   return (
-    <CheckboxGroup value={selectedAgents} onChange={onChange} isActive={isActive}>
-      {agents.map((agent) => (
+    <CheckboxGroup
+      value={selectedLenses}
+      onChange={(values) => onChange(values as LensId[])}
+      isActive={isActive}
+      disabled={disabled}
+    >
+      {lensOptions.map((lens) => (
         <CheckboxGroup.Item
-          key={agent.id}
-          value={agent.id}
+          key={lens.id}
+          value={lens.id}
           label={
             <Box gap={1}>
-              <Text>{agent.label}</Text>
-              <Badge variant={agent.variant}>{agent.id}</Badge>
+              <Text>{lens.label}</Text>
+              <Badge variant={lens.badgeVariant}>{lens.badgeLabel}</Badge>
             </Box>
           }
         />

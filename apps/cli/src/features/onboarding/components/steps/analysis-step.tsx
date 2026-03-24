@@ -1,20 +1,21 @@
 import type { ReactElement } from "react";
+import type { LensId } from "@diffgazer/schemas/review";
 import { AnalysisSelector } from "../../../settings/components/analysis-selector.js";
 
 interface AnalysisStepProps {
-  selectedAgents: string[];
-  onChange: (agents: string[]) => void;
+  selectedLenses: LensId[];
+  onChange: (lenses: LensId[]) => void;
   isActive?: boolean;
 }
 
 export function AnalysisStep({
-  selectedAgents,
+  selectedLenses,
   onChange,
   isActive = true,
 }: AnalysisStepProps): ReactElement {
   return (
     <AnalysisSelector
-      selectedAgents={selectedAgents}
+      selectedLenses={selectedLenses}
       onChange={onChange}
       isActive={isActive}
     />

@@ -1,15 +1,4 @@
 {
   "title": "CLI",
-  "pages": [
-    "usage",
-    "---Terminal Components---",
-    "overview",
-    "getting-started",
-    "---Components---",
-    "...components",
-    "---Layout---",
-    "...layout",
-    "---Patterns---",
-    "...patterns"
-  ]
+  "pages": ["usage"]
 }

@@ -70,10 +70,10 @@ Unified documentation portal for diff-ui, keyscope, and (future) diffgazer docs.
 - @.claude/docs/web-design-guidelines.md — Web UI design system
 
 ## Recent Changes
+- 005-cli-backend-integration: Added TypeScript 5.x (strict: true), ESM only, .js extensions in imports + Ink 6.8.0, React 19.2.4, `@diffgazer/api`, `@diffgazer/core`, `@diffgazer/schemas`, Hono (embedded server), ink-spinner, chalk, @inkjs/ui
 - 004-ink-diffui-components: Added TypeScript 5.x (strict: true), ESM only, .js extensions in imports + Ink 6.8.0, React 19.2.4, ink-spinner 5.0.0, chalk 5.6.2, @inkjs/ui (to add: Select, TextInput, ConfirmInput)
 - 003-fix-keyscope-diffui-integration: Added TypeScript 5.x (strict: true), ESM only + React 19, keyscope (workspace:*), diffui (workspace:*), Tailwind CSS v4, CVA + tailwind-merge
-- 001-diffui-web-integration: Re-export facade migration — @diffgazer/ui re-exports 8 components from diff-ui (workspace:*), CSS token override layer (theme-overrides.css) for GitHub palette, 5 local component files deleted
 
 ## Active Technologies
-- TypeScript 5.x (strict: true), ESM only, .js extensions in imports + Ink 6.8.0, React 19.2.4, ink-spinner 5.0.0, chalk 5.6.2, @inkjs/ui (to add: Select, TextInput, ConfirmInput) (004-ink-diffui-components)
-- N/A (reuses existing `~/.diffgazer/config.json` via `@diffgazer/api` and server) (004-ink-diffui-components)
+- TypeScript 5.x (strict: true), ESM only, .js extensions in imports + Ink 6.8.0, React 19.2.4, `@diffgazer/api`, `@diffgazer/core`, `@diffgazer/schemas`, Hono (embedded server), ink-spinner, chalk, @inkjs/ui (005-cli-backend-integration)
+- Server-managed (JSON files at `~/.diffgazer/`). CLI does not access storage directly — all through API. (005-cli-backend-integration)

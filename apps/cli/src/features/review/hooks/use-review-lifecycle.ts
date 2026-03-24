@@ -1,81 +1,51 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useReviewStream } from "./use-review-stream.js";
+import { api } from "../../../lib/api.js";
+import { useInit } from "../../../hooks/use-init.js";
+import { useSettings } from "../../../hooks/use-settings.js";
+import type { ReviewIssue } from "@diffgazer/schemas/review";
+import { ReviewErrorCode, type ReviewMode } from "@diffgazer/schemas/review";
+import { LensIdSchema, type LensId } from "@diffgazer/schemas/review";
+import type { StepState, AgentState } from "@diffgazer/schemas/events";
+import type { ReviewEvent, FileProgress } from "@diffgazer/core/review";
 
-export type ReviewPhase = "idle" | "streaming" | "summary" | "results";
-
-interface Issue {
-  id: string;
-  severity: string;
-  filePath: string;
-  title: string;
-  description: string;
-  code?: string;
-  startLine?: number;
-  fixPlan?: string;
-  category?: string;
-}
-
-interface Summary {
-  total: number;
-  bySeverity: Record<string, number>;
-  duration: number;
-}
+export type ReviewPhase =
+  | "idle"
+  | "checking-config"
+  | "checking-changes"
+  | "streaming"
+  | "completing"
+  | "summary"
+  | "results";
 
 export interface ReviewLifecycleState {
   phase: ReviewPhase;
-  reviewId?: string;
-  issues: Issue[];
-  summary?: Summary;
-  steps: Array<{ name: string; status: string; substeps?: string[]; duration?: number }>;
-  logEntries: Array<{ timestamp: string; message: string; variant?: "success" | "warning" | "error" | "info" | "neutral" }>;
+  reviewId: string | null;
+  durationMs: number | undefined;
+  issues: ReviewIssue[];
+  steps: StepState[];
+  agents: AgentState[];
+  events: ReviewEvent[];
+  fileProgress: FileProgress;
+  error: string | null;
+  isConfigured: boolean;
+  provider: string | null;
+  model: string | null;
+  isNoDiffError: boolean;
+  isCheckingForChanges: boolean;
+  loadingMessage: string | null;
 }
 
-const MOCK_ISSUES: Issue[] = [
-  {
-    id: "issue-1",
-    severity: "high",
-    filePath: "src/auth/session.ts",
-    title: "Missing token expiry check",
-    description: "The session validation function does not check whether the JWT has expired before granting access. An attacker with a stolen expired token could still authenticate.",
-    code: "function validateSession(token: string) {\n  const decoded = jwt.decode(token);\n  return decoded !== null;\n}",
-    startLine: 42,
-    fixPlan: "Add an expiry check after decoding: verify `decoded.exp` is greater than `Date.now() / 1000`. Return false if expired.",
-    category: "security",
-  },
-  {
-    id: "issue-2",
-    severity: "medium",
-    filePath: "src/api/handlers.ts",
-    title: "Unhandled promise rejection in error path",
-    description: "The catch block in the request handler swallows the error without logging or re-throwing, making failures silent and hard to debug.",
-    code: "try {\n  await processRequest(req);\n} catch (e) {\n  res.status(500).json({ error: 'Internal error' });\n}",
-    startLine: 78,
-    fixPlan: "Log the error before sending the response. Consider using a structured logger and including a correlation ID.",
-    category: "correctness",
-  },
-  {
-    id: "issue-3",
-    severity: "low",
-    filePath: "src/utils/format.ts",
-    title: "Unused import",
-    description: "The `lodash` import is no longer referenced after the recent refactor to native array methods.",
-    category: "cleanup",
-  },
-  {
-    id: "issue-4",
-    severity: "nit",
-    filePath: "src/components/header.tsx",
-    title: "Inconsistent naming convention",
-    description: "The prop `isOpen` follows a different naming pattern than other boolean props in this component which use the `show` prefix.",
-    category: "style",
-  },
-];
+const FALLBACK_LENSES: LensId[] = ["correctness", "security", "performance", "simplicity", "tests"];
+const COMPLETION_DELAY_MS = 2300;
 
-const MOCK_SUMMARY: Summary = {
-  total: 4,
-  bySeverity: { high: 1, medium: 1, low: 1, nit: 1 },
-  duration: 8200,
-};
+function resolveDefaultLenses(rawLenses: string[] | undefined): LensId[] {
+  const parsed =
+    rawLenses?.filter(
+      (lens): lens is LensId => LensIdSchema.safeParse(lens).success,
+    ) ?? [];
+  return parsed.length > 0 ? parsed : FALLBACK_LENSES;
+}
 
 export function useReviewLifecycle(): {
   state: ReviewLifecycleState;
@@ -85,16 +55,140 @@ export function useReviewLifecycle(): {
   reset: () => void;
 } {
   const [phase, setPhase] = useState<ReviewPhase>("idle");
-  const [reviewId, setReviewId] = useState<string | undefined>();
   const stream = useReviewStream();
+  const { data: initData, isLoading: configLoading } = useInit();
+  const { settings, isLoading: settingsLoading } = useSettings();
+
+  const hasStartedRef = useRef(false);
+  const hasStreamedRef = useRef(false);
+  const completionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevIsStreamingRef = useRef(false);
+  const modeRef = useRef<ReviewMode>("staged");
+
+  const isConfigured = initData?.configured ?? false;
+  const provider = initData?.config?.provider ?? null;
+  const model = initData?.config?.model ?? null;
+  const defaultLenses = resolveDefaultLenses(settings?.defaultLenses);
+
+  // Derive error flags from stream state
+  const isNoDiffError =
+    stream.state.error?.includes("No staged changes") === true ||
+    stream.state.error?.includes("No unstaged changes") === true;
+
+  const diffStep = stream.state.steps.find((s) => s.id === "diff");
+  const isCheckingForChanges =
+    stream.state.isStreaming &&
+    diffStep?.status !== "completed" &&
+    diffStep?.status !== "error";
+
+  const loadingMessage =
+    configLoading || settingsLoading
+      ? "Loading configuration..."
+      : phase === "checking-config"
+        ? "Checking provider configuration..."
+        : phase === "checking-changes" || isCheckingForChanges
+          ? "Checking for changes..."
+          : null;
 
   function start(mode: string) {
-    setPhase("streaming");
-    setReviewId(`review-${Date.now()}`);
-    stream.start(mode);
+    if (hasStartedRef.current) return;
+    modeRef.current = (mode === "unstaged" || mode === "files" ? mode : "staged") as ReviewMode;
+    hasStartedRef.current = true;
+    setPhase("checking-config");
   }
 
+  // Transition from checking-config to checking-changes once config is ready
+  useEffect(() => {
+    if (phase !== "checking-config") return;
+    if (configLoading || settingsLoading) return;
+    if (!isConfigured) return; // Stay here; UI shows "not configured" via state
+
+    setPhase("checking-changes");
+  }, [phase, configLoading, settingsLoading, isConfigured]);
+
+  // Check for active session, then start or resume the stream
+  useEffect(() => {
+    if (phase !== "checking-changes") return;
+
+    let ignore = false;
+    const mode = modeRef.current;
+    const lenses = defaultLenses;
+
+    const startFresh = () => {
+      if (ignore) return;
+      setPhase("streaming");
+      hasStreamedRef.current = true;
+      void stream.start(mode, lenses);
+    };
+
+    const resumeById = (reviewId: string, onNotFound: () => void) => {
+      if (ignore) return;
+      setPhase("streaming");
+      hasStreamedRef.current = true;
+      void stream.resume(reviewId).then((result) => {
+        if (ignore) return;
+        if (result && !result.ok) {
+          if (result.error.code === ReviewErrorCode.SESSION_STALE) {
+            startFresh();
+          } else if (result.error.code === ReviewErrorCode.SESSION_NOT_FOUND) {
+            onNotFound();
+          }
+        }
+      });
+    };
+
+    void api
+      .getActiveReviewSession(mode)
+      .then((response) => {
+        if (ignore) return;
+        const activeReviewId = response.session?.reviewId;
+        if (!activeReviewId) {
+          startFresh();
+          return;
+        }
+        resumeById(activeReviewId, startFresh);
+      })
+      .catch(() => {
+        if (!ignore) startFresh();
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [phase]);
+
+  // Detect stream completion and transition to completing -> summary
+  useEffect(() => {
+    const wasStreaming = prevIsStreamingRef.current;
+    prevIsStreamingRef.current = stream.state.isStreaming;
+
+    if (
+      wasStreaming &&
+      !stream.state.isStreaming &&
+      hasStreamedRef.current &&
+      !stream.state.error
+    ) {
+      setPhase("completing");
+
+      completionTimerRef.current = setTimeout(() => {
+        completionTimerRef.current = null;
+        setPhase("summary");
+      }, COMPLETION_DELAY_MS);
+    }
+
+    return () => {
+      if (completionTimerRef.current) {
+        clearTimeout(completionTimerRef.current);
+        completionTimerRef.current = null;
+      }
+    };
+  }, [stream.state.isStreaming, stream.state.error]);
+
   function goToSummary() {
+    if (completionTimerRef.current) {
+      clearTimeout(completionTimerRef.current);
+      completionTimerRef.current = null;
+    }
     setPhase("summary");
   }
 
@@ -103,18 +197,38 @@ export function useReviewLifecycle(): {
   }
 
   function reset() {
+    if (completionTimerRef.current) {
+      clearTimeout(completionTimerRef.current);
+      completionTimerRef.current = null;
+    }
+    hasStartedRef.current = false;
+    hasStreamedRef.current = false;
+    prevIsStreamingRef.current = false;
     setPhase("idle");
-    setReviewId(undefined);
-    stream.cancel();
+    stream.abort();
   }
+
+  const durationMs =
+    stream.state.startedAt
+      ? Date.now() - stream.state.startedAt.getTime()
+      : undefined;
 
   const state: ReviewLifecycleState = {
     phase,
-    reviewId,
-    issues: phase === "results" || phase === "summary" ? MOCK_ISSUES : [],
-    summary: phase === "summary" || phase === "results" ? MOCK_SUMMARY : undefined,
+    reviewId: stream.state.reviewId ?? null,
+    durationMs,
+    issues: stream.state.issues,
     steps: stream.state.steps,
-    logEntries: stream.state.logEntries,
+    agents: stream.state.agents,
+    events: stream.state.events,
+    fileProgress: stream.state.fileProgress,
+    error: stream.state.error,
+    isConfigured,
+    provider,
+    model,
+    isNoDiffError,
+    isCheckingForChanges,
+    loadingMessage,
   };
 
   return { state, start, goToSummary, goToResults, reset };

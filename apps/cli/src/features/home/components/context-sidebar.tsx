@@ -8,6 +8,7 @@ interface ContextSidebarProps {
   providerName?: string;
   modelName?: string;
   lastReviewDate?: string;
+  lastReviewIssues?: number;
   trustStatus?: "trusted" | "untrusted" | "unknown";
 }
 
@@ -21,6 +22,7 @@ export function ContextSidebar({
   providerName,
   modelName,
   lastReviewDate,
+  lastReviewIssues,
   trustStatus = "unknown",
 }: ContextSidebarProps) {
   const { tokens } = useTheme();
@@ -32,7 +34,16 @@ export function ContextSidebar({
         <Box flexDirection="column" gap={1}>
           <InfoField label="Provider:" value={providerName ?? "Not configured"} />
           <InfoField label="Model:" value={modelName ?? "Not selected"} />
-          <InfoField label="Last Review:" value={lastReviewDate ?? "None"} />
+          <InfoField
+            label="Last Review:"
+            value={
+              lastReviewDate
+                ? lastReviewIssues !== undefined
+                  ? `${lastReviewDate} (${lastReviewIssues} issues)`
+                  : lastReviewDate
+                : "None"
+            }
+          />
           <InfoField
             label="Trust:"
             value={

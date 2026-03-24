@@ -5,22 +5,50 @@ import { KeyValue } from "../../../components/ui/key-value.js";
 import { Badge } from "../../../components/ui/badge.js";
 import { Button } from "../../../components/ui/button.js";
 
+export interface ProviderDetailData {
+  id: string;
+  name: string;
+  displayStatus: "active" | "configured" | "needs-key";
+  model?: string;
+  defaultModel?: string;
+}
+
 interface ProviderDetailsProps {
-  provider?: {
-    id: string;
-    name: string;
-    status: string;
-    model?: string;
-    capabilities?: string[];
-  };
+  provider?: ProviderDetailData;
   onConfigureKey?: () => void;
   onSelectModel?: () => void;
+  onRemove?: () => void;
+}
+
+function statusBadgeVariant(
+  displayStatus: ProviderDetailData["displayStatus"],
+): "success" | "info" | "warning" {
+  switch (displayStatus) {
+    case "active":
+      return "success";
+    case "configured":
+      return "info";
+    case "needs-key":
+      return "warning";
+  }
+}
+
+function statusLabel(displayStatus: ProviderDetailData["displayStatus"]): string {
+  switch (displayStatus) {
+    case "active":
+      return "active";
+    case "configured":
+      return "configured";
+    case "needs-key":
+      return "needs key";
+  }
 }
 
 export function ProviderDetails({
   provider,
   onConfigureKey,
   onSelectModel,
+  onRemove,
 }: ProviderDetailsProps): ReactElement {
   const { tokens } = useTheme();
 
@@ -32,7 +60,7 @@ export function ProviderDetails({
     );
   }
 
-  const statusVariant = provider.status === "configured" ? "success" : "warning";
+  const variant = statusBadgeVariant(provider.displayStatus);
 
   return (
     <Box flexDirection="column" gap={1}>
@@ -41,28 +69,23 @@ export function ProviderDetails({
       <KeyValue
         label="Status"
         value={
-          <Badge variant={statusVariant} dot>
-            {provider.status}
+          <Badge variant={variant} dot>
+            {statusLabel(provider.displayStatus)}
           </Badge>
         }
         labelWidth={14}
       />
-      {provider.model && (
-        <KeyValue label="Model" value={provider.model} labelWidth={14} />
-      )}
-      {provider.capabilities && provider.capabilities.length > 0 && (
-        <KeyValue
-          label="Capabilities"
-          value={
-            <Box gap={1}>
-              {provider.capabilities.map((cap) => (
-                <Badge key={cap} variant="info">{cap}</Badge>
-              ))}
-            </Box>
-          }
-          labelWidth={14}
-        />
-      )}
+      <KeyValue
+        label="Model"
+        value={
+          provider.model
+            ? provider.model
+            : provider.defaultModel
+              ? `${provider.defaultModel} (default)`
+              : "none"
+        }
+        labelWidth={14}
+      />
 
       <Box gap={1} marginTop={1}>
         <Button variant="primary" onPress={onConfigureKey}>
@@ -71,6 +94,11 @@ export function ProviderDetails({
         <Button variant="secondary" onPress={onSelectModel}>
           Select Model
         </Button>
+        {provider.displayStatus !== "needs-key" && (
+          <Button variant="destructive" onPress={onRemove}>
+            Remove
+          </Button>
+        )}
       </Box>
     </Box>
   );

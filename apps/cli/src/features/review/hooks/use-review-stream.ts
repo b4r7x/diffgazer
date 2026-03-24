@@ -1,85 +1,177 @@
-import { useState, useRef } from "react";
+import { useReducer, useRef, useEffect } from "react";
+import { api } from "../../../lib/api.js";
+import type { StreamReviewError } from "@diffgazer/api/review";
+import type { AgentStreamEvent, EnrichEvent, StepEvent } from "@diffgazer/schemas/events";
+import type { Result } from "@diffgazer/core/result";
+import {
+  reviewReducer,
+  createInitialReviewState,
+  type ReviewState,
+  type ReviewAction,
+} from "@diffgazer/core/review";
+import { ReviewErrorCode, type ReviewMode, type LensId } from "@diffgazer/schemas/review";
 
-interface Step {
-  name: string;
-  status: string;
-  substeps?: string[];
-  duration?: number;
+type ReviewEvent = AgentStreamEvent | StepEvent | EnrichEvent;
+
+interface CliReviewState extends ReviewState {
+  reviewId: string | null;
 }
 
-interface LogEntry {
-  timestamp: string;
-  message: string;
-  variant?: "success" | "warning" | "error" | "info" | "neutral";
+type CliReviewAction =
+  | ReviewAction
+  | { type: "SET_REVIEW_ID"; reviewId: string };
+
+function createInitialCliState(): CliReviewState {
+  return {
+    ...createInitialReviewState(),
+    reviewId: null,
+  };
 }
 
-export interface ReviewStreamState {
-  phase: "idle" | "connecting" | "streaming" | "complete" | "error";
-  steps: Step[];
-  logEntries: LogEntry[];
-  error?: string;
+function cliReviewReducer(state: CliReviewState, action: CliReviewAction): CliReviewState {
+  switch (action.type) {
+    case "SET_REVIEW_ID":
+      return { ...state, reviewId: action.reviewId };
+    case "START":
+    case "RESET":
+      return { ...reviewReducer(state, action), reviewId: null };
+  }
+
+  if (action.type === "EVENT" && action.event.type === "review_started") {
+    const newState = reviewReducer(state, action);
+    return {
+      ...newState,
+      reviewId: action.event.reviewId,
+    };
+  }
+
+  const next = reviewReducer(state, action);
+  return next === state ? state : { ...next, reviewId: state.reviewId };
 }
 
-const INITIAL_STATE: ReviewStreamState = {
-  phase: "idle",
-  steps: [],
-  logEntries: [],
-};
+export interface UseReviewStreamReturn {
+  state: CliReviewState;
+  start: (mode: ReviewMode, lenses?: LensId[]) => Promise<void>;
+  stop: () => void;
+  abort: () => void;
+  resume: (reviewId: string) => Promise<Result<void, StreamReviewError>>;
+}
 
-const MOCK_STEPS: Step[] = [
-  { name: "Analyzing diff", status: "complete", duration: 1200 },
-  { name: "Running security analysis", status: "complete", substeps: ["Checking dependencies", "Scanning patterns"], duration: 3400 },
-  { name: "Running correctness analysis", status: "complete", substeps: ["Type checking", "Logic validation"], duration: 2800 },
-  { name: "Generating report", status: "complete", duration: 800 },
-];
+export function useReviewStream(): UseReviewStreamReturn {
+  const [state, dispatch] = useReducer(cliReviewReducer, createInitialCliState());
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-const MOCK_LOG_ENTRIES: LogEntry[] = [
-  { timestamp: "00:00.0", message: "Review started", variant: "info" },
-  { timestamp: "00:01.2", message: "Diff parsed: 12 files, 340 lines changed", variant: "info" },
-  { timestamp: "00:04.6", message: "Security scan complete: 1 finding", variant: "warning" },
-  { timestamp: "00:07.4", message: "Correctness analysis complete: 3 findings" },
-  { timestamp: "00:08.2", message: "Report generated", variant: "success" },
-];
+  const handleStreamError = (error: unknown) => {
+    if (error instanceof Error && error.name === "AbortError") {
+      dispatch({ type: "COMPLETE" });
+    } else {
+      const message = error instanceof Error ? error.message : "Failed to stream";
+      dispatch({ type: "ERROR", error: message });
+    }
+  };
 
-export function useReviewStream(): {
-  state: ReviewStreamState;
-  start: (mode: string) => void;
-  cancel: () => void;
-} {
-  const [state, setState] = useState<ReviewStreamState>(INITIAL_STATE);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dispatchEvent = (event: ReviewEvent) => {
+    dispatch({ type: "EVENT", event });
+  };
 
-  function start(_mode: string) {
-    setState({ ...INITIAL_STATE, phase: "connecting" });
+  const stop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    dispatch({ type: "COMPLETE" });
+  };
 
-    // Stub: simulate SSE streaming with timeouts
-    timerRef.current = setTimeout(() => {
-      setState({
-        phase: "streaming",
-        steps: MOCK_STEPS.map((s, i) => ({
-          ...s,
-          status: i === 0 ? "running" : "pending",
-        })),
-        logEntries: [MOCK_LOG_ENTRIES[0]!],
+  const abort = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    dispatch({ type: "RESET" });
+  };
+
+  const start = async (mode: ReviewMode, lenses?: LensId[]) => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    dispatch({ type: "START" });
+
+    try {
+      const result = await api.streamReviewWithEvents({
+        mode,
+        lenses,
+        signal: abortController.signal,
+        onAgentEvent: dispatchEvent,
+        onStepEvent: dispatchEvent,
+        onEnrichEvent: dispatchEvent,
       });
 
-      timerRef.current = setTimeout(() => {
-        setState({
-          phase: "complete",
-          steps: MOCK_STEPS,
-          logEntries: MOCK_LOG_ENTRIES,
-        });
-      }, 2000);
-    }, 500);
-  }
-
-  function cancel() {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
+      if (!result.ok) {
+        dispatch({ type: "ERROR", error: result.error.message });
+      } else {
+        dispatch({ type: "SET_REVIEW_ID", reviewId: result.value.reviewId });
+        dispatch({ type: "COMPLETE" });
+      }
+    } catch (e) {
+      handleStreamError(e);
+    } finally {
+      abortControllerRef.current = null;
     }
-    setState({ ...INITIAL_STATE, phase: "idle" });
-  }
+  };
 
-  return { state, start, cancel };
+  const resume = async (reviewId: string): Promise<Result<void, StreamReviewError>> => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    dispatch({ type: "START" });
+
+    try {
+      const result = await api.resumeReviewStream({
+        reviewId,
+        signal: abortController.signal,
+        onAgentEvent: dispatchEvent,
+        onStepEvent: dispatchEvent,
+        onEnrichEvent: dispatchEvent,
+      });
+
+      if (result.ok) {
+        dispatch({ type: "COMPLETE" });
+      } else if (
+        result.error.code !== ReviewErrorCode.SESSION_STALE &&
+        result.error.code !== ReviewErrorCode.SESSION_NOT_FOUND
+      ) {
+        dispatch({ type: "ERROR", error: result.error.message });
+      }
+      return result;
+    } catch (e) {
+      handleStreamError(e);
+      const message = e instanceof Error ? e.message : "Failed to resume review";
+      return { ok: false as const, error: { code: "STREAM_ERROR" as const, message } };
+    } finally {
+      abortControllerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
+    };
+  }, []);
+
+  return {
+    state,
+    start,
+    stop,
+    abort,
+    resume,
+  };
 }
