@@ -55,6 +55,7 @@ export function HomeMenu({
           highlightedId={highlightedId}
           onHighlightChange={onHighlightChange}
           onSelect={onSelect}
+          autoFocus
         >
           {review.map((item) => {
             const disabled = item.id === "resume-review" ? resumeDisabled : reviewDisabled;

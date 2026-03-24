@@ -4,7 +4,7 @@ import { Panel } from "diffui/components/panel";
 import { useConfigData } from "@/app/providers/config-provider";
 import { useScope, useKey } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
+import { useScopedRouteState, clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useTheme } from "@/hooks/use-theme";
 import { useSettings } from "@/hooks/use-settings";
 import { SETTINGS_MENU_ITEMS, SETTINGS_SHORTCUTS, type SettingsAction } from "@/config/navigation";
@@ -24,6 +24,10 @@ export function SettingsHubPage() {
   const { provider, isConfigured, trust } = useConfigData();
   const { theme } = useTheme();
   const [selectedId, setSelectedId] = useScopedRouteState<string | null>("menuId", SETTINGS_MENU_ITEMS[0]?.id ?? null);
+  const [highlightedId, setHighlightedId] = useScopedRouteState<string | null>(
+    "highlightedId",
+    SETTINGS_MENU_ITEMS[0]?.id ?? null
+  );
   const isTrusted = Boolean(trust?.capabilities.readFiles);
   const { settings, error: settingsError } = useSettings();
 
@@ -34,7 +38,10 @@ export function SettingsHubPage() {
 
   const handleActivate = (id: string) => {
     const route = SETTINGS_ROUTES[id as SettingsAction];
-    if (route) navigate({ to: route });
+    if (route) {
+      clearScopedRouteState(route, "highlightedId");
+      navigate({ to: route });
+    }
   };
 
   const providerLabel = isConfigured && provider ? provider.toUpperCase() : "Not configured";
@@ -86,11 +93,12 @@ export function SettingsHubPage() {
           <div className="absolute -top-3 left-4 bg-tui-bg px-2 text-xs font-bold uppercase tracking-wider text-tui-muted">SETTINGS HUB</div>
           <Menu
             selectedId={selectedId}
-            highlightedId={selectedId}
-            onHighlightChange={setSelectedId}
+            highlightedId={highlightedId}
+            onHighlightChange={setHighlightedId}
             onSelect={handleActivate}
             variant="hub"
             className="flex flex-col text-sm pt-2"
+            autoFocus
           >
             {SETTINGS_MENU_ITEMS.map((item) => {
               const meta = menuValues[item.id];
