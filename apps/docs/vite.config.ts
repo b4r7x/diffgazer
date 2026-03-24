@@ -115,7 +115,7 @@ const config = defineConfig(() => {
         "@/lib/selectable-variants": resolve(import.meta.dirname, "registry/lib/selectable-variants"),
         "@/lib/input-variants": resolve(import.meta.dirname, "registry/lib/input-variants"),
         "@/lib/resolve-tab-target": resolve(import.meta.dirname, "registry/lib/resolve-tab-target"),
-        "@/lib/diff-utils": resolve(import.meta.dirname, "registry/lib/diff-utils"),
+        "@/lib/diff": resolve(import.meta.dirname, "registry/lib/diff"),
         "@": resolve(import.meta.dirname, "./src"),
       },
       dedupe: ["react", "react-dom"],

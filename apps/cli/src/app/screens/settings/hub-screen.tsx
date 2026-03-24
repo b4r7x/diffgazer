@@ -1,14 +1,19 @@
 import type { ReactElement } from "react";
-import { Box } from "ink";
+import { Box, Text } from "ink";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
+import { useInit } from "../../../hooks/use-init.js";
+import { useSettings } from "../../../hooks/use-settings.js";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
+import { Spinner } from "../../../components/ui/spinner.js";
 import { Menu } from "../../../components/ui/menu.js";
 import { SETTINGS_MENU_ITEMS, SETTINGS_SHORTCUTS } from "../../../config/navigation.js";
 import { useNavigation } from "../../navigation-context.js";
 import type { Route } from "../../routes.js";
+import type { SettingsAction } from "../../../config/navigation.js";
+import { AVAILABLE_PROVIDERS } from "@diffgazer/schemas/config";
 
 const SETTINGS_ROUTE_MAP: Record<string, Route["screen"]> = {
   "trust": "settings/trust-permissions",
@@ -20,12 +25,49 @@ const SETTINGS_ROUTE_MAP: Record<string, Route["screen"]> = {
   "diagnostics": "settings/diagnostics",
 };
 
+function getProviderDisplayName(providerId: string): string {
+  const provider = AVAILABLE_PROVIDERS.find((p) => p.id === providerId);
+  return provider?.name ?? providerId;
+}
+
+function buildDescriptions(
+  init: ReturnType<typeof useInit>["data"],
+  settings: ReturnType<typeof useSettings>["settings"],
+): Record<SettingsAction, string> {
+  const trust = init?.project.trust;
+  const trustStatus = trust ? `Trusted (${trust.trustMode})` : "Not trusted";
+
+  const activeProvider = init?.config
+    ? getProviderDisplayName(init.config.provider)
+    : "Not configured";
+
+  const theme = settings?.theme ?? "auto";
+  const storage = settings?.secretsStorage ?? "not set";
+  const execution = settings?.agentExecution ?? "parallel";
+  const lensCount = settings?.defaultLenses.length ?? 0;
+
+  return {
+    trust: trustStatus,
+    theme: `Current: ${theme}`,
+    provider: activeProvider,
+    storage: `Current: ${storage}`,
+    "agent-execution": `Mode: ${execution}`,
+    analysis: `${lensCount} lens${lensCount === 1 ? "" : "es"} active`,
+    diagnostics: "Run system health checks",
+  };
+}
+
 export function SettingsHubScreen(): ReactElement {
   useScope("settings-hub");
   usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
   useBackHandler();
 
   const { navigate } = useNavigation();
+  const { data: initData, isLoading: initLoading, error: initError } = useInit();
+  const { settings, isLoading: settingsLoading, error: settingsError } = useSettings();
+
+  const isLoading = initLoading || settingsLoading;
+  const error = initError ?? settingsError;
 
   const onSelect = (id: string) => {
     const screen = SETTINGS_ROUTE_MAP[id];
@@ -34,23 +76,30 @@ export function SettingsHubScreen(): ReactElement {
     }
   };
 
+  const descriptions = isLoading ? null : buildDescriptions(initData, settings);
+
   return (
     <Panel>
       <Panel.Content>
         <Box flexDirection="column" gap={1}>
           <SectionHeader>Settings</SectionHeader>
-          <Menu variant="hub" onSelect={onSelect}>
-            {SETTINGS_MENU_ITEMS.map((item, index) => (
-              <Menu.Item
-                key={item.id}
-                id={item.id}
-                hotkey={index + 1}
-                value={item.description}
-              >
-                {item.label}
-              </Menu.Item>
-            ))}
-          </Menu>
+          {error && <Text color="red">{error}</Text>}
+          {isLoading ? (
+            <Spinner label="Loading settings..." />
+          ) : (
+            <Menu variant="hub" onSelect={onSelect}>
+              {SETTINGS_MENU_ITEMS.map((item, index) => (
+                <Menu.Item
+                  key={item.id}
+                  id={item.id}
+                  hotkey={index + 1}
+                  value={descriptions?.[item.id] ?? item.description}
+                >
+                  {item.label}
+                </Menu.Item>
+              ))}
+            </Menu>
+          )}
         </Box>
       </Panel.Content>
     </Panel>

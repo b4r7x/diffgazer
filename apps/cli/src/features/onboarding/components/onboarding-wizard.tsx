@@ -1,8 +1,14 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
+import type { LensId } from "@diffgazer/schemas/review";
+import type { AIProvider, SecretsStorage, AgentExecution } from "@diffgazer/schemas/config";
 import { useTheme } from "../../../theme/theme-context.js";
+import { useNavigation } from "../../../app/navigation-context.js";
+import { api } from "../../../lib/api.js";
 import { Button } from "../../../components/ui/button.js";
+import { Spinner } from "../../../components/ui/spinner.js";
+import { Callout } from "../../../components/ui/callout.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { WizardProgress } from "./wizard-progress.js";
 import { ProviderStep } from "./steps/provider-step.js";
@@ -11,10 +17,6 @@ import { ModelStep } from "./steps/model-step.js";
 import { AnalysisStep } from "./steps/analysis-step.js";
 import { StorageStep } from "./steps/storage-step.js";
 import { ExecutionStep } from "./steps/execution-step.js";
-
-interface OnboardingWizardProps {
-  onComplete: () => void;
-}
 
 const stepLabels = [
   "Provider",
@@ -25,31 +27,57 @@ const stepLabels = [
   "Execution",
 ];
 
-const defaultAgents = ["security", "correctness", "performance"];
-
-export function OnboardingWizard({
-  onComplete,
-}: OnboardingWizardProps): ReactElement {
+export function OnboardingWizard(): ReactElement {
   const { tokens } = useTheme();
+  const { navigate } = useNavigation();
 
   const [currentStep, setCurrentStep] = useState(0);
-  const [provider, setProvider] = useState("");
+  const [provider, setProvider] = useState<AIProvider>("gemini");
   const [apiKeyMethod, setApiKeyMethod] = useState("paste");
   const [apiKey, setApiKey] = useState("");
   const [envVar, setEnvVar] = useState("");
   const [model, setModel] = useState("");
-  const [agents, setAgents] = useState<string[]>(defaultAgents);
-  const [storage, setStorage] = useState("file");
-  const [execution, setExecution] = useState("parallel");
+  const [selectedLenses, setSelectedLenses] = useState<LensId[]>([
+    "security",
+    "correctness",
+    "performance",
+  ]);
+  const [secretsStorage, setSecretsStorage] = useState<SecretsStorage>("file");
+  const [agentExecution, setAgentExecution] = useState<AgentExecution>("parallel");
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const isLastStep = currentStep === stepLabels.length - 1;
   const isFirstStep = currentStep === 0;
 
   const [focusArea, setFocusArea] = useState<"step" | "nav">("step");
 
+  async function handleComplete() {
+    setIsSaving(true);
+    setError(null);
+    try {
+      await api.saveSettings({
+        secretsStorage,
+        defaultLenses: selectedLenses,
+        agentExecution,
+      });
+      await api.saveConfig({
+        provider,
+        apiKey: apiKeyMethod === "env" ? "env" : apiKey,
+        model: model || undefined,
+      });
+      navigate({ screen: "home" });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Setup failed");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   function handleNext() {
     if (isLastStep) {
-      onComplete();
+      void handleComplete();
     } else {
       setCurrentStep(currentStep + 1);
       setFocusArea("step");
@@ -64,6 +92,7 @@ export function OnboardingWizard({
   }
 
   useInput((_input, key) => {
+    if (isSaving) return;
     if (key.tab) {
       setFocusArea(focusArea === "step" ? "nav" : "step");
     }
@@ -78,17 +107,32 @@ export function OnboardingWizard({
     5: "Agent execution mode",
   };
 
+  if (isSaving) {
+    return (
+      <Box flexDirection="column" gap={1}>
+        <WizardProgress steps={stepLabels} currentStep={currentStep} />
+        <Spinner label="Saving configuration..." />
+      </Box>
+    );
+  }
+
   return (
     <Box flexDirection="column" gap={1}>
       <WizardProgress steps={stepLabels} currentStep={currentStep} />
 
       <SectionHeader>{stepTitles[currentStep] ?? ""}</SectionHeader>
 
+      {error !== null && (
+        <Callout variant="error">
+          <Callout.Content>{error}</Callout.Content>
+        </Callout>
+      )}
+
       <Box flexDirection="column" paddingLeft={1}>
         {currentStep === 0 && (
           <ProviderStep
             value={provider}
-            onChange={setProvider}
+            onChange={(v) => setProvider(v as AIProvider)}
             isActive={focusArea === "step"}
           />
         )}
@@ -113,22 +157,22 @@ export function OnboardingWizard({
         )}
         {currentStep === 3 && (
           <AnalysisStep
-            selectedAgents={agents}
-            onChange={setAgents}
+            selectedLenses={selectedLenses}
+            onChange={setSelectedLenses}
             isActive={focusArea === "step"}
           />
         )}
         {currentStep === 4 && (
           <StorageStep
-            value={storage}
-            onChange={setStorage}
+            value={secretsStorage}
+            onChange={(v) => setSecretsStorage(v as SecretsStorage)}
             isActive={focusArea === "step"}
           />
         )}
         {currentStep === 5 && (
           <ExecutionStep
-            value={execution}
-            onChange={setExecution}
+            value={agentExecution}
+            onChange={(v) => setAgentExecution(v as AgentExecution)}
             isActive={focusArea === "step"}
           />
         )}

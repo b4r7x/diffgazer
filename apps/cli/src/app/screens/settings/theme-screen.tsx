@@ -8,17 +8,19 @@ import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Button } from "../../../components/ui/button.js";
 import { ThemeSelector } from "../../../features/settings/components/theme-selector.js";
+import { useTheme } from "../../../theme/theme-context.js";
 
 export function ThemeScreen(): ReactElement {
   useScope("settings-theme");
   usePageFooter({ shortcuts: [{ key: "Esc", label: "Back" }, { key: "Enter", label: "Select" }] });
   useBackHandler();
 
-  const [theme, setTheme] = useState("dark");
+  const { themeName, setTheme } = useTheme();
+  const [pending, setPending] = useState(themeName);
   const [saved, setSaved] = useState(false);
 
   function handleSave() {
-    // TODO: call api.saveSettings({ theme })
+    setTheme(pending);
     setSaved(true);
   }
 
@@ -27,10 +29,12 @@ export function ThemeScreen(): ReactElement {
       <Panel.Content>
         <Box flexDirection="column" gap={1}>
           <SectionHeader>Theme</SectionHeader>
-          <Text dimColor>Current: {theme}</Text>
-          <ThemeSelector value={theme} onChange={setTheme} isActive />
+          <Text dimColor>Current: {themeName}</Text>
+          <ThemeSelector value={pending} onChange={(v) => { setPending(v); setSaved(false); }} isActive />
           <Box gap={1}>
-            <Button variant="primary" onPress={handleSave}>Save</Button>
+            <Button variant="primary" onPress={handleSave}>
+              Save
+            </Button>
           </Box>
           {saved && <Text color="green">Theme saved.</Text>}
         </Box>

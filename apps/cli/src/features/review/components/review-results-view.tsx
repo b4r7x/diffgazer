@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Box } from "ink";
+import type { ReviewIssue } from "@diffgazer/schemas/review";
+import type { UISeverityFilter } from "@diffgazer/schemas/ui";
 import { useTheme } from "../../../theme/theme-context.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
 import { useReviewKeyboard } from "../hooks/use-review-keyboard.js";
@@ -7,42 +9,44 @@ import { SectionHeader } from "../../../components/ui/section-header.js";
 import { IssueListPane } from "./issue-list-pane.js";
 import { IssueDetailsPane } from "./issue-details-pane.js";
 
-interface Issue {
-  id: string;
-  severity: string;
-  filePath: string;
-  title: string;
-  description: string;
-  code?: string;
-  startLine?: number;
-  fixPlan?: string;
-  category?: string;
-}
-
 export interface ReviewResultsViewProps {
-  issues: Issue[];
+  issues: ReviewIssue[];
   onBack?: () => void;
 }
 
 type Zone = "list" | "details";
 
+function filterIssues(
+  issues: ReadonlyArray<ReviewIssue>,
+  filter: UISeverityFilter,
+): ReviewIssue[] {
+  if (filter === "all") return [...issues];
+  return issues.filter((i) => i.severity === filter);
+}
+
 export function ReviewResultsView({ issues, onBack }: ReviewResultsViewProps) {
   const { tokens } = useTheme();
-  const { columns } = useTerminalDimensions();
+  const { columns, rows } = useTerminalDimensions();
+  const [severityFilter, setSeverityFilter] =
+    useState<UISeverityFilter>("all");
   const [selectedIssueId, setSelectedIssueId] = useState<string | undefined>(
     issues[0]?.id,
   );
   const [activeZone, setActiveZone] = useState<Zone>("list");
 
+  const filteredIssues = filterIssues(issues, severityFilter);
+
   useReviewKeyboard({
     onIssueNav(direction) {
-      if (activeZone !== "list" || issues.length === 0) return;
-      const currentIndex = issues.findIndex((i) => i.id === selectedIssueId);
+      if (activeZone !== "list" || filteredIssues.length === 0) return;
+      const currentIndex = filteredIssues.findIndex(
+        (i) => i.id === selectedIssueId,
+      );
       const nextIndex =
         direction === "down"
-          ? Math.min(currentIndex + 1, issues.length - 1)
+          ? Math.min(currentIndex + 1, filteredIssues.length - 1)
           : Math.max(currentIndex - 1, 0);
-      const nextIssue = issues[nextIndex];
+      const nextIssue = filteredIssues[nextIndex];
       if (nextIssue) {
         setSelectedIssueId(nextIssue.id);
       }
@@ -58,26 +62,35 @@ export function ReviewResultsView({ issues, onBack }: ReviewResultsViewProps) {
     },
   });
 
-  const selectedIssue = issues.find((i) => i.id === selectedIssueId);
+  const selectedIssue = filteredIssues.find((i) => i.id === selectedIssueId);
+  const isNarrow = columns < 80;
   const listWidth = Math.max(Math.floor(columns * 0.4), 30);
+  // Reserve rows for header (2), footer (2), borders (2)
+  const paneHeight = Math.max(rows - 6, 8);
+  const listScrollHeight = isNarrow ? Math.max(Math.floor(paneHeight / 2), 6) : paneHeight;
+  const detailScrollHeight = isNarrow ? Math.max(Math.floor(paneHeight / 2), 6) : paneHeight;
 
   return (
     <Box flexDirection="column">
       <SectionHeader bordered>
         {`Review Results (${issues.length} issues)`}
       </SectionHeader>
-      <Box flexDirection="row" marginTop={1}>
+      <Box flexDirection={isNarrow ? "column" : "row"} marginTop={1}>
         <Box
-          width={listWidth}
+          width={isNarrow ? undefined : listWidth}
           borderStyle="single"
           borderColor={activeZone === "list" ? tokens.accent : tokens.border}
         >
           <IssueListPane
-            issues={issues}
+            issues={filteredIssues}
+            allIssues={issues}
             selectedId={selectedIssueId}
             onSelect={setSelectedIssueId}
             onHighlightChange={setSelectedIssueId}
             isActive={activeZone === "list"}
+            height={listScrollHeight}
+            severityFilter={severityFilter}
+            onSeverityFilterChange={setSeverityFilter}
           />
         </Box>
         <Box
@@ -88,6 +101,7 @@ export function ReviewResultsView({ issues, onBack }: ReviewResultsViewProps) {
           <IssueDetailsPane
             issue={selectedIssue}
             isActive={activeZone === "details"}
+            scrollHeight={detailScrollHeight}
           />
         </Box>
       </Box>

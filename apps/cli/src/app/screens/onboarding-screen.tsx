@@ -1,12 +1,9 @@
 import type { ReactElement } from "react";
 import { useScope } from "../../hooks/use-scope.js";
 import { usePageFooter } from "../../hooks/use-page-footer.js";
-import { useNavigation } from "../navigation-context.js";
 import { OnboardingWizard } from "../../features/onboarding/components/onboarding-wizard.js";
 
 export function OnboardingScreen(): ReactElement {
-  const { navigate } = useNavigation();
-
   useScope("onboarding");
   usePageFooter({
     shortcuts: [
@@ -16,11 +13,5 @@ export function OnboardingScreen(): ReactElement {
     ],
   });
 
-  return (
-    <OnboardingWizard
-      onComplete={() => {
-        navigate({ screen: "home" });
-      }}
-    />
-  );
+  return <OnboardingWizard />;
 }

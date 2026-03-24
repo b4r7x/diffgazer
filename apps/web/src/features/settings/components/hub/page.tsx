@@ -23,7 +23,7 @@ export function SettingsHubPage() {
   const navigate = useNavigate();
   const { provider, isConfigured, trust } = useConfigData();
   const { theme } = useTheme();
-  const [selectedId, setSelectedId] = useScopedRouteState<string | null>("menuId", SETTINGS_MENU_ITEMS[0]?.id ?? null);
+  const [selectedId] = useScopedRouteState<string | null>("menuId", SETTINGS_MENU_ITEMS[0]?.id ?? null);
   const [highlightedId, setHighlightedId] = useScopedRouteState<string | null>(
     "highlightedId",
     SETTINGS_MENU_ITEMS[0]?.id ?? null

@@ -1,7 +1,11 @@
-import type { ReactElement } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 import { Box, Text } from "ink";
 import { RadioGroup } from "../../../../components/ui/radio.js";
 import { Badge } from "../../../../components/ui/badge.js";
+import { Spinner } from "../../../../components/ui/spinner.js";
+import { api } from "../../../../lib/api.js";
+import type { ModelInfo, OpenRouterModel } from "@diffgazer/schemas/config";
+import { GEMINI_MODEL_INFO, GLM_MODEL_INFO } from "@diffgazer/schemas/config";
 
 interface ModelStepProps {
   value?: string;
@@ -13,26 +17,39 @@ interface ModelStepProps {
 interface ModelOption {
   id: string;
   name: string;
-  capabilities: Array<{ label: string; variant: "info" | "success" | "warning" }>;
+  badges: Array<{ label: string; variant: "info" | "success" | "warning" }>;
 }
 
-const modelsByProvider: Record<string, ModelOption[]> = {
-  openai: [
-    { id: "gpt-4o", name: "GPT-4o", capabilities: [{ label: "fast", variant: "success" }, { label: "vision", variant: "info" }] },
-    { id: "gpt-4o-mini", name: "GPT-4o Mini", capabilities: [{ label: "fast", variant: "success" }, { label: "cheap", variant: "warning" }] },
-    { id: "o1", name: "o1", capabilities: [{ label: "reasoning", variant: "info" }] },
-    { id: "o3-mini", name: "o3-mini", capabilities: [{ label: "reasoning", variant: "info" }, { label: "cheap", variant: "warning" }] },
-  ],
-  anthropic: [
-    { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4", capabilities: [{ label: "balanced", variant: "success" }, { label: "vision", variant: "info" }] },
-    { id: "claude-haiku-3.5", name: "Claude Haiku 3.5", capabilities: [{ label: "fast", variant: "success" }, { label: "cheap", variant: "warning" }] },
-  ],
-  openrouter: [
-    { id: "openai/gpt-4o", name: "GPT-4o", capabilities: [{ label: "fast", variant: "success" }] },
-    { id: "anthropic/claude-sonnet-4-20250514", name: "Claude Sonnet 4", capabilities: [{ label: "balanced", variant: "success" }] },
-    { id: "google/gemini-2.5-pro", name: "Gemini 2.5 Pro", capabilities: [{ label: "reasoning", variant: "info" }] },
-  ],
-};
+function modelInfoToOption(info: ModelInfo): ModelOption {
+  const badges: ModelOption["badges"] = [];
+  if (info.tier === "free") {
+    badges.push({ label: "free", variant: "success" });
+  }
+  if (info.recommended) {
+    badges.push({ label: "recommended", variant: "info" });
+  }
+  return { id: info.id, name: info.name, badges };
+}
+
+function openRouterToOption(model: OpenRouterModel): ModelOption {
+  const badges: ModelOption["badges"] = [];
+  if (model.isFree) {
+    badges.push({ label: "free", variant: "success" });
+  }
+  return { id: model.id, name: model.name, badges };
+}
+
+function getStaticModels(provider: string): ModelOption[] {
+  switch (provider) {
+    case "gemini":
+      return Object.values(GEMINI_MODEL_INFO).map(modelInfoToOption);
+    case "zai":
+    case "zai-coding":
+      return Object.values(GLM_MODEL_INFO).map(modelInfoToOption);
+    default:
+      return [];
+  }
+}
 
 export function ModelStep({
   value,
@@ -40,7 +57,47 @@ export function ModelStep({
   provider,
   isActive = true,
 }: ModelStepProps): ReactElement {
-  const models = modelsByProvider[provider] ?? modelsByProvider["openai"]!;
+  const [models, setModels] = useState<ModelOption[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (provider === "openrouter") {
+      setIsLoading(true);
+      setError(null);
+      api
+        .getOpenRouterModels()
+        .then((res) => {
+          setModels(res.models.map(openRouterToOption));
+        })
+        .catch((err) => {
+          setError(err instanceof Error ? err.message : "Failed to load models");
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    } else {
+      setModels(getStaticModels(provider));
+      setError(null);
+      setIsLoading(false);
+    }
+  }, [provider]);
+
+  if (isLoading) {
+    return <Spinner label="Loading models..." />;
+  }
+
+  if (error) {
+    return (
+      <Box flexDirection="column" gap={1}>
+        <Text color="red">Failed to load models: {error}</Text>
+      </Box>
+    );
+  }
+
+  if (models.length === 0) {
+    return <Text dimColor>No models available for this provider.</Text>;
+  }
 
   return (
     <RadioGroup value={value} onChange={onChange} isActive={isActive}>
@@ -51,8 +108,8 @@ export function ModelStep({
           label={
             <Box gap={1}>
               <Text>{model.name}</Text>
-              {model.capabilities.map((cap) => (
-                <Badge key={cap.label} variant={cap.variant}>{cap.label}</Badge>
+              {model.badges.map((badge) => (
+                <Badge key={badge.label} variant={badge.variant}>{badge.label}</Badge>
               ))}
             </Box>
           }

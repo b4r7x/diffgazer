@@ -1,42 +1,101 @@
-import { Box } from "ink";
+import { Box, Text } from "ink";
 import { useTheme } from "../../../theme/theme-context.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Button } from "../../../components/ui/button.js";
 import { ProgressList } from "./progress-list.js";
+import type { ProgressStepItem } from "./progress-list.js";
 import { ActivityLog } from "./activity-log.js";
+import type { StepState, AgentState } from "@diffgazer/schemas/events";
+import type { LogEntryData } from "@diffgazer/schemas/ui";
+import type { FileProgress } from "@diffgazer/core/review";
 
 export interface ReviewProgressViewProps {
-  steps: Array<{
-    name: string;
-    status: string;
-    substeps?: string[];
-    duration?: number;
-  }>;
-  logEntries: Array<{
-    timestamp: string;
-    message: string;
-    variant?: "success" | "warning" | "error" | "info" | "neutral";
-  }>;
+  steps: StepState[];
+  agents: AgentState[];
+  logEntries: LogEntryData[];
+  fileProgress: FileProgress;
+  isStreaming: boolean;
+  error: string | null;
   onCancel?: () => void;
 }
 
 const WIDE_THRESHOLD = 100;
 
+function mapStepStatus(status: StepState["status"]): "pending" | "running" | "complete" | "error" {
+  switch (status) {
+    case "active": return "running";
+    case "completed": return "complete";
+    case "error": return "error";
+    default: return "pending";
+  }
+}
+
+function getAgentDetail(agent: AgentState): string {
+  switch (agent.status) {
+    case "running":
+      return `${Math.round(agent.progress)}%${agent.currentAction ? ` ${agent.currentAction}` : ""}`;
+    case "complete":
+      return `${agent.issueCount} issue${agent.issueCount === 1 ? "" : "s"}`;
+    case "error":
+      return "error";
+    default:
+      return "queued";
+  }
+}
+
+function mapStepsToProgressItems(steps: StepState[], agents: AgentState[]): ProgressStepItem[] {
+  return steps.map((step) => {
+    const substeps = step.id === "review" && agents.length > 0
+      ? agents.map((agent) => ({
+          label: agent.meta.name,
+          detail: getAgentDetail(agent),
+        }))
+      : undefined;
+
+    return {
+      id: step.id,
+      label: step.label,
+      status: mapStepStatus(step.status),
+      substeps,
+    };
+  });
+}
+
 export function ReviewProgressView({
   steps,
+  agents,
   logEntries,
+  fileProgress,
+  isStreaming,
+  error,
   onCancel,
 }: ReviewProgressViewProps) {
   const { tokens } = useTheme();
   const { columns } = useTerminalDimensions();
   const isWide = columns >= WIDE_THRESHOLD;
 
+  const progressItems = mapStepsToProgressItems(steps, agents);
+
+  const filesLabel = fileProgress.total > 0
+    ? `${fileProgress.completed.length}/${fileProgress.total} files`
+    : fileProgress.completed.length > 0
+      ? `${fileProgress.completed.length} files`
+      : null;
+
   const progressPane = (
     <Box flexDirection="column" flexGrow={1} width={isWide ? "50%" : "100%"}>
       <SectionHeader bordered>Progress</SectionHeader>
       <Box flexDirection="column" paddingTop={1}>
-        <ProgressList steps={steps as any} />
+        <ProgressList steps={progressItems} />
+        {filesLabel ? (
+          <Box marginTop={1} marginLeft={2}>
+            <Text color={tokens.muted}>{filesLabel} processed</Text>
+            {fileProgress.currentFile ? (
+              <Text color={tokens.muted}> — {fileProgress.currentFile}</Text>
+            ) : null}
+          </Box>
+        ) : null}
       </Box>
     </Box>
   );
@@ -45,7 +104,7 @@ export function ReviewProgressView({
     <Box flexDirection="column" flexGrow={1} width={isWide ? "50%" : "100%"}>
       <SectionHeader bordered>Activity Log</SectionHeader>
       <Box paddingTop={1}>
-        <ActivityLog entries={logEntries} height={steps.length + 5} />
+        <ActivityLog entries={logEntries} height={progressItems.length + 8} />
       </Box>
     </Box>
   );
@@ -59,7 +118,12 @@ export function ReviewProgressView({
         {progressPane}
         {logPane}
       </Box>
-      {onCancel ? (
+      {error ? (
+        <Box marginTop={1} marginLeft={2}>
+          <Text color={tokens.error}>{error}</Text>
+        </Box>
+      ) : null}
+      {onCancel && isStreaming ? (
         <Box marginTop={1}>
           <Button
             variant="destructive"
