@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useToast } from "@diffgazer/ui";
+import { toast } from "diffui/components/toast";
 import type { AIProvider } from "@diffgazer/schemas/config";
 import { useProviders } from "./use-providers";
 
@@ -28,8 +28,6 @@ export function useProviderManagement() {
     removeApiKey,
     selectProvider,
   } = useProviders();
-  const { showToast } = useToast();
-
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false);
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
   const { isSubmitting, withGuard } = useSubmitGuard();
@@ -42,12 +40,12 @@ export function useProviderManagement() {
     await withGuard(async () => {
       await saveApiKey(providerId, value);
       setApiKeyDialogOpen(false);
-      showToast({ variant: "success", title: "API Key Saved", message: "Provider configured" });
+      toast.success("API Key Saved", { message: "Provider configured" });
       if (opts?.openModelDialog) {
         setModelDialogOpen(true);
       }
     }).catch((error) => {
-      showToast({ variant: "error", title: "Failed to Save", message: error instanceof Error ? error.message : "Unknown error" });
+      toast.error("Failed to Save", { message: error instanceof Error ? error.message : "Unknown error" });
     });
   };
 
@@ -55,9 +53,9 @@ export function useProviderManagement() {
     await withGuard(async () => {
       await removeApiKey(providerId);
       setApiKeyDialogOpen(false);
-      showToast({ variant: "success", title: "API Key Removed", message: "Provider key deleted" });
+      toast.success("API Key Removed", { message: "Provider key deleted" });
     }).catch((error) => {
-      showToast({ variant: "error", title: "Failed to Remove", message: error instanceof Error ? error.message : "Unknown error" });
+      toast.error("Failed to Remove", { message: error instanceof Error ? error.message : "Unknown error" });
     });
   };
 
@@ -67,15 +65,15 @@ export function useProviderManagement() {
     model: string | undefined,
   ) => {
     if (!model) {
-      showToast({ variant: "error", title: "Model Required", message: "Select a model first" });
+      toast.error("Model Required", { message: "Select a model first" });
       setModelDialogOpen(true);
       return;
     }
     await withGuard(async () => {
       await selectProvider(providerId, model);
-      showToast({ variant: "success", title: "Provider Activated", message: `${providerName} is now active` });
+      toast.success("Provider Activated", { message: `${providerName} is now active` });
     }).catch((error) => {
-      showToast({ variant: "error", title: "Failed to Activate", message: error instanceof Error ? error.message : "Unknown error" });
+      toast.error("Failed to Activate", { message: error instanceof Error ? error.message : "Unknown error" });
     });
   };
 
@@ -83,9 +81,9 @@ export function useProviderManagement() {
     await withGuard(async () => {
       await selectProvider(providerId, modelId);
       setModelDialogOpen(false);
-      showToast({ variant: "success", title: "Model Selected", message: `Selected ${modelId}` });
+      toast.success("Model Selected", { message: `Selected ${modelId}` });
     }).catch((error) => {
-      showToast({ variant: "error", title: "Failed to Select Model", message: error instanceof Error ? error.message : "Unknown error" });
+      toast.error("Failed to Select Model", { message: error instanceof Error ? error.message : "Unknown error" });
     });
   };
 

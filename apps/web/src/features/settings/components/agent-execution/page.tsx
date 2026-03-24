@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { AgentExecution } from "@diffgazer/schemas/config";
 import type { Shortcut } from "@diffgazer/schemas/ui";
-import { Button, CardLayout, RadioGroup, RadioGroupItem } from "@diffgazer/ui";
+import { Button } from "diffui/components/button";
+import { RadioGroup, RadioGroupItem } from "diffui/components/radio";
+import { CardLayout } from "@/components/ui/card-layout";
 import { useNavigation, useKey, useScope } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useSettings } from "@/hooks/use-settings";
@@ -155,8 +157,8 @@ export function SettingsAgentExecutionPage() {
           <RadioGroup
             ref={radioRef}
             value={effectiveMode}
-            onValueChange={onExecutionChange}
-            focusedValue={navigationEnabled ? focusedValue : null}
+            onChange={onExecutionChange}
+            highlighted={navigationEnabled ? focusedValue : null}
             className="space-y-1"
           >
             <RadioGroupItem

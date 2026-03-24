@@ -1,4 +1,6 @@
-import { Panel, PanelHeader, PanelContent, Menu, MenuItem, Badge } from "@diffgazer/ui";
+import { Panel, PanelHeader, PanelContent } from "diffui/components/panel";
+import { Menu, MenuItem } from "diffui/components/menu";
+import { Badge } from "diffui/components/badge";
 import type { ResolvedTheme } from "@/types/theme";
 import "./theme-preview-card.css";
 

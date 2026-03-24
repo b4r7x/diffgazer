@@ -1,4 +1,4 @@
-import { SectionHeader } from '@diffgazer/ui';
+import { SectionHeader } from 'diffui/components/section-header';
 import { MetricItem } from './metric-item';
 import { Timer } from './timer';
 import type { ReviewProgressMetrics } from '@diffgazer/schemas/ui';

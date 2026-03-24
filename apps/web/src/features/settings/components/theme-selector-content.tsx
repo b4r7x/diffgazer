@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import type { Theme } from '@diffgazer/schemas/config';
-import { RadioGroup, RadioGroupItem } from '@diffgazer/ui';
+import { RadioGroup, RadioGroupItem } from "diffui/components/radio";
 import { useNavigation } from "keyscope";
 
 export interface ThemeSelectorContentProps {
@@ -65,9 +65,9 @@ export function ThemeSelectorContent({
       <RadioGroup
         ref={containerRef}
         value={value}
-        onValueChange={onChange}
-        onFocusChange={(nextValue) => focus(nextValue as Theme)}
-        focusedValue={enabled ? navigationFocusedValue : null}
+        onChange={onChange as (value: string) => void}
+        onHighlightChange={(nextValue) => focus(nextValue as Theme)}
+        highlighted={enabled ? navigationFocusedValue : null}
       >
         {options.map((option) => (
           <RadioGroupItem

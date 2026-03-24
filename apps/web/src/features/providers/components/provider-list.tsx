@@ -1,6 +1,7 @@
 import type { Ref } from 'react';
-import { NavigationList, NavigationListItem, Badge, Input } from '@diffgazer/ui';
-import { cn } from '@/utils/cn';
+import { NavigationList, NavigationListItem, NavigationListTitle, NavigationListBadge, NavigationListSubtitle, NavigationListStatus } from 'diffui/components/navigation-list';
+import { Input } from 'diffui/components/input';
+import { cn } from 'diffui/lib/utils';
 import { PROVIDER_CAPABILITIES } from '@/config/constants';
 import { PROVIDER_FILTER_LABELS, type ProviderFilter } from '@/features/providers/constants';
 import type { ProviderWithStatus, DisplayStatus } from '../types';
@@ -94,14 +95,20 @@ export function ProviderList({
         <NavigationList
           ref={listRef}
           selectedId={selectedId}
-          focusedValue={focusedValue}
-          onSelect={onSelect}
-          onActivate={onActivate}
-          isFocused={isFocused}
+          highlightedId={focusedValue}
+          onSelect={(id) => {
+            onSelect(id);
+            onActivate?.(id);
+          }}
+          focused={isFocused}
         >
           {providers.map((provider) => {
             const capabilities = PROVIDER_CAPABILITIES[provider.id];
             const tierBadge = capabilities?.tierBadge ?? 'PAID';
+            const statusText = getStatusIndicator(provider.displayStatus);
+            const subtitleText = !provider.model
+              ? "Select model"
+              : (provider.defaultModel || undefined);
 
             return (
               <NavigationListItem
@@ -111,23 +118,16 @@ export function ProviderList({
                   'border-l-2 border-l-transparent',
                   !isFocused && selectedId === provider.id && 'border-l-tui-blue/60 text-tui-fg'
                 )}
-                statusIndicator={getStatusIndicator(provider.displayStatus)}
-                badge={
-                  <Badge
-                    variant={tierBadge === 'FREE' ? 'success' : 'neutral'}
-                    size="sm"
-                    className="text-[9px] inline-flex items-center leading-none"
-                  >
-                    {tierBadge}
-                  </Badge>
-                }
-                subtitle={
-                  !provider.model
-                    ? "Select model"
-                    : (provider.defaultModel || undefined)
-                }
               >
-                {provider.name}
+                <NavigationListTitle>{provider.name}</NavigationListTitle>
+                {statusText && <NavigationListStatus>{statusText}</NavigationListStatus>}
+                <NavigationListBadge
+                  variant={tierBadge === 'FREE' ? 'success' : 'neutral'}
+                  className="text-[9px]"
+                >
+                  {tierBadge}
+                </NavigationListBadge>
+                {subtitleText && <NavigationListSubtitle>{subtitleText}</NavigationListSubtitle>}
               </NavigationListItem>
             );
           })}

@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Menu, MenuItem, Panel } from "@diffgazer/ui";
+import { Menu, MenuItem } from "diffui/components/menu";
+import { Panel } from "diffui/components/panel";
 import { useConfigData } from "@/app/providers/config-provider";
 import { useScope, useKey, useNavigation } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
@@ -96,9 +97,9 @@ export function SettingsHubPage() {
           <Menu
             ref={menuRef}
             selectedId={selectedId}
-            focusedValue={focusedValue}
-            onSelect={setSelectedId}
-            onActivate={handleActivate}
+            highlightedId={focusedValue}
+            onHighlightChange={setSelectedId}
+            onSelect={handleActivate}
             variant="hub"
             className="flex flex-col text-sm pt-2"
           >

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Badge, RadioGroup, RadioGroupItem } from "@diffgazer/ui";
+import { RadioGroup, RadioGroupItem } from "diffui/components/radio";
+import { Badge } from "diffui/components/badge";
 import { useNavigation } from "keyscope";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/schemas/config";
 import type { AIProvider } from "@diffgazer/schemas/config";
@@ -70,8 +71,8 @@ export function ProviderStep({
       <RadioGroup
         ref={containerRef}
         value={value ?? undefined}
-        onValueChange={onChange}
-        focusedValue={enabled ? focusedValue : null}
+        onChange={onChange as (value: string) => void}
+        highlighted={enabled ? focusedValue : null}
         className="space-y-1 border border-tui-border p-1"
       >
         {AVAILABLE_PROVIDERS.map((provider) => {

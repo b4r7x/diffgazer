@@ -1,13 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { cn } from "@/utils/cn";
-import {
-  SectionHeader,
-  Badge,
-  type BadgeProps,
-  Button,
-  Callout,
-} from "@diffgazer/ui";
+import { SectionHeader } from "diffui/components/section-header";
+import { Badge, type BadgeProps } from "diffui/components/badge";
+import { Button } from "diffui/components/button";
+import { Callout, CalloutTitle, CalloutContent } from "diffui/components/callout";
 import { ProgressList, type ProgressStepData } from "@/components/ui/progress";
 import { ActivityLog, type LogEntryData } from "./activity-log";
 import { AgentBoard } from "./agent-board";
@@ -248,10 +245,13 @@ export function ReviewProgressView({
 
         {hasPartialFailure && !error && (
           <div className="pb-2">
-            <Callout variant="warning" title="Partial Analysis">
-              {failedAgents.length} agent{failedAgents.length === 1 ? "" : "s"}{" "}
-              failed (likely rate limited): {failedAgentNames}. Results may be
-              incomplete.
+            <Callout variant="warning">
+              <CalloutTitle>Partial Analysis</CalloutTitle>
+              <CalloutContent>
+                {failedAgents.length} agent{failedAgents.length === 1 ? "" : "s"}{" "}
+                failed (likely rate limited): {failedAgentNames}. Results may be
+                incomplete.
+              </CalloutContent>
             </Callout>
           </div>
         )}

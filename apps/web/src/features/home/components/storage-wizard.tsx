@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { SecretsStorage } from "@diffgazer/schemas/config";
-import { Button, Callout, CardLayout } from "@diffgazer/ui";
+import { CardLayout } from "@/components/ui/card-layout";
+import { Button } from "diffui/components/button";
+import { Callout } from "diffui/components/callout";
 import { StorageSelectorContent } from "@/components/shared/storage-selector-content";
 
 export interface StorageWizardProps {
@@ -43,7 +45,7 @@ export function StorageWizard({
           disabled={isLoading}
         />
 
-        <Callout variant="info">
+        <Callout variant="info" layout="inline">
           You can change this setting later from the Settings menu.
         </Callout>
 

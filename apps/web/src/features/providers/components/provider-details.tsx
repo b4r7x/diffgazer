@@ -1,4 +1,7 @@
-import { Badge, Button, SectionHeader, KeyValue } from '@diffgazer/ui';
+import { Badge } from 'diffui/components/badge';
+import { Button } from 'diffui/components/button';
+import { SectionHeader } from 'diffui/components/section-header';
+import { KeyValue } from 'diffui/components/key-value';
 import { CapabilityCard } from './capability-card';
 import { PROVIDER_CAPABILITIES, OPENROUTER_PROVIDER_ID } from '@/config/constants';
 import type { ProviderWithStatus } from '../types';

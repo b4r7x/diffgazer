@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import type { SecretsStorage } from '@diffgazer/schemas/config';
-import { RadioGroup, RadioGroupItem } from '@diffgazer/ui';
+import { RadioGroup, RadioGroupItem } from "diffui/components/radio";
 import { useNavigation } from "keyscope";
 
 export interface StorageSelectorContentProps {
@@ -57,8 +57,8 @@ export function StorageSelectorContent({
       <RadioGroup
         ref={containerRef}
         value={value ?? undefined}
-        onValueChange={onChange}
-        focusedValue={navigationEnabled ? focusedValue : null}
+        onChange={onChange as (value: string) => void}
+        highlighted={navigationEnabled ? focusedValue : null}
         className="space-y-2"
         disabled={disabled}
       >

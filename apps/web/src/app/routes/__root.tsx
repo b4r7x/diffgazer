@@ -1,6 +1,7 @@
 import React from "react";
 import { Outlet } from "@tanstack/react-router";
-import { Button, ToastProvider } from "@diffgazer/ui";
+import { Button } from "diffui/components/button";
+import { Toaster } from "diffui/components/toast";
 import { GlobalLayout } from "@/components/layout";
 import { FooterProvider } from "@/components/layout";
 import { useServerStatus } from "@/hooks/use-server-status";
@@ -67,13 +68,12 @@ export function RootLayout() {
 
   return (
     <FooterProvider>
-      <ToastProvider>
-        <GlobalLayout>
-          <RouteErrorBoundary>
-            <Outlet />
-          </RouteErrorBoundary>
-        </GlobalLayout>
-      </ToastProvider>
+      <GlobalLayout>
+        <RouteErrorBoundary>
+          <Outlet />
+        </RouteErrorBoundary>
+      </GlobalLayout>
+      <Toaster position="bottom-right" />
     </FooterProvider>
   );
 }

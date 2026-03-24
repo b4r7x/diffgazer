@@ -1,5 +1,6 @@
 import { cn } from "@/utils/cn";
-import { ScrollArea, SectionHeader } from "@diffgazer/ui";
+import { ScrollArea } from "diffui/components/scroll-area";
+import { SectionHeader } from "diffui/components/section-header";
 import { SeverityBreakdown } from "@/components/ui/severity/severity-breakdown";
 import type { ReviewIssue } from "@diffgazer/schemas/review";
 import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";

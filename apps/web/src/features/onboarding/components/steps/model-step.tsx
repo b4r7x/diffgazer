@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { AVAILABLE_PROVIDERS, GEMINI_MODEL_INFO, GLM_MODEL_INFO } from "@diffgazer/schemas/config";
 import type { AIProvider, ModelInfo } from "@diffgazer/schemas/config";
-import { RadioGroup, RadioGroupItem, Badge } from "@diffgazer/ui";
+import { RadioGroup, RadioGroupItem } from "diffui/components/radio";
+import { Badge } from "diffui/components/badge";
 import { useNavigation } from "keyscope";
 import { useOpenRouterModels } from "@/hooks/use-openrouter-models";
 
@@ -80,8 +81,8 @@ function StaticModelList({
       <RadioGroup
         ref={containerRef}
         value={value ?? undefined}
-        onValueChange={onChange}
-        focusedValue={enabled ? focusedValue : null}
+        onChange={onChange}
+        highlighted={enabled ? focusedValue : null}
         className="space-y-1"
       >
         {models.map((model) => (
@@ -186,8 +187,8 @@ function OpenRouterModelList({
         <RadioGroup
           ref={containerRef}
           value={value ?? undefined}
-          onValueChange={onChange}
-          focusedValue={enabled ? focusedValue : null}
+          onChange={onChange}
+          highlighted={enabled ? focusedValue : null}
           className="space-y-1"
         >
           {models.map((model) => (

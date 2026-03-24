@@ -1,5 +1,6 @@
-import { DialogFooter, Button } from "@diffgazer/ui";
-import { cn } from "@/utils/cn";
+import { DialogFooter } from "diffui/components/dialog";
+import { Button } from "diffui/components/button";
+import { cn } from "diffui/lib/utils";
 import type { FocusElement } from "@/types/focus-element";
 
 interface ApiKeyFooterProps {

@@ -1,12 +1,9 @@
 import { useRef, useState } from "react";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/schemas/events";
 import type { LensId } from "@diffgazer/schemas/review";
-import {
-  CheckboxGroup,
-  CheckboxItem,
-  Badge,
-  ScrollArea,
-} from "@diffgazer/ui";
+import { CheckboxGroup, CheckboxItem } from "diffui/components/checkbox";
+import { Badge } from "diffui/components/badge";
+import { ScrollArea } from "diffui/components/scroll-area";
 import { useNavigation } from "keyscope";
 
 const LENS_OPTIONS = (
@@ -86,8 +83,8 @@ export function AnalysisStep({
           <CheckboxGroup
             ref={checkboxRef}
             value={lenses}
-            onValueChange={onLensesChange}
-            focusedValue={enabled ? checkboxFocusedValue : null}
+            onChange={onLensesChange}
+            highlighted={enabled ? checkboxFocusedValue : null}
             className="space-y-1"
           >
             {LENS_OPTIONS.map((option) => (

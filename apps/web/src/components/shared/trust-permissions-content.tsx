@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { TrustCapabilities } from "@diffgazer/schemas/config";
-import { Badge, Callout, Button, CheckboxGroup, CheckboxItem } from "@diffgazer/ui";
+import { Badge } from "diffui/components/badge";
+import { Callout, CalloutIcon, CalloutTitle, CalloutContent } from "diffui/components/callout";
+import { Button } from "diffui/components/button";
+import { CheckboxGroup, CheckboxItem } from "diffui/components/checkbox";
 import { useNavigation } from "keyscope";
 import { useTrustFormKeyboard } from "@/features/settings/hooks/use-trust-form-keyboard";
 import { cn } from "@/utils/cn";
@@ -127,8 +130,8 @@ export function TrustPermissionsContent({
       <CheckboxGroup
         ref={checkboxRef}
         value={selectedCapabilities}
-        onValueChange={handleValueChange}
-        focusedValue={isListZone ? listFocusedValue : null}
+        onChange={handleValueChange}
+        highlighted={isListZone ? listFocusedValue : null}
         disabled={!isListZone}
       >
         {CAPABILITIES.map(({ id, label, description, disabled }) => (
@@ -143,9 +146,13 @@ export function TrustPermissionsContent({
       </CheckboxGroup>
 
       {/* Security Warning - always visible */}
-      <Callout variant="warning" title="SECURITY WARNING">
-        Run commands is currently unavailable. When enabled, it allows the AI to execute shell scripts.
-        This grants significant access to your system.
+      <Callout variant="warning">
+        <CalloutIcon />
+        <CalloutTitle>SECURITY WARNING</CalloutTitle>
+        <CalloutContent>
+          Run commands is currently unavailable. When enabled, it allows the AI to execute shell scripts.
+          This grants significant access to your system.
+        </CalloutContent>
       </Callout>
 
       {/* Actions */}
@@ -160,7 +167,7 @@ export function TrustPermissionsContent({
             {isLoading ? "[ Saving... ]" : "[ Save Changes ]"}
           </Button>
           <Button
-            variant="error"
+            variant="destructive"
             onClick={onRevoke}
             disabled={isLoading}
             className={cn(focusZone === 'buttons' && buttonIndex === 1 && 'ring-2 ring-tui-blue')}

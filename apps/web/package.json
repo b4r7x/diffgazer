@@ -4,11 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "predev": "pnpm --filter @diffgazer/ui build",
     "dev": "vite",
-    "prebuild": "pnpm --filter @diffgazer/ui build",
     "build": "tsc -b && vite build",
-    "pretest": "pnpm --filter @diffgazer/ui build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -18,7 +15,7 @@
     "@diffgazer/core": "workspace:*",
     "@diffgazer/hooks": "workspace:*",
     "@diffgazer/schemas": "workspace:*",
-    "@diffgazer/ui": "workspace:*",
+    "diffui": "workspace:*",
     "keyscope": "workspace:*",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-router": "^1.158.1",

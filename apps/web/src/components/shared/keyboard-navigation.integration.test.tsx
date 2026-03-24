@@ -1,14 +1,9 @@
 import { useRef, useState } from "react";
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import {
-  CheckboxGroup,
-  CheckboxItem,
-  Menu,
-  MenuItem,
-  RadioGroup,
-  RadioGroupItem,
-} from "@diffgazer/ui";
+import { CheckboxGroup, CheckboxItem } from "diffui/components/checkbox";
+import { Menu, MenuItem } from "diffui/components/menu";
+import { RadioGroup, RadioGroupItem } from "diffui/components/radio";
 import { useNavigation, KeyboardProvider } from "keyscope";
 
 function CheckboxGroupWithKeyboard() {
@@ -35,9 +30,9 @@ function CheckboxGroupWithKeyboard() {
     <CheckboxGroup
       ref={containerRef}
       value={value}
-      onValueChange={setValue}
+      onChange={setValue}
       onKeyDown={onKeyDown}
-      focusedValue={focusedValue}
+      highlighted={focusedValue}
     >
       <CheckboxItem value="alpha" label="Alpha" />
       <CheckboxItem value="beta" label="Beta" />
@@ -63,9 +58,9 @@ function RadioGroupWithKeyboard() {
     <RadioGroup
       ref={containerRef}
       value={value}
-      onValueChange={setValue}
+      onChange={setValue}
       onKeyDown={onKeyDown}
-      focusedValue={focusedValue}
+      highlighted={focusedValue}
     >
       <RadioGroupItem value="alpha" label="Alpha" />
       <RadioGroupItem value="beta" label="Beta" />
@@ -75,30 +70,17 @@ function RadioGroupWithKeyboard() {
 }
 
 function MenuWithKeyboard({ onActivate }: { onActivate: (id: string) => void }) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const handleActivate = (id: string) => {
+  const handleSelect = (id: string) => {
     setSelectedId(id);
     onActivate(id);
   };
 
-  const { onKeyDown, highlighted: focusedValue } = useNavigation({
-    containerRef,
-    role: "option",
-    value: selectedId,
-    onValueChange: setSelectedId,
-    onEnter: handleActivate,
-  });
-
   return (
     <Menu
-      ref={containerRef}
       selectedId={selectedId}
-      focusedValue={focusedValue}
-      onSelect={setSelectedId}
-      onActivate={handleActivate}
-      onKeyDown={onKeyDown}
+      onSelect={handleSelect}
     >
       <MenuItem id="alpha">Alpha</MenuItem>
       <MenuItem id="beta">Beta</MenuItem>
@@ -143,12 +125,12 @@ describe("UI keyboard navigation integration", () => {
       <KeyboardProvider><MenuWithKeyboard onActivate={(id) => activated.push(id)} /></KeyboardProvider>
     );
 
-    const listbox = screen.getByRole("listbox");
+    const listbox = screen.getByRole("menu");
 
     fireEvent.keyDown(listbox, { key: "ArrowDown" });
     fireEvent.keyDown(listbox, { key: "Enter" });
 
     expect(activated).toEqual(["beta"]);
-    expect(screen.getByText("Beta").closest('[role="option"]')?.getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByText("Beta").closest('[role="menuitem"]')?.getAttribute("aria-current")).toBe("true");
   });
 });

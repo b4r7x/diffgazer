@@ -1,6 +1,9 @@
 import { useRef, type Ref } from "react";
 import { cn } from "@/utils/cn";
-import { Tabs, TabsList, TabsTrigger, TabsContent, SectionHeader, EmptyState, ScrollArea } from "@diffgazer/ui";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "diffui/components/tabs";
+import { SectionHeader } from "diffui/components/section-header";
+import { EmptyState } from "diffui/components/empty-state";
+import { ScrollArea } from "diffui/components/scroll-area";
 import { useNavigation } from "keyscope";
 import { CodeSnippet, type CodeLine } from "./code-snippet";
 import { DiffView } from "./diff-view";
@@ -42,7 +45,7 @@ export function IssueDetailsPane({
   return (
     <div data-focused={isFocused || undefined} className={cn("w-3/5 flex flex-col pl-4 min-h-0", className)}>
       <div ref={tabsRef} className="flex flex-1 min-h-0 flex-col">
-        <Tabs value={activeTab} onValueChange={onTabChange} className="flex flex-1 min-h-0 flex-col">
+        <Tabs value={activeTab} onValueChange={onTabChange as (value: string) => void} className="flex flex-1 min-h-0 flex-col">
           <TabsList className="border-b border-tui-border pb-2 pt-2 mb-4" onKeyDown={tabsKeyDown}>
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="explain">Explain</TabsTrigger>
@@ -82,7 +85,7 @@ export function IssueDetailsPane({
                 )}
               </>
             ) : (
-              <EmptyState message="Select an issue to view details" />
+              <EmptyState>Select an issue to view details</EmptyState>
             )}
           </ScrollArea>
         </Tabs>
@@ -141,7 +144,7 @@ function DetailsTabContent({
 
 function TraceTabContent({ issue }: { issue: ReviewIssue }) {
   if (!issue.trace || issue.trace.length === 0) {
-    return <EmptyState message="No trace data available for this issue." variant="inline" />;
+    return <EmptyState variant="inline">No trace data available for this issue.</EmptyState>;
   }
 
   return (

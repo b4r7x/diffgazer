@@ -1,6 +1,6 @@
 import { useScope, useKey } from 'keyscope';
 import { usePageFooter } from '@/hooks/use-page-footer';
-import { Button } from '@diffgazer/ui';
+import { Button } from 'diffui/components/button';
 import type { ReviewMode } from '@diffgazer/schemas/review';
 
 export interface NoChangesViewProps {

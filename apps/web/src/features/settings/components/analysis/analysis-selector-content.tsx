@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { LensId } from "@diffgazer/schemas/review";
-import { Badge, CheckboxGroup, CheckboxItem, ScrollArea } from "@diffgazer/ui";
+import { Badge } from "diffui/components/badge";
+import { CheckboxGroup, CheckboxItem } from "diffui/components/checkbox";
+import { ScrollArea } from "diffui/components/scroll-area";
 import { useNavigation } from "keyscope";
 
 export interface AnalysisOption {
@@ -89,8 +91,8 @@ export function AnalysisSelectorContent({
         <CheckboxGroup
           ref={checkboxRef}
           value={value}
-          onValueChange={onChange}
-          focusedValue={navigationEnabled ? focusedValue : null}
+          onChange={onChange}
+          highlighted={navigationEnabled ? focusedValue : null}
           variant="bullet"
           disabled={disabled || !enabled}
         >

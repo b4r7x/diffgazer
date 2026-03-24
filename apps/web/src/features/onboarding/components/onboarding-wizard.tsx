@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { CardLayout, Button, Callout } from "@diffgazer/ui";
+import { CardLayout } from "@/components/ui/card-layout";
+import { Button } from "diffui/components/button";
+import { Callout } from "diffui/components/callout";
+import { cn } from "diffui/lib/utils";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useKey, useScope } from "keyscope";
-import { cn } from "@/utils/cn";
 import { useOnboarding } from "../hooks/use-onboarding";
 import { WizardProgress } from "./wizard-progress";
 import { StorageStep } from "./steps/storage-step";

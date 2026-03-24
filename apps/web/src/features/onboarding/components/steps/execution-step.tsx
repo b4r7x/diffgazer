@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { AgentExecution } from "@diffgazer/schemas/config";
-import { RadioGroup, RadioGroupItem } from "@diffgazer/ui";
+import { RadioGroup, RadioGroupItem } from "diffui/components/radio";
 import { useNavigation } from "keyscope";
 
 interface ExecutionStepProps {
@@ -54,8 +54,8 @@ export function ExecutionStep({
       <RadioGroup
         ref={radioRef}
         value={value}
-        onValueChange={onChange}
-        focusedValue={enabled ? radioFocusedValue : null}
+        onChange={onChange as (value: string) => void}
+        highlighted={enabled ? radioFocusedValue : null}
         className="space-y-1"
       >
         <RadioGroupItem

@@ -1,4 +1,5 @@
-import { SectionHeader, Button } from "@diffgazer/ui";
+import { SectionHeader } from "diffui/components/section-header";
+import { Button } from "diffui/components/button";
 import { downloadAsFile } from "@/utils/download";
 import type { ReviewContextResponse } from "@diffgazer/api/types";
 

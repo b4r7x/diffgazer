@@ -1,12 +1,6 @@
 import { useRef } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogBody,
-  Badge,
-} from "@diffgazer/ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "diffui/components/dialog";
+import { Badge } from "diffui/components/badge";
 import { useApiKeyForm } from "../../hooks/use-api-key-form";
 import { useApiKeyDialogKeyboard } from "../../hooks/use-api-key-dialog-keyboard";
 import { ApiKeyMethodSelector } from "./api-key-method-selector";
