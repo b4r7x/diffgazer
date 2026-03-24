@@ -2,7 +2,7 @@ import { ReviewProgressView } from './review-progress-view';
 import { ApiKeyMissingView } from './api-key-missing-view';
 import { NoChangesView } from './no-changes-view';
 import { useReviewLifecycle, type ReviewCompleteData } from '../hooks/use-review-lifecycle';
-import { useContextSnapshot } from '../hooks/use-context-snapshot';
+import { useReviewContext } from '@diffgazer/api/hooks';
 import { convertAgentEventsToLogEntries } from '@diffgazer/core/review';
 import { mapStepsToProgressData } from './review-container.utils';
 import type { ReviewMode } from '@diffgazer/schemas/review';
@@ -48,12 +48,9 @@ export function ReviewContainer({ mode, onComplete, onReviewNotInSession }: Revi
     handleSwitchMode,
   } = useReviewLifecycle({ mode, onComplete, onReviewNotInSession });
 
-  const contextStep = state.steps.find((step) => step.id === "context");
-  const contextSnapshot = useContextSnapshot(
-    state.reviewId,
-    state.isStreaming,
-    contextStep?.status === "completed"
-  );
+  const { data: contextData } = useReviewContext();
+  // Suppress context display during streaming (matches old useContextSnapshot behavior)
+  const contextSnapshot = state.isStreaming ? null : contextData ?? null;
 
   const progressData = (() => {
     const steps = mapStepsToProgressData(state.steps, state.agents);

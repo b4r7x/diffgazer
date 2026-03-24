@@ -5,8 +5,7 @@ import { LENS_IDS } from "@diffgazer/schemas/review";
 import type { InputMethod } from "@/types/input-method";
 import { useConfigActions } from "@/app/providers/config-provider";
 import { setConfiguredGuardCache } from "@/lib/config-guards/config-guard-cache";
-import { refreshSettingsCache } from "@/hooks/use-settings";
-import { api } from "@/lib/api";
+import { useSaveSettings, useSaveConfig } from "@diffgazer/api/hooks";
 import type { OnboardingStep, WizardData } from "../types";
 
 const STEPS: OnboardingStep[] = [
@@ -31,6 +30,8 @@ const INITIAL_DATA: WizardData = {
 
 export function useOnboarding() {
   const { refresh: refreshConfig } = useConfigActions();
+  const saveSettings = useSaveSettings();
+  const saveConfig = useSaveConfig();
   const [wizardData, setWizardData] = useState<WizardData>(INITIAL_DATA);
   const [stepIndex, setStepIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -87,18 +88,17 @@ export function useOnboarding() {
     setIsSubmitting(true);
     setError(null);
     try {
-      await api.saveSettings({
+      await saveSettings.mutateAsync({
         secretsStorage: wizardData.secretsStorage,
         defaultLenses: wizardData.defaultLenses,
         agentExecution: wizardData.agentExecution,
       });
-      await api.saveConfig({
+      await saveConfig.mutateAsync({
         provider: wizardData.provider,
         apiKey: wizardData.inputMethod === "env" ? "env" : wizardData.apiKey,
         model: wizardData.model ?? undefined,
       });
       await refreshConfig(true);
-      await refreshSettingsCache();
       setConfiguredGuardCache(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Setup failed");

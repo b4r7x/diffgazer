@@ -6,7 +6,7 @@ import { useTheme } from "../../../theme/theme-context.js";
 import { Dialog } from "../../../components/ui/dialog.js";
 import { Button } from "../../../components/ui/button.js";
 import { Spinner } from "../../../components/ui/spinner.js";
-import { api } from "../../../lib/api.js";
+import { useSaveConfig } from "@diffgazer/api/hooks";
 import { ApiKeyMethodSelector } from "./api-key-method-selector.js";
 
 interface ApiKeyOverlayProps {
@@ -23,34 +23,27 @@ export function ApiKeyOverlay({
   onSave,
 }: ApiKeyOverlayProps): ReactElement | null {
   const { tokens } = useTheme();
+  const saveConfig = useSaveConfig();
   const [method, setMethod] = useState<"paste" | "env">("paste");
   const [apiKey, setApiKey] = useState("");
   const [envVar, setEnvVar] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const saving = saveConfig.isPending;
+  const error = saveConfig.error?.message ?? null;
 
   function handleSave() {
     const value = method === "paste" ? apiKey : envVar;
     if (!value || saving) return;
 
-    setSaving(true);
-    setError(null);
-
-    api
-      .saveConfig({
-        provider: providerId as AIProvider,
-        apiKey: value,
-      })
-      .then(() => {
-        setSaving(false);
-        onSave(value, method);
-        onOpenChange(false);
-      })
-      .catch((e: unknown) => {
-        setSaving(false);
-        const message = e instanceof Error ? e.message : "Failed to save API key";
-        setError(message);
-      });
+    saveConfig.mutate(
+      { provider: providerId as AIProvider, apiKey: value },
+      {
+        onSuccess: () => {
+          onSave(value, method);
+          onOpenChange(false);
+        },
+      },
+    );
   }
 
   function handleMethodChange(m: string) {

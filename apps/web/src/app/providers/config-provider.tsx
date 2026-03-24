@@ -1,70 +1,18 @@
 import {
   createContext,
   useContext,
-  useEffect,
-  useRef,
-  useState,
   type ReactNode,
 } from "react";
-import { AIProviderSchema } from "@diffgazer/schemas/config";
-import { SetupStatusSchema } from "@diffgazer/schemas/config";
 import type { AIProvider, ProviderStatus, TrustConfig, SetupStatus } from "@diffgazer/schemas/config";
-import { DEFAULT_TTL } from "@/config/constants";
-import { api } from "@/lib/api";
-
-interface ConfigData {
-  provider?: AIProvider;
-  model?: string;
-  providers: ProviderStatus[];
-  projectId: string | null;
-  repoRoot: string | null;
-  trust: TrustConfig | null;
-  setupStatus: SetupStatus | null;
-}
-
-interface CacheEntry {
-  data: ConfigData;
-  timestamp: number;
-}
-
-let configCache: CacheEntry | null = null;
-
-function getCached(): ConfigData | null {
-  if (!configCache) return null;
-  if (Date.now() - configCache.timestamp > DEFAULT_TTL) {
-    configCache = null;
-    return null;
-  }
-  return configCache.data;
-}
-
-function setCache(data: ConfigData): void {
-  configCache = { data, timestamp: Date.now() };
-}
-
-function invalidateConfigCache(): void {
-  configCache = null;
-}
-
-interface ConfigState {
-  provider?: AIProvider;
-  model?: string;
-  providerStatus: ProviderStatus[];
-  projectId: string | null;
-  repoRoot: string | null;
-  trust: TrustConfig | null;
-  setupStatus: SetupStatus | null;
-}
-
-const initialConfigState: ConfigState = {
-  provider: undefined,
-  model: undefined,
-  providerStatus: [],
-  projectId: null,
-  repoRoot: null,
-  trust: null,
-  setupStatus: null,
-};
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useInit,
+  useProviderStatus,
+  useActivateProvider,
+  useSaveConfig,
+  useDeleteProviderCredentials,
+  configQueries,
+} from "@diffgazer/api/hooks";
 
 // Stable data context — changes only when config data itself changes
 interface ConfigDataContextValue {
@@ -97,97 +45,45 @@ const ConfigDataContext = createContext<ConfigDataContextValue | undefined>(unde
 const ConfigActionsContext = createContext<ConfigActionsContextValue | undefined>(undefined);
 
 export function ConfigProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState(initialConfigState);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const initQuery = useInit();
+  const providersQuery = useProviderStatus();
+  const activateMutation = useActivateProvider();
+  const saveConfigMutation = useSaveConfig();
+  const deleteCredentialsMutation = useDeleteProviderCredentials();
 
-  const stateRef = useRef(state);
-  stateRef.current = state;
+  const initData = initQuery.data;
+  const isLoading = initQuery.isLoading || providersQuery.isLoading;
+  const isSaving =
+    activateMutation.isPending ||
+    saveConfigMutation.isPending ||
+    deleteCredentialsMutation.isPending;
 
-  const isConfigured = state.setupStatus?.isConfigured ?? false;
+  const queryError = initQuery.error ?? providersQuery.error;
+  const mutationError =
+    activateMutation.error ??
+    saveConfigMutation.error ??
+    deleteCredentialsMutation.error;
+  const error = mutationError?.message ?? queryError?.message ?? null;
 
-  const applyConfigData = (data: ConfigData) => {
-    setState({
-      provider: data.provider,
-      model: data.model,
-      providerStatus: data.providers,
-      projectId: data.projectId,
-      repoRoot: data.repoRoot,
-      trust: data.trust,
-      setupStatus: data.setupStatus,
-    });
-  };
+  const provider = initData?.config?.provider;
+  const model = initData?.config?.model;
+  const isConfigured = initData?.setup?.isConfigured ?? false;
+  const providerStatus = providersQuery.data ?? initData?.providers ?? [];
+  const projectId = initData?.project?.projectId ?? null;
+  const repoRoot = initData?.project?.path ?? null;
+  const trust = initData?.project?.trust ?? null;
+  const setupStatus = initData?.setup ?? null;
 
-  const updateAfterAction = async (
-    newProvider: AIProvider | undefined,
-    newModel: string | undefined,
-  ) => {
-    const [providers, initData] = await Promise.all([
-      api.getProviderStatus(),
-      api.loadInit(),
-    ]);
-    const data: ConfigData = {
-      provider: newProvider,
-      model: newModel,
-      providers,
-      projectId: initData.project.projectId,
-      repoRoot: initData.project.path,
-      trust: initData.project.trust,
-      setupStatus: SetupStatusSchema.parse(initData.setup),
-    };
-    applyConfigData(data);
-    setCache(data);
-  };
-
-  const refresh = async (invalidate = false) => {
-    if (invalidate) invalidateConfigCache();
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const cached = getCached();
-      if (cached) {
-        applyConfigData(cached);
-        setIsLoading(false);
-        return;
-      }
-
-      const initData = await api.loadInit();
-      const data: ConfigData = {
-        provider:
-          AIProviderSchema.safeParse(initData.config?.provider).data,
-        model: initData.config?.model,
-        providers: initData.providers,
-        projectId: initData.project.projectId,
-        repoRoot: initData.project.path,
-        trust: initData.project.trust,
-        setupStatus: SetupStatusSchema.parse(initData.setup),
-      };
-      applyConfigData(data);
-      setCache(data);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load configuration",
-      );
-    } finally {
-      setIsLoading(false);
-    }
+  const refresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: configQueries.all() });
   };
 
   const activateProvider = async (providerId: string, selectedModel?: string) => {
-    setIsSaving(true);
-    setError(null);
     try {
-      invalidateConfigCache();
-      const result = await api.activateProvider(providerId, selectedModel);
-      await updateAfterAction(AIProviderSchema.safeParse(result.provider).data, result.model);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to activate provider",
-      );
-    } finally {
-      setIsSaving(false);
+      await activateMutation.mutateAsync({ providerId, model: selectedModel });
+    } catch {
+      // Error captured in activateMutation.error
     }
   };
 
@@ -196,62 +92,34 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     apiKey: string,
     selectedModel?: string,
   ) => {
-    setIsSaving(true);
-    setError(null);
     try {
-      invalidateConfigCache();
-      await api.saveConfig({
+      await saveConfigMutation.mutateAsync({
         provider: providerName,
         apiKey,
         model: selectedModel,
       });
-      await updateAfterAction(providerName, selectedModel);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to save credentials",
-      );
-    } finally {
-      setIsSaving(false);
+    } catch {
+      // Error captured in saveConfigMutation.error
     }
   };
 
   const deleteProviderCredentials = async (providerName: AIProvider) => {
-    setIsSaving(true);
-    setError(null);
     try {
-      invalidateConfigCache();
-      await api.deleteProviderCredentials(providerName);
-      const { provider: currentProvider, model: currentModel } =
-        stateRef.current;
-      const wasActive = currentProvider === providerName;
-      await updateAfterAction(
-        wasActive ? undefined : currentProvider,
-        wasActive ? undefined : currentModel,
-      );
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to delete provider credentials",
-      );
-    } finally {
-      setIsSaving(false);
+      await deleteCredentialsMutation.mutateAsync(providerName);
+    } catch {
+      // Error captured in deleteCredentialsMutation.error
     }
   };
 
-  useEffect(() => {
-    refresh();
-  }, []);
-
   const dataValue: ConfigDataContextValue = {
-    provider: state.provider,
-    model: state.model,
+    provider,
+    model,
     isConfigured,
-    providerStatus: state.providerStatus,
-    projectId: state.projectId,
-    repoRoot: state.repoRoot,
-    trust: state.trust,
-    setupStatus: state.setupStatus,
+    providerStatus,
+    projectId,
+    repoRoot,
+    trust,
+    setupStatus,
   };
 
   const actionsValue: ConfigActionsContextValue = {

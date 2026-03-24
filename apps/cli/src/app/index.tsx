@@ -1,6 +1,8 @@
 import { useContext, useEffect } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { ApiProvider } from "@diffgazer/api/hooks";
 import type { CliMode } from "../types/cli.js";
 import { CliThemeProvider } from "../theme/theme-context.js";
 import { TerminalKeyboardProvider, KeyboardContext } from "./providers/keyboard-provider.js";
@@ -15,6 +17,10 @@ import { devServerFactories } from "./modes/dev.js";
 import { prodServerFactories } from "./modes/prod.js";
 import { useServerStatus } from "../hooks/use-server-status.js";
 import { useConfigGuard } from "../hooks/use-config-guard.js";
+import { api } from "../lib/api.js";
+import { createCliQueryClient } from "../lib/query-client.js";
+
+const queryClient = createCliQueryClient();
 
 function HealthGate({ children }: { children: ReactNode }): ReactElement {
   const { state, retry } = useServerStatus();
@@ -103,24 +109,28 @@ export function App({ mode, theme }: AppProps): ReactElement {
     mode === "dev" ? devServerFactories : prodServerFactories;
 
   return (
-    <CliThemeProvider initialTheme={theme}>
-      <TerminalKeyboardProvider>
-        <NavigationProvider>
-          <FooterProvider>
-            <ServerProvider servers={serverFactories}>
-              <GlobalShortcuts />
-              <HealthGate>
-                <ConfigGate>
-                  <GlobalLayout>
-                    <ScreenRouter />
-                  </GlobalLayout>
-                </ConfigGate>
-              </HealthGate>
-              <Toaster />
-            </ServerProvider>
-          </FooterProvider>
-        </NavigationProvider>
-      </TerminalKeyboardProvider>
-    </CliThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ApiProvider value={api}>
+        <CliThemeProvider initialTheme={theme}>
+          <TerminalKeyboardProvider>
+            <NavigationProvider>
+              <FooterProvider>
+                <ServerProvider servers={serverFactories}>
+                  <GlobalShortcuts />
+                  <HealthGate>
+                    <ConfigGate>
+                      <GlobalLayout>
+                        <ScreenRouter />
+                      </GlobalLayout>
+                    </ConfigGate>
+                  </HealthGate>
+                  <Toaster />
+                </ServerProvider>
+              </FooterProvider>
+            </NavigationProvider>
+          </TerminalKeyboardProvider>
+        </CliThemeProvider>
+      </ApiProvider>
+    </QueryClientProvider>
   );
 }

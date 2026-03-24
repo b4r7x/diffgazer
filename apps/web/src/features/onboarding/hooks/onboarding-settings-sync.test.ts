@@ -1,6 +1,9 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ApiProvider } from "@diffgazer/api/hooks";
 import type { SettingsConfig } from "@diffgazer/schemas/config";
+import { createElement, type ReactNode } from "react";
 
 const {
   mockRefresh,
@@ -20,20 +23,12 @@ vi.mock("@/app/providers/config-provider", () => ({
   }),
 }));
 
-vi.mock("@/lib/api", () => ({
-  api: {
-    getSettings: mockGetSettings,
-    saveSettings: mockSaveSettings,
-    saveConfig: mockSaveConfig,
-  },
-}));
-
 vi.mock("@/lib/config-guards/config-guard-cache", () => ({
   setConfiguredGuardCache: vi.fn(),
 }));
 
 import { useOnboarding } from "./use-onboarding";
-import { invalidateSettingsCache, useSettings } from "@/hooks/use-settings";
+import { useSettings } from "@diffgazer/api/hooks";
 
 const SETTINGS_FIXTURE: SettingsConfig = {
   theme: "terminal",
@@ -44,17 +39,34 @@ const SETTINGS_FIXTURE: SettingsConfig = {
   agentExecution: "parallel",
 };
 
+function createWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const api = {
+    getSettings: mockGetSettings,
+    saveSettings: mockSaveSettings,
+    saveConfig: mockSaveConfig,
+  } as any;
+
+  return ({ children }: { children: ReactNode }) =>
+    createElement(
+      QueryClientProvider,
+      { client: queryClient },
+      createElement(ApiProvider, { value: api }, children),
+    );
+}
+
 describe("onboarding/settings synchronization", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    invalidateSettingsCache();
     mockGetSettings.mockResolvedValue(SETTINGS_FIXTURE);
     mockRefresh.mockResolvedValue(undefined);
     mockSaveSettings.mockResolvedValue(undefined);
     mockSaveConfig.mockResolvedValue(undefined);
   });
 
-  it("should refresh settings subscribers after onboarding completion", async () => {
+  it("should invalidate settings query after onboarding completion", async () => {
     const updatedSettings: SettingsConfig = {
       ...SETTINGS_FIXTURE,
       secretsStorage: "file",
@@ -63,24 +75,24 @@ describe("onboarding/settings synchronization", () => {
 
     mockGetSettings
       .mockResolvedValueOnce(SETTINGS_FIXTURE)
-      .mockResolvedValueOnce(updatedSettings)
       .mockResolvedValue(updatedSettings);
 
-    const settingsHook = renderHook(() => useSettings());
+    const wrapper = createWrapper();
+    const settingsHook = renderHook(() => useSettings(), { wrapper });
 
     await waitFor(() => {
-      expect(settingsHook.result.current.settings?.secretsStorage ?? null).toBe(null);
+      expect(settingsHook.result.current.data?.secretsStorage ?? null).toBe(null);
     });
 
-    const onboardingHook = renderHook(() => useOnboarding());
+    const onboardingHook = renderHook(() => useOnboarding(), { wrapper });
 
     await act(async () => {
       await onboardingHook.result.current.complete();
     });
 
     await waitFor(() => {
-      expect(settingsHook.result.current.settings?.secretsStorage).toBe("file");
-      expect(settingsHook.result.current.settings?.agentExecution).toBe("sequential");
+      expect(settingsHook.result.current.data?.secretsStorage).toBe("file");
+      expect(settingsHook.result.current.data?.agentExecution).toBe("sequential");
     });
 
     expect(mockGetSettings.mock.calls.length).toBeGreaterThanOrEqual(2);

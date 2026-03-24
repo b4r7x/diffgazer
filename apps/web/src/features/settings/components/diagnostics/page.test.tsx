@@ -2,11 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { KeyboardProvider } from "keyscope";
 
-const { mockNavigate, mockRetry, mockReloadContextStatus, mockHandleRefreshContext } = vi.hoisted(() => ({
+const { mockNavigate, mockRetry, mockRefetch, mockMutateAsync } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockRetry: vi.fn().mockResolvedValue(undefined),
-  mockReloadContextStatus: vi.fn().mockResolvedValue(undefined),
-  mockHandleRefreshContext: vi.fn().mockResolvedValue(undefined),
+  mockRefetch: vi.fn().mockResolvedValue({ data: undefined }),
+  mockMutateAsync: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -32,14 +32,16 @@ vi.mock("@/app/providers/config-provider", () => ({
   }),
 }));
 
-vi.mock("@/features/settings/hooks/use-context-management", () => ({
-  useContextManagement: () => ({
-    contextStatus: "ready",
-    contextGeneratedAt: "2026-02-09T12:00:00.000Z",
-    isRefreshing: false,
+vi.mock("@diffgazer/api/hooks", () => ({
+  useReviewContext: () => ({
+    data: { meta: { generatedAt: "2026-02-09T12:00:00.000Z" } },
+    isLoading: false,
     error: null,
-    reloadContextStatus: mockReloadContextStatus,
-    handleRefreshContext: mockHandleRefreshContext,
+    refetch: mockRefetch,
+  }),
+  useRefreshReviewContext: () => ({
+    mutateAsync: mockMutateAsync,
+    isPending: false,
   }),
 }));
 
@@ -57,8 +59,8 @@ describe("DiagnosticsPage keyboard footer navigation", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
     mockRetry.mockClear();
-    mockReloadContextStatus.mockClear();
-    mockHandleRefreshContext.mockClear();
+    mockRefetch.mockClear();
+    mockMutateAsync.mockClear();
   });
 
   it("moves focus between diagnostics action buttons with left/right arrows", async () => {

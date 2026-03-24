@@ -4,16 +4,14 @@ import { AVAILABLE_PROVIDERS } from "@diffgazer/schemas/config";
 
 const {
   mockRefresh,
-  mockSaveSettings,
-  mockSaveConfig,
+  mockSaveSettingsMutateAsync,
+  mockSaveConfigMutateAsync,
   mockSetConfiguredGuardCache,
-  mockRefreshSettingsCache,
 } = vi.hoisted(() => ({
   mockRefresh: vi.fn(),
-  mockSaveSettings: vi.fn(),
-  mockSaveConfig: vi.fn(),
+  mockSaveSettingsMutateAsync: vi.fn(),
+  mockSaveConfigMutateAsync: vi.fn(),
   mockSetConfiguredGuardCache: vi.fn(),
-  mockRefreshSettingsCache: vi.fn(),
 }));
 
 vi.mock("@/app/providers/config-provider", () => ({
@@ -22,15 +20,15 @@ vi.mock("@/app/providers/config-provider", () => ({
   }),
 }));
 
-vi.mock("@/lib/api", () => ({
-  api: {
-    saveSettings: mockSaveSettings,
-    saveConfig: mockSaveConfig,
-  },
-}));
-
-vi.mock("@/hooks/use-settings", () => ({
-  refreshSettingsCache: mockRefreshSettingsCache,
+vi.mock("@diffgazer/api/hooks", () => ({
+  useSaveSettings: () => ({
+    mutateAsync: mockSaveSettingsMutateAsync,
+    isPending: false,
+  }),
+  useSaveConfig: () => ({
+    mutateAsync: mockSaveConfigMutateAsync,
+    isPending: false,
+  }),
 }));
 
 vi.mock("@/lib/config-guards/config-guard-cache", () => ({
@@ -57,18 +55,16 @@ describe("useOnboarding initial state", () => {
   });
 
   it("marks app as configured after successful completion", async () => {
-    mockSaveSettings.mockResolvedValue(undefined);
-    mockSaveConfig.mockResolvedValue(undefined);
+    mockSaveSettingsMutateAsync.mockResolvedValue(undefined);
+    mockSaveConfigMutateAsync.mockResolvedValue(undefined);
     mockRefresh.mockResolvedValue(undefined);
-    mockRefreshSettingsCache.mockResolvedValue(undefined);
 
     const { result } = renderHook(() => useOnboarding());
     await result.current.complete();
 
-    expect(mockSaveSettings).toHaveBeenCalledTimes(1);
-    expect(mockSaveConfig).toHaveBeenCalledTimes(1);
+    expect(mockSaveSettingsMutateAsync).toHaveBeenCalledTimes(1);
+    expect(mockSaveConfigMutateAsync).toHaveBeenCalledTimes(1);
     expect(mockRefresh).toHaveBeenCalledWith(true);
-    expect(mockRefreshSettingsCache).toHaveBeenCalledTimes(1);
     expect(mockSetConfiguredGuardCache).toHaveBeenCalledWith(true);
   });
 });

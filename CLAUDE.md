@@ -20,7 +20,7 @@ apps/cli/       → Ink 6 (React for terminal) + embedded Hono server + bundled 
 apps/web/       → React 19 + TanStack Router + Vite 7 + Tailwind 4
 apps/server/    → Hono backend, AI providers via Vercel AI SDK
 packages/core/  → Result<T,E> type, error handling, shared utilities
-packages/api/   → Type-safe API client (review, config, git types)
+packages/api/   → Type-safe API client + shared TanStack Query hooks (`./hooks` subpath)
 packages/schemas/ → Zod 4 validation schemas (shared between server & frontend)
 packages/hooks/ → Shared React hooks
 packages/tsconfig/ → Shared TS configs
@@ -31,6 +31,7 @@ packages/tsconfig/ → Shared TS configs
 - Web is source of truth for UI structure. CLI mirrors web in Ink format.
 - Shared data lives in `@diffgazer/core` — labels, types, utilities.
 - Both apps use `@diffgazer/api` client for API calls — no direct fetch in apps.
+- Both apps use shared hooks from `@diffgazer/api/hooks` for data fetching — no hand-rolled `useState`+`useEffect` fetch patterns. See @.claude/docs/shared-hooks.md.
 - Use `Result<T, E>` for error handling, NOT try/catch. See @.claude/docs/decisions.md (ADR-0001).
 - Use Zod 4 schemas from `@diffgazer/schemas` for all validation.
 - No manual `useCallback`/`useMemo` — React 19 Compiler auto-memoizes.
@@ -60,6 +61,7 @@ Unified documentation portal for diff-ui, keyscope, and (future) diffgazer docs.
 
 ## Reference Docs (Read On Demand)
 
+- @.claude/docs/shared-hooks.md — Shared API hooks architecture, patterns, and how to add new hooks
 - @.claude/docs/decisions.md — ADRs (error handling, providers, CORS, prompts, AI output)
 - @.claude/docs/patterns.md — Protected patterns (do not simplify)
 - @.claude/docs/security.md — Threat model and mitigations
@@ -70,10 +72,10 @@ Unified documentation portal for diff-ui, keyscope, and (future) diffgazer docs.
 - @.claude/docs/web-design-guidelines.md — Web UI design system
 
 ## Recent Changes
+- 006-shared-api-hooks: Added TypeScript 5.x (strict: true), ESM only, `.js` extensions in imports + `@tanstack/react-query` v5 (new), React 19, Ink 6 (CLI), Vite 7 (web), `@diffgazer/api`, `@diffgazer/core`, `@diffgazer/schemas`
 - 005-cli-backend-integration: Added TypeScript 5.x (strict: true), ESM only, .js extensions in imports + Ink 6.8.0, React 19.2.4, `@diffgazer/api`, `@diffgazer/core`, `@diffgazer/schemas`, Hono (embedded server), ink-spinner, chalk, @inkjs/ui
 - 004-ink-diffui-components: Added TypeScript 5.x (strict: true), ESM only, .js extensions in imports + Ink 6.8.0, React 19.2.4, ink-spinner 5.0.0, chalk 5.6.2, @inkjs/ui (to add: Select, TextInput, ConfirmInput)
-- 003-fix-keyscope-diffui-integration: Added TypeScript 5.x (strict: true), ESM only + React 19, keyscope (workspace:*), diffui (workspace:*), Tailwind CSS v4, CVA + tailwind-merge
 
 ## Active Technologies
-- TypeScript 5.x (strict: true), ESM only, .js extensions in imports + Ink 6.8.0, React 19.2.4, `@diffgazer/api`, `@diffgazer/core`, `@diffgazer/schemas`, Hono (embedded server), ink-spinner, chalk, @inkjs/ui (005-cli-backend-integration)
-- Server-managed (JSON files at `~/.diffgazer/`). CLI does not access storage directly — all through API. (005-cli-backend-integration)
+- TypeScript 5.x (strict: true), ESM only, `.js` extensions in imports + `@tanstack/react-query` v5 (new), React 19, Ink 6 (CLI), Vite 7 (web), `@diffgazer/api`, `@diffgazer/core`, `@diffgazer/schemas` (006-shared-api-hooks)
+- N/A (hooks are a client-side concern; server storage unchanged) (006-shared-api-hooks)

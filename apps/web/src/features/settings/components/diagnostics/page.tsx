@@ -6,7 +6,7 @@ import { useFooterNavigation } from "@/hooks/use-footer-navigation";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useConfigData } from "@/app/providers/config-provider";
 import { cn } from "@/utils/cn";
-import { useContextManagement } from "@/features/settings/hooks/use-context-management";
+import { useReviewContext, useRefreshReviewContext } from "@diffgazer/api/hooks";
 import { useServerStatus } from "@/hooks/use-server-status";
 
 const NA = "Unavailable";
@@ -33,14 +33,27 @@ export function DiagnosticsPage() {
   const navigate = useNavigate();
   const { state: serverState, retry } = useServerStatus();
   const { provider, model, setupStatus } = useConfigData();
-  const {
-    contextStatus,
-    contextGeneratedAt,
-    isRefreshing,
-    error: contextError,
-    reloadContextStatus,
-    handleRefreshContext,
-  } = useContextManagement();
+  const contextQuery = useReviewContext();
+  const refreshContextMutation = useRefreshReviewContext();
+
+  const contextStatus: "loading" | "ready" | "missing" | "error" = (() => {
+    if (contextQuery.isLoading) return "loading";
+    if (contextQuery.error) {
+      const status = contextQuery.error && typeof contextQuery.error === "object" && "status" in contextQuery.error
+        ? (contextQuery.error as { status?: number }).status
+        : undefined;
+      return status === 404 ? "missing" : "error";
+    }
+    if (contextQuery.data) return "ready";
+    return "missing";
+  })();
+  const contextGeneratedAt = contextQuery.data?.meta.generatedAt ?? null;
+  const isRefreshing = refreshContextMutation.isPending;
+  const contextError = contextQuery.error instanceof Error ? contextQuery.error.message : contextQuery.error ? String(contextQuery.error) : null;
+  const reloadContextStatus = () => contextQuery.refetch().then(() => {});
+  const handleRefreshContext = async () => {
+    await refreshContextMutation.mutateAsync({ force: true });
+  };
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);

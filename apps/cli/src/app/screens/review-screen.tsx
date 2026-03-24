@@ -5,6 +5,7 @@ import { useScope } from "../../hooks/use-scope.js";
 import { usePageFooter } from "../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../hooks/use-back-handler.js";
 import { useTheme } from "../../theme/theme-context.js";
+import { useReview } from "@diffgazer/api/hooks";
 import { ReviewContainer } from "../../features/review/components/review-container.js";
 import { ReviewResultsView } from "../../features/review/components/review-results-view.js";
 import { ReviewSummaryView } from "../../features/review/components/review-summary-view.js";
@@ -12,7 +13,6 @@ import { Spinner } from "../../components/ui/spinner.js";
 import { Button } from "../../components/ui/button.js";
 import { SectionHeader } from "../../components/ui/section-header.js";
 import { REVIEW_SHORTCUTS } from "../../config/navigation.js";
-import { api } from "../../lib/api.js";
 import type { ReviewIssue } from "@diffgazer/schemas/review";
 
 type CliReviewMode = "unstaged" | "staged";
@@ -87,38 +87,28 @@ export function ReviewScreen(): ReactElement {
   usePageFooter({ shortcuts: footerShortcuts });
 
   // Load saved review when reviewId is present
+  const savedReview = useReview(reviewId ?? "");
+
   useEffect(() => {
     if (!hasReviewId || state.phase !== "loading-saved") return;
 
-    let ignore = false;
+    if (savedReview.isLoading) return;
 
-    void (async () => {
-      try {
-        const { review } = await api.getReview(reviewId);
-        if (ignore) return;
-
-        dispatch({
-          type: "SHOW_RESULTS",
-          data: {
-            issues: review.result.issues,
-            reviewId: review.metadata.id,
-            durationMs: review.metadata.durationMs ?? undefined,
-          },
-        });
-        return;
-      } catch (error) {
-        if (ignore) return;
-        // 404 = review not found, any other error = also fall through to fresh review
-      }
-
-      // Review not found or has no results — start fresh
+    if (savedReview.data) {
+      const { review } = savedReview.data;
+      dispatch({
+        type: "SHOW_RESULTS",
+        data: {
+          issues: review.result.issues,
+          reviewId: review.metadata.id,
+          durationMs: review.metadata.durationMs ?? undefined,
+        },
+      });
+    } else {
+      // Review not found or error — start fresh
       dispatch({ type: "START_STREAMING", mode: routeMode });
-    })();
-
-    return () => {
-      ignore = true;
-    };
-  }, []);
+    }
+  }, [savedReview.isLoading, savedReview.data]);
 
   const handleSwitchMode = () => {
     const newMode: CliReviewMode = routeMode === "staged" ? "unstaged" : "staged";

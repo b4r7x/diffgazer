@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import type { ProviderStatus } from "@diffgazer/schemas/config";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/schemas/config";
-import { api } from "../../../lib/api.js";
+import { useProviderStatus, useDeleteProviderCredentials } from "@diffgazer/api/hooks";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
@@ -59,28 +59,15 @@ export function ProvidersScreen(): ReactElement {
   const isNarrow = columns < 80;
   const listWidth = isNarrow ? undefined : Math.max(Math.floor(columns * 0.3), 30);
 
-  const [providers, setProviders] = useState<ProviderListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: providerStatuses, isLoading, error: queryError, refetch } = useProviderStatus();
+  const deleteCredentials = useDeleteProviderCredentials();
+
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [apiKeyOpen, setApiKeyOpen] = useState(false);
   const [modelSelectOpen, setModelSelectOpen] = useState(false);
 
-  useEffect(() => {
-    setIsLoading(true);
-    setError(null);
-    api
-      .getProviderStatus()
-      .then((statuses) => {
-        setProviders(buildProviderList(statuses));
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : "Failed to load providers");
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, []);
+  const providers = providerStatuses ? buildProviderList(providerStatuses) : [];
+  const error = deleteCredentials.error?.message ?? queryError?.message ?? null;
 
   const selectedProvider = providers.find((p) => p.id === selectedId);
   const selectedDetail = selectedProvider ? toDetailData(selectedProvider) : undefined;
@@ -93,37 +80,17 @@ export function ProvidersScreen(): ReactElement {
     if (selectedId) setModelSelectOpen(true);
   }
 
-  function refreshProviders() {
-    api
-      .getProviderStatus()
-      .then((statuses) => {
-        setProviders(buildProviderList(statuses));
-      })
-      .catch(() => {
-        // Non-critical — list will keep current state
-      });
-  }
-
   function handleSaveKey(_key: string, _method: string) {
-    // Key already persisted by ApiKeyOverlay via api.saveConfig().
-    refreshProviders();
+    void refetch();
   }
 
   function handleModelSelect(_modelId: string) {
-    // Model already persisted by ModelSelectOverlay via api.activateProvider().
-    refreshProviders();
+    void refetch();
   }
 
   function handleRemoveProvider() {
     if (!selectedId) return;
-    api
-      .deleteProviderCredentials(selectedId)
-      .then(() => {
-        refreshProviders();
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : "Failed to remove provider");
-      });
+    deleteCredentials.mutate(selectedId);
   }
 
   const isListActive = !apiKeyOpen && !modelSelectOpen;

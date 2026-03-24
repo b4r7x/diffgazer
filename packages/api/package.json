@@ -29,6 +29,10 @@
     "./shutdown": {
       "types": "./dist/shutdown.d.ts",
       "import": "./dist/shutdown.js"
+    },
+    "./hooks": {
+      "types": "./dist/hooks/index.d.ts",
+      "import": "./dist/hooks/index.js"
     }
   },
   "scripts": {
@@ -41,7 +45,18 @@
     "@diffgazer/core": "workspace:*",
     "@diffgazer/schemas": "workspace:*"
   },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.0.0",
+    "react": "^18.0.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/react-query": { "optional": true },
+    "react": { "optional": true }
+  },
   "devDependencies": {
+    "@tanstack/react-query": "^5.80.7",
+    "@types/react": "^19.1.6",
+    "react": "^19.2.4",
     "@diffgazer/tsconfig": "workspace:*",
     "@types/node": "^25.2.0",
     "typescript": "^5.9.3"

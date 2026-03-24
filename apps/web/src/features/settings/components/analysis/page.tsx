@@ -5,8 +5,7 @@ import { Button } from "diffui/components/button";
 import { CardLayout } from "@/components/ui/card-layout";
 import { useKey, useScope } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { useSettings } from "@/hooks/use-settings";
-import { api } from "@/lib/api";
+import { useSettings, useSaveSettings } from "@diffgazer/api/hooks";
 import { cn } from "@/utils/cn";
 import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/schemas/events";
 import type { LensId } from "@diffgazer/schemas/review";
@@ -31,10 +30,12 @@ function buildLensOptions(): AnalysisOption[] {
 
 export function SettingsAnalysisPage() {
   const navigate = useNavigate();
-  const { settings, isLoading, error: settingsError, refresh } = useSettings();
+  const { data: settings, isLoading, error: settingsQueryError } = useSettings();
+  const settingsError = settingsQueryError?.message ?? null;
+  const saveSettings = useSaveSettings();
   const [selectedLenses, setSelectedLenses] = useState<LensId[] | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isSaving = saveSettings.isPending;
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [buttonIndex, setButtonIndex] = useState(0);
 
@@ -128,15 +129,12 @@ export function SettingsAnalysisPage() {
 
   const handleSave = async () => {
     if (!canSave) return;
-    setIsSaving(true);
     setError(null);
     try {
-      await api.saveSettings({ defaultLenses: effectiveLenses });
-      await refresh();
+      await saveSettings.mutateAsync({ defaultLenses: effectiveLenses });
       navigate({ to: "/settings" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save settings");
-      setIsSaving(false);
     }
   };
 

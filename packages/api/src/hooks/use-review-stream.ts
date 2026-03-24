@@ -1,8 +1,8 @@
 import { useReducer, useRef, useEffect } from "react";
-import { api } from "../../../lib/api.js";
-import type { StreamReviewError } from "@diffgazer/api/review";
-import type { AgentStreamEvent, EnrichEvent, StepEvent } from "@diffgazer/schemas/events";
+import type { Dispatch } from "react";
 import type { Result } from "@diffgazer/core/result";
+import type { StreamReviewError } from "../review.js";
+import type { AgentStreamEvent, EnrichEvent, StepEvent } from "@diffgazer/schemas/events";
 import {
   reviewReducer,
   createInitialReviewState,
@@ -10,25 +10,26 @@ import {
   type ReviewAction,
 } from "@diffgazer/core/review";
 import { ReviewErrorCode, type ReviewMode, type LensId } from "@diffgazer/schemas/review";
+import { useApi } from "./context.js";
 
 type ReviewEvent = AgentStreamEvent | StepEvent | EnrichEvent;
 
-interface CliReviewState extends ReviewState {
+export interface ReviewStreamState extends ReviewState {
   reviewId: string | null;
 }
 
-type CliReviewAction =
+type StreamAction =
   | ReviewAction
   | { type: "SET_REVIEW_ID"; reviewId: string };
 
-function createInitialCliState(): CliReviewState {
+function createInitialStreamState(): ReviewStreamState {
   return {
     ...createInitialReviewState(),
     reviewId: null,
   };
 }
 
-function cliReviewReducer(state: CliReviewState, action: CliReviewAction): CliReviewState {
+function streamReducer(state: ReviewStreamState, action: StreamAction): ReviewStreamState {
   switch (action.type) {
     case "SET_REVIEW_ID":
       return { ...state, reviewId: action.reviewId };
@@ -39,26 +40,20 @@ function cliReviewReducer(state: CliReviewState, action: CliReviewAction): CliRe
 
   if (action.type === "EVENT" && action.event.type === "review_started") {
     const newState = reviewReducer(state, action);
-    return {
-      ...newState,
-      reviewId: action.event.reviewId,
-    };
+    return { ...newState, reviewId: action.event.reviewId };
   }
 
   const next = reviewReducer(state, action);
   return next === state ? state : { ...next, reviewId: state.reviewId };
 }
 
-export interface UseReviewStreamReturn {
-  state: CliReviewState;
-  start: (mode: ReviewMode, lenses?: LensId[]) => Promise<void>;
-  stop: () => void;
-  abort: () => void;
-  resume: (reviewId: string) => Promise<Result<void, StreamReviewError>>;
+export interface UseReviewStreamOptions {
+  batchEvents?: (dispatch: Dispatch<StreamAction>, events: ReviewEvent[]) => void;
 }
 
-export function useReviewStream(): UseReviewStreamReturn {
-  const [state, dispatch] = useReducer(cliReviewReducer, createInitialCliState());
+export function useReviewStream(options?: UseReviewStreamOptions) {
+  const api = useApi();
+  const [state, dispatch] = useReducer(streamReducer, createInitialStreamState());
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const handleStreamError = (error: unknown) => {
@@ -71,7 +66,11 @@ export function useReviewStream(): UseReviewStreamReturn {
   };
 
   const dispatchEvent = (event: ReviewEvent) => {
-    dispatch({ type: "EVENT", event });
+    if (options?.batchEvents) {
+      options.batchEvents(dispatch, [event]);
+    } else {
+      dispatch({ type: "EVENT", event });
+    }
   };
 
   const stop = () => {
@@ -167,11 +166,5 @@ export function useReviewStream(): UseReviewStreamReturn {
     };
   }, []);
 
-  return {
-    state,
-    start,
-    stop,
-    abort,
-    resume,
-  };
+  return { state, start, stop, abort, resume };
 }

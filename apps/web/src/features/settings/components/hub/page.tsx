@@ -6,7 +6,7 @@ import { useScope, useKey } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useScopedRouteState, clearScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useTheme } from "@/hooks/use-theme";
-import { useSettings } from "@/hooks/use-settings";
+import { useSettings } from "@diffgazer/api/hooks";
 import { SETTINGS_MENU_ITEMS, SETTINGS_SHORTCUTS, type SettingsAction } from "@/config/navigation";
 
 const SETTINGS_ROUTES: Record<SettingsAction, string> = {
@@ -29,7 +29,8 @@ export function SettingsHubPage() {
     SETTINGS_MENU_ITEMS[0]?.id ?? null
   );
   const isTrusted = Boolean(trust?.capabilities.readFiles);
-  const { settings, error: settingsError } = useSettings();
+  const { data: settings, error: settingsQueryError } = useSettings();
+  const settingsError = settingsQueryError?.message ?? null;
 
   usePageFooter({ shortcuts: SETTINGS_SHORTCUTS });
 

@@ -5,8 +5,7 @@ import type { LensId } from "@diffgazer/schemas/review";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
-import { useSettings } from "../../../hooks/use-settings.js";
-import { api } from "../../../lib/api.js";
+import { useSettings, useSaveSettings } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Button } from "../../../components/ui/button.js";
@@ -18,30 +17,25 @@ export function AnalysisScreen(): ReactElement {
   usePageFooter({ shortcuts: [{ key: "Esc", label: "Back" }, { key: "Space", label: "Toggle" }] });
   useBackHandler();
 
-  const { settings, isLoading, error: loadError } = useSettings();
+  const { data: settings, isLoading, error: loadErrorObj } = useSettings();
+  const loadError = loadErrorObj?.message ?? null;
+  const saveSettings = useSaveSettings();
   const [selectedLenses, setSelectedLenses] = useState<LensId[] | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
+  const isSaving = saveSettings.isPending;
+  const saveError = saveSettings.error?.message ?? null;
   const defaultLenses = settings?.defaultLenses ?? [];
   const fallbackLenses = lensOptions.map((l) => l.id);
   const currentLenses = defaultLenses.length > 0 ? defaultLenses : fallbackLenses;
   const effectiveLenses = selectedLenses ?? currentLenses;
 
-  async function handleSave() {
+  function handleSave() {
     if (effectiveLenses.length === 0) return;
-    setIsSaving(true);
-    setSaveError(null);
     setSaved(false);
-    try {
-      await api.saveSettings({ defaultLenses: effectiveLenses });
-      setSaved(true);
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Failed to save settings");
-    } finally {
-      setIsSaving(false);
-    }
+    saveSettings.mutate({ defaultLenses: effectiveLenses }, {
+      onSuccess: () => setSaved(true),
+    });
   }
 
   if (isLoading) {
@@ -82,7 +76,7 @@ export function AnalysisScreen(): ReactElement {
           <Box gap={1}>
             <Button
               variant="primary"
-              onPress={() => { void handleSave(); }}
+              onPress={handleSave}
               disabled={isSaving || effectiveLenses.length === 0}
             >
               {isSaving ? "Saving..." : "Save"}

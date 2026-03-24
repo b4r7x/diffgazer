@@ -6,8 +6,7 @@ import type { SecretsStorage } from "@diffgazer/schemas/config";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
-import { useSettings } from "../../../hooks/use-settings.js";
-import { api } from "../../../lib/api.js";
+import { useSettings, useSaveSettings } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Button } from "../../../components/ui/button.js";
@@ -18,27 +17,24 @@ export function StorageScreen(): ReactElement {
   usePageFooter({ shortcuts: [{ key: "Esc", label: "Back" }, { key: "Enter", label: "Select" }] });
   useBackHandler();
 
-  const { settings, isLoading, error } = useSettings();
+  const { data: settings, isLoading, error: errorObj } = useSettings();
+  const error = errorObj?.message ?? null;
+  const saveSettings = useSaveSettings();
   const [storage, setStorage] = useState<SecretsStorage | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
+  const saving = saveSettings.isPending;
+  const saveError = saveSettings.error?.message ?? null;
   const effectiveStorage = storage ?? settings?.secretsStorage ?? "file";
 
-  async function handleSave() {
-    setSaving(true);
-    setSaveError(null);
+  function handleSave() {
     setSaveMessage(null);
-    try {
-      await api.saveSettings({ secretsStorage: effectiveStorage });
-      setSaveMessage("Storage setting saved.");
-      setStorage(null);
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Failed to save storage setting");
-    } finally {
-      setSaving(false);
-    }
+    saveSettings.mutate({ secretsStorage: effectiveStorage }, {
+      onSuccess: () => {
+        setSaveMessage("Storage setting saved.");
+        setStorage(null);
+      },
+    });
   }
 
   if (isLoading) {

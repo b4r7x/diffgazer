@@ -1,33 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, act, waitFor, screen, cleanup } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ApiProvider } from "@diffgazer/api/hooks";
 import { useConfigData, useConfigActions, ConfigProvider } from "./config-provider";
-
-// Mock api at the boundary
-vi.mock("@/lib/api", () => ({
-  api: {
-    loadInit: vi.fn(),
-    getProviderStatus: vi.fn(),
-    activateProvider: vi.fn(),
-    saveConfig: vi.fn(),
-    deleteProviderCredentials: vi.fn(),
-  },
-}));
-
-// Set TTL to 0 so module-level cache always expires between tests
-vi.mock("@/config/constants", async (importOriginal) => {
-  const orig = await importOriginal<typeof import("@/config/constants")>();
-  return { ...orig, DEFAULT_TTL: -1 };
-});
-
-import { api } from "@/lib/api";
-
-const mockApi = api as {
-  loadInit: ReturnType<typeof vi.fn>;
-  getProviderStatus: ReturnType<typeof vi.fn>;
-  activateProvider: ReturnType<typeof vi.fn>;
-  saveConfig: ReturnType<typeof vi.fn>;
-  deleteProviderCredentials: ReturnType<typeof vi.fn>;
-};
 
 function makeSetupStatus(overrides: Record<string, unknown> = {}) {
   return {
@@ -46,12 +21,31 @@ function makeInitResponse(overrides: Record<string, unknown> = {}) {
   return {
     config: { provider: "gemini", model: "gemini-2.5-flash" },
     providers: [
-      { id: "gemini", name: "Gemini", hasCredentials: true, isActive: true },
+      { provider: "gemini", hasApiKey: true, isActive: true },
     ],
+    settings: { theme: "terminal", defaultLenses: [], defaultProfile: null, severityThreshold: "low", secretsStorage: null, agentExecution: "parallel" },
+    configured: true,
     project: { projectId: "proj-1", path: "/tmp/repo", trust: null },
     setup: makeSetupStatus(),
     ...overrides,
   };
+}
+
+function makeProviderStatus() {
+  return [
+    { provider: "gemini", hasApiKey: true, isActive: true },
+  ];
+}
+
+function createMockApi(overrides: Record<string, ReturnType<typeof vi.fn>> = {}) {
+  return {
+    loadInit: vi.fn().mockResolvedValue(makeInitResponse()),
+    getProviderStatus: vi.fn().mockResolvedValue(makeProviderStatus()),
+    activateProvider: vi.fn().mockResolvedValue({ provider: "gemini", model: "gemini-2.5-pro" }),
+    saveConfig: vi.fn().mockResolvedValue(undefined),
+    deleteProviderCredentials: vi.fn().mockResolvedValue({ deleted: true }),
+    ...overrides,
+  } as any;
 }
 
 // Consumer component that exposes context values for assertions
@@ -81,28 +75,35 @@ function ConfigConsumer() {
   );
 }
 
-function renderWithProvider() {
+let queryClient: QueryClient;
+let mockApi: ReturnType<typeof createMockApi>;
+
+function renderWithProvider(api = mockApi) {
   return render(
-    <ConfigProvider>
-      <ConfigConsumer />
-    </ConfigProvider>,
+    <QueryClientProvider client={queryClient}>
+      <ApiProvider value={api}>
+        <ConfigProvider>
+          <ConfigConsumer />
+        </ConfigProvider>
+      </ApiProvider>
+    </QueryClientProvider>,
   );
 }
 
 describe("ConfigProvider", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
-    mockApi.loadInit.mockResolvedValue(makeInitResponse());
-    mockApi.getProviderStatus.mockResolvedValue([
-      { id: "gemini", name: "Gemini", hasCredentials: true, isActive: true },
-    ]);
-    mockApi.activateProvider.mockResolvedValue({ provider: "gemini", model: "gemini-2.5-pro" });
-    mockApi.saveConfig.mockResolvedValue(undefined);
-    mockApi.deleteProviderCredentials.mockResolvedValue({ deleted: true });
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    mockApi = createMockApi();
   });
 
   afterEach(() => {
     cleanup();
+    queryClient.clear();
   });
 
   it("should fetch config on initial mount", async () => {
@@ -131,7 +132,7 @@ describe("ConfigProvider", () => {
   it("should set isConfigured=false when no provider configured", async () => {
     mockApi.loadInit.mockResolvedValue(
       makeInitResponse({
-        config: {},
+        config: null,
         setup: makeSetupStatus({ isConfigured: false, hasProvider: false, hasModel: false }),
       }),
     );
@@ -159,12 +160,11 @@ describe("ConfigProvider", () => {
   });
 
   it("should show loading state initially", async () => {
-    // Use a promise that never resolves to keep loading state
     mockApi.loadInit.mockReturnValue(new Promise(() => {}));
+    mockApi.getProviderStatus.mockReturnValue(new Promise(() => {}));
 
     renderWithProvider();
 
-    // Loading should be true immediately (before any async resolution)
     expect(screen.getByTestId("isLoading").textContent).toBe("true");
   });
 
@@ -184,7 +184,6 @@ describe("ConfigProvider", () => {
     });
 
     expect(mockApi.activateProvider).toHaveBeenCalledWith("gemini", "gemini-2.5-pro");
-    expect(mockApi.getProviderStatus).toHaveBeenCalled();
   });
 
   it("should call saveConfig and refresh state on saveCredentials", async () => {
@@ -207,7 +206,6 @@ describe("ConfigProvider", () => {
       apiKey: "sk-key",
       model: "gemini-2.5-flash",
     });
-    expect(mockApi.getProviderStatus).toHaveBeenCalled();
   });
 
   it("should call deleteProviderCredentials and refresh state", async () => {

@@ -3,8 +3,8 @@ import { Box, Text } from "ink";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
-import { useInit } from "../../../hooks/use-init.js";
-import { useSettings } from "../../../hooks/use-settings.js";
+import { useInit } from "@diffgazer/api/hooks";
+import { useSettings } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Spinner } from "../../../components/ui/spinner.js";
@@ -32,7 +32,7 @@ function getProviderDisplayName(providerId: string): string {
 
 function buildDescriptions(
   init: ReturnType<typeof useInit>["data"],
-  settings: ReturnType<typeof useSettings>["settings"],
+  settings: ReturnType<typeof useSettings>["data"],
 ): Record<SettingsAction, string> {
   const trust = init?.project.trust;
   const trustStatus = trust ? `Trusted (${trust.trustMode})` : "Not trusted";
@@ -64,10 +64,10 @@ export function SettingsHubScreen(): ReactElement {
 
   const { navigate } = useNavigation();
   const { data: initData, isLoading: initLoading, error: initError } = useInit();
-  const { settings, isLoading: settingsLoading, error: settingsError } = useSettings();
+  const { data: settings, isLoading: settingsLoading, error: settingsError } = useSettings();
 
   const isLoading = initLoading || settingsLoading;
-  const error = initError ?? settingsError;
+  const error = initError?.message ?? settingsError?.message ?? null;
 
   const onSelect = (id: string) => {
     const screen = SETTINGS_ROUTE_MAP[id];

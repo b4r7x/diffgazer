@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { ResolvedTheme, ThemeContextValue, WebTheme } from "@/types/theme";
-import { useSettings } from "@/hooks/use-settings";
-import { api } from "@/lib/api";
+import { useSettings, useSaveSettings } from "@diffgazer/api/hooks";
 
 function subscribeToSystemTheme(callback: () => void): () => void {
   const media = window.matchMedia("(prefers-color-scheme: dark)");
@@ -46,7 +45,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   });
   const [localOverride, setLocalOverride] = useState<WebTheme | null>(null);
 
-  const { settings, refresh } = useSettings();
+  const { data: settings } = useSettings();
+  const saveSettings = useSaveSettings();
 
   const systemTheme: ResolvedTheme = useSyncExternalStore(
     subscribeToSystemTheme,
@@ -82,11 +82,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setThemeState(newTheme);
     setLocalOverride(newTheme);
     localStorage.setItem(STORAGE_KEY, newTheme);
-    api.saveSettings({ theme: newTheme })
-      .then(() => {
-        void refresh();
-      })
-      .catch((err) => console.error("Failed to save theme settings", err));
+    saveSettings.mutate({ theme: newTheme });
   };
 
   const value: ThemeContextValue = {

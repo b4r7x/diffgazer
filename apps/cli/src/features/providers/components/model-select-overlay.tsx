@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/schemas/config";
@@ -8,7 +7,7 @@ import { NavigationList } from "../../../components/ui/navigation-list.js";
 import { Badge } from "../../../components/ui/badge.js";
 import { Button } from "../../../components/ui/button.js";
 import { Spinner } from "../../../components/ui/spinner.js";
-import { api } from "../../../lib/api.js";
+import { useOpenRouterModels, useActivateProvider } from "@diffgazer/api/hooks";
 
 interface DisplayModel {
   id: string;
@@ -32,59 +31,34 @@ export function ModelSelectOverlay({
   onSelect,
 }: ModelSelectOverlayProps): ReactElement | null {
   const { tokens } = useTheme();
-  const [models, setModels] = useState<DisplayModel[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | undefined>(undefined);
+  const isOpenRouter = providerId === "openrouter";
+  const openRouterQuery = useOpenRouterModels({ enabled: open && isOpenRouter });
+  const activateProvider = useActivateProvider();
 
-  useEffect(() => {
-    if (!open) return;
+  const loading = isOpenRouter && openRouterQuery.isLoading;
+  const saving = activateProvider.isPending;
+  const error = activateProvider.error?.message ?? openRouterQuery.error?.message ?? undefined;
 
-    setError(undefined);
-
-    if (providerId === "openrouter") {
-      setLoading(true);
-      setModels([]);
-      api
-        .getOpenRouterModels()
-        .then((response) => {
-          const mapped: DisplayModel[] = response.models.map((m) => ({
-            id: m.id,
-            name: m.name,
-            isFree: m.isFree,
-          }));
-          setModels(mapped);
-        })
-        .catch(() => {
-          setError("Failed to load OpenRouter models");
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    } else {
-      const provider = AVAILABLE_PROVIDERS.find((p) => p.id === providerId);
-      const staticModels: DisplayModel[] = (provider?.models ?? []).map(
-        (id) => ({ id, name: id })
+  const models: DisplayModel[] = isOpenRouter
+    ? (openRouterQuery.data?.models ?? []).map((m) => ({
+        id: m.id,
+        name: m.name,
+        isFree: m.isFree,
+      }))
+    : (AVAILABLE_PROVIDERS.find((p) => p.id === providerId)?.models ?? []).map(
+        (id) => ({ id, name: id }),
       );
-      setModels(staticModels);
-    }
-  }, [open, providerId]);
 
   function handleSelect(modelId: string) {
-    setSaving(true);
-    setError(undefined);
-    api
-      .activateProvider(providerId, modelId)
-      .then(() => {
-        onSelect(modelId);
-        onOpenChange(false);
-      })
-      .catch(() => {
-        setError("Failed to activate model");
-      })
-      .finally(() => {
-        setSaving(false);
-      });
+    activateProvider.mutate(
+      { providerId, model: modelId },
+      {
+        onSuccess: () => {
+          onSelect(modelId);
+          onOpenChange(false);
+        },
+      },
+    );
   }
 
   return (

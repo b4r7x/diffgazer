@@ -5,19 +5,22 @@ import type { Run } from "@/features/history/types";
 import type { ReviewMetadata } from "@diffgazer/schemas/review";
 import { SEVERITY_ORDER } from "@diffgazer/schemas/ui";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
-import { useReviews } from "@/features/history/hooks/use-reviews";
-import { useReviewDetail } from "@/features/history/hooks/use-review-detail";
+import { useReviews, useReview } from "@diffgazer/api/hooks";
 import { useHistoryKeyboard } from "@/features/history/hooks/use-history-keyboard";
 import { HISTORY_SECTION_ALL_ID } from "@/features/history/constants";
 import { getDateKey, getTimestamp, getRunSummary, buildTimelineItems, formatDuration } from "@/features/history/utils";
 
 function useHistoryData() {
-  const { reviews, isLoading, error } = useReviews();
+  const reviewsQuery = useReviews();
+  const reviews = reviewsQuery.data?.reviews ?? [];
+  const isLoading = reviewsQuery.isLoading;
+  const error = reviewsQuery.error?.message ?? null;
   const [selectedRunId, setSelectedRunId] = useScopedRouteState("run", reviews[0]?.id ?? null);
 
   const selectedRun = reviews.find((r) => r.id === selectedRunId) ?? null;
 
-  const { review: reviewDetail } = useReviewDetail(selectedRunId);
+  const reviewDetailQuery = useReview(selectedRunId ?? "");
+  const reviewDetail = reviewDetailQuery.data?.review ?? null;
 
   const severityCounts = selectedRun
     ? {
