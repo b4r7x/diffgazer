@@ -111,11 +111,6 @@ export function ReviewPage() {
     dispatch({ type: "SHOW_SUMMARY", reviewData: data });
   };
 
-  const handleReviewNotInSession = (reviewId: string) => {
-    dispatch({ type: "START_LOAD_SAVED" });
-    void loadSavedOrFresh(reviewId);
-  };
-
   useEffect(() => {
     if (state.phase !== "loading-saved" || !params.reviewId) return;
     void loadSavedOrFresh(params.reviewId);
@@ -133,7 +128,6 @@ export function ReviewPage() {
         <ReviewContainer
           mode={reviewMode}
           onComplete={handleComplete}
-          onReviewNotInSession={handleReviewNotInSession}
         />
       );
 

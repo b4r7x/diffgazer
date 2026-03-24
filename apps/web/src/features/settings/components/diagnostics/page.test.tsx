@@ -17,13 +17,6 @@ vi.mock("@/hooks/use-page-footer", () => ({
   usePageFooter: () => {},
 }));
 
-vi.mock("@/hooks/use-server-status", () => ({
-  useServerStatus: () => ({
-    state: { status: "connected", message: "" },
-    retry: mockRetry,
-  }),
-}));
-
 vi.mock("@/app/providers/config-provider", () => ({
   useConfigData: () => ({
     provider: "openrouter",
@@ -33,6 +26,10 @@ vi.mock("@/app/providers/config-provider", () => ({
 }));
 
 vi.mock("@diffgazer/api/hooks", () => ({
+  useServerStatus: () => ({
+    state: { status: "connected", message: "" },
+    retry: mockRetry,
+  }),
   useReviewContext: () => ({
     data: { meta: { generatedAt: "2026-02-09T12:00:00.000Z" } },
     isLoading: false,

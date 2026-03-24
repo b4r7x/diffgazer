@@ -18,3 +18,4 @@ export {
   filterIssuesBySeverity,
 } from "./filtering.js";
 export { convertAgentEventsToLogEntries } from "./event-to-log.js";
+export { resolveDefaultLenses, FALLBACK_LENSES } from "./lenses.js";

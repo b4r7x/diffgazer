@@ -112,11 +112,14 @@ The review streaming hook manages a long-running SSE stream. TanStack Query is n
 
 Accepts an optional `batchEvents` callback for platform-specific event batching (web can use `requestAnimationFrame`, CLI dispatches synchronously).
 
-### 6. Platform-Specific Wrappers (thin adapters)
+### 6. Server Status Hook (shared, with `ServerState`)
+
+The `useServerStatus` hook returns a `ServerState` discriminated union (`"checking" | "connected" | "error"`) with a `retry` function. This is the shared hook — both apps import it directly from `@diffgazer/api/hooks`. There are no per-app wrappers for server status.
+
+### 7. Platform-Specific Wrappers (thin adapters)
 
 Some hooks need platform-specific behavior that wraps the shared hook:
 
-- **`useServerStatus`** (both apps): Maps TanStack Query's `{ isLoading, error }` to the legacy `{ state: ServerState, retry }` interface that `HealthGate` components consume.
 - **`useConfigGuard`** (CLI only): Uses shared `useConfigCheck` for the query, adds CLI-specific navigation to onboarding screen.
 - **`useOpenRouterModels`** (web only): Uses shared query for fetching, adds local filtering/mapping logic for model compatibility.
 
@@ -132,18 +135,21 @@ These live in each app's `hooks/` directory, not in the shared package.
   ['config', 'providers']            # AI provider status
   ['config', 'openrouter-models']    # OpenRouter model list
 
-['reviews', projectPath?]            # review list (filtered)
-['review', id]                       # single review detail
-['review', 'active-session', mode?]  # active streaming session
-['review', 'context']               # project context snapshot
+['review']                           # all review queries
+  ['review', 'list', projectPath?]   # review list (filtered)
+  ['review', id]                     # single review detail
+  ['review', 'active-session', mode?] # active streaming session
+  ['review', 'context']              # project context snapshot
 
-['server', 'health']                # health check (polls every 30s)
+['server']                           # all server queries
+  ['server', 'health']               # health check (polls every 30s)
 
 ['trust', projectId]                # single trust entry
 ['trust', 'list']                   # all trusted projects
 
-['git', 'status', path?]            # git status
-['git', 'diff', mode?, path?]       # git diff
+['git']                              # all git queries
+  ['git', 'status', path?]           # git status
+  ['git', 'diff', mode?, path?]      # git diff
 ```
 
 ## Invalidation Map
@@ -157,7 +163,7 @@ These live in each app's `hooks/` directory, not in the shared package.
 | `useDeleteConfig` | `['config']` (all) |
 | `useSaveTrust` | `['trust']` + `['config', 'init']` |
 | `useDeleteTrust` | `['trust']` + `['config', 'init']` |
-| `useDeleteReview` | `['reviews']`, removes `['review', id]` |
+| `useDeleteReview` | `['review']` (all), removes `['review', id]` |
 | `useRefreshReviewContext` | `['review', 'context']` |
 | `useRunDrilldown` | `['review', reviewId]` |
 | `useShutdown` | none |

@@ -7,7 +7,7 @@ export const reviewQueries = {
 
   list: (api: BoundApi, projectPath?: string) =>
     queryOptions({
-      queryKey: ["reviews", projectPath] as const,
+      queryKey: [...reviewQueries.all(), "list", projectPath] as const,
       queryFn: () => api.getReviews(projectPath),
       staleTime: 0,
     }),
