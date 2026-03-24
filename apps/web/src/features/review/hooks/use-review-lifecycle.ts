@@ -16,10 +16,9 @@ export interface ReviewCompleteData {
 interface UseReviewLifecycleOptions {
   mode: ReviewMode;
   onComplete?: (data: ReviewCompleteData) => void;
-  onReviewNotInSession?: (reviewId: string) => void;
 }
 
-export function useReviewLifecycle({ mode, onComplete, onReviewNotInSession }: UseReviewLifecycleOptions) {
+export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptions) {
   const navigate = useNavigate();
   const params = useParams({ strict: false });
   const api = useApi();
@@ -30,10 +29,6 @@ export function useReviewLifecycle({ mode, onComplete, onReviewNotInSession }: U
 
   const stableOnComplete = useEffectEvent((data: ReviewCompleteData) => {
     onComplete?.(data);
-  });
-
-  const stableOnNotFound = useEffectEvent((reviewId: string) => {
-    onReviewNotInSession?.(reviewId);
   });
 
   // Sync review ID to URL
@@ -60,7 +55,6 @@ export function useReviewLifecycle({ mode, onComplete, onReviewNotInSession }: U
     start: (options) => sharedStart(options.mode!, options.lenses),
     resume,
     getActiveSession: api.getActiveReviewSession,
-    onNotFoundInSession: stableOnNotFound,
   });
 
   // Delay transition after streaming completes

@@ -26,17 +26,14 @@ export function DiagnosticsScreen(): ReactElement {
   const { data: initData, isLoading: initLoading, error: initErrorObj } = useInit();
   const initError = initErrorObj?.message ?? null;
 
-  const serverHealth = useServerStatus();
+  const { state: serverState, retry: retryServer } = useServerStatus();
   const reviewContext = useReviewContext();
   const refreshContext = useRefreshReviewContext();
 
   const isRefreshing = refreshContext.isPending;
 
-  // Server status derived from query state
-  const serverStatus = serverHealth.isLoading ? "checking"
-    : serverHealth.isSuccess ? "connected"
-    : "error";
-  const serverError = serverHealth.error?.message ?? null;
+  const serverStatus = serverState.status;
+  const serverError = serverState.status === "error" ? serverState.message : null;
 
   // Context status derived from query state
   const contextStatus = reviewContext.isLoading ? "loading"
@@ -51,7 +48,7 @@ export function DiagnosticsScreen(): ReactElement {
   };
 
   const handleRefreshAll = () => {
-    serverHealth.refetch();
+    retryServer();
     reviewContext.refetch();
   };
 

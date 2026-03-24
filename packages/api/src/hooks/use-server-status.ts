@@ -2,7 +2,20 @@ import { useQuery } from "@tanstack/react-query";
 import { serverQueries } from "./queries/server.queries.js";
 import { useApi } from "./context.js";
 
-export function useServerStatus() {
+export type ServerState =
+  | { status: "checking" }
+  | { status: "connected" }
+  | { status: "error"; message: string };
+
+export function useServerStatus(): { state: ServerState; retry: () => void } {
   const api = useApi();
-  return useQuery(serverQueries.health(api));
+  const query = useQuery(serverQueries.health(api));
+
+  const state: ServerState = query.isLoading
+    ? { status: "checking" }
+    : query.error
+      ? { status: "error", message: query.error.message }
+      : { status: "connected" };
+
+  return { state, retry: () => { query.refetch(); } };
 }
