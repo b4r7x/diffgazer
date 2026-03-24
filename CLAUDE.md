@@ -70,4 +70,9 @@ Unified documentation portal for diff-ui, keyscope, and (future) diffgazer docs.
 - @.claude/docs/web-design-guidelines.md — Web UI design system
 
 ## Recent Changes
+- 003-fix-keyscope-diffui-integration: Added TypeScript 5.x (strict: true), ESM only + React 19, keyscope (workspace:*), diffui (workspace:*), Tailwind CSS v4, CVA + tailwind-merge
 - 001-diffui-web-integration: Re-export facade migration — @diffgazer/ui re-exports 8 components from diff-ui (workspace:*), CSS token override layer (theme-overrides.css) for GitHub palette, 5 local component files deleted
+
+## Active Technologies
+- TypeScript 5.x (strict: true), ESM only + React 19, keyscope (workspace:*), diffui (workspace:*), Tailwind CSS v4, CVA + tailwind-merge (003-fix-keyscope-diffui-integration)
+- N/A (client-side UI state only) (003-fix-keyscope-diffui-integration)

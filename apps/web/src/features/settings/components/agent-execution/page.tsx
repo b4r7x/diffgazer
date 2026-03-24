@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { AgentExecution } from "@diffgazer/schemas/config";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import { Button } from "diffui/components/button";
 import { RadioGroup, RadioGroupItem } from "diffui/components/radio";
 import { CardLayout } from "@/components/ui/card-layout";
-import { useNavigation, useKey, useScope } from "keyscope";
+import { useKey, useScope } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useSettings } from "@/hooks/use-settings";
 import { api } from "@/lib/api";
@@ -23,7 +23,6 @@ export function SettingsAgentExecutionPage() {
   const [error, setError] = useState<string | null>(null);
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [buttonIndex, setButtonIndex] = useState(0);
-  const radioRef = useRef<HTMLDivElement>(null);
 
   const effectiveMode = modeChoice ?? settings?.agentExecution ?? "sequential";
 
@@ -72,19 +71,24 @@ export function SettingsAgentExecutionPage() {
     setModeChoice(mode);
   };
 
-  const { highlighted: focusedValue } = useNavigation({
-    containerRef: radioRef,
-    role: "radio",
-    value: focusedMode,
-    onValueChange: (value) => setFocusedMode(value as AgentExecution),
-    onSelect: onExecutionChange,
-    onEnter: onExecutionChange,
-    wrap: false,
-    enabled: navigationEnabled,
-    onBoundaryReached: (direction) => {
-      if (direction === "down") setFocusZone("buttons");
-    },
-  });
+  const executionOptions: AgentExecution[] = ["sequential", "parallel"];
+
+  const moveFocus = (direction: 1 | -1) => {
+    const idx = executionOptions.indexOf(focusedMode);
+    const next = idx + direction;
+    if (next < 0) return;
+    if (next >= executionOptions.length) {
+      setFocusZone("buttons");
+      return;
+    }
+    setFocusedMode(executionOptions[next]!);
+  };
+
+  useKey("ArrowDown", () => moveFocus(1), { enabled: navigationEnabled });
+  useKey("ArrowUp", () => moveFocus(-1), { enabled: navigationEnabled });
+
+  useKey(" ", () => onExecutionChange(focusedMode), { enabled: navigationEnabled });
+  useKey("Enter", () => onExecutionChange(focusedMode), { enabled: navigationEnabled });
 
   useKey("ArrowUp", () => {
     setFocusZone("list");
@@ -155,10 +159,10 @@ export function SettingsAgentExecutionPage() {
       ) : (
         <div className="space-y-6">
           <RadioGroup
-            ref={radioRef}
             value={effectiveMode}
             onChange={onExecutionChange}
-            highlighted={navigationEnabled ? focusedValue : null}
+            highlighted={navigationEnabled ? focusedMode : null}
+            onHighlightChange={(v) => setFocusedMode(v as AgentExecution)}
             className="space-y-1"
           >
             <RadioGroupItem

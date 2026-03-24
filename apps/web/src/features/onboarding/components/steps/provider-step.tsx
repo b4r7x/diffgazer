@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { RadioGroup, RadioGroupItem } from "diffui/components/radio";
 import { Badge } from "diffui/components/badge";
-import { useNavigation } from "keyscope";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/schemas/config";
 import type { AIProvider } from "@diffgazer/schemas/config";
 import { PROVIDER_CAPABILITIES } from "@/config/constants";
@@ -21,18 +20,11 @@ export function ProviderStep({
   enabled = true,
   onBoundaryReached,
 }: ProviderStepProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [focusedProvider, setFocusedProvider] = useState<AIProvider | null>(
+  const [highlighted, setHighlighted] = useState<string | null>(
     AVAILABLE_PROVIDERS[0]?.id ?? null,
   );
 
   const providerIds = AVAILABLE_PROVIDERS.map((provider) => provider.id as AIProvider);
-
-  useEffect(() => {
-    if (!focusedProvider || !providerIds.includes(focusedProvider)) {
-      setFocusedProvider(providerIds[0] ?? null);
-    }
-  }, [focusedProvider, providerIds]);
 
   useEffect(() => {
     if (!value && providerIds[0]) {
@@ -40,28 +32,31 @@ export function ProviderStep({
     }
   }, [onChange, providerIds, value]);
 
-  const handleSelect = (providerId: string) => {
-    onChange(providerId as AIProvider);
-  };
+  const handleKeyDown = (e: ReactKeyboardEvent) => {
+    if (!enabled) return;
 
-  const handleEnter = (providerId: string) => {
-    const resolvedProvider = providerId as AIProvider;
-    onChange(resolvedProvider);
-    onCommit?.(resolvedProvider);
-  };
+    if (e.key === "Enter" && highlighted) {
+      e.preventDefault();
+      onChange(highlighted as AIProvider);
+      onCommit?.(highlighted as AIProvider);
+      return;
+    }
 
-  const { highlighted: focusedValue } = useNavigation({
-    containerRef,
-    role: "radio",
-    value: focusedProvider,
-    initialValue: providerIds[0] ?? null,
-    onValueChange: (providerId) => setFocusedProvider(providerId as AIProvider),
-    onSelect: handleSelect,
-    onEnter: handleEnter,
-    wrap: false,
-    enabled,
-    onBoundaryReached,
-  });
+    if (onBoundaryReached && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+      const isAtStart = highlighted === providerIds[0];
+      const isAtEnd = highlighted === providerIds[providerIds.length - 1];
+      if (e.key === "ArrowUp" && isAtStart) {
+        e.preventDefault();
+        onBoundaryReached("up");
+        return;
+      }
+      if (e.key === "ArrowDown" && isAtEnd) {
+        e.preventDefault();
+        onBoundaryReached("down");
+        return;
+      }
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -69,10 +64,12 @@ export function ProviderStep({
         Select an AI provider for code reviews.
       </p>
       <RadioGroup
-        ref={containerRef}
         value={value ?? undefined}
         onChange={onChange as (value: string) => void}
-        highlighted={enabled ? focusedValue : null}
+        highlighted={enabled ? highlighted : null}
+        onHighlightChange={setHighlighted}
+        onKeyDown={handleKeyDown}
+        wrap={false}
         className="space-y-1 border border-tui-border p-1"
       >
         {AVAILABLE_PROVIDERS.map((provider) => {

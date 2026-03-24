@@ -5,7 +5,7 @@ import type { ReviewIssue } from "@diffgazer/schemas/review";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import type { IssueTab as TabId } from "@diffgazer/schemas/ui";
 import { SEVERITY_ORDER } from "@diffgazer/schemas/ui";
-import { useFocusZone, useKey, useNavigation } from "keyscope";
+import { useFocusZone, useKey } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { filterIssuesBySeverity } from "@diffgazer/core/review";
 
@@ -71,20 +71,6 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
     ? selectedIssueId
     : filteredIssues[0]?.id ?? null;
 
-  const { highlighted: focusedValue } = useNavigation({
-    containerRef: listRef,
-    role: "option",
-    enabled: focusZone === "list",
-    value: effectiveSelectedId,
-    onValueChange: setSelectedIssueId,
-    wrap: false,
-    upKeys: ["ArrowUp", "k"],
-    downKeys: ["ArrowDown", "j"],
-    onBoundaryReached: (direction) => {
-      if (direction === "up") setFocusZone("filters");
-    },
-  });
-
   useFocusZone({
     initial: "list" as FocusZone,
     zones: ZONES,
@@ -99,6 +85,24 @@ export function useReviewResultsKeyboard({ issues }: UseReviewResultsKeyboardOpt
       return null;
     },
   });
+
+  const moveIssue = (delta: -1 | 1) => {
+    const idx = filteredIssues.findIndex(i => i.id === effectiveSelectedId);
+    const nextIdx = idx + delta;
+    if (nextIdx < 0) {
+      setFocusZone("filters");
+      return;
+    }
+    if (nextIdx >= filteredIssues.length) return;
+    setSelectedIssueId(filteredIssues[nextIdx]!.id);
+  };
+
+  useKey("ArrowDown", () => moveIssue(1), { enabled: focusZone === "list" });
+  useKey("ArrowUp", () => moveIssue(-1), { enabled: focusZone === "list" });
+  useKey("j", () => moveIssue(1), { enabled: focusZone === "list" });
+  useKey("k", () => moveIssue(-1), { enabled: focusZone === "list" });
+
+  const focusedValue = effectiveSelectedId;
 
   const selectedIssue = filteredIssues.find(i => i.id === effectiveSelectedId) ?? null;
 
