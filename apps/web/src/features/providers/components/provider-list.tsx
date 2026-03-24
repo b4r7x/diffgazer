@@ -1,4 +1,4 @@
-import type { Ref } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { NavigationList, NavigationListItem, NavigationListTitle, NavigationListBadge, NavigationListSubtitle, NavigationListStatus } from 'diffui/components/navigation-list';
 import { Input } from 'diffui/components/input';
 import { cn } from 'diffui/lib/utils';
@@ -18,8 +18,9 @@ interface ProviderListProps {
   isFocused?: boolean;
   inputRef?: React.RefObject<HTMLInputElement | null>;
   focusedFilterIndex?: number;
-  listRef?: Ref<HTMLDivElement>;
-  focusedValue?: string | null;
+  highlightedId?: string | null;
+  onHighlightChange?: (id: string) => void;
+  onBoundaryReached?: (direction: "up" | "down") => void;
 }
 
 function getStatusIndicator(status: DisplayStatus): string | undefined {
@@ -45,9 +46,24 @@ export function ProviderList({
   isFocused = true,
   inputRef,
   focusedFilterIndex,
-  listRef,
-  focusedValue,
+  highlightedId,
+  onHighlightChange,
+  onBoundaryReached,
 }: ProviderListProps) {
+  const handleKeyDown = (e: ReactKeyboardEvent) => {
+    if (!onBoundaryReached || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+    const providerIds = providers.map((p) => p.id);
+    const isAtStart = highlightedId === providerIds[0];
+    const isAtEnd = highlightedId === providerIds[providerIds.length - 1];
+    if (e.key === "ArrowUp" && isAtStart) {
+      e.preventDefault();
+      onBoundaryReached("up");
+    } else if (e.key === "ArrowDown" && isAtEnd) {
+      e.preventDefault();
+      onBoundaryReached("down");
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="p-3 border-b border-tui-border bg-tui-selection/30">
@@ -93,14 +109,16 @@ export function ProviderList({
 
       <div className="flex-1 overflow-y-auto scrollbar-hide">
         <NavigationList
-          ref={listRef}
           selectedId={selectedId}
-          highlightedId={focusedValue}
+          highlightedId={highlightedId}
+          onHighlightChange={onHighlightChange}
           onSelect={(id) => {
             onSelect(id);
             onActivate?.(id);
           }}
           focused={isFocused}
+          wrap={false}
+          onKeyDown={handleKeyDown}
         >
           {providers.map((provider) => {
             const capabilities = PROVIDER_CAPABILITIES[provider.id];

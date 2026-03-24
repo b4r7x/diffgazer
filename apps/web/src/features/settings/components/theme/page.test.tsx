@@ -60,22 +60,22 @@ describe("SettingsThemePage keyboard behavior", () => {
     const lightRadio = getRadio("light");
     const cancelButton = screen.getByRole("button", { name: /cancel/i });
 
-    expect(hasClassToken(autoRadio, "bg-tui-selection")).toBe(true);
+    expect(hasClassToken(autoRadio, "bg-secondary")).toBe(true);
     expect(autoRadio.getAttribute("aria-checked")).toBe("true");
 
     fireEvent.keyDown(window, { key: "ArrowDown" });
-    expect(hasClassToken(darkRadio, "bg-tui-selection")).toBe(true);
+    expect(hasClassToken(darkRadio, "bg-secondary")).toBe(true);
     expect(autoRadio.getAttribute("aria-checked")).toBe("true");
     expect(darkRadio.getAttribute("aria-checked")).toBe("false");
 
     fireEvent.keyDown(window, { key: "ArrowDown" });
-    expect(hasClassToken(lightRadio, "bg-tui-selection")).toBe(true);
+    expect(hasClassToken(lightRadio, "bg-secondary")).toBe(true);
 
     fireEvent.keyDown(window, { key: "ArrowDown" });
     expect(hasClassToken(cancelButton, "ring-tui-blue")).toBe(true);
 
     fireEvent.keyDown(window, { key: "ArrowUp" });
-    expect(hasClassToken(lightRadio, "bg-tui-selection")).toBe(true);
+    expect(hasClassToken(lightRadio, "bg-secondary")).toBe(true);
   });
 
   it("selects focused theme on Space without saving or exiting", () => {

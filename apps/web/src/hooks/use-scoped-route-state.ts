@@ -67,3 +67,9 @@ export function useScopedRouteState<T>(
 
   return [state, setState];
 }
+
+export function clearScopedRouteState(scope: string, key: string): void {
+  const storageKey = createStorageKey(key, scope);
+  routeStateStore.delete(storageKey);
+  emitChange();
+}

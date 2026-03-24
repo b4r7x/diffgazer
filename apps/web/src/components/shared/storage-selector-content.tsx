@@ -1,7 +1,6 @@
-import { useRef } from "react";
+import { useState, type KeyboardEvent } from "react";
 import type { SecretsStorage } from '@diffgazer/schemas/config';
 import { RadioGroup, RadioGroupItem } from "diffui/components/radio";
-import { useNavigation } from "keyscope";
 
 export interface StorageSelectorContentProps {
   value: SecretsStorage | null;
@@ -25,6 +24,9 @@ const STORAGE_OPTIONS: Array<{ value: SecretsStorage; label: string; description
   },
 ];
 
+const FIRST_VALUE = STORAGE_OPTIONS[0]?.value ?? null;
+const LAST_VALUE = STORAGE_OPTIONS[STORAGE_OPTIONS.length - 1]?.value ?? null;
+
 export function StorageSelectorContent({
   value,
   onChange,
@@ -33,32 +35,34 @@ export function StorageSelectorContent({
   enabled = true,
   onBoundaryReached,
 }: StorageSelectorContentProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const onChangeStr = onChange as (value: string) => void;
-  const onEnterStr = onEnter as ((value: string) => void) | undefined;
+  const [highlighted, setHighlighted] = useState<string | null>(value);
 
   const navigationEnabled = !disabled && enabled;
 
-  const { highlighted: focusedValue } = useNavigation({
-    containerRef,
-    role: "radio",
-    initialValue: value,
-    onSelect: onChangeStr,
-    onEnter: onEnterStr ?? onChangeStr,
-    enabled: navigationEnabled,
-    wrap: false,
-    onBoundaryReached,
-  });
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Enter" && highlighted) {
+      (onEnter ?? onChange)(highlighted as SecretsStorage);
+      return;
+    }
+    if (onBoundaryReached) {
+      if ((e.key === "ArrowUp" || e.key === "ArrowLeft") && highlighted === FIRST_VALUE) {
+        onBoundaryReached("up");
+      } else if ((e.key === "ArrowDown" || e.key === "ArrowRight") && highlighted === LAST_VALUE) {
+        onBoundaryReached("down");
+      }
+    }
+  };
 
   return (
     <div className="space-y-3">
       <div className="text-sm font-mono text-[--tui-fg]/60">Select Storage Method:</div>
       <RadioGroup
-        ref={containerRef}
         value={value ?? undefined}
         onChange={onChange as (value: string) => void}
-        highlighted={navigationEnabled ? focusedValue : null}
+        highlighted={navigationEnabled ? highlighted : null}
+        onHighlightChange={setHighlighted}
+        onKeyDown={handleKeyDown}
+        wrap={false}
         className="space-y-2"
         disabled={disabled}
       >

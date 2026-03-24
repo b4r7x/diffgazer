@@ -1,6 +1,5 @@
-import { useRef } from "react";
+import { useState, type KeyboardEvent } from "react";
 import { NavigationList } from "diffui/components/navigation-list";
-import { useNavigation } from "keyscope";
 import { RunAccordionItem } from "@/features/history/components/run-accordion-item";
 import { TimelineList } from "@/features/history/components/timeline-list";
 import { HistoryInsightsPane } from "@/features/history/components/history-insights-pane";
@@ -8,7 +7,6 @@ import { SearchInput } from "@/features/history/components/search-input";
 import { useHistoryPage } from "@/features/history/hooks/use-history-page";
 
 export function HistoryPage() {
-  const runsListRef = useRef<HTMLDivElement>(null);
   const {
     isLoading,
     error,
@@ -37,17 +35,18 @@ export function HistoryPage() {
     handleIssueClick,
   } = useHistoryPage();
 
-  const { highlighted: runsFocusedValue } = useNavigation({
-    containerRef: runsListRef,
-    role: "option",
-    enabled: focusZone === "runs",
-    value: selectedRunId,
-    onValueChange: setSelectedRunId,
-    onSelect: handleRunActivate,
-    onEnter: handleRunActivate,
-    wrap: false,
-    onBoundaryReached: handleRunsBoundary,
-  });
+  const [runsFocusedValue, setRunsFocusedValue] = useState<string | null>(null);
+
+  const handleRunsKeyDown = (event: KeyboardEvent) => {
+    if (
+      event.key === "ArrowUp" &&
+      mappedRuns.length > 0 &&
+      (runsFocusedValue === mappedRuns[0]?.id || runsFocusedValue === null)
+    ) {
+      event.preventDefault();
+      handleRunsBoundary("up");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -110,10 +109,12 @@ export function HistoryPage() {
           <div className="flex-1 overflow-y-auto">
             {mappedRuns.length > 0 ? (
               <NavigationList
-                ref={runsListRef}
                 selectedId={selectedRunId}
                 highlightedId={focusZone === "runs" ? runsFocusedValue : null}
-                onSelect={setSelectedRunId}
+                onSelect={handleRunActivate}
+                onHighlightChange={setRunsFocusedValue}
+                onKeyDown={handleRunsKeyDown}
+                wrap={false}
                 focused={focusZone === "runs"}
               >
                 {mappedRuns.map((run) => (
