@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { LensId } from "@diffgazer/schemas/review";
 import { Badge } from "diffui/components/badge";
 import { CheckboxGroup, CheckboxItem } from "diffui/components/checkbox";
 import { ScrollArea } from "diffui/components/scroll-area";
-import { useNavigation } from "keyscope";
 
 export interface AnalysisOption {
   id: LensId;
@@ -35,7 +34,6 @@ export function AnalysisSelectorContent({
   enabled = true,
   onBoundaryReached,
 }: AnalysisSelectorContentProps) {
-  const checkboxRef = useRef<HTMLDivElement>(null);
   const [focusedLens, setFocusedLens] = useState<LensId | null>(() =>
     getInitialFocusedLens(options),
   );
@@ -60,27 +58,29 @@ export function AnalysisSelectorContent({
 
   const navigationEnabled = enabled && !disabled && options.length > 0;
 
-  const toggleLens = (rawLensId: string) => {
-    const lensId = rawLensId as LensId;
-    if (!optionIdSet.has(lensId)) return;
-    const nextValue = value.includes(lensId)
-      ? value.filter((id) => id !== lensId)
-      : [...value, lensId];
-    onChange(nextValue);
-  };
+  const handleKeyDown = (e: ReactKeyboardEvent) => {
+    if (!navigationEnabled || !focusedLens) return;
 
-  const { highlighted: focusedValue } = useNavigation({
-    containerRef: checkboxRef,
-    role: "checkbox",
-    value: focusedLens,
-    onValueChange: (nextValue) => setFocusedLens(nextValue as LensId),
-    onSelect: toggleLens,
-    onEnter: toggleLens,
-    wrap: false,
-    enabled: navigationEnabled,
-    onBoundaryReached,
-    initialValue: initialFocusedLens,
-  });
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (optionIdSet.has(focusedLens)) {
+        const nextValue = value.includes(focusedLens)
+          ? value.filter((id) => id !== focusedLens)
+          : [...value, focusedLens];
+        onChange(nextValue);
+      }
+      return;
+    }
+
+    if (onBoundaryReached && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+      const idx = optionIds.indexOf(focusedLens);
+      if (e.key === "ArrowUp" && idx === 0) {
+        onBoundaryReached("up");
+      } else if (e.key === "ArrowDown" && idx === optionIds.length - 1) {
+        onBoundaryReached("down");
+      }
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -89,10 +89,12 @@ export function AnalysisSelectorContent({
       </div>
       <ScrollArea className="max-h-90 pr-2">
         <CheckboxGroup
-          ref={checkboxRef}
           value={value}
           onChange={onChange}
-          highlighted={navigationEnabled ? focusedValue : null}
+          highlighted={navigationEnabled ? focusedLens : null}
+          onHighlightChange={(v) => setFocusedLens(v as LensId)}
+          onKeyDown={handleKeyDown}
+          wrap={false}
           variant="bullet"
           disabled={disabled || !enabled}
         >

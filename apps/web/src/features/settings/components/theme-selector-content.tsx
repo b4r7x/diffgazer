@@ -1,7 +1,6 @@
-import { useRef } from "react";
+import { useState, type KeyboardEvent } from "react";
 import type { Theme } from '@diffgazer/schemas/config';
 import { RadioGroup, RadioGroupItem } from "diffui/components/radio";
-import { useNavigation } from "keyscope";
 
 export interface ThemeSelectorContentProps {
   value: Theme;
@@ -35,39 +34,54 @@ export function ThemeSelectorContent({
   enabled = true,
   showTerminalOption = false
 }: ThemeSelectorContentProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const options = showTerminalOption
     ? THEME_OPTIONS
     : THEME_OPTIONS.filter(opt => opt.value !== 'terminal');
 
-  const notifyFocusedValueChange = (nextValue: Theme) => {
-    onFocusedValueChange?.(nextValue);
-    onFocus?.(nextValue);
+  const [internalHighlight, setInternalHighlight] = useState<Theme>(focusedValue ?? value);
+  const highlighted = focusedValue ?? internalHighlight;
+
+  const handleHighlightChange = (nextValue: string) => {
+    const theme = nextValue as Theme;
+    setInternalHighlight(theme);
+    onFocusedValueChange?.(theme);
+    onFocus?.(theme);
   };
 
-  const { highlighted: navigationFocusedValue, highlight: focus } = useNavigation({
-    containerRef,
-    role: "radio",
-    value: focusedValue ?? undefined,
-    onValueChange: (nextValue) =>
-      notifyFocusedValueChange(nextValue as Theme),
-    initialValue: focusedValue ?? value,
-    wrap: false,
-    enabled,
-    onSelect: onSelect as ((value: string) => void) | undefined,
-    onEnter: onEnter as ((value: string) => void) | undefined,
-    onBoundaryReached,
-  });
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (!enabled) return;
+    const lastValue = options[options.length - 1]?.value;
+    const firstValue = options[0]?.value;
+
+    if (e.key === " " && highlighted) {
+      onSelect?.(highlighted);
+      return;
+    }
+    if (e.key === "Enter" && highlighted) {
+      if (onEnter) onEnter(highlighted);
+      else onSelect?.(highlighted);
+      return;
+    }
+    if (e.key === "ArrowDown" && highlighted === lastValue) {
+      onBoundaryReached?.("down");
+      return;
+    }
+    if (e.key === "ArrowUp" && highlighted === firstValue) {
+      onBoundaryReached?.("up");
+      return;
+    }
+  };
 
   return (
     <div className="space-y-3">
       <div className="text-sm font-mono text-[--tui-fg]/60">Select Interface Theme:</div>
       <RadioGroup
-        ref={containerRef}
         value={value}
         onChange={onChange as (value: string) => void}
-        onHighlightChange={(nextValue) => focus(nextValue as Theme)}
-        highlighted={enabled ? navigationFocusedValue : null}
+        onHighlightChange={handleHighlightChange}
+        onKeyDown={handleKeyDown}
+        highlighted={enabled ? highlighted : null}
+        wrap={false}
       >
         {options.map((option) => (
           <RadioGroupItem

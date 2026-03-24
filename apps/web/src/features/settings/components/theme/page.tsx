@@ -83,7 +83,34 @@ export function SettingsThemePage() {
     navigate({ to: "/settings" });
   };
 
+  const themeOptions: WebTheme[] = ["auto", "dark", "light"];
+
+  const moveFocus = (direction: 1 | -1) => {
+    const current = focusedTheme ?? selectedTheme;
+    const idx = themeOptions.indexOf(current);
+    const next = idx + direction;
+    if (next < 0) return;
+    if (next >= themeOptions.length) {
+      setFocusZone("buttons");
+      return;
+    }
+    setFocusedTheme(themeOptions[next]!);
+  };
+
   useKey("Escape", handleCancel);
+
+  useKey("ArrowDown", () => moveFocus(1), { enabled: !isButtonsZone });
+  useKey("ArrowUp", () => moveFocus(-1), { enabled: !isButtonsZone });
+
+  useKey(" ", () => {
+    const theme = focusedTheme ?? selectedTheme;
+    selectTheme(theme);
+  }, { enabled: !isButtonsZone });
+
+  useKey("Enter", () => {
+    const theme = focusedTheme ?? selectedTheme;
+    handleEnterOnList(theme);
+  }, { enabled: !isButtonsZone });
 
   useKey("ArrowUp", () => {
     setFocusZone("list");

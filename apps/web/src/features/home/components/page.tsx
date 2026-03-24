@@ -1,9 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { ContextInfo } from "@diffgazer/schemas/ui";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import { MAIN_MENU_SHORTCUTS, MENU_ITEMS } from "@/config/navigation";
-import { useKey, useScope, useNavigation } from "keyscope";
+import { useKey, useScope } from "keyscope";
 import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { ContextSidebar } from "@/features/home/components/context-sidebar";
@@ -63,7 +63,7 @@ export function HomePage() {
     "menuId",
     MAIN_MENU_ITEMS[0]?.id ?? null
   );
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -113,14 +113,6 @@ export function HomePage() {
         ]
       : [],
   });
-  const { highlighted: focusedValue } = useNavigation({
-    containerRef: menuRef,
-    role: "option",
-    value: selectedId,
-    onValueChange: setSelectedId,
-    onEnter: handleActivate,
-  });
-
   useScope("home");
   useKey("q", () => {
     void handleQuit();
@@ -140,10 +132,9 @@ export function HomePage() {
         projectPath={repoRoot ?? undefined}
       />
       <HomeMenu
-        menuRef={menuRef}
         selectedId={selectedId}
-        highlightedId={focusedValue}
-        onHighlightChange={setSelectedId}
+        highlightedId={highlightedId}
+        onHighlightChange={setHighlightedId}
         onSelect={handleActivate}
         items={MAIN_MENU_ITEMS}
         isTrusted={isTrusted}

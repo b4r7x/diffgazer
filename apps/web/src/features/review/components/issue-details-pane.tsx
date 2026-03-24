@@ -1,10 +1,9 @@
-import { useRef, type Ref } from "react";
+import { type Ref } from "react";
 import { cn } from "@/utils/cn";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "diffui/components/tabs";
 import { SectionHeader } from "diffui/components/section-header";
 import { EmptyState } from "diffui/components/empty-state";
 import { ScrollArea } from "diffui/components/scroll-area";
-import { useNavigation } from "keyscope";
 import { CodeSnippet, type CodeLine } from "./code-snippet";
 import { DiffView } from "./diff-view";
 import { FixPlanChecklist } from "./fix-plan-checklist";
@@ -35,18 +34,12 @@ export function IssueDetailsPane({
   className,
 }: IssueDetailsPaneProps) {
   const hasPatch = !!issue?.suggested_patch;
-  const tabsRef = useRef<HTMLDivElement>(null);
-
-  const { onKeyDown: tabsKeyDown } = useNavigation({
-    containerRef: tabsRef,
-    role: "tab",
-  });
 
   return (
     <div data-focused={isFocused || undefined} className={cn("w-3/5 flex flex-col pl-4 min-h-0", className)}>
-      <div ref={tabsRef} className="flex flex-1 min-h-0 flex-col">
+      <div className="flex flex-1 min-h-0 flex-col">
         <Tabs value={activeTab} onValueChange={onTabChange as (value: string) => void} className="flex flex-1 min-h-0 flex-col">
-          <TabsList className="border-b border-tui-border pb-2 pt-2 mb-4" onKeyDown={tabsKeyDown}>
+          <TabsList className="border-b border-tui-border pb-2 pt-2 mb-4">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="explain">Explain</TabsTrigger>
             <TabsTrigger value="trace">Trace</TabsTrigger>

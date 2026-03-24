@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { TrustCapabilities } from "@diffgazer/schemas/config";
 import { Badge } from "diffui/components/badge";
 import { Callout, CalloutIcon, CalloutTitle, CalloutContent } from "diffui/components/callout";
 import { Button } from "diffui/components/button";
 import { CheckboxGroup, CheckboxItem } from "diffui/components/checkbox";
-import { useNavigation } from "keyscope";
 import { useTrustFormKeyboard } from "@/features/settings/hooks/use-trust-form-keyboard";
 import { cn } from "@/utils/cn";
 
@@ -53,7 +52,6 @@ export function TrustPermissionsContent({
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [buttonIndex, setButtonIndex] = useState(0);
   const [listFocused, setListFocused] = useState<string | null>(() => getInitialFocusedCapability(value));
-  const checkboxRef = useRef<HTMLDivElement>(null);
   const BUTTONS_COUNT = 2;
 
   const selectedCapabilities = value.readFiles ? ["readFiles"] : [];
@@ -71,14 +69,6 @@ export function TrustPermissionsContent({
     });
   };
 
-  const toggleCapability = (val: string) => {
-    handleValueChange(
-      selectedCapabilities.includes(val)
-        ? selectedCapabilities.filter((v) => v !== val)
-        : [...selectedCapabilities, val],
-    );
-  };
-
   useTrustFormKeyboard({
     enabled: showActions,
     focusZone,
@@ -91,23 +81,23 @@ export function TrustPermissionsContent({
   });
 
   const isListZone = focusZone === "list";
+  const enabledIds = CAPABILITIES.filter((c) => !c.disabled).map((c) => c.id);
+  const lastEnabledId = enabledIds[enabledIds.length - 1] ?? null;
 
-  const { highlighted: listFocusedValue } = useNavigation({
-    containerRef: checkboxRef,
-    role: "checkbox",
-    initialValue: initialFocusedCapability,
-    value: listFocused,
-    onValueChange: setListFocused,
-    wrap: false,
-    enabled: isListZone,
-    onBoundaryReached: (direction) => {
-      if (direction === "down" && showActions) {
-        setFocusZone("buttons");
-      }
-    },
-    onSelect: toggleCapability,
-    onEnter: toggleCapability,
-  });
+  const handleListKeyDown = (e: ReactKeyboardEvent) => {
+    if (e.key === "ArrowDown" && listFocused === lastEnabledId && showActions) {
+      e.preventDefault();
+      setFocusZone("buttons");
+    }
+    if (e.key === "Enter" && listFocused) {
+      e.preventDefault();
+      handleValueChange(
+        selectedCapabilities.includes(listFocused)
+          ? selectedCapabilities.filter((v) => v !== listFocused)
+          : [...selectedCapabilities, listFocused],
+      );
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -128,10 +118,12 @@ export function TrustPermissionsContent({
 
       {/* Capabilities */}
       <CheckboxGroup
-        ref={checkboxRef}
         value={selectedCapabilities}
         onChange={handleValueChange}
-        highlighted={isListZone ? listFocusedValue : null}
+        highlighted={isListZone ? listFocused : null}
+        onHighlightChange={setListFocused}
+        onKeyDown={handleListKeyDown}
+        wrap={false}
         disabled={!isListZone}
       >
         {CAPABILITIES.map(({ id, label, description, disabled }) => (

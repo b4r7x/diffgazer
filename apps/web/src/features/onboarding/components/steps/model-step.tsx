@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import { AVAILABLE_PROVIDERS, GEMINI_MODEL_INFO, GLM_MODEL_INFO } from "@diffgazer/schemas/config";
 import type { AIProvider, ModelInfo } from "@diffgazer/schemas/config";
 import { RadioGroup, RadioGroupItem } from "diffui/components/radio";
 import { Badge } from "diffui/components/badge";
-import { useNavigation } from "keyscope";
 import { useOpenRouterModels } from "@/hooks/use-openrouter-models";
 
 interface ModelStepProps {
@@ -37,15 +36,14 @@ function StaticModelList({
 }: ModelStepProps) {
   const models = getStaticModels(provider);
   const providerInfo = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
-  const containerRef = useRef<HTMLDivElement>(null);
   const modelIds = models.map((model) => model.id);
-  const [focusedModel, setFocusedModel] = useState<string | null>(modelIds[0] ?? null);
+  const [highlighted, setHighlighted] = useState<string | null>(modelIds[0] ?? null);
 
   useEffect(() => {
-    if (!focusedModel || !modelIds.includes(focusedModel)) {
-      setFocusedModel(modelIds[0] ?? null);
+    if (!highlighted || !modelIds.includes(highlighted)) {
+      setHighlighted(modelIds[0] ?? null);
     }
-  }, [focusedModel, modelIds]);
+  }, [highlighted, modelIds]);
 
   useEffect(() => {
     const firstModelId = modelIds[0];
@@ -55,23 +53,17 @@ function StaticModelList({
     }
   }, [modelIds, onChange, value]);
 
-  const handleEnter = (nextModel: string) => {
-    onChange(nextModel);
-    onCommit?.(nextModel);
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Enter" && highlighted) {
+      onChange(highlighted);
+      onCommit?.(highlighted);
+      return;
+    }
+    if (!onBoundaryReached) return;
+    const idx = modelIds.indexOf(highlighted ?? "");
+    if (e.key === "ArrowUp" && idx === 0) onBoundaryReached("up");
+    if (e.key === "ArrowDown" && idx === modelIds.length - 1) onBoundaryReached("down");
   };
-
-  const { highlighted: focusedValue } = useNavigation({
-    containerRef,
-    role: "radio",
-    value: focusedModel,
-    initialValue: modelIds[0] ?? null,
-    onValueChange: setFocusedModel,
-    onSelect: onChange,
-    onEnter: handleEnter,
-    wrap: false,
-    enabled,
-    onBoundaryReached,
-  });
 
   return (
     <div className="space-y-4">
@@ -79,10 +71,12 @@ function StaticModelList({
         Select a model for {providerInfo?.name ?? provider}.
       </p>
       <RadioGroup
-        ref={containerRef}
         value={value ?? undefined}
         onChange={onChange}
-        highlighted={enabled ? focusedValue : null}
+        highlighted={enabled ? highlighted : null}
+        onHighlightChange={setHighlighted}
+        onKeyDown={handleKeyDown}
+        wrap={false}
         className="space-y-1"
       >
         {models.map((model) => (
@@ -122,19 +116,18 @@ function OpenRouterModelList({
   onBoundaryReached,
 }: Omit<ModelStepProps, "provider">) {
   const { models, loading, error } = useOpenRouterModels(true, "openrouter");
-  const containerRef = useRef<HTMLDivElement>(null);
   const modelIds = models.map((model) => model.id);
-  const [focusedModel, setFocusedModel] = useState<string | null>(null);
+  const [highlighted, setHighlighted] = useState<string | null>(null);
 
   useEffect(() => {
     if (modelIds.length === 0) {
-      setFocusedModel(null);
+      setHighlighted(null);
       return;
     }
-    if (!focusedModel || !modelIds.includes(focusedModel)) {
-      setFocusedModel(modelIds[0] ?? null);
+    if (!highlighted || !modelIds.includes(highlighted)) {
+      setHighlighted(modelIds[0] ?? null);
     }
-  }, [focusedModel, modelIds]);
+  }, [highlighted, modelIds]);
 
   useEffect(() => {
     const firstModelId = modelIds[0];
@@ -144,23 +137,17 @@ function OpenRouterModelList({
     }
   }, [modelIds, onChange, value]);
 
-  const handleEnter = (nextModel: string) => {
-    onChange(nextModel);
-    onCommit?.(nextModel);
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Enter" && highlighted) {
+      onChange(highlighted);
+      onCommit?.(highlighted);
+      return;
+    }
+    if (!onBoundaryReached) return;
+    const idx = modelIds.indexOf(highlighted ?? "");
+    if (e.key === "ArrowUp" && idx === 0) onBoundaryReached("up");
+    if (e.key === "ArrowDown" && idx === modelIds.length - 1) onBoundaryReached("down");
   };
-
-  const { highlighted: focusedValue } = useNavigation({
-    containerRef,
-    role: "radio",
-    value: focusedModel,
-    initialValue: modelIds[0] ?? null,
-    onValueChange: setFocusedModel,
-    onSelect: onChange,
-    onEnter: handleEnter,
-    wrap: false,
-    enabled,
-    onBoundaryReached,
-  });
 
   if (loading) {
     return (
@@ -185,10 +172,12 @@ function OpenRouterModelList({
       </p>
       <div className="max-h-64 overflow-y-auto scrollbar-hide">
         <RadioGroup
-          ref={containerRef}
           value={value ?? undefined}
           onChange={onChange}
-          highlighted={enabled ? focusedValue : null}
+          highlighted={enabled ? highlighted : null}
+          onHighlightChange={setHighlighted}
+          onKeyDown={handleKeyDown}
+          wrap={false}
           className="space-y-1"
         >
           {models.map((model) => (

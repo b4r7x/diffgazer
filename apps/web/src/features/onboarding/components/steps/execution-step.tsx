@@ -1,7 +1,6 @@
-import { useRef, useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import type { AgentExecution } from "@diffgazer/schemas/config";
 import { RadioGroup, RadioGroupItem } from "diffui/components/radio";
-import { useNavigation } from "keyscope";
 
 interface ExecutionStepProps {
   value: AgentExecution;
@@ -18,33 +17,21 @@ export function ExecutionStep({
   enabled = true,
   onBoundaryReached,
 }: ExecutionStepProps) {
-  const radioRef = useRef<HTMLDivElement>(null);
-  const [focusedValue, setFocusedValue] = useState<AgentExecution>(value);
+  const items: AgentExecution[] = ["sequential", "parallel"];
+  const [highlighted, setHighlighted] = useState<string | null>(value);
 
-  const handleChange = (nextValue: string) => {
-    const nextMode = nextValue as AgentExecution;
-    setFocusedValue(nextMode);
-    onChange(nextMode);
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Enter" && highlighted) {
+      const nextMode = highlighted as AgentExecution;
+      onChange(nextMode);
+      onCommit?.(nextMode);
+      return;
+    }
+    if (!onBoundaryReached) return;
+    const idx = items.indexOf(highlighted as AgentExecution);
+    if (e.key === "ArrowUp" && idx === 0) onBoundaryReached("up");
+    if (e.key === "ArrowDown" && idx === items.length - 1) onBoundaryReached("down");
   };
-
-  const handleCommit = (nextValue: string) => {
-    const nextMode = nextValue as AgentExecution;
-    handleChange(nextMode);
-    onCommit?.(nextMode);
-  };
-
-  const { highlighted: radioFocusedValue } = useNavigation({
-    containerRef: radioRef,
-    role: "radio",
-    value: focusedValue,
-    initialValue: focusedValue,
-    onValueChange: (nextValue) => setFocusedValue(nextValue as AgentExecution),
-    onSelect: handleChange,
-    onEnter: handleCommit,
-    wrap: false,
-    enabled,
-    onBoundaryReached,
-  });
 
   return (
     <div className="space-y-3">
@@ -52,10 +39,12 @@ export function ExecutionStep({
         Agent Execution Mode:
       </div>
       <RadioGroup
-        ref={radioRef}
         value={value}
         onChange={onChange as (value: string) => void}
-        highlighted={enabled ? radioFocusedValue : null}
+        highlighted={enabled ? highlighted : null}
+        onHighlightChange={setHighlighted}
+        onKeyDown={handleKeyDown}
+        wrap={false}
         className="space-y-1"
       >
         <RadioGroupItem
