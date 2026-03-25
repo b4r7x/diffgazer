@@ -22,18 +22,21 @@ Before this existed, both apps had hand-rolled hooks with `useState` + `useEffec
 @diffgazer/api (transport layer — no React)
   ├── createApi() → BoundApi        # HTTP client with bound methods
   ├── config.ts, review.ts, git.ts  # Domain modules
-  └── hooks/                         # NEW — React hooks layer
+  └── hooks/                         # React hooks layer
       ├── context.ts                 # ApiProvider + useApi
       ├── queries/                   # Query key factories (queryOptions)
-      │   ├── config.queries.ts
-      │   ├── review.queries.ts
-      │   ├── server.queries.ts
-      │   ├── trust.queries.ts
-      │   └── git.queries.ts
-      ├── use-settings.ts           # 14 query hooks (useQuery)
-      ├── use-save-settings.ts      # 11 mutation hooks (useMutation)
-      ├── use-review-stream.ts      # 1 streaming hook (useReducer)
-      └── index.ts                  # Barrel export
+      │   ├── config.ts
+      │   ├── review.ts
+      │   ├── server.ts
+      │   ├── trust.ts
+      │   └── git.ts
+      ├── config.ts                  # 9 config hooks (queries + mutations)
+      ├── review.ts                  # 6 review hooks (queries + mutations)
+      ├── trust.ts                   # 2 trust mutation hooks
+      ├── server.ts                  # 2 server hooks + ServerState type
+      ├── use-review-stream.ts       # 1 streaming hook (useReducer)
+      ├── match-query-state.ts       # matchQueryState utility
+      └── index.ts                   # Barrel re-exports
 ```
 
 React and TanStack Query are `peerDependencies` — only loaded when `@diffgazer/api/hooks` is imported. The root `@diffgazer/api` export remains pure transport with no React dependency.
@@ -62,7 +65,7 @@ Each app wraps its root in `<QueryClientProvider>` + `<ApiProvider value={api}>`
 Query keys are hierarchical for targeted invalidation. `queryOptions()` co-locates key + fetch function with full type inference.
 
 ```typescript
-// packages/api/src/hooks/queries/config.queries.ts
+// packages/api/src/hooks/queries/config.ts
 export const configQueries = {
   all: () => ["config"] as const,
   settings: (api: BoundApi) => queryOptions({
@@ -125,6 +128,25 @@ Some hooks need platform-specific behavior that wraps the shared hook:
 
 These live in each app's `hooks/` directory, not in the shared package.
 
+### 8. Loading State Utility (matchQueryState)
+
+A pure function that maps `UseQueryResult<T>` to render callbacks, reducing repetitive loading/error/empty checks.
+
+```typescript
+import { useSettings, matchQueryState } from "@diffgazer/api/hooks";
+
+function SettingsScreen() {
+  const query = useSettings();
+  return matchQueryState(query, {
+    loading: () => <Spinner label="Loading..." />,
+    error: (err) => <Text color="red">{err.message}</Text>,
+    success: (data) => <SettingsForm settings={data} />,
+  });
+}
+```
+
+Works in both React DOM (web) and Ink (CLI). Optional `empty` handler: when provided and returns `true`, falls back to `loading()`.
+
 ## Query Key Hierarchy
 
 ```
@@ -144,12 +166,7 @@ These live in each app's `hooks/` directory, not in the shared package.
 ['server']                           # all server queries
   ['server', 'health']               # health check (polls every 30s)
 
-['trust', projectId]                # single trust entry
-['trust', 'list']                   # all trusted projects
-
-['git']                              # all git queries
-  ['git', 'status', path?]           # git status
-  ['git', 'diff', mode?, path?]      # git diff
+['trust']                            # all trust queries (used for invalidation)
 ```
 
 ## Invalidation Map
@@ -160,12 +177,10 @@ These live in each app's `hooks/` directory, not in the shared package.
 | `useSaveConfig` | `['config']` (all) |
 | `useActivateProvider` | `['config', 'providers']` + `['config', 'init']` |
 | `useDeleteProviderCredentials` | `['config']` (all) |
-| `useDeleteConfig` | `['config']` (all) |
 | `useSaveTrust` | `['trust']` + `['config', 'init']` |
 | `useDeleteTrust` | `['trust']` + `['config', 'init']` |
 | `useDeleteReview` | `['review']` (all), removes `['review', id]` |
 | `useRefreshReviewContext` | `['review', 'context']` |
-| `useRunDrilldown` | `['review', reviewId]` |
 | `useShutdown` | none |
 
 ## Platform QueryClient Configs
@@ -201,11 +216,11 @@ new QueryClient({
 
 ### New Query Hook
 
-1. Add the query factory to the appropriate `queries/*.queries.ts` file
-2. Create `packages/api/src/hooks/use-<name>.ts`:
+1. Add the query factory to the appropriate `queries/*.ts` file (e.g., `queries/config.ts`)
+2. Add the hook function to the matching domain file (e.g., `packages/api/src/hooks/config.ts`):
    ```typescript
    import { useQuery } from "@tanstack/react-query";
-   import { domainQueries } from "./queries/domain.queries.js";
+   import { domainQueries } from "./queries/domain.js";
    import { useApi } from "./context.js";
 
    export function useNewThing(arg: string) {
@@ -218,10 +233,10 @@ new QueryClient({
 
 ### New Mutation Hook
 
-1. Create `packages/api/src/hooks/use-<action>.ts`:
+1. Add the hook to the appropriate domain file (e.g., `packages/api/src/hooks/config.ts`):
    ```typescript
    import { useMutation, useQueryClient } from "@tanstack/react-query";
-   import { domainQueries } from "./queries/domain.queries.js";
+   import { domainQueries } from "./queries/domain.js";
    import { useApi } from "./context.js";
 
    export function useDoThing() {

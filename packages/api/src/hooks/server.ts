@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { serverQueries } from "./queries/server.queries.js";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { serverQueries } from "./queries/server.js";
 import { useApi } from "./context.js";
 
 export type ServerState =
@@ -17,5 +17,17 @@ export function useServerStatus(): { state: ServerState; retry: () => void } {
       ? { status: "error", message: query.error.message }
       : { status: "connected" };
 
-  return { state, retry: () => { query.refetch(); } };
+  return {
+    state,
+    retry: () => {
+      query.refetch();
+    },
+  };
+}
+
+export function useShutdown() {
+  const api = useApi();
+  return useMutation({
+    mutationFn: () => api.shutdown(),
+  });
 }

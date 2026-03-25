@@ -1,5 +1,6 @@
 import { useState, type KeyboardEvent } from "react";
 import { NavigationList } from "diffui/components/navigation-list";
+import { matchQueryState } from "@diffgazer/api/hooks";
 import { RunAccordionItem } from "@/features/history/components/run-accordion-item";
 import { TimelineList } from "@/features/history/components/timeline-list";
 import { HistoryInsightsPane } from "@/features/history/components/history-insights-pane";
@@ -8,8 +9,7 @@ import { useHistoryPage } from "@/features/history/hooks/use-history-page";
 
 export function HistoryPage() {
   const {
-    isLoading,
-    error,
+    reviewsQuery,
     focusZone,
     searchQuery,
     searchInputRef,
@@ -48,21 +48,21 @@ export function HistoryPage() {
     }
   };
 
-  if (isLoading) {
-    return (
+  const guard = matchQueryState(reviewsQuery, {
+    loading: () => (
       <div className="flex flex-col flex-1 items-center justify-center text-tui-muted">
         <span>Loading reviews...</span>
       </div>
-    );
-  }
-
-  if (error) {
-    return (
+    ),
+    error: (err) => (
       <div className="flex flex-col flex-1 items-center justify-center text-tui-red">
-        <span>Error: {error}</span>
+        <span>Error: {err.message}</span>
       </div>
-    );
-  }
+    ),
+    success: () => null,
+  });
+
+  if (guard) return guard;
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden px-4 pb-0">

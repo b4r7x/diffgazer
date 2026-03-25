@@ -32,6 +32,7 @@ packages/tsconfig/ → Shared TS configs
 - Shared data lives in `@diffgazer/core` — labels, types, utilities.
 - Both apps use `@diffgazer/api` client for API calls — no direct fetch in apps.
 - Both apps use shared hooks from `@diffgazer/api/hooks` for data fetching — no hand-rolled `useState`+`useEffect` fetch patterns. See @.claude/docs/shared-hooks.md.
+- Use `matchQueryState(query, { loading, error, success })` from `@diffgazer/api/hooks` for declarative loading/error/success rendering — reduces repetitive `if (isLoading)... if (error)...` guards.
 - Use `Result<T, E>` for error handling, NOT try/catch. See @.claude/docs/decisions.md (ADR-0001).
 - Use Zod 4 schemas from `@diffgazer/schemas` for all validation.
 - No manual `useCallback`/`useMemo` — React 19 Compiler auto-memoizes.
@@ -72,10 +73,8 @@ Unified documentation portal for diff-ui, keyscope, and (future) diffgazer docs.
 - @.claude/docs/web-design-guidelines.md — Web UI design system
 
 ## Recent Changes
-- 007-shared-hooks-audit: Added TypeScript 5.x (strict: true), ESM only, `.js` extensions in imports + React 19, TanStack Query v5 (`@tanstack/react-query`), Ink 6 (CLI), Vite 7 (web), Hono (server)
-- 006-shared-api-hooks: Added TypeScript 5.x (strict: true), ESM only, `.js` extensions in imports + `@tanstack/react-query` v5 (new), React 19, Ink 6 (CLI), Vite 7 (web), `@diffgazer/api`, `@diffgazer/core`, `@diffgazer/schemas`
-- 005-cli-backend-integration: Added TypeScript 5.x (strict: true), ESM only, .js extensions in imports + Ink 6.8.0, React 19.2.4, `@diffgazer/api`, `@diffgazer/core`, `@diffgazer/schemas`, Hono (embedded server), ink-spinner, chalk, @inkjs/ui
+- 008-hooks-consolidation: Consolidated `@diffgazer/api/hooks` from 28 files to 8: hooks grouped by domain (`config.ts`, `review.ts`, `trust.ts`, `server.ts`), query factory files renamed (dropped `.queries` suffix), 6 unused hooks removed (`useTrust`, `useTrustedProjects`, `useGitStatus`, `useGitDiff`, `useRunDrilldown`, `useDeleteConfig`), 4 unused query factory re-exports removed (kept only `configQueries`), added `matchQueryState()` utility for declarative loading/error/success rendering. Zero consumer import changes — barrel preserves all used hook names. `queries/index.ts` barrel removed (domain files import directly).
+- 007-shared-hooks-audit: Audited and improved shared API hooks quality
+- 006-shared-api-hooks: Added shared TanStack Query hooks in `@diffgazer/api/hooks` subpath — `useQuery`/`useMutation` wrappers with query key factories, cache invalidation map, cross-platform support (Ink CLI + web)
 
 ## Active Technologies
-- TypeScript 5.x (strict: true), ESM only, `.js` extensions in imports + React 19, TanStack Query v5 (`@tanstack/react-query`), Ink 6 (CLI), Vite 7 (web), Hono (server) (007-shared-hooks-audit)
-- N/A (in-memory query cache, no persistence changes) (007-shared-hooks-audit)
