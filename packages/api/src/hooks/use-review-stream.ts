@@ -9,7 +9,6 @@ import {
 } from "@diffgazer/core/review";
 import { type Result, ok } from "@diffgazer/core/result";
 import { ReviewErrorCode, type ReviewMode, type LensId } from "@diffgazer/schemas/review";
-import type { StreamReviewError } from "../review.js";
 import { useApi } from "./context.js";
 
 type ReviewEvent = AgentStreamEvent | StepEvent | EnrichEvent;
