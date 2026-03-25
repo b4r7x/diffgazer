@@ -5,7 +5,7 @@ import type { LensId } from "@diffgazer/schemas/review";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
-import { useSettings, useSaveSettings } from "@diffgazer/api/hooks";
+import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Button } from "../../../components/ui/button.js";
@@ -17,12 +17,32 @@ export function AnalysisScreen(): ReactElement {
   usePageFooter({ shortcuts: [{ key: "Esc", label: "Back" }, { key: "Space", label: "Toggle" }] });
   useBackHandler();
 
-  const { data: settings, isLoading, error: loadErrorObj } = useSettings();
-  const loadError = loadErrorObj?.message ?? null;
+  const settingsQuery = useSettings();
   const saveSettings = useSaveSettings();
   const [selectedLenses, setSelectedLenses] = useState<LensId[] | null>(null);
   const [saved, setSaved] = useState(false);
 
+  const guard = matchQueryState(settingsQuery, {
+    loading: () => (
+      <Panel>
+        <Panel.Content>
+          <Spinner label="Loading analysis settings..." />
+        </Panel.Content>
+      </Panel>
+    ),
+    error: (err) => (
+      <Panel>
+        <Panel.Content>
+          <Text color="red">{err.message}</Text>
+        </Panel.Content>
+      </Panel>
+    ),
+    success: () => null,
+  });
+
+  if (guard) return guard as ReactElement;
+
+  const settings = settingsQuery.data;
   const isSaving = saveSettings.isPending;
   const saveError = saveSettings.error?.message ?? null;
   const defaultLenses = settings?.defaultLenses ?? [];
@@ -36,26 +56,6 @@ export function AnalysisScreen(): ReactElement {
     saveSettings.mutate({ defaultLenses: effectiveLenses }, {
       onSuccess: () => setSaved(true),
     });
-  }
-
-  if (isLoading) {
-    return (
-      <Panel>
-        <Panel.Content>
-          <Spinner label="Loading analysis settings..." />
-        </Panel.Content>
-      </Panel>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <Panel>
-        <Panel.Content>
-          <Text color="red">{loadError}</Text>
-        </Panel.Content>
-      </Panel>
-    );
   }
 
   return (
