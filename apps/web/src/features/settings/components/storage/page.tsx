@@ -6,7 +6,7 @@ import { Button } from "diffui/components/button";
 import { Callout } from "diffui/components/callout";
 import { CardLayout } from "@/components/ui/card-layout";
 import { StorageSelectorContent } from "@/components/shared/storage-selector-content";
-import { useSettings, useSaveSettings } from "@diffgazer/api/hooks";
+import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/api/hooks";
 import { useKey, useScope } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { cn } from "@/utils/cn";
@@ -16,7 +16,8 @@ const BUTTONS_COUNT = 2;
 
 export function SettingsStoragePage() {
   const navigate = useNavigate();
-  const { data: settings, isLoading, error: settingsQueryError } = useSettings();
+  const settingsQuery = useSettings();
+  const { data: settings, error: settingsQueryError } = settingsQuery;
   const settingsError = settingsQueryError?.message ?? null;
   const saveSettings = useSaveSettings();
   const [storageChoice, setStorageChoice] = useState<SecretsStorage | null>(null);
@@ -89,6 +90,28 @@ export function SettingsStoragePage() {
   useKey("Enter", activateButton, { enabled: isButtonsZone });
   useKey(" ", activateButton, { enabled: isButtonsZone });
 
+  const guard = matchQueryState(settingsQuery, {
+    loading: () => (
+      <CardLayout
+        title="Configure Secrets Storage"
+        subtitle="Choose where API keys and sensitive data should be stored."
+      >
+        <p className="text-tui-muted">Loading settings...</p>
+      </CardLayout>
+    ),
+    error: (err) => (
+      <CardLayout
+        title="Configure Secrets Storage"
+        subtitle="Choose where API keys and sensitive data should be stored."
+      >
+        <p className="text-tui-red text-sm">{err.message}</p>
+      </CardLayout>
+    ),
+    success: () => null,
+  });
+
+  if (guard) return guard;
+
   return (
     <CardLayout
       title="Configure Secrets Storage"
@@ -114,29 +137,25 @@ export function SettingsStoragePage() {
         </>
       }
     >
-      {isLoading ? (
-        <p className="text-tui-muted">Loading settings...</p>
-      ) : (
-        <div className="space-y-6">
-          <StorageSelectorContent
-            value={effectiveStorage}
-            onChange={setStorageChoice}
-            disabled={isSaving}
-            enabled={!isButtonsZone}
-            onBoundaryReached={(direction) => {
-              if (direction === "down") {
-                setFocusZone("buttons");
-              }
-            }}
-          />
+      <div className="space-y-6">
+        <StorageSelectorContent
+          value={effectiveStorage}
+          onChange={setStorageChoice}
+          disabled={isSaving}
+          enabled={!isButtonsZone}
+          onBoundaryReached={(direction) => {
+            if (direction === "down") {
+              setFocusZone("buttons");
+            }
+          }}
+        />
 
-          <Callout variant="info" layout="none">
-            Changes will take effect immediately after saving.
-          </Callout>
+        <Callout variant="info" layout="none">
+          Changes will take effect immediately after saving.
+        </Callout>
 
-          {(error || settingsError) && <p className="text-tui-red text-sm">{error || settingsError}</p>}
-        </div>
-      )}
+        {(error || settingsError) && <p className="text-tui-red text-sm">{error || settingsError}</p>}
+      </div>
     </CardLayout>
   );
 }

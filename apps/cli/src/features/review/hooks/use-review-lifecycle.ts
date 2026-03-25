@@ -115,11 +115,14 @@ export function useReviewLifecycle(): {
       void stream.start(mode, lenses);
     };
 
-    const resumeById = (reviewId: string) => {
+    const resumeById = async (reviewId: string) => {
       if (ignore) return;
       setPhase("streaming");
       hasStreamedRef.current = true;
-      void stream.resume(reviewId);
+      const result = await stream.resume(reviewId);
+      if (!result.ok) {
+        startFresh();
+      }
     };
 
     if (sessionError) {
@@ -129,7 +132,7 @@ export function useReviewLifecycle(): {
       if (!activeReviewId) {
         startFresh();
       } else {
-        resumeById(activeReviewId);
+        void resumeById(activeReviewId);
       }
     }
 
@@ -147,7 +150,8 @@ export function useReviewLifecycle(): {
       wasStreaming &&
       !stream.state.isStreaming &&
       hasStreamedRef.current &&
-      !stream.state.error
+      !stream.state.error &&
+      stream.state.reviewId !== null
     ) {
       setPhase("completing");
 
@@ -163,7 +167,7 @@ export function useReviewLifecycle(): {
         completionTimerRef.current = null;
       }
     };
-  }, [stream.state.isStreaming, stream.state.error]);
+  }, [stream.state.isStreaming, stream.state.error, stream.state.reviewId]);
 
   function goToSummary() {
     if (completionTimerRef.current) {

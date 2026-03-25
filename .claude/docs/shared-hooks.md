@@ -28,13 +28,12 @@ Before this existed, both apps had hand-rolled hooks with `useState` + `useEffec
       │   ├── config.ts
       │   ├── review.ts
       │   ├── server.ts
-      │   ├── trust.ts
-      │   └── git.ts
+      │   └── trust.ts
       ├── config.ts                  # 9 config hooks (queries + mutations)
-      ├── review.ts                  # 6 review hooks (queries + mutations)
+      ├── review.ts                  # 6 review hooks
       ├── trust.ts                   # 2 trust mutation hooks
-      ├── server.ts                  # 2 server hooks + ServerState type
-      ├── use-review-stream.ts       # 1 streaming hook (useReducer)
+      ├── server.ts                  # 2 server hooks + ServerState
+      ├── use-review-stream.ts       # Streaming hook (useReducer)
       ├── match-query-state.ts       # matchQueryState utility
       └── index.ts                   # Barrel re-exports
 ```
@@ -113,7 +112,7 @@ Returns `UseMutationResult` — callers use `.mutate()` (fire-and-forget) or `.m
 
 The review streaming hook manages a long-running SSE stream. TanStack Query is not suited for this (it's designed for request/response). Instead, uses `useReducer` with the shared `reviewReducer` from `@diffgazer/core/review`.
 
-Accepts an optional `batchEvents` callback for platform-specific event batching (web can use `requestAnimationFrame`, CLI dispatches synchronously).
+`resume()` returns `Promise<Result<void, StreamReviewError>>`, allowing callers to detect stale or not-found sessions (`SESSION_STALE`, `SESSION_NOT_FOUND`) and fall back to a fresh start.
 
 ### 6. Server Status Hook (shared, with `ServerState`)
 
@@ -130,7 +129,9 @@ These live in each app's `hooks/` directory, not in the shared package.
 
 ### 8. Loading State Utility (matchQueryState)
 
-A pure function that maps `UseQueryResult<T>` to render callbacks, reducing repetitive loading/error/empty checks.
+A pure function that maps `UseQueryResult<T>` to render callbacks. React 19 Compiler compatible (no hooks, no closures over mutable state).
+
+Check order: `isLoading` → `data` (data-first) → `error` → fallback `loading()`. The data-first check means a successful query with stale data won't flash an error state during background refetch.
 
 ```typescript
 import { useSettings, matchQueryState } from "@diffgazer/api/hooks";
@@ -145,7 +146,20 @@ function SettingsScreen() {
 }
 ```
 
-Works in both React DOM (web) and Ink (CLI). Optional `empty` handler: when provided and returns `true`, falls back to `loading()`.
+Guard clause pattern — when `success` returns `null`, use `matchQueryState` to handle only loading/error, then continue with the data:
+
+```typescript
+const query = useSettings();
+const guard = matchQueryState(query, {
+  loading: () => <Spinner />,
+  error: (err) => <ErrorBox error={err} />,
+  success: () => null,
+});
+if (guard) return guard;
+// query.data is guaranteed defined here
+```
+
+Works in both React DOM (web) and Ink (CLI).
 
 ## Query Key Hierarchy
 

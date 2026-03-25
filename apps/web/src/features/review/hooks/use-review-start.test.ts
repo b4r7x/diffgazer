@@ -3,7 +3,7 @@ import { renderHook } from "@testing-library/react";
 import { useReviewStart } from "./use-review-start";
 import { ReviewErrorCode } from "@diffgazer/schemas/review";
 import type { Result } from "@diffgazer/core/result";
-import type { StreamReviewError } from "@diffgazer/api/review";
+import type { StreamReviewError } from "@diffgazer/api/hooks";
 
 function defaultProps(overrides: Partial<Parameters<typeof useReviewStart>[0]> = {}) {
   return {
@@ -16,7 +16,6 @@ function defaultProps(overrides: Partial<Parameters<typeof useReviewStart>[0]> =
     start: vi.fn<Parameters<typeof useReviewStart>[0]["start"]>().mockResolvedValue(undefined),
     resume: vi.fn<Parameters<typeof useReviewStart>[0]["resume"]>().mockResolvedValue({ ok: true, value: undefined } as Result<void, StreamReviewError>),
     getActiveSession: vi.fn<Parameters<typeof useReviewStart>[0]["getActiveSession"]>().mockResolvedValue({ session: null }),
-    onNotFoundInSession: vi.fn(),
     ...overrides,
   };
 }
@@ -94,12 +93,10 @@ describe("useReviewStart", () => {
     const getActiveSession = vi.fn().mockResolvedValue({
       session: { reviewId: "missing-active-id" },
     });
-    const onNotFoundInSession = vi.fn();
     const props = defaultProps({
       start,
       resume,
       getActiveSession,
-      onNotFoundInSession,
     });
 
     renderHook(() => useReviewStart(props));
@@ -107,7 +104,6 @@ describe("useReviewStart", () => {
     await vi.waitFor(() => {
       expect(start).toHaveBeenCalledOnce();
     });
-    expect(onNotFoundInSession).not.toHaveBeenCalled();
   });
 
   it("should start fresh when active session becomes stale", async () => {
@@ -119,12 +115,10 @@ describe("useReviewStart", () => {
     const getActiveSession = vi.fn().mockResolvedValue({
       session: { reviewId: "stale-active-id" },
     });
-    const onNotFoundInSession = vi.fn();
     const props = defaultProps({
       start,
       resume,
       getActiveSession,
-      onNotFoundInSession,
     });
 
     renderHook(() => useReviewStart(props));
@@ -132,22 +126,21 @@ describe("useReviewStart", () => {
     await vi.waitFor(() => {
       expect(start).toHaveBeenCalledOnce();
     });
-    expect(onNotFoundInSession).not.toHaveBeenCalled();
   });
 
-  it("should call onNotFoundInSession on SESSION_NOT_FOUND", async () => {
-    const onNotFoundInSession = vi.fn();
+  it("should start fresh when URL reviewId returns SESSION_NOT_FOUND", async () => {
+    const start = vi.fn().mockResolvedValue(undefined);
     const resume = vi.fn().mockResolvedValue({
       ok: false,
       error: { code: ReviewErrorCode.SESSION_NOT_FOUND, message: "not found" },
     });
-    const props = defaultProps({ reviewId: "missing-id", resume, onNotFoundInSession });
+    const props = defaultProps({ reviewId: "missing-id", start, resume });
 
     renderHook(() => useReviewStart(props));
 
     await vi.waitFor(() => {
-      expect(onNotFoundInSession).toHaveBeenCalledOnce();
+      expect(start).toHaveBeenCalledOnce();
     });
-    expect(onNotFoundInSession).toHaveBeenCalledWith("missing-id");
+    expect(start).toHaveBeenCalledWith({ mode: "staged", lenses: [] });
   });
 });
