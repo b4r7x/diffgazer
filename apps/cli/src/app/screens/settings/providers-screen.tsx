@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import type { ProviderStatus } from "@diffgazer/schemas/config";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/schemas/config";
-import { useProviderStatus, useDeleteProviderCredentials } from "@diffgazer/api/hooks";
+import { useProviderStatus, useDeleteProviderCredentials, matchQueryState } from "@diffgazer/api/hooks";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
@@ -59,15 +59,14 @@ export function ProvidersScreen(): ReactElement {
   const isNarrow = columns < 80;
   const listWidth = isNarrow ? undefined : Math.max(Math.floor(columns * 0.3), 30);
 
-  const { data: providerStatuses, isLoading, error: queryError, refetch } = useProviderStatus();
+  const providerQuery = useProviderStatus();
   const deleteCredentials = useDeleteProviderCredentials();
 
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [apiKeyOpen, setApiKeyOpen] = useState(false);
   const [modelSelectOpen, setModelSelectOpen] = useState(false);
 
-  const providers = providerStatuses ? buildProviderList(providerStatuses) : [];
-  const error = deleteCredentials.error?.message ?? queryError?.message ?? null;
+  const providers = providerQuery.data ? buildProviderList(providerQuery.data) : [];
 
   const selectedProvider = providers.find((p) => p.id === selectedId);
   const selectedDetail = selectedProvider ? toDetailData(selectedProvider) : undefined;
@@ -81,11 +80,11 @@ export function ProvidersScreen(): ReactElement {
   }
 
   function handleSaveKey(_key: string, _method: string) {
-    void refetch();
+    void providerQuery.refetch();
   }
 
   function handleModelSelect(_modelId: string) {
-    void refetch();
+    void providerQuery.refetch();
   }
 
   function handleRemoveProvider() {
@@ -95,8 +94,8 @@ export function ProvidersScreen(): ReactElement {
 
   const isListActive = !apiKeyOpen && !modelSelectOpen;
 
-  if (isLoading) {
-    return (
+  const guard = matchQueryState(providerQuery, {
+    loading: () => (
       <Panel>
         <Panel.Content>
           <Box flexDirection="column" gap={1}>
@@ -105,27 +104,30 @@ export function ProvidersScreen(): ReactElement {
           </Box>
         </Panel.Content>
       </Panel>
-    );
-  }
-
-  if (error) {
-    return (
+    ),
+    error: (err) => (
       <Panel>
         <Panel.Content>
           <Box flexDirection="column" gap={1}>
             <SectionHeader>Providers</SectionHeader>
-            <Text color="red">Error: {error}</Text>
+            <Text color="red">Error: {err.message}</Text>
           </Box>
         </Panel.Content>
       </Panel>
-    );
-  }
+    ),
+    success: () => null,
+  });
+
+  if (guard) return guard as ReactElement;
 
   return (
     <Panel>
       <Panel.Content>
         <Box flexDirection="column" gap={1}>
           <SectionHeader>Providers</SectionHeader>
+          {deleteCredentials.error && (
+            <Text color="red">Error: {deleteCredentials.error.message}</Text>
+          )}
           <Box flexDirection={isNarrow ? "column" : "row"} gap={isNarrow ? 0 : 2}>
             <Box
               flexDirection="column"

@@ -1,5 +1,8 @@
 import { useEffect, useRef } from 'react';
 import type { LensId, ReviewMode } from '@diffgazer/schemas/review';
+import { ReviewErrorCode } from '@diffgazer/schemas/review';
+import type { Result } from '@diffgazer/core/result';
+import type { StreamReviewError } from '@diffgazer/api/hooks';
 
 interface ActiveReviewSessionResult {
   session: { reviewId: string } | null;
@@ -13,7 +16,7 @@ interface UseReviewStartOptions {
   defaultLenses: LensId[];
   reviewId: string | undefined;
   start: (options: { mode?: ReviewMode; lenses?: LensId[] }) => Promise<void>;
-  resume: (id: string) => Promise<void>;
+  resume: (id: string) => Promise<Result<void, StreamReviewError>>;
   getActiveSession: (mode: ReviewMode) => Promise<ActiveReviewSessionResult>;
 }
 
@@ -46,7 +49,11 @@ export function useReviewStart({
     };
 
     if (reviewId) {
-      void resume(reviewId);
+      void resume(reviewId).then((result) => {
+        if (!result.ok && (result.error.code === ReviewErrorCode.SESSION_STALE || result.error.code === ReviewErrorCode.SESSION_NOT_FOUND)) {
+          startFresh();
+        }
+      });
     } else {
       void getActiveSession(mode)
         .then((active) => {
@@ -58,7 +65,11 @@ export function useReviewStart({
             return;
           }
 
-          void resume(activeReviewId);
+          void resume(activeReviewId).then((result) => {
+            if (!result.ok && (result.error.code === ReviewErrorCode.SESSION_STALE || result.error.code === ReviewErrorCode.SESSION_NOT_FOUND)) {
+              startFresh();
+            }
+          });
         })
         .catch(() => {
           startFresh();

@@ -1,7 +1,5 @@
-// Context
 export { ApiProvider, useApi } from "./context.js";
 
-// Config domain
 export {
   useSettings,
   useInit,
@@ -14,7 +12,6 @@ export {
   useDeleteProviderCredentials,
 } from "./config.js";
 
-// Review domain
 export {
   useReviews,
   useReview,
@@ -24,17 +21,13 @@ export {
   useRefreshReviewContext,
 } from "./review.js";
 
-// Trust domain
 export { useSaveTrust, useDeleteTrust } from "./trust.js";
 
-// Server domain
-export { useServerStatus, type ServerState, useShutdown } from "./server.js";
+export { useServerStatus, useShutdown } from "./server.js";
 
-// Streaming hook
-export { useReviewStream, type ReviewStreamState } from "./use-review-stream.js";
+export { useReviewStream } from "./use-review-stream.js";
+export type { StreamReviewError } from "../review.js";
 
-// Utilities
 export { matchQueryState } from "./match-query-state.js";
 
-// Query factory (used externally by ConfigProvider)
 export { configQueries } from "./queries/config.js";

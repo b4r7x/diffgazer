@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
-import { useInit, useSaveTrust } from "@diffgazer/api/hooks";
+import { useInit, useSaveTrust, matchQueryState } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Button } from "../../../components/ui/button.js";
@@ -14,8 +14,7 @@ interface TrustPanelProps {
 }
 
 export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
-  const { data: initData, isLoading: initLoading, error: initErrorObj } = useInit();
-  const initError = initErrorObj?.message ?? null;
+  const initQuery = useInit();
   const saveTrust = useSaveTrust();
   const [checked, setChecked] = useState<string[]>([]);
 
@@ -23,15 +22,15 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
   const error = saveTrust.error?.message ?? null;
 
   function handleAccept() {
-    if (!initData) return;
+    if (!initQuery.data) return;
     const capabilities = {
       readFiles: checked.includes("readFiles"),
       runCommands: checked.includes("runCommands"),
     };
     saveTrust.mutate(
       {
-        projectId: initData.project.projectId,
-        repoRoot: initData.project.path,
+        projectId: initQuery.data.project.projectId,
+        repoRoot: initQuery.data.project.path,
         capabilities,
         trustMode: "persistent",
         trustedAt: new Date().toISOString(),
@@ -40,8 +39,8 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
     );
   }
 
-  if (initLoading) {
-    return (
+  const guard = matchQueryState(initQuery, {
+    loading: () => (
       <Panel>
         <Panel.Content>
           <Box gap={1}>
@@ -50,18 +49,17 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
           </Box>
         </Panel.Content>
       </Panel>
-    );
-  }
-
-  if (initError) {
-    return (
+    ),
+    error: (err) => (
       <Panel>
         <Panel.Content>
-          <Text color="red">Error: {initError}</Text>
+          <Text color="red">Error: {err.message}</Text>
         </Panel.Content>
       </Panel>
-    );
-  }
+    ),
+    success: () => null,
+  });
+  if (guard) return guard;
 
   return (
     <Panel>
@@ -92,7 +90,7 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
           </CheckboxGroup>
 
           <Box gap={1}>
-            <Button variant="success" onPress={handleAccept} disabled={saving || !initData}>
+            <Button variant="success" onPress={handleAccept} disabled={saving}>
               {saving ? "Saving..." : "Accept & Continue"}
             </Button>
           </Box>

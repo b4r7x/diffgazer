@@ -7,7 +7,7 @@ import { RadioGroup, RadioGroupItem } from "diffui/components/radio";
 import { CardLayout } from "@/components/ui/card-layout";
 import { useKey, useScope } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { useSettings, useSaveSettings } from "@diffgazer/api/hooks";
+import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/api/hooks";
 import { cn } from "@/utils/cn";
 
 type FocusZone = "list" | "buttons";
@@ -15,8 +15,7 @@ const BUTTONS_COUNT = 2;
 
 export function SettingsAgentExecutionPage() {
   const navigate = useNavigate();
-  const { data: settings, isLoading, error: settingsQueryError } = useSettings();
-  const settingsError = settingsQueryError?.message ?? null;
+  const settingsQuery = useSettings();
   const saveSettings = useSaveSettings();
   const [modeChoice, setModeChoice] = useState<AgentExecution | null>(null);
   const [focusedMode, setFocusedMode] = useState<AgentExecution>("sequential");
@@ -25,18 +24,12 @@ export function SettingsAgentExecutionPage() {
   const [focusZone, setFocusZone] = useState<FocusZone>("list");
   const [buttonIndex, setButtonIndex] = useState(0);
 
+  const settings = settingsQuery.data;
   const effectiveMode = modeChoice ?? settings?.agentExecution ?? "sequential";
 
   useEffect(() => {
     setFocusedMode(effectiveMode);
   }, [effectiveMode]);
-
-  useEffect(() => {
-    if (!isLoading && !settingsError) {
-      setFocusZone("list");
-      setButtonIndex(0);
-    }
-  }, [isLoading, settingsError]);
 
   useScope("settings-agent-execution");
   useKey("Escape", () => navigate({ to: "/settings" }));
@@ -64,7 +57,7 @@ export function SettingsAgentExecutionPage() {
     rightShortcuts: [{ key: "Esc", label: "Back" }],
   });
 
-  const navigationEnabled = !isButtonsZone && !isLoading && !settingsError && !isSaving;
+  const navigationEnabled = !isButtonsZone && !isSaving;
 
   const onExecutionChange = (value: string) => {
     const mode = value as AgentExecution;
@@ -127,6 +120,28 @@ export function SettingsAgentExecutionPage() {
   useKey("Enter", activateButton, { enabled: isButtonsZone });
   useKey(" ", activateButton, { enabled: isButtonsZone });
 
+  const guard = matchQueryState(settingsQuery, {
+    loading: () => (
+      <CardLayout
+        title="Agent Execution Mode"
+        subtitle="Choose whether analysis agents run in sequence or in parallel."
+      >
+        <p className="text-tui-muted">Loading settings...</p>
+      </CardLayout>
+    ),
+    error: (err) => (
+      <CardLayout
+        title="Agent Execution Mode"
+        subtitle="Choose whether analysis agents run in sequence or in parallel."
+      >
+        <p className="text-tui-red text-sm">{err.message}</p>
+      </CardLayout>
+    ),
+    success: () => null,
+  });
+
+  if (guard) return guard;
+
   return (
     <CardLayout
       title="Agent Execution Mode"
@@ -152,31 +167,27 @@ export function SettingsAgentExecutionPage() {
         </>
       }
     >
-      {isLoading ? (
-        <p className="text-tui-muted">Loading settings...</p>
-      ) : (
-        <div className="space-y-6">
-          <RadioGroup
-            value={effectiveMode}
-            onChange={onExecutionChange}
-            highlighted={navigationEnabled ? focusedMode : null}
-            onHighlightChange={(v) => setFocusedMode(v as AgentExecution)}
-            className="space-y-1"
-          >
-            <RadioGroupItem
-              value="sequential"
-              label="Sequential"
-              description="Agents run one after another. Works with all providers and tiers."
-            />
-            <RadioGroupItem
-              value="parallel"
-              label="Parallel"
-              description="All agents run at once. Faster, but may hit rate limits on free tiers."
-            />
-          </RadioGroup>
-          {(error || settingsError) && <p className="text-tui-red text-sm">{error || settingsError}</p>}
-        </div>
-      )}
+      <div className="space-y-6">
+        <RadioGroup
+          value={effectiveMode}
+          onChange={onExecutionChange}
+          highlighted={navigationEnabled ? focusedMode : null}
+          onHighlightChange={(v) => setFocusedMode(v as AgentExecution)}
+          className="space-y-1"
+        >
+          <RadioGroupItem
+            value="sequential"
+            label="Sequential"
+            description="Agents run one after another. Works with all providers and tiers."
+          />
+          <RadioGroupItem
+            value="parallel"
+            label="Parallel"
+            description="All agents run at once. Faster, but may hit rate limits on free tiers."
+          />
+        </RadioGroup>
+        {error && <p className="text-tui-red text-sm">{error}</p>}
+      </div>
     </CardLayout>
   );
 }

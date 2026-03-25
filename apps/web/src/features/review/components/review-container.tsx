@@ -47,9 +47,10 @@ export function ReviewContainer({ mode, onComplete }: ReviewContainerProps) {
     handleSwitchMode,
   } = useReviewLifecycle({ mode, onComplete });
 
-  const { data: contextData } = useReviewContext();
-  // Suppress context display during streaming (matches old useContextSnapshot behavior)
-  const contextSnapshot = state.isStreaming ? null : contextData ?? null;
+  const contextStep = state.steps.find(s => s.id === 'context');
+  const contextReady = contextStep?.status === 'completed' && !!state.reviewId;
+  const { data: contextData } = useReviewContext({ enabled: contextReady });
+  const contextSnapshot = contextReady ? contextData ?? null : null;
 
   const progressData = (() => {
     const steps = mapStepsToProgressData(state.steps, state.agents);

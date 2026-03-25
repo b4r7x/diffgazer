@@ -5,7 +5,7 @@ import type { AgentExecution } from "@diffgazer/schemas/config";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
-import { useSettings, useSaveSettings } from "@diffgazer/api/hooks";
+import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Spinner } from "../../../components/ui/spinner.js";
@@ -17,15 +17,14 @@ export function AgentExecutionScreen(): ReactElement {
   usePageFooter({ shortcuts: [{ key: "Esc", label: "Back" }, { key: "Enter", label: "Select" }] });
   useBackHandler();
 
-  const { data: settings, isLoading, error: loadErrorObj } = useSettings();
-  const loadError = loadErrorObj?.message ?? null;
+  const settingsQuery = useSettings();
   const saveSettings = useSaveSettings();
   const [mode, setMode] = useState<AgentExecution | null>(null);
   const [saved, setSaved] = useState(false);
 
   const isSaving = saveSettings.isPending;
   const saveError = saveSettings.error?.message ?? null;
-  const current = mode ?? settings?.agentExecution ?? "parallel";
+  const current = mode ?? settingsQuery.data?.agentExecution ?? "parallel";
 
   function handleSave() {
     setSaved(false);
@@ -34,25 +33,25 @@ export function AgentExecutionScreen(): ReactElement {
     });
   }
 
-  if (isLoading) {
-    return (
+  const guard = matchQueryState(settingsQuery, {
+    loading: () => (
       <Panel>
         <Panel.Content>
           <Spinner label="Loading agent execution settings..." />
         </Panel.Content>
       </Panel>
-    );
-  }
-
-  if (loadError) {
-    return (
+    ),
+    error: (err) => (
       <Panel>
         <Panel.Content>
-          <Text color="red">{loadError}</Text>
+          <Text color="red">{err.message}</Text>
         </Panel.Content>
       </Panel>
-    );
-  }
+    ),
+    success: () => null,
+  });
+
+  if (guard) return guard as ReactElement;
 
   return (
     <Panel>

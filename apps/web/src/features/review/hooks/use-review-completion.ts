@@ -39,7 +39,7 @@ export function useReviewCompletion({
     const wasStreaming = prevIsStreamingRef.current;
     prevIsStreamingRef.current = isStreaming;
 
-    if (wasStreaming && !isStreaming && hasStreamed && !error) {
+    if (wasStreaming && !isStreaming && hasStreamed && !error && reviewIdRef.current !== null) {
       if (completeTimeoutRef.current) {
         clearTimeout(completeTimeoutRef.current);
       }

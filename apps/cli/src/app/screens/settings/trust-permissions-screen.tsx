@@ -5,7 +5,7 @@ import Spinner from "ink-spinner";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
-import { useInit, useSaveTrust, useDeleteTrust } from "@diffgazer/api/hooks";
+import { useInit, useSaveTrust, useDeleteTrust, matchQueryState } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Button } from "../../../components/ui/button.js";
@@ -21,13 +21,12 @@ export function TrustPermissionsScreen(): ReactElement {
   usePageFooter({ shortcuts: [{ key: "Esc", label: "Back" }, { key: "Space", label: "Toggle" }] });
   useBackHandler();
 
-  const { data: initData, isLoading: initLoading, error: initErrorObj } = useInit();
-  const initError = initErrorObj?.message ?? null;
+  const initQuery = useInit();
 
   const saveTrust = useSaveTrust();
   const deleteTrust = useDeleteTrust();
 
-  const trust = initData?.project.trust ?? null;
+  const trust = initQuery.data?.project.trust ?? null;
   const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
@@ -41,11 +40,11 @@ export function TrustPermissionsScreen(): ReactElement {
   };
 
   function handleSave() {
-    if (!initData) return;
+    if (!initQuery.data) return;
     setSaveMessage(null);
     saveTrust.mutate({
-      projectId: initData.project.projectId,
-      repoRoot: initData.project.path,
+      projectId: initQuery.data.project.projectId,
+      repoRoot: initQuery.data.project.path,
       capabilities: effectiveCapabilities,
       trustMode: trust?.trustMode ?? "persistent",
       trustedAt: new Date().toISOString(),
@@ -58,9 +57,9 @@ export function TrustPermissionsScreen(): ReactElement {
   }
 
   function handleRevoke() {
-    if (!initData) return;
+    if (!initQuery.data) return;
     setSaveMessage(null);
-    deleteTrust.mutate(initData.project.projectId, {
+    deleteTrust.mutate(initQuery.data.project.projectId, {
       onSuccess: () => {
         setCapabilities(null);
         setSaveMessage("Trust permissions revoked.");
@@ -68,8 +67,8 @@ export function TrustPermissionsScreen(): ReactElement {
     });
   }
 
-  if (initLoading) {
-    return (
+  const guard = matchQueryState(initQuery, {
+    loading: () => (
       <Panel>
         <Panel.Content>
           <Box gap={1}>
@@ -78,18 +77,17 @@ export function TrustPermissionsScreen(): ReactElement {
           </Box>
         </Panel.Content>
       </Panel>
-    );
-  }
-
-  if (initError) {
-    return (
+    ),
+    error: (err) => (
       <Panel>
         <Panel.Content>
-          <Text color="red">Error: {initError}</Text>
+          <Text color="red">Error: {err.message}</Text>
         </Panel.Content>
       </Panel>
-    );
-  }
+    ),
+    success: () => null,
+  });
+  if (guard) return guard;
 
   return (
     <Panel>
