@@ -40,6 +40,7 @@ function useHistoryData() {
     : [];
 
   return {
+    reviewsQuery,
     isLoading,
     error,
     reviews,
@@ -179,6 +180,7 @@ export function useHistoryPage() {
         : "No runs for this date";
 
   return {
+    reviewsQuery: data.reviewsQuery,
     isLoading: data.isLoading,
     error: data.error,
     focusZone,

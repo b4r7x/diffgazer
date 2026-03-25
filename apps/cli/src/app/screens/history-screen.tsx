@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
 import type { ReviewMetadata } from "@diffgazer/schemas/review";
-import { useReviews } from "@diffgazer/api/hooks";
+import { useReviews, matchQueryState } from "@diffgazer/api/hooks";
 import { useScope } from "../../hooks/use-scope.js";
 import { usePageFooter } from "../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../hooks/use-back-handler.js";
@@ -118,9 +118,8 @@ export function HistoryScreen(): ReactElement {
   const { columns, rows } = useTerminalDimensions();
   const { navigate } = useNavigation();
 
-  const { data: reviewsData, isLoading, error: reviewsError } = useReviews();
-  const reviews = reviewsData?.reviews ?? [];
-  const error = reviewsError ? (reviewsError instanceof Error ? reviewsError.message : "Failed to fetch reviews") : null;
+  const reviewsQuery = useReviews();
+  const reviews = reviewsQuery.data?.reviews ?? [];
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedReviewId, setSelectedReviewId] = useState<string | undefined>(undefined);
   const [activeZone, setActiveZone] = useState<Zone>("timeline");
@@ -165,8 +164,8 @@ export function HistoryScreen(): ReactElement {
   const paneHeight = Math.max(rows - 8, 8);
   const insightScrollHeight = isNarrow ? Math.max(Math.floor(paneHeight / 2), 6) : paneHeight;
 
-  if (isLoading) {
-    return (
+  const guard = matchQueryState(reviewsQuery, {
+    loading: () => (
       <Panel>
         <Panel.Content>
           <Box flexDirection="column" gap={1}>
@@ -177,43 +176,44 @@ export function HistoryScreen(): ReactElement {
           </Box>
         </Panel.Content>
       </Panel>
-    );
-  }
-
-  if (error) {
-    return (
+    ),
+    error: (err) => (
       <Panel>
         <Panel.Content>
           <Box flexDirection="column" gap={1}>
             <SectionHeader>Review History</SectionHeader>
             <Box justifyContent="center" paddingY={2}>
-              <Text color={tokens.error}>Error: {error}</Text>
+              <Text color={tokens.error}>Error: {err.message}</Text>
             </Box>
           </Box>
         </Panel.Content>
       </Panel>
-    );
-  }
+    ),
+    success: (data) => {
+      if ((data?.reviews ?? []).length === 0) {
+        return (
+          <Panel>
+            <Panel.Content>
+              <Box flexDirection="column" gap={1}>
+                <SectionHeader>Review History</SectionHeader>
+                <Box justifyContent="center" paddingY={2}>
+                  <EmptyState>
+                    <EmptyState.Message>No reviews yet</EmptyState.Message>
+                    <EmptyState.Description>
+                      Run a review to see it here
+                    </EmptyState.Description>
+                  </EmptyState>
+                </Box>
+              </Box>
+            </Panel.Content>
+          </Panel>
+        );
+      }
+      return null;
+    },
+  });
 
-  if (reviews.length === 0) {
-    return (
-      <Panel>
-        <Panel.Content>
-          <Box flexDirection="column" gap={1}>
-            <SectionHeader>Review History</SectionHeader>
-            <Box justifyContent="center" paddingY={2}>
-              <EmptyState>
-                <EmptyState.Message>No reviews yet</EmptyState.Message>
-                <EmptyState.Description>
-                  Run a review to see it here
-                </EmptyState.Description>
-              </EmptyState>
-            </Box>
-          </Box>
-        </Panel.Content>
-      </Panel>
-    );
-  }
+  if (guard) return guard as ReactElement;
 
   return (
     <Panel>
