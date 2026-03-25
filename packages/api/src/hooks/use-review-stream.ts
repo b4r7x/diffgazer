@@ -1,5 +1,4 @@
 import { useReducer, useRef, useEffect } from "react";
-import type { Dispatch } from "react";
 import type { AgentStreamEvent, EnrichEvent, StepEvent } from "@diffgazer/schemas/events";
 import {
   reviewReducer,
@@ -45,11 +44,7 @@ function streamReducer(state: ReviewStreamState, action: StreamAction): ReviewSt
   return next === state ? state : { ...next, reviewId: state.reviewId };
 }
 
-export interface UseReviewStreamOptions {
-  batchEvents?: (dispatch: Dispatch<StreamAction>, events: ReviewEvent[]) => void;
-}
-
-export function useReviewStream(options?: UseReviewStreamOptions) {
+export function useReviewStream() {
   const api = useApi();
   const [state, dispatch] = useReducer(streamReducer, createInitialStreamState());
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -64,11 +59,7 @@ export function useReviewStream(options?: UseReviewStreamOptions) {
   };
 
   const dispatchEvent = (event: ReviewEvent) => {
-    if (options?.batchEvents) {
-      options.batchEvents(dispatch, [event]);
-    } else {
-      dispatch({ type: "EVENT", event });
-    }
+    dispatch({ type: "EVENT", event });
   };
 
   const cancelStream = () => {

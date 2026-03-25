@@ -47,9 +47,8 @@ export function DocsContentLayout({ tree, library, children }: DocsContentLayout
 	const router = useRouter();
 	const pendingDocsPathname = useRouterState({
 		select: (state) => {
-			const pendingMatches = state.pendingMatches;
-			const pathname = pendingMatches?.[pendingMatches.length - 1]?.pathname;
-			return isDocsPath(pathname) ? pathname : null;
+			if (state.status !== "pending") return null;
+			return isDocsPath(state.location.pathname) ? state.location.pathname : null;
 		},
 	});
 	const isDocsRoutePending = pendingDocsPathname !== null;

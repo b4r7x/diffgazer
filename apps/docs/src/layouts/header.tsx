@@ -57,9 +57,8 @@ export function Header({ library }: HeaderProps) {
   const pathname = useLocation({ select: (location) => location.pathname })
   const pendingDocsPathname = useRouterState({
     select: (state) => {
-      const pendingMatches = state.pendingMatches
-      const nextPathname = pendingMatches?.[pendingMatches.length - 1]?.pathname
-      return isDocsPath(nextPathname) ? nextPathname : null
+      if (state.status !== "pending") return null
+      return isDocsPath(state.location.pathname) ? state.location.pathname : null
     },
   })
   const navigate = useNavigate()

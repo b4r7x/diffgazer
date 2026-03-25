@@ -31,7 +31,7 @@ export { useSaveTrust, useDeleteTrust } from "./trust.js";
 export { useServerStatus, type ServerState, useShutdown } from "./server.js";
 
 // Streaming hook
-export { useReviewStream, type ReviewStreamState, type UseReviewStreamOptions } from "./use-review-stream.js";
+export { useReviewStream, type ReviewStreamState } from "./use-review-stream.js";
 
 // Utilities
 export { matchQueryState } from "./match-query-state.js";
