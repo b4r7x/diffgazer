@@ -3,8 +3,6 @@ import type { SettingsConfig, SaveConfigRequest } from "@diffgazer/schemas/confi
 import { configQueries } from "./queries/config.js";
 import { useApi } from "./context.js";
 
-// Query hooks
-
 export function useSettings() {
   const api = useApi();
   return useQuery(configQueries.settings(api));
@@ -29,8 +27,6 @@ export function useOpenRouterModels(options?: { enabled?: boolean }) {
   const api = useApi();
   return useQuery({ ...configQueries.openRouterModels(api), ...options });
 }
-
-// Mutation hooks
 
 export function useSaveSettings() {
   const api = useApi();

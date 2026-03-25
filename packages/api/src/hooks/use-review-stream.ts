@@ -7,6 +7,8 @@ import {
   type ReviewAction,
 } from "@diffgazer/core/review";
 import { ReviewErrorCode, type ReviewMode, type LensId } from "@diffgazer/schemas/review";
+import type { Result } from "@diffgazer/core/result";
+import type { StreamReviewError } from "../review.js";
 import { useApi } from "./context.js";
 
 type ReviewEvent = AgentStreamEvent | StepEvent | EnrichEvent;
@@ -110,7 +112,7 @@ export function useReviewStream() {
     }
   };
 
-  const resume = async (reviewId: string): Promise<void> => {
+  const resume = async (reviewId: string): Promise<Result<void, StreamReviewError>> => {
     cancelStream();
 
     const abortController = new AbortController();
@@ -137,8 +139,11 @@ export function useReviewStream() {
       } else {
         dispatch({ type: "ERROR", error: result.error.message });
       }
+
+      return result;
     } catch (e) {
       handleStreamError(e);
+      return { ok: false, error: { code: "STREAM_ERROR" as const, message: e instanceof Error ? e.message : "Failed to stream" } };
     } finally {
       abortControllerRef.current = null;
     }

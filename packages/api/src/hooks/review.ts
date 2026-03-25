@@ -18,9 +18,9 @@ export function useActiveReviewSession(mode?: ReviewMode) {
   return useQuery(reviewQueries.activeSession(api, mode));
 }
 
-export function useReviewContext() {
+export function useReviewContext(options?: { enabled?: boolean }) {
   const api = useApi();
-  return useQuery(reviewQueries.context(api));
+  return useQuery({ ...reviewQueries.context(api), ...options });
 }
 
 export function useDeleteReview() {
@@ -29,7 +29,7 @@ export function useDeleteReview() {
   return useMutation({
     mutationFn: (id: string) => api.deleteReview(id),
     onSuccess: (_data, id) => {
-      qc.removeQueries({ queryKey: [...reviewQueries.all(), id] });
+      qc.removeQueries({ queryKey: reviewQueries.detail(api, id).queryKey });
       return qc.invalidateQueries({ queryKey: reviewQueries.all() });
     },
   });

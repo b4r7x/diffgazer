@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import { RadioGroup } from "../../../../components/ui/radio.js";
 import { Spinner } from "../../../../components/ui/spinner.js";
-import { useProviderStatus } from "@diffgazer/api/hooks";
+import { useProviderStatus, matchQueryState } from "@diffgazer/api/hooks";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/schemas/config";
 import type { ProviderStatus } from "@diffgazer/schemas/config";
 
@@ -32,24 +32,22 @@ export function ProviderStep({
   onChange,
   isActive = true,
 }: ProviderStepProps): ReactElement {
-  const { data: providers, isLoading, error: errorObj } = useProviderStatus();
-  const error = errorObj?.message;
+  const query = useProviderStatus();
 
-  if (isLoading) {
-    return <Spinner label="Loading providers..." />;
-  }
-
-  if (error) {
-    return (
+  const guard = matchQueryState(query, {
+    loading: () => <Spinner label="Loading providers..." />,
+    error: (err) => (
       <Box>
-        <Text color="red">Error: {error}</Text>
+        <Text color="red">Error: {err.message}</Text>
       </Box>
-    );
-  }
+    ),
+    success: () => null,
+  });
+  if (guard) return guard;
 
   return (
     <RadioGroup value={value} onChange={onChange} isActive={isActive}>
-      {(providers ?? []).map((status) => (
+      {(query.data ?? []).map((status) => (
         <RadioGroup.Item
           key={status.provider}
           value={status.provider}
