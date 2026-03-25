@@ -153,7 +153,7 @@ export function useHistoryPage() {
   };
 
   const handleRunActivate = (runId: string) => {
-    navigate({ to: "/review/$reviewId", params: { reviewId: runId } });
+    navigate({ to: "/review/{-$reviewId}", params: { reviewId: runId } });
   };
 
   const handleRunsBoundary = (direction: "up" | "down") => {
@@ -165,7 +165,7 @@ export function useHistoryPage() {
 
   const handleIssueClick = () => {
     if (data.selectedRunId) {
-      navigate({ to: "/review/$reviewId", params: { reviewId: data.selectedRunId } });
+      navigate({ to: "/review/{-$reviewId}", params: { reviewId: data.selectedRunId } });
     }
   };
 

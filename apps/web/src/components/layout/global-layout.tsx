@@ -7,20 +7,7 @@ import {
   useConfigActions,
 } from "@/app/providers/config-provider";
 import { resolveBackAction } from "@/lib/back-navigation/back-navigation";
-
-function getProviderStatus(
-  isLoading: boolean,
-  isConfigured: boolean,
-): "active" | "idle" {
-  if (isLoading) return "idle";
-  return isConfigured ? "active" : "idle";
-}
-
-function getProviderDisplay(provider?: string, model?: string): string {
-  if (!provider) return "Not configured";
-  if (model) return `${provider} / ${model}`;
-  return provider;
-}
+import { getProviderStatus, getProviderDisplay } from "@diffgazer/core/format";
 
 function ConnectedHeader() {
   const router = useRouter();

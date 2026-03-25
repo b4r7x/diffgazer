@@ -1,21 +1,18 @@
-import { useState, useEffect, useRef } from "react";
-import { useReviewStream, useInit, useSettings, useActiveReviewSession } from "@diffgazer/api/hooks";
-import type { ReviewIssue } from "@diffgazer/schemas/review";
-import type { ReviewMode } from "@diffgazer/schemas/review";
+import { useState } from "react";
+import { useReviewStream, useApi, useInit, useSettings, useReviewStart, useReviewCompletion } from "@diffgazer/api/hooks";
+import { resolveDefaultLenses, isNoDiffError as checkNoDiffError, isCheckingForChanges as checkForChanges, getLoadingMessage } from "@diffgazer/core/review";
+import type { ReviewIssue, ReviewMode } from "@diffgazer/schemas/review";
 import type { StepState, AgentState } from "@diffgazer/schemas/events";
-import { resolveDefaultLenses, type ReviewEvent, type FileProgress } from "@diffgazer/core/review";
+import type { ReviewEvent, FileProgress } from "@diffgazer/core/review";
 
 export type ReviewPhase =
-  | "idle"
-  | "checking-config"
-  | "checking-changes"
   | "streaming"
   | "completing"
   | "summary"
   | "results";
 
 export interface ReviewLifecycleState {
-  phase: ReviewPhase;
+  phase: ReviewPhase | "loading";
   reviewId: string | null;
   durationMs: number | undefined;
   issues: ReviewIssue[];
@@ -32,8 +29,6 @@ export interface ReviewLifecycleState {
   loadingMessage: string | null;
 }
 
-const COMPLETION_DELAY_MS = 2300;
-
 export function useReviewLifecycle(): {
   state: ReviewLifecycleState;
   start: (mode: string) => void;
@@ -41,140 +36,62 @@ export function useReviewLifecycle(): {
   goToResults: () => void;
   reset: () => void;
 } {
-  const [phase, setPhase] = useState<ReviewPhase>("idle");
+  const api = useApi();
   const stream = useReviewStream();
   const { data: initData, isLoading: configLoading } = useInit();
   const { data: settings, isLoading: settingsLoading } = useSettings();
-
-  const hasStartedRef = useRef(false);
-  const hasStreamedRef = useRef(false);
-  const completionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevIsStreamingRef = useRef(false);
   const [mode, setMode] = useState<ReviewMode>("staged");
-
-  const {
-    data: sessionData,
-    isLoading: sessionLoading,
-    error: sessionError,
-  } = useActiveReviewSession(mode);
+  const [startToken, setStartToken] = useState(0);
+  const [phase, setPhase] = useState<"streaming" | "summary" | "results">("streaming");
 
   const isConfigured = initData?.configured ?? false;
   const provider = initData?.config?.provider ?? null;
   const model = initData?.config?.model ?? null;
   const defaultLenses = resolveDefaultLenses(settings?.defaultLenses);
 
-  // Derive error flags from stream state
-  const isNoDiffError =
-    stream.state.error?.includes("No staged changes") === true ||
-    stream.state.error?.includes("No unstaged changes") === true;
+  const { hasStarted, hasStreamed, setHasStarted, setHasStreamed } = useReviewStart({
+    mode,
+    configLoading,
+    settingsLoading,
+    isConfigured,
+    startToken,
+    defaultLenses,
+    start: (options) => stream.start(options.mode!, options.lenses),
+    resume: stream.resume,
+    getActiveSession: api.getActiveReviewSession,
+  });
 
-  const diffStep = stream.state.steps.find((s) => s.id === "diff");
-  const isCheckingForChanges =
-    stream.state.isStreaming &&
-    diffStep?.status !== "completed" &&
-    diffStep?.status !== "error";
+  const { isCompleting, skipDelay, reset: resetCompletion } = useReviewCompletion({
+    isStreaming: stream.state.isStreaming,
+    error: stream.state.error,
+    hasStreamed,
+    steps: stream.state.steps,
+    onComplete: () => setPhase("summary"),
+  });
 
-  const loadingMessage =
-    configLoading || settingsLoading
-      ? "Loading configuration..."
-      : phase === "checking-config"
-        ? "Checking provider configuration..."
-        : phase === "checking-changes" || isCheckingForChanges
-          ? "Checking for changes..."
-          : null;
+  const isNoDiffError = checkNoDiffError(stream.state.error);
+  const isCheckingForChanges = checkForChanges(stream.state.isStreaming, stream.state.steps);
+  const isInitializing = !hasStarted && isConfigured && !configLoading;
+
+  const loadingMessage = getLoadingMessage({
+    configLoading,
+    settingsLoading,
+    isCheckingForChanges,
+    isInitializing,
+  });
+
+  const displayPhase: ReviewLifecycleState["phase"] =
+    !hasStarted ? "loading" : isCompleting ? "completing" : phase;
 
   function start(rawMode: string) {
-    if (hasStartedRef.current) return;
     const resolvedMode = (rawMode === "unstaged" || rawMode === "files" ? rawMode : "staged") as ReviewMode;
     setMode(resolvedMode);
-    hasStartedRef.current = true;
-    setPhase("checking-config");
+    setHasStarted(false);
+    setStartToken((t) => t + 1);
   }
 
-  // Transition from checking-config to checking-changes once config is ready
-  useEffect(() => {
-    if (phase !== "checking-config") return;
-    if (configLoading || settingsLoading) return;
-    if (!isConfigured) return; // Stay here; UI shows "not configured" via state
-
-    setPhase("checking-changes");
-  }, [phase, configLoading, settingsLoading, isConfigured]);
-
-  // Check for active session, then start or resume the stream
-  useEffect(() => {
-    if (phase !== "checking-changes") return;
-    if (sessionLoading) return;
-
-    let ignore = false;
-    const lenses = defaultLenses;
-
-    const startFresh = () => {
-      if (ignore) return;
-      setPhase("streaming");
-      hasStreamedRef.current = true;
-      void stream.start(mode, lenses);
-    };
-
-    const resumeById = async (reviewId: string) => {
-      if (ignore) return;
-      setPhase("streaming");
-      hasStreamedRef.current = true;
-      const result = await stream.resume(reviewId);
-      if (!result.ok) {
-        startFresh();
-      }
-    };
-
-    if (sessionError) {
-      startFresh();
-    } else {
-      const activeReviewId = sessionData?.session?.reviewId;
-      if (!activeReviewId) {
-        startFresh();
-      } else {
-        void resumeById(activeReviewId);
-      }
-    }
-
-    return () => {
-      ignore = true;
-    };
-  }, [phase, sessionLoading, sessionData, sessionError]);
-
-  // Detect stream completion and transition to completing -> summary
-  useEffect(() => {
-    const wasStreaming = prevIsStreamingRef.current;
-    prevIsStreamingRef.current = stream.state.isStreaming;
-
-    if (
-      wasStreaming &&
-      !stream.state.isStreaming &&
-      hasStreamedRef.current &&
-      !stream.state.error &&
-      stream.state.reviewId !== null
-    ) {
-      setPhase("completing");
-
-      completionTimerRef.current = setTimeout(() => {
-        completionTimerRef.current = null;
-        setPhase("summary");
-      }, COMPLETION_DELAY_MS);
-    }
-
-    return () => {
-      if (completionTimerRef.current) {
-        clearTimeout(completionTimerRef.current);
-        completionTimerRef.current = null;
-      }
-    };
-  }, [stream.state.isStreaming, stream.state.error, stream.state.reviewId]);
-
   function goToSummary() {
-    if (completionTimerRef.current) {
-      clearTimeout(completionTimerRef.current);
-      completionTimerRef.current = null;
-    }
-    setPhase("summary");
+    skipDelay();
   }
 
   function goToResults() {
@@ -182,14 +99,10 @@ export function useReviewLifecycle(): {
   }
 
   function reset() {
-    if (completionTimerRef.current) {
-      clearTimeout(completionTimerRef.current);
-      completionTimerRef.current = null;
-    }
-    hasStartedRef.current = false;
-    hasStreamedRef.current = false;
-    prevIsStreamingRef.current = false;
-    setPhase("idle");
+    resetCompletion();
+    setHasStarted(false);
+    setHasStreamed(false);
+    setPhase("streaming");
     stream.abort();
   }
 
@@ -199,7 +112,7 @@ export function useReviewLifecycle(): {
       : undefined;
 
   const state: ReviewLifecycleState = {
-    phase,
+    phase: displayPhase,
     reviewId: stream.state.reviewId ?? null,
     durationMs,
     issues: stream.state.issues,

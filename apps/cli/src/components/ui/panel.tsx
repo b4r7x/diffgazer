@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Box, Text } from "ink";
 import { useTheme } from "../../theme/theme-context.js";
+import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
 
 interface PanelProps {
   variant?: "default" | "borderless";
@@ -68,10 +69,11 @@ function PanelContent({ children }: PanelContentProps) {
 
 function PanelFooter({ children }: PanelFooterProps) {
   const { tokens } = useTheme();
+  const { columns } = useTerminalDimensions();
 
   return (
     <Box flexDirection="column">
-      <Text color={tokens.muted}>{"─".repeat(40)}</Text>
+      <Text color={tokens.muted}>{"─".repeat(columns)}</Text>
       <Box>
         <Text color={tokens.muted}>{children}</Text>
       </Box>

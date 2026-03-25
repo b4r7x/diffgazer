@@ -42,10 +42,9 @@ export function AnalysisScreen(): ReactElement {
 
   if (guard) return guard as ReactElement;
 
-  const settings = settingsQuery.data;
   const isSaving = saveSettings.isPending;
   const saveError = saveSettings.error?.message ?? null;
-  const defaultLenses = settings?.defaultLenses ?? [];
+  const defaultLenses = settingsQuery.data?.defaultLenses ?? [];
   const fallbackLenses = lensOptions.map((l) => l.id);
   const currentLenses = defaultLenses.length > 0 ? defaultLenses : fallbackLenses;
   const effectiveLenses = selectedLenses ?? currentLenses;

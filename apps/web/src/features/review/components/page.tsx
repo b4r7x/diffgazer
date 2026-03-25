@@ -81,7 +81,8 @@ export function ReviewPage() {
 
   const startFreshReview = async () => {
     await router.navigate({
-      to: "/review",
+      to: "/review/{-$reviewId}",
+      params: {},
       search: { mode: reviewMode },
       replace: true,
     });

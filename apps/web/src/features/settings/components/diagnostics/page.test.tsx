@@ -2,11 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { KeyboardProvider } from "keyscope";
 
-const { mockNavigate, mockRetry, mockRefetch, mockMutateAsync } = vi.hoisted(() => ({
+const { mockNavigate, mockRetryServer, mockRefetchContext, mockHandleRefreshContext } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
-  mockRetry: vi.fn().mockResolvedValue(undefined),
-  mockRefetch: vi.fn().mockResolvedValue({ data: undefined }),
-  mockMutateAsync: vi.fn().mockResolvedValue(undefined),
+  mockRetryServer: vi.fn(),
+  mockRefetchContext: vi.fn(),
+  mockHandleRefreshContext: vi.fn(),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -26,19 +26,19 @@ vi.mock("@/app/providers/config-provider", () => ({
 }));
 
 vi.mock("@diffgazer/api/hooks", () => ({
-  useServerStatus: () => ({
-    state: { status: "connected", message: "" },
-    retry: mockRetry,
-  }),
-  useReviewContext: () => ({
-    data: { meta: { generatedAt: "2026-02-09T12:00:00.000Z" } },
-    isLoading: false,
-    error: null,
-    refetch: mockRefetch,
-  }),
-  useRefreshReviewContext: () => ({
-    mutateAsync: mockMutateAsync,
-    isPending: false,
+  useDiagnosticsData: () => ({
+    serverState: { status: "connected" as const },
+    retryServer: mockRetryServer,
+    setupStatus: { isReady: true, missing: [] },
+    initLoading: false,
+    initError: null,
+    contextStatus: "ready" as const,
+    contextGeneratedAt: "2026-02-09T12:00:00.000Z",
+    contextError: null,
+    canRegenerate: true,
+    handleRefreshContext: mockHandleRefreshContext,
+    isRefreshingContext: false,
+    refetchContext: mockRefetchContext,
   }),
 }));
 
@@ -55,9 +55,9 @@ function renderPage() {
 describe("DiagnosticsPage keyboard footer navigation", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
-    mockRetry.mockClear();
-    mockRefetch.mockClear();
-    mockMutateAsync.mockClear();
+    mockRetryServer.mockClear();
+    mockRefetchContext.mockClear();
+    mockHandleRefreshContext.mockClear();
   });
 
   it("moves focus between diagnostics action buttons with left/right arrows", async () => {

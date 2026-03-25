@@ -3,7 +3,7 @@ import { useInput } from "ink";
 interface ReviewKeyboardOptions {
   onIssueNav: (direction: "up" | "down") => void;
   onZoneSwitch: () => void;
-  onTabSwitch: (tab: number) => void;
+  onTabSwitch?: (tab: number) => void;
   onBack: () => void;
   isActive?: boolean;
 }
@@ -35,7 +35,7 @@ export function useReviewKeyboard({
 
       // 1-4 for tab switching
       if (input >= "1" && input <= "4") {
-        onTabSwitch(Number.parseInt(input, 10));
+        onTabSwitch?.(Number.parseInt(input, 10));
         return;
       }
 

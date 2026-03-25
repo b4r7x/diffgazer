@@ -2,8 +2,9 @@ import { useState } from "react";
 import { Box } from "ink";
 import type { ReviewIssue } from "@diffgazer/schemas/review";
 import type { UISeverityFilter } from "@diffgazer/schemas/ui";
+import { filterIssuesBySeverity } from "@diffgazer/core/review";
 import { useTheme } from "../../../theme/theme-context.js";
-import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
+import { useResponsive } from "../../../hooks/use-terminal-dimensions.js";
 import { useReviewKeyboard } from "../hooks/use-review-keyboard.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { IssueListPane } from "./issue-list-pane.js";
@@ -16,17 +17,9 @@ export interface ReviewResultsViewProps {
 
 type Zone = "list" | "details";
 
-function filterIssues(
-  issues: ReadonlyArray<ReviewIssue>,
-  filter: UISeverityFilter,
-): ReviewIssue[] {
-  if (filter === "all") return [...issues];
-  return issues.filter((i) => i.severity === filter);
-}
-
 export function ReviewResultsView({ issues, onBack }: ReviewResultsViewProps) {
   const { tokens } = useTheme();
-  const { columns, rows } = useTerminalDimensions();
+  const { columns, rows, isNarrow } = useResponsive();
   const [severityFilter, setSeverityFilter] =
     useState<UISeverityFilter>("all");
   const [selectedIssueId, setSelectedIssueId] = useState<string | undefined>(
@@ -34,7 +27,7 @@ export function ReviewResultsView({ issues, onBack }: ReviewResultsViewProps) {
   );
   const [activeZone, setActiveZone] = useState<Zone>("list");
 
-  const filteredIssues = filterIssues(issues, severityFilter);
+  const filteredIssues = filterIssuesBySeverity(issues, severityFilter);
 
   useReviewKeyboard({
     onIssueNav(direction) {
@@ -54,18 +47,13 @@ export function ReviewResultsView({ issues, onBack }: ReviewResultsViewProps) {
     onZoneSwitch() {
       setActiveZone((z) => (z === "list" ? "details" : "list"));
     },
-    onTabSwitch() {
-      // Tab switching handled by IssueDetailsPane's Tabs component
-    },
     onBack() {
       onBack?.();
     },
   });
 
   const selectedIssue = filteredIssues.find((i) => i.id === selectedIssueId);
-  const isNarrow = columns < 80;
   const listWidth = Math.max(Math.floor(columns * 0.4), 30);
-  // Reserve rows for header (2), footer (2), borders (2)
   const paneHeight = Math.max(rows - 6, 8);
   const listScrollHeight = isNarrow ? Math.max(Math.floor(paneHeight / 2), 6) : paneHeight;
   const detailScrollHeight = isNarrow ? Math.max(Math.floor(paneHeight / 2), 6) : paneHeight;

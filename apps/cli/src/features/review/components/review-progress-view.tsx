@@ -1,6 +1,6 @@
 import { Box, Text } from "ink";
 import { useTheme } from "../../../theme/theme-context.js";
-import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
+import { useResponsive } from "../../../hooks/use-terminal-dimensions.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Button } from "../../../components/ui/button.js";
 import { ProgressList } from "./progress-list.js";
@@ -8,7 +8,7 @@ import type { ProgressStepItem } from "./progress-list.js";
 import { ActivityLog } from "./activity-log.js";
 import type { StepState, AgentState } from "@diffgazer/schemas/events";
 import type { LogEntryData } from "@diffgazer/schemas/ui";
-import type { FileProgress } from "@diffgazer/core/review";
+import { type FileProgress, mapStepStatus, getAgentDetail } from "@diffgazer/core/review";
 
 export interface ReviewProgressViewProps {
   steps: StepState[];
@@ -18,30 +18,6 @@ export interface ReviewProgressViewProps {
   isStreaming: boolean;
   error: string | null;
   onCancel?: () => void;
-}
-
-const WIDE_THRESHOLD = 100;
-
-function mapStepStatus(status: StepState["status"]): "pending" | "running" | "complete" | "error" {
-  switch (status) {
-    case "active": return "running";
-    case "completed": return "complete";
-    case "error": return "error";
-    default: return "pending";
-  }
-}
-
-function getAgentDetail(agent: AgentState): string {
-  switch (agent.status) {
-    case "running":
-      return `${Math.round(agent.progress)}%${agent.currentAction ? ` ${agent.currentAction}` : ""}`;
-    case "complete":
-      return `${agent.issueCount} issue${agent.issueCount === 1 ? "" : "s"}`;
-    case "error":
-      return "error";
-    default:
-      return "queued";
-  }
 }
 
 function mapStepsToProgressItems(steps: StepState[], agents: AgentState[]): ProgressStepItem[] {
@@ -72,8 +48,7 @@ export function ReviewProgressView({
   onCancel,
 }: ReviewProgressViewProps) {
   const { tokens } = useTheme();
-  const { columns } = useTerminalDimensions();
-  const isWide = columns >= WIDE_THRESHOLD;
+  const { isWide } = useResponsive();
 
   const progressItems = mapStepsToProgressItems(steps, agents);
 

@@ -1,22 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
-import type { Shortcut } from "@diffgazer/schemas/ui";
-import { useKey, useScope } from "keyscope";
-import { useFooterNavigation } from "@/hooks/use-footer-navigation";
-import { usePageFooter } from "@/hooks/use-page-footer";
 import { useConfigData } from "@/app/providers/config-provider";
 import { cn } from "@/utils/cn";
-import { useReviewContext, useRefreshReviewContext, useServerStatus } from "@diffgazer/api/hooks";
+import { useDiagnosticsData } from "@diffgazer/api/hooks";
+import { formatTimestampLocale } from "@diffgazer/core/format";
+import { useDiagnosticsKeyboard } from "../../hooks/use-diagnostics-keyboard.js";
 
 const NA = "Unavailable";
 
-const BUTTON_COUNT = 2;
-
-function formatTimestamp(value: string | null | undefined): string {
+function formatTimestampOrNA(value: string | null | undefined): string {
   if (!value) return NA;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
+  return formatTimestampLocale(value);
 }
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -29,111 +21,38 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 export function DiagnosticsPage() {
-  const navigate = useNavigate();
-  const { state: serverState, retry } = useServerStatus();
   const { provider, model, setupStatus } = useConfigData();
-  const contextQuery = useReviewContext();
-  const refreshContextMutation = useRefreshReviewContext();
+  const diagnostics = useDiagnosticsData();
+  const {
+    serverState,
+    contextStatus,
+    contextGeneratedAt,
+    contextError,
+    canRegenerate,
+    handleRefreshContext,
+    isRefreshingContext: isRefreshing,
+  } = diagnostics;
 
-  const contextStatus: "loading" | "ready" | "missing" | "error" = (() => {
-    if (contextQuery.isLoading) return "loading";
-    if (contextQuery.error) {
-      const status = contextQuery.error && typeof contextQuery.error === "object" && "status" in contextQuery.error
-        ? (contextQuery.error as { status?: number }).status
-        : undefined;
-      return status === 404 ? "missing" : "error";
-    }
-    if (contextQuery.data) return "ready";
-    return "missing";
-  })();
-  const contextGeneratedAt = contextQuery.data?.meta.generatedAt ?? null;
-  const isRefreshing = refreshContextMutation.isPending;
-  const contextError = contextQuery.error instanceof Error ? contextQuery.error.message : contextQuery.error ? String(contextQuery.error) : null;
-  const reloadContextStatus = () => contextQuery.refetch().then(() => {});
-  const handleRefreshContext = async () => {
-    await refreshContextMutation.mutateAsync({ force: true });
-  };
-  const [isRefreshingAll, setIsRefreshingAll] = useState(false);
-  const [refreshError, setRefreshError] = useState<string | null>(null);
-  const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
-  const hasInitializedFooter = useRef(false);
+  const {
+    focusedIndex,
+    isRefreshingAll,
+    refreshError,
+    lastRefreshedAt,
+    handleRefreshAll,
+  } = useDiagnosticsKeyboard({ diagnostics });
 
-  useScope("settings-diagnostics");
-  const canRegenerate = contextStatus === "ready" || contextStatus === "missing";
-
-  const serverValue = useMemo(() => {
+  const serverValue = (() => {
     if (serverState.status === "checking") return "Checking...";
     if (serverState.status === "connected") return "Connected";
     return `Error: ${serverState.message}`;
-  }, [serverState]);
+  })();
 
-  const overallState = useMemo<"loading" | "error" | "empty" | "success">(() => {
+  const overallState: "loading" | "error" | "empty" | "success" = (() => {
     if (isRefreshingAll || serverState.status === "checking" || contextStatus === "loading") return "loading";
     if (serverState.status === "error" && contextStatus === "error") return "error";
     if (!provider && contextStatus === "missing") return "empty";
     return "success";
-  }, [contextStatus, isRefreshingAll, provider, serverState.status]);
-
-  const handleRefreshAll = async () => {
-    setIsRefreshingAll(true);
-    setRefreshError(null);
-    const results = await Promise.allSettled([retry(), reloadContextStatus()]);
-    const failedCount = results.filter((result) => result.status === "rejected").length;
-    setLastRefreshedAt(new Date().toISOString());
-    if (failedCount > 0) setRefreshError("Refresh failed for some diagnostics sources.");
-    setIsRefreshingAll(false);
-  };
-
-  useEffect(() => {
-    if (lastRefreshedAt) return;
-    if (serverState.status !== "checking" && contextStatus !== "loading") {
-      setLastRefreshedAt(new Date().toISOString());
-    }
-  }, [contextStatus, lastRefreshedAt, serverState.status]);
-
-  const handleButtonAction = (index: number) => {
-    if (index === 0 && !isRefreshingAll) {
-      void handleRefreshAll();
-      return;
-    }
-
-    if (index === 1 && canRegenerate && !isRefreshing) {
-      void handleRefreshContext();
-    }
-  };
-
-  const { focusedIndex, inFooter, enterFooter } = useFooterNavigation({
-    enabled: true,
-    buttonCount: BUTTON_COUNT,
-    onAction: handleButtonAction,
-  });
-
-  useEffect(() => {
-    if (hasInitializedFooter.current) return;
-    hasInitializedFooter.current = true;
-    enterFooter(0);
-  }, [enterFooter]);
-
-  const footerShortcuts: Shortcut[] = inFooter
-    ? [
-        { key: "←/→", label: "Move Action" },
-        { key: "Enter/Space", label: "Activate" },
-        { key: "r/R", label: "Refresh All" },
-      ]
-    : [
-        { key: "↓", label: "Focus Actions" },
-        { key: "r/R", label: "Refresh All" },
-      ];
-
-  usePageFooter({
-    shortcuts: footerShortcuts,
-    rightShortcuts: [{ key: "Esc", label: "Back" }],
-  });
-
-  useKey("r", () => { void handleRefreshAll(); });
-  useKey("R", () => { void handleRefreshAll(); });
-
-  useKey("Escape", () => navigate({ to: "/settings" }));
+  })();
 
   return (
     <div className="flex flex-1 overflow-hidden px-4 justify-center items-center">
@@ -158,7 +77,7 @@ export function DiagnosticsPage() {
               <span className="text-tui-muted text-xs uppercase tracking-wider mb-1">Context Snapshot</span>
               <div className="text-white flex items-center gap-2">
                 <span>[{contextStatus}]</span>
-                {contextStatus === "ready" && <span className="text-xs text-tui-yellow">{formatTimestamp(contextGeneratedAt)}</span>}
+                {contextStatus === "ready" && <span className="text-xs text-tui-yellow">{formatTimestampOrNA(contextGeneratedAt)}</span>}
               </div>
             </div>
           </div>
@@ -182,7 +101,7 @@ export function DiagnosticsPage() {
               />
               <Row
                 label="Refreshed"
-                value={formatTimestamp(lastRefreshedAt)}
+                value={formatTimestampOrNA(lastRefreshedAt)}
               />
             </div>
           </div>

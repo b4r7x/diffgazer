@@ -1,16 +1,7 @@
 import type { SeverityCounts } from '@diffgazer/schemas/ui';
-import type { ReviewSeverity } from '@diffgazer/schemas/review';
-import { SEVERITY_ORDER } from '@diffgazer/schemas/ui';
+import { SEVERITY_ORDER, SEVERITY_LABELS } from '@diffgazer/schemas/ui';
 import { SeverityBar } from './severity-bar';
 import { cn } from '@/utils/cn';
-
-const SEVERITY_LABELS: Record<ReviewSeverity, string> = {
-  blocker: "Blocker",
-  high: "High",
-  medium: "Medium",
-  low: "Low",
-  nit: "Nit",
-};
 
 export interface SeverityBreakdownProps {
   counts: SeverityCounts;

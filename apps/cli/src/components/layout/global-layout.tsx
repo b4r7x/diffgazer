@@ -1,31 +1,19 @@
-import { Box, useStdout } from "ink";
+import { Box } from "ink";
 import type { ReactNode } from "react";
 import { Header } from "./header.js";
 import { Footer } from "./footer.js";
+import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
 import { useNavigation } from "../../app/navigation-context.js";
 import { useFooterContext } from "../../app/providers/footer-provider.js";
 import { useInit } from "@diffgazer/api/hooks";
-
-function getProviderStatus(
-  isLoading: boolean,
-  isConfigured: boolean,
-): "active" | "idle" {
-  if (isLoading) return "idle";
-  return isConfigured ? "active" : "idle";
-}
-
-function getProviderDisplay(provider?: string, model?: string): string {
-  if (!provider) return "Not configured";
-  if (model) return `${provider} / ${model}`;
-  return provider;
-}
+import { getProviderStatus, getProviderDisplay } from "@diffgazer/core/format";
 
 export interface GlobalLayoutProps {
   children: ReactNode;
 }
 
 export function GlobalLayout({ children }: GlobalLayoutProps) {
-  const { stdout } = useStdout();
+  const { columns, rows } = useTerminalDimensions();
   const { goBack, canGoBack } = useNavigation();
   const { shortcuts, rightShortcuts } = useFooterContext();
   const { data, isLoading } = useInit();
@@ -39,8 +27,8 @@ export function GlobalLayout({ children }: GlobalLayoutProps) {
   return (
     <Box
       flexDirection="column"
-      width={stdout.columns}
-      height={stdout.rows}
+      width={columns}
+      height={rows}
     >
       <Header
         providerName={providerName}

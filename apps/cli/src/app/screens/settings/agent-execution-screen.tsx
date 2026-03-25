@@ -24,7 +24,7 @@ export function AgentExecutionScreen(): ReactElement {
 
   const isSaving = saveSettings.isPending;
   const saveError = saveSettings.error?.message ?? null;
-  const current = mode ?? settingsQuery.data?.agentExecution ?? "parallel";
+  const current = mode ?? settingsQuery.data?.agentExecution ?? "sequential";
 
   function handleSave() {
     setSaved(false);

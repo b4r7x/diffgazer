@@ -1,6 +1,6 @@
 import { createContext, useContext, useState } from "react";
 import type { ReactNode } from "react";
-import type { Shortcut } from "../../types/components.js";
+import type { Shortcut } from "@diffgazer/schemas/ui";
 
 interface FooterContextValue {
   shortcuts: Shortcut[];

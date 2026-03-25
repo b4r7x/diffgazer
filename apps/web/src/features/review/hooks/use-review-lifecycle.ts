@@ -1,9 +1,7 @@
 import { useEffect, useEffectEvent } from 'react';
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { useReviewStream, useApi } from '@diffgazer/api/hooks';
-import { useReviewSettings } from './use-review-settings';
-import { useReviewStart } from './use-review-start';
-import { useReviewCompletion } from './use-review-completion';
+import { useReviewStream, useApi, useSettings, useReviewStart, useReviewCompletion } from '@diffgazer/api/hooks';
+import { resolveDefaultLenses, isNoDiffError as checkNoDiffError, isCheckingForChanges as checkForChanges, getLoadingMessage } from '@diffgazer/core/review';
 import { useConfigData, useConfigActions } from '@/app/providers/config-provider';
 import type { ReviewIssue } from '@diffgazer/schemas/review';
 import type { ReviewMode } from '@diffgazer/schemas/review';
@@ -25,7 +23,8 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
   const { isConfigured, provider, model } = useConfigData();
   const { isLoading: configLoading } = useConfigActions();
   const { state, start: sharedStart, stop, resume } = useReviewStream();
-  const { loading: settingsLoading, defaultLenses } = useReviewSettings();
+  const { data: settings, isLoading: settingsLoading } = useSettings();
+  const defaultLenses = resolveDefaultLenses(settings?.defaultLenses);
 
   const stableOnComplete = useEffectEvent((data: ReviewCompleteData) => {
     onComplete?.(data);
@@ -37,7 +36,7 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
     if (params.reviewId === state.reviewId) return;
 
     navigate({
-      to: '/review/$reviewId',
+      to: '/review/{-$reviewId}',
       params: { reviewId: state.reviewId },
       search: (prev: Record<string, unknown>) => prev,
       replace: true,
@@ -45,7 +44,7 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
   }, [state.reviewId, params.reviewId, navigate]);
 
   // Start or resume review
-  const { hasStartedRef, hasStreamedRef } = useReviewStart({
+  const { hasStarted, hasStreamed, setHasStarted } = useReviewStart({
     mode,
     configLoading,
     settingsLoading,
@@ -55,17 +54,18 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
     start: (options) => sharedStart(options.mode!, options.lenses),
     resume,
     getActiveSession: api.getActiveReviewSession,
+    onNotFoundInSession: () => {
+      navigate({ to: '/' });
+    },
   });
 
   // Delay transition after streaming completes
-  const { skipDelayAndComplete } = useReviewCompletion({
+  const { skipDelay } = useReviewCompletion({
     isStreaming: state.isStreaming,
     error: state.error,
-    hasStreamed: hasStreamedRef.current,
+    hasStreamed,
     steps: state.steps,
-    issues: state.issues,
-    reviewId: state.reviewId,
-    onComplete: stableOnComplete,
+    onComplete: () => stableOnComplete({ issues: state.issues, reviewId: state.reviewId }),
   });
 
   const handleCancel = () => {
@@ -75,7 +75,7 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
 
   const handleViewResults = () => {
     stop();
-    skipDelayAndComplete();
+    skipDelay();
   };
 
   const handleSetupProvider = () => {
@@ -86,26 +86,14 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
   const handleSwitchMode = () => {
     stop();
     const newMode = mode === 'staged' ? 'unstaged' : 'staged';
-    navigate({ to: '/review', search: { mode: newMode }, replace: true });
-    hasStartedRef.current = false;
+    navigate({ to: '/review/{-$reviewId}', params: {}, search: { mode: newMode }, replace: true });
+    setHasStarted(false);
   };
 
-  const isNoDiffError =
-    state.error?.includes('No staged changes') ||
-    state.error?.includes('No unstaged changes');
-
-  const diffStep = state.steps.find(s => s.id === 'diff');
-  const isCheckingForChanges = state.isStreaming &&
-    diffStep?.status !== 'completed' &&
-    diffStep?.status !== 'error';
-
-  const isInitializing = !hasStartedRef.current && isConfigured && !configLoading;
-
-  const loadingMessage = configLoading || settingsLoading
-    ? 'Loading...'
-    : (isCheckingForChanges || isInitializing)
-      ? 'Checking for changes...'
-      : null;
+  const noDiffError = checkNoDiffError(state.error);
+  const checkingChanges = checkForChanges(state.isStreaming, state.steps);
+  const isInitializing = !hasStarted && isConfigured && !configLoading;
+  const loadingMessage = getLoadingMessage({ configLoading, settingsLoading, isCheckingForChanges: checkingChanges, isInitializing });
 
   return {
     state,
@@ -113,7 +101,7 @@ export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptio
     provider,
     model,
     loadingMessage,
-    isNoDiffError,
+    isNoDiffError: noDiffError,
     handleCancel,
     handleViewResults,
     handleSetupProvider,

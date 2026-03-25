@@ -86,7 +86,7 @@ export function useHistoryKeyboard({
 
   const navigateToSelectedRun = () => {
     if (selectedRunId) {
-      navigate({ to: "/review/$reviewId", params: { reviewId: selectedRunId } });
+      navigate({ to: "/review/{-$reviewId}", params: { reviewId: selectedRunId } });
     }
   };
 

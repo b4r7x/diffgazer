@@ -1,6 +1,6 @@
 import { LensIdSchema, type LensId } from "@diffgazer/schemas/review";
 
-export const FALLBACK_LENSES: LensId[] = ["correctness", "security", "performance", "simplicity", "tests"];
+const FALLBACK_LENSES: LensId[] = ["correctness", "security", "performance", "simplicity", "tests"];
 
 export function resolveDefaultLenses(rawLenses: string[] | undefined): LensId[] {
   const parsed =

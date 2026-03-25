@@ -1,6 +1,7 @@
 import { Box, Text } from "ink";
-import type { Shortcut } from "../../types/components.js";
+import type { Shortcut } from "@diffgazer/schemas/ui";
 import { useTheme } from "../../theme/theme-context.js";
+import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
 
 export interface FooterProps {
   shortcuts: Shortcut[];
@@ -18,10 +19,11 @@ function ShortcutItem({ shortcut, tokens }: { shortcut: Shortcut; tokens: { acce
 
 export function Footer({ shortcuts, rightShortcuts }: FooterProps) {
   const { tokens } = useTheme();
+  const { columns } = useTerminalDimensions();
 
   return (
     <Box flexDirection="column" width="100%">
-      <Text color={tokens.border}>{"─".repeat(80)}</Text>
+      <Text color={tokens.border}>{"─".repeat(columns)}</Text>
       <Box flexDirection="row" justifyContent="space-between">
         <Box gap={2}>
           {shortcuts.map((s, i) => (
