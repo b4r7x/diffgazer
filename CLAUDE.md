@@ -73,8 +73,10 @@ Unified documentation portal for diff-ui, keyscope, and (future) diffgazer docs.
 - @.claude/docs/web-design-guidelines.md — Web UI design system
 
 ## Recent Changes
+- 009-hooks-quality-validation: Added TypeScript 5.x (strict: true), ESM only, `.js` extensions in imports + React 19, TanStack Query v5 (`@tanstack/react-query`), Ink 6 (CLI), Vite 7 (web)
 - 008-hooks-consolidation: Consolidated `@diffgazer/api/hooks` from 28 files to 8: hooks grouped by domain (`config.ts`, `review.ts`, `trust.ts`, `server.ts`), query factory files renamed (dropped `.queries` suffix), 6 unused hooks removed (`useTrust`, `useTrustedProjects`, `useGitStatus`, `useGitDiff`, `useRunDrilldown`, `useDeleteConfig`), 4 unused query factory re-exports removed (kept only `configQueries`), added `matchQueryState()` utility for declarative loading/error/success rendering. Zero consumer import changes — barrel preserves all used hook names. `queries/index.ts` barrel removed (domain files import directly).
 - 007-shared-hooks-audit: Audited and improved shared API hooks quality
-- 006-shared-api-hooks: Added shared TanStack Query hooks in `@diffgazer/api/hooks` subpath — `useQuery`/`useMutation` wrappers with query key factories, cache invalidation map, cross-platform support (Ink CLI + web)
 
 ## Active Technologies
+- TypeScript 5.x (strict: true), ESM only, `.js` extensions in imports + React 19, TanStack Query v5 (`@tanstack/react-query`), Ink 6 (CLI), Vite 7 (web) (009-hooks-quality-validation)
+- N/A (in-memory query cache, no persistence changes) (009-hooks-quality-validation)

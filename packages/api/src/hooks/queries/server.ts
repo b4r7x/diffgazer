@@ -9,6 +9,7 @@ export const serverQueries = {
       queryKey: [...serverQueries.all(), "health"] as const,
       queryFn: async () => {
         await api.request("GET", "/api/health");
+        return true as const;
       },
       refetchInterval: 30_000,
     }),

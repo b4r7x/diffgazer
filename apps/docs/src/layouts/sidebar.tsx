@@ -82,10 +82,7 @@ function splatFromUrl(url: string): string {
 export function DocsSidebar({ tree, library, onNavigate }: DocsSidebarProps) {
   const pathname = useLocation({ select: (l) => l.pathname });
   const pendingPathname = useRouterState({
-    select: (s) => {
-      const pendingMatches = s.pendingMatches;
-      return pendingMatches?.[pendingMatches.length - 1]?.pathname;
-    },
+    select: (s) => (s.status === "pending" ? s.location.pathname : undefined),
   });
   const navContainerRef = useRef<HTMLDivElement>(null);
 
