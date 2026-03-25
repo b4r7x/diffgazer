@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { Box, Text } from "ink";
 import { useTheme } from "../../theme/theme-context.js";
-import type { Variant } from "../../types/components.js";
+type Variant = "success" | "warning" | "error" | "info" | "neutral";
 
 interface ToastEntry {
   id: string;

@@ -32,10 +32,15 @@ Before this existed, both apps had hand-rolled hooks with `useState` + `useEffec
       ├── config.ts                  # 9 config hooks (queries + mutations)
       ├── review.ts                  # 6 review hooks
       ├── trust.ts                   # 2 trust mutation hooks
-      ├── server.ts                  # 2 server hooks + ServerState
-      ├── use-review-stream.ts       # Streaming hook (useReducer)
+      ├── server.ts                  # 2 server hooks + ServerState type
+      ├── use-review-stream.ts       # 1 streaming hook (useReducer)
+      ├── use-review-start.ts        # Review start/resume orchestration
+      ├── use-review-completion.ts   # Completion detection with delay
       ├── match-query-state.ts       # matchQueryState utility
       └── index.ts                   # Barrel re-exports
+
+@diffgazer/core/review (pure functions — no React)
+  └── lifecycle-helpers.ts           # isNoDiffError, isCheckingForChanges, getLoadingMessage
 ```
 
 React and TanStack Query are `peerDependencies` — only loaded when `@diffgazer/api/hooks` is imported. The root `@diffgazer/api` export remains pure transport with no React dependency.
@@ -127,7 +132,41 @@ Some hooks need platform-specific behavior that wraps the shared hook:
 
 These live in each app's `hooks/` directory, not in the shared package.
 
-### 8. Loading State Utility (matchQueryState)
+### 8. Review Start Hook (shared)
+
+`useReviewStart` orchestrates the initial start or resume of a review stream. Both apps import it from `@diffgazer/api/hooks`.
+
+**Options**: `mode`, `configLoading`, `settingsLoading`, `isConfigured`, `defaultLenses`, optional `reviewId`, optional `startToken`, plus callbacks `start`, `resume`, `getActiveSession`, and `onNotFoundInSession`.
+
+**Behavior**:
+- Waits for config and settings to finish loading before starting.
+- If `reviewId` is provided, resumes that review directly.
+- Otherwise, queries for an active session in the given mode — resumes if found, starts fresh if not.
+- Resume error handling:
+  - `SESSION_STALE` → starts a fresh review.
+  - `SESSION_NOT_FOUND` from an active session query → starts fresh.
+  - `SESSION_NOT_FOUND` from an explicit `reviewId` → calls `onNotFoundInSession` (web navigates home; CLI has no handler).
+- Uses ref-based stable callback pattern (`startRef`, `resumeRef`, etc.) to avoid stale closures without relying on React Compiler (not active in the shared package).
+- `startToken` can be incremented to re-trigger the effect after a reset.
+
+**Returns**: `{ hasStarted, hasStreamed, setHasStarted, setHasStreamed }`.
+
+### 9. Review Completion Hook (shared)
+
+`useReviewCompletion` detects when streaming ends, applies a delay for the progress animation to finish, then calls `onComplete`.
+
+**Options**: `isStreaming`, `error`, `hasStreamed`, `steps`, `onComplete`.
+
+**Behavior**:
+- Triggers when `isStreaming` transitions from `true` to `false` (and `hasStreamed` is true, no error).
+- If the report step completed, uses `REPORT_COMPLETE_DELAY_MS` (2300ms) for the longer animation. Otherwise uses `DEFAULT_COMPLETE_DELAY_MS` (400ms).
+- Uses ref-based pattern to avoid re-triggering on `steps` or `onComplete` changes.
+
+**Returns**: `{ isCompleting, skipDelay, reset }`.
+- `skipDelay()` — immediately fires `onComplete`, cancelling the timer.
+- `reset()` — cancels any pending timer and resets state (used when restarting a review).
+
+### 10. Loading State Utility (matchQueryState)
 
 A pure function that maps `UseQueryResult<T>` to render callbacks. React 19 Compiler compatible (no hooks, no closures over mutable state).
 
@@ -264,6 +303,15 @@ new QueryClient({
    ```
 2. Document which queries it invalidates in the invalidation map above
 3. Add export to `packages/api/src/hooks/index.ts`
+
+## Per-App Lifecycle Hooks (Not Shared)
+
+`useReviewLifecycle` exists in both apps but is **not** shared. Each version composes the shared `useReviewStart` and `useReviewCompletion` hooks but adds platform-specific concerns:
+
+- **Web** (`apps/web/src/features/review/hooks/use-review-lifecycle.ts`): Syncs review ID to URL via TanStack Router `useNavigate`, navigates home on `SESSION_NOT_FOUND`, exposes `handleCancel`/`handleSwitchMode`/`handleSetupProvider` that navigate to web routes.
+- **CLI** (`apps/cli/src/features/review/hooks/use-review-lifecycle.ts`): Manages a phase state machine (`streaming` → `completing` → `summary` → `results`), computes `durationMs`, exposes `start`/`goToSummary`/`goToResults`/`reset` for the CLI's screen-based navigation.
+
+Both import `isNoDiffError`, `isCheckingForChanges`, and `getLoadingMessage` from `@diffgazer/core/review` — pure functions in `lifecycle-helpers.ts` that derive display state from streaming state without any React dependency.
 
 ## What Still Uses Direct API Calls (and Why)
 

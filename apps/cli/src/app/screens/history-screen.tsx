@@ -6,7 +6,7 @@ import { useReviews, matchQueryState } from "@diffgazer/api/hooks";
 import { useScope } from "../../hooks/use-scope.js";
 import { usePageFooter } from "../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../hooks/use-back-handler.js";
-import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
+import { useResponsive } from "../../hooks/use-terminal-dimensions.js";
 import { useTheme } from "../../theme/theme-context.js";
 import { useNavigation } from "../navigation-context.js";
 import { Panel } from "../../components/ui/panel.js";
@@ -115,7 +115,7 @@ export function HistoryScreen(): ReactElement {
   useBackHandler();
 
   const { tokens } = useTheme();
-  const { columns, rows } = useTerminalDimensions();
+  const { columns, rows, isNarrow } = useResponsive();
   const { navigate } = useNavigation();
 
   const reviewsQuery = useReviews();
@@ -158,9 +158,7 @@ export function HistoryScreen(): ReactElement {
   }
 
   const selectedReviewMetadata = filtered.find((r) => r.id === selectedReviewId);
-  const isNarrow = columns < 80;
   const listWidth = Math.max(Math.floor(columns * 0.4), 30);
-  // Reserve rows for header (2), search (2), footer (2), borders (2)
   const paneHeight = Math.max(rows - 8, 8);
   const insightScrollHeight = isNarrow ? Math.max(Math.floor(paneHeight / 2), 6) : paneHeight;
 

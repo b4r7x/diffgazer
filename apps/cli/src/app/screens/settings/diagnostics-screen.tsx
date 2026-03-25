@@ -1,21 +1,20 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import Spinner from "ink-spinner";
+import { Spinner } from "../../../components/ui/spinner.js";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
-import { useInit, useServerStatus, useReviewContext, useRefreshReviewContext } from "@diffgazer/api/hooks";
+import { useDiagnosticsData } from "@diffgazer/api/hooks";
+import { formatTimestampLocale } from "@diffgazer/core/format";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Button } from "../../../components/ui/button.js";
 import { Badge } from "../../../components/ui/badge.js";
 import { KeyValue } from "../../../components/ui/key-value.js";
 
-function formatTimestamp(value: string | null): string {
+function formatTimestampOrNA(value: string | null): string {
   if (!value) return "N/A";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
+  return formatTimestampLocale(value);
 }
 
 export function DiagnosticsScreen(): ReactElement {
@@ -23,37 +22,28 @@ export function DiagnosticsScreen(): ReactElement {
   usePageFooter({ shortcuts: [{ key: "Esc", label: "Back" }, { key: "Enter", label: "Action" }] });
   useBackHandler();
 
-  const { data: initData, isLoading: initLoading, error: initErrorObj } = useInit();
-  const initError = initErrorObj?.message ?? null;
+  const {
+    serverState,
+    retryServer,
+    setupStatus,
+    initLoading,
+    initError,
+    contextStatus,
+    contextGeneratedAt,
+    contextError,
+    canRegenerate,
+    handleRefreshContext: handleRegenerateContext,
+    isRefreshingContext: isRefreshing,
+    refetchContext,
+  } = useDiagnosticsData();
 
-  const { state: serverState, retry: retryServer } = useServerStatus();
-  const reviewContext = useReviewContext();
-  const refreshContext = useRefreshReviewContext();
-
-  const isRefreshing = refreshContext.isPending;
+  const handleRefreshAll = () => {
+    void Promise.allSettled([retryServer(), refetchContext()]);
+  };
 
   const serverStatus = serverState.status;
   const serverError = serverState.status === "error" ? serverState.message : null;
-
-  // Context status derived from query state
-  const contextStatus = reviewContext.isLoading ? "loading"
-    : reviewContext.isSuccess ? "ready"
-    : reviewContext.error ? "error"
-    : "missing";
-  const contextGeneratedAt = reviewContext.data?.meta.generatedAt ?? null;
-  const contextError = refreshContext.error?.message ?? reviewContext.error?.message ?? null;
-
-  const handleRegenerateContext = () => {
-    refreshContext.mutate({ force: true });
-  };
-
-  const handleRefreshAll = () => {
-    retryServer();
-    reviewContext.refetch();
-  };
-
   const nodeVersion = process.version;
-  const canRegenerate = contextStatus === "ready" || contextStatus === "missing";
 
   const serverBadgeVariant = serverStatus === "connected" ? "success"
     : serverStatus === "checking" ? "info"
@@ -65,12 +55,12 @@ export function DiagnosticsScreen(): ReactElement {
 
   const setupLabel = initLoading ? "loading..."
     : initError ? `error: ${initError}`
-    : initData?.setup.isReady ? "ready"
-    : `incomplete (${initData?.setup.missing.join(", ") ?? "unknown"})`;
+    : setupStatus?.isReady ? "ready"
+    : `incomplete (${setupStatus?.missing.join(", ") ?? "unknown"})`;
 
   const setupVariant = initLoading ? "info"
     : initError ? "error"
-    : initData?.setup.isReady ? "success"
+    : setupStatus?.isReady ? "success"
     : "warning";
 
   const contextLabel = contextStatus === "loading" ? "loading..."
@@ -116,7 +106,7 @@ export function DiagnosticsScreen(): ReactElement {
             labelWidth={14}
           />
           {contextStatus === "ready" && contextGeneratedAt && (
-            <KeyValue label="Generated at" value={formatTimestamp(contextGeneratedAt)} labelWidth={14} />
+            <KeyValue label="Generated at" value={formatTimestampOrNA(contextGeneratedAt)} labelWidth={14} />
           )}
           <KeyValue label="Node version" value={nodeVersion} labelWidth={14} />
           <Box gap={1} marginTop={1}>
@@ -132,10 +122,7 @@ export function DiagnosticsScreen(): ReactElement {
             </Button>
           </Box>
           {isRefreshing && (
-            <Box gap={1}>
-              <Spinner type="dots" />
-              <Text>Regenerating context snapshot...</Text>
-            </Box>
+            <Spinner label="Regenerating context snapshot..." />
           )}
           {contextError && <Text color="red">{contextError}</Text>}
         </Box>

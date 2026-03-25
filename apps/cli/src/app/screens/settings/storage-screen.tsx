@@ -1,7 +1,6 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import Spinner from "ink-spinner";
 import type { SecretsStorage } from "@diffgazer/schemas/config";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
@@ -9,6 +8,7 @@ import { useBackHandler } from "../../../hooks/use-back-handler.js";
 import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
+import { Spinner } from "../../../components/ui/spinner.js";
 import { Button } from "../../../components/ui/button.js";
 import { StorageSelector } from "../../../features/settings/components/storage-selector.js";
 
@@ -40,10 +40,7 @@ export function StorageScreen(): ReactElement {
     loading: () => (
       <Panel>
         <Panel.Content>
-          <Box gap={1}>
-            <Spinner type="dots" />
-            <Text>Loading storage settings...</Text>
-          </Box>
+          <Spinner label="Loading storage settings..." />
         </Panel.Content>
       </Panel>
     ),

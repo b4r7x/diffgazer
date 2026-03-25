@@ -1,5 +1,5 @@
 import { Box, Text } from "ink";
-import InkSpinner from "ink-spinner";
+import { Spinner } from "../../../components/ui/spinner.js";
 import { useTheme } from "../../../theme/theme-context.js";
 
 export interface ProgressStepProps {
@@ -14,9 +14,7 @@ export function ProgressStep({ name, status, substeps, duration }: ProgressStepP
 
   const icon =
     status === "running" ? (
-      <Text color={tokens.statusRunning}>
-        <InkSpinner type="dots" />
-      </Text>
+      <Spinner variant="dots" size="sm" />
     ) : status === "complete" ? (
       <Text color={tokens.statusComplete}>{"\u25CF"}</Text>
     ) : status === "error" ? (

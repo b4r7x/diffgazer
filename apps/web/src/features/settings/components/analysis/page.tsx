@@ -30,8 +30,9 @@ function buildLensOptions(): AnalysisOption[] {
 
 export function SettingsAnalysisPage() {
   const navigate = useNavigate();
-  const { data: settings, isLoading, error: settingsQueryError } = useSettings();
-  const settingsError = settingsQueryError?.message ?? null;
+  const settingsQuery = useSettings();
+  const settings = settingsQuery.data;
+  const settingsError = settingsQuery.error?.message ?? null;
   const saveSettings = useSaveSettings();
   const [selectedLenses, setSelectedLenses] = useState<LensId[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -49,8 +50,8 @@ export function SettingsAnalysisPage() {
   const hasLensSelection = effectiveLenses.length > 0;
 
   const viewState: ViewState = (() => {
-    if (isLoading) return "loading";
-    if (settingsError) return "error";
+    if (settingsQuery.isLoading) return "loading";
+    if (settingsQuery.error) return "error";
     if (lensOptions.length === 0) return "empty";
     return "success";
   })();

@@ -7,7 +7,7 @@ import { useProviderStatus, useDeleteProviderCredentials, matchQueryState } from
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
-import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
+import { useResponsive } from "../../../hooks/use-terminal-dimensions.js";
 import { useTheme } from "../../../theme/theme-context.js";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
@@ -54,9 +54,8 @@ export function ProvidersScreen(): ReactElement {
   usePageFooter({ shortcuts: [{ key: "Esc", label: "Back" }, { key: "Enter", label: "Select" }] });
   useBackHandler();
 
-  const { columns } = useTerminalDimensions();
+  const { columns, isNarrow } = useResponsive();
   const { tokens } = useTheme();
-  const isNarrow = columns < 80;
   const listWidth = isNarrow ? undefined : Math.max(Math.floor(columns * 0.3), 30);
 
   const providerQuery = useProviderStatus();
@@ -67,6 +66,7 @@ export function ProvidersScreen(): ReactElement {
   const [modelSelectOpen, setModelSelectOpen] = useState(false);
 
   const providers = providerQuery.data ? buildProviderList(providerQuery.data) : [];
+  const error = deleteCredentials.error?.message ?? providerQuery.error?.message ?? null;
 
   const selectedProvider = providers.find((p) => p.id === selectedId);
   const selectedDetail = selectedProvider ? toDetailData(selectedProvider) : undefined;
@@ -156,6 +156,7 @@ export function ProvidersScreen(): ReactElement {
               />
             </Box>
           </Box>
+          {error && <Text color={tokens.error}>{error}</Text>}
         </Box>
       </Panel.Content>
 

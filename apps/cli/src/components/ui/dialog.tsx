@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
-import { Box, Text, useInput, useStdout } from "ink";
+import { Box, Text, useInput } from "ink";
 import { useTheme } from "../../theme/theme-context.js";
-
-// --- Types ---
+import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
 
 export interface DialogProps {
   open?: boolean;
@@ -29,8 +28,6 @@ export interface DialogBodyProps {
 export interface DialogFooterProps {
   children: ReactNode;
 }
-
-// --- Components ---
 
 function DialogContent({ children }: DialogContentProps) {
   const { tokens } = useTheme();
@@ -105,7 +102,7 @@ function DialogRoot({
   onOpenChange,
   children,
 }: DialogProps) {
-  const { stdout } = useStdout();
+  const { columns, rows } = useTerminalDimensions();
 
   useInput(
     (_input, key) => {
@@ -118,23 +115,18 @@ function DialogRoot({
 
   if (!open) return null;
 
-  const width = stdout.columns ?? 80;
-  const height = stdout.rows ?? 24;
-
   return (
     <Box
       flexDirection="column"
       justifyContent="center"
       alignItems="center"
-      width={width}
-      height={height}
+      width={columns}
+      height={rows}
     >
       {children}
     </Box>
   );
 }
-
-// --- Compound export ---
 
 export const Dialog = Object.assign(DialogRoot, {
   Content: DialogContent,

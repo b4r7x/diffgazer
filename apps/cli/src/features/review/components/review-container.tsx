@@ -25,12 +25,11 @@ export function ReviewContainer({
     useReviewLifecycle();
 
   useEffect(() => {
-    if (state.phase === "idle" && mode) {
+    if (mode) {
       start(mode);
     }
   }, []);
 
-  // Loading states (config loading, checking for changes)
   if (state.loadingMessage) {
     return (
       <Box>
@@ -39,8 +38,7 @@ export function ReviewContainer({
     );
   }
 
-  // Config not set — provider/API key missing
-  if (!state.isConfigured && state.phase === "checking-config") {
+  if (!state.isConfigured && !state.loadingMessage) {
     const missingModel = !state.model;
     return (
       <Box flexDirection="column" gap={1}>
@@ -75,7 +73,6 @@ export function ReviewContainer({
     );
   }
 
-  // No changes detected
   if (state.isNoDiffError) {
     const otherMode = mode === "staged" ? "unstaged" : "staged";
     return (
@@ -105,7 +102,6 @@ export function ReviewContainer({
     );
   }
 
-  // Non-recoverable error (outside streaming)
   if (
     state.error &&
     state.phase !== "streaming" &&
@@ -127,9 +123,7 @@ export function ReviewContainer({
   }
 
   switch (state.phase) {
-    case "idle":
-    case "checking-config":
-    case "checking-changes":
+    case "loading":
       return (
         <Box>
           <Spinner label="Starting review..." />

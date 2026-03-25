@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useFooterContext } from "../app/providers/footer-provider.js";
-import type { Shortcut } from "../types/components.js";
+import type { Shortcut } from "@diffgazer/schemas/ui";
 
 interface PageFooterOptions {
   shortcuts?: Shortcut[];

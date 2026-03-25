@@ -1,13 +1,13 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import Spinner from "ink-spinner";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
 import { useInit, useSaveTrust, useDeleteTrust, matchQueryState } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
+import { Spinner } from "../../../components/ui/spinner.js";
 import { Button } from "../../../components/ui/button.js";
 import { TrustPermissionsContent } from "../../../features/settings/components/trust-permissions-content.js";
 
@@ -71,10 +71,7 @@ export function TrustPermissionsScreen(): ReactElement {
     loading: () => (
       <Panel>
         <Panel.Content>
-          <Box gap={1}>
-            <Spinner type="dots" />
-            <Text>Loading trust permissions...</Text>
-          </Box>
+          <Spinner label="Loading trust permissions..." />
         </Panel.Content>
       </Panel>
     ),
@@ -87,7 +84,7 @@ export function TrustPermissionsScreen(): ReactElement {
     ),
     success: () => null,
   });
-  if (guard) return guard;
+  if (guard) return guard as ReactElement;
 
   return (
     <Panel>

@@ -59,20 +59,12 @@ const homeRoute = createRoute({
 
 const reviewRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/review",
-  component: ReviewPage,
-  validateSearch: ReviewSearchSchema,
-  beforeLoad: requireConfigured,
-});
-
-const reviewWithIdRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/review/$reviewId",
+  path: "/review/{-$reviewId}",
   component: ReviewPage,
   validateSearch: ReviewSearchSchema,
   beforeLoad: async ({ params }) => {
     await requireConfigured();
-    if (!UUID_REGEX.test(params.reviewId)) {
+    if (params.reviewId && !UUID_REGEX.test(params.reviewId)) {
       throw redirect({ to: "/", search: { error: "invalid-review-id" } });
     }
   },
@@ -158,7 +150,6 @@ const routeTree = rootRoute.addChildren([
   homeRoute,
   onboardingRoute,
   reviewRoute,
-  reviewWithIdRoute,
   historyRoute,
   helpRoute,
   settingsRoute.addChildren([

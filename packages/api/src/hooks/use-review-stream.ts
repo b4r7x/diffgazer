@@ -5,9 +5,10 @@ import {
   createInitialReviewState,
   type ReviewState,
   type ReviewAction,
+  type StreamReviewError,
 } from "@diffgazer/core/review";
+import { type Result, ok } from "@diffgazer/core/result";
 import { ReviewErrorCode, type ReviewMode, type LensId } from "@diffgazer/schemas/review";
-import type { Result } from "@diffgazer/core/result";
 import type { StreamReviewError } from "../review.js";
 import { useApi } from "./context.js";
 
@@ -131,19 +132,23 @@ export function useReviewStream() {
 
       if (result.ok) {
         dispatch({ type: "COMPLETE" });
-      } else if (
+        return ok(undefined);
+      }
+
+      // Stale/not-found: let the caller decide (don't dispatch RESET or ERROR)
+      if (
         result.error.code === ReviewErrorCode.SESSION_STALE ||
         result.error.code === ReviewErrorCode.SESSION_NOT_FOUND
       ) {
-        dispatch({ type: "RESET" });
-      } else {
-        dispatch({ type: "ERROR", error: result.error.message });
+        return result;
       }
 
+      // Other errors: dispatch ERROR and return the result
+      dispatch({ type: "ERROR", error: result.error.message });
       return result;
     } catch (e) {
       handleStreamError(e);
-      return { ok: false, error: { code: "STREAM_ERROR" as const, message: e instanceof Error ? e.message : "Failed to stream" } };
+      return { ok: false, error: { code: "STREAM_ERROR" as const, message: e instanceof Error ? e.message : "Failed to resume" } };
     } finally {
       abortControllerRef.current = null;
     }

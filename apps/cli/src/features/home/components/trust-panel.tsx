@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
-import Spinner from "ink-spinner";
+import { Spinner } from "../../../components/ui/spinner.js";
 import { useInit, useSaveTrust, matchQueryState } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
@@ -43,10 +43,7 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
     loading: () => (
       <Panel>
         <Panel.Content>
-          <Box gap={1}>
-            <Spinner type="dots" />
-            <Text>Loading project info...</Text>
-          </Box>
+          <Spinner label="Loading project info..." />
         </Panel.Content>
       </Panel>
     ),
@@ -59,7 +56,7 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
     ),
     success: () => null,
   });
-  if (guard) return guard;
+  if (guard) return guard as ReactElement;
 
   return (
     <Panel>
@@ -90,7 +87,7 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
           </CheckboxGroup>
 
           <Box gap={1}>
-            <Button variant="success" onPress={handleAccept} disabled={saving}>
+            <Button variant="success" onPress={handleAccept} disabled={saving || !initQuery.data}>
               {saving ? "Saving..." : "Accept & Continue"}
             </Button>
           </Box>

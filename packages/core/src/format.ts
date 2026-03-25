@@ -21,3 +21,28 @@ export function formatTimestamp(timestamp: Date | string): string {
   const seconds = date.getSeconds().toString().padStart(2, "0");
   return `${hours}:${minutes}:${seconds}`;
 }
+
+export function formatTimestampLocale(date: Date | string | number): string {
+  return new Date(date).toLocaleString();
+}
+
+export function formatElapsed(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+}
+
+export function getProviderStatus(
+  isLoading: boolean,
+  isConfigured: boolean,
+): "active" | "idle" {
+  if (isLoading) return "idle";
+  return isConfigured ? "active" : "idle";
+}
+
+export function getProviderDisplay(provider?: string, model?: string): string {
+  if (!provider) return "Not configured";
+  if (model) return `${provider} / ${model}`;
+  return provider;
+}

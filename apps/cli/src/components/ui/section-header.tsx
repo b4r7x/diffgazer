@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Box, Text } from "ink";
 import { useTheme } from "../../theme/theme-context.js";
+import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
 
 export interface SectionHeaderProps {
   variant?: "default" | "muted";
@@ -14,6 +15,7 @@ export function SectionHeader({
   children,
 }: SectionHeaderProps) {
   const { tokens } = useTheme();
+  const { columns } = useTerminalDimensions();
 
   const color = variant === "muted" ? tokens.muted : tokens.fg;
 
@@ -23,7 +25,7 @@ export function SectionHeader({
         {children.toUpperCase()}
       </Text>
       {bordered ? (
-        <Text color={tokens.border}>{"─".repeat(40)}</Text>
+        <Text color={tokens.border}>{"─".repeat(columns)}</Text>
       ) : null}
     </Box>
   );

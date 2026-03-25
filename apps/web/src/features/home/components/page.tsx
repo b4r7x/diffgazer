@@ -15,10 +15,7 @@ import { shutdown } from "@/features/home/utils/shutdown";
 import { TrustPanel } from "./trust-panel";
 
 type RouteConfig = { to: string; search?: Record<string, string> };
-const SHOW_HELP_IN_MAIN_MENU = false;
-const MAIN_MENU_ITEMS = SHOW_HELP_IN_MAIN_MENU
-  ? MENU_ITEMS
-  : MENU_ITEMS.filter((item) => item.id !== "help");
+const MAIN_MENU_ITEMS = MENU_ITEMS.filter((item) => item.id !== "help");
 
 const MENU_ROUTES: Record<string, RouteConfig> = {
   "review-unstaged": { to: "/review" },

@@ -18,4 +18,10 @@ export {
   filterIssuesBySeverity,
 } from "./filtering.js";
 export { convertAgentEventsToLogEntries } from "./event-to-log.js";
-export { resolveDefaultLenses, FALLBACK_LENSES } from "./lenses.js";
+export { resolveDefaultLenses } from "./lenses.js";
+export {
+  mapStepStatus,
+  getAgentDetail,
+  type UIStepStatus,
+} from "./display.js";
+export { isNoDiffError, isCheckingForChanges, getLoadingMessage } from "./lifecycle-helpers.js";
