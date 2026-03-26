@@ -1,12 +1,20 @@
 import { useInput } from "ink";
 import { useNavigation } from "../app/navigation-context.js";
 
-export function useBackHandler(): void {
+interface BackHandlerOptions {
+  isActive?: boolean;
+}
+
+export function useBackHandler(options: BackHandlerOptions = {}): void {
+  const { isActive = true } = options;
   const { goBack, canGoBack } = useNavigation();
 
-  useInput((input, key) => {
-    if (key.escape && canGoBack) {
-      goBack();
-    }
-  });
+  useInput(
+    (_input, key) => {
+      if (key.escape && canGoBack) {
+        goBack();
+      }
+    },
+    { isActive },
+  );
 }

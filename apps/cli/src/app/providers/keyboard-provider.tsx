@@ -1,4 +1,4 @@
-import { createContext, useRef, useState } from "react";
+import { createContext, useCallback, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useInput } from "ink";
 import type { Key } from "ink";
@@ -16,6 +16,8 @@ export interface KeyboardContextValue {
   pushScope: (name: string) => void;
   popScope: () => void;
   activeScope: string | null;
+  setInputActive: (active: boolean) => void;
+  inputActive: boolean;
 }
 
 export const KeyboardContext = createContext<KeyboardContextValue | null>(null);
@@ -39,6 +41,10 @@ function inkKeyToHotkey(input: string, key: Key): string | null {
   return null;
 }
 
+function isLetterKey(hotkey: string): boolean {
+  return hotkey.length === 1 && /^[a-zA-Z0-9?/]$/.test(hotkey);
+}
+
 interface TerminalKeyboardProviderProps {
   children: ReactNode;
 }
@@ -47,14 +53,26 @@ export function TerminalKeyboardProvider({
   children,
 }: TerminalKeyboardProviderProps) {
   const [scopeStack, setScopeStack] = useState<string[]>([]);
+  const scopeStackRef = useRef<string[]>([]);
   const scopesRef = useRef<Map<string, ScopeEntry>>(new Map());
   const globalHandlersRef = useRef<Map<string, Set<() => void>>>(new Map());
+  const inputActiveRef = useRef(false);
+  const [inputActive, setInputActiveState] = useState(false);
+
+  // Keep ref in sync with state
+  scopeStackRef.current = scopeStack;
 
   const activeScope = scopeStack.length > 0
     ? scopeStack[scopeStack.length - 1] ?? null
     : null;
 
-  const registerHandler = (
+  const setInputActive = useCallback((active: boolean) => {
+    if (inputActiveRef.current === active) return;
+    inputActiveRef.current = active;
+    setInputActiveState(active);
+  }, []);
+
+  const registerHandler = useCallback((
     scope: string,
     hotkey: string,
     handler: () => void,
@@ -81,9 +99,9 @@ export function TerminalKeyboardProvider({
         scopes.delete(scope);
       }
     };
-  };
+  }, []);
 
-  const registerGlobalHandler = (
+  const registerGlobalHandler = useCallback((
     hotkey: string,
     handler: () => void,
   ): (() => void) => {
@@ -102,27 +120,31 @@ export function TerminalKeyboardProvider({
         }
       }
     };
-  };
+  }, []);
 
-  const pushScope = (name: string) => {
+  const pushScope = useCallback((name: string) => {
     setScopeStack((prev) => {
       if (prev[prev.length - 1] === name) return prev;
       return [...prev, name];
     });
-  };
+  }, []);
 
-  const popScope = () => {
+  const popScope = useCallback(() => {
     setScopeStack((prev) => prev.slice(0, -1));
-  };
+  }, []);
 
   useInput((input, key) => {
     const hotkey = inkKeyToHotkey(input, key);
     if (!hotkey) return;
 
+    // Suppress letter-key globals when a text input is active
+    if (inputActiveRef.current && isLetterKey(hotkey)) return;
+
     let handled = false;
 
-    const currentScope = scopeStack.length > 0
-      ? scopeStack[scopeStack.length - 1]
+    const stack = scopeStackRef.current;
+    const currentScope = stack.length > 0
+      ? stack[stack.length - 1]
       : null;
 
     if (currentScope) {
@@ -148,13 +170,15 @@ export function TerminalKeyboardProvider({
     }
   });
 
-  const value: KeyboardContextValue = {
+  const value = useMemo<KeyboardContextValue>(() => ({
     registerHandler,
     registerGlobalHandler,
     pushScope,
     popScope,
     activeScope,
-  };
+    setInputActive,
+    inputActive,
+  }), [activeScope, inputActive, registerHandler, registerGlobalHandler, pushScope, popScope, setInputActive]);
 
   return (
     <KeyboardContext.Provider value={value}>

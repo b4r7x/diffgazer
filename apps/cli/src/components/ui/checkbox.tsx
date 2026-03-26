@@ -1,4 +1,4 @@
-import { createContext, useState, useContext, Children, isValidElement } from "react";
+import { createContext, Fragment, useState, useContext, Children, isValidElement } from "react";
 import type { ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../../theme/theme-context.js";
@@ -53,10 +53,16 @@ interface CollectedItem {
 function collectItems(children: ReactNode): CollectedItem[] {
   const items: CollectedItem[] = [];
   Children.forEach(children, (child) => {
-    if (isValidElement<CheckboxItemProps>(child) && child.type === CheckboxItem) {
+    if (!isValidElement(child)) return;
+    if (child.type === Fragment) {
+      items.push(...collectItems((child.props as { children: ReactNode }).children));
+      return;
+    }
+    if (child.type === CheckboxItem) {
+      const props = child.props as CheckboxItemProps;
       items.push({
-        value: child.props.value,
-        disabled: child.props.disabled ?? false,
+        value: props.value,
+        disabled: props.disabled ?? false,
       });
     }
   });

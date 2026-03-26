@@ -52,8 +52,6 @@ function toDetailData(provider: ProviderListItem): ProviderDetailData {
 export function ProvidersScreen(): ReactElement {
   useScope("providers");
   usePageFooter({ shortcuts: [{ key: "Esc", label: "Back" }, { key: "Enter", label: "Select" }] });
-  useBackHandler();
-
   const { columns, isNarrow, isMedium } = useResponsive();
   const { tokens } = useTheme();
   const listWidth = isNarrow
@@ -97,6 +95,8 @@ export function ProvidersScreen(): ReactElement {
   }
 
   const isListActive = !apiKeyOpen && !modelSelectOpen;
+
+  useBackHandler({ isActive: isListActive });
 
   const guard = matchQueryState(providerQuery, {
     loading: () => (

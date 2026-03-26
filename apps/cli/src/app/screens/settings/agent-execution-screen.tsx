@@ -5,6 +5,7 @@ import type { AgentExecution } from "@diffgazer/schemas/config";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
+import { useSettingsZone } from "../../../hooks/use-settings-zone.js";
 import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
@@ -14,7 +15,14 @@ import { RadioGroup } from "../../../components/ui/radio.js";
 
 export function AgentExecutionScreen(): ReactElement {
   useScope("settings-agent-execution");
-  usePageFooter({ shortcuts: [{ key: "Esc", label: "Back" }, { key: "Enter", label: "Select" }] });
+  usePageFooter({
+    shortcuts: [
+      { key: "Esc", label: "Back" },
+      { key: "Tab", label: "Switch zone" },
+      { key: "↑↓", label: "Navigate" },
+      { key: "Enter", label: "Select" },
+    ],
+  });
   useBackHandler();
 
   const settingsQuery = useSettings();
@@ -25,6 +33,11 @@ export function AgentExecutionScreen(): ReactElement {
   const isSaving = saveSettings.isPending;
   const saveError = saveSettings.error?.message ?? null;
   const current = mode ?? settingsQuery.data?.agentExecution ?? "sequential";
+
+  const { isListActive, isButtonActive } = useSettingsZone({
+    buttonCount: 1,
+    disabled: isSaving,
+  });
 
   function handleSave() {
     setSaved(false);
@@ -59,7 +72,11 @@ export function AgentExecutionScreen(): ReactElement {
         <Box flexDirection="column" gap={1}>
           <SectionHeader>Agent Execution</SectionHeader>
           <Text dimColor>Current: {current}</Text>
-          <RadioGroup value={current} onChange={(v) => { setMode(v as AgentExecution); setSaved(false); }} isActive={!isSaving}>
+          <RadioGroup
+            value={current}
+            onChange={(v) => { setMode(v as AgentExecution); setSaved(false); }}
+            isActive={isListActive}
+          >
             <RadioGroup.Item
               value="parallel"
               label="Parallel"
@@ -72,7 +89,15 @@ export function AgentExecutionScreen(): ReactElement {
             />
           </RadioGroup>
           <Box gap={1}>
-            <Button variant="primary" onPress={handleSave} loading={isSaving} disabled={isSaving}>Save</Button>
+            <Button
+              variant="primary"
+              onPress={handleSave}
+              loading={isSaving}
+              disabled={isSaving}
+              isActive={isButtonActive(0)}
+            >
+              Save
+            </Button>
           </Box>
           {saved && <Text color="green">Execution mode saved.</Text>}
           {saveError && <Text color="red">{saveError}</Text>}

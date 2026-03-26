@@ -1,5 +1,6 @@
 import { useEffect, useEffectEvent } from "react";
 import { useApp, useInput } from "ink";
+import { stopAllServers } from "./use-servers.js";
 
 interface ExitHandlerOptions {
   onExit?: () => void;
@@ -11,6 +12,7 @@ export function useExitHandler(options: ExitHandlerOptions = {}): void {
 
   const handleExit = useEffectEvent(() => {
     onExit?.();
+    stopAllServers();
     exit();
     setTimeout(() => process.exit(0), 100);
   });
@@ -26,7 +28,7 @@ export function useExitHandler(options: ExitHandlerOptions = {}): void {
   }, []);
 
   useInput((input, key) => {
-    if (key.escape || (key.ctrl && input === "c")) {
+    if (key.ctrl && input === "c") {
       handleExit();
     }
   });

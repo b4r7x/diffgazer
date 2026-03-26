@@ -5,6 +5,7 @@ import type { SecretsStorage } from "@diffgazer/schemas/config";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
+import { useSettingsZone } from "../../../hooks/use-settings-zone.js";
 import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
@@ -14,7 +15,14 @@ import { StorageSelector } from "../../../features/settings/components/storage-s
 
 export function StorageScreen(): ReactElement {
   useScope("settings-storage");
-  usePageFooter({ shortcuts: [{ key: "Esc", label: "Back" }, { key: "Enter", label: "Select" }] });
+  usePageFooter({
+    shortcuts: [
+      { key: "Esc", label: "Back" },
+      { key: "Tab", label: "Switch zone" },
+      { key: "↑↓", label: "Navigate" },
+      { key: "Enter", label: "Select" },
+    ],
+  });
   useBackHandler();
 
   const settingsQuery = useSettings();
@@ -25,6 +33,11 @@ export function StorageScreen(): ReactElement {
   const saving = saveSettings.isPending;
   const saveError = saveSettings.error?.message ?? null;
   const effectiveStorage = storage ?? settingsQuery.data?.secretsStorage ?? "file";
+
+  const { isListActive, isButtonActive } = useSettingsZone({
+    buttonCount: 1,
+    disabled: saving,
+  });
 
   function handleSave() {
     setSaveMessage(null);
@@ -62,9 +75,13 @@ export function StorageScreen(): ReactElement {
         <Box flexDirection="column" gap={1}>
           <SectionHeader>Secrets Storage</SectionHeader>
           <Text dimColor>Current: {effectiveStorage}</Text>
-          <StorageSelector value={effectiveStorage} onChange={(v) => setStorage(v as SecretsStorage)} isActive={!saving} />
+          <StorageSelector
+            value={effectiveStorage}
+            onChange={(v) => setStorage(v as SecretsStorage)}
+            isActive={isListActive}
+          />
           <Box gap={1}>
-            <Button variant="primary" onPress={handleSave} disabled={saving}>
+            <Button variant="primary" onPress={handleSave} disabled={saving} isActive={isButtonActive(0)}>
               {saving ? "Saving..." : "Save"}
             </Button>
           </Box>

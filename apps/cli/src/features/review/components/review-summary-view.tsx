@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../../../theme/theme-context.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
@@ -23,18 +24,13 @@ export function ReviewSummaryView({
   onBack,
 }: ReviewSummaryViewProps) {
   const { tokens } = useTheme();
+  const [buttonIndex, setButtonIndex] = useState(0);
 
-  useInput(
-    (_input, key) => {
-      if (key.return && onContinue) {
-        onContinue();
-      }
-      if (key.escape && onBack) {
-        onBack();
-      }
-    },
-    { isActive: true },
-  );
+  useInput((_input, key) => {
+    if (key.leftArrow) setButtonIndex(0);
+    if (key.rightArrow) setButtonIndex(1);
+    if (key.escape && onBack) onBack();
+  });
 
   const total = issues.length;
   const filesAnalyzed = new Set(issues.map((i) => i.file)).size;
@@ -84,12 +80,12 @@ export function ReviewSummaryView({
 
       <Box gap={2} marginTop={1}>
         {onContinue ? (
-          <Button variant="primary" isActive onPress={onContinue}>
+          <Button variant="primary" isActive={buttonIndex === 0} onPress={onContinue}>
             View Results (Enter)
           </Button>
         ) : null}
         {onBack ? (
-          <Button variant="secondary" onPress={onBack}>
+          <Button variant="secondary" isActive={buttonIndex === 1} onPress={onBack}>
             Back (Esc)
           </Button>
         ) : null}

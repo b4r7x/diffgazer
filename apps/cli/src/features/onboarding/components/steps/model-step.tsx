@@ -70,7 +70,7 @@ export function ModelStep({
       ),
       success: () => null,
     });
-    if (guard) return guard;
+    if (guard) return guard as ReactElement;
   }
 
   const models: ModelOption[] = isOpenRouter

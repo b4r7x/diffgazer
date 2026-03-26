@@ -1,5 +1,6 @@
+import { useState } from "react";
 import type { ReactElement } from "react";
-import { Box, Text } from "ink";
+import { Box, Text, useInput } from "ink";
 import { Spinner } from "../../../components/ui/spinner.js";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
@@ -19,8 +20,16 @@ function formatTimestampOrNA(value: string | null): string {
 
 export function DiagnosticsScreen(): ReactElement {
   useScope("settings-diagnostics");
-  usePageFooter({ shortcuts: [{ key: "Esc", label: "Back" }, { key: "Enter", label: "Action" }] });
+  usePageFooter({
+    shortcuts: [
+      { key: "Esc", label: "Back" },
+      { key: "←→", label: "Switch button" },
+      { key: "Enter", label: "Action" },
+    ],
+  });
   useBackHandler();
+
+  const [buttonIndex, setButtonIndex] = useState(0);
 
   const {
     serverState,
@@ -36,6 +45,15 @@ export function DiagnosticsScreen(): ReactElement {
     isRefreshingContext: isRefreshing,
     refetchContext,
   } = useDiagnosticsData();
+
+  useInput((_input, key) => {
+    if (key.leftArrow) {
+      setButtonIndex((i) => Math.max(0, i - 1));
+    }
+    if (key.rightArrow) {
+      setButtonIndex((i) => Math.min(1, i + 1));
+    }
+  });
 
   const handleRefreshAll = () => {
     void Promise.allSettled([retryServer(), refetchContext()]);
@@ -110,13 +128,14 @@ export function DiagnosticsScreen(): ReactElement {
           )}
           <KeyValue label="Node version" value={nodeVersion} labelWidth={14} />
           <Box gap={1} marginTop={1}>
-            <Button variant="secondary" onPress={handleRefreshAll}>
+            <Button variant="secondary" onPress={handleRefreshAll} isActive={buttonIndex === 0}>
               Refresh All
             </Button>
             <Button
               variant="primary"
               onPress={handleRegenerateContext}
               disabled={!canRegenerate || isRefreshing}
+              isActive={buttonIndex === 1}
             >
               {isRefreshing ? "Regenerating..." : contextStatus === "ready" ? "Regenerate Context" : "Generate Context"}
             </Button>

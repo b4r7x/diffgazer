@@ -65,11 +65,14 @@ export function HistoryInsightsPane({ review, issues = [], isActive = false, scr
   const { navigate } = useNavigation();
   const { tokens } = useTheme();
 
-  useInput((_input, key) => {
-    if (key.return && isActive && review) {
-      navigate({ screen: "review", reviewId: review.id });
-    }
-  });
+  useInput(
+    (_input, key) => {
+      if (key.return && review) {
+        navigate({ screen: "review", reviewId: review.id });
+      }
+    },
+    { isActive },
+  );
 
   if (!review) {
     return (
