@@ -1,27 +1,11 @@
 import { useState, type KeyboardEvent } from "react";
-import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/schemas/events";
+import { buildLensOptions } from "@diffgazer/schemas/events";
 import type { LensId } from "@diffgazer/schemas/review";
 import { CheckboxGroup, CheckboxItem } from "diffui/components/checkbox";
 import { Badge } from "diffui/components/badge";
 import { ScrollArea } from "diffui/components/scroll-area";
 
-const LENS_OPTIONS = (
-  Object.entries(LENS_TO_AGENT) as Array<[LensId, keyof typeof AGENT_METADATA]>
-).map(([lensId, agentId]) => {
-  const meta = AGENT_METADATA[agentId];
-  return {
-    id: lensId,
-    label: meta.name,
-    badgeLabel: meta.badgeLabel,
-    badgeVariant: meta.badgeVariant as
-      | "success"
-      | "warning"
-      | "error"
-      | "info"
-      | "neutral",
-    description: meta.description,
-  };
-});
+const LENS_OPTIONS = buildLensOptions();
 
 interface AnalysisStepProps {
   lenses: LensId[];

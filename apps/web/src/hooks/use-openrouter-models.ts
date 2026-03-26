@@ -1,30 +1,8 @@
 import { useMemo } from "react";
 import type { ModelInfo, AIProvider } from "@diffgazer/schemas/config";
 import { useOpenRouterModels as useSharedOpenRouterModels } from "@diffgazer/api/hooks";
+import { isOpenRouterCompatible, mapOpenRouterModels } from "@diffgazer/api";
 import { OPENROUTER_PROVIDER_ID } from "@/config/constants";
-
-function isOpenRouterCompatible(model: {
-  supportedParameters?: string[];
-}): boolean {
-  const params = model.supportedParameters ?? [];
-  return params.includes("response_format") || params.includes("structured_outputs");
-}
-
-function mapOpenRouterModels(
-  models: Array<{
-    id: string;
-    name: string;
-    description?: string;
-    isFree: boolean;
-  }>
-): ModelInfo[] {
-  return models.map((model) => ({
-    id: model.id,
-    name: model.name || model.id,
-    description: model.description ?? model.id,
-    tier: model.isFree ? "free" : "paid",
-  }));
-}
 
 export interface OpenRouterModelsState {
   models: ModelInfo[];

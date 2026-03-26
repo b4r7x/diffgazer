@@ -3,6 +3,7 @@ import { Box, Text } from "ink";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
+import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
 import { useInit, useSettings, matchQueryState } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
@@ -62,6 +63,7 @@ export function SettingsHubScreen(): ReactElement {
   useBackHandler();
 
   const { navigate } = useNavigation();
+  const { columns } = useTerminalDimensions();
   const initQuery = useInit();
   const settingsQuery = useSettings();
 
@@ -74,35 +76,47 @@ export function SettingsHubScreen(): ReactElement {
 
   const guard = matchQueryState(initQuery, {
     loading: () => (
-      <Panel>
-        <Panel.Content>
-          <Box flexDirection="column" gap={1}>
-            <SectionHeader>Settings</SectionHeader>
-            <Spinner label="Loading settings..." />
-          </Box>
-        </Panel.Content>
-      </Panel>
+      <Box justifyContent="center" alignItems="center" flexGrow={1}>
+        <Box width={Math.min(columns, 70)}>
+          <Panel>
+            <Panel.Content>
+              <Box flexDirection="column" gap={1}>
+                <SectionHeader>Settings</SectionHeader>
+                <Spinner label="Loading settings..." />
+              </Box>
+            </Panel.Content>
+          </Panel>
+        </Box>
+      </Box>
     ),
     error: (err) => (
-      <Panel>
-        <Panel.Content>
-          <Box flexDirection="column" gap={1}>
-            <SectionHeader>Settings</SectionHeader>
-            <Text color="red">Error: {err.message}</Text>
-          </Box>
-        </Panel.Content>
-      </Panel>
+      <Box justifyContent="center" alignItems="center" flexGrow={1}>
+        <Box width={Math.min(columns, 70)}>
+          <Panel>
+            <Panel.Content>
+              <Box flexDirection="column" gap={1}>
+                <SectionHeader>Settings</SectionHeader>
+                <Text color="red">Error: {err.message}</Text>
+              </Box>
+            </Panel.Content>
+          </Panel>
+        </Box>
+      </Box>
     ),
     success: () => {
       if (settingsQuery.isLoading) return (
-        <Panel>
-          <Panel.Content>
-            <Box flexDirection="column" gap={1}>
-              <SectionHeader>Settings</SectionHeader>
-              <Spinner label="Loading settings..." />
-            </Box>
-          </Panel.Content>
-        </Panel>
+        <Box justifyContent="center" alignItems="center" flexGrow={1}>
+          <Box width={Math.min(columns, 70)}>
+            <Panel>
+              <Panel.Content>
+                <Box flexDirection="column" gap={1}>
+                  <SectionHeader>Settings</SectionHeader>
+                  <Spinner label="Loading settings..." />
+                </Box>
+              </Panel.Content>
+            </Panel>
+          </Box>
+        </Box>
       );
       return null;
     },
@@ -112,25 +126,29 @@ export function SettingsHubScreen(): ReactElement {
   const descriptions = buildDescriptions(initQuery.data, settingsQuery.data);
 
   return (
-    <Panel>
-      <Panel.Content>
-        <Box flexDirection="column" gap={1}>
-          <SectionHeader>Settings</SectionHeader>
-          {settingsQuery.error && <Text color="red">{settingsQuery.error.message}</Text>}
-          <Menu variant="hub" onSelect={onSelect}>
-            {SETTINGS_MENU_ITEMS.map((item, index) => (
-              <Menu.Item
-                key={item.id}
-                id={item.id}
-                hotkey={index + 1}
-                value={descriptions[item.id] ?? item.description}
-              >
-                {item.label}
-              </Menu.Item>
-            ))}
-          </Menu>
-        </Box>
-      </Panel.Content>
-    </Panel>
+    <Box justifyContent="center" alignItems="center" flexGrow={1}>
+      <Box width={Math.min(columns, 70)}>
+        <Panel>
+          <Panel.Content>
+            <Box flexDirection="column" gap={1}>
+              <SectionHeader>Settings</SectionHeader>
+              {settingsQuery.error && <Text color="red">{settingsQuery.error.message}</Text>}
+              <Menu variant="hub" onSelect={onSelect}>
+                {SETTINGS_MENU_ITEMS.map((item, index) => (
+                  <Menu.Item
+                    key={item.id}
+                    id={item.id}
+                    hotkey={index + 1}
+                    value={descriptions[item.id] ?? item.description}
+                  >
+                    {item.label}
+                  </Menu.Item>
+                ))}
+              </Menu>
+            </Box>
+          </Panel.Content>
+        </Panel>
+      </Box>
+    </Box>
   );
 }

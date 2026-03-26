@@ -34,9 +34,17 @@
       "types": "./dist/json.d.ts",
       "import": "./dist/json.js"
     },
+    "./providers": {
+      "types": "./dist/providers/display-status.d.ts",
+      "import": "./dist/providers/display-status.js"
+    },
     "./review": {
       "types": "./dist/review/index.d.ts",
       "import": "./dist/review/index.js"
+    },
+    "./navigation": {
+      "types": "./dist/navigation/index.d.ts",
+      "import": "./dist/navigation/index.js"
     }
   },
   "scripts": {

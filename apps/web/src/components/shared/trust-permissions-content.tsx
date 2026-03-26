@@ -101,7 +101,6 @@ export function TrustPermissionsContent({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Directory Header */}
       <div className="border-b border-tui-border pb-3">
         <div className="text-tui-muted text-xs mb-2 uppercase tracking-wide">
           Target Directory
@@ -116,7 +115,6 @@ export function TrustPermissionsContent({
         </div>
       </div>
 
-      {/* Capabilities */}
       <CheckboxGroup
         value={selectedCapabilities}
         onChange={handleValueChange}
@@ -137,7 +135,6 @@ export function TrustPermissionsContent({
         ))}
       </CheckboxGroup>
 
-      {/* Security Warning - always visible */}
       <Callout variant="warning">
         <CalloutIcon />
         <CalloutTitle>SECURITY WARNING</CalloutTitle>
@@ -147,7 +144,6 @@ export function TrustPermissionsContent({
         </CalloutContent>
       </Callout>
 
-      {/* Actions */}
       {showActions && (
         <div className="flex gap-4 pt-2">
           <Button

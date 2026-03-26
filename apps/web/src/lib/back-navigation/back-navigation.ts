@@ -1,3 +1,5 @@
+import { getBackTarget } from "@diffgazer/core/navigation";
+
 export type BackTarget = "/" | "/settings";
 
 export const SAFE_BACK_FALLBACK_ROUTE: BackTarget = "/";
@@ -7,26 +9,16 @@ export type BackAction =
   | { type: "history" }
   | { type: "navigate"; to: BackTarget };
 
-export function getBackTarget(pathname: string): BackTarget | null {
-  if (pathname === "/settings" || pathname === "/settings/") {
-    return "/";
-  }
-
-  if (pathname.startsWith("/settings/")) {
-    return "/settings";
-  }
-
-  return null;
-}
+export { getBackTarget };
 
 export function resolveBackAction(pathname: string, canGoBack: boolean): BackAction {
   if (pathname === "/") {
     return { type: "none" };
   }
 
-  const settingsTarget = getBackTarget(pathname);
-  if (settingsTarget) {
-    return { type: "navigate", to: settingsTarget };
+  const target = getBackTarget(pathname);
+  if (target) {
+    return { type: "navigate", to: target as BackTarget };
   }
 
   if (canGoBack) {

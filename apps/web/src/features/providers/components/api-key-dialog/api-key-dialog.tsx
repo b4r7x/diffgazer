@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogBody } from "di
 import { Badge } from "diffui/components/badge";
 import { useApiKeyForm } from "../../hooks/use-api-key-form";
 import { useApiKeyDialogKeyboard } from "../../hooks/use-api-key-dialog-keyboard";
-import { ApiKeyMethodSelector } from "./api-key-method-selector";
+import { ApiKeyMethodSelector } from "@/components/shared/api-key-method-selector";
 import { ApiKeyFooter } from "./api-key-footer";
 
 import type { FocusElement } from "@/types/focus-element";

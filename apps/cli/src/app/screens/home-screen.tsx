@@ -4,6 +4,7 @@ import { useNavigation } from "../navigation-context.js";
 import { useScope } from "../../hooks/use-scope.js";
 import { usePageFooter } from "../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../hooks/use-back-handler.js";
+import { useResponsive } from "../../hooks/use-terminal-dimensions.js";
 import { useInit, useReviews, useActiveReviewSession, useShutdown } from "@diffgazer/api/hooks";
 import { ContextSidebar } from "../../features/home/components/context-sidebar.js";
 import { HomeMenu } from "../../features/home/components/home-menu.js";
@@ -16,6 +17,7 @@ export function HomeScreen(): ReactElement {
   usePageFooter({ shortcuts: MAIN_MENU_SHORTCUTS });
   useBackHandler();
 
+  const { columns } = useResponsive();
   const { navigate } = useNavigation();
   const { data: initData, refetch: refreshInit } = useInit();
   const { data: reviewsData } = useReviews();
@@ -82,23 +84,28 @@ export function HomeScreen(): ReactElement {
 
   const disableReview = !isTrusted;
 
+  const contentWidth = Math.min(columns, 90);
+  const sidebarWidth = Math.min(30, Math.floor(columns * 0.33));
+
   return (
-    <Box>
-      <Box width={30}>
-        <ContextSidebar
-          providerName={providerName}
-          modelName={modelName}
-          lastReviewDate={lastReviewDate}
-          lastReviewIssues={lastReviewIssues}
-          trustStatus={trustStatus}
-        />
-      </Box>
-      <Box flexGrow={1}>
-        {needsTrust ? (
-          <TrustPanel onAccept={handleTrustAccept} />
-        ) : (
-          <HomeMenu isActive onAction={onAction} disableReview={disableReview} />
-        )}
+    <Box justifyContent="center" alignItems="center" flexGrow={1}>
+      <Box width={contentWidth}>
+        <Box width={sidebarWidth}>
+          <ContextSidebar
+            providerName={providerName}
+            modelName={modelName}
+            lastReviewDate={lastReviewDate}
+            lastReviewIssues={lastReviewIssues}
+            trustStatus={trustStatus}
+          />
+        </Box>
+        <Box flexGrow={1}>
+          {needsTrust ? (
+            <TrustPanel onAccept={handleTrustAccept} />
+          ) : (
+            <HomeMenu isActive onAction={onAction} disableReview={disableReview} />
+          )}
+        </Box>
       </Box>
     </Box>
   );

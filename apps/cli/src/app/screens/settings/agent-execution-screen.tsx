@@ -6,6 +6,7 @@ import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
 import { useSettingsZone } from "../../../hooks/use-settings-zone.js";
+import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
 import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
@@ -14,6 +15,7 @@ import { Button } from "../../../components/ui/button.js";
 import { RadioGroup } from "../../../components/ui/radio.js";
 
 export function AgentExecutionScreen(): ReactElement {
+  const { columns } = useTerminalDimensions();
   useScope("settings-agent-execution");
   usePageFooter({
     shortcuts: [
@@ -67,42 +69,46 @@ export function AgentExecutionScreen(): ReactElement {
   if (guard) return guard as ReactElement;
 
   return (
-    <Panel>
-      <Panel.Content>
-        <Box flexDirection="column" gap={1}>
-          <SectionHeader>Agent Execution</SectionHeader>
-          <Text dimColor>Current: {current}</Text>
-          <RadioGroup
-            value={current}
-            onChange={(v) => { setMode(v as AgentExecution); setSaved(false); }}
-            isActive={isListActive}
-          >
-            <RadioGroup.Item
-              value="parallel"
-              label="Parallel"
-              description="Run all agents concurrently (faster)"
-            />
-            <RadioGroup.Item
-              value="sequential"
-              label="Sequential"
-              description="Run agents one at a time (lower resource usage)"
-            />
-          </RadioGroup>
-          <Box gap={1}>
-            <Button
-              variant="primary"
-              onPress={handleSave}
-              loading={isSaving}
-              disabled={isSaving}
-              isActive={isButtonActive(0)}
-            >
-              Save
-            </Button>
-          </Box>
-          {saved && <Text color="green">Execution mode saved.</Text>}
-          {saveError && <Text color="red">{saveError}</Text>}
-        </Box>
-      </Panel.Content>
-    </Panel>
+    <Box justifyContent="center" flexGrow={1}>
+      <Box width={Math.min(columns, 60)} flexDirection="column">
+        <Panel>
+          <Panel.Content>
+            <Box flexDirection="column" gap={1}>
+              <SectionHeader>Agent Execution</SectionHeader>
+              <Text dimColor>Current: {current}</Text>
+              <RadioGroup
+                value={current}
+                onChange={(v) => { setMode(v as AgentExecution); setSaved(false); }}
+                isActive={isListActive}
+              >
+                <RadioGroup.Item
+                  value="parallel"
+                  label="Parallel"
+                  description="Run all agents concurrently (faster)"
+                />
+                <RadioGroup.Item
+                  value="sequential"
+                  label="Sequential"
+                  description="Run agents one at a time (lower resource usage)"
+                />
+              </RadioGroup>
+              <Box gap={1}>
+                <Button
+                  variant="primary"
+                  onPress={handleSave}
+                  loading={isSaving}
+                  disabled={isSaving}
+                  isActive={isButtonActive(0)}
+                >
+                  Save
+                </Button>
+              </Box>
+              {saved && <Text color="green">Execution mode saved.</Text>}
+              {saveError && <Text color="red">{saveError}</Text>}
+            </Box>
+          </Panel.Content>
+        </Panel>
+      </Box>
+    </Box>
   );
 }

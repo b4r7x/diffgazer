@@ -2,9 +2,10 @@ import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { NavigationList, NavigationListItem, NavigationListTitle, NavigationListBadge, NavigationListSubtitle, NavigationListStatus } from 'diffui/components/navigation-list';
 import { Input } from 'diffui/components/input';
 import { cn } from 'diffui/lib/utils';
+import { getDisplayStatusBadge } from '@diffgazer/core/providers';
 import { PROVIDER_CAPABILITIES } from '@/config/constants';
 import { PROVIDER_FILTER_LABELS, type ProviderFilter } from '@/features/providers/constants';
-import type { ProviderWithStatus, DisplayStatus } from '../types';
+import type { ProviderWithStatus } from '../types';
 
 interface ProviderListProps {
   providers: ProviderWithStatus[];
@@ -21,17 +22,6 @@ interface ProviderListProps {
   highlightedId?: string | null;
   onHighlightChange?: (id: string) => void;
   onBoundaryReached?: (direction: "up" | "down") => void;
-}
-
-function getStatusIndicator(status: DisplayStatus): string | undefined {
-  switch (status) {
-    case 'active':
-      return '[ACTIVE]';
-    case 'configured':
-      return '[READY]';
-    case 'needs-key':
-      return '[NEEDS KEY]';
-  }
 }
 
 export function ProviderList({
@@ -123,7 +113,8 @@ export function ProviderList({
           {providers.map((provider) => {
             const capabilities = PROVIDER_CAPABILITIES[provider.id];
             const tierBadge = capabilities?.tierBadge ?? 'PAID';
-            const statusText = getStatusIndicator(provider.displayStatus);
+            const badge = getDisplayStatusBadge(provider.displayStatus);
+            const statusText = `[${badge.label.toUpperCase()}]`;
             const subtitleText = !provider.model
               ? "Select model"
               : (provider.defaultModel || undefined);
