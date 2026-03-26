@@ -5,6 +5,7 @@ import type { LensId } from "@diffgazer/schemas/review";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
+import { useSettingsZone } from "../../../hooks/use-settings-zone.js";
 import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
@@ -14,7 +15,14 @@ import { AnalysisSelector, lensOptions } from "../../../features/settings/compon
 
 export function AnalysisScreen(): ReactElement {
   useScope("settings-analysis");
-  usePageFooter({ shortcuts: [{ key: "Esc", label: "Back" }, { key: "Space", label: "Toggle" }] });
+  usePageFooter({
+    shortcuts: [
+      { key: "Esc", label: "Back" },
+      { key: "Tab", label: "Switch zone" },
+      { key: "↑↓", label: "Navigate" },
+      { key: "Space", label: "Toggle" },
+    ],
+  });
   useBackHandler();
 
   const settingsQuery = useSettings();
@@ -49,6 +57,11 @@ export function AnalysisScreen(): ReactElement {
   const currentLenses = defaultLenses.length > 0 ? defaultLenses : fallbackLenses;
   const effectiveLenses = selectedLenses ?? currentLenses;
 
+  const { isListActive, isButtonActive } = useSettingsZone({
+    buttonCount: 1,
+    disabled: isSaving,
+  });
+
   function handleSave() {
     if (effectiveLenses.length === 0) return;
     setSaved(false);
@@ -66,7 +79,7 @@ export function AnalysisScreen(): ReactElement {
           <AnalysisSelector
             selectedLenses={effectiveLenses}
             onChange={setSelectedLenses}
-            isActive={!isSaving}
+            isActive={isListActive}
             disabled={isSaving}
           />
           {effectiveLenses.length === 0 && (
@@ -77,6 +90,7 @@ export function AnalysisScreen(): ReactElement {
               variant="primary"
               onPress={handleSave}
               disabled={isSaving || effectiveLenses.length === 0}
+              isActive={isButtonActive(0)}
             >
               {isSaving ? "Saving..." : "Save"}
             </Button>

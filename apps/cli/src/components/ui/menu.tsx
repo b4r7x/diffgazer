@@ -1,4 +1,4 @@
-import { createContext, useState, useContext, Children, isValidElement } from "react";
+import { createContext, Fragment, useState, useContext, Children, isValidElement } from "react";
 import type { ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../../theme/theme-context.js";
@@ -59,11 +59,17 @@ interface CollectedItem {
 function collectItems(children: ReactNode): CollectedItem[] {
   const items: CollectedItem[] = [];
   Children.forEach(children, (child) => {
-    if (isValidElement<MenuItemProps>(child) && child.type === MenuItem) {
+    if (!isValidElement(child)) return;
+    if (child.type === Fragment) {
+      items.push(...collectItems((child.props as { children: ReactNode }).children));
+      return;
+    }
+    if (child.type === MenuItem) {
+      const props = child.props as MenuItemProps;
       items.push({
-        id: child.props.id,
-        disabled: child.props.disabled ?? false,
-        hotkey: child.props.hotkey,
+        id: props.id,
+        disabled: props.disabled ?? false,
+        hotkey: props.hotkey,
       });
     }
   });

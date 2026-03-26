@@ -166,11 +166,14 @@ export function HistoryScreen(): ReactElement {
     }
   });
 
-  useInput((input) => {
-    if (input === "/" && activeZone !== "search") {
-      setActiveZone("search");
-    }
-  });
+  useInput(
+    (input) => {
+      if (input === "/") {
+        setActiveZone("search");
+      }
+    },
+    { isActive: activeZone !== "search" },
+  );
 
   const query = searchQuery.trim().toLowerCase();
   const filtered = query

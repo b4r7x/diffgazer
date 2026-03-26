@@ -25,11 +25,14 @@ const queryClient = createCliQueryClient();
 function HealthGate({ children }: { children: ReactNode }): ReactElement {
   const { state, retry } = useServerStatus();
 
-  useInput((input) => {
-    if (input === "r" && state.status === "error") {
-      void retry();
-    }
-  });
+  useInput(
+    (input) => {
+      if (input === "r") {
+        void retry();
+      }
+    },
+    { isActive: state.status === "error" },
+  );
 
   if (state.status === "checking") {
     return (

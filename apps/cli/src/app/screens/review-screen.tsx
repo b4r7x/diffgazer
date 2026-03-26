@@ -1,4 +1,4 @@
-import { useEffect, useReducer, type ReactElement } from "react";
+import { useEffect, useReducer, useState, type ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
 import { useNavigation } from "../navigation-context.js";
 import { useScope } from "../../hooks/use-scope.js";
@@ -60,7 +60,6 @@ export function ReviewScreen(): ReactElement {
   const { route, navigate, goBack } = useNavigation();
 
   useScope("review");
-  useBackHandler();
 
   const routeMode: CliReviewMode =
     route.screen === "review" && route.mode ? route.mode : "unstaged";
@@ -75,6 +74,9 @@ export function ReviewScreen(): ReactElement {
       ? { phase: "loading-saved" as const }
       : { phase: "streaming" as const, mode: routeMode },
   );
+
+  const backHandlerActive = state.phase === "loading-saved" || state.phase === "streaming";
+  useBackHandler({ isActive: backHandlerActive });
 
   // Footer shortcuts depend on phase
   const footerShortcuts =
@@ -194,14 +196,12 @@ function NoChangesInline({
 }): ReactElement {
   const { tokens } = useTheme();
   const { title, message, switchLabel } = NO_CHANGES_MESSAGES[mode];
+  const [buttonIndex, setButtonIndex] = useState(0);
 
   useInput((_input, key) => {
-    if (key.return) {
-      onSwitchMode();
-    }
-    if (key.escape) {
-      onBack();
-    }
+    if (key.leftArrow) setButtonIndex(0);
+    if (key.rightArrow) setButtonIndex(1);
+    if (key.escape) onBack();
   });
 
   return (
@@ -211,10 +211,10 @@ function NoChangesInline({
         <Text color={tokens.muted}>{message}</Text>
       </Box>
       <Box gap={2} marginTop={1}>
-        <Button variant="primary" isActive onPress={onSwitchMode}>
+        <Button variant="primary" isActive={buttonIndex === 0} onPress={onSwitchMode}>
           {switchLabel}
         </Button>
-        <Button variant="secondary" onPress={onBack}>
+        <Button variant="secondary" isActive={buttonIndex === 1} onPress={onBack}>
           Back
         </Button>
       </Box>

@@ -56,7 +56,12 @@ export function Button({
 
   return (
     <Box paddingX={pad.x} paddingY={pad.y}>
-      <Text color={color} dimColor={disabled}>
+      <Text
+        color={interactive ? tokens.fg : color}
+        backgroundColor={interactive ? color : undefined}
+        bold={interactive}
+        dimColor={disabled}
+      >
         {loading ? (
           <>
             <Spinner type="dots" />

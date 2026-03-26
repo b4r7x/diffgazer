@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import { TextInput } from "@inkjs/ui";
 import { useTheme } from "../../theme/theme-context.js";
+import { KeyboardContext } from "../../app/providers/keyboard-provider.js";
 
 // --- Types ---
 
@@ -24,6 +25,19 @@ const widthBySize = {
   lg: 60,
 } as const;
 
+// --- Input mode hook ---
+
+function useInputMode(isActive: boolean): void {
+  const ctx = useContext(KeyboardContext);
+
+  useEffect(() => {
+    if (!ctx || !isActive) return;
+    ctx.setInputActive(true);
+    return () => ctx.setInputActive(false);
+  // ctx.setInputActive is a stable ref (useCallback with [])
+  }, [isActive]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
 // --- Component ---
 
 export function Input({
@@ -38,6 +52,8 @@ export function Input({
 }: InputProps) {
   const { tokens } = useTheme();
   const [internalValue, setInternalValue] = useState(value ?? "");
+
+  useInputMode(isActive);
 
   const width = widthBySize[size];
   const borderColor = error ? tokens.error : tokens.border;

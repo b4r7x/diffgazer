@@ -12,5 +12,6 @@ export function useScope(name: string): void {
     return () => {
       ctx.popScope();
     };
-  }, [name, ctx]);
+  // ctx.pushScope/popScope are stable refs (useCallback with [])
+  }, [name]); // eslint-disable-line react-hooks/exhaustive-deps
 }

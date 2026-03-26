@@ -4,6 +4,7 @@ import { Box, Text } from "ink";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
+import { useSettingsZone } from "../../../hooks/use-settings-zone.js";
 import { useInit, useSaveTrust, useDeleteTrust, matchQueryState } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
@@ -18,11 +19,17 @@ interface Capabilities {
 
 export function TrustPermissionsScreen(): ReactElement {
   useScope("trust-form");
-  usePageFooter({ shortcuts: [{ key: "Esc", label: "Back" }, { key: "Space", label: "Toggle" }] });
+  usePageFooter({
+    shortcuts: [
+      { key: "Esc", label: "Back" },
+      { key: "Tab", label: "Switch zone" },
+      { key: "↑↓", label: "Navigate" },
+      { key: "Space", label: "Toggle" },
+    ],
+  });
   useBackHandler();
 
   const initQuery = useInit();
-
   const saveTrust = useSaveTrust();
   const deleteTrust = useDeleteTrust();
 
@@ -33,11 +40,15 @@ export function TrustPermissionsScreen(): ReactElement {
   const saving = saveTrust.isPending || deleteTrust.isPending;
   const saveError = saveTrust.error?.message ?? deleteTrust.error?.message ?? null;
 
-  // Derive effective capabilities: local edits take priority, then server trust, then defaults
   const effectiveCapabilities: Capabilities = capabilities ?? trust?.capabilities ?? {
     readFiles: false,
     runCommands: false,
   };
+
+  const { isListActive, isButtonActive } = useSettingsZone({
+    buttonCount: 2,
+    disabled: saving,
+  });
 
   function handleSave() {
     if (!initQuery.data) return;
@@ -94,13 +105,13 @@ export function TrustPermissionsScreen(): ReactElement {
           <TrustPermissionsContent
             capabilities={effectiveCapabilities}
             onChange={setCapabilities}
-            isActive={!saving}
+            isActive={isListActive}
           />
           <Box gap={1}>
-            <Button variant="primary" onPress={handleSave} disabled={saving}>
+            <Button variant="primary" onPress={handleSave} disabled={saving} isActive={isButtonActive(0)}>
               {saving ? "Saving..." : "Save"}
             </Button>
-            <Button variant="destructive" onPress={handleRevoke} disabled={saving}>
+            <Button variant="destructive" onPress={handleRevoke} disabled={saving} isActive={isButtonActive(1)}>
               Revoke All
             </Button>
           </Box>

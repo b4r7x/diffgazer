@@ -43,7 +43,7 @@ export function ProviderStep({
     ),
     success: () => null,
   });
-  if (guard) return guard;
+  if (guard) return guard as ReactElement;
 
   return (
     <RadioGroup value={value} onChange={onChange} isActive={isActive}>

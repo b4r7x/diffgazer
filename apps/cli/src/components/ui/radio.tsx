@@ -1,4 +1,4 @@
-import { createContext, useState, useContext, Children, isValidElement } from "react";
+import { createContext, Fragment, useState, useContext, Children, isValidElement } from "react";
 import type { ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../../theme/theme-context.js";
@@ -54,10 +54,16 @@ interface CollectedItem {
 function collectItems(children: ReactNode): CollectedItem[] {
   const items: CollectedItem[] = [];
   Children.forEach(children, (child) => {
-    if (isValidElement<RadioGroupItemProps>(child) && child.type === RadioGroupItem) {
+    if (!isValidElement(child)) return;
+    if (child.type === Fragment) {
+      items.push(...collectItems((child.props as { children: ReactNode }).children));
+      return;
+    }
+    if (child.type === RadioGroupItem) {
+      const props = child.props as RadioGroupItemProps;
       items.push({
-        value: child.props.value,
-        disabled: child.props.disabled ?? false,
+        value: props.value,
+        disabled: props.disabled ?? false,
       });
     }
   });
