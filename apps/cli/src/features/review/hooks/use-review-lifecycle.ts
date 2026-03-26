@@ -15,6 +15,7 @@ export interface ReviewLifecycleState {
   phase: ReviewPhase | "loading";
   reviewId: string | null;
   durationMs: number | undefined;
+  startedAt: Date | null;
   issues: ReviewIssue[];
   steps: StepState[];
   agents: AgentState[];
@@ -115,6 +116,7 @@ export function useReviewLifecycle(): {
     phase: displayPhase,
     reviewId: stream.state.reviewId ?? null,
     durationMs,
+    startedAt: stream.state.startedAt,
     issues: stream.state.issues,
     steps: stream.state.steps,
     agents: stream.state.agents,

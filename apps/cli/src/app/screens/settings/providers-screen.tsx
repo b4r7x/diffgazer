@@ -54,9 +54,13 @@ export function ProvidersScreen(): ReactElement {
   usePageFooter({ shortcuts: [{ key: "Esc", label: "Back" }, { key: "Enter", label: "Select" }] });
   useBackHandler();
 
-  const { columns, isNarrow } = useResponsive();
+  const { columns, isNarrow, isMedium } = useResponsive();
   const { tokens } = useTheme();
-  const listWidth = isNarrow ? undefined : Math.max(Math.floor(columns * 0.3), 30);
+  const listWidth = isNarrow
+    ? undefined
+    : isMedium
+      ? Math.max(Math.floor(columns * 0.25), 24)
+      : Math.max(Math.floor(columns * 0.3), 30);
 
   const providerQuery = useProviderStatus();
   const deleteCredentials = useDeleteProviderCredentials();

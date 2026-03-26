@@ -2,6 +2,7 @@ import { useEffect, type ReactElement } from "react";
 import { Box } from "ink";
 import { useNavigation } from "../../../app/navigation-context.js";
 import { useReviewLifecycle } from "../hooks/use-review-lifecycle.js";
+import { useReviewContext } from "@diffgazer/api/hooks";
 import { convertAgentEventsToLogEntries } from "@diffgazer/core/review";
 import { Spinner } from "../../../components/ui/spinner.js";
 import { Callout } from "../../../components/ui/callout.js";
@@ -9,6 +10,8 @@ import { Button } from "../../../components/ui/button.js";
 import { ReviewProgressView } from "./review-progress-view.js";
 import { ReviewSummaryView } from "./review-summary-view.js";
 import { ReviewResultsView } from "./review-results-view.js";
+import { NoChangesView } from "./no-changes-view.js";
+import { ApiKeyMissingView } from "./api-key-missing-view.js";
 import type { ReviewMode } from "@diffgazer/schemas/review";
 
 interface ReviewContainerProps {
@@ -23,6 +26,11 @@ export function ReviewContainer({
   const { navigate } = useNavigation();
   const { state, start, goToSummary, goToResults, reset } =
     useReviewLifecycle();
+
+  const contextStep = state.steps.find((s) => s.id === "context");
+  const contextReady = contextStep?.status === "completed" && !!state.reviewId;
+  const { data: contextData } = useReviewContext({ enabled: contextReady });
+  const contextSnapshot = contextReady ? contextData ?? null : null;
 
   useEffect(() => {
     if (mode) {
@@ -39,66 +47,31 @@ export function ReviewContainer({
   }
 
   if (!state.isConfigured && !state.loadingMessage) {
-    const missingModel = !state.model;
     return (
-      <Box flexDirection="column" gap={1}>
-        <Callout variant="warning">
-          <Callout.Title>
-            {missingModel
-              ? "AI provider not configured"
-              : `API key not configured for ${state.provider ?? "provider"}`}
-          </Callout.Title>
-          <Callout.Content>
-            {missingModel
-              ? "Set up an AI provider and model in Settings to start reviewing code."
-              : "Add your API key in Settings to start reviewing code."}
-          </Callout.Content>
-        </Callout>
-        <Box gap={2}>
-          <Button
-            variant="primary"
-            isActive
-            onPress={() => {
-              reset();
-              navigate({ screen: "settings/providers" });
-            }}
-          >
-            Go to Settings
-          </Button>
-          <Button variant="secondary" onPress={reset}>
-            Back
-          </Button>
-        </Box>
-      </Box>
+      <ApiKeyMissingView
+        provider={state.provider ?? undefined}
+        missingModel={!state.model}
+        onGoToSettings={() => {
+          reset();
+          navigate({ screen: "settings/providers" });
+        }}
+        onBack={reset}
+      />
     );
   }
 
   if (state.isNoDiffError) {
-    const otherMode = mode === "staged" ? "unstaged" : "staged";
+    const currentMode = mode ?? "unstaged";
+    const otherMode = currentMode === "staged" ? "unstaged" : "staged";
     return (
-      <Box flexDirection="column" gap={1}>
-        <Callout variant="info">
-          <Callout.Title>No changes detected</Callout.Title>
-          <Callout.Content>
-            {`No ${mode ?? "unstaged"} changes found in the current repository.`}
-          </Callout.Content>
-        </Callout>
-        <Box gap={2}>
-          <Button
-            variant="primary"
-            isActive
-            onPress={() => {
-              reset();
-              start(otherMode);
-            }}
-          >
-            {`Try ${otherMode} changes`}
-          </Button>
-          <Button variant="secondary" onPress={reset}>
-            Back
-          </Button>
-        </Box>
-      </Box>
+      <NoChangesView
+        mode={currentMode}
+        onSwitchMode={() => {
+          reset();
+          start(otherMode);
+        }}
+        onBack={reset}
+      />
     );
   }
 
@@ -141,6 +114,9 @@ export function ReviewContainer({
           isStreaming={state.phase === "streaming"}
           error={state.error}
           onCancel={reset}
+          issuesFound={state.issues.length}
+          startedAt={state.startedAt}
+          contextSnapshot={contextSnapshot}
         />
       );
 

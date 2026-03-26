@@ -19,7 +19,7 @@ type Zone = "list" | "details";
 
 export function ReviewResultsView({ issues, onBack }: ReviewResultsViewProps) {
   const { tokens } = useTheme();
-  const { columns, rows, isNarrow } = useResponsive();
+  const { columns, rows, isNarrow, isMedium } = useResponsive();
   const [severityFilter, setSeverityFilter] =
     useState<UISeverityFilter>("all");
   const [selectedIssueId, setSelectedIssueId] = useState<string | undefined>(
@@ -53,7 +53,9 @@ export function ReviewResultsView({ issues, onBack }: ReviewResultsViewProps) {
   });
 
   const selectedIssue = filteredIssues.find((i) => i.id === selectedIssueId);
-  const listWidth = Math.max(Math.floor(columns * 0.4), 30);
+  const listWidth = isMedium
+    ? Math.max(Math.floor(columns * 0.35), 26)
+    : Math.max(Math.floor(columns * 0.4), 30);
   const paneHeight = Math.max(rows - 6, 8);
   const listScrollHeight = isNarrow ? Math.max(Math.floor(paneHeight / 2), 6) : paneHeight;
   const detailScrollHeight = isNarrow ? Math.max(Math.floor(paneHeight / 2), 6) : paneHeight;

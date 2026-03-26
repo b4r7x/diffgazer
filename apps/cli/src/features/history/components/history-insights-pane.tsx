@@ -1,16 +1,20 @@
 import type { ReactElement } from "react";
-import { Box, useInput } from "ink";
-import type { ReviewMetadata } from "@diffgazer/schemas/review";
+import { Box, Text, useInput } from "ink";
+import type { ReviewMetadata, ReviewIssue } from "@diffgazer/schemas/review";
 import { SEVERITY_ORDER } from "@diffgazer/schemas/ui";
+import { capitalize } from "@diffgazer/core/strings";
 import { ScrollArea } from "../../../components/ui/scroll-area.js";
 import { SeverityBreakdown } from "../../review/components/severity-breakdown.js";
 import { KeyValue } from "../../../components/ui/key-value.js";
 import { EmptyState } from "../../../components/ui/empty-state.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { useNavigation } from "../../../app/navigation-context.js";
+import { useTheme } from "../../../theme/theme-context.js";
+import type { CliColorTokens } from "../../../theme/palettes.js";
 
 export interface HistoryInsightsPaneProps {
   review?: ReviewMetadata;
+  issues?: ReviewIssue[];
   isActive?: boolean;
   scrollHeight?: number;
 }
@@ -33,6 +37,17 @@ function formatDuration(ms: number | undefined): string {
   return `${minutes}m ${remaining}s`;
 }
 
+function severityColor(severity: string, tokens: CliColorTokens): string {
+  const map: Record<string, string> = {
+    blocker: tokens.severityBlocker,
+    high: tokens.severityHigh,
+    medium: tokens.severityMedium,
+    low: tokens.severityLow,
+    nit: tokens.severityNit,
+  };
+  return map[severity] ?? tokens.muted;
+}
+
 function buildSeverities(review: ReviewMetadata): Array<{ severity: string; count: number }> {
   const countMap: Record<string, number> = {
     blocker: review.blockerCount,
@@ -46,8 +61,9 @@ function buildSeverities(review: ReviewMetadata): Array<{ severity: string; coun
     .filter((entry) => entry.count > 0);
 }
 
-export function HistoryInsightsPane({ review, isActive = false, scrollHeight = 12 }: HistoryInsightsPaneProps): ReactElement {
+export function HistoryInsightsPane({ review, issues = [], isActive = false, scrollHeight = 12 }: HistoryInsightsPaneProps): ReactElement {
   const { navigate } = useNavigation();
+  const { tokens } = useTheme();
 
   useInput((_input, key) => {
     if (key.return && isActive && review) {
@@ -72,7 +88,7 @@ export function HistoryInsightsPane({ review, isActive = false, scrollHeight = 1
 
   return (
     <Box flexDirection="column" padding={1}>
-      <ScrollArea height={scrollHeight}>
+      <ScrollArea height={scrollHeight} isActive={isActive}>
         <SectionHeader>Review Details</SectionHeader>
         <Box marginTop={1} flexDirection="column">
           <KeyValue label="Date" value={formatDate(review.createdAt)} labelWidth={10} />
@@ -88,6 +104,24 @@ export function HistoryInsightsPane({ review, isActive = false, scrollHeight = 1
           <Box marginTop={1} flexDirection="column">
             <SectionHeader variant="muted">Severity Breakdown</SectionHeader>
             <SeverityBreakdown issues={severities} />
+          </Box>
+        ) : null}
+        {issues.length > 0 ? (
+          <Box marginTop={1} flexDirection="column">
+            <SectionHeader variant="muted">{`${issues.length} Issues`}</SectionHeader>
+            {issues.map((issue) => (
+              <Box key={issue.id} gap={1}>
+                <Text color={severityColor(issue.severity, tokens)} bold>
+                  [{capitalize(issue.severity)}]
+                </Text>
+                <Text color={tokens.muted} dimColor>
+                  {issue.line_start != null ? `L:${issue.line_start}` : ""}
+                </Text>
+                <Text color={tokens.fg} wrap="truncate">
+                  {issue.title}
+                </Text>
+              </Box>
+            ))}
           </Box>
         ) : null}
       </ScrollArea>

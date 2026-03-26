@@ -131,6 +131,28 @@ function DetailsTabContent({
           />
         </div>
       )}
+
+      {issue.betterOptions && issue.betterOptions.length > 0 && (
+        <div className="mb-6">
+          <SectionHeader>BETTER OPTIONS</SectionHeader>
+          <ul className="list-disc pl-4 space-y-1">
+            {issue.betterOptions.map((opt, i) => (
+              <li key={i} className="text-sm leading-relaxed text-tui-fg/80">{opt}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {issue.testsToAdd && issue.testsToAdd.length > 0 && (
+        <div className="mb-6">
+          <SectionHeader>TESTS TO ADD</SectionHeader>
+          <ul className="list-disc pl-4 space-y-1">
+            {issue.testsToAdd.map((test, i) => (
+              <li key={i} className="text-sm leading-relaxed text-tui-fg/80">{test}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </>
   );
 }

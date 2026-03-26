@@ -10,6 +10,10 @@ export interface DateGroup {
   label: string;
   reviews: Array<{
     id: string;
+    displayId: string;
+    branch: string;
+    timestamp: string;
+    summary: string;
     date: string;
     issueCount: number;
     severities: Array<{ severity: string; count: number }>;
@@ -68,7 +72,10 @@ export function TimelineList({
       children.push(
         <NavigationList.Item key={review.id} id={review.id}>
           <RunItem
-            date={review.date}
+            displayId={review.displayId}
+            branch={review.branch}
+            timestamp={review.timestamp}
+            summary={review.summary}
             issueCount={review.issueCount}
             severities={review.severities}
           />
