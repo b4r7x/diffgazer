@@ -7,26 +7,13 @@ import { useKey, useScope } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useSettings, useSaveSettings } from "@diffgazer/api/hooks";
 import { cn } from "@/utils/cn";
-import { AGENT_METADATA, LENS_TO_AGENT } from "@diffgazer/schemas/events";
+import { buildLensOptions } from "@diffgazer/schemas/events";
 import type { LensId } from "@diffgazer/schemas/review";
-import { AnalysisSelectorContent, type AnalysisOption } from "./analysis-selector-content";
+import { AnalysisSelectorContent } from "./analysis-selector-content";
 
 type FocusZone = "list" | "buttons";
 type ViewState = "loading" | "empty" | "error" | "success";
 const BUTTONS_COUNT = 2;
-
-function buildLensOptions(): AnalysisOption[] {
-  return (Object.entries(LENS_TO_AGENT) as Array<[LensId, keyof typeof AGENT_METADATA]>).map(([lensId, agentId]) => {
-    const meta = AGENT_METADATA[agentId];
-    return {
-      id: lensId,
-      label: meta.name,
-      badgeLabel: meta.badgeLabel,
-      badgeVariant: meta.badgeVariant ?? "info",
-      description: meta.description,
-    };
-  });
-}
 
 export function SettingsAnalysisPage() {
   const navigate = useNavigate();

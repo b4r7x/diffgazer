@@ -43,6 +43,13 @@ export {
   type UseReviewCompletionResult,
 } from "./use-review-completion.js";
 
+// Review lifecycle base (shared orchestration)
+export {
+  useReviewLifecycleBase,
+  type UseReviewLifecycleBaseOptions,
+  type UseReviewLifecycleBaseResult,
+} from "./use-review-lifecycle-base.js";
+
 // Diagnostics (composed hook)
 export {
   useDiagnosticsData,

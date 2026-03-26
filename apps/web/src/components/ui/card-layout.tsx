@@ -29,7 +29,6 @@ export function CardLayout({
   return (
     <div className={cn("flex-1 flex flex-col items-center justify-center px-4", className)}>
       <div className={cn("w-full border border-tui-border bg-tui-bg shadow-2xl", sizeClasses[size])}>
-        {/* Header */}
         {header ?? (title && (
           <div className="border-b border-tui-border bg-tui-selection/30 px-6 py-4">
             <h1 className="text-xl font-bold text-tui-blue tracking-wide">
@@ -41,10 +40,8 @@ export function CardLayout({
           </div>
         ))}
 
-        {/* Content */}
         <div className="px-6 py-6 max-h-[60vh] overflow-y-auto scrollbar-thin">{children}</div>
 
-        {/* Footer */}
         {footer && (
           <div className="border-t border-tui-border px-6 py-4 flex justify-end gap-3 bg-tui-bg/50">
             {footer}

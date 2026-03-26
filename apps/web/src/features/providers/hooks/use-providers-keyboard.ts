@@ -1,7 +1,7 @@
 import { useState, type RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useKey, useFocusZone } from "keyscope";
-import { PROVIDER_FILTER_VALUES, type ProviderFilter } from "@/features/providers/constants";
+import { PROVIDER_FILTERS, type ProviderFilter } from "@/features/providers/constants";
 import type { AIProvider } from "@diffgazer/schemas/config";
 
 type FocusZone = "input" | "filters" | "list" | "buttons";
@@ -110,11 +110,11 @@ export function useProvidersKeyboard({
   }, { enabled: !dialogOpen && inFilters });
   useKey("ArrowLeft", () => setFilterIndex((i) => Math.max(0, i - 1)),
     { enabled: !dialogOpen && inFilters });
-  useKey("ArrowRight", () => setFilterIndex((i) => Math.min(PROVIDER_FILTER_VALUES.length - 1, i + 1)),
+  useKey("ArrowRight", () => setFilterIndex((i) => Math.min(PROVIDER_FILTERS.length - 1, i + 1)),
     { enabled: !dialogOpen && inFilters });
-  useKey("Enter", () => setFilter(PROVIDER_FILTER_VALUES[filterIndex]),
+  useKey("Enter", () => setFilter(PROVIDER_FILTERS[filterIndex]),
     { enabled: !dialogOpen && inFilters });
-  useKey(" ", () => setFilter(PROVIDER_FILTER_VALUES[filterIndex]),
+  useKey(" ", () => setFilter(PROVIDER_FILTERS[filterIndex]),
     { enabled: !dialogOpen && inFilters });
 
   // List zone — side-effect for transition to buttons
@@ -153,7 +153,7 @@ export function useProvidersKeyboard({
   const handleListBoundary = (direction: "up" | "down") => {
     if (direction === "up") {
       setZone("filters");
-      setFilterIndex(PROVIDER_FILTER_VALUES.indexOf(filter));
+      setFilterIndex(PROVIDER_FILTERS.indexOf(filter));
     }
   };
 

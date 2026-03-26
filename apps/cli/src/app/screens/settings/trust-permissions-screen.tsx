@@ -5,6 +5,7 @@ import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
 import { useSettingsZone } from "../../../hooks/use-settings-zone.js";
+import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
 import { useInit, useSaveTrust, useDeleteTrust, matchQueryState } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
@@ -18,6 +19,7 @@ interface Capabilities {
 }
 
 export function TrustPermissionsScreen(): ReactElement {
+  const { columns } = useTerminalDimensions();
   useScope("trust-form");
   usePageFooter({
     shortcuts: [
@@ -98,27 +100,31 @@ export function TrustPermissionsScreen(): ReactElement {
   if (guard) return guard as ReactElement;
 
   return (
-    <Panel>
-      <Panel.Content>
-        <Box flexDirection="column" gap={1}>
-          <SectionHeader>Trust & Permissions</SectionHeader>
-          <TrustPermissionsContent
-            capabilities={effectiveCapabilities}
-            onChange={setCapabilities}
-            isActive={isListActive}
-          />
-          <Box gap={1}>
-            <Button variant="primary" onPress={handleSave} disabled={saving} isActive={isButtonActive(0)}>
-              {saving ? "Saving..." : "Save"}
-            </Button>
-            <Button variant="destructive" onPress={handleRevoke} disabled={saving} isActive={isButtonActive(1)}>
-              Revoke All
-            </Button>
-          </Box>
-          {saveMessage && <Text color="green">{saveMessage}</Text>}
-          {saveError && <Text color="red">{saveError}</Text>}
-        </Box>
-      </Panel.Content>
-    </Panel>
+    <Box justifyContent="center" flexGrow={1}>
+      <Box width={Math.min(columns, 60)} flexDirection="column">
+        <Panel>
+          <Panel.Content>
+            <Box flexDirection="column" gap={1}>
+              <SectionHeader>Trust & Permissions</SectionHeader>
+              <TrustPermissionsContent
+                capabilities={effectiveCapabilities}
+                onChange={setCapabilities}
+                isActive={isListActive}
+              />
+              <Box gap={1}>
+                <Button variant="primary" onPress={handleSave} disabled={saving} isActive={isButtonActive(0)}>
+                  {saving ? "Saving..." : "Save"}
+                </Button>
+                <Button variant="destructive" onPress={handleRevoke} disabled={saving} isActive={isButtonActive(1)}>
+                  Revoke All
+                </Button>
+              </Box>
+              {saveMessage && <Text color="green">{saveMessage}</Text>}
+              {saveError && <Text color="red">{saveError}</Text>}
+            </Box>
+          </Panel.Content>
+        </Panel>
+      </Box>
+    </Box>
   );
 }

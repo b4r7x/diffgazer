@@ -21,12 +21,11 @@ export function TrustPermissionsContent({
 }: TrustPermissionsContentProps): ReactElement {
   const checked: string[] = [];
   if (capabilities.readFiles) checked.push("readFiles");
-  if (capabilities.runCommands) checked.push("runCommands");
 
   function handleChange(values: string[]) {
     onChange({
       readFiles: values.includes("readFiles"),
-      runCommands: values.includes("runCommands"),
+      runCommands: false,
     });
   }
 
@@ -35,7 +34,7 @@ export function TrustPermissionsContent({
       <Callout variant="warning">
         <Callout.Title>Security Warning</Callout.Title>
         <Callout.Content>
-          These permissions allow the AI to access your local files and run shell commands during review.
+          These permissions allow the AI to access your local files during review.
         </Callout.Content>
       </Callout>
 
@@ -44,11 +43,6 @@ export function TrustPermissionsContent({
           value="readFiles"
           label="Read files"
           description="Allow reading project files for context"
-        />
-        <CheckboxGroup.Item
-          value="runCommands"
-          label="Run commands"
-          description="Allow running shell commands (e.g., lint, test)"
         />
       </CheckboxGroup>
     </Box>

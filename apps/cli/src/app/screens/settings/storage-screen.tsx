@@ -6,6 +6,7 @@ import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
 import { useSettingsZone } from "../../../hooks/use-settings-zone.js";
+import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
 import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
@@ -14,6 +15,7 @@ import { Button } from "../../../components/ui/button.js";
 import { StorageSelector } from "../../../features/settings/components/storage-selector.js";
 
 export function StorageScreen(): ReactElement {
+  const { columns } = useTerminalDimensions();
   useScope("settings-storage");
   usePageFooter({
     shortcuts: [
@@ -70,25 +72,29 @@ export function StorageScreen(): ReactElement {
   if (guard) return guard as ReactElement;
 
   return (
-    <Panel>
-      <Panel.Content>
-        <Box flexDirection="column" gap={1}>
-          <SectionHeader>Secrets Storage</SectionHeader>
-          <Text dimColor>Current: {effectiveStorage}</Text>
-          <StorageSelector
-            value={effectiveStorage}
-            onChange={(v) => setStorage(v as SecretsStorage)}
-            isActive={isListActive}
-          />
-          <Box gap={1}>
-            <Button variant="primary" onPress={handleSave} disabled={saving} isActive={isButtonActive(0)}>
-              {saving ? "Saving..." : "Save"}
-            </Button>
-          </Box>
-          {saveMessage && <Text color="green">{saveMessage}</Text>}
-          {saveError && <Text color="red">{saveError}</Text>}
-        </Box>
-      </Panel.Content>
-    </Panel>
+    <Box justifyContent="center" flexGrow={1}>
+      <Box width={Math.min(columns, 60)} flexDirection="column">
+        <Panel>
+          <Panel.Content>
+            <Box flexDirection="column" gap={1}>
+              <SectionHeader>Secrets Storage</SectionHeader>
+              <Text dimColor>Current: {effectiveStorage}</Text>
+              <StorageSelector
+                value={effectiveStorage}
+                onChange={(v) => setStorage(v as SecretsStorage)}
+                isActive={isListActive}
+              />
+              <Box gap={1}>
+                <Button variant="primary" onPress={handleSave} disabled={saving} isActive={isButtonActive(0)}>
+                  {saving ? "Saving..." : "Save"}
+                </Button>
+              </Box>
+              {saveMessage && <Text color="green">{saveMessage}</Text>}
+              {saveError && <Text color="red">{saveError}</Text>}
+            </Box>
+          </Panel.Content>
+        </Panel>
+      </Box>
+    </Box>
   );
 }

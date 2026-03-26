@@ -6,7 +6,9 @@ import {
   GEMINI_MODEL_INFO,
   GLM_MODEL_INFO,
   type ModelInfo,
+  type OpenRouterModel,
 } from "@diffgazer/schemas/config";
+import { mapOpenRouterModels } from "@diffgazer/api";
 import { useTheme } from "../../../theme/theme-context.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
 import { Dialog } from "../../../components/ui/dialog.js";
@@ -51,14 +53,9 @@ function getModelInfo(providerId: string): Record<string, ModelInfo> | undefined
   }
 }
 
-function buildModels(providerId: string, openRouterModels: Array<{ id: string; name: string; description?: string; isFree: boolean }>): DisplayModel[] {
+function buildModels(providerId: string, openRouterModels: OpenRouterModel[]): DisplayModel[] {
   if (providerId === "openrouter") {
-    return openRouterModels.map((m) => ({
-      id: m.id,
-      name: m.name || m.id,
-      description: m.description,
-      tier: m.isFree ? "free" : "paid",
-    }));
+    return mapOpenRouterModels(openRouterModels);
   }
 
   const provider = AVAILABLE_PROVIDERS.find((p) => p.id === providerId);

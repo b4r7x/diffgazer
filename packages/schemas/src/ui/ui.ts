@@ -72,6 +72,24 @@ const ShortcutSchema = z.object({
 });
 export type Shortcut = z.infer<typeof ShortcutSchema>;
 
+/**
+ * Shallow equality check for two shortcut arrays.
+ */
+export function areShortcutsEqual(a: Shortcut[], b: Shortcut[]): boolean {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+
+  for (let i = 0; i < a.length; i++) {
+    const left = a[i]!;
+    const right = b[i]!;
+    if (left.key !== right.key || left.label !== right.label || left.disabled !== right.disabled) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 // ============================================================================
 // Lens Stats
 // ============================================================================

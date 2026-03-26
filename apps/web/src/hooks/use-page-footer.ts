@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useFooterActions, useFooterData } from "@/components/layout";
+import { areShortcutsEqual } from "@diffgazer/schemas/ui";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 
 interface PageFooterOptions {
@@ -8,21 +9,6 @@ interface PageFooterOptions {
 }
 
 const EMPTY_SHORTCUTS: Shortcut[] = [];
-
-function areShortcutsEqual(a: Shortcut[], b: Shortcut[]): boolean {
-  if (a === b) return true;
-  if (a.length !== b.length) return false;
-
-  for (let i = 0; i < a.length; i++) {
-    const left = a[i];
-    const right = b[i];
-    if (left.key !== right.key || left.label !== right.label || left.disabled !== right.disabled) {
-      return false;
-    }
-  }
-
-  return true;
-}
 
 export function usePageFooter({
   shortcuts,

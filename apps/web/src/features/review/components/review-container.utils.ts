@@ -1,6 +1,7 @@
 import type { ProgressStepData, ProgressStatus } from '@/components/ui/progress';
 import type { StepState, AgentState, AgentStatus } from '@diffgazer/schemas/events';
 import type { ProgressSubstepData } from '@diffgazer/schemas/ui';
+import { getAgentDetail } from '@diffgazer/core/review';
 import { truncate } from '@diffgazer/core/strings';
 
 function mapStepStatus(status: StepState['status']): ProgressStatus {
@@ -17,16 +18,10 @@ function mapAgentToSubstepStatus(agentStatus: AgentStatus): ProgressSubstepData[
 }
 
 function getSubstepDetail(agent: AgentState): string {
-  switch (agent.status) {
-    case 'running':
-      return `${Math.round(agent.progress)}%${agent.currentAction ? ` · ${truncate(agent.currentAction, 40)}` : ''}`;
-    case 'complete':
-      return `${agent.issueCount} issue${agent.issueCount === 1 ? '' : 's'}`;
-    case 'error':
-      return 'error';
-    default:
-      return 'queued';
+  if (agent.status === 'running' && agent.currentAction) {
+    return `${Math.round(agent.progress)}% · ${truncate(agent.currentAction, 40)}`;
   }
+  return getAgentDetail(agent);
 }
 
 function deriveSubstepsFromAgents(agents: AgentState[]): ProgressSubstepData[] {

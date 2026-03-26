@@ -1,5 +1,7 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
+import type { DisplayStatus } from "@diffgazer/schemas/config";
+import { getDisplayStatusBadge } from "@diffgazer/core/providers";
 import { useTheme } from "../../../theme/theme-context.js";
 import { NavigationList } from "../../../components/ui/navigation-list.js";
 import { Badge } from "../../../components/ui/badge.js";
@@ -7,7 +9,7 @@ import { Badge } from "../../../components/ui/badge.js";
 export interface ProviderListItem {
   id: string;
   name: string;
-  displayStatus: "active" | "configured" | "needs-key";
+  displayStatus: DisplayStatus;
   model?: string;
 }
 
@@ -16,20 +18,6 @@ interface ProviderListProps {
   selectedId?: string;
   onSelect?: (id: string) => void;
   isActive?: boolean;
-}
-
-function statusBadge(displayStatus: ProviderListItem["displayStatus"]): {
-  variant: "success" | "info" | "neutral";
-  label: string;
-} {
-  switch (displayStatus) {
-    case "active":
-      return { variant: "success", label: "active" };
-    case "configured":
-      return { variant: "info", label: "configured" };
-    case "needs-key":
-      return { variant: "neutral", label: "needs key" };
-  }
 }
 
 export function ProviderList({
@@ -47,7 +35,7 @@ export function ProviderList({
       isActive={isActive}
     >
       {providers.map((provider) => {
-        const badge = statusBadge(provider.displayStatus);
+        const badge = getDisplayStatusBadge(provider.displayStatus);
         return (
           <NavigationList.Item key={provider.id} id={provider.id}>
             <Box gap={1}>
