@@ -1,4 +1,4 @@
-import { Box } from "ink";
+import { Box, Text } from "ink";
 import type { ReactNode } from "react";
 import { Header } from "./header.js";
 import { Footer } from "./footer.js";
@@ -7,6 +7,8 @@ import { useNavigation } from "../../app/navigation-context.js";
 import { useFooterContext } from "../../app/providers/footer-provider.js";
 import { useInit } from "@diffgazer/api/hooks";
 import { getProviderStatus, getProviderDisplay } from "@diffgazer/core/format";
+
+const MIN_COLUMNS = 40;
 
 export interface GlobalLayoutProps {
   children: ReactNode;
@@ -17,6 +19,14 @@ export function GlobalLayout({ children }: GlobalLayoutProps) {
   const { goBack, canGoBack } = useNavigation();
   const { shortcuts, rightShortcuts } = useFooterContext();
   const { data, isLoading } = useInit();
+
+  if (columns < MIN_COLUMNS) {
+    return (
+      <Box width={columns} height={rows} justifyContent="center" alignItems="center">
+        <Text>Terminal too small ({columns} cols). Minimum: {MIN_COLUMNS}.</Text>
+      </Box>
+    );
+  }
 
   const providerStatus = getProviderStatus(isLoading, data?.configured ?? false);
   const providerName = getProviderDisplay(

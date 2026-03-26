@@ -1,10 +1,10 @@
-import { useEffect, useEffectEvent } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { useReviewStream, useApi, useSettings, useReviewStart, useReviewCompletion } from '@diffgazer/api/hooks';
-import { resolveDefaultLenses, isNoDiffError as checkNoDiffError, isCheckingForChanges as checkForChanges, getLoadingMessage } from '@diffgazer/core/review';
+import { useReviewLifecycleBase } from '@diffgazer/api/hooks';
 import { useConfigData, useConfigActions } from '@/app/providers/config-provider';
 import type { ReviewIssue } from '@diffgazer/schemas/review';
 import type { ReviewMode } from '@diffgazer/schemas/review';
+import type { ReviewStreamState } from '@diffgazer/api/hooks';
 
 export interface ReviewCompleteData {
   issues: ReviewIssue[];
@@ -19,89 +19,77 @@ interface UseReviewLifecycleOptions {
 export function useReviewLifecycle({ mode, onComplete }: UseReviewLifecycleOptions) {
   const navigate = useNavigate();
   const params = useParams({ strict: false });
-  const api = useApi();
   const { isConfigured, provider, model } = useConfigData();
   const { isLoading: configLoading } = useConfigActions();
-  const { state, start: sharedStart, stop, resume } = useReviewStream();
-  const { data: settings, isLoading: settingsLoading } = useSettings();
-  const defaultLenses = resolveDefaultLenses(settings?.defaultLenses);
 
-  const stableOnComplete = useEffectEvent((data: ReviewCompleteData) => {
-    onComplete?.(data);
-  });
+  // Ref-based stable callback pattern — avoids stale closures for onComplete
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+  const streamStateRef = useRef<ReviewStreamState | null>(null);
 
-  // Sync review ID to URL
-  useEffect(() => {
-    if (!state.reviewId) return;
-    if (params.reviewId === state.reviewId) return;
-
-    navigate({
-      to: '/review/{-$reviewId}',
-      params: { reviewId: state.reviewId },
-      search: (prev: Record<string, unknown>) => prev,
-      replace: true,
-    });
-  }, [state.reviewId, params.reviewId, navigate]);
-
-  // Start or resume review
-  const { hasStarted, hasStreamed, setHasStarted } = useReviewStart({
+  const base = useReviewLifecycleBase({
     mode,
     configLoading,
-    settingsLoading,
+    settingsLoading: false,
     isConfigured,
-    defaultLenses,
     reviewId: params.reviewId,
-    start: (options) => sharedStart(options.mode!, options.lenses),
-    resume,
-    getActiveSession: api.getActiveReviewSession,
+    onComplete: () => {
+      const s = streamStateRef.current;
+      onCompleteRef.current?.({
+        issues: s?.issues ?? [],
+        reviewId: s?.reviewId ?? null,
+      });
+    },
     onNotFoundInSession: () => {
       navigate({ to: '/' });
     },
   });
 
-  // Delay transition after streaming completes
-  const { skipDelay } = useReviewCompletion({
-    isStreaming: state.isStreaming,
-    error: state.error,
-    hasStreamed,
-    steps: state.steps,
-    onComplete: () => stableOnComplete({ issues: state.issues, reviewId: state.reviewId }),
-  });
+  // Keep ref in sync for the onComplete callback
+  streamStateRef.current = base.streamState;
+
+  // Sync review ID to URL
+  useEffect(() => {
+    if (!base.streamState.reviewId) return;
+    if (params.reviewId === base.streamState.reviewId) return;
+
+    navigate({
+      to: '/review/{-$reviewId}',
+      params: { reviewId: base.streamState.reviewId },
+      search: (prev: Record<string, unknown>) => prev,
+      replace: true,
+    });
+  }, [base.streamState.reviewId, params.reviewId, navigate]);
 
   const handleCancel = () => {
-    stop();
+    base.stream.stop();
     navigate({ to: '/' });
   };
 
   const handleViewResults = () => {
-    stop();
-    skipDelay();
+    base.stream.stop();
+    base.skipDelay();
   };
 
   const handleSetupProvider = () => {
-    stop();
+    base.stream.stop();
     navigate({ to: '/settings/providers' });
   };
 
   const handleSwitchMode = () => {
-    stop();
+    base.stream.stop();
     const newMode = mode === 'staged' ? 'unstaged' : 'staged';
     navigate({ to: '/review/{-$reviewId}', params: {}, search: { mode: newMode }, replace: true });
-    setHasStarted(false);
+    base.setHasStarted(false);
   };
 
-  const noDiffError = checkNoDiffError(state.error);
-  const checkingChanges = checkForChanges(state.isStreaming, state.steps);
-  const isInitializing = !hasStarted && isConfigured && !configLoading;
-  const loadingMessage = getLoadingMessage({ configLoading, settingsLoading, isCheckingForChanges: checkingChanges, isInitializing });
-
   return {
-    state,
+    state: base.streamState,
     isConfigured,
     provider,
     model,
-    loadingMessage,
-    isNoDiffError: noDiffError,
+    loadingMessage: base.loadingMessage,
+    isNoDiffError: base.isNoDiffError,
     handleCancel,
     handleViewResults,
     handleSetupProvider,

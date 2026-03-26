@@ -72,7 +72,6 @@ export function ProviderDetails({
 
   return (
     <div className="flex-1 flex flex-col overflow-y-auto">
-      {/* Header */}
       <div className="p-3 border-b border-tui-border bg-tui-selection/30 flex justify-between items-center">
         <h2 className="text-sm font-bold text-tui-fg uppercase tracking-wide">
           Provider Details: {provider.name}
@@ -84,9 +83,7 @@ export function ProviderDetails({
         )}
       </div>
 
-      <div className="p-6">{/* Content wrapper */}
-
-      {/* Capabilities */}
+      <div className="p-6">
       <section className="mb-6">
         <SectionHeader className="text-tui-violet mb-4 tracking-widest flex items-center">Capabilities <span className="ml-2 flex-1 h-px bg-tui-border" /></SectionHeader>
         <div className="grid grid-cols-2 gap-4">
@@ -97,7 +94,6 @@ export function ProviderDetails({
         </div>
       </section>
 
-      {/* Cost Tier */}
       <section className="mb-6">
         <SectionHeader className="text-tui-violet mb-4 tracking-widest flex items-center">Cost Tier <span className="ml-2 flex-1 h-px bg-tui-border" /></SectionHeader>
         <div className="border-l-2 border-tui-green pl-4">
@@ -107,7 +103,6 @@ export function ProviderDetails({
         </div>
       </section>
 
-      {/* Status Rows */}
       <section className="mb-6">
         <SectionHeader className="text-tui-violet mb-4 tracking-widest flex items-center">Status <span className="ml-2 flex-1 h-px bg-tui-border" /></SectionHeader>
         <KeyValue>
@@ -140,7 +135,6 @@ export function ProviderDetails({
         </KeyValue>
       </section>
 
-      {/* Action Buttons */}
       <section className="mt-auto">
         <div className="flex flex-wrap gap-3 pt-4">
           {buttons.map((btn, index) => (
@@ -157,7 +151,7 @@ export function ProviderDetails({
           ))}
         </div>
       </section>
-      </div>{/* Close content wrapper */}
+      </div>
     </div>
   );
 }

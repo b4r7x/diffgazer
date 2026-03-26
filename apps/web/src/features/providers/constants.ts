@@ -13,5 +13,3 @@ export const PROVIDER_FILTER_LABELS: { value: ProviderFilter; label: string }[] 
   { value: "free", label: "Free" },
   { value: "paid", label: "Paid" },
 ];
-
-export const PROVIDER_FILTER_VALUES: ProviderFilter[] = PROVIDER_FILTER_LABELS.map((f) => f.value);

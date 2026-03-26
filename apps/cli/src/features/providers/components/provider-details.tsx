@@ -1,5 +1,7 @@
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
+import type { DisplayStatus } from "@diffgazer/schemas/config";
+import { getDisplayStatusBadge } from "@diffgazer/core/providers";
 import { useTheme } from "../../../theme/theme-context.js";
 import { KeyValue } from "../../../components/ui/key-value.js";
 import { Badge } from "../../../components/ui/badge.js";
@@ -8,7 +10,7 @@ import { Button } from "../../../components/ui/button.js";
 export interface ProviderDetailData {
   id: string;
   name: string;
-  displayStatus: "active" | "configured" | "needs-key";
+  displayStatus: DisplayStatus;
   model?: string;
   defaultModel?: string;
 }
@@ -18,30 +20,6 @@ interface ProviderDetailsProps {
   onConfigureKey?: () => void;
   onSelectModel?: () => void;
   onRemove?: () => void;
-}
-
-function statusBadgeVariant(
-  displayStatus: ProviderDetailData["displayStatus"],
-): "success" | "info" | "warning" {
-  switch (displayStatus) {
-    case "active":
-      return "success";
-    case "configured":
-      return "info";
-    case "needs-key":
-      return "warning";
-  }
-}
-
-function statusLabel(displayStatus: ProviderDetailData["displayStatus"]): string {
-  switch (displayStatus) {
-    case "active":
-      return "active";
-    case "configured":
-      return "configured";
-    case "needs-key":
-      return "needs key";
-  }
 }
 
 export function ProviderDetails({
@@ -60,7 +38,7 @@ export function ProviderDetails({
     );
   }
 
-  const variant = statusBadgeVariant(provider.displayStatus);
+  const badge = getDisplayStatusBadge(provider.displayStatus);
 
   return (
     <Box flexDirection="column" gap={1}>
@@ -69,8 +47,8 @@ export function ProviderDetails({
       <KeyValue
         label="Status"
         value={
-          <Badge variant={variant} dot>
-            {statusLabel(provider.displayStatus)}
+          <Badge variant={badge.variant} dot>
+            {badge.label}
           </Badge>
         }
         labelWidth={14}

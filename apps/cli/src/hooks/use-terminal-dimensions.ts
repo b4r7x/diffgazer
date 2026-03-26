@@ -1,4 +1,5 @@
 import { useStdout } from "ink";
+import { useState, useEffect } from "react";
 import { getBreakpointTier, type BreakpointTier } from "@diffgazer/core";
 
 interface TerminalDimensions {
@@ -15,10 +16,25 @@ interface ResponsiveDimensions extends TerminalDimensions {
 
 export function useTerminalDimensions(): TerminalDimensions {
   const { stdout } = useStdout();
-  return {
+  const [dimensions, setDimensions] = useState<TerminalDimensions>({
     columns: stdout.columns ?? 80,
     rows: stdout.rows ?? 24,
-  };
+  });
+
+  useEffect(() => {
+    function onResize() {
+      setDimensions({
+        columns: stdout.columns ?? 80,
+        rows: stdout.rows ?? 24,
+      });
+    }
+    stdout.on("resize", onResize);
+    return () => {
+      stdout.off("resize", onResize);
+    };
+  }, [stdout]);
+
+  return dimensions;
 }
 
 export function useResponsive(): ResponsiveDimensions {
