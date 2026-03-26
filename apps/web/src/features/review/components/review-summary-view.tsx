@@ -3,7 +3,7 @@ import type { LensStats } from "@/features/review/components/lens-stats-table";
 import type { ReviewIssue } from "@diffgazer/schemas/review";
 import { useScope, useKey } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { calculateSeverityCounts } from "@diffgazer/core/severity";
+import { calculateSeverityCounts } from "@diffgazer/schemas/ui";
 
 const CATEGORY_META: Record<string, { icon: string; iconColor: string }> = {
   security: { icon: "shield", iconColor: "text-tui-red" },

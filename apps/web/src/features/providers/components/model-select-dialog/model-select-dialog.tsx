@@ -13,7 +13,7 @@ import {
   GLM_MODEL_INFO,
   type AIProvider,
 } from "@diffgazer/schemas/config";
-import { OPENROUTER_PROVIDER_ID } from "@/config/constants";
+import { OPENROUTER_PROVIDER_ID } from "@diffgazer/schemas/config";
 import { useModelFilter } from "../../hooks/use-model-filter";
 import { useOpenRouterModels } from "@/hooks/use-openrouter-models";
 import { useModelDialogKeyboard } from "../../hooks/use-model-dialog-keyboard";

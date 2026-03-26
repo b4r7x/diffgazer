@@ -10,25 +10,9 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./review": {
-      "types": "./dist/review.d.ts",
-      "import": "./dist/review.js"
-    },
     "./types": {
       "types": "./dist/types.d.ts",
       "import": "./dist/types.js"
-    },
-    "./config": {
-      "types": "./dist/config.d.ts",
-      "import": "./dist/config.js"
-    },
-    "./git": {
-      "types": "./dist/git.d.ts",
-      "import": "./dist/git.js"
-    },
-    "./shutdown": {
-      "types": "./dist/shutdown.d.ts",
-      "import": "./dist/shutdown.js"
     },
     "./hooks": {
       "types": "./dist/hooks/index.d.ts",

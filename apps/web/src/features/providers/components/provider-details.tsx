@@ -3,8 +3,8 @@ import { Button } from 'diffui/components/button';
 import { SectionHeader } from 'diffui/components/section-header';
 import { KeyValue } from 'diffui/components/key-value';
 import { CapabilityCard } from './capability-card';
-import { PROVIDER_CAPABILITIES, OPENROUTER_PROVIDER_ID } from '@/config/constants';
-import type { ProviderWithStatus } from '../types';
+import { PROVIDER_CAPABILITIES, OPENROUTER_PROVIDER_ID } from '@diffgazer/schemas/config';
+import type { ProviderWithStatus } from '@diffgazer/schemas/config';
 
 export interface ProviderActions {
   onSetApiKey: () => void;

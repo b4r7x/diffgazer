@@ -17,3 +17,19 @@ export function getBreakpointTierFromPx(px: number): BreakpointTier {
   if (px < BREAKPOINTS.wide.minPx) return "medium";
   return "wide";
 }
+
+export interface ResponsiveResult {
+  tier: BreakpointTier;
+  isNarrow: boolean;
+  isMedium: boolean;
+  isWide: boolean;
+}
+
+export function buildResponsiveResult(tier: BreakpointTier): ResponsiveResult {
+  return {
+    tier,
+    isNarrow: tier === "narrow",
+    isMedium: tier === "medium",
+    isWide: tier === "wide",
+  };
+}

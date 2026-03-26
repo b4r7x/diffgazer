@@ -13,8 +13,6 @@ interface FooterActionsContextValue {
   setRightShortcuts: (shortcuts: Shortcut[]) => void;
 }
 
-type FooterContextValue = FooterDataContextValue & FooterActionsContextValue;
-
 const FooterDataContext = createContext<FooterDataContextValue | undefined>(undefined);
 const FooterActionsContext = createContext<FooterActionsContextValue | undefined>(undefined);
 
@@ -56,8 +54,4 @@ export function useFooterActions(): FooterActionsContextValue {
     throw new Error("useFooterActions must be used within a FooterProvider");
   }
   return context;
-}
-
-export function useFooter(): FooterContextValue {
-  return { ...useFooterData(), ...useFooterActions() };
 }

@@ -10,7 +10,7 @@ import { EmptyState } from "../../../components/ui/empty-state.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { useNavigation } from "../../../app/navigation-context.js";
 import { useTheme } from "../../../theme/theme-context.js";
-import type { CliColorTokens } from "../../../theme/palettes.js";
+import { severityColor } from "../../../theme/severity.js";
 
 export interface HistoryInsightsPaneProps {
   review?: ReviewMetadata;
@@ -35,17 +35,6 @@ function formatDuration(ms: number | undefined): string {
   const minutes = Math.floor(seconds / 60);
   const remaining = seconds % 60;
   return `${minutes}m ${remaining}s`;
-}
-
-function severityColor(severity: string, tokens: CliColorTokens): string {
-  const map: Record<string, string> = {
-    blocker: tokens.severityBlocker,
-    high: tokens.severityHigh,
-    medium: tokens.severityMedium,
-    low: tokens.severityLow,
-    nit: tokens.severityNit,
-  };
-  return map[severity] ?? tokens.muted;
 }
 
 function buildSeverities(review: ReviewMetadata): Array<{ severity: string; count: number }> {

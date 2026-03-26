@@ -6,6 +6,7 @@ import type { InputMethod } from "@/types/input-method";
 import { useConfigActions } from "@/app/providers/config-provider";
 import { setConfiguredGuardCache } from "@/lib/config-guards/config-guard-cache";
 import { useSaveSettings, useSaveConfig } from "@diffgazer/api/hooks";
+import { canProceed } from "../types.js";
 import type { OnboardingStep, WizardData } from "../types";
 
 const STEPS: OnboardingStep[] = [
@@ -41,25 +42,10 @@ export function useOnboarding() {
   const isFirstStep = stepIndex === 0;
   const isLastStep = stepIndex === STEPS.length - 1;
 
-  const canProceed = (() => {
-    switch (currentStep) {
-      case "storage":
-        return true;
-      case "provider":
-        return wizardData.provider !== null;
-      case "api-key":
-        return wizardData.inputMethod === "env" || wizardData.apiKey.length > 0;
-      case "model":
-        return wizardData.model !== null;
-      case "analysis":
-        return wizardData.defaultLenses.length > 0;
-      case "execution":
-        return true;
-    }
-  })();
+  const canProceedNow = canProceed(currentStep, wizardData);
 
   const next = () => {
-    if (!canProceed || isLastStep) return;
+    if (!canProceedNow || isLastStep) return;
     setStepIndex(stepIndex + 1);
   };
 
@@ -115,7 +101,7 @@ export function useOnboarding() {
     stepIndex,
     isFirstStep,
     isLastStep,
-    canProceed,
+    canProceed: canProceedNow,
     isSubmitting,
     error,
     next,

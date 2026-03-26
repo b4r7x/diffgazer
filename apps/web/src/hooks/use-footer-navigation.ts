@@ -6,6 +6,8 @@ interface UseFooterNavigationOptions {
   buttonCount: number;
   onAction: (index: number) => void;
   targetRef?: RefObject<HTMLElement | null>;
+  allowInInput?: boolean;
+  wrap?: boolean;
 }
 
 export function useFooterNavigation({
@@ -13,6 +15,8 @@ export function useFooterNavigation({
   buttonCount,
   onAction,
   targetRef,
+  allowInInput = false,
+  wrap = false,
 }: UseFooterNavigationOptions) {
   const [inFooter, setInFooter] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(0);
@@ -29,18 +33,21 @@ export function useFooterNavigation({
 
   const exitFooter = () => {
     setInFooter(false);
+    setFocusedIndex(0);
   };
 
   const keyOptions = {
     enabled: enabled && inFooter,
     targetRef,
     requireFocusWithin: Boolean(targetRef),
+    allowInInput,
   } as const;
 
   const enterOptions = {
     enabled: enabled && !inFooter,
     targetRef,
     requireFocusWithin: Boolean(targetRef),
+    allowInInput,
   } as const;
 
   // ArrowDown enters footer actions when focus is outside the footer.
@@ -53,7 +60,9 @@ export function useFooterNavigation({
   useKey(
     "ArrowLeft",
     () => {
-      setFocusedIndex((prev) => (prev > 0 ? prev - 1 : buttonCount - 1));
+      setFocusedIndex((prev) =>
+        wrap ? (prev > 0 ? prev - 1 : buttonCount - 1) : Math.max(0, prev - 1)
+      );
     },
     keyOptions
   );
@@ -62,7 +71,13 @@ export function useFooterNavigation({
   useKey(
     "ArrowRight",
     () => {
-      setFocusedIndex((prev) => (prev < buttonCount - 1 ? prev + 1 : 0));
+      setFocusedIndex((prev) =>
+        wrap
+          ? prev < buttonCount - 1
+            ? prev + 1
+            : 0
+          : Math.min(buttonCount - 1, prev + 1)
+      );
     },
     keyOptions
   );

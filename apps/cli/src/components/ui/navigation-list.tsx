@@ -11,7 +11,6 @@ export interface NavigationListProps {
   highlightedId?: string | null;
   onSelect?: (id: string) => void;
   onHighlightChange?: (id: string) => void;
-  focused?: boolean;
   wrap?: boolean;
   isActive?: boolean;
   children: ReactNode;
@@ -165,7 +164,6 @@ function NavigationListRoot({
   highlightedId: controlledHighlightedId = null,
   onSelect,
   onHighlightChange,
-  focused: _focused,
   wrap = true,
   isActive = true,
   children,

@@ -22,7 +22,7 @@ import type {
 } from "@diffgazer/schemas/events";
 import { getSettings } from "../../shared/lib/config/store.js";
 import { getProfile } from "../../shared/lib/review/profiles.js";
-import { severityRank } from "@diffgazer/core/severity";
+import { severityRank } from "@diffgazer/schemas/ui";
 import { orchestrateReview } from "../../shared/lib/review/orchestrate.js";
 import { buildProjectContextSnapshot } from "./context.js";
 import { enrichIssues } from "./enrichment.js";

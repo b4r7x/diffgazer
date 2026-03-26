@@ -7,17 +7,12 @@ import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
 import { useDiagnosticsData } from "@diffgazer/api/hooks";
-import { formatTimestampLocale } from "@diffgazer/core/format";
+import { formatTimestampOrNA } from "@diffgazer/core/format";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Button } from "../../../components/ui/button.js";
 import { Badge } from "../../../components/ui/badge.js";
 import { KeyValue } from "../../../components/ui/key-value.js";
-
-function formatTimestampOrNA(value: string | null): string {
-  if (!value) return "N/A";
-  return formatTimestampLocale(value);
-}
 
 export function DiagnosticsScreen(): ReactElement {
   const { columns } = useTerminalDimensions();

@@ -3,6 +3,7 @@ import { Box, Text, useInput } from "ink";
 import { TextInput } from "@inkjs/ui";
 import { useTheme } from "../../theme/theme-context.js";
 import { KeyboardContext } from "../../app/providers/keyboard-provider.js";
+import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
 
 // --- Types ---
 
@@ -52,10 +53,11 @@ export function Input({
 }: InputProps) {
   const { tokens } = useTheme();
   const [internalValue, setInternalValue] = useState(value ?? "");
+  const { columns } = useTerminalDimensions();
 
   useInputMode(isActive);
 
-  const width = widthBySize[size];
+  const width = Math.min(widthBySize[size], columns - 4);
   const borderColor = error ? tokens.error : tokens.border;
   const currentValue = value ?? internalValue;
 

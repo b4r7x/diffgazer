@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { CardLayout } from "@/components/ui/card-layout";
 import { Button } from "diffui/components/button";
@@ -6,7 +6,8 @@ import { Callout } from "diffui/components/callout";
 import { cn } from "diffui/lib/utils";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import { usePageFooter } from "@/hooks/use-page-footer";
-import { useKey, useScope } from "keyscope";
+import { useFooterNavigation } from "@/hooks/use-footer-navigation.js";
+import { useScope } from "keyscope";
 import { useOnboarding } from "../hooks/use-onboarding";
 import { WizardProgress } from "./wizard-progress";
 import { StorageStep } from "./steps/storage-step";
@@ -16,6 +17,7 @@ import { ModelStep } from "./steps/model-step";
 import { AnalysisStep } from "./steps/analysis-step";
 import { ExecutionStep } from "./steps/execution-step";
 import type { AgentExecution } from "@diffgazer/schemas/config";
+import { canProceed as canProceedForStep } from "../types.js";
 import type { WizardData } from "../types";
 
 const STEP_TITLES: Record<string, string> = {
@@ -26,8 +28,6 @@ const STEP_TITLES: Record<string, string> = {
   analysis: "Analysis Configuration",
   execution: "Agent Execution",
 };
-
-type FocusZone = "content" | "buttons";
 
 function getStepShortcuts(currentStep: string, isButtonsZone: boolean): Shortcut[] {
   if (isButtonsZone) {
@@ -86,29 +86,8 @@ function getStepShortcuts(currentStep: string, isButtonsZone: boolean): Shortcut
   }
 }
 
-function canProceedForStep(step: string, data: WizardData): boolean {
-  switch (step) {
-    case "storage":
-      return true;
-    case "provider":
-      return data.provider !== null;
-    case "api-key":
-      return data.inputMethod === "env" || data.apiKey.length > 0;
-    case "model":
-      return data.model !== null;
-    case "analysis":
-      return data.defaultLenses.length > 0;
-    case "execution":
-      return true;
-    default:
-      return false;
-  }
-}
-
 export function OnboardingWizard() {
   const navigate = useNavigate();
-  const [focusZone, setFocusZone] = useState<FocusZone>("content");
-  const [buttonIndex, setButtonIndex] = useState(0);
   const {
     currentStep,
     wizardData,
@@ -125,21 +104,9 @@ export function OnboardingWizard() {
     complete,
   } = useOnboarding();
 
-  useEffect(() => {
-    setFocusZone("content");
-    setButtonIndex(0);
-  }, [currentStep]);
-
-  useScope("onboarding");
-
-  const isButtonsZone = focusZone === "buttons";
   const buttonCount = isFirstStep ? 1 : 2;
   const primaryButtonIndex = isFirstStep ? 0 : 1;
   const canActivatePrimary = isLastStep ? canProceed && !isSubmitting : canProceed;
-
-  usePageFooter({
-    shortcuts: getStepShortcuts(currentStep, isButtonsZone),
-  });
 
   const handleComplete = async () => {
     try {
@@ -160,44 +127,36 @@ export function OnboardingWizard() {
     }
   };
 
-  const activateButton = () => {
-    if (isFirstStep) {
+  const footer = useFooterNavigation({
+    enabled: true,
+    buttonCount,
+    allowInInput: true,
+    onAction: (index) => {
+      if (isFirstStep) {
+        handlePrimaryAction();
+        return;
+      }
+      if (index === 0) {
+        back();
+        return;
+      }
       handlePrimaryAction();
-      return;
-    }
+    },
+  });
 
-    if (buttonIndex === 0) {
-      back();
-      return;
-    }
+  useEffect(() => {
+    footer.reset();
+  }, [currentStep]);
 
-    handlePrimaryAction();
-  };
+  useScope("onboarding");
 
-  useKey("ArrowUp", () => {
-    setFocusZone("content");
-    setButtonIndex(0);
-  }, { enabled: isButtonsZone, allowInInput: true });
-
-  useKey("ArrowDown", () => {}, { enabled: isButtonsZone, allowInInput: true });
-
-  useKey("ArrowLeft", () => {
-    if (buttonCount <= 1) return;
-    setButtonIndex((index) => Math.max(0, index - 1));
-  }, { enabled: isButtonsZone, allowInInput: true });
-
-  useKey("ArrowRight", () => {
-    if (buttonCount <= 1) return;
-    setButtonIndex((index) => Math.min(buttonCount - 1, index + 1));
-  }, { enabled: isButtonsZone, allowInInput: true });
-
-  useKey("Enter", activateButton, { enabled: isButtonsZone, allowInInput: true });
-  useKey(" ", activateButton, { enabled: isButtonsZone, allowInInput: true });
+  usePageFooter({
+    shortcuts: getStepShortcuts(currentStep, footer.inFooter),
+  });
 
   const handleStepBoundary = (direction: "up" | "down") => {
     if (direction !== "down") return;
-    setFocusZone("buttons");
-    setButtonIndex(0);
+    footer.enterFooter();
   };
 
   const handleStepCommit = (partial: Partial<WizardData> = {}) => {
@@ -205,8 +164,7 @@ export function OnboardingWizard() {
     if (!canProceedForStep(currentStep, projectedData)) return;
 
     if (isLastStep) {
-      setFocusZone("buttons");
-      setButtonIndex(primaryButtonIndex);
+      footer.enterFooter(primaryButtonIndex);
       return;
     }
 
@@ -221,7 +179,7 @@ export function OnboardingWizard() {
             value={wizardData.secretsStorage}
             onChange={(secretsStorage) => updateData({ secretsStorage })}
             onCommit={(secretsStorage) => handleStepCommit({ secretsStorage })}
-            enabled={!isButtonsZone}
+            enabled={!footer.inFooter}
             onBoundaryReached={handleStepBoundary}
           />
         );
@@ -231,7 +189,7 @@ export function OnboardingWizard() {
             value={wizardData.provider}
             onChange={setProvider}
             onCommit={(provider) => handleStepCommit({ provider })}
-            enabled={!isButtonsZone}
+            enabled={!footer.inFooter}
             onBoundaryReached={handleStepBoundary}
           />
         );
@@ -244,7 +202,7 @@ export function OnboardingWizard() {
             keyValue={wizardData.apiKey}
             onKeyValueChange={(apiKey) => updateData({ apiKey })}
             onCommit={(payload) => handleStepCommit(payload)}
-            enabled={!isButtonsZone}
+            enabled={!footer.inFooter}
             onBoundaryReached={handleStepBoundary}
           />
         ) : null;
@@ -255,7 +213,7 @@ export function OnboardingWizard() {
             value={wizardData.model}
             onChange={(model) => updateData({ model })}
             onCommit={(model) => handleStepCommit({ model })}
-            enabled={!isButtonsZone}
+            enabled={!footer.inFooter}
             onBoundaryReached={handleStepBoundary}
           />
         ) : null;
@@ -265,7 +223,7 @@ export function OnboardingWizard() {
             lenses={wizardData.defaultLenses}
             onLensesChange={(defaultLenses) => updateData({ defaultLenses })}
             onCommit={(payload) => handleStepCommit(payload)}
-            enabled={!isButtonsZone}
+            enabled={!footer.inFooter}
             onBoundaryReached={handleStepBoundary}
           />
         );
@@ -275,7 +233,7 @@ export function OnboardingWizard() {
             value={wizardData.agentExecution}
             onChange={(agentExecution: AgentExecution) => updateData({ agentExecution })}
             onCommit={(agentExecution) => handleStepCommit({ agentExecution })}
-            enabled={!isButtonsZone}
+            enabled={!footer.inFooter}
             onBoundaryReached={handleStepBoundary}
           />
         );
@@ -294,7 +252,7 @@ export function OnboardingWizard() {
               size="sm"
               onClick={back}
               disabled={isSubmitting}
-              className={cn(isButtonsZone && buttonIndex === 0 && "ring-2 ring-tui-blue")}
+              className={cn(footer.inFooter && footer.focusedIndex === 0 && "ring-2 ring-tui-blue")}
             >
               Back
             </Button>
@@ -305,7 +263,7 @@ export function OnboardingWizard() {
               size="sm"
               onClick={handlePrimaryAction}
               disabled={!canProceed || isSubmitting}
-              className={cn(isButtonsZone && buttonIndex === primaryButtonIndex && "ring-2 ring-tui-blue")}
+              className={cn(footer.inFooter && footer.focusedIndex === primaryButtonIndex && "ring-2 ring-tui-blue")}
             >
               {isSubmitting ? "Saving..." : "Complete Setup"}
             </Button>
@@ -314,7 +272,7 @@ export function OnboardingWizard() {
               size="sm"
               onClick={handlePrimaryAction}
               disabled={!canProceed}
-              className={cn(isButtonsZone && buttonIndex === primaryButtonIndex && "ring-2 ring-tui-blue")}
+              className={cn(footer.inFooter && footer.focusedIndex === primaryButtonIndex && "ring-2 ring-tui-blue")}
             >
               Next
             </Button>

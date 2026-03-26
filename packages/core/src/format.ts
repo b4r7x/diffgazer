@@ -26,23 +26,37 @@ export function formatTimestampLocale(date: Date | string | number): string {
   return new Date(date).toLocaleString();
 }
 
-export function formatElapsed(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+export function getDateKey(dateStr: string): string {
+  return dateStr.slice(0, 10);
 }
 
-export function getProviderStatus(
-  isLoading: boolean,
-  isConfigured: boolean,
-): "active" | "idle" {
-  if (isLoading) return "idle";
-  return isConfigured ? "active" : "idle";
+export function getDateLabel(dateStr: string): string {
+  const dateKey = getDateKey(dateStr);
+  const now = new Date();
+  const today = getDateKey(now.toISOString());
+  const yesterday = getDateKey(new Date(now.getTime() - 86400000).toISOString());
+
+  if (dateKey === today) return "Today";
+  if (dateKey === yesterday) return "Yesterday";
+  return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-export function getProviderDisplay(provider?: string, model?: string): string {
-  if (!provider) return "Not configured";
-  if (model) return `${provider} / ${model}`;
-  return provider;
+export function getTimestamp(dateStr: string): string {
+  return new Date(dateStr).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+}
+
+export function formatDuration(durationMs: number | null | undefined): string {
+  if (!durationMs) return "--";
+  const seconds = Math.floor(durationMs / 1000);
+  if (seconds === 0) return `${durationMs}ms`;
+  if (seconds < 60) return `${seconds}.${Math.floor((durationMs % 1000) / 100)}s`;
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}m ${seconds % 60}s`;
+}
+
+export function formatTimestampOrNA(
+  value: string | null | undefined,
+  fallback = "N/A",
+): string {
+  return value ? formatTimestampLocale(value) : fallback;
 }

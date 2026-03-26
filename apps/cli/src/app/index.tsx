@@ -11,7 +11,6 @@ import { FooterProvider } from "./providers/footer-provider.js";
 import { ServerProvider } from "./providers/server-provider.js";
 import { GlobalLayout } from "../components/layout/global-layout.js";
 import { ScreenRouter } from "./router.js";
-import { Toaster } from "../components/ui/toast.js";
 import { Spinner } from "../components/ui/spinner.js";
 import { devServerFactories } from "./modes/dev.js";
 import { prodServerFactories } from "./modes/prod.js";
@@ -127,7 +126,6 @@ export function App({ mode, theme }: AppProps): ReactElement {
                       </GlobalLayout>
                     </ConfigGate>
                   </HealthGate>
-                  <Toaster />
                 </ServerProvider>
               </FooterProvider>
             </NavigationProvider>

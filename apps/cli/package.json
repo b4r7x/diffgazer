@@ -26,7 +26,7 @@
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "pnpm run clean && pnpm build:deps && pnpm build:web && pnpm build:bundle",
-    "build:deps": "pnpm --filter @diffgazer/core build && pnpm --filter @diffgazer/hooks build && pnpm --filter @diffgazer/server build",
+    "build:deps": "pnpm --filter @diffgazer/core build && pnpm --filter @diffgazer/server build",
     "build:web": "pnpm --filter @diffgazer/web exec tsc -b && pnpm --filter @diffgazer/web exec vite build --outDir ../cli/dist/web",
     "build:bundle": "tsup",
     "prepack": "pnpm run build",
@@ -50,7 +50,6 @@
   "devDependencies": {
     "@diffgazer/api": "workspace:*",
     "@diffgazer/core": "workspace:*",
-    "@diffgazer/hooks": "workspace:*",
     "@diffgazer/schemas": "workspace:*",
     "@diffgazer/server": "workspace:*",
     "@diffgazer/tsconfig": "workspace:*",

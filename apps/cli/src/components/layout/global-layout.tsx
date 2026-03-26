@@ -6,7 +6,7 @@ import { useTerminalDimensions } from "../../hooks/use-terminal-dimensions.js";
 import { useNavigation } from "../../app/navigation-context.js";
 import { useFooterContext } from "../../app/providers/footer-provider.js";
 import { useInit } from "@diffgazer/api/hooks";
-import { getProviderStatus, getProviderDisplay } from "@diffgazer/core/format";
+import { getProviderStatus, getProviderDisplay } from "@diffgazer/core/providers";
 
 const MIN_COLUMNS = 40;
 

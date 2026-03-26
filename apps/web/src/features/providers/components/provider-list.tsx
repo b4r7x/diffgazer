@@ -3,9 +3,9 @@ import { NavigationList, NavigationListItem, NavigationListTitle, NavigationList
 import { Input } from 'diffui/components/input';
 import { cn } from 'diffui/lib/utils';
 import { getDisplayStatusBadge } from '@diffgazer/core/providers';
-import { PROVIDER_CAPABILITIES } from '@/config/constants';
+import { PROVIDER_CAPABILITIES } from '@diffgazer/schemas/config';
 import { PROVIDER_FILTER_LABELS, type ProviderFilter } from '@/features/providers/constants';
-import type { ProviderWithStatus } from '../types';
+import type { ProviderWithStatus } from '@diffgazer/schemas/config';
 
 interface ProviderListProps {
   providers: ProviderWithStatus[];

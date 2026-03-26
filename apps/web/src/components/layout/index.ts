@@ -1,2 +1,2 @@
 export { GlobalLayout } from "./global-layout";
-export { Footer, FooterProvider, useFooter, useFooterData, useFooterActions } from "./footer";
+export { Footer, FooterProvider, useFooterData, useFooterActions } from "./footer";

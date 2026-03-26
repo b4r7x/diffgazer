@@ -1,18 +1,13 @@
 import { useStdout } from "ink";
 import { useState, useEffect } from "react";
-import { getBreakpointTier, type BreakpointTier } from "@diffgazer/core";
+import { getBreakpointTier, buildResponsiveResult, type ResponsiveResult } from "@diffgazer/core";
 
 interface TerminalDimensions {
   columns: number;
   rows: number;
 }
 
-interface ResponsiveDimensions extends TerminalDimensions {
-  tier: BreakpointTier;
-  isNarrow: boolean;
-  isMedium: boolean;
-  isWide: boolean;
-}
+type ResponsiveDimensions = TerminalDimensions & ResponsiveResult;
 
 export function useTerminalDimensions(): TerminalDimensions {
   const { stdout } = useStdout();
@@ -40,12 +35,5 @@ export function useTerminalDimensions(): TerminalDimensions {
 export function useResponsive(): ResponsiveDimensions {
   const { columns, rows } = useTerminalDimensions();
   const tier = getBreakpointTier(columns);
-  return {
-    columns,
-    rows,
-    tier,
-    isNarrow: tier === "narrow",
-    isMedium: tier === "medium",
-    isWide: tier === "wide",
-  };
+  return { columns, rows, ...buildResponsiveResult(tier) };
 }

@@ -5,15 +5,14 @@ import { Button } from "diffui/components/button";
 import { CardLayout } from "@/components/ui/card-layout";
 import { useKey, useScope } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
+import { useFooterNavigation } from "@/hooks/use-footer-navigation.js";
 import { useSettings, useSaveSettings } from "@diffgazer/api/hooks";
 import { cn } from "@/utils/cn";
 import { buildLensOptions } from "@diffgazer/schemas/events";
 import type { LensId } from "@diffgazer/schemas/review";
 import { AnalysisSelectorContent } from "./analysis-selector-content";
 
-type FocusZone = "list" | "buttons";
 type ViewState = "loading" | "empty" | "error" | "success";
-const BUTTONS_COUNT = 2;
 
 export function SettingsAnalysisPage() {
   const navigate = useNavigate();
@@ -24,8 +23,6 @@ export function SettingsAnalysisPage() {
   const [selectedLenses, setSelectedLenses] = useState<LensId[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const isSaving = saveSettings.isPending;
-  const [focusZone, setFocusZone] = useState<FocusZone>("list");
-  const [buttonIndex, setButtonIndex] = useState(0);
 
   const lensOptions = buildLensOptions();
   const defaultLenses = settings?.defaultLenses ?? [];
@@ -51,18 +48,41 @@ export function SettingsAnalysisPage() {
     );
   })();
 
-  useEffect(() => {
-    if (viewState === "success") {
-      setFocusZone("list");
-    }
-    setButtonIndex(0);
-  }, [viewState]);
-
   useScope("settings-analysis");
   useKey("Escape", () => navigate({ to: "/settings" }));
 
-  const isButtonsZone = viewState === "success" ? focusZone === "buttons" : true;
   const canSave = viewState === "success" && !isSaving && isDirty && hasLensSelection;
+
+  const handleCancel = () => navigate({ to: "/settings" });
+
+  const handleSave = async () => {
+    if (!canSave) return;
+    setError(null);
+    try {
+      await saveSettings.mutateAsync({ defaultLenses: effectiveLenses });
+      navigate({ to: "/settings" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save settings");
+    }
+  };
+
+  const footer = useFooterNavigation({
+    enabled: viewState === "success",
+    buttonCount: 2,
+    onAction: (index) => {
+      if (index === 0) handleCancel();
+      else if (index === 1 && canSave) void handleSave();
+    },
+  });
+
+  // When not in "success" view, buttons zone is always active (for the "Back" action)
+  const isButtonsZone = viewState === "success" ? footer.inFooter : true;
+
+  useEffect(() => {
+    if (viewState === "success") {
+      footer.reset();
+    }
+  }, [viewState]);
 
   const footerShortcuts: Shortcut[] = isButtonsZone
     ? viewState === "success"
@@ -70,8 +90,8 @@ export function SettingsAnalysisPage() {
           { key: "←/→", label: "Move Action" },
           {
             key: "Enter/Space",
-            label: buttonIndex === 0 ? "Cancel" : "Save",
-            disabled: buttonIndex === 1 && !canSave,
+            label: footer.focusedIndex === 0 ? "Cancel" : "Save",
+            disabled: footer.focusedIndex === 1 && !canSave,
           },
         ]
       : [{ key: "Enter/Space", label: "Back" }]
@@ -85,46 +105,9 @@ export function SettingsAnalysisPage() {
     rightShortcuts: [{ key: "Esc", label: "Back" }],
   });
 
-  useKey("ArrowUp", () => {
-    setFocusZone("list");
-    setButtonIndex(0);
-  }, { enabled: isButtonsZone && viewState === "success" });
-
-  useKey("ArrowDown", () => {}, { enabled: isButtonsZone && viewState === "success" });
-
-  useKey("ArrowLeft", () => setButtonIndex(Math.max(0, buttonIndex - 1)), {
-    enabled: isButtonsZone && viewState === "success",
-  });
-
-  useKey("ArrowRight", () => setButtonIndex(Math.min(BUTTONS_COUNT - 1, buttonIndex + 1)), {
-    enabled: isButtonsZone && viewState === "success",
-  });
-
-  const handleCancel = () => navigate({ to: "/settings" });
-
-  const activateButton = () => {
-    if (buttonIndex === 0) {
-      handleCancel();
-      return;
-    }
-    if (buttonIndex === 1 && canSave) {
-      void handleSave();
-    }
-  };
-
-  useKey("Enter", activateButton, { enabled: isButtonsZone });
-  useKey(" ", activateButton, { enabled: isButtonsZone });
-
-  const handleSave = async () => {
-    if (!canSave) return;
-    setError(null);
-    try {
-      await saveSettings.mutateAsync({ defaultLenses: effectiveLenses });
-      navigate({ to: "/settings" });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save settings");
-    }
-  };
+  // Non-success views still need Enter/Space to go back
+  useKey("Enter", handleCancel, { enabled: isButtonsZone && viewState !== "success" });
+  useKey(" ", handleCancel, { enabled: isButtonsZone && viewState !== "success" });
 
   return (
     <CardLayout
@@ -136,7 +119,7 @@ export function SettingsAnalysisPage() {
             variant="ghost"
             onClick={handleCancel}
             disabled={isSaving}
-            className={cn(isButtonsZone && buttonIndex === 0 && "ring-2 ring-tui-blue")}
+            className={cn(isButtonsZone && footer.focusedIndex === 0 && "ring-2 ring-tui-blue")}
           >
             Cancel
           </Button>
@@ -144,7 +127,7 @@ export function SettingsAnalysisPage() {
             variant="success"
             onClick={handleSave}
             disabled={!canSave}
-            className={cn(isButtonsZone && buttonIndex === 1 && "ring-2 ring-tui-blue")}
+            className={cn(isButtonsZone && footer.focusedIndex === 1 && "ring-2 ring-tui-blue")}
           >
             {isSaving ? "Saving..." : "Save"}
           </Button>
@@ -167,7 +150,7 @@ export function SettingsAnalysisPage() {
             disabled={isSaving}
             onBoundaryReached={(direction) => {
               if (direction === "down") {
-                setFocusZone("buttons");
+                footer.enterFooter();
               }
             }}
           />

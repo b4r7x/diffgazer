@@ -13,7 +13,6 @@
   "dependencies": {
     "@diffgazer/api": "workspace:*",
     "@diffgazer/core": "workspace:*",
-    "@diffgazer/hooks": "workspace:*",
     "@diffgazer/schemas": "workspace:*",
     "diffui": "workspace:*",
     "keyscope": "workspace:*",

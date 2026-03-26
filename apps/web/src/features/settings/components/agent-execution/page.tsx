@@ -7,11 +7,9 @@ import { RadioGroup, RadioGroupItem } from "diffui/components/radio";
 import { CardLayout } from "@/components/ui/card-layout";
 import { useKey, useScope } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
+import { useFooterNavigation } from "@/hooks/use-footer-navigation.js";
 import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/api/hooks";
 import { cn } from "@/utils/cn";
-
-type FocusZone = "list" | "buttons";
-const BUTTONS_COUNT = 2;
 
 export function SettingsAgentExecutionPage() {
   const navigate = useNavigate();
@@ -21,8 +19,6 @@ export function SettingsAgentExecutionPage() {
   const [focusedMode, setFocusedMode] = useState<AgentExecution>("sequential");
   const [error, setError] = useState<string | null>(null);
   const isSaving = saveSettings.isPending;
-  const [focusZone, setFocusZone] = useState<FocusZone>("list");
-  const [buttonIndex, setButtonIndex] = useState(0);
 
   const settings = settingsQuery.data;
   const effectiveMode = modeChoice ?? settings?.agentExecution ?? "sequential";
@@ -35,69 +31,7 @@ export function SettingsAgentExecutionPage() {
   useKey("Escape", () => navigate({ to: "/settings" }));
 
   const isDirty = settings ? settings.agentExecution !== effectiveMode : false;
-  const isButtonsZone = focusZone === "buttons";
   const canSave = !isSaving && isDirty;
-
-  const footerShortcuts: Shortcut[] = isButtonsZone
-    ? [
-        { key: "←/→", label: "Move Action" },
-        {
-          key: "Enter/Space",
-          label: buttonIndex === 0 ? "Cancel" : "Save",
-          disabled: buttonIndex === 1 && !canSave,
-        },
-      ]
-    : [
-        { key: "↑/↓", label: "Navigate" },
-        { key: "Enter/Space", label: "Select Mode" },
-      ];
-
-  usePageFooter({
-    shortcuts: footerShortcuts,
-    rightShortcuts: [{ key: "Esc", label: "Back" }],
-  });
-
-  const navigationEnabled = !isButtonsZone && !isSaving;
-
-  const onExecutionChange = (value: string) => {
-    const mode = value as AgentExecution;
-    setFocusedMode(mode);
-    setModeChoice(mode);
-  };
-
-  const executionOptions: AgentExecution[] = ["sequential", "parallel"];
-
-  const moveFocus = (direction: 1 | -1) => {
-    const idx = executionOptions.indexOf(focusedMode);
-    const next = idx + direction;
-    if (next < 0) return;
-    if (next >= executionOptions.length) {
-      setFocusZone("buttons");
-      return;
-    }
-    setFocusedMode(executionOptions[next]!);
-  };
-
-  useKey("ArrowDown", () => moveFocus(1), { enabled: navigationEnabled });
-  useKey("ArrowUp", () => moveFocus(-1), { enabled: navigationEnabled });
-
-  useKey(" ", () => onExecutionChange(focusedMode), { enabled: navigationEnabled });
-  useKey("Enter", () => onExecutionChange(focusedMode), { enabled: navigationEnabled });
-
-  useKey("ArrowUp", () => {
-    setFocusZone("list");
-    setButtonIndex(0);
-  }, { enabled: isButtonsZone });
-
-  useKey("ArrowDown", () => {}, { enabled: isButtonsZone });
-
-  useKey("ArrowLeft", () => setButtonIndex(Math.max(0, buttonIndex - 1)), {
-    enabled: isButtonsZone,
-  });
-
-  useKey("ArrowRight", () => setButtonIndex(Math.min(BUTTONS_COUNT - 1, buttonIndex + 1)), {
-    enabled: isButtonsZone,
-  });
 
   const handleCancel = () => navigate({ to: "/settings" });
 
@@ -112,13 +46,60 @@ export function SettingsAgentExecutionPage() {
     }
   };
 
-  const activateButton = () => {
-    if (buttonIndex === 0) handleCancel();
-    else if (buttonIndex === 1 && canSave) void handleSave();
+  const footer = useFooterNavigation({
+    enabled: true,
+    buttonCount: 2,
+    onAction: (index) => {
+      if (index === 0) handleCancel();
+      else if (index === 1 && canSave) void handleSave();
+    },
+  });
+
+  const footerShortcuts: Shortcut[] = footer.inFooter
+    ? [
+        { key: "←/→", label: "Move Action" },
+        {
+          key: "Enter/Space",
+          label: footer.focusedIndex === 0 ? "Cancel" : "Save",
+          disabled: footer.focusedIndex === 1 && !canSave,
+        },
+      ]
+    : [
+        { key: "↑/↓", label: "Navigate" },
+        { key: "Enter/Space", label: "Select Mode" },
+      ];
+
+  usePageFooter({
+    shortcuts: footerShortcuts,
+    rightShortcuts: [{ key: "Esc", label: "Back" }],
+  });
+
+  const navigationEnabled = !footer.inFooter && !isSaving;
+
+  const onExecutionChange = (value: string) => {
+    const mode = value as AgentExecution;
+    setFocusedMode(mode);
+    setModeChoice(mode);
   };
 
-  useKey("Enter", activateButton, { enabled: isButtonsZone });
-  useKey(" ", activateButton, { enabled: isButtonsZone });
+  const executionOptions: AgentExecution[] = ["sequential", "parallel"];
+
+  const moveFocus = (direction: 1 | -1) => {
+    const idx = executionOptions.indexOf(focusedMode);
+    const next = idx + direction;
+    if (next < 0) return;
+    if (next >= executionOptions.length) {
+      footer.enterFooter();
+      return;
+    }
+    setFocusedMode(executionOptions[next]!);
+  };
+
+  useKey("ArrowDown", () => moveFocus(1), { enabled: navigationEnabled });
+  useKey("ArrowUp", () => moveFocus(-1), { enabled: navigationEnabled });
+
+  useKey(" ", () => onExecutionChange(focusedMode), { enabled: navigationEnabled });
+  useKey("Enter", () => onExecutionChange(focusedMode), { enabled: navigationEnabled });
 
   const guard = matchQueryState(settingsQuery, {
     loading: () => (
@@ -152,7 +133,7 @@ export function SettingsAgentExecutionPage() {
             variant="ghost"
             onClick={handleCancel}
             disabled={isSaving}
-            className={cn(isButtonsZone && buttonIndex === 0 && "ring-2 ring-tui-blue")}
+            className={cn(footer.inFooter && footer.focusedIndex === 0 && "ring-2 ring-tui-blue")}
           >
             Cancel
           </Button>
@@ -160,7 +141,7 @@ export function SettingsAgentExecutionPage() {
             variant="success"
             onClick={handleSave}
             disabled={!canSave}
-            className={cn(isButtonsZone && buttonIndex === 1 && "ring-2 ring-tui-blue")}
+            className={cn(footer.inFooter && footer.focusedIndex === 1 && "ring-2 ring-tui-blue")}
           >
             {isSaving ? "Saving..." : "Save"}
           </Button>

@@ -2,7 +2,7 @@ import type { Ref } from "react";
 import { cn } from "@/utils/cn";
 import { IssueListItem } from "@/components/ui/issue";
 import { SeverityFilterGroup, type SeverityFilter } from "./severity-filter-group";
-import { calculateSeverityCounts } from "@diffgazer/core/severity";
+import { calculateSeverityCounts } from "@diffgazer/schemas/ui";
 import type { ReviewIssue } from "@diffgazer/schemas/review";
 
 export interface IssueListPaneProps {

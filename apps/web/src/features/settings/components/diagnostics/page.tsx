@@ -1,15 +1,8 @@
 import { useConfigData } from "@/app/providers/config-provider";
 import { cn } from "@/utils/cn";
 import { useDiagnosticsData } from "@diffgazer/api/hooks";
-import { formatTimestampLocale } from "@diffgazer/core/format";
+import { formatTimestampOrNA } from "@diffgazer/core/format";
 import { useDiagnosticsKeyboard } from "../../hooks/use-diagnostics-keyboard.js";
-
-const NA = "Unavailable";
-
-function formatTimestampOrNA(value: string | null | undefined): string {
-  if (!value) return NA;
-  return formatTimestampLocale(value);
-}
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -77,7 +70,7 @@ export function DiagnosticsPage() {
               <span className="text-tui-muted text-xs uppercase tracking-wider mb-1">Context Snapshot</span>
               <div className="text-white flex items-center gap-2">
                 <span>[{contextStatus}]</span>
-                {contextStatus === "ready" && <span className="text-xs text-tui-yellow">{formatTimestampOrNA(contextGeneratedAt)}</span>}
+                {contextStatus === "ready" && <span className="text-xs text-tui-yellow">{formatTimestampOrNA(contextGeneratedAt, "Unavailable")}</span>}
               </div>
             </div>
           </div>
@@ -93,15 +86,15 @@ export function DiagnosticsPage() {
               />
               <Row
                 label="Setup"
-                value={setupStatus ? (setupStatus.isReady ? "Ready" : `Incomplete (${setupStatus.missing.join(", ") || "unknown"})`) : NA}
+                value={setupStatus ? (setupStatus.isReady ? "Ready" : `Incomplete (${setupStatus.missing.join(", ") || "unknown"})`) : "Unavailable"}
               />
               <Row
                 label="Provider"
-                value={provider ? `${provider}${model ? ` (${model})` : ""}` : NA}
+                value={provider ? `${provider}${model ? ` (${model})` : ""}` : "Unavailable"}
               />
               <Row
                 label="Refreshed"
-                value={formatTimestampOrNA(lastRefreshedAt)}
+                value={formatTimestampOrNA(lastRefreshedAt, "Unavailable")}
               />
             </div>
           </div>

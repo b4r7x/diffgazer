@@ -1,17 +1,15 @@
 import { useReducer, useRef, useEffect } from "react";
-import type { AgentStreamEvent, EnrichEvent, StepEvent } from "@diffgazer/schemas/events";
 import {
   reviewReducer,
   createInitialReviewState,
   type ReviewState,
   type ReviewAction,
+  type ReviewEvent,
   type StreamReviewError,
 } from "@diffgazer/core/review";
 import { type Result, ok } from "@diffgazer/core/result";
 import { ReviewErrorCode, type ReviewMode, type LensId } from "@diffgazer/schemas/review";
 import { useApi } from "./context.js";
-
-type ReviewEvent = AgentStreamEvent | StepEvent | EnrichEvent;
 
 export interface ReviewStreamState extends ReviewState {
   reviewId: string | null;

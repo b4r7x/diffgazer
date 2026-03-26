@@ -73,8 +73,10 @@ Unified documentation portal for diff-ui, keyscope, and (future) diffgazer docs.
 - @.claude/docs/web-design-guidelines.md — Web UI design system
 
 ## Recent Changes
+- 017-cli-web-shared-quality: Added TypeScript 5.x (strict: true), ESM only, .js extensions in imports + React 19, Ink 6 (CLI), TanStack Query v5, TanStack Router (web), Vite 7 (web), Zod 4, keyscope (web keyboard), Hono (server)
 - 016-cli-ink-web-parity: Added Ink 6 reactive resize, shared hook consolidation (@diffgazer/api/hooks), layout centering patterns
 - 015-cli-web-parity-shared-infra: Added TypeScript 5.x (strict: true), ESM only, .js extensions in imports + React 19, Ink 6 (CLI), TanStack Query v5, TanStack Router (web), Vite 7 (web), Zod 4, keyscope, diff-ui
-- 014-fix-review-shared-hooks: Added TypeScript 5.x (strict: true), ESM only, .js extensions in imports + React 19, TanStack Query v5, Ink 6 (CLI), Vite 7 (web), Zod 4
 
 ## Active Technologies
+- TypeScript 5.x (strict: true), ESM only, .js extensions in imports + React 19, Ink 6 (CLI), TanStack Query v5, TanStack Router (web), Vite 7 (web), Zod 4, keyscope (web keyboard), Hono (server) (017-cli-web-shared-quality)
+- File-based (JSON config, registry bundles, SHA-256 integrity) (017-cli-web-shared-quality)

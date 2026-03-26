@@ -1,4 +1,4 @@
-import { createContext, useState, useContext } from "react";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { CliColorTokens } from "./palettes.js";
 import { darkPalette, lightPalette, highContrastPalette, palettes } from "./palettes.js";
@@ -47,12 +47,18 @@ export function CliThemeProvider({ initialTheme, children }: CliThemeProviderPro
     resolvePalette(initialTheme ?? "auto"),
   );
 
-  function setTheme(name: string) {
+  const setTheme = useCallback((name: string) => {
     setThemeState(resolvePalette(name));
-  }
+  }, []);
+
+  const value = useMemo<CliThemeContextValue>(() => ({
+    tokens: theme.tokens,
+    themeName: theme.name,
+    setTheme,
+  }), [theme.tokens, theme.name, setTheme]);
 
   return (
-    <CliThemeContext value={{ tokens: theme.tokens, themeName: theme.name, setTheme }}>
+    <CliThemeContext value={value}>
       {children}
     </CliThemeContext>
   );

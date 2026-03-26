@@ -1,4 +1,4 @@
-import { SEVERITY_ORDER, severityRank } from "@diffgazer/core/severity";
+import { SEVERITY_ORDER, severityRank } from "@diffgazer/schemas/ui";
 import type {
   ReviewIssue,
   ReviewSeverity,

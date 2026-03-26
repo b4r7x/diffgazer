@@ -8,7 +8,7 @@ import {
   SEVERITY_LABELS,
 } from "@diffgazer/schemas/ui";
 import { useTheme } from "../../../theme/theme-context.js";
-import type { CliColorTokens } from "../../../theme/palettes.js";
+import { severityColor } from "../../../theme/severity.js";
 
 export interface SeverityFilterGroupProps {
   currentFilter: UISeverityFilter;
@@ -20,20 +20,6 @@ export interface SeverityFilterGroupProps {
 type FilterOption = UISeverityFilter;
 
 const FILTER_OPTIONS: FilterOption[] = ["all", ...SEVERITY_ORDER];
-
-function severityColor(
-  severity: ReviewSeverity,
-  tokens: CliColorTokens,
-): string {
-  const map: Record<ReviewSeverity, string> = {
-    blocker: tokens.severityBlocker,
-    high: tokens.severityHigh,
-    medium: tokens.severityMedium,
-    low: tokens.severityLow,
-    nit: tokens.severityNit,
-  };
-  return map[severity];
-}
 
 function filterLabel(option: FilterOption): string {
   return option === "all" ? "All" : SEVERITY_LABELS[option];

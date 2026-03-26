@@ -3,7 +3,7 @@ import { RadioGroup, RadioGroupItem } from "diffui/components/radio";
 import { Badge } from "diffui/components/badge";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/schemas/config";
 import type { AIProvider } from "@diffgazer/schemas/config";
-import { PROVIDER_CAPABILITIES } from "@/config/constants";
+import { PROVIDER_CAPABILITIES } from "@diffgazer/schemas/config";
 
 interface ProviderStepProps {
   value: AIProvider | null;

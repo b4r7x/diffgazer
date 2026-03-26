@@ -15,7 +15,7 @@ export interface ReviewContainerProps {
   onComplete?: (data: ReviewCompleteData) => void;
 }
 
-function ReviewLoadingMessage({ message }: { message: string }) {
+export function ReviewLoadingMessage({ message }: { message: string }) {
   usePageFooter({ shortcuts: [] });
 
   return (

@@ -1,6 +1,6 @@
 import { Box, Text } from "ink";
 import { useTheme } from "../../../theme/theme-context.js";
-import type { CliColorTokens } from "../../../theme/palettes.js";
+import { severityColor } from "../../../theme/severity.js";
 
 export interface SeverityBarProps {
   severity: string;
@@ -9,17 +9,6 @@ export interface SeverityBarProps {
 }
 
 const BAR_WIDTH = 20;
-
-function severityColor(severity: string, tokens: CliColorTokens): string {
-  const map: Record<string, string> = {
-    blocker: tokens.severityBlocker,
-    high: tokens.severityHigh,
-    medium: tokens.severityMedium,
-    low: tokens.severityLow,
-    nit: tokens.severityNit,
-  };
-  return map[severity] ?? tokens.muted;
-}
 
 export function SeverityBar({ severity, count, total }: SeverityBarProps) {
   const { tokens } = useTheme();

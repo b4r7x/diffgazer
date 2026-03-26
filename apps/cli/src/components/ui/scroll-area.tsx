@@ -5,14 +5,12 @@ import { useTheme } from "../../theme/theme-context.js";
 
 export interface ScrollAreaProps {
   height: number;
-  orientation?: "vertical" | "horizontal";
   isActive?: boolean;
   children: ReactNode;
 }
 
 export function ScrollArea({
   height,
-  orientation: _orientation = "vertical",
   isActive = false,
   children,
 }: ScrollAreaProps) {

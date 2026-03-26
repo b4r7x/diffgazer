@@ -1,5 +1,5 @@
 import { cn } from "@/utils/cn";
-import { getFigletText } from "@diffgazer/hooks";
+import { getFigletText } from "@diffgazer/core/get-figlet";
 
 interface AsciiLogoProps {
   text?: string;

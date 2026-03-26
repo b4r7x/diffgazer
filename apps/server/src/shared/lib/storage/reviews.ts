@@ -12,7 +12,7 @@ import { createCollection } from "./persistence.js";
 import type { StoreError, DateFieldsOf, SaveReviewOptions } from "./types.js";
 import { getGlobalDiffgazerDir } from "../paths.js";
 import { type Result, ok } from "@diffgazer/core/result";
-import { calculateSeverityCounts } from "@diffgazer/core/severity";
+import { calculateSeverityCounts } from "@diffgazer/schemas/ui";
 
 function filterByProjectAndSort<T extends { projectPath: string }>(
   items: T[],

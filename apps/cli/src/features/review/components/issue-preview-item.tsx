@@ -1,6 +1,7 @@
 import { Box, Text } from "ink";
 import { useTheme } from "../../../theme/theme-context.js";
 import { Badge } from "../../../components/ui/badge.js";
+import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
 
 export interface IssuePreviewItemProps {
   severity: string;
@@ -8,8 +9,6 @@ export interface IssuePreviewItemProps {
   title: string;
   isHighlighted?: boolean;
 }
-
-const MAX_PATH_LENGTH = 30;
 
 function severityVariant(
   severity: string,
@@ -27,9 +26,9 @@ function severityVariant(
   }
 }
 
-function truncatePath(filePath: string): string {
-  if (filePath.length <= MAX_PATH_LENGTH) return filePath;
-  return "\u2026" + filePath.slice(-(MAX_PATH_LENGTH - 1));
+function truncatePath(filePath: string, maxLength: number): string {
+  if (filePath.length <= maxLength) return filePath;
+  return "\u2026" + filePath.slice(-(maxLength - 1));
 }
 
 export function IssuePreviewItem({
@@ -39,9 +38,11 @@ export function IssuePreviewItem({
   isHighlighted = false,
 }: IssuePreviewItemProps) {
   const { tokens } = useTheme();
+  const { columns } = useTerminalDimensions();
+  const maxPathLength = Math.max(15, Math.floor(columns * 0.3));
 
   const variant = severityVariant(severity);
-  const pathDisplay = truncatePath(filePath);
+  const pathDisplay = truncatePath(filePath, maxPathLength);
 
   if (isHighlighted) {
     return (

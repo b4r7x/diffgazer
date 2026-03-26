@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 
@@ -19,12 +19,12 @@ export function FooterProvider({ children }: FooterProviderProps) {
   const [shortcuts, setShortcuts] = useState<Shortcut[]>([]);
   const [rightShortcuts, setRightShortcuts] = useState<Shortcut[]>([]);
 
-  const value: FooterContextValue = {
+  const value = useMemo<FooterContextValue>(() => ({
     shortcuts,
     rightShortcuts,
     setShortcuts,
     setRightShortcuts,
-  };
+  }), [shortcuts, rightShortcuts]);
 
   return (
     <FooterContext.Provider value={value}>{children}</FooterContext.Provider>

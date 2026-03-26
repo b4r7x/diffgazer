@@ -8,7 +8,8 @@ import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import { useReviews, useReview } from "@diffgazer/api/hooks";
 import { useHistoryKeyboard } from "@/features/history/hooks/use-history-keyboard";
 import { HISTORY_SECTION_ALL_ID } from "@/features/history/constants";
-import { getDateKey, getTimestamp, getRunSummary, buildTimelineItems, formatDuration } from "@/features/history/utils";
+import { getDateKey, getTimestamp, formatDuration } from "@diffgazer/core/format";
+import { getRunSummary, buildTimelineItems } from "@/features/history/utils";
 
 function useHistoryData() {
   const reviewsQuery = useReviews();

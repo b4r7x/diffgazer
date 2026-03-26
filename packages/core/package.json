@@ -18,10 +18,6 @@
       "types": "./dist/result.d.ts",
       "import": "./dist/result.js"
     },
-    "./severity": {
-      "types": "./dist/severity.d.ts",
-      "import": "./dist/severity.js"
-    },
     "./strings": {
       "types": "./dist/strings.d.ts",
       "import": "./dist/strings.js"
@@ -45,6 +41,10 @@
     "./navigation": {
       "types": "./dist/navigation/index.d.ts",
       "import": "./dist/navigation/index.js"
+    },
+    "./get-figlet": {
+      "types": "./dist/get-figlet.d.ts",
+      "import": "./dist/get-figlet.js"
     }
   },
   "scripts": {
@@ -55,10 +55,12 @@
   },
   "dependencies": {
     "@diffgazer/schemas": "workspace:*",
+    "figlet": "^1.10.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@diffgazer/tsconfig": "workspace:*",
+    "@types/figlet": "^1.7.0",
     "@types/node": "^25.2.0",
     "typescript": "^5.9.3"
   }

@@ -7,7 +7,7 @@ import {
   useConfigActions,
 } from "@/app/providers/config-provider";
 import { resolveBackAction } from "@/lib/back-navigation/back-navigation";
-import { getProviderStatus, getProviderDisplay } from "@diffgazer/core/format";
+import { getProviderStatus, getProviderDisplay } from "@diffgazer/core/providers";
 
 function ConnectedHeader() {
   const router = useRouter();

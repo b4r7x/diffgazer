@@ -170,24 +170,6 @@ describe("ThemeProvider", () => {
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
   });
 
-  it("should keep global theme tied to resolved theme when setPreview is called", () => {
-    let capturedSetPreview: ThemeContextValue["setPreview"] | undefined;
-
-    render(
-      <ThemeProvider>
-        <ThemeConsumer
-          onRender={(ctx) => {
-            capturedSetPreview = ctx.setPreview;
-          }}
-        />
-      </ThemeProvider>
-    );
-
-    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
-    capturedSetPreview?.("dark");
-    expect(document.documentElement.getAttribute("data-theme")).toBe("light");
-  });
-
   it("should map 'terminal' settings theme to dark", () => {
     mockUseSettings.mockReturnValue({
       data: { theme: "terminal" },

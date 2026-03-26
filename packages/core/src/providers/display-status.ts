@@ -1,4 +1,5 @@
-export type DisplayStatus = "active" | "configured" | "needs-key";
+import type { DisplayStatus } from "@diffgazer/schemas/config";
+export type { DisplayStatus };
 
 export interface DisplayStatusConfig {
   label: string;
@@ -19,4 +20,18 @@ export function getDisplayStatusLabel(status: DisplayStatus): string {
 export function getDisplayStatusBadge(status: DisplayStatus): { label: string; variant: string } {
   const config = DISPLAY_STATUS_CONFIG[status];
   return { label: config.badgeLabel, variant: config.badgeVariant };
+}
+
+export function getProviderStatus(
+  isLoading: boolean,
+  isConfigured: boolean,
+): "active" | "idle" {
+  if (isLoading) return "idle";
+  return isConfigured ? "active" : "idle";
+}
+
+export function getProviderDisplay(provider?: string, model?: string): string {
+  if (!provider) return "Not configured";
+  if (model) return `${provider} / ${model}`;
+  return provider;
 }

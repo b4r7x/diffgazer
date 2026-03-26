@@ -3,7 +3,7 @@ import { useScopedRouteState } from "@/hooks/use-scoped-route-state";
 import type { ProviderFilter } from "@/features/providers/constants";
 import { useProviderManagement } from "@/features/providers/hooks/use-provider-management";
 import { useProvidersKeyboard } from "@/features/providers/hooks/use-providers-keyboard";
-import { PROVIDER_CAPABILITIES } from "@/config/constants";
+import { PROVIDER_CAPABILITIES } from "@diffgazer/schemas/config";
 
 export function useProvidersPageState() {
   const inputRef = useRef<HTMLInputElement>(null);

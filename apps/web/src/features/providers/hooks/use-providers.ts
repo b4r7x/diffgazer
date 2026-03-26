@@ -1,6 +1,6 @@
 import { useConfigData, useConfigActions } from '@/app/providers/config-provider';
 import { AVAILABLE_PROVIDERS } from '@diffgazer/schemas/config';
-import type { ProviderWithStatus } from '../types';
+import type { ProviderWithStatus } from '@diffgazer/schemas/config';
 
 export function useProviders() {
     const { providerStatus } = useConfigData();

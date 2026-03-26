@@ -4,13 +4,12 @@ import {
   useParams,
   useRouter,
 } from "@tanstack/react-router";
-import { ReviewContainer, type ReviewCompleteData } from "./review-container";
+import { ReviewContainer, ReviewLoadingMessage, type ReviewCompleteData } from "./review-container";
 import { ReviewSummaryView } from "./review-summary-view";
 import { ReviewResultsView } from "./review-results-view";
 import type { ReviewIssue } from "@diffgazer/schemas/review";
 import { isApiError, useReviewErrorHandler } from "../hooks";
 import { api } from "@/lib/api";
-import { usePageFooter } from "@/hooks/use-page-footer";
 
 interface ReviewData {
   issues: ReviewIssue[];
@@ -48,22 +47,6 @@ const loadingMessageMap: Record<ReviewState["phase"], string | null> = {
   summary: null,
   results: null,
 };
-
-function LoadingReviewState({ message }: { message: string }) {
-  usePageFooter({ shortcuts: [] });
-
-  return (
-    <div className="flex flex-1 items-center justify-center">
-      <div
-        className="text-tui-muted font-mono text-sm"
-        role="status"
-        aria-live="polite"
-      >
-        {message}
-      </div>
-    </div>
-  );
-}
 
 export function ReviewPage() {
   const params = useParams({ strict: false });
@@ -120,7 +103,7 @@ export function ReviewPage() {
   const loadingMessage = loadingMessageMap[state.phase];
 
   if (loadingMessage) {
-    return <LoadingReviewState message={loadingMessage} />;
+    return <ReviewLoadingMessage message={loadingMessage} />;
   }
 
   switch (state.phase) {

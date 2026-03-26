@@ -1,16 +1,11 @@
 import { useSyncExternalStore } from "react";
 import {
   getBreakpointTierFromPx,
+  buildResponsiveResult,
   BREAKPOINTS,
   type BreakpointTier,
+  type ResponsiveResult,
 } from "@diffgazer/core";
-
-type ViewportBreakpoint = {
-  tier: BreakpointTier;
-  isNarrow: boolean;
-  isMedium: boolean;
-  isWide: boolean;
-};
 
 const queries = {
   wide: `(min-width: ${BREAKPOINTS.wide.minPx}px)`,
@@ -38,16 +33,7 @@ function subscribe(callback: () => void): () => void {
   };
 }
 
-function buildResult(tier: BreakpointTier): ViewportBreakpoint {
-  return {
-    tier,
-    isNarrow: tier === "narrow",
-    isMedium: tier === "medium",
-    isWide: tier === "wide",
-  };
-}
-
-export function useViewportBreakpoint(): ViewportBreakpoint {
+export function useViewportBreakpoint(): ResponsiveResult {
   const tier = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  return buildResult(tier);
+  return buildResponsiveResult(tier);
 }
