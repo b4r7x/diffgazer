@@ -12,5 +12,5 @@ export function useScope(name: string): void {
     return () => {
       ctx.popScope();
     };
-  }, [name]);
+  }, [name, ctx]);
 }

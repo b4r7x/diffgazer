@@ -73,10 +73,10 @@ Unified documentation portal for diff-ui, keyscope, and (future) diffgazer docs.
 - @.claude/docs/web-design-guidelines.md — Web UI design system
 
 ## Recent Changes
+- 015-cli-web-parity-shared-infra: Added TypeScript 5.x (strict: true), ESM only, .js extensions in imports + React 19, Ink 6 (CLI), TanStack Query v5, TanStack Router (web), Vite 7 (web), Zod 4, keyscope, diff-ui
 - 014-fix-review-shared-hooks: Added TypeScript 5.x (strict: true), ESM only, .js extensions in imports + React 19, TanStack Query v5, Ink 6 (CLI), Vite 7 (web), Zod 4
 - 013-fix-cli-review-audit: Added TypeScript 5.x (strict: true), ESM only, .js extensions in imports + React 19, Ink 6 (CLI), TanStack Query v5, Vite 7 (web), Zod 4
-- 012-cli-ink-web-parity: Added TypeScript 5.x (strict: true), ESM only, .js extensions in imports + React 19, Ink 6 (CLI), TanStack Query v5, Vite 7 (web), Zod 4, commander, picocolors
-- 011-fix-review-validate-hooks: Added TypeScript 5.x (strict: true), ESM only, `.js` extensions in imports + React 19, TanStack Query v5, Ink 6 (CLI), Vite 7 (web)
 
 ## Active Technologies
-- TypeScript 5.x (strict: true), ESM only, .js extensions in imports + React 19, TanStack Query v5, Ink 6 (CLI), Vite 7 (web), Zod 4 (014-fix-review-shared-hooks)
+- TypeScript 5.x (strict: true), ESM only, .js extensions in imports + React 19, Ink 6 (CLI), TanStack Query v5, TanStack Router (web), Vite 7 (web), Zod 4, keyscope, diff-ui (015-cli-web-parity-shared-infra)
+- File-based (JSON config, review data) — no changes needed (015-cli-web-parity-shared-infra)

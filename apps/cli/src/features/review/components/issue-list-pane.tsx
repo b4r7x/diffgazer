@@ -3,19 +3,15 @@ import { Box, Text, useInput } from "ink";
 import type { ReviewIssue } from "@diffgazer/schemas/review";
 import {
   type UISeverityFilter,
-  SEVERITY_ORDER,
   calculateSeverityCounts,
-  SEVERITY_LABELS,
 } from "@diffgazer/schemas/ui";
 import { useTheme } from "../../../theme/theme-context.js";
 import { ScrollArea } from "../../../components/ui/scroll-area.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { IssuePreviewItem } from "./issue-preview-item.js";
+import { SeverityFilterGroup } from "./severity-filter-group.js";
 
-const FILTER_OPTIONS: UISeverityFilter[] = [
-  "all",
-  ...SEVERITY_ORDER,
-];
+type SubZone = "filter" | "issues";
 
 export interface IssueListPaneProps {
   issues: ReviewIssue[];
@@ -42,22 +38,28 @@ export function IssueListPane({
 }: IssueListPaneProps) {
   const { tokens } = useTheme();
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [subZone, setSubZone] = useState<SubZone>("issues");
   const counts = calculateSeverityCounts(allIssues);
 
   useInput(
     (input, key) => {
-      // f cycles severity filter forward
-      if (input === "f") {
-        const currentIdx = FILTER_OPTIONS.indexOf(severityFilter);
-        const nextIdx = (currentIdx + 1) % FILTER_OPTIONS.length;
-        const next = FILTER_OPTIONS[nextIdx];
-        if (next !== undefined) {
-          onSeverityFilterChange(next);
+      if (subZone === "filter") {
+        // Down arrow or j moves focus from filter to issue list
+        if (key.downArrow || input === "j") {
+          setSubZone("issues");
         }
+        // Left/right/enter/space handled by SeverityFilterGroup
         return;
       }
 
-      if (issues.length === 0) return;
+      // subZone === "issues"
+      if (issues.length === 0) {
+        // Allow navigating up to filter even with no issues
+        if (key.upArrow || input === "k") {
+          setSubZone("filter");
+        }
+        return;
+      }
 
       if (key.downArrow || input === "j") {
         const nextIndex = Math.min(highlightedIndex + 1, issues.length - 1);
@@ -70,7 +72,11 @@ export function IssueListPane({
       }
 
       if (key.upArrow || input === "k") {
-        const nextIndex = Math.max(highlightedIndex - 1, 0);
+        if (highlightedIndex === 0) {
+          setSubZone("filter");
+          return;
+        }
+        const nextIndex = highlightedIndex - 1;
         setHighlightedIndex(nextIndex);
         const issue = issues[nextIndex];
         if (issue) {
@@ -90,18 +96,17 @@ export function IssueListPane({
     { isActive },
   );
 
-  const filterLabel = severityFilter === "all"
-    ? `ALL (${allIssues.length})`
-    : `${SEVERITY_LABELS[severityFilter]} (${counts[severityFilter]})`;
-
   if (issues.length === 0) {
     return (
       <Box flexDirection="column">
         <SectionHeader>Issues</SectionHeader>
-        <Box marginBottom={1} gap={1}>
-          <Text color={tokens.muted}>Filter:</Text>
-          <Text color={tokens.accent} bold>{filterLabel}</Text>
-          <Text color={tokens.muted} dimColor>[f]</Text>
+        <Box marginBottom={1}>
+          <SeverityFilterGroup
+            currentFilter={severityFilter}
+            onFilterChange={onSeverityFilterChange}
+            issueCounts={counts}
+            isActive={isActive && subZone === "filter"}
+          />
         </Box>
         <Text color={tokens.muted}>No issues match filter</Text>
       </Box>
@@ -113,10 +118,13 @@ export function IssueListPane({
       <SectionHeader bordered>
         {`Issues (${issues.length})`}
       </SectionHeader>
-      <Box marginBottom={1} gap={1}>
-        <Text color={tokens.muted}>Filter:</Text>
-        <Text color={tokens.accent} bold>{filterLabel}</Text>
-        <Text color={tokens.muted} dimColor>[f]</Text>
+      <Box marginBottom={1}>
+        <SeverityFilterGroup
+          currentFilter={severityFilter}
+          onFilterChange={onSeverityFilterChange}
+          issueCounts={counts}
+          isActive={isActive && subZone === "filter"}
+        />
       </Box>
       <ScrollArea height={height} isActive={false}>
         {issues.map((issue, index) => (
@@ -128,7 +136,7 @@ export function IssueListPane({
               severity={issue.severity}
               filePath={issue.file}
               title={issue.title}
-              isHighlighted={index === highlightedIndex}
+              isHighlighted={isActive && subZone === "issues" && index === highlightedIndex}
             />
           </Box>
         ))}

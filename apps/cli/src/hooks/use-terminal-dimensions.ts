@@ -1,7 +1,5 @@
 import { useStdout } from "ink";
-
-export const NARROW_THRESHOLD = 80;
-export const WIDE_THRESHOLD = 100;
+import { getBreakpointTier, type BreakpointTier } from "@diffgazer/core";
 
 interface TerminalDimensions {
   columns: number;
@@ -9,7 +7,9 @@ interface TerminalDimensions {
 }
 
 interface ResponsiveDimensions extends TerminalDimensions {
+  tier: BreakpointTier;
   isNarrow: boolean;
+  isMedium: boolean;
   isWide: boolean;
 }
 
@@ -23,10 +23,13 @@ export function useTerminalDimensions(): TerminalDimensions {
 
 export function useResponsive(): ResponsiveDimensions {
   const { columns, rows } = useTerminalDimensions();
+  const tier = getBreakpointTier(columns);
   return {
     columns,
     rows,
-    isNarrow: columns < NARROW_THRESHOLD,
-    isWide: columns >= WIDE_THRESHOLD,
+    tier,
+    isNarrow: tier === "narrow",
+    isMedium: tier === "medium",
+    isWide: tier === "wide",
   };
 }

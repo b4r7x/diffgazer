@@ -7,6 +7,8 @@ import { ScrollArea } from "../../../components/ui/scroll-area.js";
 import { EmptyState } from "../../../components/ui/empty-state.js";
 import { Badge } from "../../../components/ui/badge.js";
 import { CodeSnippet } from "./code-snippet.js";
+import { DiffView } from "./diff-view.js";
+import { FixPlanChecklist } from "./fix-plan-checklist.js";
 
 export interface IssueDetailsPaneProps {
   issue?: ReviewIssue;
@@ -30,20 +32,7 @@ function severityVariant(
   }
 }
 
-function riskVariant(
-  risk: string | undefined,
-): "error" | "warning" | "info" {
-  switch (risk) {
-    case "high":
-      return "error";
-    case "medium":
-      return "warning";
-    default:
-      return "info";
-  }
-}
-
-function OverviewTab({ issue }: { issue: ReviewIssue }) {
+function DetailsTab({ issue }: { issue: ReviewIssue }) {
   const { tokens } = useTheme();
 
   const codeEvidence = issue.evidence.filter((e) => e.type === "code");
@@ -102,15 +91,7 @@ function OverviewTab({ issue }: { issue: ReviewIssue }) {
       {issue.fixPlan && issue.fixPlan.length > 0 ? (
         <Box flexDirection="column">
           <SectionHeader variant="muted">Fix Plan</SectionHeader>
-          {issue.fixPlan.map((step) => (
-            <Box key={step.step} gap={1}>
-              <Text color={tokens.muted}>{`${String(step.step)}.`}</Text>
-              <Text color={tokens.fg}>{step.action}</Text>
-              {step.risk ? (
-                <Badge variant={riskVariant(step.risk)}>{step.risk}</Badge>
-              ) : null}
-            </Box>
-          ))}
+          <FixPlanChecklist steps={issue.fixPlan} />
         </Box>
       ) : null}
 
@@ -226,24 +207,7 @@ function PatchTab({ issue }: { issue: ReviewIssue }) {
   return (
     <Box flexDirection="column" gap={1} paddingTop={1}>
       <SectionHeader variant="muted">Suggested Patch</SectionHeader>
-      <Box
-        flexDirection="column"
-        borderStyle="round"
-        borderColor={tokens.border}
-      >
-        {issue.suggested_patch.split("\n").map((line, i) => {
-          let color = tokens.fg;
-          if (line.startsWith("+")) color = tokens.success;
-          else if (line.startsWith("-")) color = tokens.error;
-          else if (line.startsWith("@@")) color = tokens.accent;
-
-          return (
-            <Text key={i} color={color}>
-              {line}
-            </Text>
-          );
-        })}
-      </Box>
+      <DiffView patch={issue.suggested_patch} />
     </Box>
   );
 }
@@ -263,16 +227,16 @@ export function IssueDetailsPane({ issue, isActive = false, scrollHeight = 12 }:
   return (
     <Box flexDirection="column">
       <SectionHeader bordered>{issue.title}</SectionHeader>
-      <Tabs defaultValue="overview">
+      <Tabs defaultValue="details">
         <Tabs.List isActive={isActive}>
-          <Tabs.Trigger value="overview">Overview</Tabs.Trigger>
+          <Tabs.Trigger value="details">Details</Tabs.Trigger>
           <Tabs.Trigger value="explain">Explain</Tabs.Trigger>
           <Tabs.Trigger value="trace">Trace</Tabs.Trigger>
           <Tabs.Trigger value="patch">Patch</Tabs.Trigger>
         </Tabs.List>
-        <Tabs.Content value="overview">
+        <Tabs.Content value="details">
           <ScrollArea height={scrollHeight} isActive={false}>
-            <OverviewTab issue={issue} />
+            <DetailsTab issue={issue} />
           </ScrollArea>
         </Tabs.Content>
         <Tabs.Content value="explain">

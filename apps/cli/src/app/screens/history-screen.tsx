@@ -2,7 +2,8 @@ import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
 import type { ReviewMetadata } from "@diffgazer/schemas/review";
-import { useReviews, matchQueryState } from "@diffgazer/api/hooks";
+import { useReviews, useReview, matchQueryState } from "@diffgazer/api/hooks";
+import { SEVERITY_ORDER } from "@diffgazer/schemas/ui";
 import { useScope } from "../../hooks/use-scope.js";
 import { usePageFooter } from "../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../hooks/use-back-handler.js";
@@ -21,6 +22,10 @@ type Zone = "search" | "timeline" | "insights";
 
 interface ReviewItem {
   id: string;
+  displayId: string;
+  branch: string;
+  timestamp: string;
+  summary: string;
   date: string;
   issueCount: number;
   severities: Array<{ severity: string; count: number }>;
@@ -48,6 +53,21 @@ function formatDuration(durationMs: number | undefined): number {
   return Math.round(durationMs / 1000);
 }
 
+function getTimestamp(dateStr: string): string {
+  return new Date(dateStr).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+}
+
+function getRunSummary(r: ReviewMetadata): string {
+  if (r.issueCount === 0) return "Passed with no issues.";
+  const parts: string[] = [];
+  if (r.blockerCount > 0) parts.push(`${r.blockerCount} blocker`);
+  if (r.highCount > 0) parts.push(`${r.highCount} high`);
+  if (r.mediumCount > 0) parts.push(`${r.mediumCount} medium`);
+  if (r.lowCount > 0) parts.push(`${r.lowCount} low`);
+  if (parts.length === 0) return `Found ${r.issueCount} issue${r.issueCount === 1 ? "" : "s"}.`;
+  return parts.join(", ");
+}
+
 function metadataToSeverities(r: ReviewMetadata): Array<{ severity: string; count: number }> {
   const severities: Array<{ severity: string; count: number }> = [];
   if (r.blockerCount > 0) severities.push({ severity: "critical", count: r.blockerCount });
@@ -61,6 +81,10 @@ function metadataToSeverities(r: ReviewMetadata): Array<{ severity: string; coun
 function toReviewItem(r: ReviewMetadata): ReviewItem {
   return {
     id: r.id,
+    displayId: `#${r.id.slice(0, 4)}`,
+    branch: r.mode === "staged" ? "Staged" : r.branch ?? "Main",
+    timestamp: getTimestamp(r.createdAt),
+    summary: getRunSummary(r),
     date: r.createdAt,
     issueCount: r.issueCount,
     severities: metadataToSeverities(r),
@@ -115,13 +139,21 @@ export function HistoryScreen(): ReactElement {
   useBackHandler();
 
   const { tokens } = useTheme();
-  const { columns, rows, isNarrow } = useResponsive();
+  const { columns, rows, isNarrow, isMedium } = useResponsive();
   const { navigate } = useNavigation();
 
   const reviewsQuery = useReviews();
   const reviews = reviewsQuery.data?.reviews ?? [];
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedReviewId, setSelectedReviewId] = useState<string | undefined>(undefined);
+
+  const reviewDetailQuery = useReview(selectedReviewId ?? "");
+  const reviewDetail = reviewDetailQuery.data?.review ?? null;
+  const sortedIssues = reviewDetail?.result?.issues
+    ? [...reviewDetail.result.issues].sort(
+        (a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity),
+      )
+    : [];
   const [activeZone, setActiveZone] = useState<Zone>("timeline");
 
   useInput((_input, key) => {
@@ -158,9 +190,15 @@ export function HistoryScreen(): ReactElement {
   }
 
   const selectedReviewMetadata = filtered.find((r) => r.id === selectedReviewId);
-  const listWidth = Math.max(Math.floor(columns * 0.4), 30);
+  const listWidth = isMedium
+    ? Math.max(Math.floor(columns * 0.35), 26)
+    : Math.max(Math.floor(columns * 0.4), 30);
   const paneHeight = Math.max(rows - 8, 8);
-  const insightScrollHeight = isNarrow ? Math.max(Math.floor(paneHeight / 2), 6) : paneHeight;
+  const insightScrollHeight = isNarrow
+    ? Math.max(Math.floor(paneHeight / 2), 6)
+    : isMedium
+      ? Math.max(paneHeight - 4, 6)
+      : paneHeight;
 
   const guard = matchQueryState(reviewsQuery, {
     loading: () => (
@@ -247,7 +285,12 @@ export function HistoryScreen(): ReactElement {
               borderStyle="single"
               borderColor={activeZone === "insights" ? tokens.accent : tokens.border}
             >
-              <HistoryInsightsPane review={selectedReviewMetadata} scrollHeight={insightScrollHeight} />
+              <HistoryInsightsPane
+                review={selectedReviewMetadata}
+                issues={sortedIssues}
+                isActive={activeZone === "insights"}
+                scrollHeight={insightScrollHeight}
+              />
             </Box>
           </Box>
         </Box>

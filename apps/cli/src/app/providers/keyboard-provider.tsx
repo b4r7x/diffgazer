@@ -105,7 +105,10 @@ export function TerminalKeyboardProvider({
   };
 
   const pushScope = (name: string) => {
-    setScopeStack((prev) => [...prev, name]);
+    setScopeStack((prev) => {
+      if (prev[prev.length - 1] === name) return prev;
+      return [...prev, name];
+    });
   };
 
   const popScope = () => {

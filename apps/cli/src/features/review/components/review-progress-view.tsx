@@ -6,8 +6,12 @@ import { Button } from "../../../components/ui/button.js";
 import { ProgressList } from "./progress-list.js";
 import type { ProgressStepItem } from "./progress-list.js";
 import { ActivityLog } from "./activity-log.js";
+import { AgentBoard } from "./agent-board.js";
+import { ContextSnapshotPreview } from "./context-snapshot-preview.js";
+import { ReviewMetricsFooter } from "./review-metrics-footer.js";
 import type { StepState, AgentState } from "@diffgazer/schemas/events";
 import type { LogEntryData } from "@diffgazer/schemas/ui";
+import type { ReviewContextResponse } from "@diffgazer/api/types";
 import { type FileProgress, mapStepStatus, getAgentDetail } from "@diffgazer/core/review";
 
 export interface ReviewProgressViewProps {
@@ -18,6 +22,12 @@ export interface ReviewProgressViewProps {
   isStreaming: boolean;
   error: string | null;
   onCancel?: () => void;
+  /** Number of issues found so far during the review. */
+  issuesFound: number;
+  /** Timestamp when the review stream started (used for elapsed time). */
+  startedAt: Date | null;
+  /** Context snapshot data, available once the context step completes. */
+  contextSnapshot?: ReviewContextResponse | null;
 }
 
 function mapStepsToProgressItems(steps: StepState[], agents: AgentState[]): ProgressStepItem[] {
@@ -46,9 +56,12 @@ export function ReviewProgressView({
   isStreaming,
   error,
   onCancel,
+  issuesFound,
+  startedAt,
+  contextSnapshot,
 }: ReviewProgressViewProps) {
   const { tokens } = useTheme();
-  const { isWide } = useResponsive();
+  const { isMedium, isWide } = useResponsive();
 
   const progressItems = mapStepsToProgressItems(steps, agents);
 
@@ -58,8 +71,14 @@ export function ReviewProgressView({
       ? `${fileProgress.completed.length} files`
       : null;
 
+  const elapsed = startedAt ? Date.now() - startedAt.getTime() : 0;
+
+  const sideBySide = isWide || isMedium;
+  const progressWidth = isWide ? "50%" : isMedium ? "40%" : "100%";
+  const logWidth = isWide ? "50%" : isMedium ? "60%" : "100%";
+
   const progressPane = (
-    <Box flexDirection="column" flexGrow={1} width={isWide ? "50%" : "100%"}>
+    <Box flexDirection="column" flexGrow={1} width={progressWidth}>
       <SectionHeader bordered>Progress</SectionHeader>
       <Box flexDirection="column" paddingTop={1}>
         <ProgressList steps={progressItems} />
@@ -72,11 +91,26 @@ export function ReviewProgressView({
           </Box>
         ) : null}
       </Box>
+
+      {agents.length > 0 ? (
+        <Box flexDirection="column" marginTop={1}>
+          <SectionHeader variant="muted" bordered>Agents</SectionHeader>
+          <Box paddingTop={1}>
+            <AgentBoard agents={agents} />
+          </Box>
+        </Box>
+      ) : null}
+
+      {contextSnapshot && !isStreaming ? (
+        <Box marginTop={1}>
+          <ContextSnapshotPreview snapshot={contextSnapshot} />
+        </Box>
+      ) : null}
     </Box>
   );
 
   const logPane = (
-    <Box flexDirection="column" flexGrow={1} width={isWide ? "50%" : "100%"}>
+    <Box flexDirection="column" flexGrow={1} width={logWidth}>
       <SectionHeader bordered>Activity Log</SectionHeader>
       <Box paddingTop={1}>
         <ActivityLog entries={logEntries} height={progressItems.length + 8} />
@@ -87,8 +121,8 @@ export function ReviewProgressView({
   return (
     <Box flexDirection="column" borderColor={tokens.border}>
       <Box
-        flexDirection={isWide ? "row" : "column"}
-        gap={isWide ? 2 : 1}
+        flexDirection={sideBySide ? "row" : "column"}
+        gap={sideBySide ? 2 : 1}
       >
         {progressPane}
         {logPane}
@@ -109,6 +143,14 @@ export function ReviewProgressView({
           </Button>
         </Box>
       ) : null}
+      <Box marginTop={1}>
+        <ReviewMetricsFooter
+          filesProcessed={fileProgress.completed.length}
+          issuesFound={issuesFound}
+          elapsed={elapsed}
+          isStreaming={isStreaming}
+        />
+      </Box>
     </Box>
   );
 }
