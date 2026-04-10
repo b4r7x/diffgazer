@@ -17,6 +17,7 @@ export interface StreamReviewParams {
   projectPath?: string;
 }
 
+/** Review pipeline resolved config (lenses + profile). @see keyscope/src/cli/context.ts and diff-ui/packages/cli/src/context.ts for CLI-specific variants. */
 export interface ResolvedConfig {
   activeLenses: LensId[];
   profile: ReturnType<typeof getProfile> | undefined;

@@ -1,4 +1,4 @@
-import { useEffect, type ReactElement } from "react";
+import { useEffect, useRef, type ReactElement } from "react";
 import { Box } from "ink";
 import { useNavigation } from "../../../app/navigation-context.js";
 import { useReviewLifecycle } from "../hooks/use-review-lifecycle.js";
@@ -32,11 +32,14 @@ export function ReviewContainer({
   const { data: contextData } = useReviewContext({ enabled: contextReady });
   const contextSnapshot = contextReady ? contextData ?? null : null;
 
+  const hasStarted = useRef(false);
+
   useEffect(() => {
-    if (mode) {
+    if (mode && !hasStarted.current) {
+      hasStarted.current = true;
       start(mode);
     }
-  }, []);
+  }, [mode, start]);
 
   if (state.loadingMessage) {
     return (

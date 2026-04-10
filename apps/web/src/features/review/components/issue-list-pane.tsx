@@ -1,5 +1,5 @@
 import type { Ref } from "react";
-import { cn } from "@/utils/cn";
+import { cn } from "@diffgazer/core/cn";
 import { IssueListItem } from "@/components/ui/issue";
 import { SeverityFilterGroup, type SeverityFilter } from "./severity-filter-group";
 import { calculateSeverityCounts } from "@diffgazer/schemas/ui";

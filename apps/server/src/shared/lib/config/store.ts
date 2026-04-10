@@ -1,6 +1,6 @@
 import { resolveProjectRoot } from "../paths.js";
 import { type Result, ok, err } from "@diffgazer/core/result";
-import { createError } from "@diffgazer/core/errors";
+import { createError, getErrorMessage } from "@diffgazer/core/errors";
 import type { AIProvider, ProjectInfo, ProviderStatus, SecretsStorage, SettingsConfig, TrustConfig } from "@diffgazer/schemas/config";
 import type { SecretsStorageError, SecretsStorageErrorCode, ConfigState, SecretsState, TrustState } from "./types.js";
 import {
@@ -127,9 +127,7 @@ export function createConfigStore(): ConfigStore {
         removeSecretsFile();
       } catch (error) {
         console.warn(
-          `[diffgazer] Failed to remove secrets file after migration: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
+          `[diffgazer] Failed to remove secrets file after migration: ${getErrorMessage(error)}`,
         );
       }
       return ok(undefined);
@@ -384,21 +382,23 @@ export function createConfigStore(): ConfigStore {
   };
 }
 
-// Default singleton instance
-const defaultStore = createConfigStore();
+// Lazy singleton — avoids filesystem reads at import time
+let _store: ConfigStore | null = null;
+function getStore(): ConfigStore {
+  if (!_store) _store = createConfigStore();
+  return _store;
+}
 
-export const {
-  getSettings,
-  updateSettings,
-  getProviders,
-  getActiveProvider,
-  getProviderApiKey,
-  getProjectInfo,
-  getTrust,
-  listTrustedProjects,
-  saveTrust,
-  removeTrust,
-  saveProviderCredentials,
-  activateProvider,
-  deleteProviderCredentials,
-} = defaultStore;
+export const getSettings: ConfigStore["getSettings"] = (...args) => getStore().getSettings(...args);
+export const updateSettings: ConfigStore["updateSettings"] = (...args) => getStore().updateSettings(...args);
+export const getProviders: ConfigStore["getProviders"] = (...args) => getStore().getProviders(...args);
+export const getActiveProvider: ConfigStore["getActiveProvider"] = (...args) => getStore().getActiveProvider(...args);
+export const getProviderApiKey: ConfigStore["getProviderApiKey"] = (...args) => getStore().getProviderApiKey(...args);
+export const getProjectInfo: ConfigStore["getProjectInfo"] = (...args) => getStore().getProjectInfo(...args);
+export const getTrust: ConfigStore["getTrust"] = (...args) => getStore().getTrust(...args);
+export const listTrustedProjects: ConfigStore["listTrustedProjects"] = (...args) => getStore().listTrustedProjects(...args);
+export const saveTrust: ConfigStore["saveTrust"] = (...args) => getStore().saveTrust(...args);
+export const removeTrust: ConfigStore["removeTrust"] = (...args) => getStore().removeTrust(...args);
+export const saveProviderCredentials: ConfigStore["saveProviderCredentials"] = (...args) => getStore().saveProviderCredentials(...args);
+export const activateProvider: ConfigStore["activateProvider"] = (...args) => getStore().activateProvider(...args);
+export const deleteProviderCredentials: ConfigStore["deleteProviderCredentials"] = (...args) => getStore().deleteProviderCredentials(...args);

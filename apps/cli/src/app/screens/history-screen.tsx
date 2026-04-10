@@ -1,10 +1,8 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
-import type { ReviewMetadata } from "@diffgazer/schemas/review";
-import { useReviews, useReview, matchQueryState } from "@diffgazer/api/hooks";
+import { useReviews, useReview, guardQueryState } from "@diffgazer/api/hooks";
 import { SEVERITY_ORDER } from "@diffgazer/schemas/ui";
-import { getDateKey, getDateLabel, getTimestamp } from "@diffgazer/core/format";
 import { useScope } from "../../hooks/use-scope.js";
 import { usePageFooter } from "../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../hooks/use-back-handler.js";
@@ -18,95 +16,9 @@ import { EmptyState } from "../../components/ui/empty-state.js";
 import { Input } from "../../components/ui/input.js";
 import { TimelineList } from "../../features/history/components/timeline-list.js";
 import { HistoryInsightsPane } from "../../features/history/components/history-insights-pane.js";
+import { matchesSearch, groupByDate } from "../../features/history/utils.js";
 
 type Zone = "search" | "timeline" | "insights";
-
-interface ReviewItem {
-  id: string;
-  displayId: string;
-  branch: string;
-  timestamp: string;
-  summary: string;
-  date: string;
-  issueCount: number;
-  severities: Array<{ severity: string; count: number }>;
-  duration: number;
-  mode: string;
-}
-
-function formatDurationSeconds(durationMs: number | undefined): number {
-  if (!durationMs) return 0;
-  return Math.round(durationMs / 1000);
-}
-
-function getRunSummary(r: ReviewMetadata): string {
-  if (r.issueCount === 0) return "Passed with no issues.";
-  const parts: string[] = [];
-  if (r.blockerCount > 0) parts.push(`${r.blockerCount} blocker`);
-  if (r.highCount > 0) parts.push(`${r.highCount} high`);
-  if (r.mediumCount > 0) parts.push(`${r.mediumCount} medium`);
-  if (r.lowCount > 0) parts.push(`${r.lowCount} low`);
-  if (parts.length === 0) return `Found ${r.issueCount} issue${r.issueCount === 1 ? "" : "s"}.`;
-  return parts.join(", ");
-}
-
-function metadataToSeverities(r: ReviewMetadata): Array<{ severity: string; count: number }> {
-  const severities: Array<{ severity: string; count: number }> = [];
-  if (r.blockerCount > 0) severities.push({ severity: "critical", count: r.blockerCount });
-  if (r.highCount > 0) severities.push({ severity: "high", count: r.highCount });
-  if (r.mediumCount > 0) severities.push({ severity: "medium", count: r.mediumCount });
-  if (r.lowCount > 0) severities.push({ severity: "low", count: r.lowCount });
-  if (r.nitCount > 0) severities.push({ severity: "nit", count: r.nitCount });
-  return severities;
-}
-
-function toReviewItem(r: ReviewMetadata): ReviewItem {
-  return {
-    id: r.id,
-    displayId: `#${r.id.slice(0, 4)}`,
-    branch: r.mode === "staged" ? "Staged" : r.branch ?? "Main",
-    timestamp: getTimestamp(r.createdAt),
-    summary: getRunSummary(r),
-    date: r.createdAt,
-    issueCount: r.issueCount,
-    severities: metadataToSeverities(r),
-    duration: formatDurationSeconds(r.durationMs),
-    mode: r.mode ?? "unstaged",
-  };
-}
-
-function matchesSearch(r: ReviewMetadata, query: string): boolean {
-  if (r.id.toLowerCase().includes(query)) return true;
-  if (`#${r.id.slice(0, 4)}`.toLowerCase().includes(query)) return true;
-  const branchText = r.mode === "staged" ? "staged" : (r.branch?.toLowerCase() ?? "main");
-  if (branchText.includes(query)) return true;
-  if (r.projectPath.toLowerCase().includes(query)) return true;
-  return false;
-}
-
-export interface DateGroup {
-  dateKey: string;
-  label: string;
-  reviews: ReviewItem[];
-}
-
-function groupByDate(reviews: ReviewMetadata[]): DateGroup[] {
-  const groups = new Map<string, { label: string; items: ReviewItem[] }>();
-
-  for (const r of reviews) {
-    const key = getDateKey(r.createdAt);
-    const existing = groups.get(key);
-    if (existing) {
-      existing.items.push(toReviewItem(r));
-    } else {
-      groups.set(key, { label: getDateLabel(r.createdAt), items: [toReviewItem(r)] });
-    }
-  }
-
-  return Array.from(groups.entries())
-    .sort(([a], [b]) => b.localeCompare(a))
-    .map(([dateKey, { label, items }]) => ({ dateKey, label, reviews: items }));
-}
 
 export function HistoryScreen(): ReactElement {
   useScope("history");
@@ -185,7 +97,7 @@ export function HistoryScreen(): ReactElement {
       ? Math.max(paneHeight - 4, 6)
       : paneHeight;
 
-  const guard = matchQueryState(reviewsQuery, {
+  const guard = guardQueryState(reviewsQuery, {
     loading: () => (
       <Panel>
         <Panel.Content>
@@ -210,31 +122,29 @@ export function HistoryScreen(): ReactElement {
         </Panel.Content>
       </Panel>
     ),
-    success: (data) => {
-      if ((data?.reviews ?? []).length === 0) {
-        return (
-          <Panel>
-            <Panel.Content>
-              <Box flexDirection="column" gap={1}>
-                <SectionHeader>Review History</SectionHeader>
-                <Box justifyContent="center" paddingY={2}>
-                  <EmptyState>
-                    <EmptyState.Message>No reviews yet</EmptyState.Message>
-                    <EmptyState.Description>
-                      Run a review to see it here
-                    </EmptyState.Description>
-                  </EmptyState>
-                </Box>
-              </Box>
-            </Panel.Content>
-          </Panel>
-        );
-      }
-      return null;
-    },
   });
 
-  if (guard) return guard as ReactElement;
+  if (guard) return guard;
+
+  if ((reviewsQuery.data?.reviews ?? []).length === 0) {
+    return (
+      <Panel>
+        <Panel.Content>
+          <Box flexDirection="column" gap={1}>
+            <SectionHeader>Review History</SectionHeader>
+            <Box justifyContent="center" paddingY={2}>
+              <EmptyState>
+                <EmptyState.Message>No reviews yet</EmptyState.Message>
+                <EmptyState.Description>
+                  Run a review to see it here
+                </EmptyState.Description>
+              </EmptyState>
+            </Box>
+          </Box>
+        </Panel.Content>
+      </Panel>
+    );
+  }
 
   return (
     <Panel>

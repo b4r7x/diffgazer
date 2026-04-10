@@ -26,11 +26,14 @@ export function ReviewSummaryView({
 }: ReviewSummaryViewProps) {
   const { tokens } = useTheme();
   const { columns } = useTerminalDimensions();
+
+  const buttons = [onContinue, onBack].filter(Boolean);
+  const buttonCount = buttons.length;
   const [buttonIndex, setButtonIndex] = useState(0);
 
   useInput((_input, key) => {
     if (key.leftArrow) setButtonIndex(0);
-    if (key.rightArrow) setButtonIndex(1);
+    if (key.rightArrow) setButtonIndex(Math.min(1, buttonCount - 1));
     if (key.escape && onBack) onBack();
   });
 
@@ -89,7 +92,7 @@ export function ReviewSummaryView({
               </Button>
             ) : null}
             {onBack ? (
-              <Button variant="secondary" isActive={buttonIndex === 1} onPress={onBack}>
+              <Button variant="secondary" isActive={buttonIndex === (onContinue ? 1 : 0)} onPress={onBack}>
                 Back (Esc)
               </Button>
             ) : null}

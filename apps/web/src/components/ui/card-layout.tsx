@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { cn } from "diffui/lib/utils";
+import { cn } from "@diffgazer/core/cn";
 
 export interface CardLayoutProps {
   title?: string;

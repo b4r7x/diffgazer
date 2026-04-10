@@ -2,10 +2,14 @@ import { z } from "zod";
 import {
   createDomainErrorSchema,
 } from "../errors.js";
+import {
+  ReviewSeveritySchema,
+  type LensId,
+  type ReviewProfile,
+  type SeverityFilter,
+} from "./shared.js";
 
-export const REVIEW_SEVERITY = ["blocker", "high", "medium", "low", "nit"] as const;
-export const ReviewSeveritySchema = z.enum(REVIEW_SEVERITY);
-export type ReviewSeverity = z.infer<typeof ReviewSeveritySchema>;
+export { REVIEW_SEVERITY, ReviewSeveritySchema, type ReviewSeverity } from "./shared.js";
 
 export const REVIEW_CATEGORY = [
   "correctness",
@@ -121,6 +125,7 @@ export type ReviewErrorCode = (typeof ReviewErrorCode)[keyof typeof ReviewErrorC
 const REVIEW_SPECIFIC_CODES = Object.values(ReviewErrorCode) as [string, ...string[]];
 
 export const ReviewErrorSchema = createDomainErrorSchema(REVIEW_SPECIFIC_CODES);
+/** @see diffgazer/apps/server/src/shared/lib/review/types.ts ReviewError (lightweight server-internal variant) */
 export type ReviewError = z.infer<typeof ReviewErrorSchema>;
 
 export const ReviewStreamEventSchema = z.discriminatedUnion("type", [
@@ -132,13 +137,8 @@ export const ReviewStreamEventSchema = z.discriminatedUnion("type", [
 ]);
 export type ReviewStreamEvent = z.infer<typeof ReviewStreamEventSchema>;
 
-// SeverityFilter defined here to avoid circular dependency with lens.ts
-export const SeverityFilterSchema = z.object({
-  minSeverity: ReviewSeveritySchema,
-});
-export type SeverityFilter = z.infer<typeof SeverityFilterSchema>;
+export { SeverityFilterSchema, type SeverityFilter } from "./shared.js";
 
-import type { LensId, ReviewProfile } from "./lens.js";
 export interface ReviewOptions {
   profile?: ReviewProfile;
   lenses?: LensId[];

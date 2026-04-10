@@ -1,5 +1,3 @@
-"use client"
-
 import { useHookData } from "../doc-data-context"
 
 export function Notes() {

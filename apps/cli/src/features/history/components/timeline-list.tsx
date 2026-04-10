@@ -4,21 +4,7 @@ import { useTheme } from "../../../theme/theme-context.js";
 import { NavigationList } from "../../../components/ui/navigation-list.js";
 import { EmptyState } from "../../../components/ui/empty-state.js";
 import { RunItem } from "./run-item.js";
-
-export interface DateGroup {
-  dateKey: string;
-  label: string;
-  reviews: Array<{
-    id: string;
-    displayId: string;
-    branch: string;
-    timestamp: string;
-    summary: string;
-    date: string;
-    issueCount: number;
-    severities: Array<{ severity: string; count: number }>;
-  }>;
-}
+import type { DateGroup } from "../types.js";
 
 export interface TimelineListProps {
   dateGroups: DateGroup[];

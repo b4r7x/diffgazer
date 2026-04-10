@@ -82,8 +82,8 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       const response = await send("PUT", path, { body });
       return parse<T>(response);
     },
-    delete: async <T>(path: string): Promise<T> => {
-      const response = await send("DELETE", path);
+    delete: async <T>(path: string, params?: Record<string, string>): Promise<T> => {
+      const response = await send("DELETE", path, { params });
       return parse<T>(response);
     },
     stream: (path: string, options?: StreamOptions) => send("GET", path, options),

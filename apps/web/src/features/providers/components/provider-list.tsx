@@ -1,7 +1,7 @@
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { NavigationList, NavigationListItem, NavigationListTitle, NavigationListBadge, NavigationListSubtitle, NavigationListStatus } from 'diffui/components/navigation-list';
 import { Input } from 'diffui/components/input';
-import { cn } from 'diffui/lib/utils';
+import { cn } from "@diffgazer/core/cn";
 import { getDisplayStatusBadge } from '@diffgazer/core/providers';
 import { PROVIDER_CAPABILITIES } from '@diffgazer/schemas/config';
 import { PROVIDER_FILTER_LABELS, type ProviderFilter } from '@/features/providers/constants';

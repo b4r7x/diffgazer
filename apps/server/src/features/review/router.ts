@@ -91,7 +91,8 @@ const resumeStreamById = async (c: Context): Promise<Response> => {
           getErrorMessage(error),
           ErrorCode.INTERNAL_ERROR,
         );
-      } catch {
+      } catch (e) {
+        console.warn("SSE error write failed:", e);
       }
     }
   });
@@ -139,7 +140,8 @@ reviewRouter.get(
             getErrorMessage(error),
             ErrorCode.INTERNAL_ERROR,
           );
-        } catch {
+        } catch (e) {
+          console.warn("SSE error write failed:", e);
         }
       }
     });

@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { toast } from "diffui/components/toast";
 import type { AIProvider } from "@diffgazer/schemas/config";
+import { getErrorMessage } from "@diffgazer/core/errors";
 import { useProviders } from "./use-providers";
 
 function useSubmitGuard() {
@@ -45,7 +46,7 @@ export function useProviderManagement() {
         setModelDialogOpen(true);
       }
     }).catch((error) => {
-      toast.error("Failed to Save", { message: error instanceof Error ? error.message : "Unknown error" });
+      toast.error("Failed to Save", { message: getErrorMessage(error, "Unknown error") });
     });
   };
 
@@ -55,7 +56,7 @@ export function useProviderManagement() {
       setApiKeyDialogOpen(false);
       toast.success("API Key Removed", { message: "Provider key deleted" });
     }).catch((error) => {
-      toast.error("Failed to Remove", { message: error instanceof Error ? error.message : "Unknown error" });
+      toast.error("Failed to Remove", { message: getErrorMessage(error, "Unknown error") });
     });
   };
 
@@ -73,7 +74,7 @@ export function useProviderManagement() {
       await selectProvider(providerId, model);
       toast.success("Provider Activated", { message: `${providerName} is now active` });
     }).catch((error) => {
-      toast.error("Failed to Activate", { message: error instanceof Error ? error.message : "Unknown error" });
+      toast.error("Failed to Activate", { message: getErrorMessage(error, "Unknown error") });
     });
   };
 
@@ -83,7 +84,7 @@ export function useProviderManagement() {
       setModelDialogOpen(false);
       toast.success("Model Selected", { message: `Selected ${modelId}` });
     }).catch((error) => {
-      toast.error("Failed to Select Model", { message: error instanceof Error ? error.message : "Unknown error" });
+      toast.error("Failed to Select Model", { message: getErrorMessage(error, "Unknown error") });
     });
   };
 

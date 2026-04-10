@@ -9,27 +9,12 @@ import { Badge } from "../../../components/ui/badge.js";
 import { CodeSnippet } from "./code-snippet.js";
 import { DiffView } from "./diff-view.js";
 import { FixPlanChecklist } from "./fix-plan-checklist.js";
+import { severityVariant } from "../utils/severity-variant.js";
 
 export interface IssueDetailsPaneProps {
   issue?: ReviewIssue;
   isActive?: boolean;
   scrollHeight?: number;
-}
-
-function severityVariant(
-  severity: string,
-): "error" | "warning" | "info" | "neutral" {
-  switch (severity) {
-    case "blocker":
-    case "high":
-      return "error";
-    case "medium":
-      return "warning";
-    case "low":
-      return "info";
-    default:
-      return "neutral";
-  }
 }
 
 function DetailsTab({ issue }: { issue: ReviewIssue }) {

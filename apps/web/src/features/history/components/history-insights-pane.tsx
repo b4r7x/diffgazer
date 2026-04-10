@@ -1,4 +1,4 @@
-import { cn } from "@/utils/cn";
+import { cn } from "@diffgazer/core/cn";
 import { ScrollArea } from "diffui/components/scroll-area";
 import { SectionHeader } from "diffui/components/section-header";
 import { SeverityBreakdown } from "@/components/ui/severity/severity-breakdown";

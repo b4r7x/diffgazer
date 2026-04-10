@@ -46,7 +46,7 @@ export function getTimestamp(dateStr: string): string {
 }
 
 export function formatDuration(durationMs: number | null | undefined): string {
-  if (!durationMs) return "--";
+  if (durationMs == null) return "--";
   const seconds = Math.floor(durationMs / 1000);
   if (seconds === 0) return `${durationMs}ms`;
   if (seconds < 60) return `${seconds}.${Math.floor((durationMs % 1000) / 100)}s`;

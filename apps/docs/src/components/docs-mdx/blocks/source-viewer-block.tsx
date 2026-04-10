@@ -1,5 +1,3 @@
-"use client"
-
 import { useComponentData, useHookData } from "../doc-data-context"
 import { SourceViewer } from "@/components/source-viewer"
 import { SectionHeader } from "@/components/ui/section-header/section-header"
@@ -7,7 +5,7 @@ import { CopyButton } from "@/components/copy-button"
 import { CodeBlock, CodeBlockContent, CodeBlockLine } from "@/components/ui/code-block"
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"
 import { resolveCrossDepFiles } from "@/lib/cross-deps-data"
-import { getDocsLibraryConfig } from "@/lib/docs-library"
+import { getDocsLibraryConfig, type DocsLibraryId } from "@/lib/docs-library"
 import { useCurrentLibrary } from "./use-current-library"
 
 export function SourceViewerBlock() {
@@ -20,7 +18,7 @@ export function SourceViewerBlock() {
   return null
 }
 
-function ComponentSourceViewer({ data, library }: { data: NonNullable<ReturnType<typeof useComponentData>>; library: string }) {
+function ComponentSourceViewer({ data, library }: { data: NonNullable<ReturnType<typeof useComponentData>>; library: DocsLibraryId }) {
   const cliName = getDocsLibraryConfig(library).logoText
   const installCommand = `npx ${cliName} add ${data.name}`
   const sourceFiles = Object.entries(data.source).map(([path, file]) => ({

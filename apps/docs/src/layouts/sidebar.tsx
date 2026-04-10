@@ -17,7 +17,7 @@ import {
   SidebarItem,
 } from "@/components/ui/sidebar";
 import { ScrollArea } from "@/components/ui/scroll-area/scroll-area";
-import { cn } from "@/lib/utils";
+import { cn } from "@diffgazer/core/cn";
 import { DOCS_LIBRARY_IDS, type DocsLibraryId } from "@/lib/docs-library";
 import type { PageTree, PageTreeNode } from "@/lib/docs-tree";
 

@@ -1,4 +1,4 @@
-import { cn } from "@/utils/cn";
+import { cn } from "@diffgazer/core/cn";
 import type { OnboardingStep } from "../types";
 
 const STEP_LABELS: Record<OnboardingStep, string> = {

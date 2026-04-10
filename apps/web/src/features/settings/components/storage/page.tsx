@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { SecretsStorage } from "@diffgazer/schemas/config";
 import type { Shortcut } from "@diffgazer/schemas/ui";
+import { getErrorMessage } from "@diffgazer/core/errors";
 import { Button } from "diffui/components/button";
 import { Callout } from "diffui/components/callout";
 import { CardLayout } from "@/components/ui/card-layout";
@@ -10,7 +11,7 @@ import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/api/ho
 import { useKey, useScope } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useFooterNavigation } from "@/hooks/use-footer-navigation.js";
-import { cn } from "@/utils/cn";
+import { cn } from "@diffgazer/core/cn";
 
 export function SettingsStoragePage() {
   const navigate = useNavigate();
@@ -39,7 +40,7 @@ export function SettingsStoragePage() {
       await saveSettings.mutateAsync({ secretsStorage: effectiveStorage });
       navigate({ to: "/settings" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save settings");
+      setError(getErrorMessage(err, "Failed to save settings"));
     }
   };
 

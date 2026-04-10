@@ -1,11 +1,12 @@
 import { Box, Text } from "ink";
 import { useTheme } from "../../theme/theme-context.js";
 
-export type ProviderStatus = "active" | "idle";
+/** @see diffgazer/apps/web/src/components/layout/header.tsx ProviderDisplayStatus (identical web variant) */
+export type ProviderDisplayStatus = "active" | "idle";
 
 export interface HeaderProps {
   providerName: string;
-  providerStatus: ProviderStatus;
+  providerStatus: ProviderDisplayStatus;
   onBack?: () => void;
 }
 

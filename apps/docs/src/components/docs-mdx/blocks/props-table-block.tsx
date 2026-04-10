@@ -1,5 +1,3 @@
-"use client"
-
 import { useComponentData } from "../doc-data-context"
 import { PropsTable } from "@/components/props-table"
 

@@ -4,8 +4,8 @@ import { Badge } from "diffui/components/badge";
 import { Callout, CalloutIcon, CalloutTitle, CalloutContent } from "diffui/components/callout";
 import { Button } from "diffui/components/button";
 import { CheckboxGroup, CheckboxItem } from "diffui/components/checkbox";
-import { useTrustFormKeyboard } from "@/features/settings/hooks/use-trust-form-keyboard";
-import { cn } from "@/utils/cn";
+import { useTrustFormKeyboard } from "@/hooks/use-trust-form-keyboard";
+import { cn } from "@diffgazer/core/cn";
 
 export interface TrustPermissionsContentProps {
   directory: string;

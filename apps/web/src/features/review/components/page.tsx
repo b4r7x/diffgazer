@@ -1,4 +1,4 @@
-import { useReducer, useEffect } from "react";
+import { useReducer, useEffect, useRef } from "react";
 import {
   useSearch,
   useParams,
@@ -95,7 +95,11 @@ export function ReviewPage() {
     dispatch({ type: "SHOW_SUMMARY", reviewData: data });
   };
 
+  // Mount-only: loads saved review or starts fresh based on initial route params
+  const didInit = useRef(false);
   useEffect(() => {
+    if (didInit.current) return;
+    didInit.current = true;
     if (state.phase !== "loading-saved" || !params.reviewId) return;
     void loadSavedOrFresh(params.reviewId);
   }, []);

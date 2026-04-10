@@ -3,6 +3,7 @@ import type { SSEWriter } from "../../shared/lib/http/types.js";
 import type { FullReviewStreamEvent } from "@diffgazer/schemas/events";
 import type { ActiveSession } from "./sessions.js";
 import { ReviewErrorCode } from "@diffgazer/schemas/review";
+import { ok } from "@diffgazer/core/result";
 
 // Mock sessions module (boundary: in-memory session store)
 vi.mock("./sessions.js", () => ({
@@ -309,14 +310,14 @@ describe("streamReviewToSSE", () => {
     vi.mocked(getActiveSessionForProject).mockReturnValue(undefined);
 
     const parsedDiff = { files: [], totalStats: { filesChanged: 0, additions: 0, deletions: 0, totalSizeBytes: 0 } };
-    vi.mocked(resolveGitDiff).mockResolvedValue(parsedDiff);
+    vi.mocked(resolveGitDiff).mockResolvedValue(ok(parsedDiff));
     vi.mocked(resolveReviewConfig).mockResolvedValue({
       activeLenses: ["correctness"],
       profile: undefined,
       projectContext: "",
     });
-    vi.mocked(executeReview).mockResolvedValue({ issues: [], summary: "Clean" });
-    vi.mocked(finalizeReview).mockResolvedValue({
+    vi.mocked(executeReview).mockResolvedValue(ok({ issues: [], summary: "Clean" }));
+    vi.mocked(finalizeReview).mockResolvedValue(ok({
       issues: [],
       executiveSummary: "Clean",
       report: "",
@@ -327,7 +328,7 @@ describe("streamReviewToSSE", () => {
       headCommit: "abc123",
       statusHash: "hash123",
       diff: parsedDiff,
-    } as any);
+    } as any));
 
     await streamReviewToSSE(mockAIClient, { mode: "unstaged" }, stream);
 

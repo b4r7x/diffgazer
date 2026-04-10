@@ -1,17 +1,12 @@
 import { z } from "zod";
-import { ReviewIssueSchema, TraceRefSchema, SeverityFilterSchema } from "./issues.js";
-export { SeverityFilterSchema, type SeverityFilter } from "./issues.js";
+import { ReviewIssueSchema, TraceRefSchema } from "./issues.js";
+import { LensIdSchema } from "./shared.js";
 
-export const LENS_IDS = [
-  "correctness",
-  "security",
-  "performance",
-  "simplicity",
-  "tests",
-] as const;
-
-export const LensIdSchema = z.enum(LENS_IDS);
-export type LensId = z.infer<typeof LensIdSchema>;
+export {
+  LENS_IDS, LensIdSchema, type LensId,
+  PROFILE_IDS, ProfileIdSchema, type ProfileId,
+  ReviewProfileSchema, type ReviewProfile,
+} from "./shared.js";
 
 export const SeverityRubricSchema = z.object({
   blocker: z.string(),
@@ -30,19 +25,6 @@ export const LensSchema = z.object({
   severityRubric: SeverityRubricSchema,
 });
 export type Lens = z.infer<typeof LensSchema>;
-
-export const PROFILE_IDS = ["quick", "strict", "perf", "security"] as const;
-export const ProfileIdSchema = z.enum(PROFILE_IDS);
-export type ProfileId = z.infer<typeof ProfileIdSchema>;
-
-export const ReviewProfileSchema = z.object({
-  id: ProfileIdSchema,
-  name: z.string(),
-  description: z.string(),
-  lenses: z.array(LensIdSchema),
-  filter: SeverityFilterSchema.optional(),
-});
-export type ReviewProfile = z.infer<typeof ReviewProfileSchema>;
 
 export const DrilldownResultSchema = z.object({
   issueId: z.string(),

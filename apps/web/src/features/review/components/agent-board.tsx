@@ -1,4 +1,4 @@
-import { cn } from '@/utils/cn';
+import { cn } from '@diffgazer/core/cn';
 import { SectionHeader } from 'diffui/components/section-header';
 import { Badge } from 'diffui/components/badge';
 import type { AgentState } from '@diffgazer/schemas/events';

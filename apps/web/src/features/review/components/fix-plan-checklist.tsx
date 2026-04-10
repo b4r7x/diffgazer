@@ -1,4 +1,4 @@
-import { cn } from "@/utils/cn";
+import { cn } from "@diffgazer/core/cn";
 import type { FixPlanStep } from "@diffgazer/schemas/review";
 
 export interface FixPlanChecklistProps {

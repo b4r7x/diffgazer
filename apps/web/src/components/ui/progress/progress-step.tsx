@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@/utils/cn';
+import { cn } from '@diffgazer/core/cn';
 import { Badge } from "diffui/components/badge";
 import { ProgressSubstep } from './progress-substep';
 import type { ProgressStatus, ProgressSubstepData } from '@diffgazer/schemas/ui';

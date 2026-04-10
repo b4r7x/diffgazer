@@ -1,5 +1,5 @@
 import { formatTimestamp } from '@diffgazer/core/format';
-import { cn } from '@/utils/cn';
+import { cn } from '@diffgazer/core/cn';
 import type { LogTagType } from '@diffgazer/schemas/ui';
 import { Badge } from 'diffui/components/badge';
 

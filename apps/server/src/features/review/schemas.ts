@@ -3,6 +3,7 @@ import {
   LensIdSchema,
   ProfileIdSchema,
   ReviewModeSchema,
+  DrilldownResultSchema,
 } from "@diffgazer/schemas/review";
 
 export const ReviewIdParamSchema = z.object({
@@ -48,14 +49,18 @@ export const ActiveSessionQuerySchema = z.object({
   mode: ReviewModeSchema.optional(),
 });
 
-export const DrilldownResponseSchema = z.object({
-  detailedAnalysis: z.string(),
-  rootCause: z.string(),
-  impact: z.string(),
-  suggestedFix: z.string(),
-  patch: z.string().nullable(),
-  relatedIssues: z.array(z.string()),
-  references: z.array(z.string()),
+/**
+ * AI response shape for drilldown — derived from the shared DrilldownResultSchema
+ * by picking only the fields the AI generates (excludes issueId, issue, trace).
+ */
+export const DrilldownResponseSchema = DrilldownResultSchema.pick({
+  detailedAnalysis: true,
+  rootCause: true,
+  impact: true,
+  suggestedFix: true,
+  patch: true,
+  relatedIssues: true,
+  references: true,
 });
 
-export type DrilldownResponse = z.infer<typeof DrilldownResponseSchema>;
+export type DrilldownAIResponse = z.infer<typeof DrilldownResponseSchema>;

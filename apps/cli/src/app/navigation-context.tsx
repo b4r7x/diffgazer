@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, type ReactNode } from "react";
 import type { Route, ScreenName } from "./routes.js";
-import { getBackTarget } from "../lib/back-navigation.js";
+import { getBackTarget } from "./back-navigation.js";
 
 const MAX_STACK_SIZE = 20;
 

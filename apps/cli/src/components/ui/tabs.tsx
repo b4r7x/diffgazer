@@ -1,7 +1,8 @@
-import { createContext, useState, useContext, Children, isValidElement } from "react";
-import type { ReactNode } from "react";
+import { createContext, useState, useContext } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../../theme/theme-context.js";
+import { clampIndex, collectChildItems } from "../../lib/list-navigation.js";
 
 // --- Types ---
 
@@ -54,17 +55,10 @@ interface CollectedTrigger {
   disabled: boolean;
 }
 
-function collectTriggers(children: ReactNode): CollectedTrigger[] {
-  const triggers: CollectedTrigger[] = [];
-  Children.forEach(children, (child) => {
-    if (isValidElement<TabsTriggerProps>(child) && child.type === TabsTrigger) {
-      triggers.push({
-        value: child.props.value,
-        disabled: child.props.disabled ?? false,
-      });
-    }
-  });
-  return triggers;
+function extractTabsTrigger(element: ReactElement): CollectedTrigger | null {
+  if (element.type !== TabsTrigger) return null;
+  const props = element.props as TabsTriggerProps;
+  return { value: props.value, disabled: props.disabled ?? false };
 }
 
 // --- Components ---
@@ -91,7 +85,7 @@ function TabsRoot({ value, defaultValue, onValueChange, children }: TabsProps) {
 function TabsList({ loop = true, isActive = true, children }: TabsListProps) {
   const ctx = useTabsContext();
   const { tokens } = useTheme();
-  const triggers = collectTriggers(children);
+  const triggers = collectChildItems(children, extractTabsTrigger);
   const selectableTriggers = triggers.filter((t) => !t.disabled);
 
   useInput(
@@ -103,13 +97,7 @@ function TabsList({ loop = true, isActive = true, children }: TabsListProps) {
         (t) => t.value === ctx.activeValue,
       );
       const direction = key.rightArrow ? 1 : -1;
-      let nextIdx = currentIdx + direction;
-
-      if (loop) {
-        nextIdx = (nextIdx + selectableTriggers.length) % selectableTriggers.length;
-      } else {
-        nextIdx = Math.max(0, Math.min(nextIdx, selectableTriggers.length - 1));
-      }
+      const nextIdx = clampIndex(currentIdx, direction, selectableTriggers.length, loop);
 
       const nextTrigger = selectableTriggers[nextIdx];
       if (nextTrigger) {
@@ -141,7 +129,7 @@ function TabsTrigger({ value, disabled = false, children }: TabsTriggerProps) {
       backgroundColor={isActiveTab ? tokens.accent : undefined}
       bold={isActiveTab}
     >
-      {isActiveTab ? ` ${children} ` : ` ${children} `}
+      {` ${children} `}
     </Text>
   );
 }

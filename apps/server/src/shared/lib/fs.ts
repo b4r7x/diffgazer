@@ -1,12 +1,13 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { randomUUID } from "node:crypto";
+import { getErrorMessage } from "@diffgazer/core/errors";
 
 const DEFAULT_DIR_MODE = 0o700;
 const DEFAULT_FILE_MODE = 0o600;
 
-export const isNodeError = (error: unknown): error is NodeJS.ErrnoException =>
-  error instanceof Error && "code" in error;
+export const isNodeError = (error: unknown, code?: string): error is NodeJS.ErrnoException =>
+  error instanceof Error && "code" in error && (code === undefined || (error as NodeJS.ErrnoException).code === code);
 
 const ensureDirSync = (dirPath: string, mode: number = DEFAULT_DIR_MODE): void => {
   fs.mkdirSync(dirPath, { recursive: true, mode });
@@ -17,8 +18,8 @@ export const readJsonFileSync = <T>(filePath: string): T | null => {
     const content = fs.readFileSync(filePath, "utf-8");
     return JSON.parse(content) as T;
   } catch (error) {
-    if (isNodeError(error) && error.code === "ENOENT") return null;
-    console.warn(`[fs] Failed to parse JSON from ${filePath}:`, error instanceof Error ? error.message : error);
+    if (isNodeError(error, "ENOENT")) return null;
+    console.warn(`[fs] Failed to parse JSON from ${filePath}:`, getErrorMessage(error));
     return null;
   }
 };
@@ -43,7 +44,7 @@ export const removeFileSync = (filePath: string): boolean => {
     fs.unlinkSync(filePath);
     return true;
   } catch (error) {
-    if (isNodeError(error) && error.code === "ENOENT") return false;
+    if (isNodeError(error, "ENOENT")) return false;
     throw error;
   }
 };
@@ -53,7 +54,7 @@ export const readJsonFile = async <T>(filePath: string): Promise<T | null> => {
     const content = await fs.promises.readFile(filePath, "utf-8");
     return JSON.parse(content) as T;
   } catch (error) {
-    if (isNodeError(error) && error.code === "ENOENT") return null;
+    if (isNodeError(error, "ENOENT")) return null;
     return null;
   }
 };

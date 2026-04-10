@@ -15,6 +15,7 @@ export interface AgentRunContext {
   parentSpanId: string;
 }
 
+/** @see @diffgazer/schemas/review ReviewError (Zod-validated full variant with domain error codes) */
 export type ReviewError = { code: string; message: string };
 
 export type OrchestrationOutcome = {

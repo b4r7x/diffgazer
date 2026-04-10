@@ -126,14 +126,17 @@ export const ProviderInfoSchema = z.object({
 });
 export type ProviderInfo = z.infer<typeof ProviderInfoSchema>;
 
-export type DisplayStatus = "active" | "configured" | "needs-key";
+const DISPLAY_STATUSES = ["active", "configured", "needs-key"] as const;
+export const DisplayStatusSchema = z.enum(DISPLAY_STATUSES);
+export type DisplayStatus = z.infer<typeof DisplayStatusSchema>;
 
-export interface ProviderWithStatus extends ProviderInfo {
-  hasApiKey: boolean;
-  isActive: boolean;
-  model?: string;
-  displayStatus: DisplayStatus;
-}
+export const ProviderWithStatusSchema = ProviderInfoSchema.extend({
+  hasApiKey: z.boolean(),
+  isActive: z.boolean(),
+  model: z.string().optional(),
+  displayStatus: DisplayStatusSchema,
+});
+export type ProviderWithStatus = z.infer<typeof ProviderWithStatusSchema>;
 
 export const AVAILABLE_PROVIDERS: ProviderInfo[] = [
   {
@@ -239,6 +242,7 @@ export const ProvidersStatusResponseSchema = z.object({
 });
 export type ProvidersStatusResponse = z.infer<typeof ProvidersStatusResponseSchema>;
 
+/** Server-side project info with trust config. @see diff-ui/packages/cli/src/utils/detect.ts for the CLI detection variant. */
 export const ProjectInfoSchema = z.object({
   path: z.string(),
   projectId: z.string(),
@@ -246,10 +250,11 @@ export const ProjectInfoSchema = z.object({
 });
 export type ProjectInfo = z.infer<typeof ProjectInfoSchema>;
 
-export interface ActivateProviderResponse {
-  provider: AIProvider;
-  model?: string;
-}
+export const ActivateProviderResponseSchema = z.object({
+  provider: AIProviderSchema,
+  model: z.string().optional(),
+});
+export type ActivateProviderResponse = z.infer<typeof ActivateProviderResponseSchema>;
 
 export const OPENROUTER_PROVIDER_ID: AIProvider = "openrouter";
 

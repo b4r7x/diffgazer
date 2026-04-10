@@ -1,4 +1,4 @@
-import { cn } from "@/utils/cn";
+import { cn } from "@diffgazer/core/cn";
 import { Badge } from "diffui/components/badge";
 import type { Run } from "@/features/history/types";
 

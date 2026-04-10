@@ -1,5 +1,5 @@
 import { Badge } from "diffui/components/badge";
-import { cn } from "diffui/lib/utils";
+import { cn } from "@diffgazer/core/cn";
 import type { ModelInfo } from "@diffgazer/schemas/config";
 
 interface ModelListItemProps {

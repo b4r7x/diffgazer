@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { cn } from '@/utils/cn';
+import { cn } from '@diffgazer/core/cn';
 import { LogEntry } from './log-entry';
 import { ScrollArea } from 'diffui/components/scroll-area';
 import type { LogEntryData as BaseLogEntryData } from '@diffgazer/schemas/ui';

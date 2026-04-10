@@ -1,5 +1,5 @@
 import { type Ref } from "react";
-import { cn } from "@/utils/cn";
+import { cn } from "@diffgazer/core/cn";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "diffui/components/tabs";
 import { SectionHeader } from "diffui/components/section-header";
 import { EmptyState } from "diffui/components/empty-state";

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { TrustCapabilities } from "@diffgazer/schemas/config";
+import { getErrorMessage } from "@diffgazer/core/errors";
 import { CardLayout } from "@/components/ui/card-layout";
 import { toast } from "diffui/components/toast";
 import { Button } from "diffui/components/button";
@@ -36,7 +37,7 @@ export function TrustPanel({
         trustedAt: new Date().toISOString(),
       });
     } catch (error) {
-      toast.error("Failed to save trust settings", { message: error instanceof Error ? error.message : "Unknown error" });
+      toast.error("Failed to save trust settings", { message: getErrorMessage(error, "Unknown error") });
     }
   }
 

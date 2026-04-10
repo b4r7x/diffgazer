@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { TrustCapabilities } from "@diffgazer/schemas/config";
 import type { Shortcut } from "@diffgazer/schemas/ui";
+import { getErrorMessage } from "@diffgazer/core/errors";
 import { useKey } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { Panel, PanelHeader, PanelContent } from "diffui/components/panel";
@@ -55,7 +56,7 @@ export function TrustPermissionsPage() {
       toast.success("Saved", { message: "Trust permissions updated" });
       navigate({ to: "/settings" });
     } catch (error) {
-      toast.error("Error", { message: error instanceof Error ? error.message : "Failed to save trust settings" });
+      toast.error("Error", { message: getErrorMessage(error, "Failed to save trust settings") });
     }
   }
 
@@ -65,7 +66,7 @@ export function TrustPermissionsPage() {
       await deleteTrust.mutateAsync(projectId);
       toast.success("Revoked", { message: "Trust has been revoked for this directory" });
     } catch (error) {
-      toast.error("Error", { message: error instanceof Error ? error.message : "Failed to revoke trust" });
+      toast.error("Error", { message: getErrorMessage(error, "Failed to revoke trust") });
     }
   }
 

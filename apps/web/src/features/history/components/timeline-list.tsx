@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { cn } from "@/utils/cn";
+import { cn } from "@diffgazer/core/cn";
 import { useNavigation } from "keyscope";
 import type { TimelineItem } from "@diffgazer/schemas/ui";
 

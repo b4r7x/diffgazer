@@ -1,5 +1,3 @@
-"use client"
-
 import { createContext, useContext, type ReactNode } from "react"
 import type { ComponentData } from "@/types/docs-data"
 import type { CodeBlockLineProps } from "@/components/ui/code-block"

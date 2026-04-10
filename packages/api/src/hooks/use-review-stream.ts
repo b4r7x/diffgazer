@@ -7,7 +7,7 @@ import {
   type ReviewEvent,
   type StreamReviewError,
 } from "@diffgazer/core/review";
-import { type Result, ok } from "@diffgazer/core/result";
+import { type Result, ok, err } from "@diffgazer/core/result";
 import { ReviewErrorCode, type ReviewMode, type LensId } from "@diffgazer/schemas/review";
 import { useApi } from "./context.js";
 
@@ -145,7 +145,7 @@ export function useReviewStream() {
       return result;
     } catch (e) {
       handleStreamError(e);
-      return { ok: false, error: { code: "STREAM_ERROR" as const, message: e instanceof Error ? e.message : "Failed to resume" } };
+      return err({ code: "STREAM_ERROR" as const, message: e instanceof Error ? e.message : "Failed to resume" });
     } finally {
       abortControllerRef.current = null;
     }

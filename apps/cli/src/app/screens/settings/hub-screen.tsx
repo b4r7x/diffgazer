@@ -4,7 +4,7 @@ import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
-import { useInit, useSettings, matchQueryState } from "@diffgazer/api/hooks";
+import { useInit, useSettings, guardQueryState } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Spinner } from "../../../components/ui/spinner.js";
@@ -74,7 +74,7 @@ export function SettingsHubScreen(): ReactElement {
     }
   };
 
-  const guard = matchQueryState(initQuery, {
+  const guard = guardQueryState(initQuery, {
     loading: () => (
       <Box justifyContent="center" alignItems="center" flexGrow={1}>
         <Box width={Math.min(columns, 70)}>
@@ -103,25 +103,25 @@ export function SettingsHubScreen(): ReactElement {
         </Box>
       </Box>
     ),
-    success: () => {
-      if (settingsQuery.isLoading) return (
-        <Box justifyContent="center" alignItems="center" flexGrow={1}>
-          <Box width={Math.min(columns, 70)}>
-            <Panel>
-              <Panel.Content>
-                <Box flexDirection="column" gap={1}>
-                  <SectionHeader>Settings</SectionHeader>
-                  <Spinner label="Loading settings..." />
-                </Box>
-              </Panel.Content>
-            </Panel>
-          </Box>
-        </Box>
-      );
-      return null;
-    },
   });
-  if (guard) return guard as ReactElement;
+  if (guard) return guard;
+
+  if (settingsQuery.isLoading) {
+    return (
+      <Box justifyContent="center" alignItems="center" flexGrow={1}>
+        <Box width={Math.min(columns, 70)}>
+          <Panel>
+            <Panel.Content>
+              <Box flexDirection="column" gap={1}>
+                <SectionHeader>Settings</SectionHeader>
+                <Spinner label="Loading settings..." />
+              </Box>
+            </Panel.Content>
+          </Panel>
+        </Box>
+      </Box>
+    );
+  }
 
   const descriptions = buildDescriptions(initQuery.data, settingsQuery.data);
 

@@ -81,10 +81,19 @@ function createLanguageModel(config: AIClientConfig): Result<LanguageModel, AIEr
     }
     case "openrouter": {
       const openrouter = createOpenRouter({ apiKey, compatibility: "strict" });
-      // Double assertion: @openrouter/ai-sdk-provider returns a type incompatible
-      // with Vercel AI SDK's LanguageModel due to SDK version mismatch. Functionally
-      // compatible at runtime — the provider implements the same interface.
-      return ok(openrouter.chat(modelId as Parameters<typeof openrouter.chat>[0]) as unknown as LanguageModel);
+      // OpenRouter's AI SDK provider implements the same doGenerate/doStream interface
+      // as Vercel AI SDK's LanguageModel, but exports an incompatible type due to SDK
+      // version drift between @openrouter/ai-sdk-provider and the `ai` package. The
+      // double assertion bridges this type-level gap. Runtime compatibility is validated
+      // below by checking for required LanguageModel methods.
+      const model = openrouter.chat(modelId as Parameters<typeof openrouter.chat>[0]) as unknown as LanguageModel;
+      if (typeof (model as Record<string, unknown>).doGenerate !== "function" ||
+          typeof (model as Record<string, unknown>).doStream !== "function") {
+        return err(
+          createError<AIErrorCode>("MODEL_ERROR", `OpenRouter model "${modelId}" does not implement LanguageModel interface`)
+        );
+      }
+      return ok(model);
     }
     default:
       return err(

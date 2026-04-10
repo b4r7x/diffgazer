@@ -4,11 +4,8 @@ import { type Result, ok, err } from "@diffgazer/core/result";
 import { createError, getErrorMessage } from "@diffgazer/core/errors";
 import { safeParseJson } from "@diffgazer/core/json";
 import { UuidSchema } from "@diffgazer/schemas/errors";
-import { atomicWriteFile as atomicWrite } from "../fs.js";
+import { atomicWriteFile as atomicWrite, isNodeError } from "../fs.js";
 import type { StoreErrorCode, StoreError, CollectionConfig, Collection } from "./types.js";
-
-const isNodeError = (error: unknown, code: string): error is NodeJS.ErrnoException =>
-  error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === code;
 
 const isValidUuid = (id: string): boolean => UuidSchema.safeParse(id).success;
 

@@ -1,8 +1,8 @@
 import { useRouter, useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Spinner } from "@/components/ui/spinner/spinner";
-import { cn } from "@/lib/utils";
-import type { DocsLibraryId } from "@/lib/docs-library";
+import { cn } from "@diffgazer/core/cn";
+import { isDocsPath, type DocsLibraryId } from "@/lib/docs-library";
 import type { PageTree } from "@/lib/docs-tree";
 import { DocsSidebar } from "./sidebar";
 
@@ -10,11 +10,6 @@ interface DocsContentLayoutProps {
 	tree: PageTree;
 	library: DocsLibraryId;
 	children: ReactNode;
-}
-
-function isDocsPath(pathname?: string | null): boolean {
-	if (!pathname) return false;
-	return /^\/[^/]+\/docs(?:\/|$)/.test(pathname);
 }
 
 function RegionReloadOverlay({

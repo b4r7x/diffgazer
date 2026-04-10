@@ -1,8 +1,9 @@
-import { createContext, Fragment, useState, useContext, Children, isValidElement } from "react";
-import type { ReactNode } from "react";
+import { createContext, useState, useContext } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../../theme/theme-context.js";
 import type { CliColorTokens } from "../../theme/palettes.js";
+import { clampIndex, collectChildItems } from "../../lib/list-navigation.js";
 
 // --- Types ---
 
@@ -50,23 +51,10 @@ interface CollectedItem {
   disabled: boolean;
 }
 
-function collectItems(children: ReactNode): CollectedItem[] {
-  const items: CollectedItem[] = [];
-  Children.forEach(children, (child) => {
-    if (!isValidElement(child)) return;
-    if (child.type === Fragment) {
-      items.push(...collectItems((child.props as { children: ReactNode }).children));
-      return;
-    }
-    if (child.type === CheckboxItem) {
-      const props = child.props as CheckboxItemProps;
-      items.push({
-        value: props.value,
-        disabled: props.disabled ?? false,
-      });
-    }
-  });
-  return items;
+function extractCheckboxItem(element: ReactElement): CollectedItem | null {
+  if (element.type !== CheckboxItem) return null;
+  const props = element.props as CheckboxItemProps;
+  return { value: props.value, disabled: props.disabled ?? false };
 }
 
 // --- Components ---
@@ -137,7 +125,7 @@ function CheckboxGroupRoot<T extends string = string>({
   children,
 }: CheckboxGroupProps<T>) {
   const { tokens } = useTheme();
-  const items = collectItems(children);
+  const items = collectChildItems(children, extractCheckboxItem);
   const selectableItems = items.filter((item) => !item.disabled && !disabled);
 
   const [internalValue, setInternalValue] = useState<string[]>(defaultValue ?? []);
@@ -149,14 +137,7 @@ function CheckboxGroupRoot<T extends string = string>({
   function moveHighlight(direction: 1 | -1) {
     if (selectableItems.length === 0) return;
 
-    let nextIdx = highlightIndex + direction;
-
-    if (wrap) {
-      nextIdx = (nextIdx + selectableItems.length) % selectableItems.length;
-    } else {
-      nextIdx = Math.max(0, Math.min(nextIdx, selectableItems.length - 1));
-    }
-
+    const nextIdx = clampIndex(highlightIndex, direction, selectableItems.length, wrap);
     setHighlightIndex(nextIdx);
     const nextItem = selectableItems[nextIdx];
     if (nextItem) {

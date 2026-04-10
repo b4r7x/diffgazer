@@ -1,10 +1,8 @@
-import { Link, Outlet, createFileRoute, redirect } from "@tanstack/react-router"
+import { Outlet, createFileRoute, redirect } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { Header } from "@/layouts/header"
 import { Footer } from "@/layouts/footer"
-import { DocsContentLayout } from "@/layouts/docs-content-layout"
-import { NotFoundState } from "@/components/not-found-state"
-import { Button } from "@/components/ui/button/button"
+import { DocsNotFoundBlock } from "@/components/docs-not-found"
 import {
   getDocsLibraryConfig,
   isDocsLibraryId,
@@ -18,6 +16,7 @@ const docsShellLoader = createServerFn({ method: "GET" })
   .inputValidator((input: { library: DocsLibraryId }) => input)
   .handler(async ({ data }) => {
     const { source } = await import("@/lib/source")
+    // fumadocs-core PageTree type differs from local definition at the boundary
     const pageTree = mapPageTreeForLibrary(source.pageTree as unknown as PageTree, data.library)
 
     return {
@@ -64,28 +63,5 @@ function DocsShell() {
 
 function DocsNotFoundPage() {
   const { pageTree, library } = Route.useLoaderData()
-  const { defaultRouteSlugs } = getDocsLibraryConfig(library)
-
-  return (
-    <DocsContentLayout tree={pageTree} library={library}>
-      <NotFoundState
-        variant="docs"
-        title="Documentation page not found"
-        description="The page you requested does not exist or was moved."
-        primaryAction={(
-          <Link
-            to="/$lib/docs/$"
-            params={{ lib: library, _splat: defaultRouteSlugs.join("/") }}
-          >
-            <Button variant="primary">Go to docs home</Button>
-          </Link>
-        )}
-        secondaryAction={(
-          <Link to="/">
-            <Button variant="ghost">Go home</Button>
-          </Link>
-        )}
-      />
-    </DocsContentLayout>
-  )
+  return <DocsNotFoundBlock tree={pageTree} library={library} />
 }

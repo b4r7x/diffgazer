@@ -12,13 +12,14 @@ import {
 } from "@/components/ui/select"
 import { Breadcrumbs } from "@/components/breadcrumbs"
 import { useSearchOpen } from "@/features/search/search-context"
-import { cn } from "@/lib/utils"
+import { cn } from "@diffgazer/core/cn"
 import {
   DOCS_LIBRARY_IDS,
   docsPath,
   getDocsLibraryConfig,
   getRouteSlugsFromPathname,
   isDocsLibraryId,
+  isDocsPath,
   routeSlugsFromSourcePath,
   sourceSlugsForLibrary,
   type DocsLibraryId,
@@ -45,11 +46,6 @@ const resolveLibrarySwitchPath = createServerFn({ method: "GET" })
 
 interface HeaderProps {
   library: DocsLibraryId
-}
-
-function isDocsPath(pathname?: string | null): boolean {
-  if (!pathname) return false
-  return /^\/[^/]+\/docs(?:\/|$)/.test(pathname)
 }
 
 export function Header({ library }: HeaderProps) {

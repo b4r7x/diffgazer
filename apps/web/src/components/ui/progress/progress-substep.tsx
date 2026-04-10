@@ -1,5 +1,5 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/utils/cn";
+import { cn } from "@diffgazer/core/cn";
 import { Badge } from "diffui/components/badge";
 import type { ProgressSubstepData } from "@diffgazer/schemas/ui";
 

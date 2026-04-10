@@ -1,5 +1,5 @@
 import { Button } from "diffui/components/button";
-import { cn } from "diffui/lib/utils";
+import { cn } from "@diffgazer/core/cn";
 
 interface Hint {
   key: string;

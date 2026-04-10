@@ -1,4 +1,4 @@
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useEffectEvent } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -16,6 +16,7 @@ import { devServerFactories } from "./modes/dev.js";
 import { prodServerFactories } from "./modes/prod.js";
 import { useServerStatus } from "@diffgazer/api/hooks";
 import { useConfigGuard } from "../hooks/use-config-guard.js";
+import { useExit } from "../hooks/use-exit.js";
 import { api } from "../lib/api.js";
 import { createCliQueryClient } from "../lib/query-client.js";
 
@@ -71,32 +72,39 @@ function ConfigGate({ children }: { children: ReactNode }): ReactElement {
 function GlobalShortcuts(): null {
   const ctx = useContext(KeyboardContext);
   const { navigate, route } = useNavigation();
+  const { handleExit } = useExit();
+
+  const onKeyboard = useEffectEvent((key: string) => {
+    switch (key) {
+      case "q":
+        handleExit();
+        break;
+      case "s":
+        if (route.screen !== "settings" && !route.screen.startsWith("settings/")) {
+          navigate({ screen: "settings" });
+        }
+        break;
+      case "?":
+        if (route.screen !== "help") {
+          navigate({ screen: "help" });
+        }
+        break;
+    }
+  });
 
   useEffect(() => {
     if (!ctx) return;
 
-    const unregisterQ = ctx.registerGlobalHandler("q", () => {
-      process.exit(0);
-    });
-
-    const unregisterS = ctx.registerGlobalHandler("s", () => {
-      if (route.screen !== "settings" && !route.screen.startsWith("settings/")) {
-        navigate({ screen: "settings" });
-      }
-    });
-
-    const unregisterHelp = ctx.registerGlobalHandler("?", () => {
-      if (route.screen !== "help") {
-        navigate({ screen: "help" });
-      }
-    });
+    const unregisterQ = ctx.registerGlobalHandler("q", () => onKeyboard("q"));
+    const unregisterS = ctx.registerGlobalHandler("s", () => onKeyboard("s"));
+    const unregisterHelp = ctx.registerGlobalHandler("?", () => onKeyboard("?"));
 
     return () => {
       unregisterQ();
       unregisterS();
       unregisterHelp();
     };
-  }, [route.screen]);
+  }, [ctx]);
 
   return null;
 }

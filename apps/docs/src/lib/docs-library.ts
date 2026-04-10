@@ -4,18 +4,19 @@ import {
   type DocsLibraryConfigData,
 } from "./docs-libraries-config";
 
-export type DocsLibraryId = string;
+const KNOWN_LIBRARY_IDS = ["diff-ui", "keyscope", "diffgazer"] as const;
+export type DocsLibraryId = (typeof KNOWN_LIBRARY_IDS)[number];
 export type ArtifactSource = ArtifactSourceConfig;
 export type DocsLibraryConfig = DocsLibraryConfigData;
 
-export const DOCS_LIBRARY_IDS = docsLibrariesConfig.libraries.map((library) => library.id);
-export const PRIMARY_DOCS_LIBRARY_ID = docsLibrariesConfig.primaryLibraryId;
+export const DOCS_LIBRARY_IDS: readonly DocsLibraryId[] = KNOWN_LIBRARY_IDS;
+export const PRIMARY_DOCS_LIBRARY_ID = docsLibrariesConfig.primaryLibraryId as DocsLibraryId;
 
 const LIBRARY_CONFIG = Object.fromEntries(
   docsLibrariesConfig.libraries.map((library) => [library.id, library]),
 ) as Record<string, DocsLibraryConfig>;
 
-const SOURCE_DOCS_PREFIX = "/docs/";
+export const SOURCE_DOCS_PREFIX = "/docs/";
 
 function normalizeRouteSlugs(slugs: string[]): string[] {
   return slugs.map((slug) => slug.trim()).filter(Boolean);
@@ -26,7 +27,7 @@ function splitPathname(pathname: string): string[] {
 }
 
 export function isDocsLibraryId(value: string): value is DocsLibraryId {
-  return DOCS_LIBRARY_IDS.includes(value);
+  return (KNOWN_LIBRARY_IDS as readonly string[]).includes(value);
 }
 
 export function getDocsLibraryConfig(lib: DocsLibraryId): DocsLibraryConfig {
@@ -78,6 +79,11 @@ export function getRouteSlugsFromPathname(pathname: string, library: DocsLibrary
 
   const rel = pathname.slice(expectedPrefix.length + 1);
   return normalizeRouteSlugs(rel.split("/"));
+}
+
+export function isDocsPath(pathname?: string | null): boolean {
+  if (!pathname) return false;
+  return /^\/[^/]+\/docs(?:\/|$)/.test(pathname);
 }
 
 export function docsPath(library: DocsLibraryId, slugs?: string[] | string): string {

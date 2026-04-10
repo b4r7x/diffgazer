@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent } from "react";
-import { useApp, useInput } from "ink";
-import { stopAllServers } from "./use-servers.js";
+import { useInput } from "ink";
+import { useExit } from "./use-exit.js";
 
 interface ExitHandlerOptions {
   onExit?: () => void;
@@ -8,13 +8,11 @@ interface ExitHandlerOptions {
 
 export function useExitHandler(options: ExitHandlerOptions = {}): void {
   const { onExit } = options;
-  const { exit } = useApp();
+  const { handleExit: exit } = useExit();
 
   const handleExit = useEffectEvent(() => {
     onExit?.();
-    stopAllServers();
     exit();
-    setTimeout(() => process.exit(0), 100);
   });
 
   useEffect(() => {

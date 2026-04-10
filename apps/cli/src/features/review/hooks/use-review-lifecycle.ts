@@ -31,7 +31,7 @@ export interface ReviewLifecycleState {
 
 export function useReviewLifecycle(): {
   state: ReviewLifecycleState;
-  start: (mode: string) => void;
+  start: (mode: ReviewMode) => void;
   goToSummary: () => void;
   goToResults: () => void;
   reset: () => void;
@@ -57,9 +57,8 @@ export function useReviewLifecycle(): {
   const displayPhase: ReviewLifecycleState["phase"] =
     !base.hasStarted ? "loading" : base.isCompleting ? "completing" : phase;
 
-  function start(rawMode: string) {
-    const resolvedMode = (rawMode === "unstaged" || rawMode === "files" ? rawMode : "staged") as ReviewMode;
-    setMode(resolvedMode);
+  function start(mode: ReviewMode) {
+    setMode(mode);
     base.setHasStarted(false);
     setStartToken((t) => t + 1);
   }

@@ -17,7 +17,6 @@ export function useReviewKeyboard({
 }: ReviewKeyboardOptions): void {
   useInput(
     (input, key) => {
-      // j/k for issue navigation
       if (input === "j") {
         onIssueNav("down");
         return;
@@ -27,19 +26,16 @@ export function useReviewKeyboard({
         return;
       }
 
-      // Tab for zone switching
       if (key.tab) {
         onZoneSwitch();
         return;
       }
 
-      // 1-4 for tab switching
       if (input >= "1" && input <= "4") {
         onTabSwitch?.(Number.parseInt(input, 10));
         return;
       }
 
-      // Escape for back
       if (key.escape) {
         onBack();
         return;

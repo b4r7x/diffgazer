@@ -1,6 +1,7 @@
 export type DiffOperation = "add" | "modify" | "delete" | "rename";
 export type DiffLineType = "addition" | "deletion" | "hunk-header" | "file-header" | "context";
 
+/** Server-side hunk for multi-file analysis. @see diff-ui/registry/lib/diff/parse.ts for the UI-oriented single-file variant. */
 export interface DiffHunk {
   oldStart: number;
   oldCount: number;
@@ -22,6 +23,7 @@ export interface FileDiff {
   };
 }
 
+/** Server-side parsed diff (multi-file with stats). @see diff-ui/registry/lib/diff/parse.ts for the UI-oriented single-file variant. */
 export interface ParsedDiff {
   files: FileDiff[];
   totalStats: {

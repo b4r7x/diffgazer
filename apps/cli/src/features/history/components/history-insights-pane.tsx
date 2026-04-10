@@ -3,6 +3,7 @@ import { Box, Text, useInput } from "ink";
 import type { ReviewMetadata, ReviewIssue } from "@diffgazer/schemas/review";
 import { SEVERITY_ORDER } from "@diffgazer/schemas/ui";
 import { capitalize } from "@diffgazer/core/strings";
+import { formatDuration } from "@diffgazer/core/format";
 import { ScrollArea } from "../../../components/ui/scroll-area.js";
 import { SeverityBreakdown } from "../../review/components/severity-breakdown.js";
 import { KeyValue } from "../../../components/ui/key-value.js";
@@ -26,15 +27,6 @@ function formatDate(iso: string): string {
     month: "short",
     day: "numeric",
   });
-}
-
-function formatDuration(ms: number | undefined): string {
-  if (ms === undefined) return "—";
-  const seconds = Math.round(ms / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  const remaining = seconds % 60;
-  return `${minutes}m ${remaining}s`;
 }
 
 function buildSeverities(review: ReviewMetadata): Array<{ severity: string; count: number }> {

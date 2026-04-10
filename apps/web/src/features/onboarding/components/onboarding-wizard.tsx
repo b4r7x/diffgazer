@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { CardLayout } from "@/components/ui/card-layout";
 import { Button } from "diffui/components/button";
 import { Callout } from "diffui/components/callout";
-import { cn } from "diffui/lib/utils";
+import { cn } from "@diffgazer/core/cn";
 import type { Shortcut } from "@diffgazer/schemas/ui";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useFooterNavigation } from "@/hooks/use-footer-navigation.js";
@@ -112,9 +112,8 @@ export function OnboardingWizard() {
     try {
       await complete();
       navigate({ to: "/" });
-    } catch (e) {
+    } catch {
       // Hook sets error state for display; navigation skipped on failure
-      console.error("Onboarding completion failed:", e);
     }
   };
 

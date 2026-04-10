@@ -59,6 +59,6 @@ export {
 
 // Utilities
 
-export { matchQueryState } from "./match-query-state.js";
+export { matchQueryState, guardQueryState } from "./match-query-state.js";
 
 export { configQueries } from "./queries/config.js";

@@ -13,6 +13,7 @@ export function useConfigGuard(): ConfigGuardState {
     if (!data?.configured || error) {
       navigate({ screen: "onboarding" });
     }
+  // navigate excluded from deps: fire-and-forget redirect, not reactive
   }, [isLoading, data, error]);
 
   if (isLoading) return "checking";

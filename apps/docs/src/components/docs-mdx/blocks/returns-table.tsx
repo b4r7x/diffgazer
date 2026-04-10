@@ -1,5 +1,3 @@
-"use client"
-
 import { useHookData } from "../doc-data-context"
 import { ParameterTable } from "@/components/parameter-table"
 

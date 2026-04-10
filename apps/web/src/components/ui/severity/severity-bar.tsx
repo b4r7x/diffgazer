@@ -1,4 +1,4 @@
-import { cn } from '@/utils/cn';
+import { cn } from '@diffgazer/core/cn';
 import type { ReviewSeverity } from '@diffgazer/schemas/review';
 import { BAR_FILLED_CHAR, BAR_EMPTY_CHAR, DEFAULT_BAR_WIDTH, SEVERITY_CONFIG } from './constants';
 

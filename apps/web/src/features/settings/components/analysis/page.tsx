@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { Shortcut } from "@diffgazer/schemas/ui";
+import { getErrorMessage } from "@diffgazer/core/errors";
 import { Button } from "diffui/components/button";
 import { CardLayout } from "@/components/ui/card-layout";
 import { useKey, useScope } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useFooterNavigation } from "@/hooks/use-footer-navigation.js";
 import { useSettings, useSaveSettings } from "@diffgazer/api/hooks";
-import { cn } from "@/utils/cn";
+import { cn } from "@diffgazer/core/cn";
 import { buildLensOptions } from "@diffgazer/schemas/events";
 import type { LensId } from "@diffgazer/schemas/review";
 import { AnalysisSelectorContent } from "./analysis-selector-content";
@@ -62,7 +63,7 @@ export function SettingsAnalysisPage() {
       await saveSettings.mutateAsync({ defaultLenses: effectiveLenses });
       navigate({ to: "/settings" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save settings");
+      setError(getErrorMessage(err, "Failed to save settings"));
     }
   };
 

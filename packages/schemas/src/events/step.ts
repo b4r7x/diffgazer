@@ -1,12 +1,12 @@
 import { z } from "zod";
+import { LIFECYCLE_STATUSES } from "../shared/statuses.js";
 
 // Step IDs match the workflow phases
 export const STEP_IDS = ["diff", "context", "review", "enrich", "report"] as const;
 export const StepIdSchema = z.enum(STEP_IDS);
 export type StepId = z.infer<typeof StepIdSchema>;
 
-const STEP_STATUS = ["pending", "active", "completed", "error"] as const;
-const StepStatusSchema = z.enum(STEP_STATUS);
+const StepStatusSchema = z.enum(LIFECYCLE_STATUSES);
 type StepStatus = z.infer<typeof StepStatusSchema>;
 
 export const STEP_METADATA: Record<StepId, { label: string; description: string }> = {

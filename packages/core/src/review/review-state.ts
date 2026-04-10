@@ -49,82 +49,83 @@ function updateStepStatus(steps: StepState[], stepId: StepId, status: StepState[
   );
 }
 
+function upsertAgent(agents: AgentState[], newAgent: AgentState): AgentState[] {
+  const index = agents.findIndex((a) => a.id === newAgent.id);
+  if (index >= 0) {
+    const updated = [...agents];
+    updated[index] = { ...updated[index], ...newAgent };
+    return updated;
+  }
+  return [...agents, newAgent];
+}
+
 function updateAgents(agents: AgentState[], event: AgentStreamEvent): AgentState[] {
-  if (event.type === "agent_queued") {
-    const newAgent: AgentState = {
-      id: event.agent.id,
-      meta: event.agent,
-      status: "queued",
-      progress: 0,
-      issueCount: 0,
-      currentAction: "Queued",
-      startedAt: undefined,
-      completedAt: undefined,
-    };
-    const index = agents.findIndex((a) => a.id === event.agent.id);
-    if (index >= 0) {
-      const updated = [...agents];
-      updated[index] = newAgent;
-      return updated;
-    }
-    return [...agents, newAgent];
+  switch (event.type) {
+    case "agent_queued":
+      return upsertAgent(agents, {
+        id: event.agent.id,
+        meta: event.agent,
+        status: "queued",
+        progress: 0,
+        issueCount: 0,
+        currentAction: "Queued",
+        startedAt: undefined,
+        completedAt: undefined,
+      });
+
+    case "agent_start":
+      return upsertAgent(agents, {
+        id: event.agent.id,
+        meta: event.agent,
+        status: "running",
+        progress: 10,
+        issueCount: 0,
+        currentAction: "Starting...",
+        startedAt: event.timestamp,
+        completedAt: undefined,
+      });
+
+    case "agent_thinking":
+      return agents.map((a) =>
+        a.id === event.agent ? { ...a, currentAction: event.thought } : a
+      );
+
+    case "agent_progress":
+      return agents.map((a) =>
+        a.id === event.agent
+          ? { ...a, progress: event.progress, currentAction: event.message ?? a.currentAction }
+          : a
+      );
+
+    case "tool_call":
+    case "tool_start":
+      return agents.map((a) =>
+        a.id === event.agent ? { ...a, currentAction: `Using tool: ${event.tool}`, lastToolCall: event.tool } : a
+      );
+
+    case "tool_result":
+    case "tool_end":
+      return agents.map((a) =>
+        a.id === event.agent ? { ...a, currentAction: event.summary || undefined } : a
+      );
+
+    case "agent_error":
+      return agents.map((a) =>
+        a.id === event.agent
+          ? { ...a, status: "error", error: event.error, currentAction: "Failed", completedAt: event.timestamp, progress: 100 }
+          : a
+      );
+
+    case "agent_complete":
+      return agents.map((a) =>
+        a.id === event.agent
+          ? { ...a, status: "complete", issueCount: event.issueCount, currentAction: "Completed", progress: 100, completedAt: event.timestamp }
+          : a
+      );
+
+    default:
+      return agents;
   }
-  if (event.type === "agent_start") {
-    const newAgent: AgentState = {
-      id: event.agent.id,
-      meta: event.agent,
-      status: "running",
-      progress: 10,
-      issueCount: 0,
-      currentAction: "Starting...",
-      startedAt: event.timestamp,
-      completedAt: undefined,
-    };
-    const index = agents.findIndex((a) => a.id === event.agent.id);
-    if (index >= 0) {
-      const updated = [...agents];
-      updated[index] = { ...updated[index], ...newAgent };
-      return updated;
-    }
-    return [...agents, newAgent];
-  }
-  if (event.type === "agent_thinking") {
-    return agents.map((a) =>
-      a.id === event.agent ? { ...a, currentAction: event.thought } : a
-    );
-  }
-  if (event.type === "agent_progress") {
-    return agents.map((a) =>
-      a.id === event.agent
-        ? { ...a, progress: event.progress, currentAction: event.message ?? a.currentAction }
-        : a
-    );
-  }
-  if (event.type === "tool_call" || event.type === "tool_start") {
-    return agents.map((a) =>
-      a.id === event.agent ? { ...a, currentAction: `Using tool: ${event.tool}`, lastToolCall: event.tool } : a
-    );
-  }
-  if (event.type === "tool_result" || event.type === "tool_end") {
-    return agents.map((a) =>
-      a.id === event.agent ? { ...a, currentAction: event.summary || undefined } : a
-    );
-  }
-  if (event.type === "agent_error") {
-    return agents.map((a) =>
-      a.id === event.agent
-        ? { ...a, status: "error", error: event.error, currentAction: "Failed", completedAt: event.timestamp, progress: 100 }
-        : a
-    );
-  }
-  if (event.type === "agent_complete") {
-    return agents.map((a) =>
-      a.id === event.agent
-        ? { ...a, status: "complete", issueCount: event.issueCount, currentAction: "Completed", progress: 100, completedAt: event.timestamp }
-        : a
-    );
-  }
-  return agents;
 }
 
 function updateIssues(issues: ReviewIssue[], event: AgentStreamEvent): ReviewIssue[] {
@@ -132,6 +133,118 @@ function updateIssues(issues: ReviewIssue[], event: AgentStreamEvent): ReviewIss
     return [...issues, event.issue];
   }
   return issues;
+}
+
+function handleStepEvent(state: ReviewState, event: StepEvent): ReviewState {
+  switch (event.type) {
+    case "review_started":
+      return {
+        ...state,
+        fileProgress: { ...state.fileProgress, total: event.filesTotal },
+        startedAt: new Date(event.timestamp),
+        events: [...state.events, event],
+      };
+
+    case "step_start":
+      return {
+        ...state,
+        steps: updateStepStatus(state.steps, event.step, "active"),
+        events: [...state.events, event],
+      };
+
+    case "step_complete":
+      return {
+        ...state,
+        steps: updateStepStatus(state.steps, event.step, "completed"),
+        events: [...state.events, event],
+      };
+
+    case "step_error":
+      return {
+        ...state,
+        steps: updateStepStatus(state.steps, event.step, "error"),
+        events: [...state.events, event],
+        error: event.error,
+        isStreaming: false,
+      };
+  }
+}
+
+function handleFileEvent(
+  state: ReviewState,
+  event: Extract<AgentStreamEvent, { type: "file_start" | "file_complete" }>,
+): ReviewState {
+  if (event.scope === "agent") {
+    return {
+      ...state,
+      agents: updateAgents(state.agents, event),
+      issues: updateIssues(state.issues, event),
+      events: [...state.events, event],
+    };
+  }
+
+  if (event.type === "file_start") {
+    return {
+      ...state,
+      fileProgress: {
+        ...state.fileProgress,
+        current: event.index,
+        currentFile: event.file,
+      },
+      events: [...state.events, event],
+    };
+  }
+
+  const newCompleted = state.fileProgress.completed.includes(event.file)
+    ? state.fileProgress.completed
+    : [...state.fileProgress.completed, event.file];
+  return {
+    ...state,
+    fileProgress: {
+      ...state.fileProgress,
+      completed: newCompleted,
+      currentFile: null,
+    },
+    events: [...state.events, event],
+  };
+}
+
+function handleEnrichEvent(state: ReviewState, event: EnrichEvent): ReviewState {
+  return {
+    ...state,
+    events: [...state.events, event],
+  };
+}
+
+function handleToolEvent(
+  state: ReviewState,
+  event: Extract<AgentStreamEvent, { type: "tool_call" | "tool_start" }>,
+): ReviewState {
+  if (event.tool === "readFileContext") {
+    const colonIndex = event.input.indexOf(':');
+    const filePath = colonIndex === -1 ? event.input : event.input.substring(0, colonIndex);
+    const newCompleted = state.fileProgress.completed.includes(filePath)
+      ? state.fileProgress.completed
+      : [...state.fileProgress.completed, filePath];
+    return {
+      ...state,
+      agents: updateAgents(state.agents, event),
+      fileProgress: {
+        ...state.fileProgress,
+        completed: newCompleted,
+        current: newCompleted.length,
+        currentFile: filePath,
+      },
+      events: [...state.events, event],
+    };
+  }
+
+  return {
+    ...state,
+    agents: updateAgents(state.agents, event),
+    issues: updateIssues(state.issues, event),
+    events: [...state.events, event],
+  };
 }
 
 export function reviewReducer(state: ReviewState, action: ReviewAction): ReviewState {
@@ -143,94 +256,19 @@ export function reviewReducer(state: ReviewState, action: ReviewAction): ReviewS
       const event = action.event;
 
       if (isStepEvent(event)) {
-        if (event.type === "review_started") {
-          return {
-            ...state,
-            fileProgress: {
-              ...state.fileProgress,
-              total: event.filesTotal,
-            },
-            startedAt: new Date(event.timestamp),
-            events: [...state.events, event],
-          };
-        }
-        if (event.type === "step_start") {
-          return {
-            ...state,
-            steps: updateStepStatus(state.steps, event.step, "active"),
-            events: [...state.events, event],
-          };
-        }
-        if (event.type === "step_complete") {
-          return {
-            ...state,
-            steps: updateStepStatus(state.steps, event.step, "completed"),
-            events: [...state.events, event],
-          };
-        }
-        if (event.type === "step_error") {
-          return {
-            ...state,
-            steps: updateStepStatus(state.steps, event.step, "error"),
-            events: [...state.events, event],
-            error: event.error,
-            isStreaming: false,
-          };
-        }
-        return state;
+        return handleStepEvent(state, event);
       }
 
-      if (event.type === "file_start" && event.scope !== "agent") {
-        return {
-          ...state,
-          fileProgress: {
-            ...state.fileProgress,
-            current: event.index,
-            currentFile: event.file,
-          },
-          events: [...state.events, event],
-        };
-      }
-
-      if (event.type === "file_complete" && event.scope !== "agent") {
-        const newCompleted = state.fileProgress.completed.includes(event.file)
-          ? state.fileProgress.completed
-          : [...state.fileProgress.completed, event.file];
-        return {
-          ...state,
-          fileProgress: {
-            ...state.fileProgress,
-            completed: newCompleted,
-            currentFile: null,
-          },
-          events: [...state.events, event],
-        };
+      if (event.type === "file_start" || event.type === "file_complete") {
+        return handleFileEvent(state, event);
       }
 
       if (event.type === "enrich_progress") {
-        return {
-          ...state,
-          events: [...state.events, event],
-        };
+        return handleEnrichEvent(state, event);
       }
 
-      if ((event.type === "tool_call" || event.type === "tool_start") && event.tool === "readFileContext") {
-        const colonIndex = event.input.indexOf(':');
-        const filePath = colonIndex === -1 ? event.input : event.input.substring(0, colonIndex);
-        const newCompleted = state.fileProgress.completed.includes(filePath)
-          ? state.fileProgress.completed
-          : [...state.fileProgress.completed, filePath];
-        return {
-          ...state,
-          agents: updateAgents(state.agents, event),
-          fileProgress: {
-            ...state.fileProgress,
-            completed: newCompleted,
-            current: newCompleted.length,
-            currentFile: filePath,
-          },
-          events: [...state.events, event],
-        };
+      if (event.type === "tool_call" || event.type === "tool_start") {
+        return handleToolEvent(state, event);
       }
 
       if (event.type === "orchestrator_complete" && event.filesAnalyzed) {

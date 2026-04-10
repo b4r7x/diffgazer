@@ -45,6 +45,10 @@
     "./get-figlet": {
       "types": "./dist/get-figlet.d.ts",
       "import": "./dist/get-figlet.js"
+    },
+    "./cn": {
+      "types": "./dist/cn.d.ts",
+      "import": "./dist/cn.js"
     }
   },
   "scripts": {
@@ -55,7 +59,9 @@
   },
   "dependencies": {
     "@diffgazer/schemas": "workspace:*",
+    "clsx": "^2.1.1",
     "figlet": "^1.10.0",
+    "tailwind-merge": "^3.4.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {

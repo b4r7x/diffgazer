@@ -1,4 +1,4 @@
-import { useContext, useEffect } from "react";
+import { useContext, useEffect, useEffectEvent } from "react";
 import { KeyboardContext } from "../app/providers/keyboard-provider.js";
 
 export function useKey(hotkey: string, handler: () => void, scope?: string): void {
@@ -8,9 +8,10 @@ export function useKey(hotkey: string, handler: () => void, scope?: string): voi
   }
 
   const resolvedScope = scope ?? ctx.activeScope;
+  const stableHandler = useEffectEvent(handler);
 
   useEffect(() => {
     if (!resolvedScope) return;
-    return ctx.registerHandler(resolvedScope, hotkey, handler);
-  }, [resolvedScope, hotkey, handler]);
+    return ctx.registerHandler(resolvedScope, hotkey, stableHandler);
+  }, [resolvedScope, hotkey]);
 }

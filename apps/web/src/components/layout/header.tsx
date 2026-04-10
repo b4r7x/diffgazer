@@ -1,12 +1,13 @@
-import { cn } from "@/utils/cn";
+import { cn } from "@diffgazer/core/cn";
 import { AsciiLogo } from "@/components/ui/ascii-logo";
 import { Button } from "diffui/components/button";
 
-type ProviderStatus = "active" | "idle";
+/** @see diffgazer/apps/cli/src/components/layout/header.tsx ProviderDisplayStatus (identical CLI variant) */
+type ProviderDisplayStatus = "active" | "idle";
 
 interface HeaderProps {
   providerName?: string;
-  providerStatus?: ProviderStatus;
+  providerStatus?: ProviderDisplayStatus;
   onBack?: () => void;
 }
 

@@ -31,8 +31,10 @@ import { reviewAbort } from "./utils.js";
 import {
   type EmitFn,
   type ResolvedConfig,
+  type ReviewAbort,
   type ReviewOutcome,
 } from "./types.js";
+import { type Result, ok, err } from "@diffgazer/core/result";
 
 export const MAX_DIFF_SIZE_BYTES = 524288; // 512KB
 
@@ -117,7 +119,7 @@ export async function resolveGitDiff(params: {
   files?: string[];
   emit: EmitFn;
   reviewId: string;
-}): Promise<ParsedDiff> {
+}): Promise<Result<ParsedDiff, ReviewAbort>> {
   const { gitService, mode, files, emit, reviewId } = params;
 
   await emit(stepStart("diff"));
@@ -126,12 +128,11 @@ export async function resolveGitDiff(params: {
   try {
     diff = await gitService.getDiff(mode);
   } catch (error: unknown) {
-    // Intentional: reviewAbort is thrown as flow control, caught by the pipeline orchestrator in service.ts
-    throw reviewAbort(
+    return err(reviewAbort(
       createGitDiffError(error).message,
       ErrorCode.GIT_NOT_FOUND,
       "diff",
-    );
+    ));
   }
 
   if (!diff.trim()) {
@@ -139,8 +140,7 @@ export async function resolveGitDiff(params: {
       mode === "staged"
         ? "No staged changes found. Use 'git add' to stage files, or review unstaged changes instead."
         : "No unstaged changes found. Make some edits first, or review staged changes instead.";
-    // Intentional flow control — caught by pipeline orchestrator in service.ts
-    throw reviewAbort(errorMessage, "NO_DIFF", "diff");
+    return err(reviewAbort(errorMessage, "NO_DIFF", "diff"));
   }
 
   let parsed = parseDiff(diff);
@@ -157,25 +157,23 @@ export async function resolveGitDiff(params: {
   if (files && files.length > 0) {
     parsed = filterDiffByFiles(parsed, files);
     if (parsed.files.length === 0) {
-      // Intentional flow control — caught by pipeline orchestrator in service.ts
-      throw reviewAbort(
+      return err(reviewAbort(
         `None of the specified files have ${mode} changes`,
         "NO_DIFF",
-      );
+      ));
     }
   }
 
   if (parsed.totalStats.totalSizeBytes > MAX_DIFF_SIZE_BYTES) {
     const sizeMB = (parsed.totalStats.totalSizeBytes / 1024 / 1024).toFixed(2);
     const maxMB = (MAX_DIFF_SIZE_BYTES / 1024 / 1024).toFixed(2);
-    // Intentional flow control — caught by pipeline orchestrator in service.ts
-    throw reviewAbort(
+    return err(reviewAbort(
       `Diff too large (${sizeMB}MB exceeds ${maxMB}MB limit). Try reviewing fewer files or use file filtering.`,
       ErrorCode.VALIDATION_ERROR,
-    );
+    ));
   }
 
-  return parsed;
+  return ok(parsed);
 }
 
 export async function resolveReviewConfig(params: {
@@ -214,7 +212,7 @@ export async function executeReview(params: {
   config: ResolvedConfig;
   emit: EmitFn;
   signal?: AbortSignal;
-}): Promise<ReviewOutcome> {
+}): Promise<Result<ReviewOutcome, ReviewAbort>> {
   const { aiClient, parsed, config, emit, signal } = params;
 
   await emit(stepStart("review"));
@@ -238,13 +236,12 @@ export async function executeReview(params: {
   );
 
   if (!result.ok) {
-    // Intentional flow control — caught by pipeline orchestrator in service.ts
-    throw reviewAbort(result.error.message, "AI_ERROR", "review");
+    return err(reviewAbort(result.error.message, "AI_ERROR", "review"));
   }
 
   await emit(stepComplete("review"));
 
-  return { issues: result.value.issues, summary: result.value.summary };
+  return ok({ issues: result.value.issues, summary: result.value.summary });
 }
 
 export async function finalizeReview(params: {
@@ -259,7 +256,7 @@ export async function finalizeReview(params: {
   activeLenses: LensId[];
   startTime: number;
   signal?: AbortSignal;
-}): Promise<ReviewResult> {
+}): Promise<Result<ReviewResult, ReviewAbort>> {
   const {
     outcome,
     gitService,
@@ -310,11 +307,10 @@ export async function finalizeReview(params: {
   });
 
   if (!saveResult.ok) {
-    // Intentional flow control — caught by pipeline orchestrator in service.ts
-    throw reviewAbort(saveResult.error.message, ErrorCode.INTERNAL_ERROR);
+    return err(reviewAbort(saveResult.error.message, ErrorCode.INTERNAL_ERROR));
   }
 
-  return finalResult;
+  return ok(finalResult);
 }
 
 function stepStart(step: StepId) {

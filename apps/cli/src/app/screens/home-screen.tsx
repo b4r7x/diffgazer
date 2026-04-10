@@ -6,6 +6,7 @@ import { usePageFooter } from "../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../hooks/use-back-handler.js";
 import { useResponsive } from "../../hooks/use-terminal-dimensions.js";
 import { useInit, useReviews, useActiveReviewSession, useShutdown } from "@diffgazer/api/hooks";
+import { useExit } from "../../hooks/use-exit.js";
 import { ContextSidebar } from "../../features/home/components/context-sidebar.js";
 import { HomeMenu } from "../../features/home/components/home-menu.js";
 import { TrustPanel } from "../../features/home/components/trust-panel.js";
@@ -19,6 +20,7 @@ export function HomeScreen(): ReactElement {
 
   const { columns } = useResponsive();
   const { navigate } = useNavigation();
+  const { handleExit } = useExit();
   const { data: initData, refetch: refreshInit } = useInit();
   const { data: reviewsData } = useReviews();
   const { data: sessionData } = useActiveReviewSession();
@@ -76,7 +78,7 @@ export function HomeScreen(): ReactElement {
         break;
       case "quit":
         shutdown.mutate(undefined, {
-          onSettled: () => process.exit(0),
+          onSettled: () => handleExit(),
         });
         break;
     }

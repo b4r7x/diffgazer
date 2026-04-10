@@ -3,7 +3,7 @@ import { Box, Text } from "ink";
 import { RadioGroup } from "../../../../components/ui/radio.js";
 import { Badge } from "../../../../components/ui/badge.js";
 import { Spinner } from "../../../../components/ui/spinner.js";
-import { useOpenRouterModels, matchQueryState } from "@diffgazer/api/hooks";
+import { useOpenRouterModels, guardQueryState } from "@diffgazer/api/hooks";
 import type { ModelInfo, OpenRouterModel } from "@diffgazer/schemas/config";
 import { GEMINI_MODEL_INFO, GLM_MODEL_INFO } from "@diffgazer/schemas/config";
 
@@ -61,20 +61,19 @@ export function ModelStep({
   const openRouterQuery = useOpenRouterModels({ enabled: isOpenRouter });
 
   if (isOpenRouter) {
-    const guard = matchQueryState(openRouterQuery, {
+    const guard = guardQueryState(openRouterQuery, {
       loading: () => <Spinner label="Loading models..." />,
       error: (err) => (
         <Box flexDirection="column" gap={1}>
           <Text color="red">Failed to load models: {err.message}</Text>
         </Box>
       ),
-      success: () => null,
     });
-    if (guard) return guard as ReactElement;
+    if (guard) return guard;
   }
 
   const models: ModelOption[] = isOpenRouter
-    ? (openRouterQuery.data!.models ?? []).map(openRouterToOption)
+    ? (openRouterQuery.data?.models ?? []).map(openRouterToOption)
     : getStaticModels(provider);
 
   if (models.length === 0) {

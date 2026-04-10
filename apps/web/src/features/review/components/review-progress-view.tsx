@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { cn } from "@/utils/cn";
+import { cn } from "@diffgazer/core/cn";
 import { SectionHeader } from "diffui/components/section-header";
 import { Badge, type BadgeProps } from "diffui/components/badge";
 import { Button } from "diffui/components/button";

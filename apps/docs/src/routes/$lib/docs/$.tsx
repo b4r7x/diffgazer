@@ -1,11 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router"
+import { createFileRoute } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import browserCollections from "fumadocs-mdx:collections/browser"
 import { Suspense } from "react"
 import { DocsContentLayout } from "@/layouts/docs-content-layout"
 import { Route as DocsRoute } from "@/routes/$lib/docs"
-import { NotFoundState } from "@/components/not-found-state"
-import { Button } from "@/components/ui/button/button"
+import { DocsNotFoundBlock } from "@/components/docs-not-found"
 import { Spinner } from "@/components/ui/spinner/spinner"
 import {
   DocsPageBody,
@@ -107,31 +106,9 @@ const clientLoader = browserCollections.docs.createClientLoader({
 function Page() {
   const data = Route.useLoaderData()
   const { pageTree, library } = DocsRoute.useLoaderData()
-  const { defaultRouteSlugs } = getDocsLibraryConfig(library)
 
   if (!data) {
-    return (
-      <DocsContentLayout tree={pageTree} library={library}>
-        <NotFoundState
-          variant="docs"
-          title="Documentation page not found"
-          description="The page you requested does not exist or was moved."
-          primaryAction={(
-            <Link
-              to="/$lib/docs/$"
-              params={{ lib: library, _splat: defaultRouteSlugs.join("/") }}
-            >
-              <Button variant="primary">Go to docs home</Button>
-            </Link>
-          )}
-          secondaryAction={(
-            <Link to="/">
-              <Button variant="ghost">Go home</Button>
-            </Link>
-          )}
-        />
-      </DocsContentLayout>
-    )
+    return <DocsNotFoundBlock tree={pageTree} library={library} />
   }
 
   return (

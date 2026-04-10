@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import { Spinner } from "../../../components/ui/spinner.js";
-import { useInit, useSaveTrust, matchQueryState } from "@diffgazer/api/hooks";
+import { useInit, useSaveTrust, guardQueryState } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Button } from "../../../components/ui/button.js";
@@ -39,7 +39,7 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
     );
   }
 
-  const guard = matchQueryState(initQuery, {
+  const guard = guardQueryState(initQuery, {
     loading: () => (
       <Panel>
         <Panel.Content>
@@ -54,9 +54,8 @@ export function TrustPanel({ onAccept }: TrustPanelProps): ReactElement {
         </Panel.Content>
       </Panel>
     ),
-    success: () => null,
   });
-  if (guard) return guard as ReactElement;
+  if (guard) return guard;
 
   return (
     <Panel>

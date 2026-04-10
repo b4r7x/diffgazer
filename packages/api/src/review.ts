@@ -18,7 +18,7 @@ import type {
   DrilldownResponse,
 } from "./types.js";
 
-export interface StreamReviewOptions {
+export interface StreamReviewApiOptions {
   mode?: ReviewMode;
   files?: string[];
   lenses?: string[];
@@ -31,7 +31,7 @@ export type { CoreStreamReviewOptions as FullStreamReviewOptions };
 
 export async function streamReview(
   client: ApiClient,
-  options: StreamReviewOptions = {}
+  options: StreamReviewApiOptions = {}
 ): Promise<Response> {
   const params: Record<string, string> = {};
   if (options.mode) params.mode = options.mode;
@@ -161,7 +161,7 @@ export async function runReviewDrilldown(
 }
 
 export const bindReview = (client: ApiClient) => ({
-  streamReview: (options?: StreamReviewOptions) => streamReview(client, options),
+  streamReview: (options?: StreamReviewApiOptions) => streamReview(client, options),
   streamReviewWithEvents: (options: CoreStreamReviewOptions) => streamReviewWithEvents(client, options),
   resumeReviewStream: (options: ResumeReviewOptions) => resumeReviewStream(client, options),
   getReviews: (projectPath?: string) => getReviews(client, projectPath),

@@ -1,4 +1,4 @@
-import { cn } from "@/utils/cn";
+import { cn } from "@diffgazer/core/cn";
 import type { Shortcut } from "./footer-context";
 
 interface FooterProps {

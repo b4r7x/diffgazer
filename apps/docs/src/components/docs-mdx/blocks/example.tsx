@@ -1,5 +1,3 @@
-"use client"
-
 import { useDocData } from "../doc-data-context"
 import { DemoPreview } from "@/components/demo-preview"
 import { useDemos } from "@/lib/use-demos"

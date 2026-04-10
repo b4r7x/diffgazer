@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import {
   buildRegistryArtifacts,
   createArtifactManifest,
+  REGISTRY_ORIGIN,
 } from "@b4r7x/registry-kit";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -60,7 +61,7 @@ function main() {
   const result = buildRegistryArtifacts({
     rootDir: ROOT,
     manifest,
-    defaultOrigin: "https://diffgazer.com",
+    defaultOrigin: REGISTRY_ORIGIN,
     requiredPaths: [
       { path: "docs/content", label: "diffgazer docs content" },
       { path: "public/r", label: "diffgazer public registry" },

@@ -1,33 +1,16 @@
 import { useState, useRef, useEffect } from "react";
 import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
-import {
-  AVAILABLE_PROVIDERS,
-  GEMINI_MODEL_INFO,
-  GLM_MODEL_INFO,
-  type ModelInfo,
-  type OpenRouterModel,
-} from "@diffgazer/schemas/config";
-import { mapOpenRouterModels } from "@diffgazer/api";
 import { useTheme } from "../../../theme/theme-context.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
 import { Dialog } from "../../../components/ui/dialog.js";
-import { Badge } from "../../../components/ui/badge.js";
 import { Button } from "../../../components/ui/button.js";
 import { Spinner } from "../../../components/ui/spinner.js";
 import { useOpenRouterModels, useActivateProvider } from "@diffgazer/api/hooks";
-
-// --- Types ---
-
-interface DisplayModel {
-  id: string;
-  name: string;
-  description?: string;
-  tier: "free" | "paid";
-}
-
-type TierFilter = "all" | "free" | "paid";
-const TIER_FILTERS: TierFilter[] = ["all", "free", "paid"];
+import { buildModels, filterModels, TIER_FILTERS, type TierFilter } from "./model-select-helpers.js";
+import { SearchInput } from "./model-search-input.js";
+import { TierFilterTabs } from "./tier-filter-tabs.js";
+import { ModelListItem } from "./model-list-item.js";
 
 type FocusZone = "search" | "filters" | "list";
 
@@ -38,200 +21,6 @@ interface ModelSelectOverlayProps {
   selectedId?: string;
   onSelect: (id: string) => void;
 }
-
-// --- Helpers ---
-
-function getModelInfo(providerId: string): Record<string, ModelInfo> | undefined {
-  switch (providerId) {
-    case "gemini":
-      return GEMINI_MODEL_INFO;
-    case "zai":
-    case "zai-coding":
-      return GLM_MODEL_INFO;
-    default:
-      return undefined;
-  }
-}
-
-function buildModels(providerId: string, openRouterModels: OpenRouterModel[]): DisplayModel[] {
-  if (providerId === "openrouter") {
-    return mapOpenRouterModels(openRouterModels);
-  }
-
-  const provider = AVAILABLE_PROVIDERS.find((p) => p.id === providerId);
-  if (!provider) return [];
-
-  const infoMap = getModelInfo(providerId);
-  if (!infoMap) {
-    return provider.models.map((id) => ({ id, name: id, tier: "paid" as const }));
-  }
-
-  return provider.models.map((id) => {
-    const info = infoMap[id];
-    if (info) {
-      return { id: info.id, name: info.name, description: info.description, tier: info.tier };
-    }
-    return { id, name: id, tier: "paid" as const };
-  });
-}
-
-function filterModels(models: DisplayModel[], tierFilter: TierFilter, searchQuery: string): DisplayModel[] {
-  let filtered = models;
-
-  if (tierFilter === "free") {
-    filtered = filtered.filter((m) => m.tier === "free");
-  } else if (tierFilter === "paid") {
-    filtered = filtered.filter((m) => m.tier === "paid");
-  }
-
-  if (searchQuery.trim()) {
-    const query = searchQuery.toLowerCase();
-    filtered = filtered.filter(
-      (m) =>
-        m.name.toLowerCase().includes(query) ||
-        (m.description?.toLowerCase().includes(query) ?? false),
-    );
-  }
-
-  return filtered;
-}
-
-// --- Sub-components ---
-
-function SearchInput({
-  value,
-  onChange,
-  isActive,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  isActive: boolean;
-}) {
-  const { tokens } = useTheme();
-
-  useInput(
-    (input, key) => {
-      if (key.backspace || key.delete) {
-        onChange(value.slice(0, -1));
-        return;
-      }
-      if (key.return || key.escape || key.upArrow || key.downArrow || key.tab) {
-        return;
-      }
-      if (input.length === 1 && !key.ctrl && !key.meta) {
-        onChange(value + input);
-      }
-    },
-    { isActive },
-  );
-
-  return (
-    <Box>
-      <Text color={tokens.muted}>/ </Text>
-      <Box
-        borderStyle="single"
-        borderColor={isActive ? tokens.accent : tokens.border}
-        flexGrow={1}
-      >
-        {value ? (
-          <Text>{value}<Text color={isActive ? tokens.fg : tokens.muted}>{isActive ? "\u2588" : ""}</Text></Text>
-        ) : (
-          <Text color={tokens.muted}>Search models...{isActive ? "\u2588" : ""}</Text>
-        )}
-      </Box>
-    </Box>
-  );
-}
-
-function TierFilterTabs({
-  value,
-  onValueChange,
-  isActive,
-}: {
-  value: TierFilter;
-  onValueChange: (value: TierFilter) => void;
-  isActive: boolean;
-}) {
-  const { tokens } = useTheme();
-
-  useInput(
-    (_input, key) => {
-      if (!key.leftArrow && !key.rightArrow) return;
-      const currentIdx = TIER_FILTERS.indexOf(value);
-      const direction = key.rightArrow ? 1 : -1;
-      const nextIdx = (currentIdx + direction + TIER_FILTERS.length) % TIER_FILTERS.length;
-      const next = TIER_FILTERS[nextIdx];
-      if (next) onValueChange(next);
-    },
-    { isActive },
-  );
-
-  return (
-    <Box gap={1}>
-      {TIER_FILTERS.map((filter) => {
-        const isSelected = value === filter;
-        return (
-          <Text
-            key={filter}
-            color={isSelected ? tokens.fg : tokens.muted}
-            backgroundColor={isSelected ? tokens.accent : undefined}
-            bold={isSelected}
-          >
-            {` ${filter.toUpperCase()} `}
-          </Text>
-        );
-      })}
-      {isActive && <Text color={tokens.muted}> {"<-/->"}</Text>}
-    </Box>
-  );
-}
-
-function ModelListItem({
-  model,
-  isHighlighted,
-  isSelected,
-  maxWidth,
-}: {
-  model: DisplayModel;
-  isHighlighted: boolean;
-  isSelected: boolean;
-  maxWidth: number;
-}) {
-  const { tokens } = useTheme();
-
-  const prefix = isSelected ? "| " : isHighlighted ? "> " : "  ";
-  const check = isSelected ? "[*]" : "[ ]";
-
-  // Reserve space for prefix(2) + check(3) + gaps(3) + badge(~6) = ~14 chars
-  const descMaxLen = Math.max(0, maxWidth - model.name.length - 18);
-  const desc = model.description
-    ? model.description.length > descMaxLen
-      ? model.description.slice(0, Math.max(0, descMaxLen - 1)) + "\u2026"
-      : model.description
-    : undefined;
-
-  return (
-    <Box>
-      <Text
-        color={isHighlighted ? tokens.fg : undefined}
-        backgroundColor={isHighlighted ? tokens.accent : undefined}
-        bold={isHighlighted || isSelected}
-      >
-        {prefix}
-      </Text>
-      <Text color={isSelected ? tokens.info : undefined} bold>{check} </Text>
-      <Box gap={1} flexShrink={1}>
-        <Text bold>{model.name}</Text>
-        <Badge variant={model.tier === "free" ? "info" : "neutral"}>
-          {model.tier}
-        </Badge>
-        {desc && <Text dimColor>{desc}</Text>}
-      </Box>
-    </Box>
-  );
-}
-
-// --- Main component ---
 
 export function ModelSelectOverlay({
   open,

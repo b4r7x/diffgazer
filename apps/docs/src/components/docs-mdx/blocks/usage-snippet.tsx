@@ -1,5 +1,3 @@
-"use client"
-
 import { useDocData } from "../doc-data-context"
 import { CopyButton } from "@/components/copy-button"
 import { CodeBlock, CodeBlockContent, CodeBlockHeader, CodeBlockLabel, CodeBlockLine } from "@/components/ui/code-block"

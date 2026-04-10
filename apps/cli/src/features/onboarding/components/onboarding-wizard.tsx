@@ -1,12 +1,7 @@
-import { useState } from "react";
 import type { ReactElement } from "react";
 import { Box, Text, useInput } from "ink";
-import type { LensId } from "@diffgazer/schemas/review";
-import type { AIProvider, SecretsStorage, AgentExecution } from "@diffgazer/schemas/config";
 import { useTheme } from "../../../theme/theme-context.js";
-import { useNavigation } from "../../../app/navigation-context.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
-import { useSaveSettings, useSaveConfig } from "@diffgazer/api/hooks";
 import { Button } from "../../../components/ui/button.js";
 import { Spinner } from "../../../components/ui/spinner.js";
 import { Callout } from "../../../components/ui/callout.js";
@@ -18,103 +13,26 @@ import { ModelStep } from "./steps/model-step.js";
 import { AnalysisSelector } from "../../settings/components/analysis-selector.js";
 import { StorageSelector } from "../../settings/components/storage-selector.js";
 import { ExecutionStep } from "./steps/execution-step.js";
-
-const stepLabels = [
-  "Storage",
-  "Provider",
-  "API Key",
-  "Model",
-  "Analysis",
-  "Execution",
-];
+import { useOnboardingWizard, STEP_LABELS, STEP_TITLES } from "../hooks/use-onboarding-wizard.js";
 
 export function OnboardingWizard(): ReactElement {
   const { tokens } = useTheme();
-  const { navigate } = useNavigation();
   const { columns } = useTerminalDimensions();
-
-  const [currentStep, setCurrentStep] = useState(0);
-  const [provider, setProvider] = useState<AIProvider>("gemini");
-  const [apiKeyMethod, setApiKeyMethod] = useState("paste");
-  const [apiKey, setApiKey] = useState("");
-  const [envVar, setEnvVar] = useState("");
-  const [model, setModel] = useState("");
-  const [selectedLenses, setSelectedLenses] = useState<LensId[]>([
-    "security",
-    "correctness",
-    "performance",
-  ]);
-  const [secretsStorage, setSecretsStorage] = useState<SecretsStorage>("file");
-  const [agentExecution, setAgentExecution] = useState<AgentExecution>("parallel");
-
-  const saveSettings = useSaveSettings();
-  const saveConfig = useSaveConfig();
-
-  const isSaving = saveSettings.isPending || saveConfig.isPending;
-  const [error, setError] = useState<string | null>(null);
-
-  const isLastStep = currentStep === stepLabels.length - 1;
-  const isFirstStep = currentStep === 0;
-
-  const [focusArea, setFocusArea] = useState<"step" | "nav">("step");
-
-  async function handleComplete() {
-    setError(null);
-    try {
-      await saveSettings.mutateAsync({
-        secretsStorage,
-        defaultLenses: selectedLenses,
-        agentExecution,
-      });
-      await saveConfig.mutateAsync({
-        provider,
-        apiKey: apiKeyMethod === "env" ? "env" : apiKey,
-        model: model || undefined,
-      });
-      navigate({ screen: "home" });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Setup failed");
-    }
-  }
-
-  function handleNext() {
-    if (isLastStep) {
-      void handleComplete();
-    } else {
-      setCurrentStep(currentStep + 1);
-      setFocusArea("step");
-    }
-  }
-
-  function handleBack() {
-    if (!isFirstStep) {
-      setCurrentStep(currentStep - 1);
-      setFocusArea("step");
-    }
-  }
+  const wizard = useOnboardingWizard();
 
   useInput((_input, key) => {
-    if (isSaving) return;
+    if (wizard.isSaving) return;
     if (key.tab) {
-      setFocusArea(focusArea === "step" ? "nav" : "step");
+      wizard.toggleFocusArea();
     }
   });
 
-  const stepTitles: Record<number, string> = {
-    0: "Secret storage method",
-    1: "Choose your AI provider",
-    2: "Configure API key",
-    3: "Select a model",
-    4: "Choose analysis agents",
-    5: "Agent execution mode",
-  };
-
-  if (isSaving) {
+  if (wizard.isSaving) {
     return (
       <Box justifyContent="center" flexGrow={1}>
         <Box width={Math.min(columns, 70)} flexDirection="column">
           <Box flexDirection="column" gap={1}>
-            <WizardProgress steps={stepLabels} currentStep={currentStep} />
+            <WizardProgress steps={[...STEP_LABELS]} currentStep={wizard.currentStep} />
             <Spinner label="Saving configuration..." />
           </Box>
         </Box>
@@ -126,82 +44,82 @@ export function OnboardingWizard(): ReactElement {
     <Box justifyContent="center" flexGrow={1}>
       <Box width={Math.min(columns, 70)} flexDirection="column">
         <Box flexDirection="column" gap={1}>
-          <WizardProgress steps={stepLabels} currentStep={currentStep} />
+          <WizardProgress steps={[...STEP_LABELS]} currentStep={wizard.currentStep} />
 
-          <SectionHeader>{stepTitles[currentStep] ?? ""}</SectionHeader>
+          <SectionHeader>{STEP_TITLES[wizard.currentStep] ?? ""}</SectionHeader>
 
-          {error !== null && (
+          {wizard.error !== null && (
             <Callout variant="error">
-              <Callout.Content>{error}</Callout.Content>
+              <Callout.Content>{wizard.error}</Callout.Content>
             </Callout>
           )}
 
           <Box flexDirection="column" paddingLeft={1}>
-            {currentStep === 0 && (
+            {wizard.currentStep === 0 && (
               <StorageSelector
-                value={secretsStorage}
-                onChange={(v) => setSecretsStorage(v as SecretsStorage)}
-                isActive={focusArea === "step"}
+                value={wizard.secretsStorage}
+                onChange={wizard.handleSecretsStorageChange}
+                isActive={wizard.focusArea === "step"}
               />
             )}
-            {currentStep === 1 && (
+            {wizard.currentStep === 1 && (
               <ProviderStep
-                value={provider}
-                onChange={(v) => setProvider(v as AIProvider)}
-                isActive={focusArea === "step"}
+                value={wizard.provider}
+                onChange={wizard.handleProviderChange}
+                isActive={wizard.focusArea === "step"}
               />
             )}
-            {currentStep === 2 && (
+            {wizard.currentStep === 2 && (
               <ApiKeyMethodSelector
-                method={apiKeyMethod as "paste" | "env"}
-                onMethodChange={setApiKeyMethod}
-                apiKey={apiKey}
-                onApiKeyChange={setApiKey}
-                envVar={envVar}
-                onEnvVarChange={setEnvVar}
-                isActive={focusArea === "step"}
+                method={wizard.apiKeyMethod}
+                onMethodChange={wizard.handleApiKeyMethodChange}
+                apiKey={wizard.apiKey}
+                onApiKeyChange={wizard.setApiKey}
+                envVar={wizard.envVar}
+                onEnvVarChange={wizard.setEnvVar}
+                isActive={wizard.focusArea === "step"}
               />
             )}
-            {currentStep === 3 && (
+            {wizard.currentStep === 3 && (
               <ModelStep
-                value={model}
-                onChange={setModel}
-                provider={provider}
-                isActive={focusArea === "step"}
+                value={wizard.model}
+                onChange={wizard.setModel}
+                provider={wizard.provider}
+                isActive={wizard.focusArea === "step"}
               />
             )}
-            {currentStep === 4 && (
+            {wizard.currentStep === 4 && (
               <AnalysisSelector
-                selectedLenses={selectedLenses}
-                onChange={setSelectedLenses}
-                isActive={focusArea === "step"}
+                selectedLenses={wizard.selectedLenses}
+                onChange={wizard.setSelectedLenses}
+                isActive={wizard.focusArea === "step"}
               />
             )}
-            {currentStep === 5 && (
+            {wizard.currentStep === 5 && (
               <ExecutionStep
-                value={agentExecution}
-                onChange={(v) => setAgentExecution(v as AgentExecution)}
-                isActive={focusArea === "step"}
+                value={wizard.agentExecution}
+                onChange={wizard.handleAgentExecutionChange}
+                isActive={wizard.focusArea === "step"}
               />
             )}
           </Box>
 
           <Box gap={2}>
-            {!isFirstStep && (
+            {!wizard.isFirstStep && (
               <Button
                 variant="ghost"
-                onPress={handleBack}
-                isActive={focusArea === "nav"}
+                onPress={wizard.handleBack}
+                isActive={wizard.focusArea === "nav"}
               >
                 Back
               </Button>
             )}
             <Button
               variant="primary"
-              onPress={handleNext}
-              isActive={focusArea === "nav"}
+              onPress={wizard.handleNext}
+              isActive={wizard.focusArea === "nav"}
             >
-              {isLastStep ? "Complete" : "Next"}
+              {wizard.isLastStep ? "Complete" : "Next"}
             </Button>
           </Box>
 

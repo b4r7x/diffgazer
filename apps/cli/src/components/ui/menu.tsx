@@ -1,8 +1,9 @@
-import { createContext, Fragment, useState, useContext, Children, isValidElement } from "react";
-import type { ReactNode } from "react";
+import { createContext, useState, useContext } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../../theme/theme-context.js";
 import type { CliColorTokens } from "../../theme/palettes.js";
+import { clampIndex, collectChildItems } from "../../lib/list-navigation.js";
 
 // --- Types ---
 
@@ -56,24 +57,10 @@ interface CollectedItem {
   hotkey?: string | number;
 }
 
-function collectItems(children: ReactNode): CollectedItem[] {
-  const items: CollectedItem[] = [];
-  Children.forEach(children, (child) => {
-    if (!isValidElement(child)) return;
-    if (child.type === Fragment) {
-      items.push(...collectItems((child.props as { children: ReactNode }).children));
-      return;
-    }
-    if (child.type === MenuItem) {
-      const props = child.props as MenuItemProps;
-      items.push({
-        id: props.id,
-        disabled: props.disabled ?? false,
-        hotkey: props.hotkey,
-      });
-    }
-  });
-  return items;
+function extractMenuItem(element: ReactElement): CollectedItem | null {
+  if (element.type !== MenuItem) return null;
+  const props = element.props as MenuItemProps;
+  return { id: props.id, disabled: props.disabled ?? false, hotkey: props.hotkey };
 }
 
 // --- Components ---
@@ -159,7 +146,7 @@ function MenuRoot({
   children,
 }: MenuProps) {
   const { tokens } = useTheme();
-  const items = collectItems(children);
+  const items = collectChildItems(children, extractMenuItem);
   const selectableItems = items.filter((item) => !item.disabled);
 
   const [internalIndex, setInternalIndex] = useState(0);
@@ -176,13 +163,7 @@ function MenuRoot({
     const currentIdx = selectableItems.findIndex(
       (item) => item.id === currentHighlightedId,
     );
-    let nextIdx = currentIdx + direction;
-
-    if (wrap) {
-      nextIdx = (nextIdx + selectableItems.length) % selectableItems.length;
-    } else {
-      nextIdx = Math.max(0, Math.min(nextIdx, selectableItems.length - 1));
-    }
+    const nextIdx = clampIndex(currentIdx, direction, selectableItems.length, wrap);
 
     const nextItem = selectableItems[nextIdx];
     if (!nextItem) return;

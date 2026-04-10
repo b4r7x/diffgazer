@@ -27,7 +27,7 @@ export interface CliColorTokens {
   statusPending: string;
 }
 
-export type Palette = CliColorTokens;
+type Palette = CliColorTokens;
 
 // GitHub Dark Default theme colors
 export const darkPalette: Palette = {

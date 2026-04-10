@@ -1,5 +1,3 @@
-"use client"
-
 import { useComponentData } from "../doc-data-context"
 import { CopyButton } from "@/components/copy-button"
 import { getDocsLibraryConfig } from "@/lib/docs-library"

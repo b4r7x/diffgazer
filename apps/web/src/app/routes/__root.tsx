@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { Outlet } from "@tanstack/react-router";
 import { Button } from "diffui/components/button";
 import { Toaster } from "diffui/components/toast";
@@ -70,7 +70,9 @@ export function RootLayout() {
     <FooterProvider>
       <GlobalLayout>
         <RouteErrorBoundary>
-          <Outlet />
+          <Suspense fallback={null}>
+            <Outlet />
+          </Suspense>
         </RouteErrorBoundary>
       </GlobalLayout>
       <Toaster position="bottom-right" />

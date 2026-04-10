@@ -285,16 +285,31 @@ async function runReviewSession(
   };
 
   try {
-    const parsed = await resolveGitDiff({ gitService, mode, files, emit, reviewId });
+    const parsedResult = await resolveGitDiff({ gitService, mode, files, emit, reviewId });
+    if (!parsedResult.ok) {
+      await handleReviewFailure(parsedResult.error, emit, reviewId);
+      return;
+    }
+    const parsed = parsedResult.value;
 
     const config = await resolveReviewConfig({ lensIds, profileId, projectPath, emit });
 
-    const outcome = await executeReview({ aiClient, parsed, config, emit, signal });
+    const outcomeResult = await executeReview({ aiClient, parsed, config, emit, signal });
+    if (!outcomeResult.ok) {
+      await handleReviewFailure(outcomeResult.error, emit, reviewId);
+      return;
+    }
+    const outcome = outcomeResult.value;
 
-    const finalResult = await finalizeReview({
+    const finalResultResult = await finalizeReview({
       outcome, gitService, emit, reviewId, projectPath, mode,
       parsed, profileId, activeLenses: config.activeLenses, startTime, signal,
     });
+    if (!finalResultResult.ok) {
+      await handleReviewFailure(finalResultResult.error, emit, reviewId);
+      return;
+    }
+    const finalResult = finalResultResult.value;
 
     await emit({
       type: "complete",

@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { cn } from '@/utils/cn';
+import { cn } from '@diffgazer/core/cn';
 import { ProgressStep } from './progress-step';
 import type { ProgressStepData as BaseProgressStepData } from '@diffgazer/schemas/ui';
 

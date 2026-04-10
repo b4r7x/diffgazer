@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { REVIEW_SEVERITY, ReviewSeveritySchema, type ReviewSeverity } from "../review/issues.js";
+import { LIFECYCLE_STATUSES } from "../shared/statuses.js";
 
 // ============================================================================
 // Severity Display Constants
@@ -124,7 +125,10 @@ const LogEntryDataSchema = z.object({
 });
 export type LogEntryData = z.infer<typeof LogEntryDataSchema>;
 
-export type BadgeVariant = "success" | "warning" | "error" | "info" | "neutral";
+/** Canonical badge variant values. @see diff-ui/registry/ui/badge/badge.tsx for the component-library copy. */
+const BADGE_VARIANTS = ["success", "warning", "error", "info", "neutral"] as const;
+export const BadgeVariantSchema = z.enum(BADGE_VARIANTS);
+export type BadgeVariant = z.infer<typeof BadgeVariantSchema>;
 
 export const TAG_BADGE_VARIANTS: Record<string, BadgeVariant> = {
   system: "neutral",
@@ -148,7 +152,7 @@ const ProgressSubstepDataSchema = z.object({
   id: z.string(),
   tag: z.string(),
   label: z.string(),
-  status: z.enum(["pending", "active", "completed", "error"]),
+  status: z.enum(LIFECYCLE_STATUSES),
   detail: z.string().optional(),
   progress: z.number().min(0).max(100).optional(),
 });
@@ -228,6 +232,7 @@ export type ContextInfo = z.infer<typeof ContextInfoSchema>;
 // Toast Types
 // ============================================================================
 
+/** @see diff-ui/registry/ui/toast/toast-variants.ts ToastVariant (superset with "loading", used for component-library styling) */
 const TOAST_VARIANTS = ["success", "error", "warning", "info"] as const;
 const ToastVariantSchema = z.enum(TOAST_VARIANTS);
 export type ToastVariant = z.infer<typeof ToastVariantSchema>;

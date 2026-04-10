@@ -1,4 +1,4 @@
-import { cn } from "@/utils/cn";
+import { cn } from "@diffgazer/core/cn";
 import type { ReviewIssue } from "@diffgazer/schemas/review";
 import { SEVERITY_CONFIG } from "@/components/ui/severity/constants";
 

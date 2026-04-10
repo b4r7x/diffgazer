@@ -1,10 +1,13 @@
 import type { DisplayStatus } from "@diffgazer/schemas/config";
 export type { DisplayStatus };
 
+/** @see @diffgazer/schemas/ui BadgeVariant (Zod-inferred) @see diff-ui/registry/ui/badge/badge.tsx BadgeVariant (component-library) */
+export type BadgeVariant = "success" | "warning" | "error" | "info" | "neutral";
+
 export interface DisplayStatusConfig {
   label: string;
   badgeLabel: string;
-  badgeVariant: string;
+  badgeVariant: BadgeVariant;
 }
 
 const DISPLAY_STATUS_CONFIG: Record<DisplayStatus, DisplayStatusConfig> = {
@@ -17,7 +20,7 @@ export function getDisplayStatusLabel(status: DisplayStatus): string {
   return DISPLAY_STATUS_CONFIG[status].label;
 }
 
-export function getDisplayStatusBadge(status: DisplayStatus): { label: string; variant: string } {
+export function getDisplayStatusBadge(status: DisplayStatus): { label: string; variant: BadgeVariant } {
   const config = DISPLAY_STATUS_CONFIG[status];
   return { label: config.badgeLabel, variant: config.badgeVariant };
 }

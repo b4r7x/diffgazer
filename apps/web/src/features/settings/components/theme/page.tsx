@@ -11,7 +11,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useKey, useScope } from "keyscope";
 import { usePageFooter } from "@/hooks/use-page-footer";
 import { useFooterNavigation } from "@/hooks/use-footer-navigation.js";
-import { cn } from "@/utils/cn";
+import { cn } from "@diffgazer/core/cn";
 
 function resolveTheme(theme: WebTheme, systemResolved?: ResolvedTheme | null): ResolvedTheme {
   return theme === "auto" ? (systemResolved ?? "dark") : theme;

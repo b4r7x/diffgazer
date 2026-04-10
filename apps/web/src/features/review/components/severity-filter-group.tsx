@@ -1,4 +1,4 @@
-import { cn } from "@/utils/cn";
+import { cn } from "@diffgazer/core/cn";
 import type { ReviewSeverity } from "@diffgazer/schemas/review";
 import { type UISeverityFilter, SEVERITY_ORDER } from "@diffgazer/schemas/ui";
 import { SeverityFilterButton } from "./severity-filter-button";

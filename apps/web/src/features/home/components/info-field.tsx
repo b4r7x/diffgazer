@@ -1,5 +1,5 @@
 import type { KeyboardEvent, ReactNode } from "react";
-import { cn } from "@/utils/cn";
+import { cn } from "@diffgazer/core/cn";
 
 export type InfoFieldColor = "blue" | "violet" | "green" | "yellow" | "red" | "muted";
 

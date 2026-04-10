@@ -1,5 +1,5 @@
 import { useConfigData } from "@/app/providers/config-provider";
-import { cn } from "@/utils/cn";
+import { cn } from "@diffgazer/core/cn";
 import { useDiagnosticsData } from "@diffgazer/api/hooks";
 import { formatTimestampOrNA } from "@diffgazer/core/format";
 import { useDiagnosticsKeyboard } from "../../hooks/use-diagnostics-keyboard.js";

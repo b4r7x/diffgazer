@@ -18,7 +18,7 @@ import {
 } from "../../shared/lib/storage/reviews.js";
 import { buildDrilldownPrompt } from "../../shared/lib/review/prompts.js";
 import { DrilldownResponseSchema } from "./schemas.js";
-import type { DrilldownResponse } from "./schemas.js";
+import type { DrilldownAIResponse } from "./schemas.js";
 import type { DrilldownError, HandleDrilldownError } from "./types.js";
 import { recordTrace } from "./utils.js";
 
@@ -64,7 +64,7 @@ export async function drilldownIssue(
 
   const prompt = buildDrilldownPrompt(issue, diff, allIssues);
 
-  const result: Result<DrilldownResponse, AIError> = await recordTrace(
+  const result: Result<DrilldownAIResponse, AIError> = await recordTrace(
     steps,
     "generateAnalysis",
     `issue analysis: ${issue.id} - ${issue.title}`,

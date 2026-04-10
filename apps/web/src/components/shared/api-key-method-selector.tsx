@@ -1,7 +1,7 @@
 import type { RefObject } from "react";
 import { Input } from "diffui/components/input";
 import { Radio } from "diffui/components/radio";
-import { cn } from "@/utils/cn";
+import { cn } from "@diffgazer/core/cn";
 import type { FocusElement } from "@/types/focus-element";
 import type { InputMethod } from "@/types/input-method";
 

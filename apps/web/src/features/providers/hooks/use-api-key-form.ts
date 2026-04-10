@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getErrorMessage } from "@diffgazer/core/errors";
 import type { InputMethod } from "@/types/input-method";
 
 interface UseApiKeyFormOptions {
@@ -34,7 +35,7 @@ export function useApiKeyForm({
       setKeyValue("");
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save API key");
+      setError(getErrorMessage(err, "Failed to save API key"));
     } finally {
       setIsSubmitting(false);
     }
@@ -48,7 +49,7 @@ export function useApiKeyForm({
       await onRemoveKey();
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to remove API key");
+      setError(getErrorMessage(err, "Failed to remove API key"));
     } finally {
       setIsSubmitting(false);
     }

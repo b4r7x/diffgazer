@@ -1,8 +1,9 @@
-import { createContext, Fragment, useState, useContext, Children, isValidElement } from "react";
-import type { ReactNode } from "react";
+import { createContext, useState, useContext } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../../theme/theme-context.js";
 import type { CliColorTokens } from "../../theme/palettes.js";
+import { clampIndex, collectChildItems } from "../../lib/list-navigation.js";
 
 // --- Types ---
 
@@ -51,23 +52,10 @@ interface CollectedItem {
   disabled: boolean;
 }
 
-function collectItems(children: ReactNode): CollectedItem[] {
-  const items: CollectedItem[] = [];
-  Children.forEach(children, (child) => {
-    if (!isValidElement(child)) return;
-    if (child.type === Fragment) {
-      items.push(...collectItems((child.props as { children: ReactNode }).children));
-      return;
-    }
-    if (child.type === RadioGroupItem) {
-      const props = child.props as RadioGroupItemProps;
-      items.push({
-        value: props.value,
-        disabled: props.disabled ?? false,
-      });
-    }
-  });
-  return items;
+function extractRadioItem(element: ReactElement): CollectedItem | null {
+  if (element.type !== RadioGroupItem) return null;
+  const props = element.props as RadioGroupItemProps;
+  return { value: props.value, disabled: props.disabled ?? false };
 }
 
 // --- Components ---
@@ -139,7 +127,7 @@ function RadioGroupRoot({
   children,
 }: RadioGroupProps) {
   const { tokens } = useTheme();
-  const items = collectItems(children);
+  const items = collectChildItems(children, extractRadioItem);
   const selectableItems = items.filter((item) => !item.disabled && !disabled);
 
   const [internalValue, setInternalValue] = useState(defaultValue ?? "");
@@ -151,14 +139,7 @@ function RadioGroupRoot({
   function moveHighlight(direction: 1 | -1) {
     if (selectableItems.length === 0) return;
 
-    let nextIdx = highlightIndex + direction;
-
-    if (wrap) {
-      nextIdx = (nextIdx + selectableItems.length) % selectableItems.length;
-    } else {
-      nextIdx = Math.max(0, Math.min(nextIdx, selectableItems.length - 1));
-    }
-
+    const nextIdx = clampIndex(highlightIndex, direction, selectableItems.length, wrap);
     setHighlightIndex(nextIdx);
     const nextItem = selectableItems[nextIdx];
     if (nextItem) {

@@ -1,8 +1,9 @@
-import { createContext, Fragment, useState, useContext, Children, isValidElement } from "react";
-import type { ReactNode } from "react";
+import { createContext, useState, useContext } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
 import { useTheme } from "../../theme/theme-context.js";
 import type { CliColorTokens } from "../../theme/palettes.js";
+import { clampIndex, collectChildItems } from "../../lib/list-navigation.js";
 
 // --- Types ---
 
@@ -64,23 +65,10 @@ interface CollectedItem {
   disabled: boolean;
 }
 
-function collectItems(children: ReactNode): CollectedItem[] {
-  const items: CollectedItem[] = [];
-  Children.forEach(children, (child) => {
-    if (!isValidElement(child)) return;
-    if (child.type === Fragment) {
-      items.push(...collectItems((child.props as { children: ReactNode }).children));
-      return;
-    }
-    if (child.type === NavigationListItem) {
-      const props = child.props as NavigationListItemProps;
-      items.push({
-        id: props.id,
-        disabled: props.disabled ?? false,
-      });
-    }
-  });
-  return items;
+function extractNavigationListItem(element: ReactElement): CollectedItem | null {
+  if (element.type !== NavigationListItem) return null;
+  const props = element.props as NavigationListItemProps;
+  return { id: props.id, disabled: props.disabled ?? false };
 }
 
 // --- Sub-components ---
@@ -169,7 +157,7 @@ function NavigationListRoot({
   children,
 }: NavigationListProps) {
   const { tokens } = useTheme();
-  const items = collectItems(children);
+  const items = collectChildItems(children, extractNavigationListItem);
   const selectableItems = items.filter((item) => !item.disabled);
 
   const [internalIndex, setInternalIndex] = useState(0);
@@ -185,13 +173,7 @@ function NavigationListRoot({
     const currentIdx = selectableItems.findIndex(
       (item) => item.id === currentHighlightedId,
     );
-    let nextIdx = currentIdx + direction;
-
-    if (wrap) {
-      nextIdx = (nextIdx + selectableItems.length) % selectableItems.length;
-    } else {
-      nextIdx = Math.max(0, Math.min(nextIdx, selectableItems.length - 1));
-    }
+    const nextIdx = clampIndex(currentIdx, direction, selectableItems.length, wrap);
 
     const nextItem = selectableItems[nextIdx];
     if (!nextItem) return;

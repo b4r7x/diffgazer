@@ -1,5 +1,5 @@
 import type { TableOfContents } from "fumadocs-core/toc";
-import { type MouseEvent, useEffect, useMemo, useRef } from "react";
+import { type MouseEvent, useEffect, useRef } from "react";
 import {
 	type ActiveHeadingActivation,
 	useActiveHeading,
@@ -46,20 +46,13 @@ export function TableOfContentsPanel({
 }: TableOfContentsPanelProps) {
 	const itemRefs = useRef(new Map<string, HTMLAnchorElement>());
 
-	const tocEntries = useMemo(
-		() =>
-			toc.flatMap((item) => {
-				const id = parseHeadingId(item.url);
-				if (!id) return [];
-				return [{ depth: item.depth, title: item.title, id, key: item.url }];
-			}),
-		[toc],
-	);
+	const tocEntries = toc.flatMap((item) => {
+		const id = parseHeadingId(item.url);
+		if (!id) return [];
+		return [{ depth: item.depth, title: item.title, id, key: item.url }];
+	});
 
-	const headingIds = useMemo(
-		() => tocEntries.map((e) => e.id),
-		[tocEntries],
-	);
+	const headingIds = tocEntries.map((e) => e.id);
 
 	const { activeId, scrollTo } = useActiveHeading({
 		ids: headingIds,

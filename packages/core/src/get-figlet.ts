@@ -3,6 +3,7 @@ import figlet from "figlet";
 import bigFont from "figlet/importable-fonts/Big.js";
 import smallFont from "figlet/importable-fonts/Small.js";
 
+/** Supported figlet font names. @see diff-ui/registry/ui/logo/get-figlet-text.ts for the intentionally duplicated copy. */
 export type FigletFont = "Big" | "Small";
 
 const loadedFonts = new Set<FigletFont>();

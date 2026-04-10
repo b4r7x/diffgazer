@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getErrorMessage } from "@diffgazer/core/errors";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/schemas/config";
 import type { AIProvider } from "@diffgazer/schemas/config";
 import { LENS_IDS } from "@diffgazer/schemas/review";
@@ -87,7 +88,7 @@ export function useOnboarding() {
       await refreshConfig(true);
       setConfiguredGuardCache(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Setup failed");
+      setError(getErrorMessage(e, "Setup failed"));
       throw e;
     } finally {
       setIsSubmitting(false);

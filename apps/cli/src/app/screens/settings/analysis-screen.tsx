@@ -7,7 +7,7 @@ import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
 import { useSettingsZone } from "../../../hooks/use-settings-zone.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
-import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/api/hooks";
+import { useSettings, useSaveSettings, guardQueryState } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Button } from "../../../components/ui/button.js";
@@ -32,7 +32,7 @@ export function AnalysisScreen(): ReactElement {
   const [selectedLenses, setSelectedLenses] = useState<LensId[] | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const guard = matchQueryState(settingsQuery, {
+  const guard = guardQueryState(settingsQuery, {
     loading: () => (
       <Panel>
         <Panel.Content>
@@ -47,10 +47,9 @@ export function AnalysisScreen(): ReactElement {
         </Panel.Content>
       </Panel>
     ),
-    success: () => null,
   });
 
-  if (guard) return guard as ReactElement;
+  if (guard) return guard;
 
   const isSaving = saveSettings.isPending;
   const saveError = saveSettings.error?.message ?? null;

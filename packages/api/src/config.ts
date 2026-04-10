@@ -91,8 +91,7 @@ export async function deleteTrust(
   client: ApiClient,
   projectId: string
 ): Promise<{ removed: boolean }> {
-  const params = new URLSearchParams({ projectId }).toString();
-  return client.delete<{ removed: boolean }>(`/api/settings/trust?${params}`);
+  return client.delete<{ removed: boolean }>("/api/settings/trust", { projectId });
 }
 
 export const bindConfig = (client: ApiClient) => ({

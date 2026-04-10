@@ -7,7 +7,7 @@ import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
 import { useSettingsZone } from "../../../hooks/use-settings-zone.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
-import { useSettings, useSaveSettings, matchQueryState } from "@diffgazer/api/hooks";
+import { useSettings, useSaveSettings, guardQueryState } from "@diffgazer/api/hooks";
 import { Panel } from "../../../components/ui/panel.js";
 import { SectionHeader } from "../../../components/ui/section-header.js";
 import { Spinner } from "../../../components/ui/spinner.js";
@@ -48,7 +48,7 @@ export function AgentExecutionScreen(): ReactElement {
     });
   }
 
-  const guard = matchQueryState(settingsQuery, {
+  const guard = guardQueryState(settingsQuery, {
     loading: () => (
       <Panel>
         <Panel.Content>
@@ -63,10 +63,9 @@ export function AgentExecutionScreen(): ReactElement {
         </Panel.Content>
       </Panel>
     ),
-    success: () => null,
   });
 
-  if (guard) return guard as ReactElement;
+  if (guard) return guard;
 
   return (
     <Box justifyContent="center" flexGrow={1}>

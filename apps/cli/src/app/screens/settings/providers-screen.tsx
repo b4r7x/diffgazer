@@ -3,7 +3,7 @@ import type { ReactElement } from "react";
 import { Box, Text } from "ink";
 import type { ProviderStatus } from "@diffgazer/schemas/config";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/schemas/config";
-import { useProviderStatus, useDeleteProviderCredentials, matchQueryState } from "@diffgazer/api/hooks";
+import { useProviderStatus, useDeleteProviderCredentials, guardQueryState } from "@diffgazer/api/hooks";
 import { useScope } from "../../../hooks/use-scope.js";
 import { usePageFooter } from "../../../hooks/use-page-footer.js";
 import { useBackHandler } from "../../../hooks/use-back-handler.js";
@@ -98,7 +98,7 @@ export function ProvidersScreen(): ReactElement {
 
   useBackHandler({ isActive: isListActive });
 
-  const guard = matchQueryState(providerQuery, {
+  const guard = guardQueryState(providerQuery, {
     loading: () => (
       <Panel>
         <Panel.Content>
@@ -119,10 +119,9 @@ export function ProvidersScreen(): ReactElement {
         </Panel.Content>
       </Panel>
     ),
-    success: () => null,
   });
 
-  if (guard) return guard as ReactElement;
+  if (guard) return guard;
 
   return (
     <Panel>

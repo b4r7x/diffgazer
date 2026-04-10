@@ -8,6 +8,8 @@ const DEFAULT_GLOBAL_DIR = path.join(homedir(), ".diffgazer");
 
 const normalizePath = (input: string): string => path.resolve(input.trim());
 
+const gitRootCache = new Map<string, string | null>();
+
 const isAllowedPath = (resolved: string): boolean => {
   const home = homedir();
   if (resolved.startsWith(home + path.sep) || resolved === home) {
@@ -22,15 +24,20 @@ const isAllowedPath = (resolved: string): boolean => {
 };
 
 const findGitRoot = (startPath: string): string | null => {
+  const cached = gitRootCache.get(startPath);
+  if (cached !== undefined) return cached;
+
   let current = startPath;
   while (true) {
     const gitPath = path.join(current, ".git");
     if (fs.existsSync(gitPath)) {
+      gitRootCache.set(startPath, current);
       return current;
     }
 
     const parent = path.dirname(current);
     if (parent === current) {
+      gitRootCache.set(startPath, null);
       return null;
     }
     current = parent;

@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react"
-import { cn } from "@/lib/utils"
+import { useState, useRef, useEffect, useEffectEvent } from "react"
+import { cn } from "@diffgazer/core/cn"
 
 interface VariableMapping {
   primitive: { name: string; darkValue: string; lightValue: string }
@@ -31,7 +31,7 @@ export function VariableDiagram({ className }: VariableDiagramProps) {
   const primitiveRefs = useRef<Map<number, HTMLDivElement>>(new Map())
   const semanticRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
-  const computeLines = () => {
+  const computeLines = useEffectEvent(() => {
     const container = containerRef.current
     if (!container) return
 
@@ -59,13 +59,13 @@ export function VariableDiagram({ className }: VariableDiagramProps) {
     }
 
     setLines(newLines)
-  }
+  })
 
   useEffect(() => {
     computeLines()
     window.addEventListener("resize", computeLines)
     return () => window.removeEventListener("resize", computeLines)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div ref={containerRef} className={cn("relative border border-border bg-background p-6", className)}>

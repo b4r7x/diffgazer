@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import type { ReviewIssue } from "@diffgazer/schemas/review";
 import {
@@ -40,6 +40,10 @@ export function IssueListPane({
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [subZone, setSubZone] = useState<SubZone>("issues");
   const counts = calculateSeverityCounts(allIssues);
+
+  useEffect(() => {
+    setHighlightedIndex(0);
+  }, [issues.length]);
 
   useInput(
     (input, key) => {

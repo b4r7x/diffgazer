@@ -2,28 +2,13 @@ import { Box, Text } from "ink";
 import { useTheme } from "../../../theme/theme-context.js";
 import { Badge } from "../../../components/ui/badge.js";
 import { useTerminalDimensions } from "../../../hooks/use-terminal-dimensions.js";
+import { severityVariant } from "../utils/severity-variant.js";
 
 export interface IssuePreviewItemProps {
   severity: string;
   filePath: string;
   title: string;
   isHighlighted?: boolean;
-}
-
-function severityVariant(
-  severity: string,
-): "error" | "warning" | "info" | "neutral" {
-  switch (severity) {
-    case "blocker":
-    case "high":
-      return "error";
-    case "medium":
-      return "warning";
-    case "low":
-      return "info";
-    default:
-      return "neutral";
-  }
 }
 
 function truncatePath(filePath: string, maxLength: number): string {

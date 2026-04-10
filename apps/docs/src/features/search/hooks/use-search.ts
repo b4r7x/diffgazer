@@ -1,10 +1,12 @@
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect } from "react"
 import { createServerFn } from "@tanstack/react-start"
 import { searchAPI } from "@/lib/search-server"
 import {
   docsPath,
+  isDocsLibraryId,
   routeSlugsFromSourcePath,
-  DOCS_LIBRARY_IDS,
+  SOURCE_DOCS_PREFIX,
+  type DocsLibraryId,
 } from "@/lib/docs-library"
 
 export interface SearchResult {
@@ -41,13 +43,11 @@ function stripMarkTags(html: string): string {
   return html.replace(/<\/?mark>/g, "")
 }
 
-const SOURCE_DOCS_PREFIX = "/docs/"
-
-function parseLibraryFromUrl(url: string): string | null {
+function parseLibraryFromUrl(url: string): DocsLibraryId | null {
   if (!url.startsWith(SOURCE_DOCS_PREFIX)) return null
   const rest = url.slice(SOURCE_DOCS_PREFIX.length)
   const lib = rest.split("/")[0]
-  return lib && DOCS_LIBRARY_IDS.includes(lib) ? lib : null
+  return lib && isDocsLibraryId(lib) ? lib : null
 }
 
 export function useSearch() {
@@ -98,10 +98,10 @@ export function useSearch() {
       })
   }, [query])
 
-  const reset = useCallback(() => {
+  const reset = () => {
     setQuery("")
     setResults([])
-  }, [])
+  }
 
   return { query, results, search: setQuery, reset }
 }

@@ -8,10 +8,15 @@ const makeIssue = (severity: ReviewIssue["severity"], id: string): ReviewIssue =
   severity,
   category: "correctness",
   file: "src/a.ts",
-  line: 1,
-  description: "desc",
-  codeSnippet: "code",
-  suggestion: "fix",
+  line_start: 1,
+  line_end: null,
+  rationale: "desc",
+  recommendation: "fix",
+  suggested_patch: null,
+  confidence: 0.9,
+  symptom: "symptom",
+  whyItMatters: "matters",
+  evidence: [],
 });
 
 const issues: ReviewIssue[] = [

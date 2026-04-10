@@ -34,6 +34,7 @@ packages/tsconfig/ → Shared TS configs
 - Both apps use shared hooks from `@diffgazer/api/hooks` for data fetching — no hand-rolled `useState`+`useEffect` fetch patterns. See @.claude/docs/shared-hooks.md.
 - Use `matchQueryState(query, { loading, error, success })` from `@diffgazer/api/hooks` for declarative loading/error/success rendering — reduces repetitive `if (isLoading)... if (error)...` guards.
 - Use `Result<T, E>` for error handling, NOT try/catch. See @.claude/docs/decisions.md (ADR-0001).
+- **Exception**: TanStack Query `mutateAsync` requires try/catch by design — this is accepted. Use `getErrorMessage()` from `@diffgazer/core/errors` in catch blocks.
 - Use Zod 4 schemas from `@diffgazer/schemas` for all validation.
 - No manual `useCallback`/`useMemo` — React 19 Compiler auto-memoizes.
 - No mock data in web — everything connects to real backend.
