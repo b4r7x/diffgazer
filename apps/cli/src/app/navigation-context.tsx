@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import React, { createContext, useContext, useState, type ReactNode } from "react";
 import type { Route, ScreenName } from "./routes.js";
 import { getBackTarget } from "../lib/back-navigation.js";
 
@@ -25,12 +25,12 @@ export function NavigationProvider({
   const [route, setRoute] = useState<Route>(initialRoute ?? { screen: "home" });
   const [stack, setStack] = useState<Route[]>([]);
 
-  const navigate = useCallback((newRoute: Route) => {
+  const navigate = (newRoute: Route) => {
     setStack((prev) => [...prev.slice(-(MAX_STACK_SIZE - 1)), route]);
     setRoute(newRoute);
-  }, [route]);
+  };
 
-  const goBack = useCallback(() => {
+  const goBack = () => {
     const backTarget = getBackTarget(route.screen);
     if (backTarget) {
       setRoute(backTarget);
@@ -45,19 +45,19 @@ export function NavigationProvider({
     }
 
     setRoute({ screen: "home" });
-  }, [route.screen, stack]);
+  };
 
   const canGoBack =
     getBackTarget(route.screen) !== null ||
     stack.length > 0 ||
     route.screen !== "home";
 
-  const value = useMemo<NavigationContextValue>(() => ({
+  const value: NavigationContextValue = {
     route,
     navigate,
     goBack,
     canGoBack,
-  }), [route, navigate, goBack, canGoBack]);
+  };
 
   return (
     <NavigationContext value={value}>

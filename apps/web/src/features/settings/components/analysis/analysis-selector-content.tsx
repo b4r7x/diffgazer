@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { LensId } from "@diffgazer/schemas/review";
 import { Badge } from "diffui/components/badge";
 import { CheckboxGroup, CheckboxItem } from "diffui/components/checkbox";
@@ -38,11 +38,8 @@ export function AnalysisSelectorContent({
     getInitialFocusedLens(options),
   );
 
-  const optionIds = useMemo(
-    () => options.map((option) => option.id),
-    [options],
-  );
-  const optionIdSet = useMemo(() => new Set(optionIds), [optionIds]);
+  const optionIds = options.map((option) => option.id);
+  const optionIdSet = new Set(optionIds);
   const initialFocusedLens = getInitialFocusedLens(options);
 
   useEffect(() => {

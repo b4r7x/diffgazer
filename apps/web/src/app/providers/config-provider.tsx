@@ -1,8 +1,6 @@
 import {
   createContext,
-  useCallback,
   useContext,
-  useMemo,
   type ReactNode,
 } from "react";
 import type { AIProvider, ProviderStatus, TrustConfig, SetupStatus } from "@diffgazer/schemas/config";
@@ -77,19 +75,19 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   const trust = initData?.project?.trust ?? null;
   const setupStatus = initData?.setup ?? null;
 
-  const refresh = useCallback(async () => {
+  const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: configQueries.all() });
-  }, [queryClient]);
+  };
 
-  const activateProvider = useCallback(async (providerId: string, selectedModel?: string) => {
+  const activateProvider = async (providerId: string, selectedModel?: string) => {
     try {
       await activateMutation.mutateAsync({ providerId, model: selectedModel });
     } catch {
       // Error captured in activateMutation.error
     }
-  }, [activateMutation]);
+  };
 
-  const saveCredentials = useCallback(async (
+  const saveCredentials = async (
     providerName: AIProvider,
     apiKey: string,
     selectedModel?: string,
@@ -103,17 +101,17 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     } catch {
       // Error captured in saveConfigMutation.error
     }
-  }, [saveConfigMutation]);
+  };
 
-  const deleteProviderCredentials = useCallback(async (providerName: AIProvider) => {
+  const deleteProviderCredentials = async (providerName: AIProvider) => {
     try {
       await deleteCredentialsMutation.mutateAsync(providerName);
     } catch {
       // Error captured in deleteCredentialsMutation.error
     }
-  }, [deleteCredentialsMutation]);
+  };
 
-  const dataValue = useMemo<ConfigDataContextValue>(() => ({
+  const dataValue: ConfigDataContextValue = {
     provider,
     model,
     isConfigured,
@@ -122,9 +120,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     repoRoot,
     trust,
     setupStatus,
-  }), [provider, model, isConfigured, providerStatus, projectId, repoRoot, trust, setupStatus]);
+  };
 
-  const actionsValue = useMemo<ConfigActionsContextValue>(() => ({
+  const actionsValue: ConfigActionsContextValue = {
     isLoading,
     isSaving,
     error,
@@ -132,7 +130,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     activateProvider,
     saveCredentials,
     deleteProviderCredentials,
-  }), [isLoading, isSaving, error, refresh, activateProvider, saveCredentials, deleteProviderCredentials]);
+  };
 
   return (
     <ConfigDataContext.Provider value={dataValue}>

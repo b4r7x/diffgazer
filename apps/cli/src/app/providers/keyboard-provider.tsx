@@ -1,8 +1,9 @@
-import { createContext, useCallback, useMemo, useRef, useState } from "react";
+import { createContext, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useInput } from "ink";
 import type { Key } from "ink";
 
+/** @see keyscope/src/providers/keyboard-provider.tsx KeyboardContextValue (browser-based variant with DOM event routing) */
 export interface KeyboardContextValue {
   registerHandler: (
     scope: string,
@@ -66,13 +67,13 @@ export function TerminalKeyboardProvider({
     ? scopeStack[scopeStack.length - 1] ?? null
     : null;
 
-  const setInputActive = useCallback((active: boolean) => {
+  const setInputActive = (active: boolean) => {
     if (inputActiveRef.current === active) return;
     inputActiveRef.current = active;
     setInputActiveState(active);
-  }, []);
+  };
 
-  const registerHandler = useCallback((
+  const registerHandler = (
     scope: string,
     hotkey: string,
     handler: () => void,
@@ -99,9 +100,9 @@ export function TerminalKeyboardProvider({
         scopes.delete(scope);
       }
     };
-  }, []);
+  };
 
-  const registerGlobalHandler = useCallback((
+  const registerGlobalHandler = (
     hotkey: string,
     handler: () => void,
   ): (() => void) => {
@@ -120,18 +121,18 @@ export function TerminalKeyboardProvider({
         }
       }
     };
-  }, []);
+  };
 
-  const pushScope = useCallback((name: string) => {
+  const pushScope = (name: string) => {
     setScopeStack((prev) => {
       if (prev[prev.length - 1] === name) return prev;
       return [...prev, name];
     });
-  }, []);
+  };
 
-  const popScope = useCallback(() => {
+  const popScope = () => {
     setScopeStack((prev) => prev.slice(0, -1));
-  }, []);
+  };
 
   useInput((input, key) => {
     const hotkey = inkKeyToHotkey(input, key);
@@ -170,7 +171,7 @@ export function TerminalKeyboardProvider({
     }
   });
 
-  const value = useMemo<KeyboardContextValue>(() => ({
+  const value: KeyboardContextValue = {
     registerHandler,
     registerGlobalHandler,
     pushScope,
@@ -178,11 +179,11 @@ export function TerminalKeyboardProvider({
     activeScope,
     setInputActive,
     inputActive,
-  }), [activeScope, inputActive, registerHandler, registerGlobalHandler, pushScope, popScope, setInputActive]);
+  };
 
   return (
-    <KeyboardContext.Provider value={value}>
+    <KeyboardContext value={value}>
       {children}
-    </KeyboardContext.Provider>
+    </KeyboardContext>
   );
 }
