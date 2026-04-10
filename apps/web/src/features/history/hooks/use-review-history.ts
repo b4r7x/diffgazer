@@ -20,8 +20,12 @@ export function useReviewHistory() {
   };
 
   const removeReview = async (id: string) => {
-    await deleteReviewMutation.mutateAsync(id);
-    if (selectedId === id) setSelectedId(null);
+    try {
+      await deleteReviewMutation.mutateAsync(id);
+      if (selectedId === id) setSelectedId(null);
+    } catch {
+      // Error captured in deleteReviewMutation.error
+    }
   };
 
   return {

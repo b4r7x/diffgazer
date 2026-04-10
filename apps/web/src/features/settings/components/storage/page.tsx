@@ -49,7 +49,7 @@ export function SettingsStoragePage() {
     buttonCount: 2,
     onAction: (index) => {
       if (index === 0) handleCancel();
-      else if (index === 1 && canSave) handleSave();
+      else if (index === 1 && canSave) void handleSave();
     },
   });
 

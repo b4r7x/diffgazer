@@ -1,8 +1,6 @@
 import type { DisplayStatus } from "@diffgazer/schemas/config";
-export type { DisplayStatus };
-
-/** @see @diffgazer/schemas/ui BadgeVariant (Zod-inferred) @see diff-ui/registry/ui/badge/badge.tsx BadgeVariant (component-library) */
-export type BadgeVariant = "success" | "warning" | "error" | "info" | "neutral";
+import type { BadgeVariant } from "@diffgazer/schemas/ui";
+export type { DisplayStatus, BadgeVariant };
 
 export interface DisplayStatusConfig {
   label: string;

@@ -187,7 +187,7 @@ export function buildReviewPrompt(lens: Lens, diff: ParsedDiff, projectContext?:
   const normalizedContext = projectContext?.trim();
   const contextBlock =
     normalizedContext && normalizedContext !== "No workspace packages detected."
-      ? `<project-context>\n${normalizedContext}\n</project-context>\n\n`
+      ? `<project-context>\n${escapeXml(normalizedContext)}\n</project-context>\n\n`
       : "";
 
   return `${lens.systemPrompt}

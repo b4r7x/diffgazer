@@ -9,16 +9,22 @@ const DEFAULT_GLOBAL_DIR = path.join(homedir(), ".diffgazer");
 const normalizePath = (input: string): string => path.resolve(input.trim());
 
 const gitRootCache = new Map<string, string | null>();
+const allowedPathCache = new Map<string, boolean>();
 
 const isAllowedPath = (resolved: string): boolean => {
   const home = homedir();
   if (resolved.startsWith(home + path.sep) || resolved === home) {
     return true;
   }
+  const cached = allowedPathCache.get(resolved);
+  if (cached !== undefined) return cached;
   // Allow paths with a .git directory (valid repos outside home)
   try {
-    return fs.existsSync(path.join(resolved, ".git"));
+    const allowed = fs.existsSync(path.join(resolved, ".git"));
+    allowedPathCache.set(resolved, allowed);
+    return allowed;
   } catch {
+    allowedPathCache.set(resolved, false);
     return false;
   }
 };

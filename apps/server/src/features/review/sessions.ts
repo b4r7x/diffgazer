@@ -16,6 +16,7 @@ export interface ActiveSession {
 }
 
 const MAX_SESSIONS = 50;
+const MAX_EVENTS_PER_SESSION = 10_000;
 const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 const activeSessions = new Map<string, ActiveSession>();
@@ -91,6 +92,9 @@ export function markReady(reviewId: string): void {
 export function addEvent(reviewId: string, event: FullReviewStreamEvent): void {
   const session = activeSessions.get(reviewId);
   if (session && !session.isComplete) {
+    if (session.events.length >= MAX_EVENTS_PER_SESSION) {
+      return;
+    }
     session.events.push(event);
     session.subscribers.forEach(cb => {
       try {

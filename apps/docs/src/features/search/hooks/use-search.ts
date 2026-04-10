@@ -98,10 +98,5 @@ export function useSearch() {
       })
   }, [query])
 
-  const reset = () => {
-    setQuery("")
-    setResults([])
-  }
-
-  return { query, results, search: setQuery, reset }
+  return { query, results, search: setQuery }
 }

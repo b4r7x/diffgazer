@@ -13,6 +13,17 @@ export interface ApiError extends Error {
   code?: string;
 }
 
+export function isApiError(error: unknown): error is ApiError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    typeof (error as Record<string, unknown>).status === "number" &&
+    "message" in error &&
+    typeof (error as Record<string, unknown>).message === "string"
+  );
+}
+
 export interface StreamOptions {
   body?: unknown;
   params?: Record<string, string>;

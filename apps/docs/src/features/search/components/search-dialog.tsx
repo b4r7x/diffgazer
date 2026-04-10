@@ -35,7 +35,7 @@ const SECTION_LABELS: Record<string, string> = {
 
 export function SearchDialog() {
   const { open, setOpen } = useSearchOpen()
-  const { query, results, search, reset } = useSearch()
+  const { query, results, search } = useSearch()
   const navigate = useNavigate()
 
   useKey({
@@ -46,8 +46,8 @@ export function SearchDialog() {
   useScope("search", { enabled: open })
 
   useEffect(() => {
-    if (!open) reset()
-  }, [open, reset])
+    if (!open) search("")
+  }, [open, search])
 
   return (
     <CommandPalette

@@ -2,22 +2,9 @@
 
 import { toast } from "diffui/components/toast";
 import { useNavigate } from "@tanstack/react-router";
+import { isApiError } from "@diffgazer/api/types";
 
-interface ApiError {
-  status: number;
-  message: string;
-}
-
-export function isApiError(error: unknown): error is ApiError {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "status" in error &&
-    typeof (error as Record<string, unknown>).status === "number" &&
-    "message" in error &&
-    typeof (error as Record<string, unknown>).message === "string"
-  );
-}
+export { isApiError };
 
 export function useReviewErrorHandler() {
   const navigate = useNavigate();

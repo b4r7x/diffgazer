@@ -69,6 +69,14 @@ export function createInitialSteps(): StepState[] {
   }));
 }
 
+const STEP_EVENT_TYPES = new Set<string>(["review_started", "step_start", "step_complete", "step_error"]);
+
 export function isStepEvent(event: unknown): event is StepEvent {
-  return StepEventSchema.safeParse(event).success;
+  return (
+    typeof event === "object" &&
+    event !== null &&
+    "type" in event &&
+    typeof (event as { type: unknown }).type === "string" &&
+    STEP_EVENT_TYPES.has((event as { type: string }).type)
+  );
 }
