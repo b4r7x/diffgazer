@@ -10,6 +10,7 @@ node_modules/
 /.specify/
 /docs/
 /specs/
+.worktrees/
 tmp/
 /scripts/timestamps/
 **/coverage/
