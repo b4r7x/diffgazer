@@ -1,7 +1,7 @@
 {
   "$schema": "https:/@diffgazer/ui.shadcn.com/schema/registry.json",
   "name": "ui",
-  "homepage": "https://github.com/b4r7/diffgazer/tree/main/libs/ui",
+  "homepage": "https://github.com/b4r7x/diffgazer/tree/main/libs/ui",
   "items": [
     {
       "name": "accordion",

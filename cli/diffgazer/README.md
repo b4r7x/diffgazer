@@ -2,7 +2,7 @@
 
 CLI tool that starts the Diffgazer environment.
 
-Source: https://github.com/b4r7/diffgazer/tree/main/cli/diffgazer
+Source: https://github.com/b4r7x/diffgazer/tree/main/cli/diffgazer
 
 ## What it does
 

@@ -2,14 +2,14 @@
   "name": "@diffgazer/ui",
   "version": "0.1.0",
   "description": "Terminal-inspired React UI component library",
-  "homepage": "https://github.com/b4r7/diffgazer/tree/main/libs/ui",
+  "homepage": "https://github.com/b4r7x/diffgazer/tree/main/libs/ui",
   "repository": {
     "type": "git",
-    "url": "https://github.com/b4r7/diffgazer.git",
+    "url": "https://github.com/b4r7x/diffgazer.git",
     "directory": "libs/ui"
   },
   "bugs": {
-    "url": "https://github.com/b4r7/diffgazer/issues"
+    "url": "https://github.com/b4r7x/diffgazer/issues"
   },
   "license": "MIT",
   "type": "module",
@@ -44,7 +44,9 @@
     "build": "tsup && pnpm build:shadcn && pnpm build:artifacts",
     "build:shadcn": "node --import tsx scripts/build-shadcn-registry.ts",
     "build:artifacts": "node --import tsx scripts/build-publish-artifacts.ts",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

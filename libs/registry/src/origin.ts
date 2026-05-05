@@ -1,5 +1,4 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { collectJsonFiles } from "./utils/fs.js";
 
 export interface OriginRewriteOptions {

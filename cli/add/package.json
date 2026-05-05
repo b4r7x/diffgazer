@@ -10,13 +10,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/b4r7/diffgazer.git",
+    "url": "git+https://github.com/b4r7x/diffgazer.git",
     "directory": "cli/add"
   },
   "bugs": {
-    "url": "https://github.com/b4r7/diffgazer/issues"
+    "url": "https://github.com/b4r7x/diffgazer/issues"
   },
-  "homepage": "https://github.com/b4r7/diffgazer/tree/main/cli/add",
+  "homepage": "https://github.com/b4r7x/diffgazer/tree/main/cli/add",
   "publishConfig": {
     "access": "public"
   },

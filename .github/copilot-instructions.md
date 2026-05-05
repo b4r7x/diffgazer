@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This repository is the `b4r7/diffgazer` pnpm monorepo.
+This repository is the `b4r7x/diffgazer` pnpm monorepo.
 
 Primary workspace roots:
 

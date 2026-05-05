@@ -3,25 +3,44 @@
   "private": true,
   "version": "0.0.0",
   "description": "Diffgazer monorepo workspace",
-  "homepage": "https://github.com/b4r7/diffgazer",
+  "homepage": "https://github.com/b4r7x/diffgazer",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/b4r7/diffgazer.git"
+    "url": "git+https://github.com/b4r7x/diffgazer.git"
   },
   "bugs": {
-    "url": "https://github.com/b4r7/diffgazer/issues"
+    "url": "https://github.com/b4r7x/diffgazer/issues"
   },
   "packageManager": "pnpm@10.28.2",
   "scripts": {
     "build": "turbo run build",
     "type-check": "turbo run type-check",
     "test": "turbo run test",
+    "test:watch": "turbo run test:watch --parallel",
     "check": "turbo run check",
+    "verify": "pnpm run verify:monorepo && pnpm run type-check && pnpm run test && pnpm run smoke",
     "verify:monorepo": "node scripts/monorepo/check-invariants.mjs",
+    "smoke": "pnpm run smoke:cli && pnpm run smoke:packages",
     "smoke:cli": "node scripts/monorepo/smoke-cli.mjs",
     "smoke:packages": "node scripts/monorepo/smoke-package-install.mjs",
+    "docs:dev": "pnpm --filter @diffgazer/docs dev",
     "docs:prepare": "pnpm --filter @diffgazer/docs prepare:generated",
     "docs:build": "pnpm --filter @diffgazer/docs build",
+    "docs:build:prerender": "pnpm --filter @diffgazer/docs build:prerender",
+    "docs:preview": "pnpm --filter @diffgazer/docs preview",
+    "web:dev": "pnpm --filter @diffgazer/web dev",
+    "web:build": "pnpm --filter @diffgazer/web build",
+    "web:preview": "pnpm --filter @diffgazer/web preview",
+    "diffgazer:dev": "pnpm --filter diffgazer dev",
+    "diffgazer:build": "pnpm --filter diffgazer build",
+    "diffgazer:start": "pnpm --filter diffgazer start",
+    "add:dev": "pnpm --filter @diffgazer/add dev",
+    "add:build": "pnpm --filter @diffgazer/add build",
+    "add:test": "pnpm --filter @diffgazer/add test",
+    "server:dev": "pnpm --filter @diffgazer/server dev",
+    "server:start": "pnpm --filter @diffgazer/server start",
+    "ui:test": "pnpm --filter @diffgazer/ui test",
+    "keys:playground": "pnpm --dir libs/keys/examples/playground dev",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "changeset publish"

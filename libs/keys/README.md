@@ -38,5 +38,5 @@ export function App() {
 
 ## Repository metadata
 
-- **Source:** https://github.com/b4r7/diffgazer/tree/main/libs/keys
-- **Homepage:** https://github.com/b4r7/diffgazer/tree/main/libs/keys
+- **Source:** https://github.com/b4r7x/diffgazer/tree/main/libs/keys
+- **Homepage:** https://github.com/b4r7x/diffgazer/tree/main/libs/keys

@@ -38,5 +38,5 @@ import { useScope } from "@diffgazer/keys";
 
 ## Repository metadata
 
-- **Source:** https://github.com/b4r7/diffgazer/tree/main/libs/ui
-- **Homepage:** https://github.com/b4r7/diffgazer/tree/main/libs/ui
+- **Source:** https://github.com/b4r7x/diffgazer/tree/main/libs/ui
+- **Homepage:** https://github.com/b4r7x/diffgazer/tree/main/libs/ui

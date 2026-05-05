@@ -6,10 +6,10 @@
   "author": "diffgazer",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/b4r7/diffgazer.git",
+    "url": "git+https://github.com/b4r7x/diffgazer.git",
     "directory": "libs/keys"
   },
-  "homepage": "https://github.com/b4r7/diffgazer/tree/main/libs/keys",
+  "homepage": "https://github.com/b4r7x/diffgazer/tree/main/libs/keys",
   "type": "module",
   "sideEffects": false,
   "main": "./dist/index.js",
@@ -27,7 +27,7 @@
     "internal-docs-manifest.json"
   ],
   "bugs": {
-    "url": "https://github.com/b4r7/diffgazer/issues"
+    "url": "https://github.com/b4r7x/diffgazer/issues"
   },
   "scripts": {
     "build": "rm -rf dist && tsc && pnpm build:shadcn && pnpm build:artifacts",

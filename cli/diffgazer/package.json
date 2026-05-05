@@ -5,12 +5,12 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/b4r7/diffgazer.git",
+    "url": "git+https://github.com/b4r7x/diffgazer.git",
     "directory": "cli/diffgazer"
   },
-  "homepage": "https://github.com/b4r7/diffgazer/tree/main/cli/diffgazer",
+  "homepage": "https://github.com/b4r7x/diffgazer/tree/main/cli/diffgazer",
   "bugs": {
-    "url": "https://github.com/b4r7/diffgazer/issues"
+    "url": "https://github.com/b4r7x/diffgazer/issues"
   },
   "type": "module",
   "bin": {
@@ -31,6 +31,7 @@
     "build:bundle": "tsup",
     "prepack": "pnpm run build",
     "dev": "tsx --tsconfig tsconfig.json src/index.tsx --dev",
+    "type-check": "tsc --noEmit",
     "start": "node bin/diffgazer.js"
   },
   "dependencies": {

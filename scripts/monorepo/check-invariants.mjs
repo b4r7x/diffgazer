@@ -87,7 +87,7 @@ function assertCliPackageMetadata(path, expectedName, expectedBinName, expectedR
   if (repoDir !== expectedRepoDir) {
     missing.push(`repository.directory: ${repoDir}`);
   }
-  if (pkg.repository?.url && !pkg.repository.url.includes("github.com/b4r7/diffgazer")) {
+  if (pkg.repository?.url && !pkg.repository.url.includes("github.com/b4r7x/diffgazer")) {
     missing.push(`repository.url: ${pkg.repository.url}`);
   }
   if (pkg.homepage && !pkg.homepage.includes(expectedRepoDir)) {
@@ -115,13 +115,13 @@ function assertRootMetadata() {
   const pkg = readJSON("package.json");
   const missing = [];
 
-  if (pkg.repository?.url !== "git+https://github.com/b4r7/diffgazer.git") {
+  if (pkg.repository?.url !== "git+https://github.com/b4r7x/diffgazer.git") {
     missing.push(`repository.url: ${pkg.repository?.url}`);
   }
-  if (pkg.homepage !== "https://github.com/b4r7/diffgazer") {
+  if (pkg.homepage !== "https://github.com/b4r7x/diffgazer") {
     missing.push(`homepage: ${pkg.homepage}`);
   }
-  if (pkg.bugs?.url !== "https://github.com/b4r7/diffgazer/issues") {
+  if (pkg.bugs?.url !== "https://github.com/b4r7x/diffgazer/issues") {
     missing.push(`bugs.url: ${pkg.bugs?.url}`);
   }
 

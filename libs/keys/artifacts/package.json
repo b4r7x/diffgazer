@@ -2,10 +2,10 @@
   "name": "@diffgazer/keys-artifacts",
   "version": "0.1.0",
   "description": "Docs and registry artifacts for @diffgazer/keys (consumed by docs host)",
-  "homepage": "https://github.com/b4r7/diffgazer/tree/main/libs/keys/artifacts",
+  "homepage": "https://github.com/b4r7x/diffgazer/tree/main/libs/keys/artifacts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/b4r7/diffgazer.git",
+    "url": "git+https://github.com/b4r7x/diffgazer.git",
     "directory": "libs/keys/artifacts"
   },
   "type": "module",

@@ -47,7 +47,7 @@ export function DiffgazerPreview() {
       </div>
 
       <a
-        href="https://github.com/b4r7/diffgazer"
+        href="https://github.com/b4r7x/diffgazer"
         target="_blank"
         rel="noreferrer"
         className={buttonVariants({ variant: "link", size: "sm" })}

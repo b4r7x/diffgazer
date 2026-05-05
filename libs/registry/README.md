@@ -120,5 +120,5 @@ MIT
 
 ## Repository metadata
 
-- **Source:** https://github.com/b4r7/diffgazer/tree/main/libs/registry
-- **Homepage:** https://github.com/b4r7/diffgazer/tree/main/libs/registry
+- **Source:** https://github.com/b4r7x/diffgazer/tree/main/libs/registry
+- **Homepage:** https://github.com/b4r7x/diffgazer/tree/main/libs/registry

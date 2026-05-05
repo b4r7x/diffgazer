@@ -1,7 +1,7 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry.json",
   "name": "keys",
-  "homepage": "https://github.com/b4r7/diffgazer/tree/main/libs/keys",
+  "homepage": "https://github.com/b4r7x/diffgazer/tree/main/libs/keys",
   "items": [
     {
       "name": "navigation",

@@ -52,8 +52,8 @@ export function DialogShell({
         if (e.target === dialogRef.current) onBackdropClick?.(e);
       }}
       onCancel={(e) => {
-        e.preventDefault();
         onCancel?.(e);
+        e.preventDefault();
       }}
       onAnimationEnd={(e) => {
         if (e.target === dialogRef.current && !open) {

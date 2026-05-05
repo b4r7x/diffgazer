@@ -14,7 +14,7 @@ Diffgazer is a single pnpm monorepo for the CLI, docs app, shared registry tooli
 ## Quick Start
 
 ```bash
-git clone https://github.com/b4r7/diffgazer.git
+git clone https://github.com/b4r7x/diffgazer.git
 cd diffgazer
 pnpm install
 pnpm run build
@@ -23,10 +23,12 @@ pnpm run build
 ## Development
 
 ```bash
+pnpm run docs:dev
+pnpm run web:dev
+pnpm run diffgazer:dev
 pnpm run type-check
 pnpm run test
-pnpm run docs:prepare
-pnpm run docs:build
+pnpm run verify
 ```
 
 This repository is one workspace with a single root install and lockfile.

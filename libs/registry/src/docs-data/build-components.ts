@@ -1,5 +1,4 @@
 import {
-  existsSync,
   mkdirSync,
   writeFileSync,
 } from "node:fs"
