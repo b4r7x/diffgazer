@@ -1,0 +1,51 @@
+---
+title: dgadd init
+description: Initialize installer configuration for @diffgazer/ui and @diffgazer/keys.
+---
+
+## Usage
+
+```bash
+dgadd init
+```
+
+## What It Does
+
+1. Detects your project configuration:
+   - Package manager
+   - Tailwind CSS version
+   - TypeScript path aliases
+   - Source directory (`src/` or root)
+
+2. Creates `diffgazer.json`.
+
+3. Creates install directories:
+   - `src/components/ui/` for UI components
+   - `src/hooks/` for copied keys hooks
+   - `src/lib/` for shared utilities
+
+4. Installs required dependencies.
+
+5. Copies the shared theme file.
+
+## Options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--cwd <path>` | Working directory | `.` |
+| `--components-dir <path>` | Component install directory | `src/components/ui` |
+| `--yes` | Skip confirmation prompts | `false` |
+
+## Example
+
+```bash
+$ dgadd init
+
+  Creating diffgazer.json
+  Creating src/components/ui/
+  Creating src/hooks/
+  Creating src/lib/utils.ts
+  Copying styles/theme.css
+
+  Done. Add components with: dgadd add ui/button
+```

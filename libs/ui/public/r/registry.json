@@ -1,0 +1,1915 @@
+{
+  "$schema": "https:/@diffgazer/ui.shadcn.com/schema/registry.json",
+  "name": "ui",
+  "homepage": "https://github.com/b4r7/diffgazer/tree/main/libs/ui",
+  "items": [
+    {
+      "name": "accordion",
+      "type": "registry:ui",
+      "title": "Accordion",
+      "description": "Collapsible content sections with single or multiple open items",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [
+        "controllable-state",
+        "icons",
+        "@diffgazer/keys/navigation"
+      ],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/accordion/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/accordion/accordion.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/accordion/accordion-context.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/accordion/accordion-header.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/accordion/accordion-item.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/accordion/accordion-trigger.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/accordion/accordion-content.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/accordion/use-accordion-state.ts",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "button",
+      "type": "registry:ui",
+      "title": "Button",
+      "description": "Terminal-inspired button with variants",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [
+        "spinner"
+      ],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/button/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/button/button.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "avatar",
+      "type": "registry:ui",
+      "title": "Avatar",
+      "description": "Terminal-inspired avatar with image support, monospace initials fallback, and group stacking with overflow.",
+      "dependencies": [],
+      "registryDependencies": [
+        "overflow"
+      ],
+      "files": [
+        {
+          "path": "registry/ui/avatar/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/avatar/avatar-context.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/avatar/avatar.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/avatar/avatar-image.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/avatar/avatar-fallback.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/avatar/avatar-indicator.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/avatar/avatar-group.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/avatar/use-image-status.ts",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "badge",
+      "type": "registry:ui",
+      "title": "Badge",
+      "description": "Terminal-styled badge for labels and status indicators",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/badge/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/badge/badge.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "input",
+      "type": "registry:ui",
+      "title": "Input",
+      "description": "Terminal-styled text input",
+      "dependencies": [],
+      "registryDependencies": [
+        "input-variants"
+      ],
+      "files": [
+        {
+          "path": "registry/ui/input/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/input/input.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "textarea",
+      "type": "registry:ui",
+      "title": "Textarea",
+      "description": "Terminal-styled multi-line text area",
+      "dependencies": [],
+      "registryDependencies": [
+        "input-variants"
+      ],
+      "files": [
+        {
+          "path": "registry/ui/textarea/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/textarea/textarea.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "callout",
+      "type": "registry:ui",
+      "title": "Callout",
+      "description": "Highlighted message block for tips, warnings, and errors",
+      "dependencies": [],
+      "registryDependencies": [
+        "controllable-state"
+      ],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/callout/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/callout/callout-context.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/callout/callout.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/callout/callout-icon.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/callout/callout-title.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/callout/callout-content.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/callout/callout-dismiss.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "portal",
+      "type": "registry:ui",
+      "title": "Portal",
+      "description": "Renders children into a DOM node outside the parent hierarchy",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/shared/portal.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "checkbox",
+      "type": "registry:ui",
+      "title": "Checkbox",
+      "description": "Terminal-styled checkbox with bracket notation",
+      "registryDependencies": [
+        "controllable-state",
+        "@diffgazer/keys/navigation",
+        "compose-refs",
+        "selectable-variants"
+      ],
+      "meta": {
+        "client": true,
+        "optionalIntegrations": [
+          "keyboard-navigation"
+        ]
+      },
+      "files": [
+        {
+          "path": "registry/ui/checkbox/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/checkbox/checkbox.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/checkbox/checkbox-group.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/checkbox/checkbox-item.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/checkbox/checkbox-group-context.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "icons",
+      "type": "registry:ui",
+      "title": "Icons",
+      "description": "SVG icon components: directional chevron with rotation animation.",
+      "dependencies": [],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/ui/icons/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/icons/chevron.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "radio",
+      "type": "registry:ui",
+      "title": "Radio",
+      "description": "Terminal-styled radio and radio group for single-selection with bracket notation",
+      "registryDependencies": [
+        "controllable-state",
+        "@diffgazer/keys/navigation",
+        "compose-refs",
+        "selectable-variants",
+        "resolve-tab-target"
+      ],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/radio/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/radio/radio-group.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/radio/radio.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/radio/radio-group-item.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/radio/radio-group-context.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "panel",
+      "type": "registry:ui",
+      "title": "Panel",
+      "description": "Card-like container panel with composable terminal and section headers",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/ui/panel/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/panel/panel.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/panel/panel-header.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/panel/panel-content.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/panel/panel-footer.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "scroll-area",
+      "type": "registry:ui",
+      "title": "Scroll Area",
+      "description": "Custom scrollable area with styled scrollbars",
+      "dependencies": [],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/ui/scroll-area/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/scroll-area/scroll-area.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "card",
+      "type": "registry:ui",
+      "title": "Card",
+      "description": "Simple bordered card primitives with floating border labels and semantic HTML support",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/ui/card/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/card/card.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/card/card-action.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/card/card-header.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/card/card-title.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/card/card-description.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/card/card-content.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/card/card-label.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/card/card-footer.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "block-bar",
+      "type": "registry:ui",
+      "title": "Block Bar",
+      "description": "Segmented block-character bar for data visualization with multi-segment support",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/block-bar/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/block-bar/block-bar.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/block-bar/block-bar-context.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/block-bar/block-bar-segment.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "section-header",
+      "type": "registry:ui",
+      "title": "Section Header",
+      "description": "Section heading with terminal-style decoration",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/ui/section-header/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/section-header/section-header.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "empty-state",
+      "type": "registry:ui",
+      "title": "Empty State",
+      "description": "Placeholder for empty content areas",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/ui/empty-state/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/empty-state/empty-state.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/empty-state/empty-state-icon.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/empty-state/empty-state-message.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/empty-state/empty-state-description.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/empty-state/empty-state-actions.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "key-value",
+      "type": "registry:ui",
+      "title": "Key Value",
+      "description": "Compound component for labeled data display. KeyValue wraps KeyValue.Item rows in a semantic description list.",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/key-value/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/key-value/key-value.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/key-value/key-value-item.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/key-value/key-value-context.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "label",
+      "type": "registry:ui",
+      "title": "Label",
+      "description": "Styled label with optional form control wrapping and orientation support.",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/label/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/label/label.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "overflow",
+      "type": "registry:ui",
+      "title": "Overflow",
+      "description": "Container-aware overflow handling for items (dynamic fitting with indicator) and text (line clamping with tooltip).",
+      "dependencies": [],
+      "registryDependencies": [
+        "tooltip",
+        "overflow-detection",
+        "overflow-items",
+        "compose-refs"
+      ],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/overflow/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/overflow/overflow.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/overflow/overflow-text.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/overflow/overflow-items.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "tooltip",
+      "type": "registry:ui",
+      "title": "Tooltip",
+      "description": "Minimal tooltip with hover delay and terminal styling. Built on Popover primitive with all 4-side positioning. Compound API (Trigger + Content) or shorthand content prop.",
+      "dependencies": [],
+      "registryDependencies": [
+        "popover"
+      ],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/tooltip/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/tooltip/tooltip.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/tooltip/tooltip-content.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "dialog",
+      "type": "registry:ui",
+      "title": "Dialog",
+      "description": "Modal dialog with compound components",
+      "dependencies": [],
+      "registryDependencies": [
+        "button",
+        "controllable-state",
+        "dialog-shell",
+        "compose-refs"
+      ],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/dialog/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/dialog/dialog.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/dialog/dialog-context.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/dialog/dialog-content.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/dialog/dialog-header.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/dialog/dialog-title.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/dialog/dialog-description.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/dialog/dialog-body.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/dialog/dialog-footer.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/dialog/dialog-keyboard-hints.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/dialog/dialog-close.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/dialog/dialog-action.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/dialog/dialog-trigger.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "dialog-shell",
+      "type": "registry:ui",
+      "title": "Dialog Shell",
+      "description": "Native dialog element wrapper with presence animations and backdrop handling",
+      "dependencies": [],
+      "registryDependencies": [
+        "presence"
+      ],
+      "meta": {
+        "client": true,
+        "hidden": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/shared/dialog-shell.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/shared/dialog.css",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "kbd",
+      "type": "registry:ui",
+      "title": "Kbd",
+      "description": "Keyboard shortcut indicator",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/ui/kbd/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/kbd/kbd.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/kbd/kbd-group.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "divider",
+      "type": "registry:ui",
+      "title": "Divider",
+      "description": "Line separator with horizontal and vertical orientation, default and spaced variants.",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/ui/divider/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/divider/divider.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "tabs",
+      "type": "registry:ui",
+      "title": "Tabs",
+      "description": "Terminal-styled tabbed interface",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [
+        "controllable-state",
+        "@diffgazer/keys/navigation",
+        "compose-refs"
+      ],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/tabs/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/tabs/tabs.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/tabs/tabs-list.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/tabs/tabs-trigger.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/tabs/tabs-content.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/tabs/tabs-context.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "menu",
+      "type": "registry:ui",
+      "title": "Menu",
+      "description": "Terminal-styled selection list with keyboard navigation",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [
+        "listbox"
+      ],
+      "meta": {
+        "client": true,
+        "optionalIntegrations": [
+          "keyboard-navigation"
+        ]
+      },
+      "files": [
+        {
+          "path": "registry/ui/menu/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/menu/menu.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/menu/menu-item.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/menu/menu-divider.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/menu/menu-context.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "navigation-list",
+      "type": "registry:ui",
+      "title": "Navigation List",
+      "description": "Terminal-styled navigation sidebar list",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [
+        "listbox",
+        "badge"
+      ],
+      "meta": {
+        "client": true,
+        "optionalIntegrations": [
+          "keyboard-navigation"
+        ]
+      },
+      "files": [
+        {
+          "path": "registry/ui/navigation-list/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/navigation-list/navigation-list.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/navigation-list/navigation-list-item.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/navigation-list/navigation-list-title.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/navigation-list/navigation-list-status.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/navigation-list/navigation-list-context.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/navigation-list/navigation-list-badge.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/navigation-list/navigation-list-subtitle.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/navigation-list/navigation-list-meta.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/navigation-list/navigation-list-item-context.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "toast",
+      "type": "registry:ui",
+      "title": "Toast",
+      "description": "Terminal-styled toast notification system",
+      "dependencies": [],
+      "registryDependencies": [
+        "spinner"
+      ],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/toast/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/toast/toast.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/toast/toast-container.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/toast/toast-variants.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/toast/toast-store.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/toast/use-toast-dismiss.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/toast/use-toast-container.ts",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "stepper",
+      "type": "registry:ui",
+      "title": "Stepper",
+      "description": "Step-by-step progress indicator",
+      "meta": {
+        "client": true
+      },
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [
+        "badge",
+        "controllable-state",
+        "step-status"
+      ],
+      "files": [
+        {
+          "path": "registry/ui/stepper/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/stepper/stepper.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/stepper/stepper-context.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/stepper/use-stepper-state.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/stepper/stepper-step.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/stepper/stepper-trigger.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/stepper/stepper-content.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/stepper/stepper-substep.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "search-input",
+      "type": "registry:ui",
+      "title": "Search Input",
+      "description": "Terminal-styled search input with / prefix and keyboard callbacks.",
+      "dependencies": [],
+      "registryDependencies": [
+        "controllable-state"
+      ],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/search-input/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/search-input/search-input.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "toggle-group",
+      "type": "registry:ui",
+      "title": "Toggle Group",
+      "description": "Compound toggle button group for single selection with keyboard navigation",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [
+        "@diffgazer/keys/navigation",
+        "controllable-state",
+        "compose-refs",
+        "resolve-tab-target"
+      ],
+      "meta": {
+        "client": true,
+        "optionalIntegrations": [
+          "keyboard-navigation"
+        ]
+      },
+      "files": [
+        {
+          "path": "registry/ui/toggle-group/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/toggle-group/toggle-group.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/toggle-group/toggle-group-context.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/toggle-group/toggle-group-item.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "code-block",
+      "type": "registry:ui",
+      "title": "Code Block",
+      "description": "Code display with line numbers and scroll area",
+      "dependencies": [],
+      "registryDependencies": [
+        "scroll-area"
+      ],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/code-block/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/code-block/code-block.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/code-block/code-block-content.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/code-block/code-block-header.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/code-block/code-block-label.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/code-block/code-block-line.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "diff-view",
+      "type": "registry:ui",
+      "title": "Diff View",
+      "description": "Diff viewer with unified and side-by-side modes. Accepts unified diff strings or before/after text. Keyboard navigation between hunks with j/k.",
+      "dependencies": [],
+      "registryDependencies": [
+        "diff",
+        "@diffgazer/keys/navigation",
+        "kbd"
+      ],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/diff-view/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/diff-view/diff-view.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/diff-view/diff-view-line.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/diff-view/diff-view-unified.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/diff-view/diff-view-split.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "horizontal-stepper",
+      "type": "registry:ui",
+      "title": "Horizontal Stepper",
+      "description": "Horizontal step-by-step progress indicator",
+      "meta": {
+        "client": true
+      },
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [
+        "step-status"
+      ],
+      "files": [
+        {
+          "path": "registry/ui/horizontal-stepper/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/horizontal-stepper/horizontal-stepper.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/horizontal-stepper/horizontal-stepper-context.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/horizontal-stepper/horizontal-stepper-step.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "command-palette",
+      "type": "registry:ui",
+      "title": "Command Palette",
+      "description": "Terminal-inspired command palette with search, keyboard navigation, and grouped items",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [
+        "controllable-state",
+        "@diffgazer/keys/navigation",
+        "compose-refs",
+        "dialog-shell",
+        "search"
+      ],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/command-palette/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/command-palette/command-palette.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/command-palette/command-palette-context.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/command-palette/command-palette-content.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/command-palette/command-palette-input.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/command-palette/command-palette-list.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/command-palette/command-palette-group.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/command-palette/command-palette-empty.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/command-palette/command-palette-footer.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/command-palette/command-palette-item.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/command-palette/use-command-palette-state.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/command-palette/use-item-registry.ts",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "select",
+      "type": "registry:ui",
+      "title": "Select",
+      "description": "Searchable dropdown for single or multiple selection",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [
+        "controllable-state",
+        "@diffgazer/keys/navigation",
+        "compose-refs",
+        "floating-position",
+        "icons",
+        "outside-click",
+        "portal",
+        "presence",
+        "search"
+      ],
+      "meta": {
+        "client": true,
+        "optionalIntegrations": [
+          "keyboard-navigation"
+        ]
+      },
+      "files": [
+        {
+          "path": "registry/ui/select/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/select/select.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/select/select-context.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/select/select-utils.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/select/select-trigger.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/select/select-content.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/select/select-item.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/select/select-search.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/select/select-value.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/select/select-tags.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/select/select-empty.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/select/use-select-state.ts",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "spinner",
+      "type": "registry:ui",
+      "title": "Spinner",
+      "description": "Terminal-inspired TUI spinner with four animation styles including a pixel snake, braille, dots, and pulse",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/spinner/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/spinner/spinner.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/spinner/use-spinner-animation.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/spinner/spinner-snake-grid.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "sidebar",
+      "type": "registry:ui",
+      "title": "Sidebar",
+      "description": "Compound sidebar navigation component",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [
+        "icons",
+        "controllable-state",
+        "@diffgazer/keys/navigation",
+        "compose-refs"
+      ],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/sidebar/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/sidebar/sidebar.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/sidebar/sidebar-context.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/sidebar/sidebar-provider.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/sidebar/sidebar-trigger.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/sidebar/sidebar-header.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/sidebar/sidebar-content.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/sidebar/sidebar-section.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/sidebar/sidebar-section-context.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/sidebar/sidebar-section-title.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/sidebar/sidebar-item.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/sidebar/sidebar-item-label.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/sidebar/sidebar-item-badge.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/sidebar/sidebar-footer.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "pager",
+      "type": "registry:ui",
+      "title": "Pager",
+      "description": "Previous/next page navigation for sequential content",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/pager/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/pager/pager.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/pager/pager-link.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "logo",
+      "type": "registry:ui",
+      "title": "Logo",
+      "description": "ASCII art text generator using figlet fonts",
+      "dependencies": [
+        "figlet"
+      ],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/ui/logo/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/logo/logo.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/logo/get-figlet-text.ts",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "breadcrumbs",
+      "type": "registry:ui",
+      "title": "Breadcrumbs",
+      "description": "Compound breadcrumb navigation with auto-separator and composable parts",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/breadcrumbs/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/breadcrumbs/breadcrumbs.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/breadcrumbs/breadcrumbs-context.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/breadcrumbs/breadcrumbs-item.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/breadcrumbs/breadcrumbs-link.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/breadcrumbs/breadcrumbs-ellipsis.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "toc",
+      "type": "registry:ui",
+      "title": "TOC",
+      "description": "Headless-friendly table of contents primitives for section navigation",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/ui/toc/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/toc/toc.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/toc/toc-list.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/toc/toc-item.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "typography",
+      "type": "registry:ui",
+      "title": "Typography",
+      "description": "Terminal-styled typography wrapper for consistent text styling",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/ui/typography/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/typography/typography.tsx",
+          "type": "registry:ui"
+        }
+      ]
+    },
+    {
+      "name": "controllable-state",
+      "type": "registry:hook",
+      "title": "Controllable State",
+      "description": "Controlled/uncontrolled state hook — manages value, defaultValue, and onChange for any component that supports both modes.",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/hooks/use-controllable-state.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "active-heading",
+      "type": "registry:hook",
+      "title": "Active Heading",
+      "description": "Configurable active heading detection for table of contents with top-line or viewport-center activation, optional bottom lock, and precise scrollTo offsets.",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/hooks/use-active-heading.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "overflow-detection",
+      "type": "registry:hook",
+      "title": "Overflow Detection",
+      "description": "Detects whether an element's content overflows its container using ResizeObserver. Supports horizontal, vertical, and both directions.",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/hooks/use-overflow.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "overflow-items",
+      "type": "registry:hook",
+      "title": "Overflow Items",
+      "description": "Measures how many items fit in a container and tracks the overflow count. Uses ResizeObserver for automatic recalculation.",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/hooks/use-overflow-items.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "outside-click",
+      "type": "registry:hook",
+      "title": "Outside Click",
+      "description": "Detect clicks outside a referenced element",
+      "dependencies": [],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/hooks/use-outside-click.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "presence",
+      "type": "registry:hook",
+      "title": "usePresence",
+      "description": "Hook for animating mount/unmount transitions with CSS animations. Keeps element in DOM during exit animation, removes after completion.",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/hooks/use-presence.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "theme",
+      "type": "registry:theme",
+      "title": "@diffgazer/ui Theme",
+      "description": "Terminal-inspired theme variables and base styles",
+      "dependencies": [],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "styles/theme-base.css",
+          "type": "registry:style",
+          "target": "~/styles/theme-base.css"
+        },
+        {
+          "path": "styles/theme.css",
+          "type": "registry:style",
+          "target": "~/styles/theme.css"
+        },
+        {
+          "path": "styles/styles.css",
+          "type": "registry:style",
+          "target": "~/styles/styles.css"
+        }
+      ]
+    },
+    {
+      "name": "diff",
+      "type": "registry:lib",
+      "title": "Diff Utilities",
+      "description": "Pure functions for parsing unified diffs, computing diffs from text, and word-level diff highlighting. No React dependency.",
+      "files": [
+        {
+          "path": "registry/lib/diff/index.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "registry/lib/diff/parse.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "registry/lib/diff/compute.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "registry/lib/diff/word.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "registry/lib/diff/split.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "registry/lib/diff/lcs.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "registry/lib/diff/pairs.ts",
+          "type": "registry:lib"
+        },
+        {
+          "path": "registry/lib/diff/resolve.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "compose-refs",
+      "type": "registry:lib",
+      "title": "composeRefs",
+      "description": "Utility to compose multiple React refs into a single ref callback. Use when a component needs an internal ref and must also forward an external ref prop (React 19 ref-as-prop pattern).",
+      "files": [
+        {
+          "path": "registry/lib/compose-refs.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "resolve-tab-target",
+      "type": "registry:lib",
+      "title": "resolveTabTarget",
+      "description": "Roving tabindex utility — determines which item in a group should be the tab target based on selection state and disabled status.",
+      "files": [
+        {
+          "path": "registry/lib/resolve-tab-target.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "selectable-variants",
+      "type": "registry:lib",
+      "title": "Selectable Variants",
+      "description": "Shared CVA variant definitions for selectable items (checkbox, radio, etc.)",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/lib/selectable-variants.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "input-variants",
+      "type": "registry:lib",
+      "title": "Input Variants",
+      "description": "Shared CVA variant definitions for input-family components (input, textarea)",
+      "dependencies": [
+        "class-variance-authority"
+      ],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/lib/input-variants.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "focus",
+      "type": "registry:lib",
+      "title": "Focus Utilities",
+      "description": "Shared focusable element CSS selector for focus management, auto-focus, and focus-trap logic.",
+      "files": [
+        {
+          "path": "registry/lib/focus.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "step-status",
+      "type": "registry:lib",
+      "title": "Step Status",
+      "description": "Shared StepStatus type for stepper components (completed, active, pending, error).",
+      "files": [
+        {
+          "path": "registry/lib/step-status.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "search",
+      "type": "registry:lib",
+      "title": "Search Utilities",
+      "description": "Case-insensitive search matching utility for filtering items by text query.",
+      "files": [
+        {
+          "path": "registry/lib/search.ts",
+          "type": "registry:lib"
+        }
+      ]
+    },
+    {
+      "name": "floating-position",
+      "type": "registry:hook",
+      "title": "Floating Position",
+      "description": "Positioning engine for floating elements with 4-side placement, flip, shift, and collision detection. Zero dependencies.",
+      "dependencies": [],
+      "registryDependencies": [],
+      "files": [
+        {
+          "path": "registry/hooks/use-floating-position.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "listbox",
+      "type": "registry:hook",
+      "title": "useListbox",
+      "description": "Shared listbox state and keyboard navigation hook. Manages selection, highlight, and container ARIA props for listbox-pattern components.",
+      "registryDependencies": [
+        "controllable-state",
+        "@diffgazer/keys/navigation",
+        "compose-refs"
+      ],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/hooks/use-listbox.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "popover",
+      "type": "registry:ui",
+      "title": "Popover",
+      "description": "Floating content anchored to a trigger element. Supports click-to-open (popover) and hover (tooltip) modes with full 4-side positioning, flip, shift, and collision detection.",
+      "dependencies": [],
+      "registryDependencies": [
+        "portal",
+        "compose-refs",
+        "controllable-state",
+        "floating-position",
+        "outside-click",
+        "presence",
+        "focus"
+      ],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "registry/ui/popover/index.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/popover/popover.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/popover/popover-context.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/popover/popover-trigger.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/popover/popover-content.tsx",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/popover/use-popover-behavior.ts",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/popover/use-auto-focus.ts",
+          "type": "registry:ui"
+        }
+      ]
+    }
+  ]
+}

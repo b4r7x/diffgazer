@@ -1,0 +1,23 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "textarea",
+  "type": "registry:ui",
+  "title": "Textarea",
+  "description": "Terminal-styled multi-line text area",
+  "dependencies": [],
+  "registryDependencies": [
+    "input-variants"
+  ],
+  "files": [
+    {
+      "path": "registry/ui/textarea/index.ts",
+      "content": "export { Textarea, type TextareaProps } from \"./textarea\";\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/textarea/textarea.tsx",
+      "content": "\"use client\";\n\nimport type { TextareaHTMLAttributes, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { inputVariants } from \"@/lib/input-variants\";\n\nexport interface TextareaProps\n  extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, \"size\"> {\n  ref?: Ref<HTMLTextAreaElement>;\n  size?: \"sm\" | \"md\" | \"lg\";\n  error?: boolean;\n}\n\nexport function Textarea({\n  className,\n  size,\n  error,\n  ref,\n  ...props\n}: TextareaProps) {\n  return (\n    <textarea\n      className={cn(\n        inputVariants({ size, error }),\n        \"h-auto min-h-20 resize-y\",\n        className\n      )}\n      ref={ref}\n      aria-invalid={error || undefined}\n      {...props}\n    />\n  );\n}\n",
+      "type": "registry:ui"
+    }
+  ]
+}

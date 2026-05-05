@@ -1,0 +1,16 @@
+{
+  "title": "@diffgazer/keys",
+  "root": true,
+  "pages": [
+    "---Getting Started---",
+    "...getting-started",
+    "---Hooks---",
+    "...hooks",
+    "---API---",
+    "...api",
+    "---Guides---",
+    "...guides",
+    "---CLI---",
+    "...cli"
+  ]
+}

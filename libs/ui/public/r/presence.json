@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "presence",
+  "type": "registry:hook",
+  "title": "usePresence",
+  "description": "Hook for animating mount/unmount transitions with CSS animations. Keeps element in DOM during exit animation, removes after completion.",
+  "dependencies": [],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/hooks/use-presence.ts",
+      "content": "\"use client\";\n\nimport { useState, useEffectEvent, type AnimationEvent, type RefObject } from \"react\";\n\ntype Phase = \"hidden\" | \"open\" | \"closing\";\n\nexport interface UsePresenceOptions {\n  open: boolean;\n  ref?: RefObject<HTMLElement | null>;\n}\n\nexport function usePresence({ open, ref }: UsePresenceOptions) {\n  const [phase, setPhase] = useState<Phase>(open ? \"open\" : \"hidden\");\n\n  // Intentional \"adjust state during render\" pattern supported by React 19:\n  // synchronously sync phase with the `open` prop before commit.\n  if (open && phase !== \"open\") {\n    setPhase(\"open\");\n  }\n\n  if (!open && phase === \"open\") {\n    setPhase(\"closing\");\n  }\n\n  const onAnimationEnd = useEffectEvent((e: AnimationEvent) => {\n    if (ref && e.target !== ref.current) return;\n    if (phase === \"closing\") {\n      setPhase(\"hidden\");\n    }\n  });\n\n  return { present: phase !== \"hidden\", exiting: phase === \"closing\", onAnimationEnd } as const;\n}\n",
+      "type": "registry:hook"
+    }
+  ],
+  "meta": {
+    "client": true
+  }
+}

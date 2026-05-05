@@ -1,0 +1,38 @@
+---
+title: API Overview
+description: Quick reference for all public exports from @diffgazer/keys.
+---
+
+# API Overview
+
+Complete reference for all public exports from `@diffgazer/keys`. Requires React 19+.
+
+> See the [interactive playground](https://github.com/b4r7/diffgazer/tree/main/libs/keys/examples/playground) for live demos of each hook.
+
+---
+
+## Provider
+
+| Export | Description |
+|--------|-------------|
+| [KeyboardProvider](/keys/docs/api/keyboard-provider) | Context provider that enables scoped keyboard handling. Wraps your app or subtree. |
+
+## Hooks
+
+| Hook | Category | Description |
+|------|----------|-------------|
+| [useKey](/keys/docs/hooks/use-key) | Provider | Bind keyboard shortcuts with scoped, document-level, or element-targeted listening. |
+| [useScope](/keys/docs/hooks/use-scope) | Provider | Push a named scope onto the keyboard scope stack. |
+| [useNavigation](/keys/docs/hooks/use-navigation) | Standalone | Standalone keyboard navigation for role-based lists and tabs. |
+| [useScopedNavigation](/keys/docs/hooks/use-scoped-navigation) | Provider | Scope-aware keyboard navigation registered via KeyboardProvider. |
+| [useFocusZone](/keys/docs/hooks/use-focus-zone) | Provider | Manage focus across multiple zones with arrow key and Tab transitions. |
+| [useFocusTrap](/keys/docs/hooks/use-focus-trap) | Standalone | Trap Tab focus within a container element. |
+| [useScrollLock](/keys/docs/hooks/use-scroll-lock) | Standalone | Prevent body/element scrolling with reference counting. |
+
+## References
+
+| Page | Description |
+|------|-------------|
+| [Hotkey Format](/keys/docs/api/hotkey-format) | Modifier syntax, key aliases, and matching rules for hotkey strings. |
+| [Utilities](/keys/docs/api/utilities) | Helper functions: `keys` and `useOptionalKeyboardContext`. |
+| [Types](/keys/docs/api/types) | Shared TypeScript interfaces and type definitions. |

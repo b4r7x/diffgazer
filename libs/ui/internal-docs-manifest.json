@@ -1,0 +1,17 @@
+{
+  "library": "ui",
+  "displayName": "@diffgazer/ui",
+  "docs": {
+    "format": "mdx",
+    "contentDir": "docs/content",
+    "generatedDir": "docs/generated",
+    "metaFile": "docs/content/meta.json"
+  },
+  "registry": {
+    "namespace": "@diffgazer/ui",
+    "basePath": "/r/ui",
+    "publicDir": "public/r",
+    "sourceDir": "registry",
+    "stylesDir": "styles"
+  }
+}

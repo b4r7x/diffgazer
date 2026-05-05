@@ -1,0 +1,28 @@
+---
+title: Keys Installer CLI
+description: Command reference for installing @diffgazer/keys hooks through dgadd.
+---
+
+`@diffgazer/keys` is an installable React package. Hook source installation is handled by `dgadd`, the same installer used for `@diffgazer/ui`.
+
+## Usage
+
+```bash
+dgadd add keys/<hook>
+```
+
+## Commands
+
+| Command | Purpose |
+|---------|---------|
+| `dgadd init` | Initialize `diffgazer.json` |
+| `dgadd add keys/<hook>` | Copy a standalone hook into your project |
+| `dgadd list` | List available `keys/*` hooks |
+| `dgadd diff keys/<hook>` | Compare installed hook files |
+| `dgadd remove keys/<hook>` | Remove installed hook files |
+
+For package-mode imports, install `@diffgazer/keys` directly:
+
+```bash
+npm install @diffgazer/keys
+```

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "focus-trap",
+  "type": "registry:hook",
+  "title": "Focus Trap",
+  "description": "Trap Tab focus within a container element",
+  "dependencies": [],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "src/hooks/use-focus-trap.ts",
+      "content": "\"use client\";\n\nimport { useEffect, type RefObject } from \"react\";\n\nconst FOCUSABLE_SELECTOR =\n  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex=\"-1\"])';\n\nexport interface UseFocusTrapOptions {\n  initialFocus?: RefObject<HTMLElement | null>;\n  restoreFocus?: boolean;\n  enabled?: boolean;\n}\n\nexport function useFocusTrap(\n  containerRef: RefObject<HTMLElement | null>,\n  options: UseFocusTrapOptions = {},\n): void {\n  const { initialFocus, restoreFocus = true, enabled = true } = options;\n\n  useEffect(() => {\n    if (!enabled) return;\n\n    const previousFocus = document.activeElement as HTMLElement | null;\n    const container = containerRef.current;\n    if (!container) return;\n\n    if (initialFocus?.current) {\n      initialFocus.current.focus();\n    } else {\n      const focusables = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);\n      if (focusables[0]) {\n        focusables[0].focus();\n      } else {\n        container.focus();\n      }\n    }\n\n    const handleKeyDown = (e: KeyboardEvent) => {\n      if (e.key !== \"Tab\") return;\n\n      const focusableEls = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);\n      if (focusableEls.length === 0) return;\n\n      const first = focusableEls[0];\n      const last = focusableEls[focusableEls.length - 1];\n\n      if (e.shiftKey) {\n        if (document.activeElement === first) {\n          e.preventDefault();\n          last?.focus();\n        }\n      } else {\n        if (document.activeElement === last) {\n          e.preventDefault();\n          first?.focus();\n        }\n      }\n    };\n\n    container.addEventListener(\"keydown\", handleKeyDown);\n    return () => {\n      container.removeEventListener(\"keydown\", handleKeyDown);\n      if (restoreFocus) {\n        previousFocus?.focus();\n      }\n    };\n  // Note: containerRef and initialFocus are RefObjects (stable identity).\n  // If a new ref object is passed, the effect will not re-run.\n  }, [enabled, restoreFocus]);\n}",
+      "type": "registry:hook"
+    }
+  ],
+  "meta": {
+    "client": true
+  }
+}

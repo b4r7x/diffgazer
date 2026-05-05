@@ -1,0 +1,38 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "horizontal-stepper",
+  "type": "registry:ui",
+  "title": "Horizontal Stepper",
+  "description": "Horizontal step-by-step progress indicator",
+  "dependencies": [
+    "class-variance-authority"
+  ],
+  "registryDependencies": [
+    "step-status"
+  ],
+  "files": [
+    {
+      "path": "registry/ui/horizontal-stepper/index.ts",
+      "content": "import { HorizontalStepperRoot, type HorizontalStepperProps } from \"./horizontal-stepper\";\nimport { HorizontalStepperStep, type HorizontalStepperStepProps } from \"./horizontal-stepper-step\";\n\nconst HorizontalStepper = Object.assign(HorizontalStepperRoot, {\n  Step: HorizontalStepperStep,\n});\n\nexport { HorizontalStepper, type HorizontalStepperProps };\nexport { HorizontalStepperStep, type HorizontalStepperStepProps };\nexport { stepVariants } from \"./horizontal-stepper-step\";\nexport { useStepInfo, type StepStatus } from \"./horizontal-stepper-context\";\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/horizontal-stepper/horizontal-stepper.tsx",
+      "content": "\"use client\";\n\nimport { useMemo, type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { HorizontalStepperContext } from \"./horizontal-stepper-context\";\n\nexport interface HorizontalStepperProps {\n  steps: string[];\n  step: string;\n  children: ReactNode;\n  className?: string;\n  \"aria-label\"?: string;\n}\n\nexport function HorizontalStepperRoot({\n  steps,\n  step,\n  children,\n  className,\n  \"aria-label\": ariaLabel,\n}: HorizontalStepperProps) {\n  const contextValue = useMemo(() => ({ step, steps }), [step, steps]);\n\n  return (\n    <HorizontalStepperContext value={contextValue}>\n      <ol\n        aria-label={ariaLabel ?? \"Progress\"}\n        className={cn(\"flex items-center gap-1 font-mono text-[10px]\", className)}\n      >\n        {children}\n      </ol>\n    </HorizontalStepperContext>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/horizontal-stepper/horizontal-stepper-context.tsx",
+      "content": "\"use client\";\n\nimport { createContext, useContext } from \"react\";\nimport type { StepStatus } from \"@/lib/step-status\";\n\nexport type { StepStatus };\n\ninterface StepperContextValue {\n  step: string;\n  steps: string[];\n}\n\nexport const HorizontalStepperContext = createContext<StepperContextValue | undefined>(undefined);\n\nexport function useStepperContext() {\n  const ctx = useContext(HorizontalStepperContext);\n  if (ctx === undefined) {\n    throw new Error(\"HorizontalStepperStep must be used within a HorizontalStepper\");\n  }\n  return ctx;\n}\n\nexport function useStepInfo(value: string): { status: StepStatus; index: number } {\n  const { step, steps } = useStepperContext();\n  const stepIndex = steps.indexOf(value);\n  const currentIndex = steps.indexOf(step);\n\n  if (stepIndex === currentIndex) return { status: \"active\", index: stepIndex };\n  if (stepIndex < currentIndex) return { status: \"completed\", index: stepIndex };\n  return { status: \"pending\", index: stepIndex };\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/horizontal-stepper/horizontal-stepper-step.tsx",
+      "content": "\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { useStepInfo, type StepStatus } from \"./horizontal-stepper-context\";\n\nexport const stepVariants = cva(\"px-1.5 py-0.5\", {\n  variants: {\n    status: {\n      active: \"bg-foreground text-primary-foreground font-bold\",\n      completed: \"text-success\",\n      pending: \"text-muted-foreground\",\n      error: \"text-error-fg font-bold\",\n    },\n  },\n  defaultVariants: { status: \"pending\" },\n});\n\nconst srLabel: Record<StepStatus, string> = {\n  completed: \"Completed: \",\n  active: \"Current: \",\n  pending: \"Upcoming: \",\n  error: \"Error: \",\n};\n\nexport interface HorizontalStepperStepProps {\n  value: string;\n  children: ReactNode;\n  className?: string;\n}\n\nexport function HorizontalStepperStep({ value, children, className }: HorizontalStepperStepProps) {\n  const { status, index } = useStepInfo(value);\n\n  return (\n    <li aria-current={status === \"active\" ? \"step\" : undefined} className=\"flex items-center gap-1\">\n      {index > 0 && (\n        <span aria-hidden=\"true\" className={cn(\"mx-0.5\", status === \"completed\" ? \"text-success\" : \"text-border\")}>\n          -\n        </span>\n      )}\n      <span className={cn(stepVariants({ status }), className)}>\n        <span className=\"sr-only\">{srLabel[status]}</span>\n        {children}\n      </span>\n    </li>\n  );\n}\n",
+      "type": "registry:ui"
+    }
+  ],
+  "meta": {
+    "client": true
+  }
+}

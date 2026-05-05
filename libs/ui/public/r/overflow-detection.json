@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "overflow-detection",
+  "type": "registry:hook",
+  "title": "Overflow Detection",
+  "description": "Detects whether an element's content overflows its container using ResizeObserver. Supports horizontal, vertical, and both directions.",
+  "dependencies": [],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/hooks/use-overflow.ts",
+      "content": "\"use client\";\n\nimport { useLayoutEffect, useRef, useState, useEffectEvent } from \"react\";\n\nexport type OverflowDirection = \"horizontal\" | \"vertical\" | \"both\";\n\nexport function useOverflow<T extends HTMLElement = HTMLElement>(\n  direction: OverflowDirection = \"horizontal\"\n): { ref: React.RefObject<T | null>; isOverflowing: boolean } {\n  const ref = useRef<T | null>(null);\n  const [isOverflowing, setIsOverflowing] = useState(false);\n\n  const check = useEffectEvent(() => {\n    const el = ref.current;\n    if (!el) return;\n\n    const h = el.scrollWidth > el.clientWidth;\n    const v = el.scrollHeight > el.clientHeight;\n\n    setIsOverflowing({ horizontal: h, vertical: v, both: h || v }[direction]);\n  });\n\n  useLayoutEffect(() => {\n    const el = ref.current;\n    if (!el) return;\n\n    const observer = new ResizeObserver(check);\n    observer.observe(el);\n    return () => observer.disconnect();\n  }, []);\n\n  useLayoutEffect(() => {\n    check();\n  }, [direction]);\n\n  return { ref, isOverflowing };\n}\n",
+      "type": "registry:hook"
+    }
+  ],
+  "meta": {
+    "client": true
+  }
+}

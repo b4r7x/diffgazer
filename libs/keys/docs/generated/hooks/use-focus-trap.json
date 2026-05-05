@@ -1,0 +1,3793 @@
+{
+  "name": "use-focus-trap",
+  "title": "useFocusTrap",
+  "description": "Trap Tab/Shift+Tab focus within a container element. Auto-focuses first focusable element on mount, restores focus on unmount.",
+  "source": {
+    "raw": "\"use client\";\n\nimport { useEffect, type RefObject } from \"react\";\n\nconst FOCUSABLE_SELECTOR =\n  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex=\"-1\"])';\n\nexport interface UseFocusTrapOptions {\n  initialFocus?: RefObject<HTMLElement | null>;\n  restoreFocus?: boolean;\n  enabled?: boolean;\n}\n\nexport function useFocusTrap(\n  containerRef: RefObject<HTMLElement | null>,\n  options: UseFocusTrapOptions = {},\n): void {\n  const { initialFocus, restoreFocus = true, enabled = true } = options;\n\n  useEffect(() => {\n    if (!enabled) return;\n\n    const previousFocus = document.activeElement as HTMLElement | null;\n    const container = containerRef.current;\n    if (!container) return;\n\n    if (initialFocus?.current) {\n      initialFocus.current.focus();\n    } else {\n      const focusables = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);\n      if (focusables[0]) {\n        focusables[0].focus();\n      } else {\n        container.focus();\n      }\n    }\n\n    const handleKeyDown = (e: KeyboardEvent) => {\n      if (e.key !== \"Tab\") return;\n\n      const focusableEls = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);\n      if (focusableEls.length === 0) return;\n\n      const first = focusableEls[0];\n      const last = focusableEls[focusableEls.length - 1];\n\n      if (e.shiftKey) {\n        if (document.activeElement === first) {\n          e.preventDefault();\n          last?.focus();\n        }\n      } else {\n        if (document.activeElement === last) {\n          e.preventDefault();\n          first?.focus();\n        }\n      }\n    };\n\n    container.addEventListener(\"keydown\", handleKeyDown);\n    return () => {\n      container.removeEventListener(\"keydown\", handleKeyDown);\n      if (restoreFocus) {\n        previousFocus?.focus();\n      }\n    };\n  // Note: containerRef and initialFocus are RefObjects (stable identity).\n  // If a new ref object is passed, the effect will not re-run.\n  }, [enabled, restoreFocus]);\n}",
+    "highlighted": [
+      {
+        "number": 1,
+        "content": [
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "use client",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 2,
+        "content": []
+      },
+      {
+        "number": 3,
+        "content": [
+          {
+            "text": "import",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " useEffect",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "type",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " RefObject ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "from",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "react",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 4,
+        "content": []
+      },
+      {
+        "number": 5,
+        "content": [
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "FOCUSABLE_SELECTOR",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 6,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "'",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex=\"-1\"])",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "'",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 7,
+        "content": []
+      },
+      {
+        "number": 8,
+        "content": [
+          {
+            "text": "export",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "interface",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "UseFocusTrapOptions",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 9,
+        "content": [
+          {
+            "text": "  initialFocus",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "?:",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "RefObject",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "<",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "HTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "|",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ">;",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 10,
+        "content": [
+          {
+            "text": "  restoreFocus",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "?:",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "boolean",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 11,
+        "content": [
+          {
+            "text": "  enabled",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "?:",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "boolean",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 12,
+        "content": [
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 13,
+        "content": []
+      },
+      {
+        "number": 14,
+        "content": [
+          {
+            "text": "export",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "function",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useFocusTrap",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 15,
+        "content": [
+          {
+            "text": "  containerRef",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "RefObject",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "<",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "HTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "|",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ">,",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 16,
+        "content": [
+          {
+            "text": "  options",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "UseFocusTrapOptions",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{},",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 17,
+        "content": [
+          {
+            "text": "):",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "void",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 18,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "initialFocus",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "restoreFocus",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "true",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "enabled",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "true",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " options",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 19,
+        "content": []
+      },
+      {
+        "number": 20,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useEffect",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 21,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "!",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "enabled) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 22,
+        "content": []
+      },
+      {
+        "number": 23,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "previousFocus",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "document",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "activeElement ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "as",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "HTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "|",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 24,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "container",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "containerRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 25,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "!",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "container) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 26,
+        "content": []
+      },
+      {
+        "number": 27,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "initialFocus",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 28,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "initialFocus",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "focus",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 29,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "else",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 30,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "focusables",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "container",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "querySelectorAll",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "<",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "HTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ">",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "FOCUSABLE_SELECTOR",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 31,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (focusables[",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "]) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 32,
+        "content": [
+          {
+            "text": "        focusables[",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "]",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "focus",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 33,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "else",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 34,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "container",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "focus",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 35,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 36,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 37,
+        "content": []
+      },
+      {
+        "number": 38,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "handleKeyDown",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "e",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "KeyboardEvent",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 39,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "e",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "key ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "!==",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "Tab",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ") ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 40,
+        "content": []
+      },
+      {
+        "number": 41,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "focusableEls",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "container",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "querySelectorAll",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "<",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "HTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ">",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "FOCUSABLE_SELECTOR",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 42,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "focusableEls",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "length",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "===",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ") ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 43,
+        "content": []
+      },
+      {
+        "number": 44,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "first",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " focusableEls[",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "]",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 45,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "last",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " focusableEls[",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "focusableEls",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "length",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "-",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "1",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "]",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 46,
+        "content": []
+      },
+      {
+        "number": 47,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "e",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "shiftKey) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 48,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "document",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "activeElement ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "===",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " first) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 49,
+        "content": [
+          {
+            "text": "          ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "e",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "preventDefault",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 50,
+        "content": [
+          {
+            "text": "          ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "last",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "focus",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 51,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 52,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "else",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 53,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "document",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "activeElement ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "===",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " last) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 54,
+        "content": [
+          {
+            "text": "          ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "e",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "preventDefault",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 55,
+        "content": [
+          {
+            "text": "          ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "first",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "focus",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 56,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 57,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 58,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "};",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 59,
+        "content": []
+      },
+      {
+        "number": 60,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "container",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "addEventListener",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "keydown",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " handleKeyDown)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 61,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 62,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "container",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "removeEventListener",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "keydown",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " handleKeyDown)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 63,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (restoreFocus) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 64,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "previousFocus",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "focus",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 65,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 66,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "};",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 67,
+        "content": [
+          {
+            "text": "  //",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " Note: containerRef and initialFocus are RefObjects (stable identity).",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 68,
+        "content": [
+          {
+            "text": "  //",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " If a new ref object is passed, the effect will not re-run.",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 69,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "},",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " [enabled",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " restoreFocus])",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 70,
+        "content": [
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      }
+    ]
+  },
+  "docs": {
+    "description": "Trap Tab/Shift+Tab focus within a container element. Auto-focuses first focusable element on mount, restores focus on unmount.",
+    "usage": {
+      "code": "useFocusTrap(containerRef)",
+      "lang": "tsx"
+    },
+    "parameters": [
+      {
+        "name": "containerRef",
+        "type": "RefObject<HTMLElement | null>",
+        "required": true,
+        "description": "Ref to the container element that traps focus. Passed as the first positional argument."
+      },
+      {
+        "name": "options.initialFocus",
+        "type": "RefObject<HTMLElement | null>",
+        "required": false,
+        "description": "Ref to the element that receives focus when the trap activates. Defaults to the first focusable element."
+      },
+      {
+        "name": "options.restoreFocus",
+        "type": "boolean",
+        "required": false,
+        "description": "Restore focus to the previously focused element when the trap deactivates.",
+        "defaultValue": "true"
+      },
+      {
+        "name": "options.enabled",
+        "type": "boolean",
+        "required": false,
+        "description": "Whether the focus trap is active.",
+        "defaultValue": "true"
+      }
+    ],
+    "returns": {
+      "type": "void",
+      "description": "This hook does not return a value."
+    },
+    "notes": [
+      {
+        "title": "Standalone",
+        "content": "useFocusTrap does not require KeyboardProvider. It listens for Tab/Shift+Tab directly on the container."
+      },
+      {
+        "title": "Tab wrapping",
+        "content": "When focus reaches the last focusable element, Tab wraps to the first. Shift+Tab from the first wraps to the last."
+      }
+    ],
+    "examples": [
+      {
+        "name": "use-focus-trap-basic",
+        "title": "Modal focus trap"
+      }
+    ],
+    "tags": [
+      "standalone",
+      "focus",
+      "accessibility"
+    ]
+  },
+  "usageSnippet": "useFocusTrap(containerRef)",
+  "usageSnippetHighlighted": [
+    {
+      "number": 1,
+      "content": [
+        {
+          "text": "useFocusTrap",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(containerRef)",
+          "color": "var(--code-variable)"
+        }
+      ]
+    }
+  ],
+  "examples": [
+    "use-focus-trap-basic"
+  ],
+  "exampleSource": {
+    "use-focus-trap-basic": {
+      "raw": "\"use client\"\n\nimport { useRef, useState } from \"react\"\nimport { useFocusTrap } from \"@diffgazer/keys\"\nimport { Button } from \"@/components/ui/button\"\nimport { Card, CardHeader, CardTitle, CardContent, CardFooter } from \"@/components/ui/card\"\nimport { Kbd } from \"@/components/ui/kbd\"\n\nexport default function UseFocusTrapBasic() {\n  const [open, setOpen] = useState(false)\n  const trapRef = useRef<HTMLDivElement>(null)\n\n  useFocusTrap(trapRef, { enabled: open, restoreFocus: true })\n\n  return (\n    <div>\n      <Button variant=\"secondary\" onClick={() => setOpen(true)}>\n        Open Panel\n      </Button>\n\n      {open && (\n        <div ref={trapRef} className=\"mt-2\">\n          <Card size=\"sm\">\n            <CardHeader>\n              <CardTitle as=\"h3\">Confirm Action</CardTitle>\n              <p className=\"text-xs text-muted-foreground\">\n                Press <Kbd size=\"sm\">Tab</Kbd> to cycle through buttons. Focus is trapped within this panel.\n              </p>\n            </CardHeader>\n            <CardContent>\n              <p className=\"text-sm text-muted-foreground\">\n                Focus cannot leave this area until the panel is dismissed.\n              </p>\n            </CardContent>\n            <CardFooter className=\"gap-2\">\n              <Button variant=\"ghost\" onClick={() => setOpen(false)}>Cancel</Button>\n              <Button variant=\"primary\" onClick={() => setOpen(false)}>Confirm</Button>\n            </CardFooter>\n          </Card>\n        </div>\n      )}\n    </div>\n  )\n}\n",
+      "highlighted": [
+        {
+          "number": 1,
+          "content": [
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "use client",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " useRef",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " useState ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "react",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " useFocusTrap ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "@diffgazer/keys",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " Button ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "@/components/ui/button",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " Card",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " CardHeader",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " CardTitle",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " CardContent",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " CardFooter ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "@/components/ui/card",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " Kbd ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "@/components/ui/kbd",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "content": []
+        },
+        {
+          "number": 9,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "default",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "function",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "UseFocusTrapBasic",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "[",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "open",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "setOpen",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": "]",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useState",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "trapRef",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useRef",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "HTMLDivElement",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 12,
+          "content": []
+        },
+        {
+          "number": 13,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useFocusTrap",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(trapRef",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " enabled",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " open",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " restoreFocus",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "true",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 14,
+          "content": []
+        },
+        {
+          "number": 15,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 16,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 17,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Button",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "variant",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "secondary",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onClick",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "setOpen",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "true",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}>",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 18,
+          "content": [
+            {
+              "text": "        Open Panel",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 19,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Button",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 20,
+          "content": []
+        },
+        {
+          "number": 21,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "open ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 22,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "trapRef",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "mt-2",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 23,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Card",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "size",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "sm",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 24,
+          "content": [
+            {
+              "text": "            ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardHeader",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 25,
+          "content": [
+            {
+              "text": "              ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardTitle",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "h3",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Confirm Action",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardTitle",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 26,
+          "content": [
+            {
+              "text": "              ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "p",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-xs text-muted-foreground",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 27,
+          "content": [
+            {
+              "text": "                Press ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Kbd",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "size",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "sm",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Tab",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Kbd",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " to cycle through buttons. Focus is trapped within this panel.",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 28,
+          "content": [
+            {
+              "text": "              ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "p",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 29,
+          "content": [
+            {
+              "text": "            ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardHeader",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 30,
+          "content": [
+            {
+              "text": "            ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardContent",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 31,
+          "content": [
+            {
+              "text": "              ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "p",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-sm text-muted-foreground",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 32,
+          "content": [
+            {
+              "text": "                Focus cannot leave this area until the panel is dismissed.",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 33,
+          "content": [
+            {
+              "text": "              ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "p",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 34,
+          "content": [
+            {
+              "text": "            ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardContent",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 35,
+          "content": [
+            {
+              "text": "            ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardFooter",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "gap-2",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 36,
+          "content": [
+            {
+              "text": "              ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Button",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "variant",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "ghost",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onClick",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "setOpen",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}>",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Cancel",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Button",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 37,
+          "content": [
+            {
+              "text": "              ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Button",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "variant",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "primary",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onClick",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "setOpen",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}>",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Confirm",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Button",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 38,
+          "content": [
+            {
+              "text": "            ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardFooter",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 39,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Card",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 40,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 41,
+          "content": [
+            {
+              "text": "      )",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 42,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 43,
+          "content": [
+            {
+              "text": "  )",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 44,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 45,
+          "content": []
+        }
+      ]
+    }
+  },
+  "parameters": [
+    {
+      "name": "containerRef",
+      "type": "RefObject<HTMLElement | null>",
+      "required": true,
+      "description": "Ref to the container element that traps focus. Passed as the first positional argument."
+    },
+    {
+      "name": "options.initialFocus",
+      "type": "RefObject<HTMLElement | null>",
+      "required": false,
+      "description": "Ref to the element that receives focus when the trap activates. Defaults to the first focusable element."
+    },
+    {
+      "name": "options.restoreFocus",
+      "type": "boolean",
+      "required": false,
+      "description": "Restore focus to the previously focused element when the trap deactivates.",
+      "defaultValue": "true"
+    },
+    {
+      "name": "options.enabled",
+      "type": "boolean",
+      "required": false,
+      "description": "Whether the focus trap is active.",
+      "defaultValue": "true"
+    }
+  ],
+  "returns": {
+    "type": "void",
+    "description": "This hook does not return a value."
+  }
+}

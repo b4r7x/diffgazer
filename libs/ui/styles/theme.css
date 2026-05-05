@@ -1,0 +1,200 @@
+/* @diffgazer/ui TUI Theme - Diffgazer (Minimal Monochrome) */
+
+@import "./theme-base.css";
+
+:root,
+[data-theme="dark"] {
+  /* Primitive TUI Colors - Diffgazer Theme */
+  --tui-bg: #0a0a0a;
+  --tui-fg: #e5e5e5;
+  --tui-dim: #9c9c9c;
+  --tui-border: #606060;
+  --tui-highlight: #ffffff;
+  --tui-highlight-fg: #000000;
+  --tui-input-bg: #0a0a0a;
+  --tui-muted: #787878;
+  --tui-selection: #333333;
+
+  /* Accent colors - simplified for minimal theme */
+  --tui-blue: #ccccff;  /* light for links */
+  --tui-violet: #787878;
+  --tui-green: #e5e5e5; /* white for success in minimal */
+  --tui-red: #ff7b72;   /* keep for error */
+  --tui-yellow: #d29922; /* keep for warning */
+
+  /* Code syntax palette (shared by Fumadocs + generated snippets) */
+  --code-comment: var(--tui-dim);
+  --code-string: var(--tui-violet);
+  --code-number: var(--tui-violet);
+  --code-keyword: var(--tui-blue);
+  --code-function: var(--tui-green);
+  --code-tag: var(--tui-green);
+  --code-attr: var(--tui-blue);
+  --code-parameter: var(--tui-yellow);
+  --code-operator: var(--tui-red);
+  --code-variable: var(--tui-fg);
+  --code-type: var(--tui-blue);
+
+  --tui-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  /* Semantic mappings */
+  --background: var(--tui-bg);
+  --foreground: var(--tui-fg);
+  --primary: var(--tui-fg);
+  --primary-foreground: var(--tui-bg);
+  --secondary: var(--tui-selection);
+  --secondary-foreground: var(--tui-fg);
+  --muted: var(--tui-muted);
+  --muted-foreground: var(--tui-dim);
+  --border: var(--tui-border);
+  --input: var(--tui-selection);
+  --destructive: var(--tui-red);
+  --destructive-foreground: var(--tui-bg);
+  --accent: var(--tui-highlight);
+  --accent-foreground: var(--tui-highlight-fg);
+  --card: var(--tui-selection);
+  --card-foreground: var(--tui-fg);
+  --popover: var(--tui-selection);
+  --popover-foreground: var(--tui-fg);
+  --ring: var(--tui-fg);
+  --success: var(--tui-green);
+  --success-foreground: var(--tui-bg);
+  --warning: var(--tui-yellow);
+  --warning-foreground: var(--tui-bg);
+  --info: var(--tui-blue);
+  --info-foreground: var(--tui-bg);
+  --error: var(--tui-red);
+  --error-foreground: var(--tui-bg);
+
+  --success-subtle: #e5e5e51a;
+  --success-fg: var(--tui-green);
+  --success-border: var(--tui-green);
+  --success-strong: var(--tui-green);
+  --success-strong-foreground: var(--tui-bg);
+
+  --warning-subtle: #d299220d;
+  --warning-fg: var(--tui-yellow);
+  --warning-border: var(--tui-yellow);
+  --warning-strong: var(--tui-yellow);
+  --warning-strong-foreground: var(--tui-bg);
+
+  --error-subtle: #ff7b721a;
+  --error-fg: var(--tui-red);
+  --error-border: var(--tui-red);
+  --error-strong: var(--tui-red);
+  --error-strong-foreground: var(--tui-bg);
+
+  --info-subtle: #ccccff1a;
+  --info-fg: var(--tui-blue);
+  --info-border: var(--tui-blue);
+  --info-strong: var(--tui-blue);
+  --info-strong-foreground: var(--tui-bg);
+
+  --neutral-subtle: #6666661a;
+  --neutral-border: var(--tui-border);
+  --neutral-fg: var(--tui-muted);
+  --neutral-strong: var(--tui-muted);
+  --neutral-strong-foreground: var(--tui-bg);
+
+  --action: var(--tui-highlight);
+  --action-foreground: var(--tui-highlight-fg);
+
+  --trans-fast: 0.15s ease;
+  --radius: 0.25rem;
+}
+
+[data-theme="light"] {
+  /* Primitive TUI Colors - Diffgazer Light Theme */
+  --tui-bg: #ffffff;
+  --tui-fg: #1a1a1a;
+  --tui-dim: #636363;
+  --tui-border: #888888;
+  --tui-highlight: #000000;
+  --tui-highlight-fg: #ffffff;
+  --tui-input-bg: #ffffff;
+  --tui-muted: #767676;
+  --tui-selection: #f0f0f0;
+
+  /* Accent colors - simplified for minimal theme */
+  --tui-blue: #4444cc;  /* dark for links */
+  --tui-violet: #767676;
+  --tui-green: #1a1a1a; /* black for success in minimal */
+  --tui-red: #cf222e;   /* keep for error */
+  --tui-yellow: #9a6700; /* keep for warning */
+
+  /* Code syntax palette (shared by Fumadocs + generated snippets) */
+  --code-comment: var(--tui-dim);
+  --code-string: var(--tui-violet);
+  --code-number: var(--tui-violet);
+  --code-keyword: var(--tui-blue);
+  --code-function: var(--tui-green);
+  --code-tag: var(--tui-green);
+  --code-attr: var(--tui-blue);
+  --code-parameter: var(--tui-yellow);
+  --code-operator: var(--tui-red);
+  --code-variable: var(--tui-fg);
+  --code-type: var(--tui-blue);
+
+  /* Semantic mappings */
+  --background: var(--tui-bg);
+  --foreground: var(--tui-fg);
+  --primary: var(--tui-fg);
+  --primary-foreground: var(--tui-bg);
+  --secondary: var(--tui-selection);
+  --secondary-foreground: var(--tui-fg);
+  --muted: var(--tui-muted);
+  --muted-foreground: var(--tui-dim);
+  --border: var(--tui-border);
+  --input: var(--tui-selection);
+  --destructive: var(--tui-red);
+  --destructive-foreground: #ffffff;
+  --accent: var(--tui-highlight);
+  --accent-foreground: var(--tui-highlight-fg);
+  --card: var(--tui-selection);
+  --card-foreground: var(--tui-fg);
+  --popover: var(--tui-selection);
+  --popover-foreground: var(--tui-fg);
+  --ring: var(--tui-fg);
+  --success: var(--tui-green);
+  --success-foreground: #ffffff;
+  --warning: var(--tui-yellow);
+  --warning-foreground: #ffffff;
+  --info: var(--tui-blue);
+  --info-foreground: #ffffff;
+  --error: var(--tui-red);
+  --error-foreground: #ffffff;
+
+  --success-subtle: #1a1a1a1f;
+  --success-fg: var(--tui-green);
+  --success-border: var(--tui-green);
+  --success-strong: var(--tui-green);
+  --success-strong-foreground: #ffffff;
+
+  --warning-subtle: #9a670014;
+  --warning-fg: var(--tui-yellow);
+  --warning-border: var(--tui-yellow);
+  --warning-strong: var(--tui-yellow);
+  --warning-strong-foreground: #ffffff;
+
+  --error-subtle: #cf222e1a;
+  --error-fg: var(--tui-red);
+  --error-border: var(--tui-red);
+  --error-strong: var(--tui-red);
+  --error-strong-foreground: #ffffff;
+
+  --info-subtle: #4444cc1a;
+  --info-fg: var(--tui-blue);
+  --info-border: var(--tui-blue);
+  --info-strong: var(--tui-blue);
+  --info-strong-foreground: #ffffff;
+
+  --neutral-subtle: #88888814;
+  --neutral-border: var(--tui-border);
+  --neutral-fg: var(--tui-muted);
+  --neutral-strong: var(--tui-muted);
+  --neutral-strong-foreground: #ffffff;
+
+  --action: var(--tui-highlight);
+  --action-foreground: var(--tui-highlight-fg);
+}

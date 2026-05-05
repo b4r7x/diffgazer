@@ -1,0 +1,41 @@
+---
+title: Installation
+description: Install @diffgazer/keys as a package or copy standalone hooks with dgadd.
+---
+
+`@diffgazer/keys` is a hooks-first keyboard accessibility toolkit for React.
+
+## Package Install
+
+Use the package when you need provider-backed hooks such as `KeyboardProvider`, `useKey`, `useScope`, or `useFocusZone`.
+
+```bash
+npm install @diffgazer/keys
+```
+
+```tsx
+import { KeyboardProvider, useKey } from "@diffgazer/keys"
+```
+
+## Copy Standalone Hooks
+
+Use `dgadd` when you want source-owned standalone hooks with no package runtime dependency.
+
+```bash
+npx @diffgazer/add init
+npx @diffgazer/add add keys/navigation
+npx @diffgazer/add add keys/focus-trap keys/scroll-lock
+```
+
+The copied hooks are installed into your configured hooks directory, usually `src/hooks`.
+
+## With @diffgazer/ui
+
+Keyboard-enabled UI components can install required hooks automatically:
+
+```bash
+dgadd add ui/menu --integration copy
+dgadd add ui/dialog --integration keys
+```
+
+`copy` mode writes local hook source. `keys` mode imports from the `@diffgazer/keys` package.

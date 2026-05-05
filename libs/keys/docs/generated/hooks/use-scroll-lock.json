@@ -1,0 +1,3324 @@
+{
+  "name": "use-scroll-lock",
+  "title": "useScrollLock",
+  "description": "Prevent body or element scrolling with reference counting. Multiple locks on the same element stack safely.",
+  "source": {
+    "raw": "\"use client\";\n\nimport { useEffect, type RefObject } from \"react\";\n\nconst lockCounts = new WeakMap<Element, number>();\nconst savedOverflow = new WeakMap<Element, string>();\n\nexport interface UseScrollLockOptions {\n  target?: RefObject<HTMLElement | null>;\n  enabled?: boolean;\n}\n\nexport function useScrollLock(options: UseScrollLockOptions = {}): void {\n  const { target, enabled = true } = options;\n\n  useEffect(() => {\n    if (!enabled) return;\n\n    const el = target?.current ?? document.body;\n    const count = lockCounts.get(el) ?? 0;\n\n    if (count === 0) {\n      savedOverflow.set(el, el.style.overflow);\n      el.style.overflow = \"hidden\";\n    }\n    lockCounts.set(el, count + 1);\n\n    return () => {\n      const current = lockCounts.get(el) ?? 1;\n      const next = current - 1;\n      if (next <= 0) {\n        lockCounts.delete(el);\n        el.style.overflow = savedOverflow.get(el) ?? \"\";\n        savedOverflow.delete(el);\n      } else {\n        lockCounts.set(el, next);\n      }\n    };\n  }, [enabled, target]);\n}",
+    "highlighted": [
+      {
+        "number": 1,
+        "content": [
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "use client",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 2,
+        "content": []
+      },
+      {
+        "number": 3,
+        "content": [
+          {
+            "text": "import",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " useEffect",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "type",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " RefObject ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "from",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "react",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 4,
+        "content": []
+      },
+      {
+        "number": 5,
+        "content": [
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "lockCounts",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "new",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "WeakMap",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "<",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "Element",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "number",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ">",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 6,
+        "content": [
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "savedOverflow",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "new",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "WeakMap",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "<",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "Element",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "string",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ">",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 7,
+        "content": []
+      },
+      {
+        "number": 8,
+        "content": [
+          {
+            "text": "export",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "interface",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "UseScrollLockOptions",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 9,
+        "content": [
+          {
+            "text": "  target",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "?:",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "RefObject",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "<",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "HTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "|",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ">;",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 10,
+        "content": [
+          {
+            "text": "  enabled",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "?:",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "boolean",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 11,
+        "content": [
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 12,
+        "content": []
+      },
+      {
+        "number": 13,
+        "content": [
+          {
+            "text": "export",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "function",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useScrollLock",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "options",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "UseScrollLockOptions",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{}):",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "void",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 14,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "target",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "enabled",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "true",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " options",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 15,
+        "content": []
+      },
+      {
+        "number": 16,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useEffect",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 17,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "!",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "enabled) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 18,
+        "content": []
+      },
+      {
+        "number": 19,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "el",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "target",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "??",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "document",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "body",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 20,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "count",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "lockCounts",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "get",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(el) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "??",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 21,
+        "content": []
+      },
+      {
+        "number": 22,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (count ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "===",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ") ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 23,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "savedOverflow",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "set",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(el",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "el",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "style",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "overflow)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 24,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "el",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "style",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "overflow ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "hidden",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 25,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 26,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "lockCounts",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "set",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(el",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " count ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "+",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "1",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 27,
+        "content": []
+      },
+      {
+        "number": 28,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 29,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "current",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "lockCounts",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "get",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(el) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "??",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "1",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 30,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "next",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " current ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "-",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "1",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 31,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (next ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "<=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ") ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 32,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "lockCounts",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "delete",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(el)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 33,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "el",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "style",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "overflow ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "savedOverflow",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "get",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(el) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "??",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 34,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "savedOverflow",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "delete",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(el)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 35,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "else",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 36,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "lockCounts",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "set",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(el",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " next)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 37,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 38,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "};",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 39,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "},",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " [enabled",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " target])",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 40,
+        "content": [
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      }
+    ]
+  },
+  "docs": {
+    "description": "Prevent body or element scrolling with reference counting. Multiple locks on the same element stack safely.",
+    "usage": {
+      "code": "useScrollLock()",
+      "lang": "tsx"
+    },
+    "parameters": [
+      {
+        "name": "target",
+        "type": "RefObject<HTMLElement | null>",
+        "required": false,
+        "description": "Ref to the element to lock. Defaults to document.body when omitted."
+      },
+      {
+        "name": "enabled",
+        "type": "boolean",
+        "required": false,
+        "description": "Whether the scroll lock is active.",
+        "defaultValue": "true"
+      }
+    ],
+    "returns": {
+      "type": "void",
+      "description": "This hook does not return a value."
+    },
+    "notes": [
+      {
+        "title": "Reference counting",
+        "content": "Multiple useScrollLock calls on the same element increment a shared counter. Scrolling is only restored when all locks are released, preventing double-unlock bugs."
+      },
+      {
+        "title": "Standalone",
+        "content": "useScrollLock does not require KeyboardProvider. It works independently as a copy-paste utility hook."
+      }
+    ],
+    "examples": [
+      {
+        "name": "use-scroll-lock-basic",
+        "title": "Lock body scroll in a modal"
+      }
+    ],
+    "tags": [
+      "standalone",
+      "scroll",
+      "utility"
+    ]
+  },
+  "usageSnippet": "useScrollLock()",
+  "usageSnippetHighlighted": [
+    {
+      "number": 1,
+      "content": [
+        {
+          "text": "useScrollLock",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "()",
+          "color": "var(--code-variable)"
+        }
+      ]
+    }
+  ],
+  "examples": [
+    "use-scroll-lock-basic"
+  ],
+  "exampleSource": {
+    "use-scroll-lock-basic": {
+      "raw": "\"use client\"\n\nimport { useState } from \"react\"\nimport { useScrollLock } from \"@diffgazer/keys\"\nimport { Button } from \"@/components/ui/button\"\nimport { Card, CardHeader, CardTitle, CardContent, CardFooter } from \"@/components/ui/card\"\nimport { Badge } from \"@/components/ui/badge\"\n\nfunction Overlay({ onClose }: { onClose: () => void }) {\n  useScrollLock()\n\n  return (\n    <div\n      className=\"fixed inset-0 bg-black/60 flex items-center justify-center z-50\"\n      onClick={onClose}\n    >\n      <div onClick={(e) => e.stopPropagation()}>\n        <Card size=\"sm\" variant=\"panel\">\n          <CardHeader>\n            <CardTitle as=\"h3\">Overlay</CardTitle>\n          </CardHeader>\n          <CardContent>\n            <p className=\"text-sm text-muted-foreground\">\n              Background scroll is locked while this overlay is visible.\n            </p>\n          </CardContent>\n          <CardFooter>\n            <Button variant=\"secondary\" onClick={onClose}>Close</Button>\n          </CardFooter>\n        </Card>\n      </div>\n    </div>\n  )\n}\n\nexport default function UseScrollLockBasic() {\n  const [open, setOpen] = useState(false)\n\n  return (\n    <div className=\"h-[500px]\">\n      <div className=\"flex items-center gap-3 mb-3\">\n        <Button variant=\"secondary\" onClick={() => setOpen(true)}>\n          Show Overlay\n        </Button>\n        <Badge variant={open ? \"warning\" : \"neutral\"} dot>\n          {open ? \"Scroll locked\" : \"Scroll unlocked\"}\n        </Badge>\n      </div>\n      <p className=\"text-sm text-muted-foreground\">\n        Scroll down to see content. Opening the overlay locks scroll.\n      </p>\n      {open && <Overlay onClose={() => setOpen(false)} />}\n    </div>\n  )\n}\n",
+      "highlighted": [
+        {
+          "number": 1,
+          "content": [
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "use client",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " useState ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "react",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " useScrollLock ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "@diffgazer/keys",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " Button ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "@/components/ui/button",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " Card",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " CardHeader",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " CardTitle",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " CardContent",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " CardFooter ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "@/components/ui/card",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " Badge ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "@/components/ui/badge",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "content": []
+        },
+        {
+          "number": 9,
+          "content": [
+            {
+              "text": "function",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Overlay",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "({",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " onClose ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}:",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onClose",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "void",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "})",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useScrollLock",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "content": []
+        },
+        {
+          "number": 12,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 13,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            }
+          ]
+        },
+        {
+          "number": 14,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "fixed inset-0 bg-black/60 flex items-center justify-center z-50",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 15,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onClick",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "onClose",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 16,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 17,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onClick",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={(",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "e",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "e",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "stopPropagation",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}>",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 18,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Card",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "size",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "sm",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "variant",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "panel",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 19,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardHeader",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 20,
+          "content": [
+            {
+              "text": "            ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardTitle",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "h3",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Overlay",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardTitle",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 21,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardHeader",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 22,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardContent",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 23,
+          "content": [
+            {
+              "text": "            ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "p",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-sm text-muted-foreground",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 24,
+          "content": [
+            {
+              "text": "              Background scroll is locked while this overlay is visible.",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 25,
+          "content": [
+            {
+              "text": "            ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "p",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 26,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardContent",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 27,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardFooter",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 28,
+          "content": [
+            {
+              "text": "            ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Button",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "variant",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "secondary",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onClick",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "onClose",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}>",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Close",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Button",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 29,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardFooter",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 30,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Card",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 31,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 32,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 33,
+          "content": [
+            {
+              "text": "  )",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 34,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 35,
+          "content": []
+        },
+        {
+          "number": 36,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "default",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "function",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "UseScrollLockBasic",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 37,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "[",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "open",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "setOpen",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": "]",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useState",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 38,
+          "content": []
+        },
+        {
+          "number": 39,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 40,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "h-[500px]",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 41,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "flex items-center gap-3 mb-3",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 42,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Button",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "variant",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "secondary",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onClick",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "setOpen",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "true",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}>",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 43,
+          "content": [
+            {
+              "text": "          Show Overlay",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 44,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Button",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 45,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Badge",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "variant",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "open ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "?",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "warning",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "neutral",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "dot",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 46,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "open ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "?",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Scroll locked",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Scroll unlocked",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 47,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Badge",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 48,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 49,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "p",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-sm text-muted-foreground",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 50,
+          "content": [
+            {
+              "text": "        Scroll down to see content. Opening the overlay locks scroll.",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 51,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "p",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 52,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "open ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Overlay",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onClose",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "setOpen",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "/>}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 53,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 54,
+          "content": [
+            {
+              "text": "  )",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 55,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 56,
+          "content": []
+        }
+      ]
+    }
+  },
+  "parameters": [
+    {
+      "name": "target",
+      "type": "RefObject<HTMLElement | null>",
+      "required": false,
+      "description": "Ref to the element to lock. Defaults to document.body when omitted."
+    },
+    {
+      "name": "enabled",
+      "type": "boolean",
+      "required": false,
+      "description": "Whether the scroll lock is active.",
+      "defaultValue": "true"
+    }
+  ],
+  "returns": {
+    "type": "void",
+    "description": "This hook does not return a value."
+  }
+}

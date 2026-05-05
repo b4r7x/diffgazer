@@ -1,0 +1,33 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "toc",
+  "type": "registry:ui",
+  "title": "TOC",
+  "description": "Headless-friendly table of contents primitives for section navigation",
+  "dependencies": [
+    "class-variance-authority"
+  ],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/ui/toc/index.ts",
+      "content": "import { Toc as TocRoot, type TocProps } from \"./toc\";\nimport { TocList, type TocListProps } from \"./toc-list\";\nimport { TocItem, type TocItemProps, type TocItemRenderProps, tocItemVariants } from \"./toc-item\";\n\nconst Toc = Object.assign(TocRoot, {\n  List: TocList,\n  Item: TocItem,\n});\n\nexport { Toc, type TocProps };\nexport { TocList, type TocListProps };\nexport { TocItem, type TocItemProps, type TocItemRenderProps, tocItemVariants };\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/toc/toc.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport interface TocProps extends Omit<ComponentPropsWithRef<\"nav\">, \"title\"> {\n  title?: string;\n  as?: \"h2\" | \"h3\" | \"h4\";\n}\n\nexport function Toc({\n  title = \"On this page\",\n  as: Heading = \"h2\",\n  className,\n  children,\n  ref,\n  ...props\n}: TocProps) {\n  return (\n    <nav\n      ref={ref}\n      aria-label={title}\n      className={cn(\"w-56 shrink-0 py-8 pr-4\", className)}\n      {...props}\n    >\n      <Heading className=\"mb-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground font-mono\">\n        {title}\n      </Heading>\n      {children}\n    </nav>\n  );\n}",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/toc/toc-list.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type TocListProps = ComponentPropsWithRef<\"ul\">;\n\nexport function TocList({ className, children, ref, ...props }: TocListProps) {\n  return (\n    <ul\n      ref={ref}\n      role=\"list\"\n      className={cn(\"border-l border-border flex flex-col gap-1.5\", className)}\n      {...props}\n    >\n      {children}\n    </ul>\n  );\n}",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/toc/toc-item.tsx",
+      "content": "\"use client\";\n\nimport type {\n  AnchorHTMLAttributes,\n  ComponentPropsWithRef,\n  CSSProperties,\n  ReactNode,\n  Ref,\n} from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nconst INDENT_BASE_PX = 12;\nconst INDENT_PER_LEVEL_PX = 12;\n\nexport const tocItemVariants = cva(\n  \"block py-1 text-xs font-mono transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring\",\n  {\n    variants: {\n      active: {\n        true: \"text-primary font-bold\",\n        false: \"text-muted-foreground hover:text-foreground\",\n      },\n    },\n    defaultVariants: {\n      active: false,\n    },\n  },\n);\n\nexport type TocItemRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {\n  ref: Ref<HTMLAnchorElement>;\n  className: string;\n  style: CSSProperties;\n  \"data-active\"?: true;\n};\n\nexport interface TocItemProps extends Omit<ComponentPropsWithRef<\"a\">, \"children\"> {\n  children: ReactNode | ((props: TocItemRenderProps) => ReactNode);\n  active?: boolean;\n  /** Heading level (2 = h2, 3 = h3, etc). Values below 2 are treated as 2. */\n  depth?: number;\n}\n\nexport function TocItem({\n  children,\n  depth = 2,\n  active,\n  className,\n  style,\n  ref,\n  ...props\n}: TocItemProps) {\n  const indent = Math.max(0, depth - 2) * INDENT_PER_LEVEL_PX + INDENT_BASE_PX;\n\n  const renderProps: TocItemRenderProps = {\n    ref: ref ?? null,\n    \"aria-current\": active ? \"location\" : undefined,\n    \"data-active\": active || undefined,\n    className: cn(tocItemVariants({ active }), className),\n    style: { paddingLeft: `${indent}px`, ...style },\n    ...props,\n  };\n\n  if (typeof children === \"function\") return <li>{children(renderProps)}</li>;\n\n  return (\n    <li>\n      <a {...renderProps}>{children}</a>\n    </li>\n  );\n}",
+      "type": "registry:ui"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "stepper",
+  "type": "registry:ui",
+  "title": "Stepper",
+  "description": "Step-by-step progress indicator",
+  "dependencies": [
+    "class-variance-authority"
+  ],
+  "registryDependencies": [
+    "badge",
+    "controllable-state",
+    "step-status"
+  ],
+  "files": [
+    {
+      "path": "registry/ui/stepper/index.ts",
+      "content": "import { Stepper as StepperRoot, type StepperProps } from \"./stepper\";\nimport { StepperStep, type StepperStepProps } from \"./stepper-step\";\nimport type { StepStatus, SubstepStatus } from \"./stepper-context\";\nimport { StepperTrigger, type StepperTriggerProps } from \"./stepper-trigger\";\nimport { StepperContent, type StepperContentProps } from \"./stepper-content\";\nimport { StepperSubstep, type StepperSubstepProps, type SubstepData } from \"./stepper-substep\";\n\nconst Stepper = Object.assign(StepperRoot, {\n  Step: StepperStep,\n  Trigger: StepperTrigger,\n  Content: StepperContent,\n  Substep: StepperSubstep,\n});\n\nexport { Stepper, type StepperProps };\nexport { StepperStep, type StepperStepProps, type StepStatus };\nexport { StepperTrigger, type StepperTriggerProps };\nexport { StepperContent, type StepperContentProps };\nexport { StepperSubstep, type StepperSubstepProps, type SubstepData, type SubstepStatus };\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/stepper/stepper.tsx",
+      "content": "\"use client\";\n\nimport { useMemo, type ComponentProps, type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { StepperContext } from \"./stepper-context\";\nimport { useStepperState } from \"./use-stepper-state\";\n\nexport interface StepperProps\n  extends Omit<ComponentProps<\"ol\">, \"children\"> {\n  expandedIds?: string[];\n  defaultExpandedIds?: string[];\n  onExpandedChange?: (ids: string[]) => void;\n  children: ReactNode;\n}\n\nexport function Stepper({\n  expandedIds,\n  defaultExpandedIds,\n  onExpandedChange,\n  className,\n  children,\n  ...props\n}: StepperProps) {\n  const { expandedIds: expanded, toggle } = useStepperState({\n    expandedIds,\n    defaultExpandedIds,\n    onExpandedChange,\n  });\n\n  const ctx = useMemo(() => ({ expandedIds: expanded, onToggle: toggle }), [expanded, toggle]);\n\n  return (\n    <StepperContext value={ctx}>\n      <ol role=\"list\" aria-label=\"Progress steps\" {...props} className={cn(\"space-y-4 list-none m-0 p-0\", className)}>\n        {children}\n      </ol>\n    </StepperContext>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/stepper/stepper-context.tsx",
+      "content": "\"use client\";\n\nimport { createContext, useContext } from \"react\";\nimport type { StepStatus } from \"@/lib/step-status\";\n\nexport type { StepStatus };\nexport type SubstepStatus = \"pending\" | \"active\" | \"completed\" | \"error\";\n\nexport interface StepperContextValue {\n  expandedIds: string[];\n  onToggle: (id: string) => void;\n}\n\nexport const StepperContext = createContext<StepperContextValue | undefined>(undefined);\n\nexport function useStepperContext() {\n  const context = useContext(StepperContext);\n  if (!context) {\n    throw new Error(\"Stepper parts must be used within a Stepper\");\n  }\n  return context;\n}\n\nexport interface StepperStepContextValue {\n  stepId: string;\n  isExpanded: boolean;\n  status: StepStatus;\n  triggerId: string;\n  contentId: string;\n}\n\nexport const StepperStepContext = createContext<StepperStepContextValue | undefined>(undefined);\n\nexport function useStepperStepContext() {\n  const context = useContext(StepperStepContext);\n  if (!context) {\n    throw new Error(\"StepperTrigger/StepperContent must be used within StepperStep\");\n  }\n  return context;\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/stepper/use-stepper-state.ts",
+      "content": "\"use client\";\n\nimport { useCallback } from \"react\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\n\nexport interface StepperStateProps {\n  expandedIds?: string[];\n  defaultExpandedIds?: string[];\n  onExpandedChange?: (ids: string[]) => void;\n}\n\nexport function useStepperState({\n  expandedIds,\n  defaultExpandedIds,\n  onExpandedChange,\n}: StepperStateProps) {\n  const [expanded, setExpanded] = useControllableState<string[]>({\n    value: expandedIds,\n    defaultValue: defaultExpandedIds ?? [],\n    onChange: onExpandedChange,\n  });\n\n  const toggle = useCallback((id: string) => {\n    setExpanded((prev) =>\n      prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id],\n    );\n  }, [setExpanded]);\n\n  return { expandedIds: expanded, toggle };\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/stepper/stepper-step.tsx",
+      "content": "\"use client\";\n\nimport { type ComponentProps, type ReactNode, useId, useMemo } from \"react\";\nimport { useStepperContext, StepperStepContext, type StepStatus } from \"./stepper-context\";\n\nexport interface StepperStepProps\n  extends Omit<ComponentProps<\"li\">, \"children\"> {\n  stepId: string;\n  status: StepStatus;\n  children: ReactNode;\n}\n\nexport function StepperStep({\n  stepId,\n  status,\n  children,\n  className,\n  ...props\n}: StepperStepProps) {\n  const { expandedIds } = useStepperContext();\n  const isExpanded = expandedIds.includes(stepId);\n\n  const base = useId();\n  const triggerId = `${base}-trigger`;\n  const contentId = `${base}-content`;\n\n  const ctx = useMemo(() => ({ stepId, isExpanded, status, triggerId, contentId }), [stepId, isExpanded, status, triggerId, contentId]);\n\n  return (\n    <StepperStepContext value={ctx}>\n      <li {...props} className={className} data-state={isExpanded ? \"open\" : \"closed\"}>{children}</li>\n    </StepperStepContext>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/stepper/stepper-trigger.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentProps, ReactNode } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { Badge } from \"../badge/badge\";\nimport { useStepperContext, useStepperStepContext, type StepStatus } from \"./stepper-context\";\n\nconst stepVariants = cva(\n  \"flex items-start gap-3 appearance-none bg-transparent border-0 p-0 text-left w-full font-[inherit] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50\",\n  {\n  variants: {\n    status: {\n      completed: \"\",\n      active: \"bg-secondary py-2 -mx-3 px-3 rounded border-l-2 border-foreground\",\n      pending: \"\",\n      error: \"bg-destructive/10 py-2 -mx-3 px-3 rounded border-l-2 border-destructive\",\n    },\n  },\n  defaultVariants: {\n    status: \"pending\",\n  },\n});\n\nconst labelVariants = cva(\"text-sm\", {\n  variants: {\n    status: {\n      completed: \"text-foreground\",\n      active: \"font-bold text-foreground\",\n      pending: \"text-muted-foreground\",\n      error: \"font-medium text-destructive\",\n    },\n  },\n  defaultVariants: {\n    status: \"pending\",\n  },\n});\n\nconst STEP_STATUS_CONFIG: Record<StepStatus, {\n  badgeLabel: string;\n  badgeVariant: \"success\" | \"info\" | \"neutral\" | \"error\";\n}> = {\n  completed: { badgeLabel: \"DONE\", badgeVariant: \"success\" },\n  active:    { badgeLabel: \"RUN\",  badgeVariant: \"info\" },\n  pending:   { badgeLabel: \"WAIT\", badgeVariant: \"neutral\" },\n  error:     { badgeLabel: \"FAIL\", badgeVariant: \"error\" },\n};\n\nexport interface StepperTriggerProps\n  extends Omit<ComponentProps<\"button\">, \"children\" | \"type\"> {\n  children: ReactNode;\n}\n\nexport function StepperTrigger({ children, className, ...props }: StepperTriggerProps) {\n  const { onToggle } = useStepperContext();\n  const { stepId, isExpanded, status, triggerId, contentId } = useStepperStepContext();\n\n  return (\n    <button\n      type=\"button\"\n      {...props}\n      className={cn(stepVariants({ status }), className)}\n      onClick={() => onToggle(stepId)}\n      aria-expanded={isExpanded}\n      aria-controls={contentId}\n      id={triggerId}\n      aria-current={status === \"active\" ? \"step\" : undefined}\n    >\n      <span className=\"shrink-0\">\n        <Badge variant={STEP_STATUS_CONFIG[status].badgeVariant} size=\"sm\" className=\"min-w-[48px] justify-center\">\n          {STEP_STATUS_CONFIG[status].badgeLabel}\n        </Badge>\n      </span>\n      <span className={labelVariants({ status })}>{children}</span>\n    </button>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/stepper/stepper-content.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentProps, ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useStepperStepContext } from \"./stepper-context\";\n\nexport interface StepperContentProps\n  extends Omit<ComponentProps<\"div\">, \"children\"> {\n  children: ReactNode;\n}\n\nexport function StepperContent({ children, className, ...props }: StepperContentProps) {\n  const { isExpanded, triggerId, contentId } = useStepperStepContext();\n\n  return (\n    <div\n      {...props}\n      className={cn(\n        \"grid transition-[grid-template-rows] duration-200 ease-out\",\n        isExpanded ? \"grid-rows-[1fr]\" : \"grid-rows-[0fr]\",\n        className,\n      )}\n      role=\"region\"\n      id={contentId}\n      aria-labelledby={triggerId}\n      aria-hidden={isExpanded ? undefined : true}\n    >\n      <div className=\"overflow-hidden min-h-0\">\n        <div className=\"pt-2 pl-7\">\n          {children}\n        </div>\n      </div>\n    </div>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/stepper/stepper-substep.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentProps } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { Badge } from \"../badge/badge\";\nimport type { SubstepStatus } from \"./stepper-context\";\n\nexport interface SubstepData {\n  id: string;\n  tag: string;\n  label: string;\n  status: SubstepStatus;\n  detail?: string;\n}\n\nconst substepVariants = cva(\"flex items-center gap-2 py-1 text-sm\", {\n  variants: {\n    status: {\n      pending: \"text-muted-foreground\",\n      active: \"text-foreground font-medium animate-pulse\",\n      completed: \"text-foreground\",\n      error: \"text-destructive font-medium\",\n    },\n  },\n  defaultVariants: { status: \"pending\" },\n});\n\nexport interface StepperSubstepProps\n  extends Omit<ComponentProps<\"div\">, \"children\">,\n    Omit<SubstepData, \"id\"> {}\n\nconst SUBSTEP_STATUS_CONFIG: Record<SubstepStatus, {\n  badgeVariant: \"success\" | \"info\" | \"error\" | \"neutral\";\n  defaultLabel?: string;\n  labelColor?: string;\n}> = {\n  pending:   { badgeVariant: \"neutral\" },\n  active:    { badgeVariant: \"info\",    defaultLabel: \"analyzing...\", labelColor: \"text-muted-foreground\" },\n  completed: { badgeVariant: \"success\", defaultLabel: \"done\",        labelColor: \"text-success\" },\n  error:     { badgeVariant: \"error\",   defaultLabel: \"failed\",      labelColor: \"text-destructive\" },\n};\n\nexport function StepperSubstep({\n  tag,\n  label,\n  status,\n  detail,\n  className,\n  ...props\n}: StepperSubstepProps) {\n  const config = SUBSTEP_STATUS_CONFIG[status];\n  const statusText = detail ?? config.defaultLabel;\n\n  return (\n    <div {...props} className={cn(substepVariants({ status }), className)}>\n      <Badge variant={config.badgeVariant} size=\"sm\" className=\"min-w-[40px] justify-center\">\n        {tag}\n      </Badge>\n      <span>{label}</span>\n      {statusText && (\n        <span className={cn(\"ml-auto text-xs\", detail ? \"text-muted-foreground\" : config.labelColor)}>\n          {statusText}\n        </span>\n      )}\n    </div>\n  );\n}\n",
+      "type": "registry:ui"
+    }
+  ],
+  "meta": {
+    "client": true
+  }
+}

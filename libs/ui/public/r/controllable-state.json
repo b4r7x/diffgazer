@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "controllable-state",
+  "type": "registry:hook",
+  "title": "Controllable State",
+  "description": "Controlled/uncontrolled state hook — manages value, defaultValue, and onChange for any component that supports both modes.",
+  "dependencies": [],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/hooks/use-controllable-state.ts",
+      "content": "\"use client\";\n\nimport { useState, useEffectEvent } from \"react\";\n\nexport interface UseControllableStateOptions<T> {\n  value?: T;\n  defaultValue: T;\n  onChange?: (value: T) => void;\n}\n\nexport function useControllableState<T>({\n  value: controlledValue,\n  defaultValue,\n  onChange,\n}: UseControllableStateOptions<T>) {\n  const [internal, setInternal] = useState(defaultValue);\n\n  const current = controlledValue !== undefined ? controlledValue : internal;\n\n  const setValue = useEffectEvent((next: T | ((prev: T) => T)) => {\n    if (controlledValue !== undefined) {\n      const resolved = typeof next === \"function\"\n        ? (next as (prev: T) => T)(current)\n        : next;\n      onChange?.(resolved);\n    } else {\n      setInternal((prev) => {\n        const resolved = typeof next === \"function\"\n          ? (next as (prev: T) => T)(prev)\n          : next;\n        onChange?.(resolved);\n        return resolved;\n      });\n    }\n  });\n\n  return [current, setValue, controlledValue !== undefined] as const;\n}\n",
+      "type": "registry:hook"
+    }
+  ],
+  "meta": {
+    "client": true
+  }
+}

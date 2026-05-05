@@ -1,0 +1,51 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "callout",
+  "type": "registry:ui",
+  "title": "Callout",
+  "description": "Highlighted message block for tips, warnings, and errors",
+  "dependencies": [],
+  "registryDependencies": [
+    "controllable-state"
+  ],
+  "files": [
+    {
+      "path": "registry/ui/callout/index.ts",
+      "content": "import { Callout as CalloutRoot, calloutVariants, type CalloutProps } from \"./callout\";\nimport { CalloutIcon, type CalloutIconProps } from \"./callout-icon\";\nimport { CalloutTitle, type CalloutTitleProps } from \"./callout-title\";\nimport { CalloutContent, type CalloutContentProps } from \"./callout-content\";\nimport { CalloutDismiss, type CalloutDismissProps } from \"./callout-dismiss\";\n\nconst Callout = Object.assign(CalloutRoot, {\n  Icon: CalloutIcon,\n  Title: CalloutTitle,\n  Content: CalloutContent,\n  Dismiss: CalloutDismiss,\n});\n\nexport { Callout, type CalloutProps };\nexport { calloutVariants };\nexport { type CalloutVariant } from \"./callout-context\";\nexport { CalloutIcon, type CalloutIconProps };\nexport { CalloutTitle, type CalloutTitleProps };\nexport { CalloutContent, type CalloutContentProps };\nexport { CalloutDismiss, type CalloutDismissProps };\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/callout/callout-context.tsx",
+      "content": "\"use client\";\n\nimport { createContext, useContext } from \"react\";\n\nexport type CalloutVariant = \"info\" | \"warning\" | \"error\" | \"success\";\n\nexport const textColorByVariant: Record<CalloutVariant, string> = {\n  info: \"text-info-fg\",\n  warning: \"text-warning-fg\",\n  error: \"text-error-fg\",\n  success: \"text-success-fg\",\n};\n\nexport interface CalloutContextValue {\n  variant: CalloutVariant;\n  onDismiss: () => void;\n}\n\nexport const CalloutContext = createContext<CalloutContextValue | undefined>(undefined);\n\nexport function useCalloutContext() {\n  const context = useContext(CalloutContext);\n  if (!context) {\n    throw new Error(\"Callout compound components must be used within a Callout\");\n  }\n  return context;\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/callout/callout.tsx",
+      "content": "\"use client\";\n\nimport { type ReactNode, type HTMLAttributes, type Ref, useEffectEvent, useMemo } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\nimport { CalloutContext, type CalloutVariant } from \"./callout-context\";\n\nexport const calloutVariants = cva(\"relative border font-mono p-4\", {\n  variants: {\n    variant: {\n      info: \"border-info-border/40 bg-info-subtle\",\n      warning: \"border-warning-border/40 bg-warning-subtle\",\n      error: \"border-error-border/40 bg-error-subtle\",\n      success: \"border-success-border/40 bg-success-subtle\",\n    },\n  },\n  defaultVariants: { variant: \"info\" },\n});\n\ntype CalloutLayout = \"column\" | \"inline\" | \"none\";\n\nconst layoutClasses = {\n  column: \"grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-4 gap-y-1\",\n  inline: \"flex flex-wrap items-center gap-4\",\n  none: \"\",\n} as const;\n\nexport interface CalloutProps extends HTMLAttributes<HTMLDivElement> {\n  children: ReactNode;\n  variant?: CalloutVariant;\n  visible?: boolean;\n  defaultVisible?: boolean;\n  onVisibleChange?: (visible: boolean) => void;\n  layout?: CalloutLayout;\n  ref?: Ref<HTMLDivElement>;\n}\n\nconst variantRole: Record<CalloutVariant, string | undefined> = {\n  info: undefined,\n  warning: \"status\",\n  error: \"alert\",\n  success: \"status\",\n};\n\nexport function Callout({\n  className,\n  variant = \"info\",\n  visible: controlledVisible,\n  defaultVisible,\n  onVisibleChange,\n  layout = \"column\",\n  ref,\n  children,\n  ...props\n}: CalloutProps) {\n  const [visible, setVisible] = useControllableState({\n    value: controlledVisible,\n    defaultValue: defaultVisible ?? true,\n    onChange: onVisibleChange,\n  });\n\n  const onDismiss = useEffectEvent(() => setVisible(false));\n\n  const contextValue = useMemo(\n    () => ({ variant, onDismiss }),\n    [variant],\n  );\n\n  if (!visible) return null;\n\n  return (\n    <CalloutContext value={contextValue}>\n      <div\n        ref={ref}\n        role={variantRole[variant]}\n        className={cn(\n          calloutVariants({ variant }),\n          layoutClasses[layout],\n          className,\n        )}\n        {...props}\n      >\n        {children}\n      </div>\n    </CalloutContext>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/callout/callout-icon.tsx",
+      "content": "\"use client\";\n\nimport type { ReactNode, HTMLAttributes } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { type CalloutVariant, useCalloutContext } from \"./callout-context\";\nimport { cn } from \"@/lib/utils\";\n\nconst iconVariants = cva(\n  \"w-5 h-5 flex items-center justify-center text-xs font-bold rounded-sm shrink-0 mt-0.5 shadow-lg\",\n  {\n    variants: {\n      variant: {\n        info: \"bg-info-strong text-info-strong-foreground shadow-info-strong/20\",\n        warning:\n          \"bg-warning-strong text-warning-strong-foreground shadow-warning-strong/20\",\n        error:\n          \"bg-error-strong text-error-strong-foreground shadow-error-strong/20\",\n        success:\n          \"bg-success-strong text-success-strong-foreground shadow-success-strong/20\",\n      },\n    },\n    defaultVariants: { variant: \"info\" },\n  },\n);\n\nconst defaultIcons: Record<CalloutVariant, string> = {\n  info: \"i\",\n  warning: \"!\",\n  error: \"✕\",\n  success: \"✓\",\n};\n\nexport interface CalloutIconProps extends HTMLAttributes<HTMLDivElement> {\n  children?: ReactNode;\n}\n\nexport function CalloutIcon({\n  children,\n  className,\n  ...props\n}: CalloutIconProps) {\n  const { variant } = useCalloutContext();\n\n  return (\n    <div\n      aria-hidden=\"true\"\n      className={cn(\n        iconVariants({ variant }),\n        \"col-start-1 row-start-1 row-span-2\",\n        className,\n      )}\n      {...props}\n    >\n      {children ?? defaultIcons[variant]}\n    </div>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/callout/callout-title.tsx",
+      "content": "\"use client\";\n\nimport type { ReactNode, HTMLAttributes } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useCalloutContext, textColorByVariant } from \"./callout-context\";\n\nexport interface CalloutTitleProps extends HTMLAttributes<HTMLSpanElement> {\n  children: ReactNode;\n}\n\nexport function CalloutTitle({ children, className, ...props }: CalloutTitleProps) {\n  const { variant } = useCalloutContext();\n\n  return (\n    <span\n      className={cn(\"font-bold\", textColorByVariant[variant], \"col-start-2 row-start-1\", className)}\n      {...props}\n    >\n      {children}\n    </span>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/callout/callout-content.tsx",
+      "content": "\"use client\";\n\nimport type { ReactNode, HTMLAttributes } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useCalloutContext, textColorByVariant } from \"./callout-context\";\n\nexport interface CalloutContentProps extends HTMLAttributes<HTMLDivElement> {\n  children: ReactNode;\n}\n\nexport function CalloutContent({ children, className, ...props }: CalloutContentProps) {\n  const { variant } = useCalloutContext();\n\n  return (\n    <div\n      className={cn(\"text-sm\", textColorByVariant[variant], \"col-start-2 row-start-2 opacity-90 leading-relaxed\", className)}\n      {...props}\n    >\n      {children}\n    </div>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/callout/callout-dismiss.tsx",
+      "content": "\"use client\";\n\nimport type { ButtonHTMLAttributes, ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useCalloutContext } from \"./callout-context\";\n\nexport interface CalloutDismissProps extends ButtonHTMLAttributes<HTMLButtonElement> {\n  children?: ReactNode;\n}\n\nexport function CalloutDismiss({ children, className, onClick, ...props }: CalloutDismissProps) {\n  const { onDismiss } = useCalloutContext();\n\n  return (\n    <button\n      type=\"button\"\n      onClick={(e) => {\n        onClick?.(e);\n        if (!e.defaultPrevented) onDismiss();\n      }}\n      className={cn(\n        \"col-start-3 row-start-1 shrink-0 font-mono text-sm min-h-[44px] min-w-[44px] flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity cursor-pointer focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background\",\n        className,\n      )}\n      aria-label=\"Dismiss\"\n      {...props}\n    >\n      {children ?? \"[x]\"}\n    </button>\n  );\n}",
+      "type": "registry:ui"
+    }
+  ],
+  "meta": {
+    "client": true
+  }
+}

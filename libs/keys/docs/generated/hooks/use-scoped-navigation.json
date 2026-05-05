@@ -1,0 +1,5196 @@
+{
+  "name": "use-scoped-navigation",
+  "title": "useScopedNavigation",
+  "description": "Scope-aware keyboard navigation registered via KeyboardProvider. Use when navigation should respect the scope stack (e.g., modals, panels).",
+  "source": {
+    "raw": "import { useEffectEvent } from \"react\";\nimport {\n  useNavigationCore,\n  type UseNavigationOptions,\n} from \"./use-navigation.js\";\nimport { useKey } from \"./use-key.js\";\nimport { keys } from \"../utils/keys.js\";\nimport { resolveDirectionKeys, dispatchNavigationKey } from \"../internal/navigation-dispatch.js\";\n\nexport interface UseScopedNavigationOptions extends UseNavigationOptions {\n  requireFocusWithin?: boolean;\n}\n\nexport interface UseScopedNavigationReturn {\n  highlighted: string | null;\n  isHighlighted: (value: string) => boolean;\n  highlight: (value: string) => void;\n}\n\nexport function useScopedNavigation(options: UseScopedNavigationOptions): UseScopedNavigationReturn {\n  const {\n    enabled = true,\n    preventDefault = true,\n    requireFocusWithin = false,\n    orientation = \"vertical\",\n    upKeys,\n    downKeys,\n    containerRef,\n  } = options;\n\n  const { resolvedUpKeys, resolvedDownKeys } = resolveDirectionKeys(orientation, upKeys, downKeys);\n\n  const { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements } =\n    useNavigationCore(options);\n\n  const dispatch = useEffectEvent((key: string, nativeEvent: globalThis.KeyboardEvent) => {\n    dispatchNavigationKey(key, {\n      resolvedUpKeys,\n      resolvedDownKeys,\n      move,\n      focusIndex,\n      handleSelect: (e) => handleSelect(e),\n      handleEnter: (e) => handleEnter(e),\n      total: getElements().length,\n      nativeEvent,\n    });\n  });\n\n  useKey(\n    {\n      ...keys(resolvedUpKeys, (e) => dispatch(e.key, e)),\n      ...keys(resolvedDownKeys, (e) => dispatch(e.key, e)),\n      Home: (e) => dispatch(\"Home\", e),\n      End: (e) => dispatch(\"End\", e),\n      Enter: (e) => dispatch(\"Enter\", e),\n      \" \": (e) => dispatch(\" \", e),\n    },\n    {\n      enabled,\n      preventDefault,\n      targetRef: containerRef,\n      requireFocusWithin,\n    },\n  );\n\n  return { highlighted, isHighlighted, highlight };\n}\n",
+    "highlighted": [
+      {
+        "number": 1,
+        "content": [
+          {
+            "text": "import",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " useEffectEvent ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "from",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "react",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 2,
+        "content": [
+          {
+            "text": "import",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 3,
+        "content": [
+          {
+            "text": "  useNavigationCore",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 4,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "type",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " UseNavigationOptions",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 5,
+        "content": [
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "from",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "./use-navigation.js",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 6,
+        "content": [
+          {
+            "text": "import",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " useKey ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "from",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "./use-key.js",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 7,
+        "content": [
+          {
+            "text": "import",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " keys ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "from",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "../utils/keys.js",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 8,
+        "content": [
+          {
+            "text": "import",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " resolveDirectionKeys",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " dispatchNavigationKey ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "from",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "../internal/navigation-dispatch.js",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 9,
+        "content": []
+      },
+      {
+        "number": 10,
+        "content": [
+          {
+            "text": "export",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "interface",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "UseScopedNavigationOptions",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "extends",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "UseNavigationOptions",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 11,
+        "content": [
+          {
+            "text": "  requireFocusWithin",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "?:",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "boolean",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 12,
+        "content": [
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 13,
+        "content": []
+      },
+      {
+        "number": 14,
+        "content": [
+          {
+            "text": "export",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "interface",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "UseScopedNavigationReturn",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 15,
+        "content": [
+          {
+            "text": "  highlighted",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "string",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "|",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 16,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "isHighlighted",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "value",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "string",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "boolean",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 17,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "highlight",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "value",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "string",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "void",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 18,
+        "content": [
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 19,
+        "content": []
+      },
+      {
+        "number": 20,
+        "content": [
+          {
+            "text": "export",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "function",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useScopedNavigation",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "options",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "UseScopedNavigationOptions",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "):",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "UseScopedNavigationReturn",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 21,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 22,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "enabled",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "true",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 23,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "preventDefault",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "true",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 24,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "requireFocusWithin",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "false",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 25,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "orientation",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "vertical",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 26,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "upKeys",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 27,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "downKeys",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 28,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "containerRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 29,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " options",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 30,
+        "content": []
+      },
+      {
+        "number": 31,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "resolvedUpKeys",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "resolvedDownKeys",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "resolveDirectionKeys",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(orientation",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " upKeys",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " downKeys)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 32,
+        "content": []
+      },
+      {
+        "number": 33,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "highlighted",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "isHighlighted",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "highlight",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "move",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "focusIndex",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "handleSelect",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "handleEnter",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "getElements",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 34,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useNavigationCore",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(options)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 35,
+        "content": []
+      },
+      {
+        "number": 36,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "dispatch",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useEffectEvent",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "key",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "string",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " nativeEvent",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "globalThis",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "KeyboardEvent",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 37,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "dispatchNavigationKey",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(key",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 38,
+        "content": [
+          {
+            "text": "      resolvedUpKeys",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 39,
+        "content": [
+          {
+            "text": "      resolvedDownKeys",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 40,
+        "content": [
+          {
+            "text": "      move",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 41,
+        "content": [
+          {
+            "text": "      focusIndex",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 42,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "handleSelect",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "e",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "handleSelect",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(e)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 43,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "handleEnter",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "e",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "handleEnter",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(e)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 44,
+        "content": [
+          {
+            "text": "      total",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "getElements",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "length",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 45,
+        "content": [
+          {
+            "text": "      nativeEvent",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 46,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 47,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 48,
+        "content": []
+      },
+      {
+        "number": 49,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useKey",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          }
+        ]
+      },
+      {
+        "number": 50,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 51,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "...",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "keys",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(resolvedUpKeys",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "e",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "dispatch",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "e",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "key",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " e))",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 52,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "...",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "keys",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(resolvedDownKeys",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "e",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "dispatch",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "e",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "key",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " e))",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 53,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "Home",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "e",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "dispatch",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "Home",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " e)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 54,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "End",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "e",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "dispatch",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "End",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " e)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 55,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "Enter",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "e",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "dispatch",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "Enter",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " e)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 56,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "e",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "dispatch",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " e)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 57,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "},",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 58,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 59,
+        "content": [
+          {
+            "text": "      enabled",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 60,
+        "content": [
+          {
+            "text": "      preventDefault",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 61,
+        "content": [
+          {
+            "text": "      targetRef",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " containerRef",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 62,
+        "content": [
+          {
+            "text": "      requireFocusWithin",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 63,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "},",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 64,
+        "content": [
+          {
+            "text": "  )",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 65,
+        "content": []
+      },
+      {
+        "number": 66,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " highlighted",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " isHighlighted",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " highlight ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "};",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 67,
+        "content": [
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 68,
+        "content": []
+      }
+    ]
+  },
+  "docs": {
+    "description": "Scope-aware keyboard navigation registered via KeyboardProvider. Use when navigation should respect the scope stack (e.g., modals, panels).",
+    "usage": {
+      "code": "const { highlighted } = useScopedNavigation({\n  containerRef,\n  role: \"menuitem\",\n})",
+      "lang": "tsx"
+    },
+    "parameters": [
+      {
+        "name": "containerRef",
+        "type": "RefObject<HTMLElement | null>",
+        "required": true,
+        "description": "Ref to the container element holding navigable items."
+      },
+      {
+        "name": "role",
+        "type": "\"radio\" | \"checkbox\" | \"option\" | \"menuitem\" | \"button\" | \"tab\"",
+        "required": true,
+        "description": "ARIA role used to query navigable children within the container."
+      },
+      {
+        "name": "value",
+        "type": "string | null",
+        "required": false,
+        "description": "Controlled highlight value."
+      },
+      {
+        "name": "onValueChange",
+        "type": "(value: string) => void",
+        "required": false,
+        "description": "Called when the selected value changes."
+      },
+      {
+        "name": "onSelect",
+        "type": "(value: string, event: KeyboardEvent) => void",
+        "required": false,
+        "description": "Called when an item is selected via Space key."
+      },
+      {
+        "name": "onEnter",
+        "type": "(value: string, event: KeyboardEvent) => void",
+        "required": false,
+        "description": "Called when Enter is pressed on the highlighted item."
+      },
+      {
+        "name": "onHighlightChange",
+        "type": "(value: string) => void",
+        "required": false,
+        "description": "Called whenever the highlighted item changes."
+      },
+      {
+        "name": "wrap",
+        "type": "boolean",
+        "required": false,
+        "description": "Wrap around when reaching the first or last item.",
+        "defaultValue": "true"
+      },
+      {
+        "name": "enabled",
+        "type": "boolean",
+        "required": false,
+        "description": "Whether the navigation hook is active.",
+        "defaultValue": "true"
+      },
+      {
+        "name": "preventDefault",
+        "type": "boolean",
+        "required": false,
+        "description": "Call preventDefault() on handled keyboard events.",
+        "defaultValue": "true"
+      },
+      {
+        "name": "onBoundaryReached",
+        "type": "(direction: \"up\" | \"down\") => void",
+        "required": false,
+        "description": "Called when the user tries to navigate past the first or last item."
+      },
+      {
+        "name": "initialValue",
+        "type": "string | null",
+        "required": false,
+        "description": "Initial highlighted value in uncontrolled mode.",
+        "defaultValue": "null"
+      },
+      {
+        "name": "upKeys",
+        "type": "string[]",
+        "required": false,
+        "description": "Custom key names to move highlight up/left."
+      },
+      {
+        "name": "downKeys",
+        "type": "string[]",
+        "required": false,
+        "description": "Custom key names to move highlight down/right."
+      },
+      {
+        "name": "orientation",
+        "type": "\"vertical\" | \"horizontal\"",
+        "required": false,
+        "description": "Navigation axis.",
+        "defaultValue": "\"vertical\""
+      },
+      {
+        "name": "skipDisabled",
+        "type": "boolean",
+        "required": false,
+        "description": "Skip items with aria-disabled=\"true\" during navigation.",
+        "defaultValue": "true"
+      },
+      {
+        "name": "requireFocusWithin",
+        "type": "boolean",
+        "required": false,
+        "description": "Only handle navigation keys when focus is within the container element.",
+        "defaultValue": "false"
+      }
+    ],
+    "returns": {
+      "type": "UseScopedNavigationReturn",
+      "description": "Object with highlight state. No onKeyDown — keys are registered via the provider.",
+      "properties": [
+        {
+          "name": "highlighted",
+          "type": "string | null",
+          "required": true,
+          "description": "The value of the currently highlighted item, or null."
+        },
+        {
+          "name": "isHighlighted",
+          "type": "(value: string) => boolean",
+          "required": true,
+          "description": "Returns true if the given value is the highlighted item."
+        },
+        {
+          "name": "highlight",
+          "type": "(value: string) => void",
+          "required": true,
+          "description": "Imperatively set the highlighted item."
+        }
+      ]
+    },
+    "notes": [
+      {
+        "title": "Requires KeyboardProvider",
+        "content": "useScopedNavigation registers keys through the KeyboardProvider context. It must be used within a <KeyboardProvider> tree."
+      },
+      {
+        "title": "Scope-aware",
+        "content": "Navigation bindings respect the scope stack. If a deeper scope is active, this hook's bindings are suppressed."
+      },
+      {
+        "title": "No onKeyDown needed",
+        "content": "Unlike useNavigation, you do not need to wire up an onKeyDown handler. The provider handles key dispatch."
+      }
+    ],
+    "examples": [
+      {
+        "name": "use-scoped-navigation-basic",
+        "title": "Scoped navigation in a menu"
+      }
+    ],
+    "tags": [
+      "provider-dependent",
+      "navigation",
+      "scope"
+    ]
+  },
+  "usageSnippet": "const { highlighted } = useScopedNavigation({\n  containerRef,\n  role: \"menuitem\",\n})",
+  "usageSnippetHighlighted": [
+    {
+      "number": 1,
+      "content": [
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "highlighted",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "useScopedNavigation",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "content": [
+        {
+          "text": "  containerRef",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "content": [
+        {
+          "text": "  role",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "menuitem",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 4,
+      "content": [
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ")",
+          "color": "var(--code-variable)"
+        }
+      ]
+    }
+  ],
+  "examples": [
+    "use-scoped-navigation-basic"
+  ],
+  "exampleSource": {
+    "use-scoped-navigation-basic": {
+      "raw": "\"use client\"\n\nimport { useRef, useState } from \"react\"\nimport { KeyboardProvider, useScope, useScopedNavigation } from \"@diffgazer/keys\"\nimport { Button } from \"@/components/ui/button\"\nimport { Card, CardHeader, CardTitle, CardContent } from \"@/components/ui/card\"\nimport { Kbd } from \"@/components/ui/kbd\"\n\nconst commands = [\"New File\", \"Open File\", \"Save\", \"Save As\", \"Close\"]\n\nfunction CommandPalette({ onClose }: { onClose: () => void }) {\n  const listRef = useRef<HTMLDivElement>(null)\n\n  useScope(\"command-palette\")\n\n  const { isHighlighted } = useScopedNavigation({\n    containerRef: listRef,\n    role: \"option\",\n    wrap: true,\n    onSelect: (value) => {\n      alert(`Executed: ${value}`)\n      onClose()\n    },\n  })\n\n  return (\n    <Card size=\"sm\" className=\"mt-2\">\n      <CardHeader>\n        <CardTitle as=\"h3\">Command Palette</CardTitle>\n        <p className=\"text-xs text-muted-foreground\">\n          <Kbd size=\"sm\">↑</Kbd> <Kbd size=\"sm\">↓</Kbd> navigate\n          {\" \"}<Kbd size=\"sm\">Enter</Kbd> execute\n        </p>\n      </CardHeader>\n      <CardContent className=\"p-0\">\n        <div ref={listRef} role=\"listbox\" tabIndex={0} className=\"focus:outline-none\">\n          {commands.map((cmd) => (\n            <div\n              key={cmd}\n              role=\"option\"\n              data-value={cmd}\n              aria-selected={isHighlighted(cmd)}\n              className={`px-4 py-2 text-sm ${isHighlighted(cmd) ? \"bg-foreground text-background font-bold\" : \"text-muted-foreground\"}`}\n            >\n              {cmd}\n            </div>\n          ))}\n        </div>\n      </CardContent>\n    </Card>\n  )\n}\n\nfunction App() {\n  const [open, setOpen] = useState(false)\n\n  return (\n    <div>\n      <Button variant=\"secondary\" onClick={() => setOpen(true)}>\n        Open Command Palette\n      </Button>\n      {open && <CommandPalette onClose={() => setOpen(false)} />}\n    </div>\n  )\n}\n\nexport default function UseScopedNavigationBasic() {\n  return (\n    <KeyboardProvider>\n      <App />\n    </KeyboardProvider>\n  )\n}\n",
+      "highlighted": [
+        {
+          "number": 1,
+          "content": [
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "use client",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " useRef",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " useState ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "react",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " KeyboardProvider",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " useScope",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " useScopedNavigation ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "@diffgazer/keys",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " Button ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "@/components/ui/button",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " Card",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " CardHeader",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " CardTitle",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " CardContent ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "@/components/ui/card",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " Kbd ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "@/components/ui/kbd",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "content": []
+        },
+        {
+          "number": 9,
+          "content": [
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "commands",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " [",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "New File",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Open File",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Save",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Save As",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Close",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "]",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "content": []
+        },
+        {
+          "number": 11,
+          "content": [
+            {
+              "text": "function",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "CommandPalette",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "({",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " onClose ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}:",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onClose",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "void",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "})",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 12,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "listRef",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useRef",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "HTMLDivElement",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 13,
+          "content": []
+        },
+        {
+          "number": 14,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useScope",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "command-palette",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 15,
+          "content": []
+        },
+        {
+          "number": 16,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "isHighlighted",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useScopedNavigation",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 17,
+          "content": [
+            {
+              "text": "    containerRef",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " listRef",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 18,
+          "content": [
+            {
+              "text": "    role",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "option",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 19,
+          "content": [
+            {
+              "text": "    wrap",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "true",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 20,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onSelect",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "value",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 21,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "alert",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "`",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Executed: ",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "${",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": "value",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": "`",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 22,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onClose",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 23,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 24,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 25,
+          "content": []
+        },
+        {
+          "number": 26,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 27,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Card",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "size",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "sm",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "mt-2",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 28,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardHeader",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 29,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardTitle",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "h3",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Command Palette",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardTitle",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 30,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "p",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-xs text-muted-foreground",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 31,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Kbd",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "size",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "sm",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "↑",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Kbd",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Kbd",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "size",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "sm",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "↓",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Kbd",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " navigate",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 32,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "}<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Kbd",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "size",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "sm",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Enter",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Kbd",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " execute",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 33,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "p",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 34,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardHeader",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 35,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardContent",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "p-0",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 36,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "listRef",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "role",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "listbox",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "tabIndex",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "0",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "focus:outline-none",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 37,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "commands",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "map",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "cmd",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 38,
+          "content": [
+            {
+              "text": "            ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            }
+          ]
+        },
+        {
+          "number": 39,
+          "content": [
+            {
+              "text": "              ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "key",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "cmd",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 40,
+          "content": [
+            {
+              "text": "              ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "role",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "option",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 41,
+          "content": [
+            {
+              "text": "              ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "data-value",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "cmd",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 42,
+          "content": [
+            {
+              "text": "              ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "aria-selected",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "isHighlighted",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(cmd)",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 43,
+          "content": [
+            {
+              "text": "              ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "`",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "px-4 py-2 text-sm ",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "${",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": "isHighlighted",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(cmd) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "?",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "bg-foreground text-background font-bold",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-muted-foreground",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": "`",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 44,
+          "content": [
+            {
+              "text": "            ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 45,
+          "content": [
+            {
+              "text": "              ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "cmd",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 46,
+          "content": [
+            {
+              "text": "            ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 47,
+          "content": [
+            {
+              "text": "          ))",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 48,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 49,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardContent",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 50,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Card",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 51,
+          "content": [
+            {
+              "text": "  )",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 52,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 53,
+          "content": []
+        },
+        {
+          "number": 54,
+          "content": [
+            {
+              "text": "function",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "App",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 55,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "[",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "open",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "setOpen",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": "]",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useState",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 56,
+          "content": []
+        },
+        {
+          "number": 57,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 58,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 59,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Button",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "variant",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "secondary",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onClick",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "setOpen",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "true",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}>",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 60,
+          "content": [
+            {
+              "text": "        Open Command Palette",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 61,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Button",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 62,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "open ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CommandPalette",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onClose",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "setOpen",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "/>}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 63,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 64,
+          "content": [
+            {
+              "text": "  )",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 65,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 66,
+          "content": []
+        },
+        {
+          "number": 67,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "default",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "function",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "UseScopedNavigationBasic",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 68,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 69,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "KeyboardProvider",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 70,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "App",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "/>",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 71,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "KeyboardProvider",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 72,
+          "content": [
+            {
+              "text": "  )",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 73,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 74,
+          "content": []
+        }
+      ]
+    }
+  },
+  "parameters": [
+    {
+      "name": "containerRef",
+      "type": "RefObject<HTMLElement | null>",
+      "required": true,
+      "description": "Ref to the container element holding navigable items."
+    },
+    {
+      "name": "role",
+      "type": "\"radio\" | \"checkbox\" | \"option\" | \"menuitem\" | \"button\" | \"tab\"",
+      "required": true,
+      "description": "ARIA role used to query navigable children within the container."
+    },
+    {
+      "name": "value",
+      "type": "string | null",
+      "required": false,
+      "description": "Controlled highlight value."
+    },
+    {
+      "name": "onValueChange",
+      "type": "(value: string) => void",
+      "required": false,
+      "description": "Called when the selected value changes."
+    },
+    {
+      "name": "onSelect",
+      "type": "(value: string, event: KeyboardEvent) => void",
+      "required": false,
+      "description": "Called when an item is selected via Space key."
+    },
+    {
+      "name": "onEnter",
+      "type": "(value: string, event: KeyboardEvent) => void",
+      "required": false,
+      "description": "Called when Enter is pressed on the highlighted item."
+    },
+    {
+      "name": "onHighlightChange",
+      "type": "(value: string) => void",
+      "required": false,
+      "description": "Called whenever the highlighted item changes."
+    },
+    {
+      "name": "wrap",
+      "type": "boolean",
+      "required": false,
+      "description": "Wrap around when reaching the first or last item.",
+      "defaultValue": "true"
+    },
+    {
+      "name": "enabled",
+      "type": "boolean",
+      "required": false,
+      "description": "Whether the navigation hook is active.",
+      "defaultValue": "true"
+    },
+    {
+      "name": "preventDefault",
+      "type": "boolean",
+      "required": false,
+      "description": "Call preventDefault() on handled keyboard events.",
+      "defaultValue": "true"
+    },
+    {
+      "name": "onBoundaryReached",
+      "type": "(direction: \"up\" | \"down\") => void",
+      "required": false,
+      "description": "Called when the user tries to navigate past the first or last item."
+    },
+    {
+      "name": "initialValue",
+      "type": "string | null",
+      "required": false,
+      "description": "Initial highlighted value in uncontrolled mode.",
+      "defaultValue": "null"
+    },
+    {
+      "name": "upKeys",
+      "type": "string[]",
+      "required": false,
+      "description": "Custom key names to move highlight up/left."
+    },
+    {
+      "name": "downKeys",
+      "type": "string[]",
+      "required": false,
+      "description": "Custom key names to move highlight down/right."
+    },
+    {
+      "name": "orientation",
+      "type": "\"vertical\" | \"horizontal\"",
+      "required": false,
+      "description": "Navigation axis.",
+      "defaultValue": "\"vertical\""
+    },
+    {
+      "name": "skipDisabled",
+      "type": "boolean",
+      "required": false,
+      "description": "Skip items with aria-disabled=\"true\" during navigation.",
+      "defaultValue": "true"
+    },
+    {
+      "name": "requireFocusWithin",
+      "type": "boolean",
+      "required": false,
+      "description": "Only handle navigation keys when focus is within the container element.",
+      "defaultValue": "false"
+    }
+  ],
+  "returns": {
+    "type": "UseScopedNavigationReturn",
+    "description": "Object with highlight state. No onKeyDown — keys are registered via the provider.",
+    "properties": [
+      {
+        "name": "highlighted",
+        "type": "string | null",
+        "required": true,
+        "description": "The value of the currently highlighted item, or null."
+      },
+      {
+        "name": "isHighlighted",
+        "type": "(value: string) => boolean",
+        "required": true,
+        "description": "Returns true if the given value is the highlighted item."
+      },
+      {
+        "name": "highlight",
+        "type": "(value: string) => void",
+        "required": true,
+        "description": "Imperatively set the highlighted item."
+      }
+    ]
+  }
+}

@@ -1,0 +1,46 @@
+---
+title: KeyboardProvider
+description: Context provider that enables scoped keyboard handling for @diffgazer/keys hooks.
+---
+
+# KeyboardProvider
+
+Context provider that enables scoped keyboard handling. Wraps your app (or a subtree) and listens for `keydown` events on `window`.
+
+```tsx
+import { KeyboardProvider } from "@diffgazer/keys";
+
+function App() {
+  return (
+    <KeyboardProvider>
+      <YourApp />
+    </KeyboardProvider>
+  );
+}
+```
+
+## Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `children` | `ReactNode` | Required. Child elements. |
+
+## Behavior
+
+- Creates a `"global"` scope on mount. All handlers registered without a scope push land here.
+- Maintains a scope stack — the **last pushed** scope is active. Only handlers in the active scope fire.
+- Skips events where `event.defaultPrevented` is already `true`.
+- Skips handlers for input elements (`input`, `textarea`, `select`, `contentEditable`) unless `allowInInput` is set.
+- When a handler specifies `targetRef` + `requireFocusWithin`, only fires if the event target is inside that element.
+- Handler priority: iterates entries from **last-registered to first**. The first match wins — no subsequent handlers fire.
+- Errors in handlers are caught and logged: `[@diffgazer/keys] Handler error for "${hotkey}": ...`
+- When `preventDefault` is set on a handler's options, `event.preventDefault()` is called before the handler runs.
+
+## Required By
+
+The following hooks require a `KeyboardProvider` ancestor:
+
+- [useKey](/keys/docs/hooks/use-key)
+- [useScope](/keys/docs/hooks/use-scope)
+- [useScopedNavigation](/keys/docs/hooks/use-scoped-navigation)
+- [useFocusZone](/keys/docs/hooks/use-focus-zone)

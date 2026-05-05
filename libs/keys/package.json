@@ -1,0 +1,79 @@
+{
+  "name": "@diffgazer/keys",
+  "version": "0.1.1",
+  "description": "Composable, scoped keyboard navigation hooks for React",
+  "license": "MIT",
+  "author": "diffgazer",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/b4r7/diffgazer.git",
+    "directory": "libs/keys"
+  },
+  "homepage": "https://github.com/b4r7/diffgazer/tree/main/libs/keys",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "registry",
+    "public/r",
+    "internal-docs-manifest.json"
+  ],
+  "bugs": {
+    "url": "https://github.com/b4r7/diffgazer/issues"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc && pnpm build:shadcn && pnpm build:artifacts",
+    "build:shadcn": "node --import tsx scripts/build-shadcn-registry.ts",
+    "build:artifacts": "pnpm build:docs-data && node --import tsx scripts/build-publish-artifacts.ts",
+    "build:docs-data": "tsx scripts/build-docs-data.ts",
+    "dev": "tsc --watch",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify:registry-cleanup": "node ../../apps/docs/scripts/verify-registry-cleanup.mjs --scope @diffgazer/keys",
+    "prepublishOnly": "pnpm run build && test -f dist/artifacts/artifact-manifest.json",
+    "playground": "pnpm --filter playground dev"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@diffgazer/registry": "workspace:*",
+    "@testing-library/react": "^16.0.0",
+    "@types/node": "^25.2.3",
+    "@types/react": "^19.0.0",
+    "jsdom": "^28.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "shadcn": "^2.10.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.0.0"
+  },
+  "keywords": [
+    "react",
+    "keyboard",
+    "hotkeys",
+    "shortcuts",
+    "navigation",
+    "focus",
+    "accessibility",
+    "a11y",
+    "scoped",
+    "zones"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "zod": "^4.3.6"
+  }
+}

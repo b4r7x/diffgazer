@@ -1,0 +1,46 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "code-block",
+  "type": "registry:ui",
+  "title": "Code Block",
+  "description": "Code display with line numbers and scroll area",
+  "dependencies": [],
+  "registryDependencies": [
+    "scroll-area"
+  ],
+  "files": [
+    {
+      "path": "registry/ui/code-block/index.ts",
+      "content": "import { CodeBlock as CodeBlockRoot, type CodeBlockProps } from \"./code-block\";\nimport { CodeBlockContent, type CodeBlockContentProps } from \"./code-block-content\";\nimport { CodeBlockHeader, type CodeBlockHeaderProps } from \"./code-block-header\";\nimport { CodeBlockLabel, type CodeBlockLabelProps } from \"./code-block-label\";\nimport { CodeBlockLine, type CodeBlockLineProps, type CodeBlockToken, type CodeBlockLineType } from \"./code-block-line\";\n\nconst CodeBlock = Object.assign(CodeBlockRoot, {\n  Content: CodeBlockContent,\n  Header: CodeBlockHeader,\n  Label: CodeBlockLabel,\n  Line: CodeBlockLine,\n});\n\nexport {\n  CodeBlock,\n  CodeBlockContent,\n  CodeBlockHeader,\n  CodeBlockLabel,\n  CodeBlockLine,\n  type CodeBlockProps,\n  type CodeBlockContentProps,\n  type CodeBlockHeaderProps,\n  type CodeBlockLabelProps,\n  type CodeBlockLineProps,\n  type CodeBlockToken,\n  type CodeBlockLineType,\n};\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/code-block/code-block.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport interface CodeBlockProps extends ComponentProps<\"div\"> {\n  language?: string;\n  label?: string;\n}\n\nexport function CodeBlock({ language, label, className, children, ref, ...props }: CodeBlockProps) {\n  return (\n    <div ref={ref} role=\"region\" aria-roledescription=\"code block\" aria-label={label ?? (language ? `${language} code` : \"Code block\")} data-language={language} className={cn(\"border border-border bg-background overflow-hidden rounded-sm\", className)} {...props}>\n      {children}\n    </div>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/code-block/code-block-content.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { ScrollArea } from \"../scroll-area/scroll-area\";\nimport { CodeBlockLine } from \"./code-block-line\";\n\nexport interface CodeBlockContentProps extends ComponentProps<\"div\"> {\n  showLineNumbers?: boolean;\n}\n\nexport function CodeBlockContent({ showLineNumbers = true, className, children, ref, ...props }: CodeBlockContentProps) {\n  return (\n    <ScrollArea orientation=\"both\" tabIndex={0} ref={ref} className={cn(\"focus-visible:outline focus-visible:outline-1 focus-visible:outline-border\", className)} {...props}>\n      <pre className=\"p-4 font-mono text-xs leading-relaxed\">\n        {typeof children === \"string\"\n          ? children.split(\"\\n\").map((line, i) => (\n              <CodeBlockLine key={i} number={showLineNumbers ? i + 1 : undefined} content={line} />\n            ))\n          : children}\n      </pre>\n    </ScrollArea>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/code-block/code-block-header.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CodeBlockHeaderProps = ComponentProps<\"div\">;\n\nexport function CodeBlockHeader({ className, ref, ...props }: CodeBlockHeaderProps) {\n  return <div ref={ref} className={cn(\"flex items-center justify-between px-4 py-2 border-b border-border bg-border/10\", className)} {...props} />;\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/code-block/code-block-label.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CodeBlockLabelProps = ComponentProps<\"span\">;\n\nexport function CodeBlockLabel({ className, children, ref, ...props }: CodeBlockLabelProps) {\n  return (\n    <span ref={ref} className={cn(\"text-xs text-foreground/60 font-bold uppercase tracking-wider\", className)} {...props}>\n      {children}\n    </span>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/code-block/code-block-line.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** @see @diffgazer/registry docs-data CodeBlockToken (base without `className`) */\nexport interface CodeBlockToken {\n  text: string;\n  color?: string;\n  className?: string;\n}\n\nexport type CodeBlockLineType = \"highlight\" | \"added\" | \"removed\";\n\nexport interface CodeBlockLineProps extends Omit<ComponentProps<\"span\">, \"content\"> {\n  number?: number;\n  content: string | CodeBlockToken[];\n  type?: CodeBlockLineType;\n}\n\nexport function CodeBlockLine({ number, content, type, className, ref, ...props }: CodeBlockLineProps) {\n  return (\n    <span ref={ref} className={cn(\"flex\", type === \"highlight\" && \"bg-muted/50\", className)} {...props}>\n      {number != null && (\n        <span aria-hidden=\"true\" className=\"w-8 text-muted-foreground border-r border-border mr-2 text-right pr-1 select-none shrink-0\">\n          {number}\n        </span>\n      )}\n      {(type === \"added\" || type === \"removed\") && (\n        <span className=\"sr-only\">{type === \"added\" ? \"Added: \" : \"Removed: \"}</span>\n      )}\n      <code className={cn(\"whitespace-pre\", type === \"added\" && \"text-success\", type === \"removed\" && \"text-destructive\")}>\n        {typeof content === \"string\"\n          ? content\n          : content.map((token, i) => (\n              <span key={i} style={{ color: token.color }} className={token.className}>\n                {token.text}\n              </span>\n            ))}\n      </code>\n    </span>\n  );\n}\n",
+      "type": "registry:ui"
+    }
+  ],
+  "meta": {
+    "client": true
+  }
+}

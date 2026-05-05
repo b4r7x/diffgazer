@@ -1,0 +1,15 @@
+.output/
+.nitro/
+.vite/
+.cache/
+.source/
+src/routeTree.gen.ts
+src/generated/
+content/docs/components/
+content/docs/ui/
+content/docs/keys/
+registry/
+styles/
+public/library-assets/
+public/r/ui/
+public/r/keys/

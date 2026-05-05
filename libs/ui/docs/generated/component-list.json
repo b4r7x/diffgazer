@@ -1,0 +1,217 @@
+[
+  {
+    "name": "accordion",
+    "title": "Accordion",
+    "description": "Collapsible content sections with single or multiple open items. Supports controlled and uncontrolled modes."
+  },
+  {
+    "name": "avatar",
+    "title": "Avatar",
+    "description": "Terminal-inspired avatar with image support, monospace initials fallback, and group stacking with overflow."
+  },
+  {
+    "name": "badge",
+    "title": "Badge",
+    "description": "Inline status label with semantic color variants."
+  },
+  {
+    "name": "block-bar",
+    "title": "Block Bar",
+    "description": "Unicode block-character bar for displaying proportional values. Supports single-value and multi-segment stacked bars."
+  },
+  {
+    "name": "breadcrumbs",
+    "title": "Breadcrumbs",
+    "description": "Compound breadcrumb navigation with auto-separator and composable parts for links, collapsed items, and custom separators."
+  },
+  {
+    "name": "button",
+    "title": "Button",
+    "description": "Terminal-inspired button with bracket notation and 8 variants."
+  },
+  {
+    "name": "callout",
+    "title": "Callout",
+    "description": "Dismissible alert box with semantic variants, auto-generated icons, and compound component architecture."
+  },
+  {
+    "name": "card",
+    "title": "Card",
+    "description": "Simple bordered card primitives with floating border labels and semantic HTML support."
+  },
+  {
+    "name": "checkbox",
+    "title": "Checkbox",
+    "description": "Terminal-styled checkbox with [x] and bullet variants. Standalone or CheckboxGroup with headless focus and keyboard hooks."
+  },
+  {
+    "name": "code-block",
+    "title": "Code Block",
+    "description": "Compound code display with per-line control. CodeBlock is a pure container with aria-label support. CodeBlockContent accepts string children (auto-splits into numbered lines) or composed CodeBlockLine children for per-line control. Compose with Header, Label, and Line parts."
+  },
+  {
+    "name": "command-palette",
+    "title": "Command Palette",
+    "description": "Terminal-styled command palette with built-in search filtering, grouped items, and keyboard navigation. Uses native dialog element with backdrop blur."
+  },
+  {
+    "name": "dialog",
+    "title": "Dialog",
+    "description": "Modal dialog with compound component architecture. Uses box-drawing title decoration, side borders, and native dialog element."
+  },
+  {
+    "name": "diff-view",
+    "title": "Diff View",
+    "description": "Diff viewer with unified and side-by-side modes. Accepts unified diff strings, before/after text, or pre-parsed diff data."
+  },
+  {
+    "name": "divider",
+    "title": "Divider",
+    "description": "Line separator with horizontal and vertical orientation, default and spaced variants."
+  },
+  {
+    "name": "empty-state",
+    "title": "Empty State",
+    "description": "Composable placeholder content for empty views with centered and inline layout variants. Size propagates to all parts via context; variant controls root layout only."
+  },
+  {
+    "name": "horizontal-stepper",
+    "title": "Horizontal Stepper",
+    "description": "Compact horizontal step indicator with dash-connected labels."
+  },
+  {
+    "name": "icons",
+    "title": "Icons",
+    "description": "SVG icon components for use as indicators, triggers, and decorative elements."
+  },
+  {
+    "name": "input",
+    "title": "Input",
+    "description": "Terminal-styled text input with size variants and error state."
+  },
+  {
+    "name": "kbd",
+    "title": "Kbd",
+    "description": "Keyboard key indicator rendered as an inline kbd element with terminal styling."
+  },
+  {
+    "name": "key-value",
+    "title": "Key Value",
+    "description": "Compound component for displaying labeled data. KeyValue wraps one or more KeyValue.Item rows in a semantic description list."
+  },
+  {
+    "name": "label",
+    "title": "Label",
+    "description": "Styled label with optional form control wrapping. Standalone mode renders colored uppercase text. Wrapper mode (via text prop) renders label above or beside children content."
+  },
+  {
+    "name": "logo",
+    "title": "Logo",
+    "description": "Renders text as ASCII art using figlet fonts. Includes a standalone getFigletText utility for non-JSX usage."
+  },
+  {
+    "name": "menu",
+    "title": "Menu",
+    "description": "Terminal-styled selection list with keyboard navigation, highlighting and optional hotkey indicators."
+  },
+  {
+    "name": "navigation-list",
+    "title": "Navigation List",
+    "description": "Terminal-styled navigation sidebar list with selection, keyboard navigation, and composable item parts."
+  },
+  {
+    "name": "overflow",
+    "title": "Overflow",
+    "description": "Container-aware overflow handling for items (dynamic fitting with indicator) and text (line clamping with auto-tooltip when truncated)."
+  },
+  {
+    "name": "pager",
+    "title": "Pager",
+    "description": "Previous/next page navigation bar with arrow indicators."
+  },
+  {
+    "name": "panel",
+    "title": "Panel",
+    "description": "Card-like container with composable header, content, and footer primitives."
+  },
+  {
+    "name": "popover",
+    "title": "Popover",
+    "description": "Floating content anchored to a trigger element. Supports click-to-open (popover) and hover (infotip) modes with full 4-side positioning, automatic flip, shift, and viewport collision detection. Zero external dependencies."
+  },
+  {
+    "name": "radio",
+    "title": "Radio",
+    "description": "Terminal-styled radio button and radio group for single-selection with bracket notation."
+  },
+  {
+    "name": "scroll-area",
+    "title": "Scroll Area",
+    "description": "Thin-scrollbar wrapper with vertical, horizontal, or both overflow directions."
+  },
+  {
+    "name": "search-input",
+    "title": "Search Input",
+    "description": "Terminal-styled search input with / prefix and keyboard event callbacks. Supports controlled and uncontrolled modes."
+  },
+  {
+    "name": "section-header",
+    "title": "Section Header",
+    "description": "Uppercase heading element for labeling content sections, with configurable heading level and variant."
+  },
+  {
+    "name": "select",
+    "title": "Select",
+    "description": "Dropdown select with search, multiple selection, card variant, and headless keyboard integration points. 8 composable parts."
+  },
+  {
+    "name": "sidebar",
+    "title": "Sidebar",
+    "description": "Full-height navigation sidebar with collapsible sections, composable item badges, provider pattern for external control, and collapsed mode. 11 composable parts, 2 context providers."
+  },
+  {
+    "name": "spinner",
+    "title": "Spinner",
+    "description": "Terminal-inspired TUI spinner with four animation styles. The default snake variant renders a 3×3 pixel grid with a trailing dot that moves clockwise — like a pixelated snake."
+  },
+  {
+    "name": "stepper",
+    "title": "Stepper",
+    "description": "Step-by-step progress indicator with expandable steps, substeps, and status badges. Compound component with context-based state management."
+  },
+  {
+    "name": "tabs",
+    "title": "Tabs",
+    "description": "Terminal-styled tabbed interface with horizontal and vertical orientation support."
+  },
+  {
+    "name": "textarea",
+    "title": "Textarea",
+    "description": "Terminal-styled multi-line text area with size variants and error state. Shares base styling with Input via input-variants."
+  },
+  {
+    "name": "toast",
+    "title": "Toast",
+    "description": "Terminal-styled toast notification system. Imperative toast() API callable from anywhere. Supports variant shortcuts, promise handling, and position-aware animations."
+  },
+  {
+    "name": "toc",
+    "title": "TOC",
+    "description": "Table of contents primitives for rendering section links with depth indentation and active states."
+  },
+  {
+    "name": "toggle-group",
+    "title": "Toggle Group",
+    "description": "Compound toggle button group with keyboard navigation for single selection."
+  },
+  {
+    "name": "tooltip",
+    "title": "Tooltip",
+    "description": "Minimal tooltip with hover delay and terminal styling. Built on the Popover primitive with full 4-side positioning and collision avoidance. Shows contextual information on hover without clipping by overflow ancestors."
+  },
+  {
+    "name": "typography",
+    "title": "Typography",
+    "description": "Terminal-styled typography wrapper for consistent text styling. Provides variants for body text, prose content, and compact displays."
+  }
+]

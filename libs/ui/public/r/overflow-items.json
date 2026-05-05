@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "overflow-items",
+  "type": "registry:hook",
+  "title": "Overflow Items",
+  "description": "Measures how many items fit in a container and tracks the overflow count. Uses ResizeObserver for automatic recalculation.",
+  "dependencies": [],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/hooks/use-overflow-items.ts",
+      "content": "\"use client\";\n\nimport { useLayoutEffect, useRef, useState, useEffectEvent } from \"react\";\n\nexport interface UseOverflowItemsOptions {\n  itemCount: number;\n  onVisibleCountChange?: (count: number) => void;\n}\n\nexport interface UseOverflowItemsReturn {\n  ref: React.RefObject<HTMLDivElement | null>;\n  visibleCount: number;\n  overflowCount: number;\n}\n\nexport function computeVisibleCount(\n  itemWidths: number[],\n  containerWidth: number,\n  gap: number,\n  indicatorWidth: number,\n): number {\n  let usedWidth = 0;\n  for (let i = 0; i < itemWidths.length; i++) {\n    const nextWidth = usedWidth + itemWidths[i]! + (i > 0 ? gap : 0);\n    const remaining = itemWidths.length - (i + 1);\n    const reserve = remaining > 0 ? indicatorWidth + gap : 0;\n    if (nextWidth + reserve > containerWidth && i > 0) return i;\n    usedWidth = nextWidth;\n  }\n  return itemWidths.length;\n}\n\nexport function useOverflowItems({\n  itemCount,\n  onVisibleCountChange,\n}: UseOverflowItemsOptions): UseOverflowItemsReturn {\n  const ref = useRef<HTMLDivElement>(null);\n  const [visibleCount, setVisibleCount] = useState(itemCount);\n\n  const onRecalculate = useEffectEvent(() => {\n    const container = ref.current;\n    if (!container) return;\n\n    const children = Array.from(container.children) as HTMLElement[];\n    if (children.length === 0) return;\n\n    const containerWidth = container.offsetWidth;\n    const gap = parseFloat(getComputedStyle(container).gap) || 0;\n\n    const items = children.slice(0, itemCount);\n    const indicator = children[itemCount];\n\n    const itemWidths = items.map(el => el.offsetWidth);\n    const indicatorWidth = indicator ? indicator.offsetWidth : 0;\n\n    const count = computeVisibleCount(itemWidths, containerWidth, gap, indicatorWidth);\n\n    if (count !== visibleCount) {\n      setVisibleCount(count);\n      onVisibleCountChange?.(count);\n    }\n  });\n\n  useLayoutEffect(() => {\n    const container = ref.current;\n    if (!container) return;\n\n    const observer = new ResizeObserver(onRecalculate);\n    observer.observe(container);\n    return () => observer.disconnect();\n  }, []);\n\n  useLayoutEffect(() => {\n    onRecalculate();\n  }, [itemCount]);\n\n  return {\n    ref,\n    visibleCount,\n    overflowCount: itemCount - visibleCount,\n  };\n}\n",
+      "type": "registry:hook"
+    }
+  ],
+  "meta": {
+    "client": true
+  }
+}

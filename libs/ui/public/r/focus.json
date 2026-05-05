@@ -1,0 +1,14 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "focus",
+  "type": "registry:lib",
+  "title": "Focus Utilities",
+  "description": "Shared focusable element CSS selector for focus management, auto-focus, and focus-trap logic.",
+  "files": [
+    {
+      "path": "registry/lib/focus.ts",
+      "content": "export const FOCUSABLE_SELECTOR =\n  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex=\"-1\"]):not([disabled])';\n",
+      "type": "registry:lib"
+    }
+  ]
+}

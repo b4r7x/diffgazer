@@ -1,0 +1,18 @@
+@import "tailwindcss";
+@import "@diffgazer/ui/theme.css";
+@import "./theme-overrides.css";
+
+@source "../components";
+@source "../features";
+@source "../../../../node_modules/@diffgazer/ui/dist";
+
+html,
+body {
+  font-family: "JetBrains Mono", monospace;
+  background-color: var(--tui-bg);
+  color: var(--tui-fg);
+}
+
+[data-focused] {
+  @apply ring-1 ring-tui-blue ring-inset;
+}

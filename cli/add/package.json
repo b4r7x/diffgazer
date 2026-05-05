@@ -1,0 +1,73 @@
+{
+  "name": "@diffgazer/add",
+  "version": "0.1.0",
+  "description": "Diffgazer registry installer for UI components and keyboard hooks",
+  "license": "MIT",
+  "author": "diffgazer",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/b4r7/diffgazer.git",
+    "directory": "cli/add"
+  },
+  "bugs": {
+    "url": "https://github.com/b4r7/diffgazer/issues"
+  },
+  "homepage": "https://github.com/b4r7/diffgazer/tree/main/cli/add",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "cli",
+    "ui",
+    "components",
+    "hooks",
+    "react",
+    "terminal",
+    "diffgazer",
+    "tailwind",
+    "tailwindcss",
+    "component-library"
+  ],
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "bin": {
+    "dgadd": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build:registry": "pnpm run generate:bundles",
+    "generate:bundles": "node --import tsx scripts/bundle-registry.ts && node --import tsx scripts/generate-keys-copy-bundle.ts",
+    "prebuild": "pnpm run generate:bundles",
+    "build": "rm -rf dist && tsup && node --import tsx scripts/copy-generated.ts",
+    "prepublishOnly": "pnpm run build && test -f dist/generated/registry-bundle.json && test -f dist/generated/keys-copy-bundle.json",
+    "dev": "tsc --watch",
+    "type-check": "tsc --noEmit",
+    "test": "pnpm run generate:bundles && node --import tsx --test src/**/*.test.ts"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.11.0",
+    "commander": "^13.0.0",
+    "diff": "^8.0.3",
+    "figlet": "^1.8.0",
+    "picocolors": "^1.1.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@diffgazer/keys": "workspace:*",
+    "@diffgazer/registry": "workspace:*",
+    "@diffgazer/ui": "workspace:*",
+    "@types/node": "^25.2.3",
+    "tsup": "^8.5.1",
+    "tsx": "^4.0.0",
+    "typescript": "^5.9.3"
+  }
+}

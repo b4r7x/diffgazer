@@ -1,0 +1,44 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "breadcrumbs",
+  "type": "registry:ui",
+  "title": "Breadcrumbs",
+  "description": "Compound breadcrumb navigation with auto-separator and composable parts",
+  "dependencies": [],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/ui/breadcrumbs/index.ts",
+      "content": "import { Breadcrumbs as BreadcrumbsRoot, type BreadcrumbsProps } from \"./breadcrumbs\"\nimport { BreadcrumbsEllipsis, type BreadcrumbsEllipsisProps } from \"./breadcrumbs-ellipsis\"\nimport { BreadcrumbsItem, type BreadcrumbsItemProps } from \"./breadcrumbs-item\"\nimport { BreadcrumbsLink, type BreadcrumbsLinkProps, type BreadcrumbsLinkRenderProps } from \"./breadcrumbs-link\"\n\nconst Breadcrumbs = Object.assign(BreadcrumbsRoot, {\n  Item: BreadcrumbsItem,\n  Link: BreadcrumbsLink,\n  Ellipsis: BreadcrumbsEllipsis,\n})\n\nexport { Breadcrumbs, type BreadcrumbsProps }\nexport { BreadcrumbsEllipsis, type BreadcrumbsEllipsisProps }\nexport { BreadcrumbsItem, type BreadcrumbsItemProps }\nexport { BreadcrumbsLink, type BreadcrumbsLinkProps, type BreadcrumbsLinkRenderProps }\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/breadcrumbs/breadcrumbs.tsx",
+      "content": "\"use client\";\n\nimport { useMemo, type ComponentPropsWithRef, type ReactNode } from \"react\"\nimport { cn } from \"@/lib/utils\"\nimport { BreadcrumbsContext } from \"./breadcrumbs-context\"\n\nexport interface BreadcrumbsProps extends ComponentPropsWithRef<\"nav\"> {\n  separator?: ReactNode\n}\n\nexport function Breadcrumbs({ separator = \"/\", className, children, ref, ...props }: BreadcrumbsProps) {\n  const contextValue = useMemo(() => ({ separator }), [separator]);\n\n  return (\n    <BreadcrumbsContext value={contextValue}>\n      <nav\n        ref={ref}\n        aria-label=\"Breadcrumb\"\n        className={cn(\"text-xs text-muted-foreground\", className)}\n        {...props}\n      >\n        <ol className=\"m-0 flex list-none flex-wrap items-center gap-1.5 p-0 [&:not(:has([aria-current]))>li:last-child]:font-bold [&:not(:has([aria-current]))>li:last-child]:text-foreground\">\n          {children}\n        </ol>\n      </nav>\n    </BreadcrumbsContext>\n  )\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/breadcrumbs/breadcrumbs-context.tsx",
+      "content": "\"use client\";\n\nimport { createContext, useContext, type ReactNode } from \"react\"\n\ninterface BreadcrumbsContextValue {\n  separator: ReactNode\n}\n\nconst BreadcrumbsContext = createContext<BreadcrumbsContextValue | undefined>(undefined)\n\nexport function useBreadcrumbsContext(): BreadcrumbsContextValue {\n  const ctx = useContext(BreadcrumbsContext)\n  if (ctx === undefined) throw new Error(\"Breadcrumbs parts must be used within a Breadcrumbs\")\n  return ctx\n}\n\nexport { BreadcrumbsContext }\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/breadcrumbs/breadcrumbs-item.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\"\nimport { cn } from \"@/lib/utils\"\nimport { useBreadcrumbsContext } from \"./breadcrumbs-context\"\n\nexport interface BreadcrumbsItemProps extends ComponentPropsWithRef<\"li\"> {\n  current?: boolean\n}\n\nexport function BreadcrumbsItem({ current, className, children, ref, ...props }: BreadcrumbsItemProps) {\n  const { separator } = useBreadcrumbsContext()\n\n  return (\n    <>\n      {separator != null && (\n        <li role=\"presentation\" aria-hidden=\"true\" className=\"[&>svg]:size-3.5 text-muted-foreground/40 first:hidden\">\n          {separator}\n        </li>\n      )}\n      <li\n        ref={ref}\n        aria-current={current ? \"page\" : undefined}\n        className={cn(\"inline-flex items-center gap-1.5\", current && \"font-bold text-foreground\", className)}\n        {...props}\n      >\n        {children}\n      </li>\n    </>\n  )\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/breadcrumbs/breadcrumbs-link.tsx",
+      "content": "\"use client\";\n\nimport type { AnchorHTMLAttributes, ReactNode, Ref } from \"react\"\nimport { cn } from \"@/lib/utils\"\n\nexport type BreadcrumbsLinkRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {\n  ref: Ref<HTMLAnchorElement>\n  className: string\n}\n\nexport interface BreadcrumbsLinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, \"children\"> {\n  children: ReactNode | ((props: BreadcrumbsLinkRenderProps) => ReactNode)\n  ref?: Ref<HTMLAnchorElement>\n}\n\nexport function BreadcrumbsLink({ children, className, ref, ...props }: BreadcrumbsLinkProps) {\n  const renderProps: BreadcrumbsLinkRenderProps = {\n    ref: ref ?? null,\n    className: cn(\"transition-colors hover:text-foreground hover:underline hover:underline-offset-2\", className),\n    ...props,\n  }\n\n  if (typeof children === \"function\") return <>{children(renderProps)}</>\n\n  return (\n    <a {...renderProps}>\n      {children}\n    </a>\n  )\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/breadcrumbs/breadcrumbs-ellipsis.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\"\nimport { cn } from \"@/lib/utils\"\n\nexport interface BreadcrumbsEllipsisProps extends ComponentPropsWithRef<\"span\"> {}\n\nexport function BreadcrumbsEllipsis({\n  children = \"...\",\n  className,\n  ref,\n  ...props\n}: BreadcrumbsEllipsisProps) {\n  return (\n    <span\n      ref={ref}\n      role=\"presentation\"\n      aria-hidden=\"true\"\n      className={cn(\"flex size-5 items-center justify-center\", className)}\n      {...props}\n    >\n      {children}\n    </span>\n  )\n}\n",
+      "type": "registry:ui"
+    }
+  ],
+  "meta": {
+    "client": true
+  }
+}

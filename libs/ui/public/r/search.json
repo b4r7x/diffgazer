@@ -1,0 +1,14 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "search",
+  "type": "registry:lib",
+  "title": "Search Utilities",
+  "description": "Case-insensitive search matching utility for filtering items by text query.",
+  "files": [
+    {
+      "path": "registry/lib/search.ts",
+      "content": "export function matchesSearch(value: string, query: string): boolean {\n  return !query || value.toLowerCase().includes(query.toLowerCase());\n}\n",
+      "type": "registry:lib"
+    }
+  ]
+}

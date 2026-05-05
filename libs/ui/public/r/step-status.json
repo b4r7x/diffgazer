@@ -1,0 +1,14 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "step-status",
+  "type": "registry:lib",
+  "title": "Step Status",
+  "description": "Shared StepStatus type for stepper components (completed, active, pending, error).",
+  "files": [
+    {
+      "path": "registry/lib/step-status.ts",
+      "content": "export type StepStatus = \"completed\" | \"active\" | \"pending\" | \"error\";\n",
+      "type": "registry:lib"
+    }
+  ]
+}

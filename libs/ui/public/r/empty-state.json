@@ -1,0 +1,43 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "empty-state",
+  "type": "registry:ui",
+  "title": "Empty State",
+  "description": "Placeholder for empty content areas",
+  "dependencies": [
+    "class-variance-authority"
+  ],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/ui/empty-state/index.ts",
+      "content": "import {\n  EmptyState as EmptyStateRoot,\n  emptyStateVariants,\n  type EmptyStateProps,\n} from \"./empty-state\";\nimport { EmptyStateIcon } from \"./empty-state-icon\";\nimport { EmptyStateMessage } from \"./empty-state-message\";\nimport { EmptyStateDescription } from \"./empty-state-description\";\nimport { EmptyStateActions } from \"./empty-state-actions\";\n\nconst EmptyState = Object.assign(EmptyStateRoot, {\n  Icon: EmptyStateIcon,\n  Message: EmptyStateMessage,\n  Description: EmptyStateDescription,\n  Actions: EmptyStateActions,\n});\n\nexport { EmptyState, emptyStateVariants, type EmptyStateProps };\nexport { EmptyStateIcon, type EmptyStateIconProps } from \"./empty-state-icon\";\nexport { EmptyStateMessage, type EmptyStateMessageProps } from \"./empty-state-message\";\nexport { EmptyStateDescription, type EmptyStateDescriptionProps } from \"./empty-state-description\";\nexport { EmptyStateActions, type EmptyStateActionsProps } from \"./empty-state-actions\";\nexport { type EmptyStateVariant, type EmptyStateSize } from \"./empty-state\";\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/empty-state/empty-state.tsx",
+      "content": "\"use client\";\n\nimport { useState, useEffect, type ComponentPropsWithRef } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport type EmptyStateSize = \"sm\" | \"md\" | \"lg\";\nexport type EmptyStateVariant = \"centered\" | \"inline\";\n\nexport const emptyStateVariants = cva(\"group/es text-muted-foreground\", {\n  variants: {\n    variant: {\n      centered: \"flex flex-col items-center justify-center text-center\",\n      inline: \"flex items-start\",\n    },\n    size: {\n      sm: \"\",\n      md: \"\",\n      lg: \"\",\n    },\n  },\n  compoundVariants: [\n    { variant: \"centered\", size: \"sm\", class: \"gap-2 p-3\" },\n    { variant: \"centered\", size: \"md\", class: \"gap-3 p-6\" },\n    { variant: \"centered\", size: \"lg\", class: \"gap-4 p-10\" },\n    { variant: \"inline\", size: \"sm\", class: \"gap-2 p-2\" },\n    { variant: \"inline\", size: \"md\", class: \"gap-3 p-4\" },\n    { variant: \"inline\", size: \"lg\", class: \"gap-4 p-6\" },\n  ],\n  defaultVariants: { variant: \"centered\", size: \"md\" },\n});\n\nexport type EmptyStateProps = ComponentPropsWithRef<\"div\"> & {\n  variant?: EmptyStateVariant;\n  size?: EmptyStateSize;\n  /** When true, adds role=\"status\" and aria-live=\"polite\" so screen readers announce dynamic empty states. */\n  live?: boolean;\n};\n\nexport function EmptyState({ variant = \"centered\", size = \"md\", live = false, className, children, ...props }: EmptyStateProps) {\n  const [mounted, setMounted] = useState(false);\n  useEffect(() => setMounted(true), []);\n\n  return (\n    <div\n      data-size={size}\n      {...(live ? { role: \"status\" as const, \"aria-live\": \"polite\" as const } : undefined)}\n      className={cn(emptyStateVariants({ variant, size }), className)}\n      {...props}\n    >\n      {live ? (mounted ? children : null) : children}\n    </div>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/empty-state/empty-state-icon.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type EmptyStateIconProps = ComponentPropsWithRef<\"div\">;\n\nexport function EmptyStateIcon({ className, ...props }: EmptyStateIconProps) {\n  return (\n    <div\n      aria-hidden=\"true\"\n      className={cn(\n        \"group-data-[size=sm]/es:text-lg\",\n        \"group-data-[size=md]/es:text-2xl\",\n        \"group-data-[size=lg]/es:text-4xl\",\n        className,\n      )}\n      {...props}\n    />\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/empty-state/empty-state-message.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type EmptyStateMessageProps = ComponentPropsWithRef<\"div\">;\n\nexport function EmptyStateMessage({ className, ...props }: EmptyStateMessageProps) {\n  return (\n    <div\n      className={cn(\n        \"text-foreground font-bold\",\n        \"group-data-[size=sm]/es:font-semibold\",\n        \"group-data-[size=sm]/es:text-xs\",\n        \"group-data-[size=md]/es:text-sm\",\n        \"group-data-[size=lg]/es:text-base\",\n        className,\n      )}\n      {...props}\n    />\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/empty-state/empty-state-description.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type EmptyStateDescriptionProps = ComponentPropsWithRef<\"p\">;\n\nexport function EmptyStateDescription({ className, ...props }: EmptyStateDescriptionProps) {\n  return (\n    <p\n      className={cn(\n        \"text-muted-foreground\",\n        \"group-data-[size=sm]/es:text-[10px]\",\n        \"group-data-[size=md]/es:text-xs\",\n        \"group-data-[size=lg]/es:text-sm\",\n        className,\n      )}\n      {...props}\n    />\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/empty-state/empty-state-actions.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type EmptyStateActionsProps = ComponentPropsWithRef<\"div\">;\n\nexport function EmptyStateActions({ className, ...props }: EmptyStateActionsProps) {\n  return (\n    <div\n      className={cn(\n        \"flex\",\n        \"group-data-[size=sm]/es:gap-1.5\",\n        \"group-data-[size=md]/es:gap-2\",\n        \"group-data-[size=lg]/es:gap-3\",\n        className,\n      )}\n      {...props}\n    />\n  );\n}\n",
+      "type": "registry:ui"
+    }
+  ]
+}

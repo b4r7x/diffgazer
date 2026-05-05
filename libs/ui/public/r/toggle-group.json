@@ -1,0 +1,44 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "toggle-group",
+  "type": "registry:ui",
+  "title": "Toggle Group",
+  "description": "Compound toggle button group for single selection with keyboard navigation",
+  "dependencies": [
+    "class-variance-authority"
+  ],
+  "registryDependencies": [
+    "@diffgazer/keys/navigation",
+    "controllable-state",
+    "compose-refs",
+    "resolve-tab-target"
+  ],
+  "files": [
+    {
+      "path": "registry/ui/toggle-group/index.ts",
+      "content": "import { ToggleGroup as ToggleGroupRoot, type ToggleGroupProps } from \"./toggle-group\";\nimport { ToggleGroupItem, type ToggleGroupItemProps } from \"./toggle-group-item\";\n\nconst ToggleGroup = Object.assign(ToggleGroupRoot, {\n  Item: ToggleGroupItem,\n});\n\nexport { ToggleGroup, type ToggleGroupProps };\nexport { ToggleGroupItem, type ToggleGroupItemProps };\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/toggle-group/toggle-group.tsx",
+      "content": "\"use client\";\n\nimport { useEffectEvent, useMemo, useRef, type ReactNode, type Ref, type KeyboardEvent as ReactKeyboardEvent } from \"react\";\nimport { useNavigation } from \"@/hooks/use-navigation\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\nimport { composeRefs } from \"@/lib/compose-refs\";\nimport { cn } from \"@/lib/utils\";\nimport { ToggleGroupContext } from \"./toggle-group-context\";\n\nexport interface ToggleGroupProps {\n  value?: string | null;\n  defaultValue?: string | null;\n  onChange?: (value: string | null) => void;\n  allowDeselect?: boolean;\n  disabled?: boolean;\n  size?: \"sm\" | \"md\";\n  orientation?: \"horizontal\" | \"vertical\";\n  wrap?: boolean;\n  highlighted?: string | null;\n  onHighlightChange?: (value: string | null) => void;\n  onKeyDown?: (event: ReactKeyboardEvent) => void;\n  label?: string;\n  \"aria-labelledby\"?: string;\n  className?: string;\n  children: ReactNode;\n  ref?: Ref<HTMLDivElement>;\n}\n\nexport function ToggleGroup({\n  value: controlledValue,\n  defaultValue,\n  onChange,\n  allowDeselect = false,\n  disabled = false,\n  size = \"sm\",\n  orientation = \"horizontal\",\n  wrap = true,\n  highlighted: controlledHighlighted,\n  onHighlightChange,\n  onKeyDown,\n  label,\n  \"aria-labelledby\": ariaLabelledBy,\n  className,\n  children,\n  ref,\n}: ToggleGroupProps) {\n  const containerRef = useRef<HTMLDivElement>(null);\n\n  const [value, setValue] = useControllableState<string | null>({\n    value: controlledValue,\n    defaultValue: defaultValue ?? null,\n    onChange,\n  });\n\n  const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({\n    value: controlledHighlighted,\n    defaultValue: null,\n    onChange: onHighlightChange,\n  });\n\n  const handleValueChange = useEffectEvent((newValue: string) => {\n    setValue((prev) => (prev === newValue && allowDeselect) ? null : newValue);\n  });\n\n  const { onKeyDown: navKeyDown } = useNavigation({\n    containerRef,\n    role: \"radio\",\n    orientation,\n    wrap,\n    moveFocus: true,\n    value: highlightedValue ?? undefined,\n    onValueChange: handleValueChange,\n  });\n\n  const handleKeyDown = (e: ReactKeyboardEvent) => {\n    // Support 4-directional arrow navigation regardless of orientation\n    const crossAxisMap: Record<string, string> = orientation === \"horizontal\"\n      ? { ArrowUp: \"ArrowLeft\", ArrowDown: \"ArrowRight\" }\n      : { ArrowLeft: \"ArrowUp\", ArrowRight: \"ArrowDown\" };\n\n    const mappedKey = crossAxisMap[e.key];\n    if (mappedKey) {\n      const syntheticEvent = Object.create(e, {\n        key: { value: mappedKey },\n      }) as ReactKeyboardEvent;\n      navKeyDown(syntheticEvent);\n    } else {\n      navKeyDown(e);\n    }\n    onKeyDown?.(e);\n  };\n\n  const contextValue = useMemo(() => ({\n    value,\n    onChange: handleValueChange,\n    onHighlightChange: setHighlightedValue,\n    disabled,\n    size,\n    highlightedValue,\n    containerRef,\n  }), [value, disabled, size, highlightedValue]);\n\n  return (\n    <ToggleGroupContext value={contextValue}>\n      <div\n        ref={composeRefs(containerRef, ref)}\n        role=\"radiogroup\"\n        aria-label={label}\n        aria-labelledby={ariaLabelledBy}\n        aria-orientation={orientation}\n        aria-disabled={disabled || undefined}\n        onKeyDown={handleKeyDown}\n        className={cn(\n          \"flex\",\n          orientation === \"vertical\" ? \"flex-col gap-1.5\" : \"gap-1.5\",\n          wrap && orientation === \"horizontal\" && \"flex-wrap\",\n          className,\n        )}\n      >\n        {children}\n      </div>\n    </ToggleGroupContext>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/toggle-group/toggle-group-context.tsx",
+      "content": "\"use client\";\n\nimport { createContext, useContext, type RefObject } from \"react\";\n\nexport interface ToggleGroupContextValue {\n  value: string | null;\n  onChange: (value: string) => void;\n  onHighlightChange: (value: string | null) => void;\n  disabled: boolean;\n  size: \"sm\" | \"md\";\n  highlightedValue: string | null;\n  containerRef: RefObject<HTMLDivElement | null>;\n}\n\nexport const ToggleGroupContext = createContext<ToggleGroupContextValue | undefined>(undefined);\n\nexport function useToggleGroupContext() {\n  const context = useContext(ToggleGroupContext);\n  if (!context) {\n    throw new Error(\"ToggleGroup.Item must be used within ToggleGroup\");\n  }\n  return context;\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/toggle-group/toggle-group-item.tsx",
+      "content": "\"use client\";\n\nimport type { ReactNode, Ref } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { useToggleGroupContext } from \"./toggle-group-context\";\nimport { cn } from \"@/lib/utils\";\nimport { resolveTabTarget } from \"@/lib/resolve-tab-target\";\n\nconst toggleItemVariants = cva(\n  \"inline-flex items-center justify-center font-mono whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer border border-border bg-transparent text-foreground hover:bg-secondary data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:border-primary data-[active=true]:hover:bg-primary/90\",\n  {\n    variants: {\n      size: {\n        sm: \"min-h-[44px] min-w-[44px] px-2 py-0.5 text-xs\",\n        md: \"h-9 px-4 py-2 text-sm\",\n      },\n    },\n    defaultVariants: { size: \"md\" },\n  },\n);\n\nexport interface ToggleGroupItemProps {\n  value: string;\n  count?: number;\n  disabled?: boolean;\n  className?: string;\n  children: ReactNode;\n  ref?: Ref<HTMLButtonElement>;\n}\n\nexport function ToggleGroupItem({\n  value,\n  count,\n  disabled,\n  className,\n  children,\n  ref,\n}: ToggleGroupItemProps) {\n  const context = useToggleGroupContext();\n  const isActive = context.value === value;\n  const isHighlighted = context.highlightedValue === value;\n  const isDisabled = context.disabled || !!disabled;\n  const hasSelection = context.value !== null;\n  const isTabTarget = resolveTabTarget(\n    isActive, hasSelection, context.containerRef.current, value,\n  );\n\n  return (\n    <button\n      ref={ref}\n      type=\"button\"\n      role=\"radio\"\n      data-value={value}\n      data-active={isActive || undefined}\n      data-highlighted={isHighlighted || undefined}\n      aria-checked={isActive}\n      aria-disabled={isDisabled || undefined}\n      tabIndex={isTabTarget ? 0 : -1}\n      onClick={() => { if (!isDisabled) context.onChange(value); }}\n      onMouseEnter={() => context.onHighlightChange(value)}\n      onFocus={() => context.onHighlightChange(value)}\n      className={cn(\n        toggleItemVariants({ size: context.size }),\n        isDisabled && \"pointer-events-none opacity-50\",\n        isHighlighted && !isActive && \"bg-secondary\",\n        className,\n      )}\n    >\n      {count != null ? (\n        <>\n          [{children} {count}]\n        </>\n      ) : (\n        children\n      )}\n    </button>\n  );\n}\n",
+      "type": "registry:ui"
+    }
+  ],
+  "meta": {
+    "client": true,
+    "optionalIntegrations": [
+      "keyboard-navigation"
+    ]
+  }
+}

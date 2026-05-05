@@ -1,0 +1,14 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "resolve-tab-target",
+  "type": "registry:lib",
+  "title": "resolveTabTarget",
+  "description": "Roving tabindex utility — determines which item in a group should be the tab target based on selection state and disabled status.",
+  "files": [
+    {
+      "path": "registry/lib/resolve-tab-target.ts",
+      "content": "export function resolveTabTarget(\n  isActive: boolean,\n  hasSelection: boolean,\n  container: HTMLElement | null,\n  value: string,\n  role: string = \"radio\",\n): boolean {\n  if (isActive) return true;\n  if (hasSelection) return false;\n  if (!container) return true;\n  const first = container.querySelector(`[role=\"${role}\"]:not(:disabled):not([aria-disabled=\"true\"])`);\n  return first?.getAttribute(\"data-value\") === value;\n}\n",
+      "type": "registry:lib"
+    }
+  ]
+}

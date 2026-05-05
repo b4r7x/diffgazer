@@ -1,0 +1,15 @@
+{
+  "library": "keys",
+  "displayName": "Keyscope",
+  "docs": {
+    "format": "mdx",
+    "contentDir": "docs/content",
+    "metaFile": "docs/content/meta.json",
+    "assetsDir": "docs/assets"
+  },
+  "registry": {
+    "namespace": "@diffgazer/keys",
+    "basePath": "/r/keys",
+    "publicDir": "public/r"
+  }
+}

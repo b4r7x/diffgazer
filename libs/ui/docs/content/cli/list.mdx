@@ -1,0 +1,37 @@
+---
+title: dgadd list
+description: List available @diffgazer/ui components and @diffgazer/keys hooks.
+---
+
+## Usage
+
+```bash
+dgadd list
+```
+
+## Examples
+
+```bash
+dgadd list
+dgadd list --json
+dgadd list --installed
+```
+
+## Options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--json` | Output as JSON | `false` |
+| `--installed` | Show only installed items | `false` |
+| `--all` | Include hidden/internal items | `false` |
+
+## Output
+
+Names are shown with their install namespace:
+
+```text
+ui/button
+ui/dialog
+keys/navigation
+keys/focus-trap
+```

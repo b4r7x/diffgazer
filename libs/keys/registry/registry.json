@@ -1,0 +1,58 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "keys",
+  "homepage": "https://github.com/b4r7/diffgazer/tree/main/libs/keys",
+  "items": [
+    {
+      "name": "navigation",
+      "type": "registry:hook",
+      "title": "Navigation",
+      "description": "Standalone keyboard navigation for role-based lists and tabs",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "src/hooks/use-navigation.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "focus-trap",
+      "type": "registry:hook",
+      "title": "Focus Trap",
+      "description": "Trap Tab focus within a container element",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "src/hooks/use-focus-trap.ts",
+          "type": "registry:hook"
+        }
+      ]
+    },
+    {
+      "name": "scroll-lock",
+      "type": "registry:hook",
+      "title": "Scroll Lock",
+      "description": "Prevent body/element scrolling with reference counting",
+      "dependencies": [],
+      "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
+      "files": [
+        {
+          "path": "src/hooks/use-scroll-lock.ts",
+          "type": "registry:hook"
+        }
+      ]
+    }
+  ]
+}

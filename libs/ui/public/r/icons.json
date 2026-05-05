@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "icons",
+  "type": "registry:ui",
+  "title": "Icons",
+  "description": "SVG icon components: directional chevron with rotation animation.",
+  "dependencies": [],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/ui/icons/index.ts",
+      "content": "export { Chevron, type ChevronProps } from \"./chevron\";\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/icons/chevron.tsx",
+      "content": "\"use client\";\n\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nconst chevronVariants = cva(\n  \"shrink-0 transition-transform duration-200\",\n  {\n    variants: {\n      size: {\n        sm: \"size-3\",\n        md: \"size-4\",\n        lg: \"size-5\",\n      },\n    },\n    defaultVariants: {\n      size: \"sm\",\n    },\n  }\n);\n\ntype ChevronDirection = \"down\" | \"up\" | \"left\" | \"right\";\n\nconst baseDeg: Record<ChevronDirection, number> = {\n  right: 0,\n  down: 90,\n  left: 180,\n  up: 270,\n};\n\nexport interface ChevronProps extends VariantProps<typeof chevronVariants> {\n  direction?: ChevronDirection;\n  /** When true, rotates 90° clockwise from base direction (expand/collapse toggle). */\n  open?: boolean;\n  className?: string;\n  ref?: React.Ref<SVGSVGElement>;\n}\n\nexport function Chevron({\n  direction = \"right\",\n  open,\n  size,\n  className,\n  ref,\n}: ChevronProps) {\n  const deg = baseDeg[direction] + (open ? 90 : 0);\n\n  return (\n    <svg\n      ref={ref}\n      xmlns=\"http://www.w3.org/2000/svg\"\n      viewBox=\"0 0 16 16\"\n      fill=\"none\"\n      stroke=\"currentColor\"\n      strokeWidth=\"2\"\n      strokeLinecap=\"round\"\n      strokeLinejoin=\"round\"\n      aria-hidden=\"true\"\n      className={cn(chevronVariants({ size }), className)}\n      style={{ transform: `rotate(${deg}deg)` }}\n    >\n      <polyline points=\"6 3 11 8 6 13\" />\n    </svg>\n  );\n}\n",
+      "type": "registry:ui"
+    }
+  ]
+}

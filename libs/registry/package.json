@@ -1,0 +1,65 @@
+{
+  "name": "@diffgazer/registry",
+  "version": "0.1.0",
+  "description": "Reusable engine for building shadcn-compatible registries, artifacts, and docs sync",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./schemas": {
+      "types": "./dist/schemas.d.ts",
+      "import": "./dist/schemas.js"
+    },
+    "./cli": {
+      "types": "./dist/cli/index.d.ts",
+      "import": "./dist/cli/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/b4r7/diffgazer.git",
+    "directory": "libs/registry"
+  },
+  "keywords": [
+    "registry",
+    "shadcn",
+    "artifacts",
+    "cli",
+    "components",
+    "hooks"
+  ],
+  "dependencies": {
+    "@clack/prompts": "^0.11.0",
+    "commander": "^13.0.0",
+    "diff": "^8.0.3",
+    "figlet": "^1.8.0",
+    "picocolors": "^1.1.0",
+    "shiki": "^3.22.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/diff": "^8.0.0",
+    "@types/figlet": "^1.7.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.1"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "input",
+  "type": "registry:ui",
+  "title": "Input",
+  "description": "Terminal-styled text input",
+  "dependencies": [],
+  "registryDependencies": [
+    "input-variants"
+  ],
+  "files": [
+    {
+      "path": "registry/ui/input/index.ts",
+      "content": "export { Input, type InputProps } from \"./input\";\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/input/input.tsx",
+      "content": "import type { InputHTMLAttributes, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { inputVariants } from \"@/lib/input-variants\";\n\nexport interface InputProps\n  extends Omit<InputHTMLAttributes<HTMLInputElement>, \"size\"> {\n  ref?: Ref<HTMLInputElement>;\n  size?: \"sm\" | \"md\" | \"lg\";\n  error?: boolean;\n}\n\nexport function Input({ className, size, error, ref, ...props }: InputProps) {\n  return (\n    <input\n      className={cn(inputVariants({ size, error }), className)}\n      ref={ref}\n      aria-invalid={error || undefined}\n      {...props}\n    />\n  );\n}\n",
+      "type": "registry:ui"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "portal",
+  "type": "registry:ui",
+  "title": "Portal",
+  "description": "Renders children into a DOM node outside the parent hierarchy",
+  "dependencies": [],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/ui/shared/portal.tsx",
+      "content": "\"use client\";\n\nimport { createPortal } from \"react-dom\";\nimport type { ReactNode } from \"react\";\n\nexport interface PortalProps {\n  children: ReactNode;\n  container?: Element;\n}\n\nexport function Portal({ children, container }: PortalProps) {\n  const target = container ?? (typeof document !== \"undefined\" ? document.body : null);\n  if (!target) return null;\n  return createPortal(children, target);\n}",
+      "type": "registry:ui"
+    }
+  ],
+  "meta": {
+    "client": true,
+    "hidden": true
+  }
+}

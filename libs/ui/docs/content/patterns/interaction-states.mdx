@@ -1,0 +1,103 @@
+---
+title: Interaction States
+description: The three-state interaction model for TUI-style components — hover, highlight, and selected.
+---
+
+## Three-State Model
+
+@diffgazer/ui components use three distinct, independent interaction states inspired by terminal UIs:
+
+| State | Trigger | Visual Weight | CSS Implementation |
+|---|---|---|---|
+| **Hover** | Mouse `:hover` | Lightest | `hover:bg-secondary` (CSS pseudo-class) |
+| **Highlight** | Keyboard arrows (@diffgazer/keys) | Strongest | `bg-foreground text-background font-bold` |
+| **Selected** | Persistent choice (Enter/click) | Medium | `bg-secondary font-bold` |
+
+These states are independent because in TUI applications, the keyboard cursor is fundamentally different from mouse hover. The cursor shows where keyboard actions will apply -- it is the user's active position. Hover is transient mouse feedback that disappears when the pointer moves away. Selected is the user's persistent choice that survives both hover and highlight changes.
+
+Keeping them separate means a user can hover over one item while the keyboard cursor sits on another, and a third item can be the current selection. No state clobbers another.
+
+## State Precedence
+
+```
+disabled > highlight (focused) > selected > normal
+```
+
+This comes from `getItemState()` in `menu-item.tsx`. A disabled item always renders as disabled regardless of other states. A highlighted item always shows highlight visuals even if it is also the selected item. This ensures the keyboard cursor is always visible.
+
+## Visual Mapping (CVA Variants)
+
+The `menuItemBase` CVA maps each state to Tailwind classes:
+
+| CVA `state` | Classes | Purpose |
+|---|---|---|
+| `"normal"` | `hover:bg-secondary group` | Hover via CSS pseudo-class only |
+| `"focused"` | `text-background font-bold` + compound variant `bg-foreground` | Full inversion for keyboard cursor |
+| `"selected"` | `bg-secondary font-bold group` | Persistent medium-weight highlight |
+| `"disabled"` | `opacity-50 cursor-not-allowed` | Greyed out, no pointer interaction |
+
+The `"focused"` compound variant applies `bg-foreground` to create the classic TUI inverted-bar look -- light text on dark background (or dark on light, depending on theme).
+
+## Sync on Click
+
+When a user clicks a MenuItem, `handleItemActivate` in `useListbox` sets **both** `selectedId` and `highlightedId`. This ensures the keyboard cursor tracks the mouse. If the user switches to keyboard navigation after clicking, they continue from where they clicked rather than from a stale cursor position.
+
+## AutoFocus
+
+Pass `autoFocus` to Menu when it is the primary interaction target on the page. This focuses the container div on mount so keyboard events (ArrowUp/Down, Enter) work immediately without requiring the user to click or tab into the menu first.
+
+```tsx
+import { Menu, MenuItem } from "@/components/ui/menu"
+
+<Menu
+  selectedId={selected}
+  highlightedId={highlighted}
+  onHighlightChange={setHighlighted}
+  onSelect={handleSelect}
+  autoFocus
+  aria-label="Main menu"
+>
+  <MenuItem id="item-1">First Item</MenuItem>
+  <MenuItem id="item-2">Second Item</MenuItem>
+</Menu>
+```
+
+## Navigation Direction
+
+All menus persist their highlight state across route changes. The direction of navigation determines whether the highlight resets or restores:
+
+- **Forward (parent → child)**: Parent clears the child's stored highlight before navigating. The child menu starts from its first item.
+- **Back (child → parent)**: Parent's highlight is restored automatically from the persistent store.
+
+```tsx
+import { useScopedRouteState, clearScopedRouteState } from "@/hooks/use-scoped-route-state"
+
+// Persist highlight — restores when returning from a child route
+const [highlightedId, setHighlightedId] = useScopedRouteState<string | null>(
+  "highlightedId",
+  items[0]?.id ?? null
+)
+
+// When navigating forward, clear the child's highlight so it starts fresh
+const handleActivate = (id: string) => {
+  const route = routes[id]
+  if (route) {
+    clearScopedRouteState(route, "highlightedId")
+    navigate({ to: route })
+  }
+}
+```
+
+This gives TUI-like behavior: entering a menu always starts from the top, but returning to it picks up where you left off.
+
+## Accessibility
+
+The interaction state model maps directly to ARIA semantics:
+
+- **Container**: `role="menu"`, `tabIndex={0}`, `aria-activedescendant` pointing to the highlighted item
+- **Items**: `role="menuitem"`, `data-value={id}`, `aria-current` for the selected item, `aria-disabled` for disabled items
+- **Focus ring**: `focus-visible` ring on the container when keyboard-focused
+- **Screen readers**: announce the active descendant as the user arrows through items -- the highlight state drives `aria-activedescendant`
+- **Follows WAI-ARIA Menu Pattern (APG)**
+
+The three-state model makes screen reader behavior clear: `aria-activedescendant` always reflects the highlighted item (keyboard cursor), while `aria-current` reflects the selected item. These are independent signals that assistive technology can convey separately.

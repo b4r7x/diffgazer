@@ -1,0 +1,58 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "card",
+  "type": "registry:ui",
+  "title": "Card",
+  "description": "Simple bordered card primitives with floating border labels and semantic HTML support",
+  "dependencies": [
+    "class-variance-authority"
+  ],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/ui/card/index.ts",
+      "content": "import { Card as CardRoot, cardVariants, type CardProps } from \"./card\";\nimport { CardAction, type CardActionProps } from \"./card-action\";\nimport { CardContent, type CardContentProps } from \"./card-content\";\nimport { CardDescription, type CardDescriptionProps } from \"./card-description\";\nimport { CardFooter, type CardFooterProps } from \"./card-footer\";\nimport { CardHeader, type CardHeaderProps } from \"./card-header\";\nimport { CardLabel, cardLabelVariants, type CardLabelProps } from \"./card-label\";\nimport { CardTitle, type CardTitleProps } from \"./card-title\";\n\nconst Card = Object.assign(CardRoot, {\n  Action: CardAction,\n  Header: CardHeader,\n  Label: CardLabel,\n  Title: CardTitle,\n  Description: CardDescription,\n  Content: CardContent,\n  Footer: CardFooter,\n});\n\nexport { Card, cardVariants, type CardProps };\nexport { CardAction, type CardActionProps };\nexport { CardHeader, type CardHeaderProps };\nexport { CardLabel, cardLabelVariants, type CardLabelProps };\nexport { CardTitle, type CardTitleProps };\nexport { CardDescription, type CardDescriptionProps };\nexport { CardContent, type CardContentProps };\nexport { CardFooter, type CardFooterProps };\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/card/card.tsx",
+      "content": "\"use client\";\n\nimport type { HTMLAttributes, Ref } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const cardVariants = cva(\"w-full relative border border-border bg-background\", {\n  variants: {\n    variant: {\n      default: \"\",\n      panel: \"shadow-2xl\",\n    },\n    size: {\n      default: \"\",\n      sm: \"max-w-sm\",\n      md: \"max-w-md\",\n      lg: \"max-w-lg\",\n    },\n  },\n  defaultVariants: { variant: \"default\", size: \"default\" },\n});\n\nexport type CardProps = HTMLAttributes<HTMLElement> &\n  VariantProps<typeof cardVariants> & {\n    as?: \"div\" | \"article\" | \"section\" | \"aside\";\n    ref?: Ref<HTMLElement>;\n  };\n\nexport function Card({ className, variant, size, as: Tag = \"div\", ref, ...props }: CardProps) {\n  return <Tag data-slot=\"card\" ref={ref as Ref<never>} className={cn(cardVariants({ variant, size }), className)} {...props} />;\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/card/card-action.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CardActionProps = ComponentPropsWithRef<\"div\">;\n\nexport function CardAction({ className, ...props }: CardActionProps) {\n  return (\n    <div\n      data-slot=\"card-action\"\n      className={cn(\"col-start-2 row-span-2 row-start-1 self-start justify-self-end\", className)}\n      {...props}\n    />\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/card/card-header.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CardHeaderProps = ComponentPropsWithRef<\"div\">;\n\nexport function CardHeader({ className, ...props }: CardHeaderProps) {\n  return (\n    <div\n      data-slot=\"card-header\"\n      className={cn(\n        \"grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 border-b border-border px-4 py-3 text-sm text-foreground has-data-[slot=card-action]:grid-cols-[1fr_auto]\",\n        className,\n      )}\n      {...props}\n    />\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/card/card-title.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CardTitleProps = ComponentPropsWithRef<\"h3\"> & {\n  as?: \"h2\" | \"h3\" | \"h4\" | \"h5\";\n};\n\nexport function CardTitle({ as: Tag = \"h3\", className, ...props }: CardTitleProps) {\n  return <Tag data-slot=\"card-title\" className={cn(\"text-xl font-bold text-foreground tracking-wide\", className)} {...props} />;\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/card/card-description.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CardDescriptionProps = ComponentPropsWithRef<\"p\">;\n\nexport function CardDescription({ className, ...props }: CardDescriptionProps) {\n  return <p data-slot=\"card-description\" className={cn(\"text-sm text-muted-foreground\", className)} {...props} />;\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/card/card-content.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CardContentProps = ComponentPropsWithRef<\"div\">;\n\nexport function CardContent({ className, ...props }: CardContentProps) {\n  return <div data-slot=\"card-content\" className={cn(\"p-6\", className)} {...props} />;\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/card/card-label.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const cardLabelVariants = cva(\n  \"absolute -top-3 left-4 z-10 bg-background px-2 text-xs font-bold uppercase tracking-wider text-muted-foreground\",\n  {\n    variants: {\n      variant: {\n        border: \"border border-border\",\n        gap: \"\",\n      },\n    },\n    defaultVariants: { variant: \"border\" },\n  },\n);\n\nexport type CardLabelProps = ComponentPropsWithRef<\"div\"> & VariantProps<typeof cardLabelVariants>;\n\nexport function CardLabel({ className, variant, ...props }: CardLabelProps) {\n  return <div data-slot=\"card-label\" className={cn(cardLabelVariants({ variant }), className)} {...props} />;\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/card/card-footer.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CardFooterProps = ComponentPropsWithRef<\"div\">;\n\nexport function CardFooter({ className, ...props }: CardFooterProps) {\n  return (\n    <div data-slot=\"card-footer\" className={cn(\"flex justify-end gap-3 border-t border-border bg-background/50 px-6 py-4\", className)} {...props} />\n  );\n}\n",
+      "type": "registry:ui"
+    }
+  ]
+}

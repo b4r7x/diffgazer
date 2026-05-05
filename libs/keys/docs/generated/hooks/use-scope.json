@@ -1,0 +1,2636 @@
+{
+  "name": "use-scope",
+  "title": "useScope",
+  "description": "Push a named scope onto the keyboard scope stack. Handlers in deeper scopes take priority. Auto-pops on unmount.",
+  "source": {
+    "raw": "import { useEffect } from \"react\";\nimport { useKeyboardContext } from \"../context/keyboard-context.js\";\n\ninterface UseScopeOptions {\n  enabled?: boolean;\n}\n\nexport function useScope(name: string | null, options: UseScopeOptions = {}): void {\n  const { enabled = true } = options;\n  const { pushScope } = useKeyboardContext();\n\n  useEffect(() => {\n    if (!enabled || name === null) return;\n    return pushScope(name);\n    // pushScope is useEffectEvent-based (stable reference), excluded from deps\n    // eslint-disable-next-line react-hooks/exhaustive-deps\n  }, [name, enabled]);\n}\n",
+    "highlighted": [
+      {
+        "number": 1,
+        "content": [
+          {
+            "text": "import",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " useEffect ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "from",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "react",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 2,
+        "content": [
+          {
+            "text": "import",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " useKeyboardContext ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "from",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "../context/keyboard-context.js",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 3,
+        "content": []
+      },
+      {
+        "number": 4,
+        "content": [
+          {
+            "text": "interface",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "UseScopeOptions",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 5,
+        "content": [
+          {
+            "text": "  enabled",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "?:",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "boolean",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 6,
+        "content": [
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 7,
+        "content": []
+      },
+      {
+        "number": 8,
+        "content": [
+          {
+            "text": "export",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "function",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useScope",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "name",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "string",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "|",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " options",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "UseScopeOptions",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{}):",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "void",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 9,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "enabled",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "true",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " options",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 10,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "pushScope",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useKeyboardContext",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 11,
+        "content": []
+      },
+      {
+        "number": 12,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useEffect",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 13,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "!",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "enabled ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "||",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " name ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "===",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ") ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 14,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "pushScope",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(name)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 15,
+        "content": [
+          {
+            "text": "    //",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " pushScope is useEffectEvent-based (stable reference), excluded from deps",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 16,
+        "content": [
+          {
+            "text": "    //",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " eslint-disable-next-line react-hooks/exhaustive-deps",
+            "color": "var(--code-comment)"
+          }
+        ]
+      },
+      {
+        "number": 17,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "},",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " [name",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " enabled])",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 18,
+        "content": [
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 19,
+        "content": []
+      }
+    ]
+  },
+  "docs": {
+    "description": "Push a named scope onto the keyboard scope stack. Handlers in deeper scopes take priority. Auto-pops on unmount.",
+    "usage": {
+      "code": "useScope(\"modal\")",
+      "lang": "tsx"
+    },
+    "parameters": [
+      {
+        "name": "name",
+        "type": "string",
+        "required": true,
+        "description": "Unique name for the scope pushed onto the stack."
+      },
+      {
+        "name": "options.enabled",
+        "type": "boolean",
+        "required": false,
+        "description": "Whether the scope is active. When false the scope is not pushed.",
+        "defaultValue": "true"
+      }
+    ],
+    "returns": {
+      "type": "void",
+      "description": "This hook does not return a value."
+    },
+    "notes": [
+      {
+        "title": "Scope stack lifecycle",
+        "content": "The scope is pushed when the component mounts (or when enabled becomes true) and automatically popped when the component unmounts (or when enabled becomes false)."
+      },
+      {
+        "title": "Requires KeyboardProvider",
+        "content": "useScope is a provider-dependent hook. It must be used within a <KeyboardProvider> tree."
+      }
+    ],
+    "examples": [
+      {
+        "name": "use-scope-basic",
+        "title": "Basic scope usage"
+      }
+    ],
+    "tags": [
+      "provider-dependent",
+      "scope"
+    ]
+  },
+  "usageSnippet": "useScope(\"modal\")",
+  "usageSnippetHighlighted": [
+    {
+      "number": 1,
+      "content": [
+        {
+          "text": "useScope",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "modal",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ")",
+          "color": "var(--code-variable)"
+        }
+      ]
+    }
+  ],
+  "examples": [
+    "use-scope-basic"
+  ],
+  "exampleSource": {
+    "use-scope-basic": {
+      "raw": "\"use client\"\n\nimport { useState } from \"react\"\nimport { KeyboardProvider, useKey, useScope } from \"@diffgazer/keys\"\nimport {\n  Dialog,\n  DialogContent,\n  DialogHeader,\n  DialogTitle,\n  DialogDescription,\n  DialogBody,\n  DialogFooter,\n  DialogClose,\n} from \"@/components/ui/dialog\"\nimport { Kbd, KbdGroup } from \"@/components/ui/kbd\"\n\nfunction App() {\n  const [modalOpen, setModalOpen] = useState(false)\n\n  useKey(\"ctrl+k\", () => setModalOpen(true))\n\n  return (\n    <div>\n      <p className=\"text-sm text-muted-foreground\">\n        Press <KbdGroup><Kbd size=\"sm\">Ctrl</Kbd><Kbd size=\"sm\">K</Kbd></KbdGroup> to open modal\n      </p>\n      {modalOpen && <Modal onClose={() => setModalOpen(false)} />}\n    </div>\n  )\n}\n\nfunction Modal({ onClose }: { onClose: () => void }) {\n  useScope(\"modal\")\n\n  return (\n    <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>\n      <DialogContent>\n        <DialogHeader>\n          <DialogTitle decorated={false}>Modal</DialogTitle>\n          <DialogDescription>\n            <Kbd size=\"sm\">Esc</Kbd> closes this modal. <KbdGroup><Kbd size=\"sm\">Ctrl</Kbd><Kbd size=\"sm\">K</Kbd></KbdGroup> is blocked while this scope is active.\n          </DialogDescription>\n        </DialogHeader>\n        <DialogBody>\n          <p className=\"text-sm text-muted-foreground\">\n            The modal scope isolates keyboard shortcuts so parent bindings don't fire.\n          </p>\n        </DialogBody>\n        <DialogFooter>\n          <DialogClose variant=\"ghost\" bracket>Close</DialogClose>\n        </DialogFooter>\n      </DialogContent>\n    </Dialog>\n  )\n}\n\nexport default function UseScopeBasic() {\n  return (\n    <KeyboardProvider>\n      <App />\n    </KeyboardProvider>\n  )\n}\n",
+      "highlighted": [
+        {
+          "number": 1,
+          "content": [
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "use client",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " useState ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "react",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " KeyboardProvider",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " useKey",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " useScope ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "@diffgazer/keys",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "content": [
+            {
+              "text": "  Dialog",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "content": [
+            {
+              "text": "  DialogContent",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "content": [
+            {
+              "text": "  DialogHeader",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "content": [
+            {
+              "text": "  DialogTitle",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "content": [
+            {
+              "text": "  DialogDescription",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "content": [
+            {
+              "text": "  DialogBody",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 12,
+          "content": [
+            {
+              "text": "  DialogFooter",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 13,
+          "content": [
+            {
+              "text": "  DialogClose",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 14,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "@/components/ui/dialog",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 15,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " Kbd",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " KbdGroup ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "@/components/ui/kbd",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 16,
+          "content": []
+        },
+        {
+          "number": 17,
+          "content": [
+            {
+              "text": "function",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "App",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 18,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "[",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "modalOpen",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "setModalOpen",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": "]",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useState",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 19,
+          "content": []
+        },
+        {
+          "number": 20,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useKey",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "ctrl+k",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "setModalOpen",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "true",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": "))",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 21,
+          "content": []
+        },
+        {
+          "number": 22,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 23,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 24,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "p",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-sm text-muted-foreground",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 25,
+          "content": [
+            {
+              "text": "        Press ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "KbdGroup",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": "><",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Kbd",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "size",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "sm",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Ctrl",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Kbd",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": "><",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Kbd",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "size",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "sm",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "K",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Kbd",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": "></",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "KbdGroup",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " to open modal",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 26,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "p",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 27,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "modalOpen ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Modal",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onClose",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "setModalOpen",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "/>}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 28,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 29,
+          "content": [
+            {
+              "text": "  )",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 30,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 31,
+          "content": []
+        },
+        {
+          "number": 32,
+          "content": [
+            {
+              "text": "function",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Modal",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "({",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " onClose ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}:",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onClose",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "void",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "})",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 33,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useScope",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "modal",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 34,
+          "content": []
+        },
+        {
+          "number": 35,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 36,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Dialog",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "open",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onOpenChange",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={(",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "open",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "!",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "open) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onClose",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "() ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}}>",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 37,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "DialogContent",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 38,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "DialogHeader",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 39,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "DialogTitle",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "decorated",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": "}>",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Modal",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "DialogTitle",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 40,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "DialogDescription",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 41,
+          "content": [
+            {
+              "text": "            ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Kbd",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "size",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "sm",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Esc",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Kbd",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " closes this modal. ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "KbdGroup",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": "><",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Kbd",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "size",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "sm",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Ctrl",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Kbd",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": "><",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Kbd",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "size",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "sm",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "K",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Kbd",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": "></",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "KbdGroup",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " is blocked while this scope is active.",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 42,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "DialogDescription",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 43,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "DialogHeader",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 44,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "DialogBody",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 45,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "p",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-sm text-muted-foreground",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 46,
+          "content": [
+            {
+              "text": "            The modal scope isolates keyboard shortcuts so parent bindings don't fire.",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 47,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "p",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 48,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "DialogBody",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 49,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "DialogFooter",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 50,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "DialogClose",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "variant",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "ghost",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "bracket",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Close",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "DialogClose",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 51,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "DialogFooter",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 52,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "DialogContent",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 53,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Dialog",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 54,
+          "content": [
+            {
+              "text": "  )",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 55,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 56,
+          "content": []
+        },
+        {
+          "number": 57,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "default",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "function",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "UseScopeBasic",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 58,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 59,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "KeyboardProvider",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 60,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "App",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "/>",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 61,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "KeyboardProvider",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 62,
+          "content": [
+            {
+              "text": "  )",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 63,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 64,
+          "content": []
+        }
+      ]
+    }
+  },
+  "parameters": [
+    {
+      "name": "name",
+      "type": "string",
+      "required": true,
+      "description": "Unique name for the scope pushed onto the stack."
+    },
+    {
+      "name": "options.enabled",
+      "type": "boolean",
+      "required": false,
+      "description": "Whether the scope is active. When false the scope is not pushed.",
+      "defaultValue": "true"
+    }
+  ],
+  "returns": {
+    "type": "void",
+    "description": "This hook does not return a value."
+  }
+}

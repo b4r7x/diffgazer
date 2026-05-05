@@ -1,0 +1,77 @@
+---
+title: Installation
+description: Get started with @diffgazer/ui by initializing your project and adding components.
+---
+
+`@diffgazer/ui` components are installed as source files. Use `dgadd` to copy components and optional `@diffgazer/keys` hooks into your app.
+
+## Initialize
+
+```bash
+npx @diffgazer/add init
+```
+
+This creates `diffgazer.json`, configures aliases, and writes the shared theme files.
+
+## Add Components
+
+```bash
+dgadd add ui/button
+dgadd add ui/dialog ui/tabs ui/menu
+```
+
+Bare names are treated as UI components:
+
+```bash
+dgadd add button
+```
+
+## Add Keyboard Hooks
+
+Standalone hooks can be copied directly:
+
+```bash
+dgadd add keys/navigation keys/focus-trap keys/scroll-lock
+```
+
+Components with keyboard behavior can choose copy mode or package mode:
+
+```bash
+dgadd add ui/menu --integration copy
+dgadd add ui/menu --integration keys
+```
+
+`copy` mode installs local hook source. `keys` mode imports hooks from `@diffgazer/keys`.
+
+## Package Managers
+
+```bash
+pnpm dlx @diffgazer/add init
+npx @diffgazer/add init
+yarn dlx @diffgazer/add init
+bunx @diffgazer/add init
+```
+
+## Result
+
+After adding `ui/dialog` with copied keys hooks, a typical project looks like this:
+
+```text
+src/
+  components/
+    ui/
+      dialog/
+        dialog.tsx
+        dialog-content.tsx
+        index.ts
+  hooks/
+    use-focus-trap.ts
+    use-scroll-lock.ts
+  lib/
+    utils.ts
+  styles/
+    theme.css
+diffgazer.json
+```
+
+See [Tailwind Setup](/ui/docs/getting-started/tailwind-setup) for theme configuration.

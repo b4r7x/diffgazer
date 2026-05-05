@@ -1,0 +1,9 @@
+{
+  "extends": "../core/tsconfig/node.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "moduleResolution": "NodeNext"
+  },
+  "include": ["src"]
+}

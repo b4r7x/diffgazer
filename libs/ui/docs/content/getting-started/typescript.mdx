@@ -1,0 +1,68 @@
+---
+title: TypeScript
+description: Configure TypeScript path aliases and compiler options for @diffgazer/ui components.
+---
+
+@diffgazer/ui components are written in TypeScript and require path alias configuration.
+
+## Path Aliases
+
+Components import from `@/lib/utils`, `@/components/ui/*`, and `@/hooks/*`. Configure these in your `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}
+```
+
+And in `vite.config.ts`:
+
+```ts
+import { resolve } from "node:path"
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      "@": resolve(__dirname, "./src"),
+    },
+  },
+})
+```
+
+> **Tip**: If you used `dgadd init`, path aliases are configured automatically.
+
+## Strict Mode
+
+@diffgazer/ui components are written with `strict: true`. We recommend enabling it:
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "jsx": "react-jsx",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "es2022"
+  }
+}
+```
+
+## React 19
+
+@diffgazer/ui targets React 19. Ensure your project uses React 19+:
+
+```json
+{
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}
+```
+
+React 19 supports the React Compiler for automatic memoization. @diffgazer/ui components do not use manual `useCallback` or `useMemo`.

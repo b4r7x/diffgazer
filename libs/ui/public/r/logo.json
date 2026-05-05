@@ -1,0 +1,28 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "logo",
+  "type": "registry:ui",
+  "title": "Logo",
+  "description": "ASCII art text generator using figlet fonts",
+  "dependencies": [
+    "figlet"
+  ],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/ui/logo/index.ts",
+      "content": "export { Logo, type LogoProps } from \"./logo\";\nexport { getFigletText, type FigletFont } from \"./get-figlet-text\";\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/logo/logo.tsx",
+      "content": "\"use client\";\n\nimport type { HTMLAttributes, Ref } from \"react\"\nimport { cn } from \"@/lib/utils\"\nimport { getFigletText, type FigletFont } from \"./get-figlet-text\"\n\nexport interface LogoProps extends HTMLAttributes<HTMLPreElement> {\n  text: string\n  font?: FigletFont\n  ref?: Ref<HTMLPreElement>\n}\n\nexport function Logo({\n  ref,\n  text,\n  font = \"Big\",\n  className,\n  ...props\n}: LogoProps) {\n  const asciiText = getFigletText(text, font)\n\n  return (\n    <pre\n      ref={ref}\n      {...(asciiText ? { role: \"img\", \"aria-label\": text } : undefined)}\n      className={cn(\n        asciiText\n          ? \"font-mono whitespace-pre leading-none select-none\"\n          : \"text-lg font-bold tracking-widest\",\n        className,\n      )}\n      {...props}\n    >\n      {asciiText ?? text}\n    </pre>\n  )\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/logo/get-figlet-text.ts",
+      "content": "import figlet from \"figlet\"\nimport bigFont from \"figlet/importable-fonts/Big.js\"\nimport smallFont from \"figlet/importable-fonts/Small.js\"\n\nfiglet.parseFont(\"Big\", bigFont)\nfiglet.parseFont(\"Small\", smallFont)\n\n/** Supported figlet font names. @see diffgazer/packages/core/src/get-figlet.ts for the canonical copy. */\nexport type FigletFont = \"Big\" | \"Small\"\n\nexport function getFigletText(\n  text: string,\n  font: FigletFont = \"Big\",\n): string | null {\n  try {\n    return figlet.textSync(text, { font })\n  } catch {\n    return null\n  }\n}\n",
+      "type": "registry:ui"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "dialog-shell",
+  "type": "registry:ui",
+  "title": "Dialog Shell",
+  "description": "Native dialog element wrapper with presence animations and backdrop handling",
+  "dependencies": [],
+  "registryDependencies": [
+    "presence"
+  ],
+  "files": [
+    {
+      "path": "registry/ui/shared/dialog-shell.tsx",
+      "content": "\"use client\";\n\nimport {\n  useRef,\n  useLayoutEffect,\n  type ReactNode,\n  type HTMLAttributes,\n  type MouseEvent,\n  type SyntheticEvent,\n  type Ref,\n} from \"react\";\nimport { usePresence } from \"@/hooks/use-presence\";\nimport { composeRefs } from \"@/lib/compose-refs\";\nimport \"./dialog.css\";\n\nexport interface DialogShellProps\n  extends Omit<HTMLAttributes<HTMLDialogElement>, \"onClick\"> {\n  open: boolean;\n  onBackdropClick?: (e: MouseEvent<HTMLDialogElement>) => void;\n  onCancel?: (e: SyntheticEvent<HTMLDialogElement>) => void;\n  onClose?: () => void;\n  children: ReactNode;\n  dialogRef?: Ref<HTMLDialogElement>;\n}\n\nexport function DialogShell({\n  open,\n  onBackdropClick,\n  onCancel,\n  onClose,\n  children,\n  className,\n  dialogRef: externalDialogRef,\n  ...props\n}: DialogShellProps) {\n  const dialogRef = useRef<HTMLDialogElement>(null);\n  const { present, onAnimationEnd } = usePresence({ open, ref: dialogRef });\n\n  useLayoutEffect(() => {\n    const dialog = dialogRef.current;\n    if (dialog && !dialog.open) dialog.showModal();\n  }, [present]);\n\n  if (!present) return null;\n\n  return (\n    <dialog\n      ref={externalDialogRef ? composeRefs(dialogRef, externalDialogRef) : dialogRef}\n      data-state={open ? \"open\" : \"closed\"}\n      className={className}\n      onClick={(e: MouseEvent<HTMLDialogElement>) => {\n        if (e.target === dialogRef.current) onBackdropClick?.(e);\n      }}\n      onCancel={(e) => {\n        e.preventDefault();\n        onCancel?.(e);\n      }}\n      onAnimationEnd={(e) => {\n        if (e.target === dialogRef.current && !open) {\n          dialogRef.current?.close();\n          onClose?.();\n        }\n        onAnimationEnd(e);\n      }}\n      {...props}\n    >\n      {children}\n    </dialog>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/shared/dialog.css",
+      "content": "@layer base {\n  dialog {\n    --dialog-duration: 0.15s;\n    padding: 0;\n    border: none;\n    background: transparent;\n    overflow: visible;\n  }\n}\n\n@layer components {\n  dialog::backdrop {\n    background: rgba(0, 0, 0, 0.6);\n    backdrop-filter: blur(4px);\n  }\n\n  dialog[data-state=\"open\"]::backdrop {\n    animation: backdrop-in var(--dialog-duration) ease-out;\n  }\n\n  dialog[data-state=\"closed\"]::backdrop {\n    animation: backdrop-out var(--dialog-duration) ease-in forwards;\n  }\n\n  dialog[data-state=\"open\"] {\n    animation: dialog-in var(--dialog-duration) ease-out;\n  }\n\n  dialog[data-state=\"closed\"] {\n    animation: dialog-out var(--dialog-duration) ease-in forwards;\n  }\n\n  body:has(dialog[open]) {\n    overflow: hidden;\n    scrollbar-gutter: stable;\n  }\n}\n\n@keyframes dialog-in {\n  from { opacity: 0; transform: scale(0.95); }\n  to { opacity: 1; transform: scale(1); }\n}\n\n@keyframes dialog-out {\n  from { opacity: 1; transform: scale(1); }\n  to { opacity: 0; transform: scale(0.95); }\n}\n\n@keyframes backdrop-in {\n  from { opacity: 0; }\n  to { opacity: 1; }\n}\n\n@keyframes backdrop-out {\n  from { opacity: 1; }\n  to { opacity: 0; }\n}\n\n@media (prefers-reduced-motion: reduce) {\n  dialog,\n  dialog::backdrop {\n    animation-duration: 0.01s !important;\n  }\n}\n",
+      "type": "registry:ui"
+    }
+  ],
+  "meta": {
+    "client": true,
+    "hidden": true
+  }
+}

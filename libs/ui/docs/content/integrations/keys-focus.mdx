@@ -1,0 +1,60 @@
+---
+title: Focus Zones
+description: Manage keyboard navigation across multiple UI zones with useFocusZone. Requires KeyboardProvider.
+---
+
+Manage keyboard navigation across multiple UI zones (e.g., sidebar + content + preview). Handles zone transitions via arrow keys and Tab cycling. Requires `KeyboardProvider` — not available in copy mode.
+
+> For the complete API reference, see the [@diffgazer/keys documentation](/keys/docs/api/reference).
+
+---
+
+## useFocusZone
+
+```tsx
+import { useFocusZone, useKey } from "@diffgazer/keys"
+
+type Zone = "sidebar" | "content" | "preview"
+
+function Layout() {
+  const { zone, inZone, forZone, setZone } = useFocusZone({
+    initial: "sidebar",
+    zones: ["sidebar", "content", "preview"] as const,
+    tabCycle: ["sidebar", "content", "preview"] as const,
+    transitions: ({ zone, key }) => {
+      if (zone === "sidebar" && key === "ArrowRight") return "content"
+      if (zone === "content" && key === "ArrowLeft") return "sidebar"
+      if (zone === "content" && key === "ArrowRight") return "preview"
+      return null
+    },
+  })
+
+  // Zone-specific bindings
+  useKey("Enter", () => openItem(), forZone("sidebar"))
+  useKey("Enter", () => editContent(), forZone("content"))
+
+  return (
+    <div>
+      <aside className={inZone("sidebar") ? "ring-1 ring-white" : ""}>
+        Sidebar
+      </aside>
+      <main className={inZone("content") ? "ring-1 ring-white" : ""}>
+        Content
+      </main>
+    </div>
+  )
+}
+```
+
+### Return value
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `zone` | `T` | Current active zone |
+| `setZone` | `(zone: T) => void` | Set zone programmatically |
+| `inZone` | `(...zones: T[]) => boolean` | Check if current zone matches |
+| `forZone` | `(target: T, extra?) => UseKeyOptions` | Create zone-scoped options for `useKey` |
+
+### With @diffgazer/ui components
+
+See the [keys-package-mode example](/ui/docs/integrations/keys-patterns) for a complete multi-zone layout using @diffgazer/ui's Menu, Dialog, CommandPalette, and Select components.

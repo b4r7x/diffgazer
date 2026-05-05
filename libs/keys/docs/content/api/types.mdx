@@ -1,0 +1,63 @@
+---
+title: Types
+description: Shared TypeScript interfaces and type definitions exported by @diffgazer/keys.
+---
+
+# Types
+
+Shared type definitions exported by `@diffgazer/keys`.
+
+## HandlerOptions
+
+Passed to `register()` in the keyboard context. You won't use this directly — it's the internal representation of `UseKeyOptions` fields.
+
+```ts
+interface HandlerOptions {
+  allowInInput?: boolean;
+  targetRef?: RefObject<HTMLElement | null>;
+  requireFocusWithin?: boolean;
+  preventDefault?: boolean;
+}
+```
+
+## UseKeyOptions
+
+Options for [useKey](/keys/docs/hooks/use-key).
+
+```ts
+interface UseKeyOptions {
+  enabled?: boolean;
+  allowInInput?: boolean;
+  targetRef?: RefObject<HTMLElement | null>;
+  requireFocusWithin?: boolean;
+  preventDefault?: boolean;
+}
+```
+
+## UseFocusTrapOptions
+
+Options for [useFocusTrap](/keys/docs/hooks/use-focus-trap).
+
+```ts
+interface UseFocusTrapOptions {
+  initialFocus?: RefObject<HTMLElement | null>;
+  restoreFocus?: boolean;
+  enabled?: boolean;
+}
+```
+
+## NavigationRole
+
+Used by [useNavigation](/keys/docs/hooks/use-navigation) and [useScopedNavigation](/keys/docs/hooks/use-scoped-navigation) to determine which DOM elements are navigable.
+
+```ts
+type NavigationRole = "radio" | "checkbox" | "option" | "menuitem" | "button" | "tab";
+```
+
+## KeyHandler
+
+Callback type for keyboard event handlers.
+
+```ts
+type KeyHandler = (event: KeyboardEvent) => void;
+```

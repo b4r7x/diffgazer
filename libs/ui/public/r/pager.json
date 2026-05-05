@@ -1,0 +1,29 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "pager",
+  "type": "registry:ui",
+  "title": "Pager",
+  "description": "Previous/next page navigation for sequential content",
+  "dependencies": [],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/ui/pager/index.ts",
+      "content": "import { Pager as PagerRoot, type PagerProps } from \"./pager\";\nimport { PagerLink, type PagerLinkProps, type PagerLinkRenderProps } from \"./pager-link\";\n\nconst Pager = Object.assign(PagerRoot, {\n  Link: PagerLink,\n});\n\nexport { Pager, type PagerProps };\nexport { PagerLink, type PagerLinkProps, type PagerLinkRenderProps };\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/pager/pager.tsx",
+      "content": "\"use client\"\n\nimport type { ComponentPropsWithRef } from \"react\"\nimport { cn } from \"@/lib/utils\"\n\nexport interface PagerProps extends ComponentPropsWithRef<\"nav\"> {}\n\nexport function Pager({ className, ref, children, ...props }: PagerProps) {\n  return (\n    <nav\n      ref={ref}\n      aria-label=\"Page navigation\"\n      className={cn(\n        \"flex items-center justify-between border-t border-border pt-4 mt-8\",\n        className\n      )}\n      {...props}\n    >\n      {children}\n    </nav>\n  )\n}",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/pager/pager-link.tsx",
+      "content": "\"use client\"\n\nimport type { AnchorHTMLAttributes, ComponentPropsWithRef, ReactNode, Ref } from \"react\"\nimport { cn } from \"@/lib/utils\"\n\nconst DIRECTION_CONFIG = {\n  previous: { rel: \"prev\", ariaLabel: \"Go to previous page\" },\n  next: { rel: \"next\", ariaLabel: \"Go to next page\" },\n} as const\n\nexport type PagerLinkRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {\n  ref: Ref<HTMLAnchorElement>\n  className: string\n  rel: string\n  direction: \"previous\" | \"next\"\n}\n\nexport interface PagerLinkProps extends Omit<ComponentPropsWithRef<\"a\">, \"children\"> {\n  children: ReactNode | ((props: PagerLinkRenderProps) => ReactNode)\n  direction: \"previous\" | \"next\"\n}\n\nexport function PagerLink({ className, ref, children, direction, ...props }: PagerLinkProps) {\n  const { rel, ariaLabel } = DIRECTION_CONFIG[direction]\n  const resolvedClassName = cn(\n    \"text-xs font-mono text-muted-foreground hover:text-foreground transition-colors\",\n    direction === \"next\" && \"ml-auto\",\n    className,\n  )\n\n  if (typeof children === \"function\") {\n    return <>{children({ ref: ref ?? null, className: resolvedClassName, rel, direction, \"aria-label\": ariaLabel, ...props })}</>\n  }\n\n  return (\n    <a\n      ref={ref}\n      rel={rel}\n      aria-label={ariaLabel}\n      className={resolvedClassName}\n      {...props}\n    >\n      {direction === \"previous\" && <span aria-hidden=\"true\">&larr; </span>}\n      {children}\n      {direction === \"next\" && <span aria-hidden=\"true\"> &rarr;</span>}\n    </a>\n  )\n}\n",
+      "type": "registry:ui"
+    }
+  ],
+  "meta": {
+    "client": true
+  }
+}

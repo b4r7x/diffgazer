@@ -1,0 +1,31 @@
+---
+title: Introduction
+description: Scoped keyboard hooks for React 19.
+---
+
+`@diffgazer/keys` provides keyboard navigation hooks for React 19 applications.
+
+## Hook Categories
+
+Standalone hooks work independently with no provider or runtime dependency when copied through `dgadd`:
+
+- `useNavigation`
+- `useFocusTrap`
+- `useScrollLock`
+
+Provider-backed hooks require `KeyboardProvider` from the package:
+
+- `useKey`
+- `useScope`
+- `useScopedNavigation`
+- `useFocusZone`
+
+## Integration With @diffgazer/ui
+
+`@diffgazer/ui` components are visual primitives. Components that need keyboard behavior can use copied hooks or package-mode imports from `@diffgazer/keys`.
+
+## Next Steps
+
+- [Installation](/keys/docs/getting-started/installation)
+- [API Reference](/keys/docs/api)
+- [Navigation Guide](/keys/docs/guides/navigation)

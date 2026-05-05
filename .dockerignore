@@ -1,0 +1,15 @@
+.git
+.claude
+.opencode
+.pnpm-store
+node_modules
+**/node_modules
+tmp
+**/dist
+**/.output
+**/.cache
+**/.source
+**/.turbo
+**/coverage
+*.tgz
+*.tsbuildinfo

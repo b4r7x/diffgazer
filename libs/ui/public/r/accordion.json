@@ -1,0 +1,60 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "accordion",
+  "type": "registry:ui",
+  "title": "Accordion",
+  "description": "Collapsible content sections with single or multiple open items",
+  "dependencies": [
+    "class-variance-authority"
+  ],
+  "registryDependencies": [
+    "controllable-state",
+    "icons",
+    "@diffgazer/keys/navigation"
+  ],
+  "files": [
+    {
+      "path": "registry/ui/accordion/index.ts",
+      "content": "import { Accordion as AccordionRoot, type AccordionProps, type AccordionSingleProps, type AccordionMultipleProps } from \"./accordion\";\nimport { AccordionHeader, type AccordionHeaderProps } from \"./accordion-header\";\nimport { AccordionItem, type AccordionItemProps } from \"./accordion-item\";\nimport { AccordionTrigger, type AccordionTriggerProps } from \"./accordion-trigger\";\nimport { AccordionContent, type AccordionContentProps } from \"./accordion-content\";\n\nconst Accordion = Object.assign(AccordionRoot, {\n  Header: AccordionHeader,\n  Item: AccordionItem,\n  Trigger: AccordionTrigger,\n  Content: AccordionContent,\n});\n\nexport { Accordion, type AccordionProps, type AccordionSingleProps, type AccordionMultipleProps };\nexport { AccordionHeader, type AccordionHeaderProps };\nexport { AccordionItem, type AccordionItemProps };\nexport { AccordionTrigger, type AccordionTriggerProps };\nexport { AccordionContent, type AccordionContentProps };\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/accordion/accordion.tsx",
+      "content": "\"use client\";\n\nimport {\n  type KeyboardEvent as ReactKeyboardEvent,\n  type ReactNode,\n  type Ref,\n  useMemo,\n  useRef,\n} from \"react\";\nimport { useNavigation } from \"@/hooks/use-navigation\";\nimport { composeRefs } from \"@/lib/compose-refs\";\nimport { cn } from \"@/lib/utils\";\nimport { AccordionContext } from \"./accordion-context\";\nimport { useAccordionState } from \"./use-accordion-state\";\n\nexport interface AccordionSingleProps {\n  type?: \"single\";\n  value?: string;\n  onChange?: (value: string | undefined) => void;\n  defaultValue?: string;\n  collapsible?: boolean;\n  children: ReactNode;\n  className?: string;\n  ref?: Ref<HTMLDivElement>;\n  onKeyDown?: (event: ReactKeyboardEvent) => void;\n}\n\nexport interface AccordionMultipleProps {\n  type: \"multiple\";\n  value?: string[];\n  onChange?: (value: string[]) => void;\n  defaultValue?: string[];\n  children: ReactNode;\n  className?: string;\n  ref?: Ref<HTMLDivElement>;\n  onKeyDown?: (event: ReactKeyboardEvent) => void;\n}\n\nexport type AccordionProps = AccordionSingleProps | AccordionMultipleProps;\n\nfunction AccordionRoot(props: AccordionProps) {\n  const { ref, onKeyDown: externalOnKeyDown } = props;\n  const { openValues, onToggle, collapsible } = useAccordionState(props);\n  const containerRef = useRef<HTMLDivElement>(null);\n\n  const { onKeyDown: navKeyDown } = useNavigation({\n    containerRef,\n    role: \"button\",\n    orientation: \"vertical\",\n    wrap: true,\n    moveFocus: true,\n  });\n\n  const handleKeyDown = (e: ReactKeyboardEvent) => {\n    externalOnKeyDown?.(e);\n    if (!e.defaultPrevented) navKeyDown(e);\n  };\n\n  const contextValue = useMemo(\n    () => ({ value: openValues, onToggle, collapsible }),\n    [openValues, collapsible],\n  );\n\n  return (\n    <AccordionContext value={contextValue}>\n      <div\n        ref={composeRefs(containerRef, ref)}\n        role=\"group\"\n        className={cn(\"divide-y divide-border\", props.className)}\n        onKeyDown={handleKeyDown}\n      >\n        {props.children}\n      </div>\n    </AccordionContext>\n  );\n}\n\nexport { AccordionRoot as Accordion };\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/accordion/accordion-context.tsx",
+      "content": "\"use client\";\n\nimport { createContext, useContext } from \"react\";\n\nexport interface AccordionContextValue {\n  value: string[];\n  onToggle: (itemValue: string) => void;\n  collapsible: boolean;\n}\n\nexport const AccordionContext = createContext<AccordionContextValue | undefined>(undefined);\n\nexport function useAccordionContext() {\n  const context = useContext(AccordionContext);\n  if (!context) {\n    throw new Error(\"Accordion compound components must be used within Accordion\");\n  }\n  return context;\n}\n\nexport interface AccordionItemContextValue {\n  value: string;\n  isOpen: boolean;\n  disabled: boolean;\n  triggerId: string;\n  contentId: string;\n}\n\nexport const AccordionItemContext = createContext<AccordionItemContextValue | undefined>(undefined);\n\nexport function useAccordionItemContext() {\n  const context = useContext(AccordionItemContext);\n  if (!context) {\n    throw new Error(\"AccordionTrigger/AccordionContent must be used within AccordionItem\");\n  }\n  return context;\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/accordion/accordion-header.tsx",
+      "content": "\"use client\";\n\nimport { type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport interface AccordionHeaderProps {\n  as?: \"h2\" | \"h3\" | \"h4\" | \"h5\" | \"h6\";\n  children: ReactNode;\n  className?: string;\n}\n\nexport function AccordionHeader({ as: Tag = \"h3\", children, className }: AccordionHeaderProps) {\n  return <Tag className={cn(\"m-0 font-normal\", className)}>{children}</Tag>;\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/accordion/accordion-item.tsx",
+      "content": "\"use client\";\n\nimport { useId, useMemo, type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useAccordionContext, AccordionItemContext } from \"./accordion-context\";\n\nexport interface AccordionItemProps {\n  value: string;\n  disabled?: boolean;\n  children: ReactNode;\n  className?: string;\n}\n\nexport function AccordionItem({ value, disabled = false, children, className }: AccordionItemProps) {\n  const { value: openValues } = useAccordionContext();\n  const isOpen = openValues.includes(value);\n  const itemId = useId();\n  const triggerId = `${itemId}-trigger`;\n  const contentId = `${itemId}-content`;\n\n  const contextValue = useMemo(() => ({ value, isOpen, disabled, triggerId, contentId }), [value, isOpen, disabled, triggerId, contentId]);\n\n  return (\n    <AccordionItemContext value={contextValue}>\n      <div className={cn(\"py-2\", className)} data-state={isOpen ? \"open\" : \"closed\"} data-disabled={disabled || undefined}>\n        {children}\n      </div>\n    </AccordionItemContext>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/accordion/accordion-trigger.tsx",
+      "content": "\"use client\";\n\nimport { type ReactNode } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { Chevron } from \"../icons/chevron\";\nimport { useAccordionContext, useAccordionItemContext } from \"./accordion-context\";\n\nconst triggerVariants = cva(\n  \"flex w-full items-center gap-2 font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground\",\n  {\n    variants: {\n      variant: {\n        default: \"text-sm\",\n        source: \"text-xs mb-2\",\n      },\n    },\n    defaultVariants: { variant: \"default\" },\n  }\n);\n\nexport interface AccordionTriggerProps extends VariantProps<typeof triggerVariants> {\n  children: ReactNode;\n  className?: string;\n  /** Custom handle element. Defaults to an animated Chevron. Pass `null` to hide. */\n  handle?: ReactNode | null;\n}\n\nexport function AccordionTrigger({ children, className, variant, handle }: AccordionTriggerProps) {\n  const { onToggle, collapsible } = useAccordionContext();\n  const { value, isOpen, disabled, triggerId, contentId } = useAccordionItemContext();\n\n  const isDisabled = disabled || (!collapsible && isOpen);\n  const resolvedHandle = handle === undefined ? <Chevron open={isOpen} size=\"sm\" /> : handle;\n\n  // role=\"button\" is redundant on <button> but required: useNavigation queries [role=\"button\"] as a CSS attribute selector\n  return (\n    <button\n      type=\"button\"\n      role=\"button\"\n      id={triggerId}\n      data-value={value}\n      onClick={() => onToggle(value)}\n      disabled={isDisabled}\n      aria-expanded={isOpen}\n      aria-controls={contentId}\n      className={cn(triggerVariants({ variant }), className)}\n    >\n      {resolvedHandle}\n      {children}\n    </button>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/accordion/accordion-content.tsx",
+      "content": "\"use client\";\n\nimport { type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useAccordionItemContext } from \"./accordion-context\";\n\nexport interface AccordionContentProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function AccordionContent({ children, className }: AccordionContentProps) {\n  const { isOpen, triggerId, contentId } = useAccordionItemContext();\n\n  return (\n    <div\n      className={cn(\n        \"grid transition-[grid-template-rows] duration-200 ease-out\",\n        isOpen ? \"grid-rows-[1fr]\" : \"grid-rows-[0fr]\"\n      )}\n      aria-hidden={!isOpen || undefined}\n      inert={!isOpen || undefined}\n    >\n      <div\n        className={cn(\"overflow-hidden min-h-0 pt-2\", className)}\n        role=\"region\"\n        id={contentId}\n        aria-labelledby={triggerId}\n      >\n        {children}\n      </div>\n    </div>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/accordion/use-accordion-state.ts",
+      "content": "\"use client\";\n\nimport { useEffectEvent } from \"react\";\nimport {\n  useControllableState,\n  type UseControllableStateOptions,\n} from \"@/hooks/use-controllable-state\";\nimport type { AccordionProps } from \"./accordion\";\n\nfunction normalizeStateOptions(\n  props: AccordionProps,\n): UseControllableStateOptions<string[]> {\n  if (props.type === \"multiple\") {\n    return {\n      value: props.value,\n      defaultValue: props.defaultValue ?? [],\n      onChange: props.onChange,\n    };\n  }\n  const { onChange } = props;\n  return {\n    value: props.value !== undefined ? [props.value] : undefined,\n    defaultValue: props.defaultValue !== undefined ? [props.defaultValue] : [],\n    onChange: onChange ? (v: string[]) => onChange(v[0]) : undefined,\n  };\n}\n\nfunction toggleSingle(\n  prev: string[],\n  value: string,\n  collapsible: boolean,\n): string[] {\n  return prev.includes(value) ? (collapsible ? [] : prev) : [value];\n}\n\nfunction toggleMultiple(prev: string[], value: string): string[] {\n  return prev.includes(value)\n    ? prev.filter((v) => v !== value)\n    : [...prev, value];\n}\n\nexport function useAccordionState(props: AccordionProps) {\n  const isSingle = props.type !== \"multiple\";\n  const collapsible = props.type !== \"multiple\"\n    ? (props.collapsible ?? true)\n    : true;\n\n  const [openValues, setOpenValues] = useControllableState(\n    normalizeStateOptions(props),\n  );\n\n  const onToggle = useEffectEvent((itemValue: string) => {\n    setOpenValues((prev) =>\n      isSingle\n        ? toggleSingle(prev, itemValue, collapsible)\n        : toggleMultiple(prev, itemValue),\n    );\n  });\n\n  return { openValues, onToggle, collapsible };\n}\n",
+      "type": "registry:ui"
+    }
+  ],
+  "meta": {
+    "client": true
+  }
+}

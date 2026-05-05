@@ -1,0 +1,37 @@
+{
+  "primaryLibraryId": "ui",
+  "libraries": [
+    {
+      "id": "ui",
+      "displayName": "@diffgazer/ui",
+      "logoText": "@diffgazer/ui",
+      "githubUrl": "https://github.com/b4r7/diffgazer/tree/main/libs/ui",
+      "enabled": true,
+      "defaultRouteSlugs": ["getting-started", "installation"],
+      "artifactSource": {
+        "workspaceDir": "libs/ui",
+        "packageName": "@diffgazer/ui-artifacts"
+      }
+    },
+    {
+      "id": "keys",
+      "displayName": "@diffgazer/keys",
+      "logoText": "@diffgazer/keys",
+      "githubUrl": "https://github.com/b4r7/diffgazer/tree/main/libs/keys",
+      "enabled": true,
+      "defaultRouteSlugs": ["getting-started", "installation"],
+      "artifactSource": {
+        "workspaceDir": "libs/keys",
+        "packageName": "@diffgazer/keys-artifacts"
+      }
+    },
+    {
+      "id": "diffgazer",
+      "displayName": "Diffgazer",
+      "logoText": "diffgazer",
+      "githubUrl": "https://github.com/b4r7/diffgazer",
+      "enabled": true,
+      "defaultRouteSlugs": ["getting-started"]
+    }
+  ]
+}

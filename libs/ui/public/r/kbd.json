@@ -1,0 +1,28 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "kbd",
+  "type": "registry:ui",
+  "title": "Kbd",
+  "description": "Keyboard shortcut indicator",
+  "dependencies": [
+    "class-variance-authority"
+  ],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/ui/kbd/index.ts",
+      "content": "import { Kbd as KbdRoot, kbdVariants, type KbdProps } from \"./kbd\";\nimport { KbdGroup, type KbdGroupProps } from \"./kbd-group\";\n\nconst Kbd = Object.assign(KbdRoot, {\n  Group: KbdGroup,\n});\n\nexport { Kbd, kbdVariants, type KbdProps };\nexport { KbdGroup, type KbdGroupProps };\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/kbd/kbd.tsx",
+      "content": "\"use client\";\n\nimport type { HTMLAttributes, Ref } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const kbdVariants = cva(\n  \"inline-flex items-center justify-center border border-border bg-secondary font-mono text-foreground rounded-sm\",\n  {\n    variants: {\n      size: {\n        sm: \"px-1 py-0.5 text-[10px] min-w-[18px]\",\n        md: \"px-1.5 py-0.5 text-xs min-w-[20px]\",\n      },\n    },\n    defaultVariants: {\n      size: \"md\",\n    },\n  }\n);\n\nexport interface KbdProps\n  extends HTMLAttributes<HTMLElement>,\n    VariantProps<typeof kbdVariants> {\n  ref?: Ref<HTMLElement>;\n}\n\nexport function Kbd({ ref, className, size, ...props }: KbdProps) {\n  return (\n    <kbd ref={ref} className={cn(kbdVariants({ size }), className)} {...props} />\n  );\n}",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/kbd/kbd-group.tsx",
+      "content": "\"use client\";\n\nimport type { HTMLAttributes, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport interface KbdGroupProps extends HTMLAttributes<HTMLElement> {\n  ref?: Ref<HTMLElement>;\n}\n\nexport function KbdGroup({\n  ref,\n  className,\n  children,\n  ...props\n}: KbdGroupProps) {\n  return (\n    <kbd\n      ref={ref}\n      className={cn(\"inline-flex items-center gap-1\", className)}\n      {...props}\n    >\n      {children}\n    </kbd>\n  );\n}\n",
+      "type": "registry:ui"
+    }
+  ]
+}

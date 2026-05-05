@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "scroll-lock",
+  "type": "registry:hook",
+  "title": "Scroll Lock",
+  "description": "Prevent body/element scrolling with reference counting",
+  "dependencies": [],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "src/hooks/use-scroll-lock.ts",
+      "content": "\"use client\";\n\nimport { useEffect, type RefObject } from \"react\";\n\nconst lockCounts = new WeakMap<Element, number>();\nconst savedOverflow = new WeakMap<Element, string>();\n\nexport interface UseScrollLockOptions {\n  target?: RefObject<HTMLElement | null>;\n  enabled?: boolean;\n}\n\nexport function useScrollLock(options: UseScrollLockOptions = {}): void {\n  const { target, enabled = true } = options;\n\n  useEffect(() => {\n    if (!enabled) return;\n\n    const el = target?.current ?? document.body;\n    const count = lockCounts.get(el) ?? 0;\n\n    if (count === 0) {\n      savedOverflow.set(el, el.style.overflow);\n      el.style.overflow = \"hidden\";\n    }\n    lockCounts.set(el, count + 1);\n\n    return () => {\n      const current = lockCounts.get(el) ?? 1;\n      const next = current - 1;\n      if (next <= 0) {\n        lockCounts.delete(el);\n        el.style.overflow = savedOverflow.get(el) ?? \"\";\n        savedOverflow.delete(el);\n      } else {\n        lockCounts.set(el, next);\n      }\n    };\n  }, [enabled, target]);\n}",
+      "type": "registry:hook"
+    }
+  ],
+  "meta": {
+    "client": true
+  }
+}

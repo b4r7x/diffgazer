@@ -1,0 +1,39 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "overflow",
+  "type": "registry:ui",
+  "title": "Overflow",
+  "description": "Container-aware overflow handling for items (dynamic fitting with indicator) and text (line clamping with tooltip).",
+  "dependencies": [],
+  "registryDependencies": [
+    "tooltip",
+    "overflow-detection",
+    "overflow-items",
+    "compose-refs"
+  ],
+  "files": [
+    {
+      "path": "registry/ui/overflow/index.ts",
+      "content": "export { Overflow, type OverflowProps } from \"./overflow\";\nexport type { OverflowIndicatorRender, OverflowIndicatorRenderProps } from \"./overflow-items\";\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/overflow/overflow.tsx",
+      "content": "\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { OverflowText } from \"./overflow-text\";\nimport { OverflowItems, type OverflowIndicatorRender } from \"./overflow-items\";\n\ntype OverflowTextProps = {\n  mode?: \"text\";\n  lines?: number;\n  tooltip?: ReactNode | boolean;\n  gap?: never;\n  indicator?: never;\n  children: string;\n  className?: string;\n};\n\ntype OverflowItemsProps = {\n  mode: \"items\";\n  lines?: never;\n  tooltip?: never;\n  gap?: string;\n  indicator?: OverflowIndicatorRender;\n  children: ReactNode;\n  className?: string;\n};\n\nexport type OverflowProps = OverflowTextProps | OverflowItemsProps;\n\nexport function Overflow({ mode, children, ...rest }: OverflowProps) {\n  if (mode === \"items\") {\n    return <OverflowItems {...rest}>{children}</OverflowItems>;\n  }\n\n  return <OverflowText {...rest}>{children}</OverflowText>;\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/overflow/overflow-text.tsx",
+      "content": "\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { composeRefs } from \"@/lib/compose-refs\";\nimport { useOverflow } from \"@/hooks/use-overflow\";\nimport { TooltipRoot as Tooltip } from \"../tooltip/tooltip\";\nimport { TooltipContent } from \"../tooltip/tooltip-content\";\nimport { PopoverTrigger as TooltipTrigger } from \"../popover/popover-trigger\";\n\nfunction resolveTooltipContent(\n  tooltip: ReactNode | boolean | undefined,\n  children: string,\n): ReactNode | null {\n  if (tooltip === false) return null;\n  if (tooltip != null && tooltip !== true) return tooltip;\n  return children;\n}\n\nexport interface OverflowTextProps {\n  children: string;\n  lines?: number;\n  tooltip?: ReactNode | boolean;\n  className?: string;\n}\n\nfunction clampStyle(lines: number): React.CSSProperties | undefined {\n  if (lines <= 1) return undefined;\n  return {\n    display: \"-webkit-box\",\n    WebkitLineClamp: lines,\n    WebkitBoxOrient: \"vertical\",\n    overflow: \"hidden\",\n  };\n}\n\nexport function OverflowText({\n  children,\n  lines = 1,\n  tooltip,\n  className,\n}: OverflowTextProps) {\n  const { ref, isOverflowing } = useOverflow<HTMLDivElement>(lines > 1 ? \"vertical\" : \"horizontal\");\n\n  const resolvedTooltip = resolveTooltipContent(tooltip, children);\n  const style = clampStyle(lines);\n\n  if (resolvedTooltip != null) {\n    return (\n      <Tooltip enabled={isOverflowing}>\n        <TooltipTrigger>\n          {({ ref: triggerRef, className: triggerCn, ...restTrigger }) => (\n            <div\n              ref={composeRefs(ref, triggerRef)}\n              className={cn(lines === 1 && \"truncate\", className, triggerCn)}\n              style={style}\n              {...restTrigger}\n            >\n              {children}\n            </div>\n          )}\n        </TooltipTrigger>\n        <TooltipContent>{resolvedTooltip}</TooltipContent>\n      </Tooltip>\n    );\n  }\n\n  return (\n    <div\n      ref={ref}\n      className={cn(lines === 1 && \"truncate\", className)}\n      style={style}\n    >\n      {children}\n    </div>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/overflow/overflow-items.tsx",
+      "content": "\"use client\";\n\nimport { Children, type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useOverflowItems } from \"@/hooks/use-overflow-items\";\n\nexport interface OverflowIndicatorRenderProps {\n  count: number;\n}\n\nexport type OverflowIndicatorRender =\n  | ((props: OverflowIndicatorRenderProps) => ReactNode)\n  | ReactNode;\n\nconst hiddenClass = \"invisible absolute pointer-events-none\";\n\nexport interface OverflowItemsProps {\n  children: ReactNode;\n  indicator?: OverflowIndicatorRender;\n  gap?: string;\n  className?: string;\n}\n\nfunction DefaultBadge() {\n  return (\n    <span aria-hidden=\"true\" className=\"inline-flex items-center border border-dashed border-foreground/30 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground\">\n      …\n    </span>\n  );\n}\n\nfunction IndicatorDisplay({ indicator, count }: { indicator?: OverflowIndicatorRender; count: number }) {\n  if (typeof indicator === \"function\") {\n    return <>{indicator({ count })}</>;\n  }\n  return <>{indicator ?? <DefaultBadge />}</>;\n}\n\nexport function OverflowItems({\n  children,\n  indicator,\n  gap = \"gap-1\",\n  className,\n}: OverflowItemsProps) {\n  const items = Children.toArray(children);\n  const { ref, visibleCount, overflowCount } =\n    useOverflowItems({ itemCount: items.length });\n\n  return (\n    <div\n      ref={ref}\n      className={cn(\"relative flex items-center overflow-clip\", gap, className)}\n    >\n      {items.map((item, i) => (\n        // eslint-disable-next-line react/no-array-index-key\n        <div key={i} className={cn(\"shrink-0\", i >= visibleCount && hiddenClass)} inert={i >= visibleCount || undefined}>\n          {item}\n        </div>\n      ))}\n      <div\n        className={cn(\"shrink-0\", overflowCount === 0 && hiddenClass)}\n        role={overflowCount > 0 ? \"status\" : undefined}\n        aria-label={overflowCount > 0 ? `${overflowCount} more items` : undefined}\n        inert={overflowCount === 0 || undefined}\n      >\n        <IndicatorDisplay indicator={indicator} count={overflowCount} />\n      </div>\n    </div>\n  );\n}\n",
+      "type": "registry:ui"
+    }
+  ],
+  "meta": {
+    "client": true
+  }
+}

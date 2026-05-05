@@ -1,0 +1,24 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "label",
+  "type": "registry:ui",
+  "title": "Label",
+  "description": "Styled label with optional form control wrapping and orientation support.",
+  "dependencies": [],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/ui/label/index.ts",
+      "content": "export { Label, labelVariants, type LabelProps, type LabelColor, type LabelOrientation } from \"./label\";\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/label/label.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport type LabelColor = \"default\" | \"primary\" | \"success\" | \"warning\" | \"error\";\nexport type LabelOrientation = \"vertical\" | \"horizontal\";\n\nexport interface LabelProps extends ComponentPropsWithRef<\"label\"> {\n  color?: LabelColor;\n  label?: string;\n  orientation?: LabelOrientation;\n  required?: boolean;\n}\n\nexport const labelVariants = cva(\"text-xs uppercase font-bold select-none\", {\n  variants: {\n    color: {\n      default: \"text-muted-foreground\",\n      primary: \"text-foreground\",\n      success: \"text-success\",\n      warning: \"text-warning\",\n      error: \"text-destructive\",\n    },\n  },\n  defaultVariants: { color: \"default\" },\n});\n\nfunction RequiredIndicator() {\n  return <span className=\"text-destructive\" aria-hidden=\"true\"> *</span>;\n}\n\nexport function Label({\n  color = \"default\",\n  label,\n  orientation = \"vertical\",\n  required,\n  className,\n  ref,\n  children,\n  onMouseDown,\n  ...props\n}: LabelProps) {\n  const handleMouseDown = (event: React.MouseEvent<HTMLLabelElement>) => {\n    const target = event.target as HTMLElement;\n    if (target.closest(\"button, input, select, textarea\")) return;\n    onMouseDown?.(event);\n    if (!event.defaultPrevented && event.detail > 1) event.preventDefault();\n  };\n\n  if (label) {\n    return (\n      <label\n        ref={ref}\n        className={cn(\n          orientation === \"vertical\" ? \"flex flex-col gap-1\" : \"flex items-center gap-2\",\n          \"has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-70\",\n          className,\n        )}\n        onMouseDown={handleMouseDown}\n        {...props}\n      >\n        <span className={labelVariants({ color })}>\n          {label}\n          {required && <RequiredIndicator />}\n        </span>\n        {children}\n      </label>\n    );\n  }\n\n  return (\n    <label\n      ref={ref}\n      className={cn(\n        labelVariants({ color }),\n        \"peer-disabled:cursor-not-allowed peer-disabled:opacity-70\",\n        className,\n      )}\n      onMouseDown={handleMouseDown}\n      {...props}\n    >\n      {children}\n      {required && <RequiredIndicator />}\n    </label>\n  );\n}\n",
+      "type": "registry:ui"
+    }
+  ],
+  "meta": {
+    "client": true
+  }
+}

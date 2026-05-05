@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "scroll-area",
+  "type": "registry:ui",
+  "title": "Scroll Area",
+  "description": "Custom scrollable area with styled scrollbars",
+  "dependencies": [],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/ui/scroll-area/index.ts",
+      "content": "export { ScrollArea, type ScrollAreaProps, type ScrollOrientation } from \"./scroll-area\";\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/scroll-area/scroll-area.tsx",
+      "content": "\"use client\";\n\nimport { type ComponentPropsWithRef, type KeyboardEvent } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type ScrollOrientation = \"vertical\" | \"horizontal\" | \"both\";\n\nconst orientationClasses: Record<ScrollOrientation, string> = {\n  vertical: \"overflow-y-auto overflow-x-hidden\",\n  horizontal: \"overflow-x-auto overflow-y-hidden\",\n  both: \"overflow-auto\",\n};\n\nexport interface ScrollAreaProps extends ComponentPropsWithRef<\"div\"> {\n  orientation?: ScrollOrientation;\n  keyboardScrollable?: boolean;\n}\n\nexport function ScrollArea({\n  children,\n  className,\n  orientation = \"vertical\",\n  keyboardScrollable = true,\n  ref,\n  onKeyDown,\n  ...props\n}: ScrollAreaProps) {\n  const canScrollV = orientation === \"vertical\" || orientation === \"both\";\n  const canScrollH = orientation === \"horizontal\" || orientation === \"both\";\n  const role = props[\"aria-label\"] || props[\"aria-labelledby\"] ? \"region\" : undefined;\n\n  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {\n    onKeyDown?.(e);\n    if (e.defaultPrevented) return;\n\n    const el = e.currentTarget;\n    const pageStep = el.clientHeight * 0.8;\n\n    switch (e.key) {\n      case \"ArrowUp\":\n        if (!canScrollV) break;\n        el.scrollTop -= 40;\n        e.preventDefault();\n        break;\n      case \"ArrowDown\":\n        if (!canScrollV) break;\n        el.scrollTop += 40;\n        e.preventDefault();\n        break;\n      case \"ArrowLeft\":\n        if (!canScrollH) break;\n        el.scrollLeft -= 40;\n        e.preventDefault();\n        break;\n      case \"ArrowRight\":\n        if (!canScrollH) break;\n        el.scrollLeft += 40;\n        e.preventDefault();\n        break;\n      case \"PageUp\":\n        el.scrollTop -= pageStep;\n        e.preventDefault();\n        break;\n      case \"PageDown\":\n        el.scrollTop += pageStep;\n        e.preventDefault();\n        break;\n      case \"Home\":\n        el.scrollTop = 0;\n        if (canScrollH) el.scrollLeft = 0;\n        e.preventDefault();\n        break;\n      case \"End\":\n        el.scrollTop = el.scrollHeight;\n        if (canScrollH) el.scrollLeft = el.scrollWidth;\n        e.preventDefault();\n        break;\n    }\n  };\n\n  return (\n    <div\n      ref={ref}\n      role={role}\n      tabIndex={keyboardScrollable ? 0 : undefined}\n      onKeyDown={keyboardScrollable ? handleKeyDown : onKeyDown}\n      className={cn(\n        \"scrollbar-thin rounded-[inherit] [scrollbar-gutter:stable]\",\n        keyboardScrollable && \"focus:outline-none focus-visible:ring-1 focus-visible:ring-ring\",\n        orientationClasses[orientation],\n        className,\n      )}\n      {...props}\n    >\n      {children}\n    </div>\n  );\n}",
+      "type": "registry:ui"
+    }
+  ]
+}

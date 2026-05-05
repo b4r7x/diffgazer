@@ -1,0 +1,35 @@
+---
+title: dgadd remove
+description: Remove installed @diffgazer/ui components and @diffgazer/keys hooks.
+---
+
+## Usage
+
+```bash
+dgadd remove <item> [item...]
+```
+
+## Examples
+
+```bash
+dgadd remove ui/button
+dgadd remove ui/tabs ui/menu keys/navigation
+dgadd remove ui/tabs --dry-run
+```
+
+## What It Does
+
+1. Validates item names against the bundled registry.
+2. Resolves installed files for those items.
+3. Skips files still used by other installed items.
+4. Removes selected files and cleans empty directories.
+5. Updates the local `diffgazer.json` manifest.
+6. Prints potentially orphaned npm dependencies.
+
+## Options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--cwd <path>` | Working directory | `.` |
+| `--yes` | Skip confirmation prompt | `false` |
+| `--dry-run` | Preview changes without removing files | `false` |

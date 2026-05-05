@@ -1,0 +1,91 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "sidebar",
+  "type": "registry:ui",
+  "title": "Sidebar",
+  "description": "Compound sidebar navigation component",
+  "dependencies": [
+    "class-variance-authority"
+  ],
+  "registryDependencies": [
+    "icons",
+    "controllable-state",
+    "@diffgazer/keys/navigation",
+    "compose-refs"
+  ],
+  "files": [
+    {
+      "path": "registry/ui/sidebar/index.ts",
+      "content": "import { Sidebar as SidebarRoot, type SidebarProps } from \"./sidebar\";\nimport { SidebarProvider, type SidebarProviderProps } from \"./sidebar-provider\";\nimport { SidebarTrigger, type SidebarTriggerProps } from \"./sidebar-trigger\";\nimport { SidebarHeader, type SidebarHeaderProps } from \"./sidebar-header\";\nimport { SidebarContent, type SidebarContentProps } from \"./sidebar-content\";\nimport { SidebarSection, type SidebarSectionProps } from \"./sidebar-section\";\nimport { SidebarSectionTitle, type SidebarSectionTitleProps } from \"./sidebar-section-title\";\nimport { SidebarItem, type SidebarItemProps, type SidebarItemAsButtonProps, type SidebarItemAsAnchorProps, type SidebarItemRenderProps } from \"./sidebar-item\";\nimport { SidebarItemLabel, type SidebarItemLabelProps } from \"./sidebar-item-label\";\nimport { SidebarItemBadge, type SidebarItemBadgeProps } from \"./sidebar-item-badge\";\nimport { SidebarFooter, type SidebarFooterProps } from \"./sidebar-footer\";\n\nconst Sidebar = Object.assign(SidebarRoot, {\n  Provider: SidebarProvider,\n  Trigger: SidebarTrigger,\n  Header: SidebarHeader,\n  Content: SidebarContent,\n  Section: SidebarSection,\n  SectionTitle: SidebarSectionTitle,\n  Item: SidebarItem,\n  ItemLabel: SidebarItemLabel,\n  ItemBadge: SidebarItemBadge,\n  Footer: SidebarFooter,\n});\n\nexport { Sidebar, type SidebarProps };\nexport { SidebarProvider, type SidebarProviderProps };\nexport { SidebarTrigger, type SidebarTriggerProps };\nexport { SidebarHeader, type SidebarHeaderProps };\nexport { SidebarContent, type SidebarContentProps };\nexport { SidebarSection, type SidebarSectionProps };\nexport { SidebarSectionTitle, type SidebarSectionTitleProps };\nexport { SidebarItem, type SidebarItemProps, type SidebarItemAsButtonProps, type SidebarItemAsAnchorProps, type SidebarItemRenderProps };\nexport { SidebarItemLabel, type SidebarItemLabelProps };\nexport { SidebarItemBadge, type SidebarItemBadgeProps };\nexport { SidebarFooter, type SidebarFooterProps };\nexport { useSidebar } from \"./sidebar-context\";\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/sidebar/sidebar.tsx",
+      "content": "\"use client\";\n\nimport type { HTMLAttributes, ReactNode, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useOptionalSidebar } from \"./sidebar-context\";\nimport { SidebarProvider } from \"./sidebar-provider\";\n\nexport interface SidebarProps extends HTMLAttributes<HTMLElement> {\n  ref?: Ref<HTMLElement>;\n  collapsed?: boolean;\n  onCollapsedChange?: (collapsed: boolean) => void;\n  defaultCollapsed?: boolean;\n  children: ReactNode;\n}\n\nfunction SidebarNav({ ref, className, ...rest }: HTMLAttributes<HTMLElement> & { ref?: Ref<HTMLElement> }) {\n  return (\n    <nav ref={ref} aria-label=\"Sidebar\" {...rest} className={cn(\"flex flex-col h-full\", className)} />\n  );\n}\n\nexport function Sidebar({\n  ref,\n  collapsed,\n  onCollapsedChange,\n  defaultCollapsed = false,\n  children,\n  className,\n  ...rest\n}: SidebarProps) {\n  const existingContext = useOptionalSidebar();\n\n  if (existingContext) {\n    return <SidebarNav ref={ref} className={className} {...rest}>{children}</SidebarNav>;\n  }\n\n  return (\n    <SidebarProvider\n      collapsed={collapsed}\n      onCollapsedChange={onCollapsedChange}\n      defaultCollapsed={defaultCollapsed}\n    >\n      <SidebarNav ref={ref} className={className} {...rest}>{children}</SidebarNav>\n    </SidebarProvider>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/sidebar/sidebar-context.tsx",
+      "content": "\"use client\";\n\nimport { createContext, useContext } from \"react\";\n\nexport interface SidebarContextValue {\n  collapsed: boolean;\n  onCollapsedChange: (collapsed: boolean) => void;\n  toggleSidebar: () => void;\n}\n\nexport const SidebarContext = createContext<SidebarContextValue | undefined>(undefined);\n\nexport function useSidebar() {\n  const context = useContext(SidebarContext);\n  if (!context) {\n    throw new Error(\"useSidebar must be used within a SidebarProvider or Sidebar\");\n  }\n  return context;\n}\n\nexport function useOptionalSidebar() {\n  return useContext(SidebarContext);\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/sidebar/sidebar-provider.tsx",
+      "content": "\"use client\";\n\nimport { useMemo, type ReactNode } from \"react\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\nimport { SidebarContext } from \"./sidebar-context\";\n\nexport interface SidebarProviderProps {\n  collapsed?: boolean;\n  onCollapsedChange?: (collapsed: boolean) => void;\n  defaultCollapsed?: boolean;\n  children: ReactNode;\n}\n\nexport function SidebarProvider({\n  collapsed: controlledCollapsed,\n  onCollapsedChange,\n  defaultCollapsed = false,\n  children,\n}: SidebarProviderProps) {\n  const [isCollapsed, setIsCollapsed] = useControllableState({\n    value: controlledCollapsed,\n    defaultValue: defaultCollapsed,\n    onChange: onCollapsedChange,\n  });\n\n  const contextValue = useMemo(\n    () => ({\n      collapsed: isCollapsed,\n      onCollapsedChange: setIsCollapsed,\n      toggleSidebar: () => setIsCollapsed(prev => !prev),\n    }),\n    [isCollapsed, setIsCollapsed],\n  );\n\n  return (\n    <SidebarContext value={contextValue}>\n      {children}\n    </SidebarContext>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/sidebar/sidebar-trigger.tsx",
+      "content": "\"use client\";\n\nimport type { ButtonHTMLAttributes, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useSidebar } from \"./sidebar-context\";\n\nexport interface SidebarTriggerProps extends ButtonHTMLAttributes<HTMLButtonElement> {\n  ref?: Ref<HTMLButtonElement>;\n}\n\nexport function SidebarTrigger({ ref, className, onClick, children, \"aria-label\": ariaLabel, ...props }: SidebarTriggerProps) {\n  const { collapsed, toggleSidebar } = useSidebar();\n\n  return (\n    <button\n      {...props}\n      ref={ref}\n      type=\"button\"\n      aria-expanded={!collapsed}\n      aria-label={ariaLabel ?? (collapsed ? \"Expand sidebar\" : \"Collapse sidebar\")}\n      className={cn(\"inline-flex items-center justify-center\", className)}\n      onClick={(e) => {\n        toggleSidebar();\n        onClick?.(e);\n      }}\n    >\n      {children}\n    </button>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/sidebar/sidebar-header.tsx",
+      "content": "\"use client\";\n\nimport type { HTMLAttributes, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport interface SidebarHeaderProps extends HTMLAttributes<HTMLDivElement> {\n  ref?: Ref<HTMLDivElement>;\n}\n\nexport function SidebarHeader({ ref, children, className, ...props }: SidebarHeaderProps) {\n  return (\n    <div ref={ref} className={cn(\"px-4 py-3 border-b border-border shrink-0\", className)} {...props}>\n      {children}\n    </div>\n  );\n}",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/sidebar/sidebar-content.tsx",
+      "content": "\"use client\";\n\nimport { useRef, type HTMLAttributes, type KeyboardEvent, type Ref } from \"react\";\nimport { useNavigation } from \"@/hooks/use-navigation\";\nimport { cn } from \"@/lib/utils\";\nimport { composeRefs } from \"@/lib/compose-refs\";\n\nexport interface SidebarContentProps extends HTMLAttributes<HTMLDivElement> {\n  ref?: Ref<HTMLDivElement>;\n}\n\nexport function SidebarContent({ ref, children, className, onKeyDown, ...props }: SidebarContentProps) {\n  const containerRef = useRef<HTMLDivElement>(null);\n\n  const { onKeyDown: navKeyDown } = useNavigation({\n    containerRef,\n    role: \"menuitem\",\n    orientation: \"vertical\",\n    wrap: true,\n    moveFocus: true,\n  });\n\n  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {\n    navKeyDown(e);\n    onKeyDown?.(e);\n  };\n\n  return (\n    <div\n      ref={composeRefs(containerRef, ref)}\n      role=\"menu\"\n      className={cn(\"flex-1 overflow-y-auto p-4\", className)}\n      onKeyDown={handleKeyDown}\n      {...props}\n    >\n      {children}\n    </div>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/sidebar/sidebar-section.tsx",
+      "content": "\"use client\";\n\nimport { useId, useMemo, type HTMLAttributes, type Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\nimport { SidebarSectionContext } from \"./sidebar-section-context\";\n\nexport interface SidebarSectionProps extends HTMLAttributes<HTMLDivElement> {\n  ref?: Ref<HTMLDivElement>;\n  collapsible?: boolean;\n  open?: boolean;\n  onOpenChange?: (open: boolean) => void;\n  defaultOpen?: boolean;\n}\n\nexport function SidebarSection({\n  ref,\n  collapsible = false,\n  open: controlledOpen,\n  onOpenChange,\n  defaultOpen = true,\n  className,\n  children,\n  ...rest\n}: SidebarSectionProps) {\n  const titleId = useId();\n\n  const [isOpen, setIsOpen] = useControllableState<boolean>({\n    value: controlledOpen,\n    defaultValue: defaultOpen,\n    onChange: onOpenChange,\n  });\n\n  const contextValue = useMemo(\n    () => ({\n      collapsible,\n      open: isOpen,\n      onToggle: () => setIsOpen(prev => !prev),\n      titleId,\n    }),\n    [collapsible, isOpen, setIsOpen, titleId],\n  );\n\n  return (\n    <SidebarSectionContext value={contextValue}>\n      <div\n        {...rest}\n        ref={ref}\n        role=\"group\"\n        aria-labelledby={titleId}\n        data-state={isOpen ? \"open\" : \"closed\"}\n        className={cn(\"mb-4\", className)}\n      >\n        {children}\n      </div>\n    </SidebarSectionContext>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/sidebar/sidebar-section-context.tsx",
+      "content": "\"use client\";\n\nimport { createContext, useContext } from \"react\";\n\nexport interface SidebarSectionContextValue {\n  collapsible: boolean;\n  open: boolean;\n  onToggle: () => void;\n  titleId: string;\n}\n\nexport const SidebarSectionContext = createContext<SidebarSectionContextValue | undefined>(undefined);\n\nexport function useSidebarSectionContext() {\n  const context = useContext(SidebarSectionContext);\n  if (!context) {\n    throw new Error(\"SidebarSection compound components must be used within a SidebarSection\");\n  }\n  return context;\n}\n\nexport function useOptionalSidebarSectionContext() {\n  return useContext(SidebarSectionContext);\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/sidebar/sidebar-section-title.tsx",
+      "content": "\"use client\";\n\nimport type { HTMLAttributes, MouseEvent, ReactNode, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { Chevron } from \"../icons/chevron\";\nimport { useSidebarSectionContext } from \"./sidebar-section-context\";\n\nexport interface SidebarSectionTitleProps extends HTMLAttributes<HTMLElement> {\n  ref?: Ref<HTMLElement>;\n  handle?: ReactNode | null;\n}\n\nexport function SidebarSectionTitle({ ref, children, className, onClick, handle, ...rest }: SidebarSectionTitleProps) {\n  const { collapsible, open, onToggle, titleId } = useSidebarSectionContext();\n  const resolvedHandle = handle === undefined ? <Chevron open={open} size=\"sm\" /> : handle;\n  const isInteractive = collapsible || !!onClick;\n\n  const handleClick = isInteractive\n    ? (e: MouseEvent<HTMLElement>) => {\n        if (collapsible) onToggle();\n        onClick?.(e);\n      }\n    : undefined;\n\n  const computedClassName = cn(\n    \"px-2 py-2 text-muted-foreground text-xs font-mono font-bold\",\n    isInteractive && \"text-left w-full appearance-none cursor-pointer select-none\",\n    collapsible && \"flex items-center gap-1\",\n    className,\n  );\n\n  if (isInteractive) {\n    return (\n      <button\n        {...rest}\n        ref={ref as Ref<HTMLButtonElement>}\n        type=\"button\"\n        id={titleId}\n        className={computedClassName}\n        onClick={handleClick}\n        aria-expanded={collapsible ? open : undefined}\n      >\n        {collapsible && resolvedHandle}\n        {children}\n      </button>\n    );\n  }\n\n  return (\n    <div\n      {...rest}\n      ref={ref as Ref<HTMLDivElement>}\n      id={titleId}\n      className={computedClassName}\n    >\n      {children}\n    </div>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/sidebar/sidebar-item.tsx",
+      "content": "\"use client\";\n\nimport { cva } from \"class-variance-authority\";\nimport type {\n  AnchorHTMLAttributes,\n  ButtonHTMLAttributes,\n  MouseEvent as ReactMouseEvent,\n  ReactNode,\n  Ref,\n} from \"react\";\n\nimport { cn } from \"@/lib/utils\";\nimport { useOptionalSidebarSectionContext } from \"./sidebar-section-context\";\n\nconst sidebarItemVariants = cva(\n  \"flex items-center gap-2 w-full min-w-0 px-2 py-1 rounded text-sm font-mono cursor-pointer transition-colors\",\n  {\n    variants: {\n      active: {\n        true: \"bg-foreground/10 text-foreground border-l-2 border-foreground\",\n        false: \"text-foreground/70 hover:text-foreground hover:bg-secondary\",\n      },\n      disabled: {\n        true: \"opacity-50 cursor-not-allowed\",\n      },\n    },\n    defaultVariants: {\n      active: false,\n    },\n  },\n);\n\nexport interface SidebarItemRenderProps {\n  ref?: Ref<HTMLElement>;\n  role: \"menuitem\";\n  className: string;\n  disabled?: boolean;\n  \"aria-current\"?: \"page\";\n  \"data-value\"?: string;\n  \"data-disabled\"?: \"\";\n}\n\ninterface SidebarItemSharedProps {\n  active?: boolean;\n  value?: string;\n  children: ReactNode | ((props: SidebarItemRenderProps) => ReactNode);\n  className?: string;\n  disabled?: boolean;\n}\n\nexport interface SidebarItemAsButtonProps\n  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, \"children\" | \"disabled\" | \"value\">,\n    SidebarItemSharedProps {\n  as?: \"button\";\n  ref?: Ref<HTMLButtonElement>;\n}\n\nexport interface SidebarItemAsAnchorProps\n  extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, \"children\" | \"value\">,\n    SidebarItemSharedProps {\n  as: \"a\";\n  ref?: Ref<HTMLAnchorElement>;\n}\n\nexport type SidebarItemProps = SidebarItemAsButtonProps | SidebarItemAsAnchorProps;\n\nexport function SidebarItem(props: SidebarItemProps) {\n  const {\n    active = false,\n    value,\n    children,\n    className,\n    disabled = false,\n    as: elementType,\n    ...rest\n  } = props;\n\n  const sectionContext = useOptionalSidebarSectionContext();\n\n  if (sectionContext && !sectionContext.open) return null;\n\n  const sharedProps = {\n    role: \"menuitem\" as const,\n    className: cn(sidebarItemVariants({ active, disabled }), className),\n    \"aria-current\": active ? (\"page\" as const) : undefined,\n    \"aria-disabled\": disabled || undefined,\n    \"data-value\": value,\n    \"data-disabled\": disabled ? (\"\" as const) : undefined,\n  };\n\n  if (typeof children === \"function\") {\n    return children({\n      ref: props.ref as Ref<HTMLElement>,\n      disabled: disabled || undefined,\n      ...sharedProps,\n    });\n  }\n\n  if (elementType === \"a\") {\n    const { ref, ...anchorProps } = rest as Omit<\n      SidebarItemAsAnchorProps,\n      keyof SidebarItemSharedProps | \"as\"\n    >;\n\n    return (\n      <a\n        {...anchorProps}\n        ref={ref}\n        {...sharedProps}\n        {...(disabled ? { onClick: (e: ReactMouseEvent) => e.preventDefault() } : undefined)}\n      >\n        {children}\n      </a>\n    );\n  }\n\n  const { ref, ...buttonProps } = rest as Omit<\n    SidebarItemAsButtonProps,\n    keyof SidebarItemSharedProps | \"as\"\n  >;\n\n  return (\n    <button {...buttonProps} ref={ref} type=\"button\" disabled={disabled} {...sharedProps}>\n      {children}\n    </button>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/sidebar/sidebar-item-label.tsx",
+      "content": "\"use client\";\n\nimport type { HTMLAttributes, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport interface SidebarItemLabelProps extends HTMLAttributes<HTMLSpanElement> {\n  ref?: Ref<HTMLSpanElement>;\n}\n\nexport function SidebarItemLabel({ ref, children, className, ...rest }: SidebarItemLabelProps) {\n  return <span ref={ref} className={cn(\"truncate min-w-0 flex-1\", className)} {...rest}>{children}</span>;\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/sidebar/sidebar-item-badge.tsx",
+      "content": "\"use client\";\n\nimport type { HTMLAttributes, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport interface SidebarItemBadgeProps extends HTMLAttributes<HTMLSpanElement> {\n  ref?: Ref<HTMLSpanElement>;\n}\n\nexport function SidebarItemBadge({ ref, children, className, ...rest }: SidebarItemBadgeProps) {\n  return <span ref={ref} className={cn(\"ml-auto shrink-0\", className)} {...rest}>{children}</span>;\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/sidebar/sidebar-footer.tsx",
+      "content": "\"use client\";\n\nimport type { HTMLAttributes, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport interface SidebarFooterProps extends HTMLAttributes<HTMLDivElement> {\n  ref?: Ref<HTMLDivElement>;\n}\n\nexport function SidebarFooter({ ref, children, className, ...props }: SidebarFooterProps) {\n  return (\n    <div ref={ref} className={cn(\"px-4 py-3 border-t border-border shrink-0 mt-auto\", className)} {...props}>\n      {children}\n    </div>\n  );\n}",
+      "type": "registry:ui"
+    }
+  ],
+  "meta": {
+    "client": true
+  }
+}

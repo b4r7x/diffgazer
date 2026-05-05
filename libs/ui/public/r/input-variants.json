@@ -1,0 +1,18 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "input-variants",
+  "type": "registry:lib",
+  "title": "Input Variants",
+  "description": "Shared CVA variant definitions for input-family components (input, textarea)",
+  "dependencies": [
+    "class-variance-authority"
+  ],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/lib/input-variants.ts",
+      "content": "import { cva } from \"class-variance-authority\";\n\nexport const inputVariants = cva(\n  \"flex w-full bg-background border border-border text-foreground font-mono placeholder:text-foreground/50 transition-colors focus:border-foreground focus:ring-1 focus:ring-foreground focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed\",\n  {\n    variants: {\n      size: {\n        sm: \"h-7 px-2 py-1 text-xs\",\n        md: \"h-9 px-3 py-2 text-sm\",\n        lg: \"h-11 px-4 py-2 text-base\",\n      },\n      error: {\n        true: \"border-2 border-destructive focus:border-destructive focus:ring-destructive\",\n      },\n    },\n    defaultVariants: {\n      size: \"md\",\n    },\n  }\n);\n",
+      "type": "registry:lib"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 180" role="img" aria-labelledby="title desc">
+  <title id="title">@diffgazer/keys wordmark</title>
+  <desc id="desc">@diffgazer/keys monospace wordmark</desc>
+  <text x="8" y="12" fill="#e5e7eb" font-family="Consolas, Menlo, Monaco, 'Courier New', monospace" font-size="28" xml:space="preserve">
+    <tspan x="8" dy="1.2em">DIFFGAZER</tspan>
+    <tspan x="8" dy="1.2em">KEYS</tspan>
+  </text>
+</svg>

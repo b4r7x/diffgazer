@@ -1,0 +1,56 @@
+---
+title: Hotkey Format
+description: Modifier syntax, key aliases, and matching rules for @diffgazer/keys hotkey strings.
+---
+
+# Hotkey Format
+
+Hotkeys are strings like `"mod+k"`, `"shift+Enter"`, or `"ArrowDown"`. Parsed by `matchesHotkey()` internally and used with [useKey](/keys/docs/hooks/use-key).
+
+## Modifiers
+
+Joined with `+`. The **last** segment is the key, everything before it is a modifier.
+
+| Modifier | Maps to |
+|----------|---------|
+| `mod` | `Meta` on Mac, `Ctrl` elsewhere |
+| `ctrl` | `Ctrl` |
+| `shift` | `Shift` |
+| `alt` | `Alt` |
+| `meta` | `Meta` |
+
+## Key Aliases
+
+| Alias | Resolved to |
+|-------|-------------|
+| `up` | `ArrowUp` |
+| `down` | `ArrowDown` |
+| `left` | `ArrowLeft` |
+| `right` | `ArrowRight` |
+| `esc` | `Escape` |
+| `space` | ` ` (space character) |
+
+## Special Rules
+
+- **Uppercase single letter implies Shift**: `"G"` is equivalent to `"shift+g"`.
+- **Case-insensitive**: both the hotkey string and `event.key` are lowercased before comparison.
+- **Strict modifier matching**: all four modifier keys (`ctrl`, `shift`, `alt`, `meta`) must match exactly. Pressing `Ctrl+Shift+K` will not match `"mod+k"` — it would match `"mod+shift+k"`.
+- **Platform detection**: `mod` resolves via `navigator.userAgent` (cached after first check).
+
+## Examples
+
+```tsx
+// Simple keys
+useKey("Escape", handleClose);
+useKey("Enter", handleSubmit);
+
+// With modifiers
+useKey("mod+k", openSearch);
+useKey("mod+shift+p", openCommandPalette);
+
+// Using aliases
+useKey("esc", handleClose);  // same as "Escape"
+
+// Multiple keys
+useKey(["ArrowUp", "ArrowDown"], handleNavigate);
+```

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "key-value",
+  "type": "registry:ui",
+  "title": "Key Value",
+  "description": "Compound component for labeled data display. KeyValue wraps KeyValue.Item rows in a semantic description list.",
+  "dependencies": [
+    "class-variance-authority"
+  ],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/ui/key-value/index.ts",
+      "content": "import { KeyValue as KeyValueRoot, type KeyValueProps } from \"./key-value\";\nimport type { KeyValueLayout, KeyValueVariant } from \"./key-value-context\";\nimport { KeyValueItem, type KeyValueItemProps } from \"./key-value-item\";\n\nconst KeyValue = Object.assign(KeyValueRoot, { Item: KeyValueItem });\n\nexport { KeyValue, type KeyValueProps, type KeyValueLayout };\nexport { KeyValueItem, type KeyValueItemProps, type KeyValueVariant };\n\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/key-value/key-value.tsx",
+      "content": "\"use client\";\n\nimport { useMemo, type ComponentPropsWithRef, type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { KeyValueContext, type KeyValueLayout } from \"./key-value-context\";\n\nexport interface KeyValueProps extends ComponentPropsWithRef<\"dl\"> {\n  layout?: KeyValueLayout;\n  bordered?: boolean;\n  children: ReactNode;\n}\n\nexport function KeyValue({\n  layout = \"horizontal\",\n  bordered = false,\n  children,\n  className,\n  ref,\n  ...props\n}: KeyValueProps) {\n  const contextValue = useMemo(() => ({ layout, bordered }), [layout, bordered]);\n\n  return (\n    <KeyValueContext value={contextValue}>\n      <dl ref={ref} className={cn(\"flex flex-col\", className)} {...props}>\n        {children}\n      </dl>\n    </KeyValueContext>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/key-value/key-value-item.tsx",
+      "content": "\"use client\";\n\nimport type { ComponentPropsWithRef, ReactNode } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { useKeyValueContext, type KeyValueLayout, type KeyValueVariant } from \"./key-value-context\";\n\nexport interface KeyValueItemProps extends ComponentPropsWithRef<\"div\"> {\n  label: ReactNode;\n  value: ReactNode;\n  variant?: KeyValueVariant;\n  layout?: KeyValueLayout;\n  bordered?: boolean;\n}\n\nconst keyValueItemVariants = cva(\"\", {\n  variants: {\n    layout: {\n      horizontal: \"flex justify-between items-center\",\n      vertical: \"flex flex-col gap-1\",\n    },\n    bordered: {\n      true: \"py-4 border-b border-border last:border-b-0\",\n      false: \"\",\n    },\n  },\n  defaultVariants: { layout: \"horizontal\", bordered: false },\n});\n\nconst valueVariants = cva(\"\", {\n  variants: {\n    variant: {\n      default: \"font-bold text-foreground\",\n      warning: \"font-bold text-warning\",\n      info: \"font-mono text-foreground\",\n      success: \"font-bold text-success\",\n      error: \"font-bold text-destructive\",\n    },\n    bordered: { true: \"text-xs\", false: \"\" },\n  },\n  defaultVariants: { variant: \"default\", bordered: false },\n});\n\nexport function KeyValueItem({\n  label,\n  value,\n  variant = \"default\",\n  className,\n  ref,\n  layout: layoutProp,\n  bordered: borderedProp,\n  ...rest\n}: KeyValueItemProps) {\n  const ctx = useKeyValueContext();\n  const layout = layoutProp ?? ctx.layout;\n  const bordered = borderedProp ?? ctx.bordered;\n\n  return (\n    <div\n      ref={ref}\n      className={cn(keyValueItemVariants({ layout, bordered }), className)}\n      {...rest}\n    >\n      <dt className={cn(\"text-muted-foreground\", bordered ? \"text-xs\" : \"text-sm\")}>{label}</dt>\n      <dd className={valueVariants({ variant, bordered })}>{value}</dd>\n    </div>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/key-value/key-value-context.tsx",
+      "content": "\"use client\";\n\nimport { createContext, useContext } from \"react\";\n\nexport type KeyValueLayout = \"horizontal\" | \"vertical\";\nexport type KeyValueVariant = \"default\" | \"warning\" | \"info\" | \"success\" | \"error\";\n\ninterface KeyValueContextValue {\n  layout: KeyValueLayout;\n  bordered: boolean;\n}\n\nconst KeyValueContext = createContext<KeyValueContextValue | undefined>(undefined);\n\nfunction useKeyValueContext(): KeyValueContextValue {\n  const context = useContext(KeyValueContext);\n  if (context === undefined) {\n    throw new Error(\"KeyValue.Item must be used within KeyValue\");\n  }\n  return context;\n}\n\nexport { KeyValueContext, useKeyValueContext };\n",
+      "type": "registry:ui"
+    }
+  ],
+  "meta": {
+    "client": true
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "compose-refs",
+  "type": "registry:lib",
+  "title": "composeRefs",
+  "description": "Utility to compose multiple React refs into a single ref callback. Use when a component needs an internal ref and must also forward an external ref prop (React 19 ref-as-prop pattern).",
+  "files": [
+    {
+      "path": "registry/lib/compose-refs.ts",
+      "content": "import type { RefObject, Ref, RefCallback } from \"react\";\n\nexport function composeRefs<T>(\n  ...refs: Array<Ref<T> | null | undefined>\n): RefCallback<T> {\n  return (element: T | null) => {\n    for (const ref of refs) {\n      if (typeof ref === \"function\") {\n        ref(element);\n      } else if (ref != null) {\n        (ref as RefObject<T | null>).current = element;\n      }\n    }\n  };\n}\n",
+      "type": "registry:lib"
+    }
+  ]
+}

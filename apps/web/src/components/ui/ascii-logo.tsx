@@ -1,0 +1,25 @@
+import { cn } from "@diffgazer/core/cn";
+import { getFigletText } from "@diffgazer/core/get-figlet";
+
+interface AsciiLogoProps {
+  text?: string;
+  className?: string;
+}
+
+export function AsciiLogo({ text = "DIFFGAZER", className }: AsciiLogoProps) {
+  const asciiText = getFigletText(text);
+  const isReady = Boolean(asciiText);
+
+  return (
+    <pre
+      className={cn(
+        "font-mono whitespace-pre select-none",
+        isReady ? "leading-none" : "opacity-50",
+        className
+      )}
+      aria-label={text.toUpperCase()}
+    >
+      {isReady ? asciiText : text}
+    </pre>
+  );
+}

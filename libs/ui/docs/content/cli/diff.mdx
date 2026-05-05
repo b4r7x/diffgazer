@@ -1,0 +1,31 @@
+---
+title: dgadd diff
+description: Compare installed files with bundled registry versions.
+---
+
+## Usage
+
+```bash
+dgadd diff [item...]
+```
+
+## Examples
+
+```bash
+dgadd diff
+dgadd diff ui/button ui/tabs keys/navigation
+```
+
+## What It Does
+
+1. Loads your `diffgazer.json` configuration.
+2. Resolves requested items or auto-detects installed ones.
+3. Compares local files against bundled registry content.
+4. Prints unified diffs.
+5. Shows changed, unchanged, and not-installed counts.
+
+## Options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--cwd <path>` | Working directory | `.` |

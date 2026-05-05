@@ -1,0 +1,127 @@
+{
+  "name": "@diffgazer/core",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "import": "./dist/errors.js"
+    },
+    "./result": {
+      "types": "./dist/result.d.ts",
+      "import": "./dist/result.js"
+    },
+    "./strings": {
+      "types": "./dist/strings.d.ts",
+      "import": "./dist/strings.js"
+    },
+    "./format": {
+      "types": "./dist/format.d.ts",
+      "import": "./dist/format.js"
+    },
+    "./json": {
+      "types": "./dist/json.d.ts",
+      "import": "./dist/json.js"
+    },
+    "./providers": {
+      "types": "./dist/providers/display-status.d.ts",
+      "import": "./dist/providers/display-status.js"
+    },
+    "./review": {
+      "types": "./dist/review/index.d.ts",
+      "import": "./dist/review/index.js"
+    },
+    "./navigation": {
+      "types": "./dist/navigation/index.d.ts",
+      "import": "./dist/navigation/index.js"
+    },
+    "./get-figlet": {
+      "types": "./dist/get-figlet.d.ts",
+      "import": "./dist/get-figlet.js"
+    },
+    "./cn": {
+      "types": "./dist/cn.d.ts",
+      "import": "./dist/cn.js"
+    },
+    "./api": {
+      "types": "./dist/api/index.d.ts",
+      "import": "./dist/api/index.js"
+    },
+    "./api/types": {
+      "types": "./dist/api/types.d.ts",
+      "import": "./dist/api/types.js"
+    },
+    "./api/hooks": {
+      "types": "./dist/api/hooks/index.d.ts",
+      "import": "./dist/api/hooks/index.js"
+    },
+    "./schemas": {
+      "types": "./dist/schemas/index.d.ts",
+      "import": "./dist/schemas/index.js"
+    },
+    "./schemas/errors": {
+      "types": "./dist/schemas/errors.d.ts",
+      "import": "./dist/schemas/errors.js"
+    },
+    "./schemas/review": {
+      "types": "./dist/schemas/review/index.d.ts",
+      "import": "./dist/schemas/review/index.js"
+    },
+    "./schemas/events": {
+      "types": "./dist/schemas/events/index.d.ts",
+      "import": "./dist/schemas/events/index.js"
+    },
+    "./schemas/config": {
+      "types": "./dist/schemas/config/index.d.ts",
+      "import": "./dist/schemas/config/index.js"
+    },
+    "./schemas/git": {
+      "types": "./dist/schemas/git/index.d.ts",
+      "import": "./dist/schemas/git/index.js"
+    },
+    "./schemas/context": {
+      "types": "./dist/schemas/context/index.d.ts",
+      "import": "./dist/schemas/context/index.js"
+    },
+    "./schemas/ui": {
+      "types": "./dist/schemas/ui/index.d.ts",
+      "import": "./dist/schemas/ui/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.80.7",
+    "clsx": "^2.1.1",
+    "figlet": "^1.10.0",
+    "tailwind-merge": "^3.4.0",
+    "zod": "^4.3.6"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/figlet": "^1.7.0",
+    "@types/node": "^25.2.0",
+    "@types/react": "^19.1.6",
+    "react": "^19.2.4",
+    "typescript": "^5.9.3"
+  }
+}

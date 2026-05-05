@@ -1,0 +1,64 @@
+@layer base {
+  dialog {
+    --dialog-duration: 0.15s;
+    padding: 0;
+    border: none;
+    background: transparent;
+    overflow: visible;
+  }
+}
+
+@layer components {
+  dialog::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+  }
+
+  dialog[data-state="open"]::backdrop {
+    animation: backdrop-in var(--dialog-duration) ease-out;
+  }
+
+  dialog[data-state="closed"]::backdrop {
+    animation: backdrop-out var(--dialog-duration) ease-in forwards;
+  }
+
+  dialog[data-state="open"] {
+    animation: dialog-in var(--dialog-duration) ease-out;
+  }
+
+  dialog[data-state="closed"] {
+    animation: dialog-out var(--dialog-duration) ease-in forwards;
+  }
+
+  body:has(dialog[open]) {
+    overflow: hidden;
+    scrollbar-gutter: stable;
+  }
+}
+
+@keyframes dialog-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes dialog-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.95); }
+}
+
+@keyframes backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes backdrop-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog,
+  dialog::backdrop {
+    animation-duration: 0.01s !important;
+  }
+}

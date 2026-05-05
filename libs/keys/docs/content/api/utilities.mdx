@@ -1,0 +1,68 @@
+---
+title: Utilities
+description: Helper functions for working with @diffgazer/keys — keys utility and useOptionalKeyboardContext.
+---
+
+# Utilities
+
+## keys
+
+Utility to create a `Record<string, KeyHandler>` from an array of hotkeys and a single handler. Useful with the key-map overload of [useKey](/keys/docs/hooks/use-key).
+
+```ts
+import { keys } from "@diffgazer/keys";
+```
+
+### Signature
+
+```ts
+function keys(
+  hotkeys: readonly string[],
+  handler: (event: KeyboardEvent) => void,
+): Record<string, (event: KeyboardEvent) => void>;
+```
+
+### Example
+
+```tsx
+// Instead of writing each arrow key separately:
+useKey(keys(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"], handleArrow));
+
+// Combine with other key maps:
+useKey({
+  ...keys(["ArrowUp", "ArrowDown"], navigate),
+  Enter: select,
+  Escape: cancel,
+});
+```
+
+---
+
+## useOptionalKeyboardContext
+
+Low-level hook to access the `KeyboardProvider` context without throwing. Returns `null` when no provider is present.
+
+```ts
+import { useOptionalKeyboardContext } from "@diffgazer/keys";
+```
+
+### Signature
+
+```ts
+function useOptionalKeyboardContext(): KeyboardContextValue | null;
+```
+
+### KeyboardContextValue
+
+```ts
+interface KeyboardContextValue {
+  activeScope: string | null;
+  pushScope: (scope: string) => () => void;
+  register: (scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => () => void;
+}
+```
+
+### Behavior
+
+- Returns `useContext(KeyboardContext) ?? null`.
+- This is what `useKey` uses internally. You probably don't need this directly unless you're building a custom hook on top of @diffgazer/keys.

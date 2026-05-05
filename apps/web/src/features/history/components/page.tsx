@@ -1,0 +1,156 @@
+import { useState, type KeyboardEvent } from "react";
+import { NavigationList } from "@diffgazer/ui/components/navigation-list";
+import { matchQueryState } from "@diffgazer/core/api/hooks";
+import { RunAccordionItem } from "@/features/history/components/run-accordion-item";
+import { TimelineList } from "@/features/history/components/timeline-list";
+import { HistoryInsightsPane } from "@/features/history/components/history-insights-pane";
+import { SearchInput } from "@/features/history/components/search-input";
+import { useHistoryPage } from "@/features/history/hooks/use-history-page";
+
+export function HistoryPage() {
+  const {
+    reviewsQuery,
+    focusZone,
+    searchQuery,
+    searchInputRef,
+    setSearchQuery,
+    setFocusZone,
+    timelineItems,
+    selectedDateId,
+    setSelectedDateId,
+    selectedRunId,
+    setSelectedRunId,
+    mappedRuns,
+    selectedRun,
+    severityCounts,
+    sortedIssues,
+    duration,
+    hasReviews,
+    emptyRunsMessage,
+    handleTimelineBoundary,
+    handleRunsBoundary,
+    handleSearchEscape,
+    handleSearchArrowDown,
+    handleRunActivate,
+    handleIssueClick,
+  } = useHistoryPage();
+
+  const [runsFocusedValue, setRunsFocusedValue] = useState<string | null>(null);
+
+  const handleRunsKeyDown = (event: KeyboardEvent) => {
+    if (
+      event.key === "ArrowUp" &&
+      mappedRuns.length > 0 &&
+      (runsFocusedValue === mappedRuns[0]?.id || runsFocusedValue === null)
+    ) {
+      event.preventDefault();
+      handleRunsBoundary("up");
+    }
+  };
+
+  const guard = matchQueryState(reviewsQuery, {
+    loading: () => (
+      <div className="flex flex-col flex-1 items-center justify-center text-tui-muted">
+        <span>Loading reviews...</span>
+      </div>
+    ),
+    error: (err) => (
+      <div className="flex flex-col flex-1 items-center justify-center text-tui-red">
+        <span>Error: {err.message}</span>
+      </div>
+    ),
+    success: () => null,
+  });
+
+  if (guard) return guard;
+
+  return (
+    <div className="flex flex-col flex-1 overflow-hidden px-4 pb-0">
+      <div className="flex items-center gap-6 border-b border-tui-border mb-0 text-sm select-none shrink-0">
+        <span className="py-2 text-sm font-medium">Reviews</span>
+      </div>
+
+      <SearchInput
+        ref={searchInputRef}
+        value={searchQuery}
+        onChange={setSearchQuery}
+        onFocus={() => setFocusZone("search")}
+        onEscape={handleSearchEscape}
+        onArrowDown={handleSearchArrowDown}
+      />
+
+      <div className="flex flex-1 overflow-hidden border-x border-b border-tui-border">
+        <div
+          data-focused={focusZone === "timeline" || undefined}
+          className="w-48 border-r border-tui-border flex flex-col shrink-0"
+        >
+          <div className="p-3 text-xs text-tui-muted font-bold uppercase tracking-wider border-b border-tui-border">
+            Sections
+          </div>
+          <div className="flex-1 overflow-y-auto p-2">
+            <TimelineList
+              items={timelineItems}
+              selectedId={selectedDateId}
+              onSelect={setSelectedDateId}
+              keyboardEnabled={focusZone === "timeline"}
+              onBoundaryReached={handleTimelineBoundary}
+            />
+          </div>
+        </div>
+
+        <div
+          data-focused={focusZone === "runs" || undefined}
+          className="flex-1 min-w-0 border-r border-tui-border flex flex-col overflow-hidden"
+        >
+          <div className="p-3 text-xs text-tui-muted font-bold uppercase tracking-wider border-b border-tui-border flex justify-between overflow-hidden">
+            <span className="truncate">Reviews</span>
+            <span className="shrink-0 ml-2">Sort: Recent</span>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {mappedRuns.length > 0 ? (
+              <NavigationList
+                selectedId={selectedRunId}
+                highlightedId={focusZone === "runs" ? runsFocusedValue : null}
+                onSelect={handleRunActivate}
+                onHighlightChange={setRunsFocusedValue}
+                onKeyDown={handleRunsKeyDown}
+                wrap={false}
+                focused={focusZone === "runs"}
+              >
+                {mappedRuns.map((run) => (
+                  <RunAccordionItem
+                    key={run.id}
+                    run={run}
+                    isSelected={run.id === selectedRunId}
+                    isActive={
+                      focusZone === "runs" && run.id === runsFocusedValue
+                    }
+                    onSelect={() => setSelectedRunId(run.id)}
+                    onOpen={() => handleRunActivate(run.id)}
+                  />
+                ))}
+              </NavigationList>
+            ) : (
+              <div className="flex items-center justify-center h-full text-tui-muted">
+                {emptyRunsMessage}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div
+          data-focused={focusZone === "insights" || undefined}
+          className="w-80 min-h-0 flex flex-col shrink-0 overflow-hidden"
+        >
+          <HistoryInsightsPane
+            runId={selectedRun ? `#${selectedRun.id.slice(0, 4)}` : null}
+            severityCounts={hasReviews ? severityCounts : null}
+            issues={hasReviews ? sortedIssues : []}
+            duration={duration}
+            onIssueClick={handleIssueClick}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}

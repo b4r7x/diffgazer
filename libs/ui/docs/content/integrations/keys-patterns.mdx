@@ -1,0 +1,221 @@
+---
+title: Patterns
+description: Complete integration examples for @diffgazer/keys with @diffgazer/ui components including Menu, Dialog, CommandPalette, Tabs, and multi-zone layouts.
+---
+
+@diffgazer/ui components are visual-only -- they don't handle keyboard events internally. @diffgazer/keys provides the keyboard layer. Here are the common patterns for integrating the two.
+
+---
+
+## Menu with useNavigation
+
+```tsx
+import { useRef } from "react"
+import { useNavigation } from "@diffgazer/keys"
+import { Menu, MenuItem } from "@/components/ui/menu"
+
+function KeyboardMenu() {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const { highlighted, isHighlighted } = useNavigation({
+    containerRef,
+    role: "option",
+    upKeys: ["ArrowUp", "k"],
+    downKeys: ["ArrowDown", "j"],
+    onSelect: (value) => console.log("selected", value),
+    onEnter: (value) => console.log("activated", value),
+  })
+
+  return (
+    <Menu
+      ref={containerRef}
+      selectedId={highlighted}
+      highlighted={highlighted}
+      onSelect={(id) => console.log("clicked", id)}
+      aria-label="File menu"
+    >
+      <MenuItem id="new">New File</MenuItem>
+      <MenuItem id="open">Open File</MenuItem>
+      <MenuItem id="save">Save</MenuItem>
+    </Menu>
+  )
+}
+```
+
+---
+
+## Dialog with useFocusTrap + useScrollLock + useScope
+
+```tsx
+import { useRef } from "react"
+import { useScope, useFocusTrap, useScrollLock, useKey } from "@diffgazer/keys"
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogBody, DialogFooter, DialogClose, DialogAction,
+} from "@/components/ui/dialog"
+
+function ConfirmDialog({ open, onOpenChange }) {
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  useScope("confirm-dialog", { enabled: open })
+  useFocusTrap(contentRef, { enabled: open })
+  useScrollLock(undefined, open)
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent ref={contentRef}>
+        <DialogHeader>
+          <DialogTitle>Confirm Action</DialogTitle>
+        </DialogHeader>
+        <DialogBody>Save changes?</DialogBody>
+        <DialogFooter>
+          <DialogClose bracket variant="ghost">Cancel</DialogClose>
+          <DialogAction>Save</DialogAction>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+```
+
+---
+
+## Command Palette with useScope
+
+```tsx
+import { useRef } from "react"
+import { useScope, useKey } from "@diffgazer/keys"
+import {
+  CommandPalette, CommandPaletteContent, CommandPaletteInput,
+  CommandPaletteList, CommandPaletteGroup, CommandPaletteItem,
+} from "@/components/ui/command-palette"
+
+function AppPalette({ open, onOpenChange, onActivate }) {
+  useScope("palette", { enabled: open })
+
+  return (
+    <CommandPalette open={open} onOpenChange={onOpenChange} onActivate={onActivate}>
+      <CommandPaletteContent>
+        <CommandPaletteInput placeholder="Search..." />
+        <CommandPaletteList>
+          <CommandPaletteGroup heading="Files">
+            <CommandPaletteItem id="readme">README.md</CommandPaletteItem>
+            <CommandPaletteItem id="index">index.ts</CommandPaletteItem>
+          </CommandPaletteGroup>
+        </CommandPaletteList>
+      </CommandPaletteContent>
+    </CommandPalette>
+  )
+}
+```
+
+The scope stack ensures that while the palette is open, only palette-scoped handlers fire. Global shortcuts like `mod+k` are automatically suppressed until the palette closes.
+
+---
+
+## Multi-Zone Layout with useFocusZone
+
+```tsx
+import { useFocusZone, useKey } from "@diffgazer/keys"
+
+function TwoPaneLayout() {
+  const { zone, inZone, forZone } = useFocusZone({
+    initial: "sidebar",
+    zones: ["sidebar", "main"] as const,
+    tabCycle: ["sidebar", "main"] as const,
+    transitions: ({ zone, key }) => {
+      if (zone === "sidebar" && key === "ArrowRight") return "main"
+      if (zone === "main" && key === "ArrowLeft") return "sidebar"
+      return null
+    },
+  })
+
+  useKey("n", () => createNew(), forZone("sidebar"))
+  useKey("e", () => edit(), forZone("main"))
+
+  return (
+    <div className="flex">
+      <aside className={inZone("sidebar") ? "ring-1 ring-foreground" : ""}>
+        Sidebar
+      </aside>
+      <main className={inZone("main") ? "ring-1 ring-foreground" : ""}>
+        Content
+      </main>
+    </div>
+  )
+}
+```
+
+---
+
+## Tabs with useNavigation
+
+```tsx
+import { useRef } from "react"
+import { useNavigation } from "@diffgazer/keys"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+
+function KeyboardTabs() {
+  const listRef = useRef<HTMLDivElement>(null)
+  const { onKeyDown } = useNavigation({
+    containerRef: listRef,
+    role: "tab",
+    orientation: "horizontal",
+  })
+
+  return (
+    <Tabs defaultValue="preview">
+      <TabsList ref={listRef} onKeyDown={onKeyDown}>
+        <TabsTrigger value="preview">Preview</TabsTrigger>
+        <TabsTrigger value="code">Code</TabsTrigger>
+        <TabsTrigger value="api">API</TabsTrigger>
+      </TabsList>
+      <TabsContent value="preview">Preview content</TabsContent>
+      <TabsContent value="code">Code content</TabsContent>
+      <TabsContent value="api">API content</TabsContent>
+    </Tabs>
+  )
+}
+```
+
+---
+
+## Select with useNavigation (local mode)
+
+```tsx
+import { useRef } from "react"
+import { useNavigation } from "@diffgazer/keys"
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
+
+function KeyboardSelect() {
+  const listboxRef = useRef<HTMLDivElement>(null)
+
+  const { onKeyDown } = useNavigation({
+    mode: "local",
+    containerRef: listboxRef,
+    role: "option",
+    wrap: true,
+    onEnter: (val) => selectBranch(val),
+    onSelect: (val) => selectBranch(val),
+  })
+
+  return (
+    <Select value={branch} onValueChange={setBranch}>
+      <SelectTrigger>
+        <SelectValue placeholder="Branch..." />
+      </SelectTrigger>
+      <SelectContent ref={listboxRef} onKeyDown={onKeyDown}>
+        <SelectItem value="main">main</SelectItem>
+        <SelectItem value="develop">develop</SelectItem>
+        <SelectItem value="feature/auth">feature/auth</SelectItem>
+      </SelectContent>
+    </Select>
+  )
+}
+```
+
+---
+
+## Full Example
+
+See the comprehensive [integration demo](/ui/docs/integrations/keys) that combines focus zones, scoped modals, global shortcuts, and multiple @diffgazer/ui components working together with @diffgazer/keys keyboard handling.

@@ -1,0 +1,28 @@
+{
+  "name": "@diffgazer/keys-artifacts",
+  "version": "0.1.0",
+  "description": "Docs and registry artifacts for @diffgazer/keys (consumed by docs host)",
+  "homepage": "https://github.com/b4r7/diffgazer/tree/main/libs/keys/artifacts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/b4r7/diffgazer.git",
+    "directory": "libs/keys/artifacts"
+  },
+  "type": "module",
+  "private": true,
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node scripts/copy-artifacts.mjs",
+    "prepublishOnly": "test -f dist/artifacts/artifact-manifest.json && test -f dist/artifacts/fingerprint.sha256"
+  },
+  "devDependencies": {
+    "@diffgazer/registry": "workspace:*",
+    "@diffgazer/keys": "workspace:*"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}

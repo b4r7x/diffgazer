@@ -1,0 +1,12 @@
+{
+  "title": "Hooks",
+  "pages": [
+    "use-focus-trap",
+    "use-focus-zone",
+    "use-key",
+    "use-navigation",
+    "use-scope",
+    "use-scoped-navigation",
+    "use-scroll-lock"
+  ]
+}

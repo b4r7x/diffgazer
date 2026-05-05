@@ -1,0 +1,72 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "navigation-list",
+  "type": "registry:ui",
+  "title": "Navigation List",
+  "description": "Terminal-styled navigation sidebar list",
+  "dependencies": [
+    "class-variance-authority"
+  ],
+  "registryDependencies": [
+    "listbox",
+    "badge"
+  ],
+  "files": [
+    {
+      "path": "registry/ui/navigation-list/index.ts",
+      "content": "import { NavigationList as NavigationListRoot, type NavigationListProps } from \"./navigation-list\";\nimport { NavigationListItem, type NavigationListItemProps } from \"./navigation-list-item\";\nimport { NavigationListTitle, type NavigationListTitleProps } from \"./navigation-list-title\";\nimport { NavigationListStatus, type NavigationListStatusProps } from \"./navigation-list-status\";\nimport { NavigationListBadge } from \"./navigation-list-badge\";\nimport { NavigationListSubtitle, type NavigationListSubtitleProps } from \"./navigation-list-subtitle\";\nimport { NavigationListMeta, type NavigationListMetaProps } from \"./navigation-list-meta\";\n\nconst NavigationList = Object.assign(NavigationListRoot, {\n  Item: NavigationListItem,\n  Badge: NavigationListBadge,\n  Title: NavigationListTitle,\n  Status: NavigationListStatus,\n  Meta: NavigationListMeta,\n  Subtitle: NavigationListSubtitle,\n});\n\nexport { NavigationList, type NavigationListProps };\nexport { NavigationListItem, type NavigationListItemProps };\nexport { NavigationListBadge };\nexport type { BadgeProps as NavigationListBadgeProps } from \"../badge/badge\";\nexport { NavigationListTitle, type NavigationListTitleProps };\nexport { NavigationListStatus, type NavigationListStatusProps };\nexport { NavigationListMeta, type NavigationListMetaProps };\nexport { NavigationListSubtitle, type NavigationListSubtitleProps };\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/navigation-list/navigation-list.tsx",
+      "content": "\"use client\";\n\nimport { type ReactNode, type KeyboardEvent, type Ref, useId, useMemo } from \"react\";\nimport { useListbox } from \"@/hooks/use-listbox\";\nimport { cn } from \"@/lib/utils\";\nimport { NavigationListContext } from \"./navigation-list-context\";\n\nexport interface NavigationListProps {\n  selectedId?: string | null;\n  defaultSelectedId?: string | null;\n  highlightedId?: string | null;\n  defaultHighlightedId?: string | null;\n  onSelect?: (id: string) => void;\n  onHighlightChange?: (id: string) => void;\n  focused?: boolean;\n  wrap?: boolean;\n  className?: string;\n  children: ReactNode;\n  onKeyDown?: (event: KeyboardEvent) => void;\n  \"aria-label\"?: string;\n  ref?: Ref<HTMLDivElement>;\n}\n\nexport function NavigationList({\n  selectedId: controlledSelectedId,\n  defaultSelectedId = null,\n  highlightedId: controlledHighlightedId,\n  defaultHighlightedId = null,\n  onSelect,\n  onHighlightChange,\n  focused = true,\n  wrap = true,\n  className,\n  children,\n  onKeyDown,\n  \"aria-label\": ariaLabel,\n  ref,\n}: NavigationListProps) {\n  const idPrefix = useId();\n\n  const {\n    selectedId,\n    highlightedId,\n    handleItemActivate,\n    handleItemHighlight,\n    getContainerProps,\n  } = useListbox({\n    selectedId: controlledSelectedId,\n    defaultSelectedId,\n    highlightedId: controlledHighlightedId,\n    defaultHighlightedId,\n    onSelect,\n    onHighlightChange,\n    wrap,\n    idPrefix,\n    onKeyDown,\n    typeahead: true,\n  });\n\n  const contextValue = useMemo(\n    () => ({\n      selectedId,\n      highlightedId,\n      activate: handleItemActivate,\n      highlight: handleItemHighlight,\n      focused,\n      idPrefix,\n    }),\n    [selectedId, highlightedId, handleItemActivate, handleItemHighlight, focused, idPrefix],\n  );\n\n  return (\n    <NavigationListContext value={contextValue}>\n      <div\n        {...getContainerProps(ref)}\n        aria-label={ariaLabel}\n        aria-orientation=\"vertical\"\n        className={cn(\"w-full outline-none\", className)}\n      >\n        {children}\n      </div>\n    </NavigationListContext>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/navigation-list/navigation-list-item.tsx",
+      "content": "\"use client\";\n\nimport { type ReactNode, type Ref, useMemo } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListContext } from \"./navigation-list-context\";\nimport { NavigationListItemContext } from \"./navigation-list-item-context\";\n\nconst itemVariants = cva(\"flex cursor-pointer group\", {\n  variants: {\n    active: {\n      true: \"bg-foreground text-background\",\n      false: \"hover:bg-secondary border-b border-border/50\",\n    },\n    disabled: {\n      true: \"opacity-50 cursor-not-allowed\",\n    },\n  },\n  defaultVariants: {\n    active: false,\n    disabled: false,\n  },\n});\n\nconst contentVariants = cva(\"flex-1 grid grid-cols-[1fr_auto] auto-rows-auto gap-y-0.5\", {\n  variants: {\n    density: {\n      compact: \"p-2\",\n      default: \"p-3\",\n      comfortable: \"p-4\",\n    },\n  },\n  defaultVariants: {\n    density: \"default\",\n  },\n});\n\ntype Density = NonNullable<VariantProps<typeof contentVariants>[\"density\"]>;\n\nexport interface NavigationListItemProps {\n  id: string;\n  density?: Density;\n  disabled?: boolean;\n  children: ReactNode;\n  className?: string;\n  ref?: Ref<HTMLDivElement>;\n}\n\nexport function NavigationListItem({\n  id,\n  disabled = false,\n  density = \"default\",\n  children,\n  className,\n  ref,\n}: NavigationListItemProps) {\n  const { selectedId, highlightedId, activate, highlight, focused, idPrefix } =\n    useNavigationListContext();\n  const isSelected = selectedId === id;\n  const isHighlighted = highlightedId === id;\n  const isActive = (isSelected || isHighlighted) && focused;\n  const labelId = `${idPrefix}-${id}-label`;\n  const descId = `${idPrefix}-${id}-desc`;\n\n  const handleClick = () => {\n    if (!disabled) activate(id);\n  };\n\n  const handleHighlight = () => {\n    if (!disabled) highlight(id);\n  };\n\n  const itemContextValue = useMemo(\n    () => ({ labelId, descId }),\n    [labelId, descId],\n  );\n\n  return (\n    <NavigationListItemContext value={itemContextValue}>\n      <div\n        ref={ref}\n        id={`${idPrefix}-${id}`}\n        role=\"option\"\n        aria-labelledby={labelId}\n        aria-describedby={`${descId}-meta ${descId}-sub`}\n        data-value={id}\n        data-active={isActive || undefined}\n        data-state={isSelected ? \"selected\" : \"unselected\"}\n        aria-selected={isSelected}\n        aria-disabled={disabled || undefined}\n        onClick={handleClick}\n        onMouseEnter={handleHighlight}\n        onFocus={handleHighlight}\n        className={cn(itemVariants({ active: isActive, disabled }), \"focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground\", className)}\n      >\n        <div\n          className={cn(\n            \"w-1 shrink-0\",\n            isActive ? \"bg-background/40\" : \"bg-transparent group-hover:bg-muted\"\n          )}\n        />\n        <div className={contentVariants({ density })}>\n          {children}\n        </div>\n      </div>\n    </NavigationListItemContext>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/navigation-list/navigation-list-title.tsx",
+      "content": "\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListItemContext } from \"./navigation-list-item-context\";\n\nconst SELECTION_INDICATOR = \"\\u258C\";\n\nexport interface NavigationListTitleProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListTitle({ children, className }: NavigationListTitleProps) {\n  const { labelId } = useNavigationListItemContext();\n\n  return (\n    <span id={labelId} className={cn(\"col-start-1 row-start-1 font-bold flex items-center group-data-[active]:text-background\", className)}>\n      <span aria-hidden=\"true\" className=\"mr-2 opacity-0 group-data-[active]:opacity-100\">{SELECTION_INDICATOR}</span>\n      {children}\n    </span>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/navigation-list/navigation-list-status.tsx",
+      "content": "\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport interface NavigationListStatusProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListStatus({ children, className }: NavigationListStatusProps) {\n  return (\n    <span className={cn(\"col-start-2 row-start-1 self-center text-[10px] font-bold text-warning group-data-[active]:text-background\", className)}>\n      {children}\n    </span>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/navigation-list/navigation-list-context.tsx",
+      "content": "\"use client\";\n\nimport { createContext, useContext } from \"react\";\n\nexport interface NavigationListContextValue {\n  selectedId: string | null;\n  highlightedId: string | null;\n  activate: (id: string) => void;\n  highlight: (id: string) => void;\n  focused: boolean;\n  idPrefix: string;\n}\n\nexport const NavigationListContext = createContext<NavigationListContextValue | undefined>(undefined);\n\nexport function useNavigationListContext() {\n  const context = useContext(NavigationListContext);\n  if (context === undefined) {\n    throw new Error(\"NavigationListItem must be used within NavigationList\");\n  }\n  return context;\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/navigation-list/navigation-list-badge.tsx",
+      "content": "\"use client\";\n\nimport { Badge, type BadgeProps } from \"../badge/badge\";\nimport { cn } from \"@/lib/utils\";\n\nexport function NavigationListBadge({\n  children,\n  variant = \"neutral\",\n  size = \"sm\",\n  className,\n  ...props\n}: BadgeProps) {\n  return (\n    <Badge\n      variant={variant}\n      size={size}\n      className={cn(\n        \"group-data-[active]:bg-background group-data-[active]:text-foreground group-data-[active]:border-foreground\",\n        className\n      )}\n      {...props}\n    >\n      {children}\n    </Badge>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/navigation-list/navigation-list-subtitle.tsx",
+      "content": "\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListItemContext } from \"./navigation-list-item-context\";\n\nexport interface NavigationListSubtitleProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListSubtitle({ children, className }: NavigationListSubtitleProps) {\n  const { descId } = useNavigationListItemContext();\n\n  return (\n    <span\n      id={`${descId}-sub`}\n      className={cn(\n        \"text-[10px] inline-flex items-center leading-none text-muted-foreground group-data-[active]:text-background/70\",\n        className\n      )}\n    >\n      {children}\n    </span>\n  );\n}",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/navigation-list/navigation-list-meta.tsx",
+      "content": "\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListItemContext } from \"./navigation-list-item-context\";\n\nexport interface NavigationListMetaProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListMeta({ children, className }: NavigationListMetaProps) {\n  const { descId } = useNavigationListItemContext();\n\n  return (\n    <div id={`${descId}-meta`} className={cn(\n      \"col-span-full row-start-2 flex gap-2 items-center group-data-[active]:text-background/70\",\n      className\n    )}>\n      {children}\n    </div>\n  );\n}\n",
+      "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/navigation-list/navigation-list-item-context.tsx",
+      "content": "\"use client\";\n\nimport { createContext, useContext } from \"react\";\n\nexport interface NavigationListItemContextValue {\n  labelId: string;\n  descId: string;\n}\n\nexport const NavigationListItemContext = createContext<NavigationListItemContextValue | undefined>(undefined);\n\nexport function useNavigationListItemContext() {\n  const context = useContext(NavigationListItemContext);\n  if (context === undefined) {\n    throw new Error(\"NavigationList.Title/Meta must be used within NavigationList.Item\");\n  }\n  return context;\n}\n",
+      "type": "registry:ui"
+    }
+  ],
+  "meta": {
+    "client": true,
+    "optionalIntegrations": [
+      "keyboard-navigation"
+    ]
+  }
+}

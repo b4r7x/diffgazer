@@ -1,0 +1,4861 @@
+{
+  "diff": {
+    "name": "diff",
+    "title": "Diff Utilities",
+    "description": "Pure functions for parsing unified diffs, computing diffs from text, and word-level diff highlighting. No React dependency.",
+    "source": {
+      "raw": "export { parseDiff } from \"./parse.js\";\nexport { computeDiff } from \"./compute.js\";\nexport { resolveDiffInput } from \"./resolve.js\";\nexport { computeWordSegments, annotateWordDiff } from \"./word.js\";\nexport { toSplitRows } from \"./split.js\";\nexport type { ParsedDiff, DiffHunk, DiffChange, ChangeType, DiffInput, DiffInputPatch, DiffInputCompare, DiffInputParsed } from \"./parse.js\";\nexport type { WordSegment, AnnotatedChange } from \"./word.js\";\nexport type { SplitCell, SplitRow } from \"./split.js\";\n",
+      "highlighted": [
+        {
+          "number": 1,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " parseDiff ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "./parse.js",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " computeDiff ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "./compute.js",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " resolveDiffInput ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "./resolve.js",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " computeWordSegments",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " annotateWordDiff ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "./word.js",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " toSplitRows ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "./split.js",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ParsedDiff",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " DiffHunk",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " DiffChange",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ChangeType",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " DiffInput",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " DiffInputPatch",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " DiffInputCompare",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " DiffInputParsed ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "./parse.js",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " WordSegment",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " AnnotatedChange ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "./word.js",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " SplitCell",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " SplitRow ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "./split.js",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "content": []
+        }
+      ]
+    }
+  },
+  "compose-refs": {
+    "name": "compose-refs",
+    "title": "composeRefs",
+    "description": "Utility to compose multiple React refs into a single ref callback. Use when a component needs an internal ref and must also forward an external ref prop (React 19 ref-as-prop pattern).",
+    "source": {
+      "raw": "import type { RefObject, Ref, RefCallback } from \"react\";\n\nexport function composeRefs<T>(\n  ...refs: Array<Ref<T> | null | undefined>\n): RefCallback<T> {\n  return (element: T | null) => {\n    for (const ref of refs) {\n      if (typeof ref === \"function\") {\n        ref(element);\n      } else if (ref != null) {\n        (ref as RefObject<T | null>).current = element;\n      }\n    }\n  };\n}\n",
+      "highlighted": [
+        {
+          "number": 1,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " RefObject",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " Ref",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " RefCallback ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "react",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "function",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "composeRefs",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "T",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ">(",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "refs",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Array",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Ref",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "T",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "undefined",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "content": [
+            {
+              "text": "):",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "RefCallback",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "T",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "element",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "T",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "for",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "of",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " refs) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "typeof",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ref ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "function",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(element)",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "else",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (ref ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "!=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "content": [
+            {
+              "text": "        (ref ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "RefObject",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "T",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "current ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " element",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 12,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 13,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 14,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "};",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 15,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 16,
+          "content": []
+        }
+      ]
+    }
+  },
+  "resolve-tab-target": {
+    "name": "resolve-tab-target",
+    "title": "resolveTabTarget",
+    "description": "Roving tabindex utility — determines which item in a group should be the tab target based on selection state and disabled status.",
+    "source": {
+      "raw": "export function resolveTabTarget(\n  isActive: boolean,\n  hasSelection: boolean,\n  container: HTMLElement | null,\n  value: string,\n  role: string = \"radio\",\n): boolean {\n  if (isActive) return true;\n  if (hasSelection) return false;\n  if (!container) return true;\n  const first = container.querySelector(`[role=\"${role}\"]:not(:disabled):not([aria-disabled=\"true\"])`);\n  return first?.getAttribute(\"data-value\") === value;\n}\n",
+      "highlighted": [
+        {
+          "number": 1,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "function",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "resolveTabTarget",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": [
+            {
+              "text": "  isActive",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "boolean",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "content": [
+            {
+              "text": "  hasSelection",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "boolean",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "content": [
+            {
+              "text": "  container",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "HTMLElement",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "content": [
+            {
+              "text": "  value",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "string",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "content": [
+            {
+              "text": "  role",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "string",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "radio",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "content": [
+            {
+              "text": "):",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "boolean",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (isActive) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "true",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (hasSelection) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "!",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "container) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "true",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "first",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "container",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "querySelector",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "`",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "[role=\"",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "${",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": "role",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": "\"]:not(:disabled):not([aria-disabled=\"true\"])",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "`",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 12,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "first",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": "?.",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "getAttribute",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "data-value",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " value",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 13,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 14,
+          "content": []
+        }
+      ]
+    }
+  },
+  "selectable-variants": {
+    "name": "selectable-variants",
+    "title": "Selectable Variants",
+    "description": "Shared CVA variant definitions for selectable items (checkbox, radio, etc.)",
+    "source": {
+      "raw": "import { cva } from \"class-variance-authority\";\n\nexport type SelectableSize = \"sm\" | \"md\" | \"lg\";\n\nexport type SelectableVariant = \"x\" | \"bullet\";\n\nexport const selectableIndicators = {\n  x: { checked: \"[x]\", unchecked: \"[ ]\", indeterminate: \"[-]\" },\n  bullet: { checked: \"[\\u00a0\\u25cf\\u00a0]\", unchecked: \"[\\u00a0\\u00a0\\u00a0]\", indeterminate: \"[ - ]\" },\n} satisfies Record<SelectableVariant, Record<string, string>>;\n\nexport const selectableVariants = cva(\n  \"flex cursor-pointer select-none font-mono relative\",\n  {\n    variants: {\n      highlighted: {\n        true: \"bg-secondary text-foreground font-bold before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-foreground\",\n        false: \"text-foreground hover:bg-secondary/50\",\n      },\n      disabled: {\n        true: \"opacity-50 cursor-not-allowed\",\n        false: \"\",\n      },\n    },\n    defaultVariants: {\n      highlighted: false,\n      disabled: false,\n    },\n  }\n);\n\nexport const selectableContainerClass = \"flex items-center gap-3 px-3 py-2\";\n\nexport const selectableIndicatorVariants = cva(\"font-bold shrink-0 whitespace-nowrap\", {\n  variants: {\n    size: {\n      sm: \"text-sm min-w-[3ch]\",\n      md: \"min-w-[4ch]\",\n      lg: \"text-lg min-w-[4ch]\",\n    },\n    checked: {\n      true: \"\",\n      false: \"\",\n    },\n    highlighted: {\n      true: \"\",\n      false: \"\",\n    },\n  },\n  compoundVariants: [\n    { checked: true, highlighted: false, className: \"text-success\" },\n  ],\n  defaultVariants: {\n    size: \"md\",\n    checked: false,\n    highlighted: false,\n  },\n});\n\nexport const selectableLabelVariants = cva(\"\", {\n  variants: {\n    size: {\n      sm: \"text-sm\",\n      md: \"text-base\",\n      lg: \"text-lg\",\n    },\n  },\n  defaultVariants: {\n    size: \"md\",\n  },\n});\n\nexport const selectableDescriptionVariants = cva(\"text-sm mt-0.5\", {\n  variants: {\n    highlighted: {\n      true: \"text-foreground/70\",\n      false: \"text-muted-foreground\",\n    },\n  },\n  defaultVariants: {\n    highlighted: false,\n  },\n});\n",
+      "highlighted": [
+        {
+          "number": 1,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " cva ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "class-variance-authority",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "SelectableSize",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "sm",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "md",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "lg",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "content": []
+        },
+        {
+          "number": 5,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "SelectableVariant",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "x",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "bullet",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "content": []
+        },
+        {
+          "number": 7,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "selectableIndicators",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "content": [
+            {
+              "text": "  x",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " checked",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "[x]",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " unchecked",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "[ ]",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " indeterminate",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "[-]",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "content": [
+            {
+              "text": "  bullet",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " checked",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "[\\u00a0\\u25cf\\u00a0]",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " unchecked",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "[\\u00a0\\u00a0\\u00a0]",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " indeterminate",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "[ - ]",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "satisfies",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Record",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "SelectableVariant",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Record",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "string",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "string",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">>;",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "content": []
+        },
+        {
+          "number": 12,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "selectableVariants",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "cva",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 13,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "flex cursor-pointer select-none font-mono relative",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 14,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 15,
+          "content": [
+            {
+              "text": "    variants",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 16,
+          "content": [
+            {
+              "text": "      highlighted",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 17,
+          "content": [
+            {
+              "text": "        true",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "bg-secondary text-foreground font-bold before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-foreground",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 18,
+          "content": [
+            {
+              "text": "        false",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-foreground hover:bg-secondary/50",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 19,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 20,
+          "content": [
+            {
+              "text": "      disabled",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 21,
+          "content": [
+            {
+              "text": "        true",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "opacity-50 cursor-not-allowed",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 22,
+          "content": [
+            {
+              "text": "        false",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 23,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 24,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 25,
+          "content": [
+            {
+              "text": "    defaultVariants",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 26,
+          "content": [
+            {
+              "text": "      highlighted",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 27,
+          "content": [
+            {
+              "text": "      disabled",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 28,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 29,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 30,
+          "content": [
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 31,
+          "content": []
+        },
+        {
+          "number": 32,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "selectableContainerClass",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "flex items-center gap-3 px-3 py-2",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 33,
+          "content": []
+        },
+        {
+          "number": 34,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "selectableIndicatorVariants",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "cva",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "font-bold shrink-0 whitespace-nowrap",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 35,
+          "content": [
+            {
+              "text": "  variants",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 36,
+          "content": [
+            {
+              "text": "    size",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 37,
+          "content": [
+            {
+              "text": "      sm",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-sm min-w-[3ch]",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 38,
+          "content": [
+            {
+              "text": "      md",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "min-w-[4ch]",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 39,
+          "content": [
+            {
+              "text": "      lg",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-lg min-w-[4ch]",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 40,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 41,
+          "content": [
+            {
+              "text": "    checked",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 42,
+          "content": [
+            {
+              "text": "      true",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 43,
+          "content": [
+            {
+              "text": "      false",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 44,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 45,
+          "content": [
+            {
+              "text": "    highlighted",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 46,
+          "content": [
+            {
+              "text": "      true",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 47,
+          "content": [
+            {
+              "text": "      false",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 48,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 49,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 50,
+          "content": [
+            {
+              "text": "  compoundVariants",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " [",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 51,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " checked",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "true",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " highlighted",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " className",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-success",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 52,
+          "content": [
+            {
+              "text": "  ]",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 53,
+          "content": [
+            {
+              "text": "  defaultVariants",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 54,
+          "content": [
+            {
+              "text": "    size",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "md",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 55,
+          "content": [
+            {
+              "text": "    checked",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 56,
+          "content": [
+            {
+              "text": "    highlighted",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 57,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 58,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 59,
+          "content": []
+        },
+        {
+          "number": 60,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "selectableLabelVariants",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "cva",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 61,
+          "content": [
+            {
+              "text": "  variants",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 62,
+          "content": [
+            {
+              "text": "    size",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 63,
+          "content": [
+            {
+              "text": "      sm",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-sm",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 64,
+          "content": [
+            {
+              "text": "      md",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-base",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 65,
+          "content": [
+            {
+              "text": "      lg",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-lg",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 66,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 67,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 68,
+          "content": [
+            {
+              "text": "  defaultVariants",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 69,
+          "content": [
+            {
+              "text": "    size",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "md",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 70,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 71,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 72,
+          "content": []
+        },
+        {
+          "number": 73,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "selectableDescriptionVariants",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "cva",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-sm mt-0.5",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 74,
+          "content": [
+            {
+              "text": "  variants",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 75,
+          "content": [
+            {
+              "text": "    highlighted",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 76,
+          "content": [
+            {
+              "text": "      true",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-foreground/70",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 77,
+          "content": [
+            {
+              "text": "      false",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-muted-foreground",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 78,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 79,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 80,
+          "content": [
+            {
+              "text": "  defaultVariants",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 81,
+          "content": [
+            {
+              "text": "    highlighted",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 82,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 83,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 84,
+          "content": []
+        }
+      ]
+    }
+  },
+  "input-variants": {
+    "name": "input-variants",
+    "title": "Input Variants",
+    "description": "Shared CVA variant definitions for input-family components (input, textarea)",
+    "source": {
+      "raw": "import { cva } from \"class-variance-authority\";\n\nexport const inputVariants = cva(\n  \"flex w-full bg-background border border-border text-foreground font-mono placeholder:text-foreground/50 transition-colors focus:border-foreground focus:ring-1 focus:ring-foreground focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed\",\n  {\n    variants: {\n      size: {\n        sm: \"h-7 px-2 py-1 text-xs\",\n        md: \"h-9 px-3 py-2 text-sm\",\n        lg: \"h-11 px-4 py-2 text-base\",\n      },\n      error: {\n        true: \"border-2 border-destructive focus:border-destructive focus:ring-destructive\",\n      },\n    },\n    defaultVariants: {\n      size: \"md\",\n    },\n  }\n);\n",
+      "highlighted": [
+        {
+          "number": 1,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " cva ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "class-variance-authority",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "inputVariants",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "cva",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "flex w-full bg-background border border-border text-foreground font-mono placeholder:text-foreground/50 transition-colors focus:border-foreground focus:ring-1 focus:ring-foreground focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "content": [
+            {
+              "text": "    variants",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "content": [
+            {
+              "text": "      size",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "content": [
+            {
+              "text": "        sm",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "h-7 px-2 py-1 text-xs",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "content": [
+            {
+              "text": "        md",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "h-9 px-3 py-2 text-sm",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "content": [
+            {
+              "text": "        lg",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "h-11 px-4 py-2 text-base",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 11,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 12,
+          "content": [
+            {
+              "text": "      error",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 13,
+          "content": [
+            {
+              "text": "        true",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "border-2 border-destructive focus:border-destructive focus:ring-destructive",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 14,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 15,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 16,
+          "content": [
+            {
+              "text": "    defaultVariants",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 17,
+          "content": [
+            {
+              "text": "      size",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "md",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 18,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 19,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 20,
+          "content": [
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 21,
+          "content": []
+        }
+      ]
+    }
+  },
+  "focus": {
+    "name": "focus",
+    "title": "Focus Utilities",
+    "description": "Shared focusable element CSS selector for focus management, auto-focus, and focus-trap logic.",
+    "source": {
+      "raw": "export const FOCUSABLE_SELECTOR =\n  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex=\"-1\"]):not([disabled])';\n",
+      "highlighted": [
+        {
+          "number": 1,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "FOCUSABLE_SELECTOR",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "'",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex=\"-1\"]):not([disabled])",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "'",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "content": []
+        }
+      ]
+    }
+  },
+  "step-status": {
+    "name": "step-status",
+    "title": "Step Status",
+    "description": "Shared StepStatus type for stepper components (completed, active, pending, error).",
+    "source": {
+      "raw": "export type StepStatus = \"completed\" | \"active\" | \"pending\" | \"error\";\n",
+      "highlighted": [
+        {
+          "number": 1,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "StepStatus",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "completed",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "active",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "pending",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "error",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        }
+      ]
+    }
+  },
+  "search": {
+    "name": "search",
+    "title": "Search Utilities",
+    "description": "Case-insensitive search matching utility for filtering items by text query.",
+    "source": {
+      "raw": "export function matchesSearch(value: string, query: string): boolean {\n  return !query || value.toLowerCase().includes(query.toLowerCase());\n}\n",
+      "highlighted": [
+        {
+          "number": 1,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "function",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "matchesSearch",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "value",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "string",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " query",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "string",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": "):",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "boolean",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "!",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "query ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "||",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "value",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "toLowerCase",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "includes",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "query",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "toLowerCase",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "())",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 3,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "content": []
+        }
+      ]
+    }
+  }
+}

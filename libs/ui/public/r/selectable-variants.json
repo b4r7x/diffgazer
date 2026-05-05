@@ -1,0 +1,18 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "selectable-variants",
+  "type": "registry:lib",
+  "title": "Selectable Variants",
+  "description": "Shared CVA variant definitions for selectable items (checkbox, radio, etc.)",
+  "dependencies": [
+    "class-variance-authority"
+  ],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/lib/selectable-variants.ts",
+      "content": "import { cva } from \"class-variance-authority\";\n\nexport type SelectableSize = \"sm\" | \"md\" | \"lg\";\n\nexport type SelectableVariant = \"x\" | \"bullet\";\n\nexport const selectableIndicators = {\n  x: { checked: \"[x]\", unchecked: \"[ ]\", indeterminate: \"[-]\" },\n  bullet: { checked: \"[\\u00a0\\u25cf\\u00a0]\", unchecked: \"[\\u00a0\\u00a0\\u00a0]\", indeterminate: \"[ - ]\" },\n} satisfies Record<SelectableVariant, Record<string, string>>;\n\nexport const selectableVariants = cva(\n  \"flex cursor-pointer select-none font-mono relative\",\n  {\n    variants: {\n      highlighted: {\n        true: \"bg-secondary text-foreground font-bold before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-foreground\",\n        false: \"text-foreground hover:bg-secondary/50\",\n      },\n      disabled: {\n        true: \"opacity-50 cursor-not-allowed\",\n        false: \"\",\n      },\n    },\n    defaultVariants: {\n      highlighted: false,\n      disabled: false,\n    },\n  }\n);\n\nexport const selectableContainerClass = \"flex items-center gap-3 px-3 py-2\";\n\nexport const selectableIndicatorVariants = cva(\"font-bold shrink-0 whitespace-nowrap\", {\n  variants: {\n    size: {\n      sm: \"text-sm min-w-[3ch]\",\n      md: \"min-w-[4ch]\",\n      lg: \"text-lg min-w-[4ch]\",\n    },\n    checked: {\n      true: \"\",\n      false: \"\",\n    },\n    highlighted: {\n      true: \"\",\n      false: \"\",\n    },\n  },\n  compoundVariants: [\n    { checked: true, highlighted: false, className: \"text-success\" },\n  ],\n  defaultVariants: {\n    size: \"md\",\n    checked: false,\n    highlighted: false,\n  },\n});\n\nexport const selectableLabelVariants = cva(\"\", {\n  variants: {\n    size: {\n      sm: \"text-sm\",\n      md: \"text-base\",\n      lg: \"text-lg\",\n    },\n  },\n  defaultVariants: {\n    size: \"md\",\n  },\n});\n\nexport const selectableDescriptionVariants = cva(\"text-sm mt-0.5\", {\n  variants: {\n    highlighted: {\n      true: \"text-foreground/70\",\n      false: \"text-muted-foreground\",\n    },\n  },\n  defaultVariants: {\n    highlighted: false,\n  },\n});\n",
+      "type": "registry:lib"
+    }
+  ]
+}

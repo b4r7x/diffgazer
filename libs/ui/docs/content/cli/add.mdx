@@ -1,0 +1,61 @@
+---
+title: dgadd add
+description: Add @diffgazer/ui components and @diffgazer/keys hooks to your project.
+---
+
+## Usage
+
+```bash
+dgadd add <item> [item...]
+```
+
+Items are namespaced:
+
+```bash
+dgadd add ui/button
+dgadd add ui/dialog ui/tabs keys/navigation
+```
+
+Bare names are treated as `ui/*` for compatibility:
+
+```bash
+dgadd add button
+```
+
+## Options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--cwd <path>` | Working directory | `.` |
+| `--all` | Add all public UI items | `false` |
+| `--overwrite` | Overwrite existing files | `false` |
+| `--dry-run` | Preview changes without writing files | `false` |
+| `--integration <mode>` | Keyboard integration mode: `ask \| none \| copy \| keys` | `ask` |
+| `--keys-version <version>` | Version/tag used when `--integration keys` installs `@diffgazer/keys` | `latest` |
+| `--yes` | Skip confirmation prompts | `false` |
+
+## Keyboard Integration
+
+`copy` mode installs bundled hook source into your app.
+
+```bash
+dgadd add ui/menu --integration copy
+```
+
+`keys` mode rewrites local hook imports to `@diffgazer/keys` and installs the package dependency.
+
+```bash
+dgadd add ui/menu --integration keys
+```
+
+Standalone hooks can be installed directly:
+
+```bash
+dgadd add keys/navigation keys/focus-trap keys/scroll-lock
+```
+
+## Notes
+
+- `dgadd` copies source files into your project; you own the installed code.
+- UI dependencies and internal component dependencies are resolved automatically.
+- Package-mode keys integration is separate from the `diffgazer` product CLI.

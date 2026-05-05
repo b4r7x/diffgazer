@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://diffgazer.com/schema/diffgazer.json",
+  "title": "Diffgazer Installer Config",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "aliases": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "components": {
+          "type": "string"
+        },
+        "utils": {
+          "type": "string"
+        },
+        "lib": {
+          "type": "string"
+        },
+        "hooks": {
+          "type": "string"
+        }
+      }
+    },
+    "componentsFsPath": {
+      "type": "string"
+    },
+    "libFsPath": {
+      "type": "string"
+    },
+    "hooksFsPath": {
+      "type": "string"
+    },
+    "rsc": {
+      "type": "boolean"
+    },
+    "tailwind": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "css": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "css"
+      ]
+    },
+    "installedComponents": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "installedAt": {
+            "type": "string"
+          },
+          "integrationMode": {
+            "type": "string",
+            "enum": [
+              "none",
+              "copy",
+              "@diffgazer/keys"
+            ]
+          },
+          "keysVersion": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "installedAt"
+        ]
+      }
+    }
+  }
+}

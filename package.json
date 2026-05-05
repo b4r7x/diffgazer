@@ -1,0 +1,47 @@
+{
+  "name": "@diffgazer/repo",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Diffgazer monorepo workspace",
+  "homepage": "https://github.com/b4r7/diffgazer",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/b4r7/diffgazer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/b4r7/diffgazer/issues"
+  },
+  "packageManager": "pnpm@10.28.2",
+  "scripts": {
+    "build": "turbo run build",
+    "type-check": "turbo run type-check",
+    "test": "turbo run test",
+    "check": "turbo run check",
+    "verify:monorepo": "node scripts/monorepo/check-invariants.mjs",
+    "smoke:cli": "node scripts/monorepo/smoke-cli.mjs",
+    "smoke:packages": "node scripts/monorepo/smoke-package-install.mjs",
+    "docs:prepare": "pnpm --filter @diffgazer/docs prepare:generated",
+    "docs:build": "pnpm --filter @diffgazer/docs build",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^0.6.0",
+    "@changesets/cli": "^2.30.0",
+    "@chialab/vitest-axe": "^0.19.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@vitest/coverage-v8": "^4.1.0",
+    "axe-core": "^4.11.1",
+    "jsdom": "^28.1.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "turbo": "^2.6.3",
+    "vitest": "^4.1.0"
+  },
+  "type": "module"
+}
