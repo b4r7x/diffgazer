@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, type ReactNode } from "react";
+import { useLayoutEffect, type ComponentPropsWithRef, type MouseEvent, type ReactNode } from "react";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useSelectContext } from "./select-context";
@@ -46,7 +46,7 @@ function getItemState(isSelected: boolean, isHighlighted: boolean, multiple: boo
 
 export type SelectItemIndicator = "auto" | "checkbox" | "radio" | "none";
 
-export interface SelectItemProps {
+export interface SelectItemProps extends Omit<ComponentPropsWithRef<"div">, "children" | "onSelect"> {
   value: string;
   children: ReactNode;
   disabled?: boolean;
@@ -59,7 +59,6 @@ export interface SelectItemProps {
   indicator?: SelectItemIndicator;
   /** Text for search/typeahead matching. Defaults to children text or value. */
   textValue?: string;
-  className?: string;
 }
 
 function renderIndicator(
@@ -84,6 +83,10 @@ export function SelectItem({
   indicator = "auto",
   textValue,
   className,
+  ref,
+  onClick,
+  onMouseEnter,
+  ...props
 }: SelectItemProps) {
   const {
     value,
@@ -94,35 +97,46 @@ export function SelectItem({
     selectItem,
     variant,
     listboxId,
-    labelsRef,
+    registerOption,
   } = useSelectContext("SelectItem");
 
   const label = textValue ?? (typeof children === "string" ? children : itemValue);
 
   useLayoutEffect(() => {
-    labelsRef.current.set(itemValue, label);
-    return () => { labelsRef.current.delete(itemValue); };
-  }, [itemValue, label, labelsRef]);
+    return registerOption(itemValue, { label, disabled });
+  }, [disabled, itemValue, label, registerOption]);
 
   const isSelected = isValueSelected(value, itemValue);
 
   if (!matchesSearch(label, searchQuery)) return null;
 
-  const isHighlighted = highlighted === itemValue;
+  const isHighlighted = !disabled && highlighted === itemValue;
   const state = getItemState(isSelected, isHighlighted, multiple);
   const indicatorText = renderIndicator(indicator, isSelected, multiple);
   const showIndicatorSlot = indicator !== "none";
 
+  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
+    onClick?.(event);
+    if (!event.defaultPrevented && !disabled) selectItem(itemValue);
+  };
+
+  const handleMouseEnter = (event: MouseEvent<HTMLDivElement>) => {
+    onMouseEnter?.(event);
+    if (!event.defaultPrevented && !disabled) onHighlight(itemValue);
+  };
+
   return (
     <div
+      {...props}
+      ref={ref}
       id={toOptionId(listboxId, itemValue)}
       role="option"
       aria-selected={isSelected}
       aria-disabled={disabled || undefined}
       data-value={itemValue}
       data-label={label}
-      onClick={() => { if (!disabled) selectItem(itemValue); }}
-      onMouseEnter={() => { if (!disabled) onHighlight(itemValue); }}
+      onClick={handleClick}
+      onMouseEnter={handleMouseEnter}
       className={cn(
         selectItemVariants({ state, variant }),
         disabled && "opacity-50 cursor-not-allowed",

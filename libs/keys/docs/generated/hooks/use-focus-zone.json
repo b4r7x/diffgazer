@@ -3,10 +3,35 @@
   "title": "useFocusZone",
   "description": "Manage focus across multiple zones with arrow key and Tab transitions. Supports controlled and uncontrolled zone state.",
   "source": {
-    "raw": "import { useState, useEffectEvent } from \"react\";\nimport { useKey } from \"./use-key.js\";\nimport type { UseKeyOptions } from \"./use-key.js\";\nimport { useScope } from \"./use-scope.js\";\nimport { keys } from \"../utils/keys.js\";\n\ntype ZoneTransition<T extends string> = (params: {\n  zone: T;\n  key: \"ArrowLeft\" | \"ArrowRight\" | \"ArrowUp\" | \"ArrowDown\";\n}) => T | null;\n\ninterface UseFocusZoneOptions<T extends string> {\n  initial: T;\n  zones: readonly [T, ...T[]];\n  zone?: T;\n  onZoneChange?: (zone: T) => void;\n  onLeaveZone?: (zone: T) => void;\n  onEnterZone?: (zone: T) => void;\n  transitions?: ZoneTransition<T>;\n  tabCycle?: readonly T[];\n  scope?: string;\n  enabled?: boolean;\n}\n\nexport interface ZoneProps {\n  \"data-focused\": true | undefined;\n}\n\ninterface UseFocusZoneReturn<T extends string> {\n  zone: T;\n  setZone: (zone: T) => void;\n  inZone: (...zones: T[]) => boolean;\n  forZone: (target: T, extra?: UseKeyOptions) => UseKeyOptions;\n  zoneProps: (target: T) => ZoneProps;\n}\n\nconst ARROW_KEYS = [\n  \"ArrowLeft\",\n  \"ArrowRight\",\n  \"ArrowUp\",\n  \"ArrowDown\",\n] as const;\n\nexport function useFocusZone<T extends string>(\n  options: UseFocusZoneOptions<T>,\n): UseFocusZoneReturn<T> {\n  const { initial, zones, enabled = true } = options;\n\n  const [internalZone, setInternalZone] = useState<T>(initial);\n\n  const currentZone: T = options.zone ?? internalZone;\n\n  const setZoneValue = useEffectEvent((next: T) => {\n    if (next === currentZone) return;\n    options.onLeaveZone?.(currentZone);\n    options.onEnterZone?.(next);\n    if (options.zone === undefined) setInternalZone(next);\n    options.onZoneChange?.(next);\n  });\n\n  const stableTransitions = useEffectEvent(\n    (key: \"ArrowLeft\" | \"ArrowRight\" | \"ArrowUp\" | \"ArrowDown\") => {\n      const next = options.transitions?.({ zone: currentZone, key });\n      if (next != null && zones.includes(next)) {\n        setZoneValue(next);\n      }\n    },\n  );\n\n  const cycleZone = useEffectEvent((delta: 1 | -1) => {\n    if (!options.tabCycle || options.tabCycle.length === 0) return;\n    const cycle = options.tabCycle;\n    const idx = cycle.indexOf(currentZone);\n    const next = cycle[(idx + delta + cycle.length) % cycle.length] ?? cycle[0];\n    if (!next) return;\n    setZoneValue(next);\n  });\n\n  useKey(\n    keys(ARROW_KEYS, (e) => stableTransitions(e.key as typeof ARROW_KEYS[number])),\n    { enabled: enabled && options.transitions != null },\n  );\n\n  useKey(\"Tab\", () => cycleZone(1), {\n    enabled: enabled && options.tabCycle != null,\n    preventDefault: true,\n  });\n\n  useKey(\"shift+Tab\", () => cycleZone(-1), {\n    enabled: enabled && options.tabCycle != null,\n    preventDefault: true,\n  });\n\n  useScope(options.scope ?? null, { enabled: enabled && !!options.scope });\n\n  const safeZone = zones.includes(currentZone) ? currentZone : zones[0];\n\n  return {\n    zone: safeZone,\n    setZone: setZoneValue,\n    inZone: (...zones: T[]) => zones.includes(safeZone),\n    forZone: (target: T, extra?: UseKeyOptions): UseKeyOptions => ({\n      ...extra,\n      enabled: safeZone === target && (extra?.enabled ?? true),\n    }),\n    zoneProps: (target: T): ZoneProps => ({\n      \"data-focused\": safeZone === target || undefined,\n    }),\n  };\n}\n",
+    "raw": "\"use client\";\n\nimport { useCallback, useState } from \"react\";\nimport { useKey } from \"./use-key.js\";\nimport type { UseKeyOptions } from \"./use-key.js\";\nimport { useScope } from \"./use-scope.js\";\nimport { keys } from \"../utils/keys.js\";\n\ntype ZoneTransition<T extends string> = (params: {\n  zone: T;\n  key: \"ArrowLeft\" | \"ArrowRight\" | \"ArrowUp\" | \"ArrowDown\";\n}) => T | null;\n\ninterface UseFocusZoneOptions<T extends string> {\n  initial: T;\n  zones: readonly [T, ...T[]];\n  zone?: T;\n  onZoneChange?: (zone: T) => void;\n  onLeaveZone?: (zone: T) => void;\n  onEnterZone?: (zone: T) => void;\n  transitions?: ZoneTransition<T>;\n  tabCycle?: readonly T[];\n  scope?: string;\n  enabled?: boolean;\n}\n\nexport interface ZoneProps {\n  \"data-focused\": true | undefined;\n}\n\ninterface UseFocusZoneReturn<T extends string> {\n  zone: T;\n  setZone: (zone: T) => void;\n  inZone: (...zones: T[]) => boolean;\n  forZone: (target: T, extra?: UseKeyOptions) => UseKeyOptions;\n  zoneProps: (target: T) => ZoneProps;\n}\n\nconst ARROW_KEYS = [\n  \"ArrowLeft\",\n  \"ArrowRight\",\n  \"ArrowUp\",\n  \"ArrowDown\",\n] as const;\n\nexport function useFocusZone<T extends string>(\n  options: UseFocusZoneOptions<T>,\n): UseFocusZoneReturn<T> {\n  const { initial, zones, enabled = true } = options;\n  const {\n    zone: controlledZone,\n    onZoneChange,\n    onLeaveZone,\n    onEnterZone,\n    transitions,\n    tabCycle,\n    scope,\n  } = options;\n\n  const [internalZone, setInternalZone] = useState<T>(initial);\n\n  const currentZone: T = controlledZone ?? internalZone;\n\n  const setZoneValue = useCallback((next: T) => {\n    if (next === currentZone) return;\n    onLeaveZone?.(currentZone);\n    onEnterZone?.(next);\n    if (controlledZone === undefined) setInternalZone(next);\n    onZoneChange?.(next);\n  }, [controlledZone, currentZone, onEnterZone, onLeaveZone, onZoneChange]);\n\n  const stableTransitions = useCallback(\n    (key: \"ArrowLeft\" | \"ArrowRight\" | \"ArrowUp\" | \"ArrowDown\") => {\n      const next = transitions?.({ zone: currentZone, key });\n      if (next != null && zones.includes(next)) {\n        setZoneValue(next);\n      }\n    },\n    [currentZone, setZoneValue, transitions, zones],\n  );\n\n  const cycleZone = useCallback((delta: 1 | -1) => {\n    if (!tabCycle || tabCycle.length === 0) return;\n    const cycle = tabCycle;\n    const idx = cycle.indexOf(currentZone);\n    const next = cycle[(idx + delta + cycle.length) % cycle.length] ?? cycle[0];\n    if (!next) return;\n    setZoneValue(next);\n  }, [currentZone, setZoneValue, tabCycle]);\n\n  useKey(\n    keys(ARROW_KEYS, (e) => stableTransitions(e.key as typeof ARROW_KEYS[number])),\n    { enabled: enabled && transitions != null },\n  );\n\n  useKey(\"Tab\", () => cycleZone(1), {\n    enabled: enabled && tabCycle != null,\n    preventDefault: true,\n  });\n\n  useKey(\"shift+Tab\", () => cycleZone(-1), {\n    enabled: enabled && tabCycle != null,\n    preventDefault: true,\n  });\n\n  useScope(scope ?? null, { enabled: enabled && !!scope });\n\n  const safeZone = zones.includes(currentZone) ? currentZone : zones[0];\n\n  return {\n    zone: safeZone,\n    setZone: setZoneValue,\n    inZone: (...zones: T[]) => zones.includes(safeZone),\n    forZone: (target: T, extra?: UseKeyOptions): UseKeyOptions => ({\n      ...extra,\n      enabled: safeZone === target && (extra?.enabled ?? true),\n    }),\n    zoneProps: (target: T): ZoneProps => ({\n      \"data-focused\": safeZone === target || undefined,\n    }),\n  };\n}\n",
     "highlighted": [
       {
         "number": 1,
+        "content": [
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "use client",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 2,
+        "content": []
+      },
+      {
+        "number": 3,
         "content": [
           {
             "text": "import",
@@ -21,7 +46,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " useState",
+            "text": " useCallback",
             "color": "var(--code-variable)"
           },
           {
@@ -29,7 +54,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " useEffectEvent ",
+            "text": " useState ",
             "color": "var(--code-variable)"
           },
           {
@@ -67,7 +92,7 @@
         ]
       },
       {
-        "number": 2,
+        "number": 4,
         "content": [
           {
             "text": "import",
@@ -120,7 +145,7 @@
         ]
       },
       {
-        "number": 3,
+        "number": 5,
         "content": [
           {
             "text": "import",
@@ -181,7 +206,7 @@
         ]
       },
       {
-        "number": 4,
+        "number": 6,
         "content": [
           {
             "text": "import",
@@ -234,7 +259,7 @@
         ]
       },
       {
-        "number": 5,
+        "number": 7,
         "content": [
           {
             "text": "import",
@@ -287,11 +312,11 @@
         ]
       },
       {
-        "number": 6,
+        "number": 8,
         "content": []
       },
       {
-        "number": 7,
+        "number": 9,
         "content": [
           {
             "text": "type",
@@ -368,7 +393,7 @@
         ]
       },
       {
-        "number": 8,
+        "number": 10,
         "content": [
           {
             "text": "  zone",
@@ -393,7 +418,7 @@
         ]
       },
       {
-        "number": 9,
+        "number": 11,
         "content": [
           {
             "text": "  key",
@@ -498,7 +523,7 @@
         ]
       },
       {
-        "number": 10,
+        "number": 12,
         "content": [
           {
             "text": "})",
@@ -543,11 +568,11 @@
         ]
       },
       {
-        "number": 11,
+        "number": 13,
         "content": []
       },
       {
-        "number": 12,
+        "number": 14,
         "content": [
           {
             "text": "interface",
@@ -600,7 +625,7 @@
         ]
       },
       {
-        "number": 13,
+        "number": 15,
         "content": [
           {
             "text": "  initial",
@@ -625,7 +650,7 @@
         ]
       },
       {
-        "number": 14,
+        "number": 16,
         "content": [
           {
             "text": "  zones",
@@ -678,7 +703,7 @@
         ]
       },
       {
-        "number": 15,
+        "number": 17,
         "content": [
           {
             "text": "  zone",
@@ -703,7 +728,7 @@
         ]
       },
       {
-        "number": 16,
+        "number": 18,
         "content": [
           {
             "text": "  ",
@@ -768,7 +793,7 @@
         ]
       },
       {
-        "number": 17,
+        "number": 19,
         "content": [
           {
             "text": "  ",
@@ -833,7 +858,7 @@
         ]
       },
       {
-        "number": 18,
+        "number": 20,
         "content": [
           {
             "text": "  ",
@@ -898,7 +923,7 @@
         ]
       },
       {
-        "number": 19,
+        "number": 21,
         "content": [
           {
             "text": "  transitions",
@@ -931,7 +956,7 @@
         ]
       },
       {
-        "number": 20,
+        "number": 22,
         "content": [
           {
             "text": "  tabCycle",
@@ -968,7 +993,7 @@
         ]
       },
       {
-        "number": 21,
+        "number": 23,
         "content": [
           {
             "text": "  scope",
@@ -993,7 +1018,7 @@
         ]
       },
       {
-        "number": 22,
+        "number": 24,
         "content": [
           {
             "text": "  enabled",
@@ -1018,7 +1043,7 @@
         ]
       },
       {
-        "number": 23,
+        "number": 25,
         "content": [
           {
             "text": "}",
@@ -1027,11 +1052,11 @@
         ]
       },
       {
-        "number": 24,
+        "number": 26,
         "content": []
       },
       {
-        "number": 25,
+        "number": 27,
         "content": [
           {
             "text": "export",
@@ -1064,7 +1089,7 @@
         ]
       },
       {
-        "number": 26,
+        "number": 28,
         "content": [
           {
             "text": "  ",
@@ -1117,7 +1142,7 @@
         ]
       },
       {
-        "number": 27,
+        "number": 29,
         "content": [
           {
             "text": "}",
@@ -1126,11 +1151,11 @@
         ]
       },
       {
-        "number": 28,
+        "number": 30,
         "content": []
       },
       {
-        "number": 29,
+        "number": 31,
         "content": [
           {
             "text": "interface",
@@ -1183,7 +1208,7 @@
         ]
       },
       {
-        "number": 30,
+        "number": 32,
         "content": [
           {
             "text": "  zone",
@@ -1208,7 +1233,7 @@
         ]
       },
       {
-        "number": 31,
+        "number": 33,
         "content": [
           {
             "text": "  ",
@@ -1273,7 +1298,7 @@
         ]
       },
       {
-        "number": 32,
+        "number": 34,
         "content": [
           {
             "text": "  ",
@@ -1342,7 +1367,7 @@
         ]
       },
       {
-        "number": 33,
+        "number": 35,
         "content": [
           {
             "text": "  ",
@@ -1427,7 +1452,7 @@
         ]
       },
       {
-        "number": 34,
+        "number": 36,
         "content": [
           {
             "text": "  ",
@@ -1492,7 +1517,7 @@
         ]
       },
       {
-        "number": 35,
+        "number": 37,
         "content": [
           {
             "text": "}",
@@ -1501,11 +1526,11 @@
         ]
       },
       {
-        "number": 36,
+        "number": 38,
         "content": []
       },
       {
-        "number": 37,
+        "number": 39,
         "content": [
           {
             "text": "const",
@@ -1534,7 +1559,7 @@
         ]
       },
       {
-        "number": 38,
+        "number": 40,
         "content": [
           {
             "text": "  ",
@@ -1559,7 +1584,7 @@
         ]
       },
       {
-        "number": 39,
+        "number": 41,
         "content": [
           {
             "text": "  ",
@@ -1584,7 +1609,7 @@
         ]
       },
       {
-        "number": 40,
+        "number": 42,
         "content": [
           {
             "text": "  ",
@@ -1609,7 +1634,7 @@
         ]
       },
       {
-        "number": 41,
+        "number": 43,
         "content": [
           {
             "text": "  ",
@@ -1634,7 +1659,7 @@
         ]
       },
       {
-        "number": 42,
+        "number": 44,
         "content": [
           {
             "text": "] ",
@@ -1659,11 +1684,11 @@
         ]
       },
       {
-        "number": 43,
+        "number": 45,
         "content": []
       },
       {
-        "number": 44,
+        "number": 46,
         "content": [
           {
             "text": "export",
@@ -1716,7 +1741,7 @@
         ]
       },
       {
-        "number": 45,
+        "number": 47,
         "content": [
           {
             "text": "  options",
@@ -1749,7 +1774,7 @@
         ]
       },
       {
-        "number": 46,
+        "number": 48,
         "content": [
           {
             "text": "):",
@@ -1786,7 +1811,7 @@
         ]
       },
       {
-        "number": 47,
+        "number": 49,
         "content": [
           {
             "text": "  ",
@@ -1879,11 +1904,188 @@
         ]
       },
       {
-        "number": 48,
+        "number": 50,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 51,
+        "content": [
+          {
+            "text": "    zone",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "controlledZone",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 52,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "onZoneChange",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 53,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "onLeaveZone",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 54,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "onEnterZone",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 55,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "transitions",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 56,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "tabCycle",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 57,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "scope",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 58,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " options",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 59,
         "content": []
       },
       {
-        "number": 49,
+        "number": 60,
         "content": [
           {
             "text": "  ",
@@ -1960,11 +2162,11 @@
         ]
       },
       {
-        "number": 50,
+        "number": 61,
         "content": []
       },
       {
-        "number": 51,
+        "number": 62,
         "content": [
           {
             "text": "  ",
@@ -2003,19 +2205,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "options",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "zone ",
+            "text": " controlledZone ",
             "color": "var(--code-variable)"
           },
           {
@@ -2033,11 +2223,11 @@
         ]
       },
       {
-        "number": 52,
+        "number": 63,
         "content": []
       },
       {
-        "number": 53,
+        "number": 64,
         "content": [
           {
             "text": "  ",
@@ -2068,7 +2258,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "useEffectEvent",
+            "text": "useCallback",
             "color": "var(--code-function)"
           },
           {
@@ -2118,7 +2308,7 @@
         ]
       },
       {
-        "number": 54,
+        "number": 65,
         "content": [
           {
             "text": "    ",
@@ -2151,19 +2341,11 @@
         ]
       },
       {
-        "number": 55,
+        "number": 66,
         "content": [
           {
             "text": "    ",
             "color": "var(--code-variable)"
-          },
-          {
-            "text": "options",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
           },
           {
             "text": "onLeaveZone",
@@ -2184,19 +2366,11 @@
         ]
       },
       {
-        "number": 56,
+        "number": 67,
         "content": [
           {
             "text": "    ",
             "color": "var(--code-variable)"
-          },
-          {
-            "text": "options",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
           },
           {
             "text": "onEnterZone",
@@ -2217,7 +2391,7 @@
         ]
       },
       {
-        "number": 57,
+        "number": 68,
         "content": [
           {
             "text": "    ",
@@ -2228,19 +2402,7 @@
             "color": "var(--code-keyword)"
           },
           {
-            "text": " (",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "options",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "zone ",
+            "text": " (controlledZone ",
             "color": "var(--code-variable)"
           },
           {
@@ -2274,19 +2436,11 @@
         ]
       },
       {
-        "number": 58,
+        "number": 69,
         "content": [
           {
             "text": "    ",
             "color": "var(--code-variable)"
-          },
-          {
-            "text": "options",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
           },
           {
             "text": "onZoneChange",
@@ -2307,18 +2461,50 @@
         ]
       },
       {
-        "number": 59,
+        "number": 70,
         "content": [
           {
             "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "}",
+            "text": "},",
             "color": "var(--code-operator)"
           },
           {
-            "text": ")",
+            "text": " [controlledZone",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " currentZone",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " onEnterZone",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " onLeaveZone",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " onZoneChange])",
             "color": "var(--code-variable)"
           },
           {
@@ -2328,11 +2514,11 @@
         ]
       },
       {
-        "number": 60,
+        "number": 71,
         "content": []
       },
       {
-        "number": 61,
+        "number": 72,
         "content": [
           {
             "text": "  ",
@@ -2363,7 +2549,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "useEffectEvent",
+            "text": "useCallback",
             "color": "var(--code-function)"
           },
           {
@@ -2373,7 +2559,7 @@
         ]
       },
       {
-        "number": 62,
+        "number": 73,
         "content": [
           {
             "text": "    ",
@@ -2502,7 +2688,7 @@
         ]
       },
       {
-        "number": 63,
+        "number": 74,
         "content": [
           {
             "text": "      ",
@@ -2531,14 +2717,6 @@
           {
             "text": " ",
             "color": "var(--code-variable)"
-          },
-          {
-            "text": "options",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
           },
           {
             "text": "transitions",
@@ -2591,7 +2769,7 @@
         ]
       },
       {
-        "number": 64,
+        "number": 75,
         "content": [
           {
             "text": "      ",
@@ -2652,7 +2830,7 @@
         ]
       },
       {
-        "number": 65,
+        "number": 76,
         "content": [
           {
             "text": "        ",
@@ -2673,7 +2851,7 @@
         ]
       },
       {
-        "number": 66,
+        "number": 77,
         "content": [
           {
             "text": "      ",
@@ -2686,7 +2864,7 @@
         ]
       },
       {
-        "number": 67,
+        "number": 78,
         "content": [
           {
             "text": "    ",
@@ -2699,7 +2877,44 @@
         ]
       },
       {
-        "number": 68,
+        "number": 79,
+        "content": [
+          {
+            "text": "    [currentZone",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " setZoneValue",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " transitions",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " zones]",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 80,
         "content": [
           {
             "text": "  )",
@@ -2712,11 +2927,11 @@
         ]
       },
       {
-        "number": 69,
+        "number": 81,
         "content": []
       },
       {
-        "number": 70,
+        "number": 82,
         "content": [
           {
             "text": "  ",
@@ -2747,7 +2962,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "useEffectEvent",
+            "text": "useCallback",
             "color": "var(--code-function)"
           },
           {
@@ -2813,7 +3028,7 @@
         ]
       },
       {
-        "number": 71,
+        "number": 83,
         "content": [
           {
             "text": "    ",
@@ -2832,14 +3047,6 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "options",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
             "text": "tabCycle ",
             "color": "var(--code-variable)"
           },
@@ -2850,14 +3057,6 @@
           {
             "text": " ",
             "color": "var(--code-variable)"
-          },
-          {
-            "text": "options",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
           },
           {
             "text": "tabCycle",
@@ -2902,7 +3101,7 @@
         ]
       },
       {
-        "number": 72,
+        "number": 84,
         "content": [
           {
             "text": "    ",
@@ -2929,19 +3128,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "options",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "tabCycle",
+            "text": " tabCycle",
             "color": "var(--code-variable)"
           },
           {
@@ -2951,7 +3138,7 @@
         ]
       },
       {
-        "number": 73,
+        "number": 85,
         "content": [
           {
             "text": "    ",
@@ -3004,7 +3191,7 @@
         ]
       },
       {
-        "number": 74,
+        "number": 86,
         "content": [
           {
             "text": "    ",
@@ -3113,7 +3300,7 @@
         ]
       },
       {
-        "number": 75,
+        "number": 87,
         "content": [
           {
             "text": "    ",
@@ -3146,7 +3333,7 @@
         ]
       },
       {
-        "number": 76,
+        "number": 88,
         "content": [
           {
             "text": "    ",
@@ -3167,18 +3354,34 @@
         ]
       },
       {
-        "number": 77,
+        "number": 89,
         "content": [
           {
             "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "}",
+            "text": "},",
             "color": "var(--code-operator)"
           },
           {
-            "text": ")",
+            "text": " [currentZone",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " setZoneValue",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " tabCycle])",
             "color": "var(--code-variable)"
           },
           {
@@ -3188,11 +3391,11 @@
         ]
       },
       {
-        "number": 78,
+        "number": 90,
         "content": []
       },
       {
-        "number": 79,
+        "number": 91,
         "content": [
           {
             "text": "  ",
@@ -3209,7 +3412,7 @@
         ]
       },
       {
-        "number": 80,
+        "number": 92,
         "content": [
           {
             "text": "    ",
@@ -3310,7 +3513,7 @@
         ]
       },
       {
-        "number": 81,
+        "number": 93,
         "content": [
           {
             "text": "    ",
@@ -3337,19 +3540,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "options",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "transitions ",
+            "text": " transitions ",
             "color": "var(--code-variable)"
           },
           {
@@ -3375,7 +3566,7 @@
         ]
       },
       {
-        "number": 82,
+        "number": 94,
         "content": [
           {
             "text": "  )",
@@ -3388,11 +3579,11 @@
         ]
       },
       {
-        "number": 83,
+        "number": 95,
         "content": []
       },
       {
-        "number": 84,
+        "number": 96,
         "content": [
           {
             "text": "  ",
@@ -3473,7 +3664,7 @@
         ]
       },
       {
-        "number": 85,
+        "number": 97,
         "content": [
           {
             "text": "    enabled",
@@ -3492,19 +3683,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "options",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "tabCycle ",
+            "text": " tabCycle ",
             "color": "var(--code-variable)"
           },
           {
@@ -3526,7 +3705,7 @@
         ]
       },
       {
-        "number": 86,
+        "number": 98,
         "content": [
           {
             "text": "    preventDefault",
@@ -3551,7 +3730,7 @@
         ]
       },
       {
-        "number": 87,
+        "number": 99,
         "content": [
           {
             "text": "  ",
@@ -3572,11 +3751,11 @@
         ]
       },
       {
-        "number": 88,
+        "number": 100,
         "content": []
       },
       {
-        "number": 89,
+        "number": 101,
         "content": [
           {
             "text": "  ",
@@ -3661,7 +3840,7 @@
         ]
       },
       {
-        "number": 90,
+        "number": 102,
         "content": [
           {
             "text": "    enabled",
@@ -3680,19 +3859,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "options",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "tabCycle ",
+            "text": " tabCycle ",
             "color": "var(--code-variable)"
           },
           {
@@ -3714,7 +3881,7 @@
         ]
       },
       {
-        "number": 91,
+        "number": 103,
         "content": [
           {
             "text": "    preventDefault",
@@ -3739,7 +3906,7 @@
         ]
       },
       {
-        "number": 92,
+        "number": 104,
         "content": [
           {
             "text": "  ",
@@ -3760,11 +3927,11 @@
         ]
       },
       {
-        "number": 93,
+        "number": 105,
         "content": []
       },
       {
-        "number": 94,
+        "number": 106,
         "content": [
           {
             "text": "  ",
@@ -3775,19 +3942,7 @@
             "color": "var(--code-function)"
           },
           {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "options",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "scope ",
+            "text": "(scope ",
             "color": "var(--code-variable)"
           },
           {
@@ -3839,14 +3994,6 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "options",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
             "text": "scope ",
             "color": "var(--code-variable)"
           },
@@ -3865,11 +4012,11 @@
         ]
       },
       {
-        "number": 95,
+        "number": 107,
         "content": []
       },
       {
-        "number": 96,
+        "number": 108,
         "content": [
           {
             "text": "  ",
@@ -3946,11 +4093,11 @@
         ]
       },
       {
-        "number": 97,
+        "number": 109,
         "content": []
       },
       {
-        "number": 98,
+        "number": 110,
         "content": [
           {
             "text": "  ",
@@ -3971,7 +4118,7 @@
         ]
       },
       {
-        "number": 99,
+        "number": 111,
         "content": [
           {
             "text": "    zone",
@@ -3992,7 +4139,7 @@
         ]
       },
       {
-        "number": 100,
+        "number": 112,
         "content": [
           {
             "text": "    setZone",
@@ -4013,7 +4160,7 @@
         ]
       },
       {
-        "number": 101,
+        "number": 113,
         "content": [
           {
             "text": "    ",
@@ -4094,7 +4241,7 @@
         ]
       },
       {
-        "number": 102,
+        "number": 114,
         "content": [
           {
             "text": "    ",
@@ -4183,7 +4330,7 @@
         ]
       },
       {
-        "number": 103,
+        "number": 115,
         "content": [
           {
             "text": "      ",
@@ -4204,7 +4351,7 @@
         ]
       },
       {
-        "number": 104,
+        "number": 116,
         "content": [
           {
             "text": "      enabled",
@@ -4269,7 +4416,7 @@
         ]
       },
       {
-        "number": 105,
+        "number": 117,
         "content": [
           {
             "text": "    ",
@@ -4290,7 +4437,7 @@
         ]
       },
       {
-        "number": 106,
+        "number": 118,
         "content": [
           {
             "text": "    ",
@@ -4359,7 +4506,7 @@
         ]
       },
       {
-        "number": 107,
+        "number": 119,
         "content": [
           {
             "text": "      ",
@@ -4412,7 +4559,7 @@
         ]
       },
       {
-        "number": 108,
+        "number": 120,
         "content": [
           {
             "text": "    ",
@@ -4433,7 +4580,7 @@
         ]
       },
       {
-        "number": 109,
+        "number": 121,
         "content": [
           {
             "text": "  ",
@@ -4446,7 +4593,7 @@
         ]
       },
       {
-        "number": 110,
+        "number": 122,
         "content": [
           {
             "text": "}",
@@ -4455,7 +4602,7 @@
         ]
       },
       {
-        "number": 111,
+        "number": 123,
         "content": []
       }
     ]

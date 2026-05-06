@@ -1,3 +1,5 @@
+"use client";
+
 import { useContext } from "react";
 import { KeyboardContext, type KeyboardContextValue } from "../providers/keyboard-provider.js";
 

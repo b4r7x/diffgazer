@@ -4,6 +4,7 @@ import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { toast, Toaster } from "./index.js"
 import { dismiss, remove, useToastStore } from "./toast-store.js"
+import { Dialog } from "../dialog/index.js"
 
 function StoreReader({ onRead }: { onRead: (ids: string[]) => void }) {
   const { toasts } = useToastStore()
@@ -84,6 +85,7 @@ describe("Toast", () => {
     expect(screen.getByText("Failed!")).toBeInTheDocument()
     expect(screen.getByText("Caution!")).toBeInTheDocument()
     expect(screen.getByText("FYI")).toBeInTheDocument()
+    expect(screen.getByRole("alert")).toHaveTextContent("Failed!")
   })
 
   it("tracks a resolved promise via toast.promise()", async () => {
@@ -215,6 +217,27 @@ describe("Toast", () => {
     expect(screen.getByText("First")).toBeInTheDocument()
   })
 
+  it("does not dismiss a toast on Escape while a dialog is open", () => {
+    render(
+      <>
+        <Dialog defaultOpen>
+          <Dialog.Content>
+            <Dialog.Title>Blocking dialog</Dialog.Title>
+          </Dialog.Content>
+        </Dialog>
+        <Toaster />
+      </>
+    )
+    act(() => { toast("Background toast", { id: "dialog-toast" }) })
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))
+    })
+    act(() => { vi.advanceTimersByTime(250) })
+
+    expect(screen.getByText("Background toast")).toBeInTheDocument()
+  })
+
   it("pauses auto-dismiss while document is hidden and resumes on return", () => {
     render(<Toaster />)
     act(() => { toast("Paused toast", { duration: 3000 }) })
@@ -242,4 +265,3 @@ describe("Toast", () => {
     expect(screen.queryByText("Paused toast")).not.toBeInTheDocument()
   })
 })
-

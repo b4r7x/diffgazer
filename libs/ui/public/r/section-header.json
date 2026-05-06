@@ -19,5 +19,8 @@
       "content": "\"use client\";\n\nimport type { HTMLAttributes, Ref } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\ntype HeadingTag = \"h2\" | \"h3\" | \"h4\";\n\nexport const sectionHeaderVariants = cva(\n  \"font-bold mb-2 uppercase text-xs tracking-wider\",\n  {\n    variants: {\n      variant: {\n        default: \"text-foreground\",\n        muted: \"text-muted-foreground\",\n      },\n      bordered: {\n        true: \"border-b border-border pb-2\",\n      },\n    },\n    defaultVariants: { variant: \"default\", bordered: false },\n  },\n);\n\nexport interface SectionHeaderProps\n  extends HTMLAttributes<HTMLHeadingElement>,\n    VariantProps<typeof sectionHeaderVariants> {\n  as?: HeadingTag;\n  ref?: Ref<HTMLHeadingElement>;\n}\n\nexport function SectionHeader({\n  ref,\n  className,\n  variant,\n  bordered,\n  as: Tag = \"h3\",\n  children,\n  ...props\n}: SectionHeaderProps) {\n  return (\n    <Tag\n      ref={ref}\n      className={cn(sectionHeaderVariants({ variant, bordered }), className)}\n      {...props}\n    >\n      {children}\n    </Tag>\n  );\n}\n",
       "type": "registry:ui"
     }
-  ]
+  ],
+  "meta": {
+    "client": true
+  }
 }

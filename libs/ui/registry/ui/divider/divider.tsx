@@ -1,5 +1,3 @@
-"use client";
-
 import type { HTMLAttributes, Ref } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
@@ -43,10 +41,11 @@ export function Divider({
   return (
     <div
       ref={ref}
+      {...props}
       role={decorative ? "none" : "separator"}
+      aria-hidden={decorative ? true : undefined}
       aria-orientation={decorative ? undefined : orientation}
       className={cn(dividerVariants({ variant, orientation }), className)}
-      {...props}
     >
       {variant === "spaced" ? (
         <>

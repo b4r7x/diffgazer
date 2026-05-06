@@ -47,7 +47,6 @@ export function PopoverRoot({
     triggerMode,
     delayMs,
     closeDelayMs,
-    triggerRef,
   });
 
   const ctx: PopoverContextValue = useMemo(() => ({
@@ -62,7 +61,7 @@ export function PopoverRoot({
     onContentEnter: behavior.onContentEnter,
     onContentLeave: behavior.onContentLeave,
     enabled,
-  }), [openState, enabled, popoverId, triggerMode, setOpenState]);
+  }), [openState, enabled, popoverId, triggerMode, setOpenState, behavior]);
 
   return (
     <PopoverContext value={ctx}>{children}</PopoverContext>

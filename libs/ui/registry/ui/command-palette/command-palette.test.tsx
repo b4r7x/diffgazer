@@ -103,6 +103,7 @@ describe("CommandPalette", () => {
 
   it("auto-selects the first item and updates after filtering", async () => {
     renderPalette()
+    expect(screen.getByRole("listbox", { name: "Command results" })).toBeInTheDocument()
     expect(getOption("copy")).toHaveAttribute("aria-selected", "true")
 
     const input = screen.getByRole("combobox")

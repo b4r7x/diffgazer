@@ -11,8 +11,25 @@ export default defineConfig({
     },
   },
   test: {
-    environment: "jsdom",
-    include: ["registry/**/*.test.ts", "registry/**/*.test.tsx"],
-    setupFiles: ["./test-setup.ts"],
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "jsdom",
+          environment: "jsdom",
+          include: ["registry/**/*.test.ts", "registry/**/*.test.tsx"],
+          exclude: ["registry/**/*.ssr.test.tsx"],
+          setupFiles: ["./test-setup.ts"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "ssr",
+          environment: "node",
+          include: ["registry/**/*.ssr.test.tsx"],
+        },
+      },
+    ],
   },
 });

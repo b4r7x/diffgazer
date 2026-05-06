@@ -104,6 +104,31 @@ describe("buildCopyBundle", () => {
     expect(output.items[0]?.files[0]?.content).toContain("useFocus");
   });
 
+  it("can transform file content before writing the bundle", () => {
+    const root = createTempRoot();
+    writeHookFile(root, "use-focus.ts", "import '../internal/shared.js'\n");
+    writeRegistry(root, [
+      {
+        name: "focus",
+        type: "registry:hook",
+        files: [{ path: "src/hooks/use-focus.ts" }],
+      },
+    ]);
+
+    const outputPath = join(root, "bundle.json");
+    buildCopyBundle({
+      sourceRoot: root,
+      outputPath,
+      itemType: "registry:hook",
+      transformContent: (content) => content.replace("../internal/", "./internal/"),
+    });
+
+    const output = JSON.parse(readFileSync(outputPath, "utf-8")) as {
+      items: Array<{ files: Array<{ content: string }> }>;
+    };
+    expect(output.items[0]?.files[0]?.content).toBe("import './internal/shared.js'\n");
+  });
+
   it("throws if registry file not found", () => {
     const root = mkdtempSync(join(tmpdir(), "rk-no-registry-"));
     const outputPath = join(root, "bundle.json");

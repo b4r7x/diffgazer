@@ -1,4 +1,6 @@
-import { useEffectEvent } from "react";
+"use client";
+
+import { useCallback } from "react";
 import {
   useNavigationCore,
   type UseNavigationOptions,
@@ -33,7 +35,7 @@ export function useScopedNavigation(options: UseScopedNavigationOptions): UseSco
   const { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements } =
     useNavigationCore(options);
 
-  const dispatch = useEffectEvent((key: string, nativeEvent: globalThis.KeyboardEvent) => {
+  const dispatch = useCallback((key: string, nativeEvent: globalThis.KeyboardEvent) => {
     dispatchNavigationKey(key, {
       resolvedUpKeys,
       resolvedDownKeys,
@@ -44,7 +46,7 @@ export function useScopedNavigation(options: UseScopedNavigationOptions): UseSco
       total: getElements().length,
       nativeEvent,
     });
-  });
+  }, [focusIndex, getElements, handleEnter, handleSelect, move, resolvedDownKeys, resolvedUpKeys]);
 
   useKey(
     {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type ActiveHeadingActivation = "top-line" | "viewport-center" | (number & {});
 
@@ -99,30 +99,49 @@ export function useActiveHeading({
   const [activeId, setActiveId] = useState<string | null>(ids[0] ?? null);
   const scrollingToRef = useRef<string | null>(null);
   const settleTimerRef = useRef<number>(0);
+  const optionsRef = useRef({
+    ids,
+    containerId,
+    activation,
+    topOffset,
+    bottomMargin,
+    threshold,
+    bottomLock,
+  });
+  optionsRef.current = {
+    ids,
+    containerId,
+    activation,
+    topOffset,
+    bottomMargin,
+    threshold,
+    bottomLock,
+  };
 
-  const update = useEffectEvent((): void => {
+  const update = useCallback((): void => {
     if (scrollingToRef.current !== null) return;
+    const current = optionsRef.current;
 
-    const container = getContainer(containerId);
-    const elements = ids
+    const container = getContainer(current.containerId);
+    const elements = current.ids
       .map((id) => document.getElementById(id))
       .filter((el): el is HTMLElement => el instanceof HTMLElement);
 
     if (elements.length === 0) {
-      setActiveId(ids[0] ?? null);
+      setActiveId(current.ids[0] ?? null);
       return;
     }
 
     const { top, height, scrollTop, scrollHeight } = getViewportMetrics(container);
-    const bottomMarginPx = Math.max(0, bottomMargin) * height;
+    const bottomMarginPx = Math.max(0, current.bottomMargin) * height;
 
-    if (bottomLock && scrollTop + height >= scrollHeight - 2 - bottomMarginPx) {
+    if (current.bottomLock && scrollTop + height >= scrollHeight - 2 - bottomMarginPx) {
       setActiveId(elements[elements.length - 1]?.id ?? null);
       return;
     }
 
-    const activationLine = resolveActivationLine(top, height, activation, topOffset);
-    const t = Math.max(0, Math.min(1, threshold));
+    const activationLine = resolveActivationLine(top, height, current.activation, current.topOffset);
+    const t = Math.max(0, Math.min(1, current.threshold));
     let next = findLastAbove(elements, activationLine, t) ?? elements[0]?.id ?? null;
 
     if (next && elements.length > 1) {
@@ -133,7 +152,7 @@ export function useActiveHeading({
     }
 
     setActiveId(next);
-  });
+  }, []);
 
   useEffect(() => {
     if (!enabled || ids.length === 0) {
@@ -194,9 +213,9 @@ export function useActiveHeading({
       if (frame !== 0) window.cancelAnimationFrame(frame);
       if (settleTimerRef.current !== 0) window.clearTimeout(settleTimerRef.current);
     };
-  }, [idsKey, containerId, enabled, settleDelay, observe]);
+  }, [idsKey, containerId, activation, topOffset, bottomMargin, threshold, bottomLock, enabled, settleDelay, observe, update]);
 
-  const scrollTo = useEffectEvent((id: string) => {
+  const scrollTo = useCallback((id: string) => {
     const heading = document.getElementById(id);
     if (!(heading instanceof HTMLElement)) return;
 
@@ -217,7 +236,7 @@ export function useActiveHeading({
         behavior,
       });
     }
-  });
+  }, [containerId, scrollOffset]);
 
   return { activeId, scrollTo };
 }

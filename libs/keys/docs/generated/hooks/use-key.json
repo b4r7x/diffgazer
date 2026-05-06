@@ -3,10 +3,35 @@
   "title": "useKey",
   "description": "Bind keyboard shortcuts to handlers with scoped, document-level, or element-targeted listening. Supports single key, array of keys, or key map overloads.",
   "source": {
-    "raw": "import { useEffect, useEffectEvent } from \"react\";\nimport type { RefObject } from \"react\";\nimport type { HandlerOptions } from \"../providers/keyboard-provider.js\";\nimport { useOptionalKeyboardContext } from \"../context/keyboard-context.js\";\nimport type { KeyHandler } from \"../internal/normalize-key-input.js\";\nimport { normalizeKeyInput } from \"../internal/normalize-key-input.js\";\n\nexport interface UseKeyOptions {\n  enabled?: boolean;\n  allowInInput?: boolean;\n  targetRef?: RefObject<HTMLElement | null>;\n  requireFocusWithin?: boolean;\n  preventDefault?: boolean;\n}\n\nexport function useKey(\n  hotkey: string,\n  handler: KeyHandler,\n  options?: UseKeyOptions,\n): void;\n\nexport function useKey(\n  hotkeys: readonly string[],\n  handler: KeyHandler,\n  options?: UseKeyOptions,\n): void;\n\nexport function useKey(\n  handlers: Record<string, KeyHandler>,\n  options?: UseKeyOptions,\n): void;\n\nexport function useKey(\n  first: string | readonly string[] | Record<string, KeyHandler>,\n  second?: KeyHandler | UseKeyOptions,\n  third?: UseKeyOptions,\n): void {\n  const { handlerMap, options } = normalizeKeyInput<UseKeyOptions>(first, second, third);\n\n  const ctx = useOptionalKeyboardContext();\n  const register = ctx?.register ?? null;\n  const activeScope = ctx?.activeScope ?? null;\n\n  const enabled = options?.enabled;\n  const allowInInput = options?.allowInInput;\n  const targetRef = options?.targetRef;\n  const requireFocusWithin = options?.requireFocusWithin;\n  const preventDefault = options?.preventDefault;\n\n  const stableDispatch = useEffectEvent((key: string, event: KeyboardEvent) => {\n    handlerMap[key]?.(event);\n  });\n\n  const keysKey = Object.keys(handlerMap).sort().join(\",\");\n\n  const handlerOptions: HandlerOptions | undefined = options\n    ? {\n        allowInInput,\n        targetRef,\n        requireFocusWithin,\n        preventDefault,\n      }\n    : undefined;\n\n  useEffect(() => {\n    if (enabled === false) return;\n    if (!register || !activeScope) return;\n\n    const keys = keysKey.split(\",\");\n    const cleanups = keys.map((key) =>\n      register(\n        activeScope,\n        key,\n        (event: KeyboardEvent) => stableDispatch(key, event),\n        handlerOptions,\n      ),\n    );\n\n    return () => cleanups.forEach((cleanup) => cleanup());\n    // register is useEffectEvent-based (stable reference), excluded from deps\n    // eslint-disable-next-line react-hooks/exhaustive-deps\n  }, [\n    activeScope,\n    keysKey,\n    enabled,\n    allowInInput,\n    targetRef,\n    requireFocusWithin,\n    preventDefault,\n  ]);\n}\n",
+    "raw": "\"use client\";\n\nimport { useCallback, useEffect, useRef } from \"react\";\nimport type { RefObject } from \"react\";\nimport type { HandlerOptions } from \"../providers/keyboard-provider.js\";\nimport { useOptionalKeyboardContext } from \"../context/keyboard-context.js\";\nimport type { KeyHandler } from \"../internal/normalize-key-input.js\";\nimport { normalizeKeyInput } from \"../internal/normalize-key-input.js\";\n\nexport interface UseKeyOptions {\n  enabled?: boolean;\n  allowInInput?: boolean;\n  targetRef?: RefObject<HTMLElement | null>;\n  requireFocusWithin?: boolean;\n  preventDefault?: boolean;\n}\n\nexport function useKey(\n  hotkey: string,\n  handler: KeyHandler,\n  options?: UseKeyOptions,\n): void;\n\nexport function useKey(\n  hotkeys: readonly string[],\n  handler: KeyHandler,\n  options?: UseKeyOptions,\n): void;\n\nexport function useKey(\n  handlers: Record<string, KeyHandler>,\n  options?: UseKeyOptions,\n): void;\n\nexport function useKey(\n  first: string | readonly string[] | Record<string, KeyHandler>,\n  second?: KeyHandler | UseKeyOptions,\n  third?: UseKeyOptions,\n): void {\n  const { handlerMap, options } = normalizeKeyInput<UseKeyOptions>(first, second, third);\n\n  const ctx = useOptionalKeyboardContext();\n  const register = ctx?.register ?? null;\n  const activeScope = ctx?.activeScope ?? null;\n\n  const enabled = options?.enabled;\n  const allowInInput = options?.allowInInput;\n  const targetRef = options?.targetRef;\n  const requireFocusWithin = options?.requireFocusWithin;\n  const preventDefault = options?.preventDefault;\n\n  const handlerMapRef = useRef(handlerMap);\n  handlerMapRef.current = handlerMap;\n\n  const stableDispatch = useCallback((key: string, event: KeyboardEvent) => {\n    handlerMapRef.current[key]?.(event);\n  }, []);\n\n  const keysKey = Object.keys(handlerMap).sort().join(\",\");\n\n  const handlerOptions: HandlerOptions | undefined = options\n    ? {\n        allowInInput,\n        targetRef,\n        requireFocusWithin,\n        preventDefault,\n      }\n    : undefined;\n\n  useEffect(() => {\n    if (enabled === false) return;\n    if (!register || !activeScope) return;\n\n    const keys = keysKey.split(\",\");\n    const cleanups = keys.map((key) =>\n      register(\n        activeScope,\n        key,\n        (event: KeyboardEvent) => stableDispatch(key, event),\n        handlerOptions,\n      ),\n    );\n\n    return () => cleanups.forEach((cleanup) => cleanup());\n  }, [\n    activeScope,\n    register,\n    keysKey,\n    enabled,\n    allowInInput,\n    targetRef,\n    requireFocusWithin,\n    preventDefault,\n    stableDispatch,\n  ]);\n}\n",
     "highlighted": [
       {
         "number": 1,
+        "content": [
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "use client",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 2,
+        "content": []
+      },
+      {
+        "number": 3,
         "content": [
           {
             "text": "import",
@@ -21,6 +46,14 @@
             "color": "var(--code-operator)"
           },
           {
+            "text": " useCallback",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
             "text": " useEffect",
             "color": "var(--code-variable)"
           },
@@ -29,7 +62,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " useEffectEvent ",
+            "text": " useRef ",
             "color": "var(--code-variable)"
           },
           {
@@ -67,7 +100,7 @@
         ]
       },
       {
-        "number": 2,
+        "number": 4,
         "content": [
           {
             "text": "import",
@@ -128,7 +161,7 @@
         ]
       },
       {
-        "number": 3,
+        "number": 5,
         "content": [
           {
             "text": "import",
@@ -189,7 +222,7 @@
         ]
       },
       {
-        "number": 4,
+        "number": 6,
         "content": [
           {
             "text": "import",
@@ -242,7 +275,7 @@
         ]
       },
       {
-        "number": 5,
+        "number": 7,
         "content": [
           {
             "text": "import",
@@ -303,7 +336,7 @@
         ]
       },
       {
-        "number": 6,
+        "number": 8,
         "content": [
           {
             "text": "import",
@@ -356,11 +389,11 @@
         ]
       },
       {
-        "number": 7,
+        "number": 9,
         "content": []
       },
       {
-        "number": 8,
+        "number": 10,
         "content": [
           {
             "text": "export",
@@ -393,7 +426,7 @@
         ]
       },
       {
-        "number": 9,
+        "number": 11,
         "content": [
           {
             "text": "  enabled",
@@ -418,7 +451,7 @@
         ]
       },
       {
-        "number": 10,
+        "number": 12,
         "content": [
           {
             "text": "  allowInInput",
@@ -443,7 +476,7 @@
         ]
       },
       {
-        "number": 11,
+        "number": 13,
         "content": [
           {
             "text": "  targetRef",
@@ -492,7 +525,7 @@
         ]
       },
       {
-        "number": 12,
+        "number": 14,
         "content": [
           {
             "text": "  requireFocusWithin",
@@ -517,7 +550,7 @@
         ]
       },
       {
-        "number": 13,
+        "number": 15,
         "content": [
           {
             "text": "  preventDefault",
@@ -542,7 +575,7 @@
         ]
       },
       {
-        "number": 14,
+        "number": 16,
         "content": [
           {
             "text": "}",
@@ -551,11 +584,11 @@
         ]
       },
       {
-        "number": 15,
+        "number": 17,
         "content": []
       },
       {
-        "number": 16,
+        "number": 18,
         "content": [
           {
             "text": "export",
@@ -584,7 +617,7 @@
         ]
       },
       {
-        "number": 17,
+        "number": 19,
         "content": [
           {
             "text": "  hotkey",
@@ -609,7 +642,7 @@
         ]
       },
       {
-        "number": 18,
+        "number": 20,
         "content": [
           {
             "text": "  handler",
@@ -634,7 +667,7 @@
         ]
       },
       {
-        "number": 19,
+        "number": 21,
         "content": [
           {
             "text": "  options",
@@ -659,7 +692,7 @@
         ]
       },
       {
-        "number": 20,
+        "number": 22,
         "content": [
           {
             "text": "):",
@@ -680,11 +713,11 @@
         ]
       },
       {
-        "number": 21,
+        "number": 23,
         "content": []
       },
       {
-        "number": 22,
+        "number": 24,
         "content": [
           {
             "text": "export",
@@ -713,7 +746,7 @@
         ]
       },
       {
-        "number": 23,
+        "number": 25,
         "content": [
           {
             "text": "  hotkeys",
@@ -750,7 +783,7 @@
         ]
       },
       {
-        "number": 24,
+        "number": 26,
         "content": [
           {
             "text": "  handler",
@@ -775,7 +808,7 @@
         ]
       },
       {
-        "number": 25,
+        "number": 27,
         "content": [
           {
             "text": "  options",
@@ -800,7 +833,7 @@
         ]
       },
       {
-        "number": 26,
+        "number": 28,
         "content": [
           {
             "text": "):",
@@ -821,11 +854,11 @@
         ]
       },
       {
-        "number": 27,
+        "number": 29,
         "content": []
       },
       {
-        "number": 28,
+        "number": 30,
         "content": [
           {
             "text": "export",
@@ -854,7 +887,7 @@
         ]
       },
       {
-        "number": 29,
+        "number": 31,
         "content": [
           {
             "text": "  handlers",
@@ -899,7 +932,7 @@
         ]
       },
       {
-        "number": 30,
+        "number": 32,
         "content": [
           {
             "text": "  options",
@@ -924,7 +957,7 @@
         ]
       },
       {
-        "number": 31,
+        "number": 33,
         "content": [
           {
             "text": "):",
@@ -945,11 +978,11 @@
         ]
       },
       {
-        "number": 32,
+        "number": 34,
         "content": []
       },
       {
-        "number": 33,
+        "number": 35,
         "content": [
           {
             "text": "export",
@@ -978,7 +1011,7 @@
         ]
       },
       {
-        "number": 34,
+        "number": 36,
         "content": [
           {
             "text": "  first",
@@ -1063,7 +1096,7 @@
         ]
       },
       {
-        "number": 35,
+        "number": 37,
         "content": [
           {
             "text": "  second",
@@ -1104,7 +1137,7 @@
         ]
       },
       {
-        "number": 36,
+        "number": 38,
         "content": [
           {
             "text": "  third",
@@ -1129,7 +1162,7 @@
         ]
       },
       {
-        "number": 37,
+        "number": 39,
         "content": [
           {
             "text": "):",
@@ -1154,7 +1187,7 @@
         ]
       },
       {
-        "number": 38,
+        "number": 40,
         "content": [
           {
             "text": "  ",
@@ -1255,11 +1288,11 @@
         ]
       },
       {
-        "number": 39,
+        "number": 41,
         "content": []
       },
       {
-        "number": 40,
+        "number": 42,
         "content": [
           {
             "text": "  ",
@@ -1304,7 +1337,7 @@
         ]
       },
       {
-        "number": 41,
+        "number": 43,
         "content": [
           {
             "text": "  ",
@@ -1365,7 +1398,7 @@
         ]
       },
       {
-        "number": 42,
+        "number": 44,
         "content": [
           {
             "text": "  ",
@@ -1426,106 +1459,8 @@
         ]
       },
       {
-        "number": 43,
-        "content": []
-      },
-      {
-        "number": 44,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "enabled",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "options",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": "?.",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "enabled",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
         "number": 45,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "allowInInput",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "options",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": "?.",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "allowInInput",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
+        "content": []
       },
       {
         "number": 46,
@@ -1543,7 +1478,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "targetRef",
+            "text": "enabled",
             "color": "var(--code-number)"
           },
           {
@@ -1567,7 +1502,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "targetRef",
+            "text": "enabled",
             "color": "var(--code-variable)"
           },
           {
@@ -1592,6 +1527,104 @@
             "color": "var(--code-variable)"
           },
           {
+            "text": "allowInInput",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "options",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "allowInInput",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 48,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "targetRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "options",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "targetRef",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 49,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
             "text": "requireFocusWithin",
             "color": "var(--code-number)"
           },
@@ -1626,7 +1659,7 @@
         ]
       },
       {
-        "number": 48,
+        "number": 50,
         "content": [
           {
             "text": "  ",
@@ -1675,11 +1708,93 @@
         ]
       },
       {
-        "number": 49,
+        "number": 51,
         "content": []
       },
       {
-        "number": 50,
+        "number": 52,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "handlerMapRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useRef",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(handlerMap)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 53,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "handlerMapRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " handlerMap",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 54,
+        "content": []
+      },
+      {
+        "number": 55,
         "content": [
           {
             "text": "  ",
@@ -1710,7 +1825,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "useEffectEvent",
+            "text": "useCallback",
             "color": "var(--code-function)"
           },
           {
@@ -1780,10 +1895,22 @@
         ]
       },
       {
-        "number": 51,
+        "number": 56,
         "content": [
           {
-            "text": "    handlerMap[key]",
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "handlerMapRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current[key]",
             "color": "var(--code-variable)"
           },
           {
@@ -1801,18 +1928,18 @@
         ]
       },
       {
-        "number": 52,
+        "number": 57,
         "content": [
           {
             "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "}",
+            "text": "},",
             "color": "var(--code-operator)"
           },
           {
-            "text": ")",
+            "text": " [])",
             "color": "var(--code-variable)"
           },
           {
@@ -1822,11 +1949,11 @@
         ]
       },
       {
-        "number": 53,
+        "number": 58,
         "content": []
       },
       {
-        "number": 54,
+        "number": 59,
         "content": [
           {
             "text": "  ",
@@ -1919,11 +2046,11 @@
         ]
       },
       {
-        "number": 55,
+        "number": 60,
         "content": []
       },
       {
-        "number": 56,
+        "number": 61,
         "content": [
           {
             "text": "  ",
@@ -1984,7 +2111,7 @@
         ]
       },
       {
-        "number": 57,
+        "number": 62,
         "content": [
           {
             "text": "    ",
@@ -2005,7 +2132,7 @@
         ]
       },
       {
-        "number": 58,
+        "number": 63,
         "content": [
           {
             "text": "        allowInInput",
@@ -2018,7 +2145,7 @@
         ]
       },
       {
-        "number": 59,
+        "number": 64,
         "content": [
           {
             "text": "        targetRef",
@@ -2031,7 +2158,7 @@
         ]
       },
       {
-        "number": 60,
+        "number": 65,
         "content": [
           {
             "text": "        requireFocusWithin",
@@ -2044,7 +2171,7 @@
         ]
       },
       {
-        "number": 61,
+        "number": 66,
         "content": [
           {
             "text": "        preventDefault",
@@ -2057,7 +2184,7 @@
         ]
       },
       {
-        "number": 62,
+        "number": 67,
         "content": [
           {
             "text": "      ",
@@ -2070,7 +2197,7 @@
         ]
       },
       {
-        "number": 63,
+        "number": 68,
         "content": [
           {
             "text": "    ",
@@ -2095,11 +2222,11 @@
         ]
       },
       {
-        "number": 64,
+        "number": 69,
         "content": []
       },
       {
-        "number": 65,
+        "number": 70,
         "content": [
           {
             "text": "  ",
@@ -2136,7 +2263,7 @@
         ]
       },
       {
-        "number": 66,
+        "number": 71,
         "content": [
           {
             "text": "    ",
@@ -2177,7 +2304,7 @@
         ]
       },
       {
-        "number": 67,
+        "number": 72,
         "content": [
           {
             "text": "    ",
@@ -2226,11 +2353,11 @@
         ]
       },
       {
-        "number": 68,
+        "number": 73,
         "content": []
       },
       {
-        "number": 69,
+        "number": 74,
         "content": [
           {
             "text": "    ",
@@ -2299,7 +2426,7 @@
         ]
       },
       {
-        "number": 70,
+        "number": 75,
         "content": [
           {
             "text": "    ",
@@ -2368,7 +2495,7 @@
         ]
       },
       {
-        "number": 71,
+        "number": 76,
         "content": [
           {
             "text": "      ",
@@ -2385,7 +2512,7 @@
         ]
       },
       {
-        "number": 72,
+        "number": 77,
         "content": [
           {
             "text": "        activeScope",
@@ -2398,7 +2525,7 @@
         ]
       },
       {
-        "number": 73,
+        "number": 78,
         "content": [
           {
             "text": "        key",
@@ -2411,7 +2538,7 @@
         ]
       },
       {
-        "number": 74,
+        "number": 79,
         "content": [
           {
             "text": "        ",
@@ -2476,7 +2603,7 @@
         ]
       },
       {
-        "number": 75,
+        "number": 80,
         "content": [
           {
             "text": "        handlerOptions",
@@ -2489,7 +2616,7 @@
         ]
       },
       {
-        "number": 76,
+        "number": 81,
         "content": [
           {
             "text": "      )",
@@ -2502,7 +2629,7 @@
         ]
       },
       {
-        "number": 77,
+        "number": 82,
         "content": [
           {
             "text": "    )",
@@ -2515,11 +2642,11 @@
         ]
       },
       {
-        "number": 78,
+        "number": 83,
         "content": []
       },
       {
-        "number": 79,
+        "number": 84,
         "content": [
           {
             "text": "    ",
@@ -2604,33 +2731,7 @@
         ]
       },
       {
-        "number": 80,
-        "content": [
-          {
-            "text": "    //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " register is useEffectEvent-based (stable reference), excluded from deps",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 81,
-        "content": [
-          {
-            "text": "    //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " eslint-disable-next-line react-hooks/exhaustive-deps",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 82,
+        "number": 85,
         "content": [
           {
             "text": "  ",
@@ -2647,7 +2748,7 @@
         ]
       },
       {
-        "number": 83,
+        "number": 86,
         "content": [
           {
             "text": "    activeScope",
@@ -2660,49 +2761,10 @@
         ]
       },
       {
-        "number": 84,
-        "content": [
-          {
-            "text": "    keysKey",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 85,
-        "content": [
-          {
-            "text": "    enabled",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 86,
-        "content": [
-          {
-            "text": "    allowInInput",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
         "number": 87,
         "content": [
           {
-            "text": "    targetRef",
+            "text": "    register",
             "color": "var(--code-variable)"
           },
           {
@@ -2715,7 +2777,7 @@
         "number": 88,
         "content": [
           {
-            "text": "    requireFocusWithin",
+            "text": "    keysKey",
             "color": "var(--code-variable)"
           },
           {
@@ -2728,7 +2790,7 @@
         "number": 89,
         "content": [
           {
-            "text": "    preventDefault",
+            "text": "    enabled",
             "color": "var(--code-variable)"
           },
           {
@@ -2741,6 +2803,71 @@
         "number": 90,
         "content": [
           {
+            "text": "    allowInInput",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 91,
+        "content": [
+          {
+            "text": "    targetRef",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 92,
+        "content": [
+          {
+            "text": "    requireFocusWithin",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 93,
+        "content": [
+          {
+            "text": "    preventDefault",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 94,
+        "content": [
+          {
+            "text": "    stableDispatch",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 95,
+        "content": [
+          {
             "text": "  ])",
             "color": "var(--code-variable)"
           },
@@ -2751,7 +2878,7 @@
         ]
       },
       {
-        "number": 91,
+        "number": 96,
         "content": [
           {
             "text": "}",
@@ -2760,7 +2887,7 @@
         ]
       },
       {
-        "number": 92,
+        "number": 97,
         "content": []
       }
     ]

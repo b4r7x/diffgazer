@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect } from "vitest"
-import { DiffView } from "./index.js"
+import { DiffView, computeDiff } from "./index.js"
 import type { ParsedDiff } from "@/lib/diff"
 
 const ONE_HUNK: ParsedDiff = {
@@ -124,7 +124,7 @@ describe("DiffView", () => {
     await user.click(container)
 
     await user.keyboard("j")
-    expect(getLiveRegion()).toHaveTextContent("Hunk 2 of 3: hunk two")
+    expect(getLiveRegion()).toHaveTextContent("Hunk 1 of 3: hunk one")
   })
 
   it("navigates backward with k key", async () => {
@@ -136,10 +136,10 @@ describe("DiffView", () => {
 
     await user.keyboard("j")
     await user.keyboard("j")
-    expect(getLiveRegion()).toHaveTextContent("Hunk 3 of 3: hunk three")
+    expect(getLiveRegion()).toHaveTextContent("Hunk 2 of 3: hunk two")
 
     await user.keyboard("k")
-    expect(getLiveRegion()).toHaveTextContent("Hunk 2 of 3: hunk two")
+    expect(getLiveRegion()).toHaveTextContent("Hunk 1 of 3: hunk one")
   })
 
   it("does not wrap past last hunk when pressing j (wrap: false)", async () => {
@@ -149,6 +149,7 @@ describe("DiffView", () => {
     const container = screen.getByLabelText("Unified diff")
     await user.click(container)
 
+    await user.keyboard("j")
     await user.keyboard("j")
     await user.keyboard("j")
     expect(getLiveRegion()).toHaveTextContent("Hunk 3 of 3")
@@ -184,7 +185,7 @@ describe("DiffView", () => {
     await user.click(container)
 
     await user.keyboard("j")
-    expect(getLiveRegion()).toHaveTextContent("Hunk 2 of 3")
+    expect(getLiveRegion()).toHaveTextContent("Hunk 1 of 3")
 
     await user.keyboard("{Escape}")
     expect(getLiveRegion()).toHaveTextContent("")
@@ -200,6 +201,57 @@ describe("DiffView", () => {
     await user.keyboard("j")
     await user.keyboard("k")
     expect(getLiveRegion()).toHaveTextContent("")
+  })
+
+  it("does not expose hunk headers as buttons", () => {
+    render(<DiffView diff={ONE_HUNK} />)
+    expect(screen.queryByRole("button", { name: /Change section/ })).not.toBeInTheDocument()
+    expect(screen.getByText("@@ -1,3 +1,4 @@ function main")).toBeInTheDocument()
+  })
+
+  it("computes empty file changes without fake blank lines", () => {
+    const added = computeDiff("", "alpha\n")
+    expect(added.hunks[0].oldCount).toBe(0)
+    expect(added.hunks[0].newCount).toBe(1)
+    expect(added.hunks[0].changes).toEqual([
+      { type: "add", content: "alpha", oldLine: null, newLine: 1 },
+    ])
+
+    const removed = computeDiff("alpha\n", "")
+    expect(removed.hunks[0].oldCount).toBe(1)
+    expect(removed.hunks[0].newCount).toBe(0)
+    expect(removed.hunks[0].changes).toEqual([
+      { type: "remove", content: "alpha", oldLine: 1, newLine: null },
+    ])
+  })
+
+  it("resets active hunk announcements when content changes with the same hunk count", async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(<DiffView diff={THREE_HUNKS} />)
+
+    await user.click(screen.getByLabelText("Unified diff"))
+    await user.keyboard("j")
+    expect(getLiveRegion()).toHaveTextContent("Hunk 1 of 3")
+
+    rerender(<DiffView diff={{
+      ...THREE_HUNKS,
+      hunks: THREE_HUNKS.hunks.map((hunk, index) => ({
+        ...hunk,
+        heading: `replacement ${index + 1}`,
+      })),
+    }} />)
+    expect(getLiveRegion()).toHaveTextContent("")
+  })
+
+  it("falls back for large computed diffs instead of building huge LCS tables", () => {
+    const before = Array.from({ length: 600 }, (_, i) => `old ${i}`).join("\n")
+    const after = Array.from({ length: 600 }, (_, i) => `new ${i}`).join("\n")
+
+    const parsed = computeDiff(before, after)
+
+    expect(parsed.hunks).toHaveLength(1)
+    expect(parsed.hunks[0].oldCount).toBe(600)
+    expect(parsed.hunks[0].newCount).toBe(600)
   })
 
 })

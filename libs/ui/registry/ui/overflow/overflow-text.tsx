@@ -1,12 +1,15 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ComponentPropsWithRef, CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { composeRefs } from "@/lib/compose-refs";
 import { useOverflow } from "@/hooks/use-overflow";
 import { TooltipRoot as Tooltip } from "../tooltip/tooltip";
 import { TooltipContent } from "../tooltip/tooltip-content";
-import { PopoverTrigger as TooltipTrigger } from "../popover/popover-trigger";
+import {
+  PopoverTrigger as TooltipTrigger,
+  type PopoverTriggerRenderProps,
+} from "../popover/popover-trigger";
 
 function resolveTooltipContent(
   tooltip: ReactNode | boolean | undefined,
@@ -17,14 +20,14 @@ function resolveTooltipContent(
   return children;
 }
 
-export interface OverflowTextProps {
+export interface OverflowTextProps
+  extends Omit<ComponentPropsWithRef<"div">, "children"> {
   children: string;
   lines?: number;
   tooltip?: ReactNode | boolean;
-  className?: string;
 }
 
-function clampStyle(lines: number): React.CSSProperties | undefined {
+function clampStyle(lines: number): CSSProperties | undefined {
   if (lines <= 1) return undefined;
   return {
     display: "-webkit-box",
@@ -39,21 +42,39 @@ export function OverflowText({
   lines = 1,
   tooltip,
   className,
+  ref: forwardedRef,
+  ...props
 }: OverflowTextProps) {
   const { ref, isOverflowing } = useOverflow<HTMLDivElement>(lines > 1 ? "vertical" : "horizontal");
 
   const resolvedTooltip = resolveTooltipContent(tooltip, children);
   const style = clampStyle(lines);
+  const content = (
+    <div
+      ref={composeRefs(ref, forwardedRef)}
+      className={cn(lines === 1 && "truncate", className)}
+      style={style}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+
+  if (resolvedTooltip != null && !isOverflowing) {
+    return content;
+  }
 
   if (resolvedTooltip != null) {
     return (
       <Tooltip enabled={isOverflowing}>
         <TooltipTrigger>
-          {({ ref: triggerRef, className: triggerCn, ...restTrigger }) => (
+          {({ ref: triggerRef, className: triggerCn, role, ...restTrigger }: PopoverTriggerRenderProps) => (
             <div
-              ref={composeRefs(ref, triggerRef)}
+              ref={composeRefs(ref, forwardedRef, triggerRef)}
+              role={role}
               className={cn(lines === 1 && "truncate", className, triggerCn)}
               style={style}
+              {...props}
               {...restTrigger}
             >
               {children}
@@ -65,13 +86,5 @@ export function OverflowText({
     );
   }
 
-  return (
-    <div
-      ref={ref}
-      className={cn(lines === 1 && "truncate", className)}
-      style={style}
-    >
-      {children}
-    </div>
-  );
+  return content;
 }

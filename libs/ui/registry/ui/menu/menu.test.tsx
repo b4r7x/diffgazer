@@ -38,10 +38,23 @@ describe("Menu", () => {
     expect(screen.getByRole("menu")).toHaveAttribute("aria-activedescendant", twoItem.id)
   })
 
+  it("marks highlighted and selected items active with data-active", async () => {
+    renderMenu({ defaultSelectedId: "two" })
+    const oneItem = screen.getByText("One").closest("[role='menuitemradio']")!
+    const twoItem = screen.getByText("Two").closest("[role='menuitemradio']")!
+
+    expect(twoItem).toHaveAttribute("data-active", "true")
+    expect(oneItem).not.toHaveAttribute("data-active")
+
+    await userEvent.hover(oneItem)
+    expect(oneItem).toHaveAttribute("data-active", "true")
+    expect(twoItem).toHaveAttribute("data-active", "true")
+  })
+
   it("selects defaultSelectedId initially", () => {
     renderMenu({ defaultSelectedId: "two" })
-    const item = screen.getByText("Two").closest("[role='menuitem']")!
-    expect(item).toHaveAttribute("aria-current", "true")
+    const item = screen.getByText("Two").closest("[role='menuitemradio']")!
+    expect(item).toHaveAttribute("aria-checked", "true")
   })
 
   it("fires onSelect in controlled mode without internal state change", async () => {
@@ -54,8 +67,8 @@ describe("Menu", () => {
     )
     await userEvent.click(screen.getByText("Two"))
     expect(onSelect).toHaveBeenCalledWith("two")
-    expect(screen.getByText("One").closest("[role='menuitem']")).toHaveAttribute(
-      "aria-current",
+    expect(screen.getByText("One").closest("[role='menuitemradio']")).toHaveAttribute(
+      "aria-checked",
       "true",
     )
 
@@ -65,8 +78,8 @@ describe("Menu", () => {
         <Menu.Item id="two">Two</Menu.Item>
       </Menu>
     )
-    expect(screen.getByText("Two").closest("[role='menuitem']")).toHaveAttribute(
-      "aria-current",
+    expect(screen.getByText("Two").closest("[role='menuitemradio']")).toHaveAttribute(
+      "aria-checked",
       "true",
     )
   })

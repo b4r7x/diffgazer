@@ -14,7 +14,7 @@ export function SidebarContent({ ref, children, className, onKeyDown, ...props }
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,
-    role: "menuitem",
+    role: "button",
     orientation: "vertical",
     wrap: true,
     moveFocus: true,
@@ -28,7 +28,6 @@ export function SidebarContent({ ref, children, className, onKeyDown, ...props }
   return (
     <div
       ref={composeRefs(containerRef, ref)}
-      role="menu"
       className={cn("flex-1 overflow-y-auto p-4", className)}
       onKeyDown={handleKeyDown}
       {...props}

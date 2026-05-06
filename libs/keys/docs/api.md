@@ -102,7 +102,7 @@ useKey("Enter", handleSelect, {
 ### Behavior
 
 - Uses `useOptionalKeyboardContext()` internally -- if no `KeyboardProvider` is present, the hook is a **silent no-op** (no error thrown).
-- Handlers use `useEffectEvent` for stable dispatch without stale closures.
+- Handlers use stable callback/ref patterns to avoid stale closures.
 - Registers in whatever scope is active at the time of mount/re-enable.
 - Cleanup on unmount deregisters all keys.
 

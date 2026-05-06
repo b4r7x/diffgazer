@@ -43,10 +43,26 @@ function loadCopyBundle(): CopyBundle {
 }
 
 function toHookRelativePath(path: string): string {
+  if (path.startsWith("src/hooks/")) {
+    return path.slice("src/hooks/".length);
+  }
   if (path.startsWith("hooks/")) {
     return path.slice("hooks/".length);
   }
+  if (path.startsWith("src/")) {
+    return path.slice("src/".length);
+  }
   return path;
+}
+
+function toFileStem(path: string): string {
+  const fileName = path.split("/").at(-1) ?? path;
+  const extensionStart = fileName.lastIndexOf(".");
+  return extensionStart === -1 ? fileName : fileName.slice(0, extensionStart);
+}
+
+function isHookFilePath(path: string): boolean {
+  return path.startsWith("hooks/") || path.startsWith("src/hooks/");
 }
 
 function validateAndCollectFiles(
@@ -88,18 +104,36 @@ export function resolveKeysCopyHookFiles(hooks: string[]): {
   return { files, missingHooks };
 }
 
+function parseKeysDependencyName(dep: string): string | null {
+  if (dep.startsWith("@diffgazer/keys/")) {
+    return dep.replace("@diffgazer/keys/", "");
+  }
+  if (dep.startsWith("@diffgazer-keys/")) {
+    return dep.replace("@diffgazer-keys/", "");
+  }
+  return null;
+}
+
 /**
- * Extract keys hook names from registry items by scanning `@diffgazer/keys/` namespace refs.
+ * Extract keys hook names from registry items by scanning Diffgazer keys namespace refs.
  * Inlined from shared/registry-types.ts (cannot import outside rootDir: "src").
  */
 export function resolveKeysHooksFromRegistry(
   items: Array<{ registryDependencies?: string[] }>,
 ): string[] {
   const names = new Set<string>();
+  const publicHookNames = getKeysHookNames();
+  const internalDependencyNames = getKeysInternalDependencyNames();
+
   for (const item of items) {
     for (const dep of item.registryDependencies ?? []) {
-      if (dep.startsWith("@diffgazer/keys/")) {
-        names.add(dep.replace("@diffgazer/keys/", ""));
+      const name = parseKeysDependencyName(dep);
+      if (!name) continue;
+
+      if (publicHookNames.has(name)) {
+        names.add(name);
+      } else if (!internalDependencyNames.has(name)) {
+        names.add(name);
       }
     }
   }
@@ -109,4 +143,36 @@ export function resolveKeysHooksFromRegistry(
 export function getKeysHookNames(): Set<string> {
   const bundle = loadCopyBundle();
   return new Set(bundle.items.map((h) => h.name));
+}
+
+export function getKeysHookImportNames(): Set<string> {
+  const bundle = loadCopyBundle();
+  const names = new Set<string>();
+
+  for (const hook of bundle.items) {
+    names.add(hook.name);
+    for (const file of hook.files) {
+      if (isHookFilePath(file.path)) {
+        names.add(toFileStem(file.path));
+      }
+    }
+  }
+
+  return names;
+}
+
+function getKeysInternalDependencyNames(): Set<string> {
+  const bundle = loadCopyBundle();
+  const names = new Set<string>();
+
+  for (const hook of bundle.items) {
+    for (const file of hook.files) {
+      const relativePath = toHookRelativePath(file.path);
+      if (relativePath.startsWith("internal/")) {
+        names.add(toFileStem(file.path));
+      }
+    }
+  }
+
+  return names;
 }

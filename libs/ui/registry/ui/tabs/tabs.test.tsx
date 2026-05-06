@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
 import { Tabs } from "./index.js"
+import { useState } from "react"
 
 function renderTabs(props: Record<string, unknown> = {}) {
   return render(
@@ -143,5 +144,96 @@ describe("Tabs", () => {
     await userEvent.keyboard(" ")
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true")
     expect(screen.getByText("Content two")).not.toHaveAttribute("hidden")
+  })
+
+  it("selects the first enabled tab when uncontrolled tabs have no default value", () => {
+    render(
+      <Tabs>
+        <Tabs.List>
+          <Tabs.Trigger value="one">One</Tabs.Trigger>
+          <Tabs.Trigger value="two">Two</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="one">Content one</Tabs.Content>
+        <Tabs.Content value="two">Content two</Tabs.Content>
+      </Tabs>
+    )
+    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("tabindex", "0")
+    expect(screen.getByText("Content one")).not.toHaveAttribute("hidden")
+  })
+
+  it("moves selection when the active uncontrolled tab is removed", async () => {
+    function RemovableTabs() {
+      const [showFirst, setShowFirst] = useState(true)
+
+      return (
+        <>
+          <button type="button" onClick={() => setShowFirst(false)}>Remove first</button>
+          <Tabs defaultValue="one">
+            <Tabs.List>
+              {showFirst && <Tabs.Trigger value="one">One</Tabs.Trigger>}
+              <Tabs.Trigger value="two">Two</Tabs.Trigger>
+            </Tabs.List>
+            {showFirst && <Tabs.Content value="one">Content one</Tabs.Content>}
+            <Tabs.Content value="two">Content two</Tabs.Content>
+          </Tabs>
+        </>
+      )
+    }
+
+    render(<RemovableTabs />)
+    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true")
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove first" }))
+    expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("tabindex", "0")
+  })
+
+  it("uses the latest onValueChange callback after rerender", async () => {
+    const firstCallback = vi.fn()
+    const secondCallback = vi.fn()
+    const { rerender } = render(
+      <Tabs defaultValue="one" onValueChange={firstCallback}>
+        <Tabs.List>
+          <Tabs.Trigger value="one">One</Tabs.Trigger>
+          <Tabs.Trigger value="two">Two</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="one">Content one</Tabs.Content>
+        <Tabs.Content value="two">Content two</Tabs.Content>
+      </Tabs>
+    )
+
+    rerender(
+      <Tabs defaultValue="one" onValueChange={secondCallback}>
+        <Tabs.List>
+          <Tabs.Trigger value="one">One</Tabs.Trigger>
+          <Tabs.Trigger value="two">Two</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="one">Content one</Tabs.Content>
+        <Tabs.Content value="two">Content two</Tabs.Content>
+      </Tabs>
+    )
+
+    await userEvent.click(screen.getByRole("tab", { name: "Two" }))
+    expect(firstCallback).not.toHaveBeenCalled()
+    expect(secondCallback).toHaveBeenCalledWith("two")
+  })
+
+  it("composes consumer click handlers with internal selection", async () => {
+    const onClick = vi.fn()
+    render(
+      <Tabs defaultValue="one">
+        <Tabs.List>
+          <Tabs.Trigger value="one">One</Tabs.Trigger>
+          <Tabs.Trigger value="two" onClick={onClick}>Two</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="one">Content one</Tabs.Content>
+        <Tabs.Content value="two">Content two</Tabs.Content>
+      </Tabs>
+    )
+
+    await userEvent.click(screen.getByRole("tab", { name: "Two" }))
+    expect(onClick).toHaveBeenCalled()
+    expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true")
   })
 })

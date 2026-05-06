@@ -29,20 +29,7 @@ function renderAccordion(props: Record<string, unknown> = {}) {
   )
 }
 
-/** Renders accordion with explicit role="button" on triggers so useNavigation's
- *  querySelectorAll('[role="button"]') finds them in jsdom (which doesn't
- *  expose implicit ARIA roles via attribute selectors). */
-function renderAccordionWithRole() {
-  const result = renderAccordion()
-  result.container.querySelectorAll("button[data-value]").forEach((btn) => {
-    btn.setAttribute("role", "button")
-  })
-  return result
-}
-
 describe("Accordion", () => {
-  // --- US1: Behavioral ---
-
   it("opens an item when its trigger is clicked", async () => {
     renderAccordion()
     const trigger = screen.getByRole("button", { name: "Section One" })
@@ -86,7 +73,6 @@ describe("Accordion", () => {
     await userEvent.click(triggerTwo)
     expect(triggerOne).toHaveAttribute("aria-expanded", "true")
     expect(triggerTwo).toHaveAttribute("aria-expanded", "true")
-    // Closing one does not affect the other
     await userEvent.click(triggerOne)
     expect(triggerOne).toHaveAttribute("aria-expanded", "false")
     expect(triggerTwo).toHaveAttribute("aria-expanded", "true")
@@ -109,8 +95,6 @@ describe("Accordion", () => {
     expect(trigger).toHaveAttribute("aria-expanded", "false")
   })
 
-  // --- US2: Controlled/Uncontrolled ---
-
   it("works uncontrolled with defaultValue (multiple)", async () => {
     renderAccordion({ type: "multiple", defaultValue: ["one", "three"] })
     expect(screen.getByRole("button", { name: "Section One" })).toHaveAttribute("aria-expanded", "true")
@@ -132,19 +116,20 @@ describe("Accordion", () => {
     expect(onChange).toHaveBeenCalledWith(["one", "two"])
   })
 
-  // --- US3: Accessibility ---
-
   it("has no a11y violations", async () => {
     const { container } = renderAccordion()
     expect(await axe(container)).toHaveNoViolations()
   })
 
-  // --- US4: Keyboard ---
+  it("uses native button semantics without a redundant role attribute", () => {
+    renderAccordion()
+    expect(screen.getByRole("button", { name: "Section One" })).not.toHaveAttribute("role")
+  })
 
   it("ArrowDown/ArrowUp moves focus between triggers", async () => {
-    renderAccordionWithRole()
-    const triggerOne = screen.getByText("Section One").closest("button")!
-    const triggerTwo = screen.getByText("Section Two").closest("button")!
+    renderAccordion()
+    const triggerOne = screen.getByRole("button", { name: "Section One" })
+    const triggerTwo = screen.getByRole("button", { name: "Section Two" })
     triggerOne.focus()
     await userEvent.keyboard("{ArrowDown}")
     expect(triggerTwo).toHaveFocus()
@@ -153,17 +138,15 @@ describe("Accordion", () => {
   })
 
   it("ArrowDown/ArrowUp wraps around at boundaries", async () => {
-    renderAccordionWithRole()
-    const triggerOne = screen.getByText("Section One").closest("button")!
-    const triggerThree = screen.getByText("Section Three").closest("button")!
-    // Wrap forward: navigate to last, then one more
+    renderAccordion()
+    const triggerOne = screen.getByRole("button", { name: "Section One" })
+    const triggerThree = screen.getByRole("button", { name: "Section Three" })
     triggerOne.focus()
     await userEvent.keyboard("{ArrowDown}")
     await userEvent.keyboard("{ArrowDown}")
     expect(triggerThree).toHaveFocus()
     await userEvent.keyboard("{ArrowDown}")
     expect(triggerOne).toHaveFocus()
-    // Wrap backward: from first to last
     await userEvent.keyboard("{ArrowUp}")
     expect(triggerThree).toHaveFocus()
   })
@@ -192,11 +175,9 @@ describe("Accordion inert on collapsed content", () => {
       </Accordion>
     )
 
-    // The expanded item's content wrapper should not be inert
     const expandedContent = screen.getByText("Button One").closest("[role='region']")!.parentElement!
     expect(expandedContent).not.toHaveAttribute("inert")
 
-    // The collapsed item's content wrapper should be inert
     const collapsedContent = screen.getByText("Button Two").closest("[role='region']")!.parentElement!
     expect(collapsedContent).toHaveAttribute("inert")
   })

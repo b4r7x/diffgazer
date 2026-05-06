@@ -36,7 +36,16 @@ describe("ToggleGroup", () => {
     renderGroup({ defaultValue: "a", allowDeselect: true, onChange })
     await userEvent.click(screen.getByText("Alpha"))
     expect(onChange).toHaveBeenCalledWith(null)
-    expect(getRadios()[0]).toHaveAttribute("aria-checked", "false")
+    expect(screen.getByRole("button", { name: /alpha/i })).toHaveAttribute("aria-pressed", "false")
+  })
+
+  it("uses button pressed semantics when deselection is allowed", () => {
+    renderGroup({ defaultValue: "a", allowDeselect: true })
+
+    expect(screen.queryByRole("radiogroup")).not.toBeInTheDocument()
+    expect(screen.getByRole("group", { name: /options/i })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /alpha/i })).toHaveAttribute("aria-pressed", "true")
+    expect(screen.getByRole("button", { name: /beta/i })).toHaveAttribute("aria-pressed", "false")
   })
 
   it("switches selection between items", async () => {
@@ -71,6 +80,7 @@ describe("ToggleGroup", () => {
     const radios = screen.getAllByRole("radio")
     for (const radio of radios) {
       expect(radio).toHaveAttribute("aria-disabled", "true")
+      expect(radio).toBeDisabled()
     }
     await userEvent.click(screen.getByText("Alpha"))
     expect(onChange).not.toHaveBeenCalled()
@@ -119,6 +129,42 @@ describe("ToggleGroup", () => {
     radios[0].focus()
     await userEvent.keyboard("{ArrowRight}")
     expect(radios[1]).toHaveFocus()
+  })
+
+  it("exposes one tabbable enabled item when unselected and skips disabled items", async () => {
+    render(
+      <ToggleGroup label="Options">
+        <ToggleGroup.Item value="a" disabled>Alpha</ToggleGroup.Item>
+        <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+        <ToggleGroup.Item value="c">Charlie</ToggleGroup.Item>
+      </ToggleGroup>
+    )
+
+    const radios = getRadios()
+    expect(radios.map((radio) => radio.getAttribute("tabindex"))).toEqual(["-1", "0", "-1"])
+
+    await userEvent.tab()
+    expect(screen.getByRole("radio", { name: /beta/i })).toHaveFocus()
+  })
+
+  it("does not focus or highlight disabled items with arrows or hover", async () => {
+    render(
+      <ToggleGroup label="Options" defaultValue="a">
+        <ToggleGroup.Item value="a">Alpha</ToggleGroup.Item>
+        <ToggleGroup.Item value="b" disabled>Beta</ToggleGroup.Item>
+        <ToggleGroup.Item value="c">Charlie</ToggleGroup.Item>
+      </ToggleGroup>
+    )
+
+    const alpha = screen.getByRole("radio", { name: /alpha/i })
+    const beta = screen.getByRole("radio", { name: /beta/i })
+    alpha.focus()
+
+    await userEvent.keyboard("{ArrowRight}")
+    await userEvent.hover(beta)
+
+    expect(screen.getByRole("radio", { name: /charlie/i })).toHaveFocus()
+    expect(beta).not.toHaveAttribute("data-highlighted")
   })
 
   it("moves focus with ArrowLeft", async () => {

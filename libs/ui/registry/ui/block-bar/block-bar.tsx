@@ -36,20 +36,37 @@ function BlockBarRoot({
   children,
   ...props
 }: BlockBarProps) {
-  const displayValue =
-    value ?? (segments ? segments.reduce((s, seg) => s + seg.value, 0) : 0);
-  const resolvedSegments = segments ?? [{ value: displayValue, variant }];
+  const safeMax = Number.isFinite(max) ? Math.max(0, max) : 0;
+  const safeBarWidth = Number.isFinite(barWidth)
+    ? Math.max(0, Math.floor(barWidth))
+    : 0;
+  const rawValue =
+    value ?? (segments ? segments.reduce((sum, seg) => (
+      Number.isFinite(seg.value) ? sum + Math.max(0, seg.value) : sum
+    ), 0) : 0);
+  const displayValue = Number.isFinite(rawValue)
+    ? Math.min(Math.max(0, rawValue), safeMax)
+    : 0;
+  const resolvedSegments = segments
+    ? segments.map((segment) => ({
+        ...segment,
+        value: Number.isFinite(segment.value) ? Math.max(0, segment.value) : 0,
+      }))
+    : [{ value: displayValue, variant }];
 
-  const contextValue = useMemo(() => ({ max, barWidth, filledChar, emptyChar }), [max, barWidth, filledChar, emptyChar]);
+  const contextValue = useMemo(
+    () => ({ max: safeMax, barWidth: safeBarWidth, filledChar, emptyChar }),
+    [safeMax, safeBarWidth, filledChar, emptyChar],
+  );
 
   return (
     <BlockBarContext value={contextValue}>
       <div
         role="meter"
         aria-valuemin={0}
-        aria-valuemax={max}
+        aria-valuemax={safeMax}
         aria-valuenow={displayValue}
-        aria-valuetext={`${displayValue} of ${max}`}
+        aria-valuetext={`${displayValue} of ${safeMax}`}
         aria-label={!children ? label : undefined}
         className={cn("flex items-center font-mono text-sm", className)}
         {...props}
@@ -61,7 +78,7 @@ function BlockBarRoot({
         )}
         <span className="relative flex-1 overflow-hidden tracking-widest">
           <span className="text-border select-none" aria-hidden="true">
-            {emptyChar.repeat(barWidth)}
+            {emptyChar.repeat(safeBarWidth)}
           </span>
           <span className="absolute inset-0 flex">
             {children ??

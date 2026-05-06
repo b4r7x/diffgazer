@@ -1,4 +1,6 @@
-import { useEffect, useEffectEvent } from "react";
+"use client";
+
+import { useCallback, useEffect, useRef } from "react";
 import type { RefObject } from "react";
 import type { HandlerOptions } from "../providers/keyboard-provider.js";
 import { useOptionalKeyboardContext } from "../context/keyboard-context.js";
@@ -47,9 +49,12 @@ export function useKey(
   const requireFocusWithin = options?.requireFocusWithin;
   const preventDefault = options?.preventDefault;
 
-  const stableDispatch = useEffectEvent((key: string, event: KeyboardEvent) => {
-    handlerMap[key]?.(event);
-  });
+  const handlerMapRef = useRef(handlerMap);
+  handlerMapRef.current = handlerMap;
+
+  const stableDispatch = useCallback((key: string, event: KeyboardEvent) => {
+    handlerMapRef.current[key]?.(event);
+  }, []);
 
   const keysKey = Object.keys(handlerMap).sort().join(",");
 
@@ -77,15 +82,15 @@ export function useKey(
     );
 
     return () => cleanups.forEach((cleanup) => cleanup());
-    // register is useEffectEvent-based (stable reference), excluded from deps
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     activeScope,
+    register,
     keysKey,
     enabled,
     allowInInput,
     targetRef,
     requireFocusWithin,
     preventDefault,
+    stableDispatch,
   ]);
 }

@@ -12,6 +12,21 @@ export interface ResolvedIntegrationSelection {
 }
 
 const KEYBOARD_NAVIGATION_INTEGRATION = "keyboard-navigation";
+const KEYS_REGISTRY_PREFIXES = ["@diffgazer-keys/", "@diffgazer/keys/"] as const;
+export const DEFAULT_KEYS_VERSION_SPEC = "^0.1.1";
+
+function hasKeysRegistryDependency(item: { registryDependencies?: string[] }): boolean {
+  return (item.registryDependencies ?? []).some((dep) =>
+    KEYS_REGISTRY_PREFIXES.some((prefix) => dep.startsWith(prefix))
+  );
+}
+
+function itemHasKeyboardIntegration(name: string): boolean {
+  const item = ctx.registry.getItem(name) ?? {};
+  const optionalIntegrations = metaField<string[]>(item, "optionalIntegrations", []);
+  return optionalIntegrations.includes(KEYBOARD_NAVIGATION_INTEGRATION)
+    || hasKeysRegistryDependency(item);
+}
 
 export function applyIntegrationDeps(
   deps: string[],
@@ -29,7 +44,7 @@ export function applyIntegrationDeps(
     && integrationSelection.hasKeyboardIntegration
   ) {
     depSet.delete("@diffgazer/keys");
-    depSet.add(keysVersionSpec === "latest" ? "@diffgazer/keys" : `@diffgazer/keys@${keysVersionSpec}`);
+    depSet.add(`@diffgazer/keys@${keysVersionSpec}`);
   }
 
   return [...depSet];
@@ -40,12 +55,7 @@ export async function resolveIntegrations(
   mode: IntegrationMode,
   skipPrompts: boolean,
 ): Promise<ResolvedIntegrationSelection> {
-  const integrations = new Set(
-    requestedNames.flatMap((name) =>
-      metaField<string[]>(ctx.registry.getItem(name) ?? {}, "optionalIntegrations", [])
-    ),
-  );
-  const hasKeyboardIntegration = integrations.has(KEYBOARD_NAVIGATION_INTEGRATION);
+  const hasKeyboardIntegration = requestedNames.some(itemHasKeyboardIntegration);
 
   if (!hasKeyboardIntegration) {
     if (mode === "copy" || mode === "@diffgazer/keys") {
@@ -54,11 +64,17 @@ export async function resolveIntegrations(
     return { mode: "none", hasKeyboardIntegration: false };
   }
 
+  if (mode === "none") {
+    throw new Error(
+      "Selected components require keyboard hooks. Use --integration=copy to copy bundled hooks "
+      + "or --integration=keys to import @diffgazer/keys.",
+    );
+  }
+
   if (mode !== "ask") return { mode, hasKeyboardIntegration };
-  if (skipPrompts) return { mode: "none", hasKeyboardIntegration };
+  if (skipPrompts) return { mode: "copy", hasKeyboardIntegration };
 
   const selectedMode = await promptSelect("Choose keyboard integration mode:", [
-    { value: "none", label: "None", hint: "Install only base components" },
     { value: "copy", label: "Copy hooks", hint: "Copy local navigation hooks from keys registry" },
     { value: "@diffgazer/keys", label: "Keys package", hint: "Use package imports from @diffgazer/keys" },
   ]);

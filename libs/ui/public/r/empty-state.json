@@ -39,5 +39,8 @@
       "content": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type EmptyStateActionsProps = ComponentPropsWithRef<\"div\">;\n\nexport function EmptyStateActions({ className, ...props }: EmptyStateActionsProps) {\n  return (\n    <div\n      className={cn(\n        \"flex\",\n        \"group-data-[size=sm]/es:gap-1.5\",\n        \"group-data-[size=md]/es:gap-2\",\n        \"group-data-[size=lg]/es:gap-3\",\n        className,\n      )}\n      {...props}\n    />\n  );\n}\n",
       "type": "registry:ui"
     }
-  ]
+  ],
+  "meta": {
+    "client": true
+  }
 }

@@ -34,7 +34,7 @@ export default defineConfig({
 })
 ```
 
-> **Tip**: If you used `dgadd init`, path aliases are configured automatically.
+`dgadd init` writes the aliases it will use into `diffgazer.json`, but it does not mutate `tsconfig.json`, `jsconfig.json`, Vite, Next.js, or other bundler config. Add the app-level alias yourself before building copied components.
 
 ## Strict Mode
 
@@ -65,4 +65,4 @@ export default defineConfig({
 }
 ```
 
-React 19 supports the React Compiler for automatic memoization. @diffgazer/ui components do not use manual `useCallback` or `useMemo`.
+@diffgazer/ui follows React 19 hook semantics and uses memoization hooks only where stable callback identity is part of the component contract.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffectEvent } from "react";
+import { useCallback } from "react";
 import {
   useControllableState,
   type UseControllableStateOptions,
@@ -13,13 +13,15 @@ function normalizeStateOptions(
   if (props.type === "multiple") {
     return {
       value: props.value,
+      controlled: "value" in props,
       defaultValue: props.defaultValue ?? [],
       onChange: props.onChange,
     };
   }
   const { onChange } = props;
   return {
-    value: props.value !== undefined ? [props.value] : undefined,
+    value: "value" in props ? (props.value === undefined ? [] : [props.value]) : undefined,
+    controlled: "value" in props,
     defaultValue: props.defaultValue !== undefined ? [props.defaultValue] : [],
     onChange: onChange ? (v: string[]) => onChange(v[0]) : undefined,
   };
@@ -49,13 +51,13 @@ export function useAccordionState(props: AccordionProps) {
     normalizeStateOptions(props),
   );
 
-  const onToggle = useEffectEvent((itemValue: string) => {
+  const onToggle = useCallback((itemValue: string) => {
     setOpenValues((prev) =>
       isSingle
         ? toggleSingle(prev, itemValue, collapsible)
         : toggleMultiple(prev, itemValue),
     );
-  });
+  }, [collapsible, isSingle, setOpenValues]);
 
   return { openValues, onToggle, collapsible };
 }

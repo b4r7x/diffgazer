@@ -19,6 +19,7 @@ describe("Popover", () => {
     const trigger = screen.getByRole("button", { name: "Open" })
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    expect(trigger).toHaveAttribute("aria-haspopup", "dialog")
 
     await userEvent.click(trigger)
     expect(screen.getByRole("dialog")).toBeInTheDocument()
@@ -51,7 +52,7 @@ describe("Popover", () => {
           <Popover.Content>Tooltip body</Popover.Content>
         </Popover>
       )
-      const trigger = screen.getByText("Hover me")
+      const trigger = screen.getByRole("button", { name: "Hover me" })
 
       fireEvent.mouseEnter(trigger)
 
@@ -61,7 +62,10 @@ describe("Popover", () => {
         vi.advanceTimersByTime(200)
       })
 
-      expect(screen.getByRole("tooltip")).toBeInTheDocument()
+      const tooltip = screen.getByRole("tooltip")
+      expect(tooltip).toBeInTheDocument()
+      expect(trigger).not.toHaveAttribute("aria-haspopup")
+      expect(trigger).toHaveAttribute("aria-describedby", tooltip.id)
     })
 
     it("closes after closeDelay on mouse leave", () => {
@@ -71,7 +75,7 @@ describe("Popover", () => {
           <Popover.Content>Tooltip body</Popover.Content>
         </Popover>
       )
-      const trigger = screen.getByText("Hover me")
+      const trigger = screen.getByRole("button", { name: "Hover me" })
 
       fireEvent.mouseEnter(trigger)
       act(() => {
@@ -94,7 +98,7 @@ describe("Popover", () => {
           <Popover.Content>Tooltip body</Popover.Content>
         </Popover>
       )
-      const trigger = screen.getByText("Hover me")
+      const trigger = screen.getByRole("button", { name: "Hover me" })
 
       fireEvent.mouseEnter(trigger)
       act(() => {
@@ -143,6 +147,25 @@ describe("Popover", () => {
     expect(await axe(container)).toHaveNoViolations()
   })
 
+  it("uses an interactive child as the click trigger without nesting controls", async () => {
+    const { container } = render(
+      <Popover triggerMode="click">
+        <Popover.Trigger>
+          <button type="button">Open child</button>
+        </Popover.Trigger>
+        <Popover.Content aria-label="Popover menu">Popover body</Popover.Content>
+      </Popover>
+    )
+
+    const trigger = screen.getByRole("button", { name: "Open child" })
+    expect(container.querySelector("button button")).toBeNull()
+    expect(await axe(container)).toHaveNoViolations()
+
+    await userEvent.click(trigger)
+    expect(screen.getByRole("dialog")).toBeInTheDocument()
+    expect(trigger).toHaveAttribute("aria-expanded", "true")
+  })
+
   it("closes on Escape and restores focus to trigger", async () => {
     renderClickPopover({ defaultOpen: true })
     const trigger = screen.getByRole("button", { name: "Open" })
@@ -176,6 +199,35 @@ describe("Popover", () => {
     )
     expect(screen.getByRole("dialog")).toHaveAttribute("data-state", "closed")
   })
+
+  it("closes only the top nested popover on outside click and Escape", async () => {
+    render(
+      <div>
+        <button>Outside</button>
+        <Popover defaultOpen>
+          <Popover.Trigger>Outer</Popover.Trigger>
+          <Popover.Content aria-label="Outer popover">
+            <Popover defaultOpen>
+              <Popover.Trigger>Inner</Popover.Trigger>
+              <Popover.Content aria-label="Inner popover">Inner body</Popover.Content>
+            </Popover>
+          </Popover.Content>
+        </Popover>
+      </div>
+    )
+
+    const outside = screen.getByRole("button", { name: "Outside" })
+    expect(screen.getByRole("dialog", { name: "Outer popover" })).toHaveAttribute("data-state", "open")
+    expect(screen.getByRole("dialog", { name: "Inner popover" })).toHaveAttribute("data-state", "open")
+
+    fireEvent.mouseDown(outside)
+    expect(screen.getByRole("dialog", { name: "Inner popover" })).toHaveAttribute("data-state", "closed")
+    expect(screen.getByRole("dialog", { name: "Outer popover" })).toHaveAttribute("data-state", "open")
+
+    fireEvent.animationEnd(screen.getByRole("dialog", { name: "Inner popover" }))
+    await userEvent.keyboard("{Escape}")
+    expect(screen.getByRole("dialog", { name: "Outer popover" })).toHaveAttribute("data-state", "closed")
+  })
 })
 
 describe("Popover hover-mode trigger click toggle", () => {
@@ -188,9 +240,10 @@ describe("Popover hover-mode trigger click toggle", () => {
         </Popover.Content>
       </Popover>
     )
-    const trigger = screen.getByText("Hover me")
+    const trigger = screen.getByRole("button", { name: "Hover me" })
 
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
+    expect(trigger).not.toHaveAttribute("aria-haspopup")
 
     await userEvent.click(trigger)
     expect(screen.getByRole("tooltip")).toHaveAttribute("data-state", "open")

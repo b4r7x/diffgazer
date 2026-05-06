@@ -78,4 +78,30 @@ describe("Stepper", () => {
     const { container } = renderStepper({ defaultExpandedIds: ["s1"] })
     expect(await axe(container)).toHaveNoViolations()
   })
+
+  it("does not tab into collapsed step content", async () => {
+    const user = userEvent.setup()
+    render(
+      <Stepper>
+        <Stepper.Step stepId="s1" status="pending">
+          <Stepper.Trigger>Step 1</Stepper.Trigger>
+          <Stepper.Content>
+            <button type="button">Hidden action</button>
+          </Stepper.Content>
+        </Stepper.Step>
+        <Stepper.Step stepId="s2" status="active">
+          <Stepper.Trigger>Step 2</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>
+    )
+
+    const firstTrigger = screen.getByRole("button", { name: /Step 1/ })
+    const region = document.getElementById(firstTrigger.getAttribute("aria-controls")!)
+    expect(region).toHaveAttribute("inert")
+
+    await user.tab()
+    expect(firstTrigger).toHaveFocus()
+    await user.tab()
+    expect(screen.getByRole("button", { name: /Step 2/ })).toHaveFocus()
+  })
 })

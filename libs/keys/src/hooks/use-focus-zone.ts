@@ -1,4 +1,6 @@
-import { useState, useEffectEvent } from "react";
+"use client";
+
+import { useCallback, useState } from "react";
 import { useKey } from "./use-key.js";
 import type { UseKeyOptions } from "./use-key.js";
 import { useScope } from "./use-scope.js";
@@ -45,53 +47,63 @@ export function useFocusZone<T extends string>(
   options: UseFocusZoneOptions<T>,
 ): UseFocusZoneReturn<T> {
   const { initial, zones, enabled = true } = options;
+  const {
+    zone: controlledZone,
+    onZoneChange,
+    onLeaveZone,
+    onEnterZone,
+    transitions,
+    tabCycle,
+    scope,
+  } = options;
 
   const [internalZone, setInternalZone] = useState<T>(initial);
 
-  const currentZone: T = options.zone ?? internalZone;
+  const currentZone: T = controlledZone ?? internalZone;
 
-  const setZoneValue = useEffectEvent((next: T) => {
+  const setZoneValue = useCallback((next: T) => {
     if (next === currentZone) return;
-    options.onLeaveZone?.(currentZone);
-    options.onEnterZone?.(next);
-    if (options.zone === undefined) setInternalZone(next);
-    options.onZoneChange?.(next);
-  });
+    onLeaveZone?.(currentZone);
+    onEnterZone?.(next);
+    if (controlledZone === undefined) setInternalZone(next);
+    onZoneChange?.(next);
+  }, [controlledZone, currentZone, onEnterZone, onLeaveZone, onZoneChange]);
 
-  const stableTransitions = useEffectEvent(
+  const stableTransitions = useCallback(
     (key: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown") => {
-      const next = options.transitions?.({ zone: currentZone, key });
+      const next = transitions?.({ zone: currentZone, key });
       if (next != null && zones.includes(next)) {
         setZoneValue(next);
       }
     },
+    [currentZone, setZoneValue, transitions, zones],
   );
 
-  const cycleZone = useEffectEvent((delta: 1 | -1) => {
-    if (!options.tabCycle || options.tabCycle.length === 0) return;
-    const cycle = options.tabCycle;
+  const cycleZone = useCallback((delta: 1 | -1) => {
+    if (!tabCycle || tabCycle.length === 0) return;
+    const cycle = tabCycle;
     const idx = cycle.indexOf(currentZone);
     const next = cycle[(idx + delta + cycle.length) % cycle.length] ?? cycle[0];
     if (!next) return;
     setZoneValue(next);
-  });
+  }, [currentZone, setZoneValue, tabCycle]);
 
   useKey(
     keys(ARROW_KEYS, (e) => stableTransitions(e.key as typeof ARROW_KEYS[number])),
-    { enabled: enabled && options.transitions != null },
+    { enabled: enabled && transitions != null },
   );
 
   useKey("Tab", () => cycleZone(1), {
-    enabled: enabled && options.tabCycle != null,
+    enabled: enabled && tabCycle != null,
     preventDefault: true,
   });
 
   useKey("shift+Tab", () => cycleZone(-1), {
-    enabled: enabled && options.tabCycle != null,
+    enabled: enabled && tabCycle != null,
     preventDefault: true,
   });
 
-  useScope(options.scope ?? null, { enabled: enabled && !!options.scope });
+  useScope(scope ?? null, { enabled: enabled && !!scope });
 
   const safeZone = zones.includes(currentZone) ? currentZone : zones[0];
 

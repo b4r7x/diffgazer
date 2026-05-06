@@ -17,6 +17,10 @@
         {
           "path": "src/hooks/use-navigation.ts",
           "type": "registry:hook"
+        },
+        {
+          "path": "src/internal/navigation-dispatch.ts",
+          "type": "registry:internal"
         }
       ]
     },

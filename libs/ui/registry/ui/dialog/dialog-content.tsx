@@ -34,8 +34,17 @@ export interface DialogContentProps
   onEscapeKeyDown?: (e: SyntheticEvent<HTMLDialogElement>) => void;
 }
 
-export function DialogContent({ children, className, size, closeOnBackdropClick = true, onEscapeKeyDown, ...rest }: DialogContentProps) {
-  const { open, onOpenChange, contentId, titleId, descriptionId, hasDescription, triggerRef } = useDialogContext();
+export function DialogContent({
+  children,
+  className,
+  size,
+  closeOnBackdropClick = true,
+  onEscapeKeyDown,
+  "aria-label": ariaLabel,
+  "aria-labelledby": ariaLabelledBy,
+  ...rest
+}: DialogContentProps) {
+  const { open, onOpenChange, contentId, titleId, descriptionId, hasTitle, hasDescription, triggerRef } = useDialogContext();
   const close = () => onOpenChange(false);
   const shellRef = useRef<HTMLDialogElement>(null);
   const [container, setContainer] = useState<Element | null>(null);
@@ -57,7 +66,8 @@ export function DialogContent({ children, className, size, closeOnBackdropClick 
       }}
       onClose={() => triggerRef.current?.focus()}
       className={cn(dialogContentVariants({ size }), className)}
-      aria-labelledby={titleId}
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy ?? (!ariaLabel && hasTitle ? titleId : undefined)}
       aria-describedby={hasDescription ? descriptionId : undefined}
     >
       <PortalContainerProvider container={container}>

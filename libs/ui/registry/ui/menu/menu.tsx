@@ -51,6 +51,7 @@ export function Menu({
 }: MenuProps) {
   const idPrefix = useId();
   const localRef = useRef<HTMLDivElement>(null);
+  const itemRole = controlledSelectedId !== undefined || defaultSelectedId !== null ? "menuitemradio" : "menuitem";
 
   const {
     selectedId,
@@ -72,7 +73,7 @@ export function Menu({
       onKeyDown?.(e);
     },
     role: "menu",
-    itemRole: "menuitem",
+    itemRole,
     typeahead: true,
   });
 
@@ -95,8 +96,9 @@ export function Menu({
       highlight: handleItemHighlight,
       variant,
       idPrefix,
+      itemRole,
     }),
-    [selectedId, highlightedId, handleItemActivate, handleItemHighlight, variant, idPrefix],
+    [selectedId, highlightedId, handleItemActivate, handleItemHighlight, variant, idPrefix, itemRole],
   );
 
   return (

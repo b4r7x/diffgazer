@@ -2,7 +2,7 @@
 
 import type { ReactNode, RefObject } from "react";
 import { cn } from "@/lib/utils";
-import { useSelectContext } from "./select-context";
+import { useSelectContext, type SelectOptionMetadata } from "./select-context";
 import { toSelectedArray } from "./select-utils";
 
 export type SelectValueDisplay = "count" | "list" | "truncate";
@@ -10,6 +10,10 @@ export type SelectValueDisplay = "count" | "list" | "truncate";
 export interface SelectValueRenderProps {
   selected: string[];
   labels: ReadonlyMap<string, string>;
+}
+
+function getLabelMap(options: ReadonlyMap<string, SelectOptionMetadata>): ReadonlyMap<string, string> {
+  return new Map(Array.from(options, ([value, option]) => [value, option.label]));
 }
 
 export interface SelectValueProps {
@@ -27,15 +31,15 @@ function MultiValue({
   truncateAfter,
 }: {
   selected: string[];
-  labelsRef: RefObject<Map<string, string>>;
+  labelsRef: RefObject<Map<string, SelectOptionMetadata>>;
   display: SelectValueDisplay;
   truncateAfter: number;
 }): ReactNode {
   if (selected.length === 1) {
-    return <span>{labelsRef.current.get(selected[0]!) ?? selected[0]}</span>;
+    return <span>{labelsRef.current.get(selected[0]!)?.label ?? selected[0]}</span>;
   }
 
-  const labels = selected.map((v) => labelsRef.current.get(v) ?? v);
+  const labels = selected.map((v) => labelsRef.current.get(v)?.label ?? v);
 
   switch (display) {
     case "list":
@@ -81,7 +85,7 @@ export function SelectValue({
   }
 
   if (typeof children === "function") {
-    return <span className={className}>{children({ selected, labels: labelsRef.current })}</span>;
+    return <span className={className}>{children({ selected, labels: getLabelMap(labelsRef.current) })}</span>;
   }
 
   return (

@@ -8,7 +8,10 @@ export interface DialogContextValue {
   contentId: string;
   titleId: string;
   descriptionId: string;
+  hasTitle: boolean;
   hasDescription: boolean;
+  onTitleMount: () => void;
+  onTitleUnmount: () => void;
   onDescriptionMount: () => void;
   onDescriptionUnmount: () => void;
   triggerRef: RefObject<HTMLElement | null>;

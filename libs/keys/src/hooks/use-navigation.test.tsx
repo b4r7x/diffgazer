@@ -99,6 +99,61 @@ describe("useNavigation", () => {
     expect(getFocused()).toBe("a");
   });
 
+  it("navigates data-marked items without requiring role attributes", () => {
+    function DataMarkedList() {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "option",
+        initialValue: "a",
+      });
+
+      return (
+        <div ref={ref} data-testid="list" onKeyDown={onKeyDownProp(result.onKeyDown)}>
+          <div data-diffgazer-navigation-item="option" data-value="a" />
+          <div data-diffgazer-navigation-item="option" data-value="b" />
+          <div data-diffgazer-navigation-item="option" data-value="c" />
+          <span data-testid="focused">{result.highlighted ?? ""}</span>
+        </div>
+      );
+    }
+
+    render(<DataMarkedList />);
+    const container = screen.getByTestId("list");
+
+    act(() => fireKeyOnElement(container, "ArrowDown"));
+    expect(getFocused()).toBe("b");
+
+    act(() => fireKeyOnElement(container, "End"));
+    expect(getFocused()).toBe("c");
+  });
+
+  it("falls back to data-value items when copied components do not expose explicit role attributes", () => {
+    function DataValueList() {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "button",
+        initialValue: "a",
+      });
+
+      return (
+        <div ref={ref} data-testid="list" onKeyDown={onKeyDownProp(result.onKeyDown)}>
+          <button data-value="a" type="button">A</button>
+          <button data-value="b" type="button">B</button>
+          <button data-value="c" type="button">C</button>
+          <span data-testid="focused">{result.highlighted ?? ""}</span>
+        </div>
+      );
+    }
+
+    render(<DataValueList />);
+    const container = screen.getByTestId("list");
+
+    act(() => fireKeyOnElement(container, "ArrowDown"));
+    expect(getFocused()).toBe("b");
+  });
+
   it("Space calls onSelect, Enter calls onEnter or falls back to onSelect", () => {
     const onSelect = vi.fn();
     const onEnter = vi.fn();

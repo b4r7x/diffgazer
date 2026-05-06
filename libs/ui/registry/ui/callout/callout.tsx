@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, type HTMLAttributes, type Ref, useEffectEvent, useMemo } from "react";
+import { type ReactNode, type HTMLAttributes, type Ref, useCallback, useMemo } from "react";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useControllableState } from "@/hooks/use-controllable-state";
@@ -60,11 +60,11 @@ export function Callout({
     onChange: onVisibleChange,
   });
 
-  const onDismiss = useEffectEvent(() => setVisible(false));
+  const onDismiss = useCallback(() => setVisible(false), [setVisible]);
 
   const contextValue = useMemo(
     () => ({ variant, onDismiss }),
-    [variant],
+    [variant, onDismiss],
   );
 
   if (!visible) return null;

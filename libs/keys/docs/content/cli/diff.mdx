@@ -4,8 +4,8 @@ description: Compare installed @diffgazer/keys hook files with bundled versions.
 ---
 
 ```bash
-dgadd diff keys/navigation
-dgadd diff keys/focus-trap keys/scroll-lock
+npx @diffgazer/add diff keys/navigation
+npx @diffgazer/add diff keys/focus-trap keys/scroll-lock
 ```
 
 When no item is passed, `dgadd diff` checks installed UI components and keys hooks from the local manifest.

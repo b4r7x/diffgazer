@@ -164,11 +164,12 @@ export function MenuItem({
   className,
   ref,
 }: MenuItemProps) {
-  const { selectedId, highlightedId, activate, highlight, variant: menuVariant, idPrefix } =
+  const { selectedId, highlightedId, activate, highlight, variant: menuVariant, idPrefix, itemRole } =
     useMenuContext();
 
   const isSelected = selectedId === id;
   const isFocused = highlightedId === id;
+  const isActive = isFocused || isSelected;
   const isDanger = variant === "danger";
   const isHub = menuVariant === "hub";
   const state = getItemState(disabled, isFocused, isSelected);
@@ -185,9 +186,10 @@ export function MenuItem({
     <div
       ref={ref}
       id={`${idPrefix}-${id}`}
-      role="menuitem"
+      role={itemRole}
       data-value={id}
-      aria-current={isSelected || undefined}
+      data-active={isActive || undefined}
+      aria-checked={itemRole === "menuitemradio" ? isSelected : undefined}
       aria-disabled={disabled || undefined}
       data-state={isSelected ? "selected" : "unselected"}
       onClick={handleClick}

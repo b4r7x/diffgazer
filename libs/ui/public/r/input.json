@@ -16,8 +16,11 @@
     },
     {
       "path": "registry/ui/input/input.tsx",
-      "content": "import type { InputHTMLAttributes, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { inputVariants } from \"@/lib/input-variants\";\n\nexport interface InputProps\n  extends Omit<InputHTMLAttributes<HTMLInputElement>, \"size\"> {\n  ref?: Ref<HTMLInputElement>;\n  size?: \"sm\" | \"md\" | \"lg\";\n  error?: boolean;\n}\n\nexport function Input({ className, size, error, ref, ...props }: InputProps) {\n  return (\n    <input\n      className={cn(inputVariants({ size, error }), className)}\n      ref={ref}\n      aria-invalid={error || undefined}\n      {...props}\n    />\n  );\n}\n",
+      "content": "import type { InputHTMLAttributes, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { inputVariants } from \"@/lib/input-variants\";\n\nexport interface InputProps\n  extends Omit<InputHTMLAttributes<HTMLInputElement>, \"size\"> {\n  ref?: Ref<HTMLInputElement>;\n  size?: \"sm\" | \"md\" | \"lg\";\n  error?: boolean;\n  invalid?: boolean;\n}\n\nexport function Input({ className, size, error, invalid, ref, \"aria-invalid\": ariaInvalid, ...props }: InputProps) {\n  const isInvalid = invalid ?? error ?? ariaInvalid;\n  return (\n    <input\n      className={cn(inputVariants({ size, error: !!isInvalid }), className)}\n      ref={ref}\n      {...props}\n      aria-invalid={isInvalid || undefined}\n    />\n  );\n}\n",
       "type": "registry:ui"
     }
-  ]
+  ],
+  "meta": {
+    "client": true
+  }
 }

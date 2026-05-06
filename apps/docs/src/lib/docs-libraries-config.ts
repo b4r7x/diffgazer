@@ -6,6 +6,11 @@ const ArtifactSourceSchema = z.object({
   packageName: z.string().min(1),
 });
 
+const InstallerSchema = z.object({
+  command: z.string().min(1),
+  itemPrefix: z.string().optional(),
+});
+
 const DocsLibraryConfigSchema = z.object({
   id: z.string().min(1),
   displayName: z.string().min(1),
@@ -13,6 +18,7 @@ const DocsLibraryConfigSchema = z.object({
   githubUrl: z.string().url(),
   enabled: z.boolean(),
   defaultRouteSlugs: z.array(z.string()),
+  installer: InstallerSchema.optional(),
   artifactSource: ArtifactSourceSchema.optional(),
 });
 

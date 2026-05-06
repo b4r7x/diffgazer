@@ -5,6 +5,8 @@ description: Command line reference for installing and managing @diffgazer/ui co
 
 The `dgadd` CLI installs source-owned `@diffgazer/ui` components and `@diffgazer/keys` hooks into your app.
 
+`@diffgazer/add` is external publish-gated as of May 6, 2026. Use local packed tarballs for validation until `npm view @diffgazer/add version` succeeds.
+
 ## Usage
 
 ```bash
@@ -16,6 +18,8 @@ You can also run it without a global install:
 ```bash
 npx @diffgazer/add <command> [options]
 ```
+
+Use `npx @diffgazer/add` only after publication. Before that, install a local tarball and run `pnpm exec dgadd`.
 
 ## Commands
 

@@ -79,4 +79,57 @@ describe("ScrollArea", () => {
     )
     expect(await axe(container)).toHaveNoViolations()
   })
+
+  it("provides accessible name when aria-label is set", () => {
+    const el = renderScrollArea()
+    expect(el).toHaveAttribute("aria-label", "Content")
+    expect(el).toHaveAccessibleName("Content")
+  })
+
+  it("provides accessible name when aria-labelledby is set", () => {
+    render(
+      <>
+        <h2 id="scroll-title">Scroll Container</h2>
+        <ScrollArea aria-labelledby="scroll-title">
+          content
+        </ScrollArea>
+      </>
+    )
+    const scrollArea = screen.getByRole("region")
+    expect(scrollArea).toHaveAttribute("aria-labelledby", "scroll-title")
+    expect(scrollArea).toHaveAccessibleName("Scroll Container")
+  })
+
+  it("makes scroll area keyboard accessible when keyboardScrollable is true", () => {
+    const el = renderScrollArea({ keyboardScrollable: true })
+    expect(el).toHaveAttribute("tabindex", "0")
+  })
+
+  it("does not add an unnamed keyboard tab stop", () => {
+    const { container } = render(
+      <ScrollArea>
+        content
+      </ScrollArea>,
+    )
+    const scrollArea = container.firstElementChild as HTMLElement
+
+    expect(screen.queryByRole("region")).not.toBeInTheDocument()
+    expect(scrollArea).not.toHaveAttribute("tabindex")
+
+    fireEvent.keyDown(scrollArea, { key: "ArrowDown" })
+    expect(scrollArea.scrollTop).toBe(0)
+  })
+
+  it("supports nested focusable content within scroll area", () => {
+    const { container } = render(
+      <ScrollArea aria-label="Content">
+        <button>Button 1</button>
+        <button>Button 2</button>
+      </ScrollArea>
+    )
+    const buttons = screen.getAllByRole("button")
+    expect(buttons).toHaveLength(2)
+    buttons[0].focus()
+    expect(buttons[0]).toHaveFocus()
+  })
 })

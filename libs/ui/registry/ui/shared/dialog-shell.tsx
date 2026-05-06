@@ -34,7 +34,14 @@ export function DialogShell({
   ...props
 }: DialogShellProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const { present, onAnimationEnd } = usePresence({ open, ref: dialogRef });
+  const { present, onAnimationEnd } = usePresence({
+    open,
+    ref: dialogRef,
+    onExitComplete: () => {
+      dialogRef.current?.close();
+      onClose?.();
+    },
+  });
 
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
@@ -55,13 +62,7 @@ export function DialogShell({
         onCancel?.(e);
         e.preventDefault();
       }}
-      onAnimationEnd={(e) => {
-        if (e.target === dialogRef.current && !open) {
-          dialogRef.current?.close();
-          onClose?.();
-        }
-        onAnimationEnd(e);
-      }}
+      onAnimationEnd={onAnimationEnd}
       {...props}
     >
       {children}

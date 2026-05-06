@@ -24,9 +24,10 @@ export function StepperContent({ children, className, ...props }: StepperContent
       id={contentId}
       aria-labelledby={triggerId}
       aria-hidden={isExpanded ? undefined : true}
+      inert={isExpanded ? undefined : true}
     >
       <div className="overflow-hidden min-h-0">
-        <div className="pt-2 pl-7">
+        <div className="pt-2 pl-7" hidden={!isExpanded}>
           {children}
         </div>
       </div>

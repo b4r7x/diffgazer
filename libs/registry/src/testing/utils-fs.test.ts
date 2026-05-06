@@ -5,6 +5,7 @@ import {
   writeFileSync,
   rmSync,
   existsSync,
+  symlinkSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -15,6 +16,7 @@ import {
   collectAllFiles,
   collectJsonFiles,
 } from "../utils/fs.js";
+import { ensureWithinDir } from "../cli/fs.js";
 
 describe("relativePath", () => {
   it("strips base prefix from file path", () => {
@@ -128,5 +130,27 @@ describe("collectJsonFiles", () => {
     const files = collectJsonFiles(tempDir);
     expect(files).toHaveLength(2);
     expect(files.every((f) => f.endsWith(".json"))).toBe(true);
+  });
+});
+
+describe("ensureWithinDir", () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "rk-containment-"));
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("rejects symlink escapes through existing parent directories", () => {
+    const base = join(tempDir, "project");
+    const outside = join(tempDir, "outside");
+    mkdirSync(base, { recursive: true });
+    mkdirSync(outside, { recursive: true });
+    symlinkSync(outside, join(base, "components"));
+
+    expect(() => ensureWithinDir(join(base, "components/button.tsx"), base)).toThrow(/symlink|realpath/);
   });
 });

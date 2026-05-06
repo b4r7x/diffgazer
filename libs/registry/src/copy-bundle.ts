@@ -31,6 +31,7 @@ export interface BuildCopyBundleOptions {
   registryPath?: string;
   itemType: string;
   pathMapping?: { from: string; to: string };
+  transformContent?: (content: string, sourcePath: string) => string;
 }
 
 export interface BuildCopyBundleResult {
@@ -50,7 +51,7 @@ function normalizeFilePath(
   mapping?: { from: string; to: string },
 ): string {
   if (!mapping) return path;
-  if (path.startsWith(mapping.to)) return path;
+  if (mapping.to && path.startsWith(mapping.to)) return path;
   if (path.startsWith(mapping.from)) {
     return path.replace(mapping.from, mapping.to);
   }
@@ -68,6 +69,7 @@ export function buildCopyBundle(
     registryPath = "registry/registry.json",
     itemType,
     pathMapping,
+    transformContent,
   } = options;
 
   const sourceRegistryPath = resolve(sourceRoot, registryPath);
@@ -89,9 +91,10 @@ export function buildCopyBundle(
         if (!existsSync(filePath)) {
           throw new Error(`Source file not found: ${filePath}`);
         }
+        const content = readFileSync(filePath, "utf-8");
         return {
           path: normalizeFilePath(file.path, pathMapping),
-          content: readFileSync(filePath, "utf-8"),
+          content: transformContent ? transformContent(content, file.path) : content,
         };
       }),
     }))

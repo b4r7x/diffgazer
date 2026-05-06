@@ -26,9 +26,12 @@ export function Toast({
 }: ToastProps) {
   const { onAnimationEnd } = useToastDismiss(dismissing ?? false, id, onRemove);
   const animation = slideAnimations[positionToSide[position]][dismissing ? "out" : "in"];
+  const isError = variant === "error";
 
   return (
     <div
+      role={isError ? "alert" : "status"}
+      aria-live={isError ? "assertive" : "polite"}
       aria-atomic="true"
       className={cn("pointer-events-auto", toastVariants({ variant }), animation)}
       onAnimationEnd={onAnimationEnd}

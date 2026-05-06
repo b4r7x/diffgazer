@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, type KeyboardEvent, type Ref } from "react";
-import { useNavigation } from "@/hooks/use-navigation";
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type Ref } from "react";
+import { useNavigation, type NavigationRole } from "@/hooks/use-navigation";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { composeRefs } from "@/lib/compose-refs";
 
@@ -16,7 +16,7 @@ export interface UseListboxOptions {
   idPrefix: string;
   onKeyDown?: (event: KeyboardEvent) => void;
   role?: "listbox" | "menu";
-  itemRole?: "option" | "menuitem";
+  itemRole?: Extract<NavigationRole, "option" | "menuitem" | "menuitemradio">;
   typeahead?: boolean;
 }
 
@@ -35,6 +35,18 @@ export interface UseListboxReturn {
 }
 
 const TYPEAHEAD_RESET_MS = 500;
+
+function hasEnabledItem(container: HTMLElement | null, itemRole: string, idPrefix: string, id: string | null): id is string {
+  if (!container || !id) return false;
+  const element = container.ownerDocument.getElementById(`${idPrefix}-${id}`);
+  return Boolean(
+    element &&
+      element.getAttribute("role") === itemRole &&
+      element.dataset.value === id &&
+      element.getAttribute("aria-disabled") !== "true" &&
+      !element.hasAttribute("data-disabled"),
+  );
+}
 
 function getAccessibleText(el: HTMLElement): string {
   let text = "";
@@ -68,6 +80,7 @@ export function useListbox({
   const containerRef = useRef<HTMLDivElement>(null);
   const typeaheadBuffer = useRef("");
   const typeaheadTimer = useRef<number>(0);
+  const [, forceActiveDescendantCheck] = useState(0);
 
   useEffect(() => () => clearTimeout(typeaheadTimer.current), []);
 
@@ -133,7 +146,23 @@ export function useListbox({
     }
   };
 
-  const activeDescendant = highlightedId ?? selectedId;
+  const activeDescendant = hasEnabledItem(containerRef.current, itemRole, idPrefix, highlightedId)
+    ? highlightedId
+    : hasEnabledItem(containerRef.current, itemRole, idPrefix, selectedId)
+      ? selectedId
+      : null;
+
+  useLayoutEffect(() => {
+    const nextActiveDescendant = hasEnabledItem(containerRef.current, itemRole, idPrefix, highlightedId)
+      ? highlightedId
+      : hasEnabledItem(containerRef.current, itemRole, idPrefix, selectedId)
+        ? selectedId
+        : null;
+
+    if (nextActiveDescendant !== activeDescendant) {
+      forceActiveDescendantCheck((current) => current + 1);
+    }
+  });
 
   const getContainerProps = (ref?: Ref<HTMLDivElement>) => ({
     ref: composeRefs(containerRef, ref),

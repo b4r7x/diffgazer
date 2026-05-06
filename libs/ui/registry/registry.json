@@ -1,5 +1,5 @@
 {
-  "$schema": "https:/@diffgazer/ui.shadcn.com/schema/registry.json",
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
   "name": "ui",
   "homepage": "https://github.com/b4r7x/diffgazer/tree/main/libs/ui",
   "items": [
@@ -11,11 +11,15 @@
       "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "controllable-state",
+        "compose-refs",
         "icons",
-        "@diffgazer/keys/navigation"
+        "@diffgazer-keys/navigation"
       ],
       "meta": {
-        "client": true
+        "client": true,
+        "optionalIntegrations": [
+          "keyboard-navigation"
+        ]
       },
       "files": [
         {
@@ -82,10 +86,13 @@
       "type": "registry:ui",
       "title": "Avatar",
       "description": "Terminal-inspired avatar with image support, monospace initials fallback, and group stacking with overflow.",
-      "dependencies": [],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "overflow"
       ],
+      "meta": {
+        "client": true
+      },
       "files": [
         {
           "path": "registry/ui/avatar/index.ts",
@@ -149,6 +156,9 @@
       "description": "Terminal-styled text input",
       "dependencies": [],
       "registryDependencies": ["input-variants"],
+      "meta": {
+        "client": true
+      },
       "files": [
         {
           "path": "registry/ui/input/index.ts",
@@ -167,6 +177,9 @@
       "description": "Terminal-styled multi-line text area",
       "dependencies": [],
       "registryDependencies": ["input-variants"],
+      "meta": {
+        "client": true
+      },
       "files": [
         {
           "path": "registry/ui/textarea/index.ts",
@@ -183,7 +196,7 @@
       "type": "registry:ui",
       "title": "Callout",
       "description": "Highlighted message block for tips, warnings, and errors",
-      "dependencies": [],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": ["controllable-state"],
       "meta": {
         "client": true
@@ -234,6 +247,10 @@
         {
           "path": "registry/ui/shared/portal.tsx",
           "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/shared/portal-context.tsx",
+          "type": "registry:ui"
         }
       ]
     },
@@ -244,7 +261,7 @@
       "description": "Terminal-styled checkbox with bracket notation",
       "registryDependencies": [
         "controllable-state",
-        "@diffgazer/keys/navigation",
+        "@diffgazer-keys/navigation",
         "compose-refs",
         "selectable-variants"
       ],
@@ -282,8 +299,11 @@
       "type": "registry:ui",
       "title": "Icons",
       "description": "SVG icon components: directional chevron with rotation animation.",
-      "dependencies": [],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
       "files": [
         {
           "path": "registry/ui/icons/index.ts",
@@ -302,13 +322,16 @@
       "description": "Terminal-styled radio and radio group for single-selection with bracket notation",
       "registryDependencies": [
         "controllable-state",
-        "@diffgazer/keys/navigation",
+        "@diffgazer-keys/navigation",
         "compose-refs",
         "selectable-variants",
         "resolve-tab-target"
       ],
       "meta": {
-        "client": true
+        "client": true,
+        "optionalIntegrations": [
+          "keyboard-navigation"
+        ]
       },
       "files": [
         {
@@ -340,6 +363,9 @@
       "description": "Card-like container panel with composable terminal and section headers",
       "dependencies": ["class-variance-authority"],
       "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
       "files": [
         {
           "path": "registry/ui/panel/index.ts",
@@ -370,6 +396,9 @@
       "description": "Custom scrollable area with styled scrollbars",
       "dependencies": [],
       "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
       "files": [
         {
           "path": "registry/ui/scroll-area/index.ts",
@@ -388,6 +417,9 @@
       "description": "Simple bordered card primitives with floating border labels and semantic HTML support",
       "dependencies": ["class-variance-authority"],
       "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
       "files": [
         {
           "path": "registry/ui/card/index.ts",
@@ -463,6 +495,9 @@
       "description": "Section heading with terminal-style decoration",
       "dependencies": ["class-variance-authority"],
       "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
       "files": [
         {
           "path": "registry/ui/section-header/index.ts",
@@ -481,6 +516,9 @@
       "description": "Placeholder for empty content areas",
       "dependencies": ["class-variance-authority"],
       "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
       "files": [
         {
           "path": "registry/ui/empty-state/index.ts",
@@ -540,7 +578,7 @@
       "type": "registry:ui",
       "title": "Label",
       "description": "Styled label with optional form control wrapping and orientation support.",
-      "dependencies": [],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [],
       "meta": { "client": true },
       "files": [
@@ -559,7 +597,7 @@
       "type": "registry:ui",
       "title": "Overflow",
       "description": "Container-aware overflow handling for items (dynamic fitting with indicator) and text (line clamping with tooltip).",
-      "dependencies": [],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "tooltip",
         "overflow-detection",
@@ -620,12 +658,13 @@
       "type": "registry:ui",
       "title": "Dialog",
       "description": "Modal dialog with compound components",
-      "dependencies": [],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "button",
         "controllable-state",
         "dialog-shell",
-        "compose-refs"
+        "compose-refs",
+        "portal"
       ],
       "meta": {
         "client": true
@@ -716,6 +755,9 @@
       "description": "Keyboard shortcut indicator",
       "dependencies": ["class-variance-authority"],
       "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
       "files": [
         {
           "path": "registry/ui/kbd/index.ts",
@@ -738,6 +780,9 @@
       "description": "Line separator with horizontal and vertical orientation, default and spaced variants.",
       "dependencies": ["class-variance-authority"],
       "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
       "files": [
         {
           "path": "registry/ui/divider/index.ts",
@@ -757,11 +802,14 @@
       "dependencies": ["class-variance-authority"],
       "registryDependencies": [
         "controllable-state",
-        "@diffgazer/keys/navigation",
+        "@diffgazer-keys/navigation",
         "compose-refs"
       ],
       "meta": {
-        "client": true
+        "client": true,
+        "optionalIntegrations": [
+          "keyboard-navigation"
+        ]
       },
       "files": [
         {
@@ -892,7 +940,7 @@
       "type": "registry:ui",
       "title": "Toast",
       "description": "Terminal-styled toast notification system",
-      "dependencies": [],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": ["spinner"],
       "meta": {
         "client": true
@@ -980,7 +1028,7 @@
       "type": "registry:ui",
       "title": "Search Input",
       "description": "Terminal-styled search input with / prefix and keyboard callbacks.",
-      "dependencies": [],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": ["controllable-state"],
       "meta": {
         "client": true
@@ -1005,7 +1053,7 @@
         "class-variance-authority"
       ],
       "registryDependencies": [
-        "@diffgazer/keys/navigation",
+        "@diffgazer-keys/navigation",
         "controllable-state",
         "compose-refs",
         "resolve-tab-target"
@@ -1080,9 +1128,12 @@
       "title": "Diff View",
       "description": "Diff viewer with unified and side-by-side modes. Accepts unified diff strings or before/after text. Keyboard navigation between hunks with j/k.",
       "dependencies": [],
-      "registryDependencies": ["diff", "@diffgazer/keys/navigation", "kbd"],
+      "registryDependencies": ["diff", "@diffgazer-keys/navigation", "kbd"],
       "meta": {
-        "client": true
+        "client": true,
+        "optionalIntegrations": [
+          "keyboard-navigation"
+        ]
       },
       "files": [
         {
@@ -1150,13 +1201,16 @@
       ],
       "registryDependencies": [
         "controllable-state",
-        "@diffgazer/keys/navigation",
+        "@diffgazer-keys/navigation",
         "compose-refs",
         "dialog-shell",
         "search"
       ],
       "meta": {
-        "client": true
+        "client": true,
+        "optionalIntegrations": [
+          "keyboard-navigation"
+        ]
       },
       "files": [
         {
@@ -1219,7 +1273,7 @@
       ],
       "registryDependencies": [
         "controllable-state",
-        "@diffgazer/keys/navigation",
+        "@diffgazer-keys/navigation",
         "compose-refs",
         "floating-position",
         "icons",
@@ -1290,7 +1344,7 @@
       "type": "registry:ui",
       "title": "Spinner",
       "description": "Terminal-inspired TUI spinner with four animation styles including a pixel snake, braille, dots, and pulse",
-      "dependencies": [],
+      "dependencies": ["class-variance-authority"],
       "registryDependencies": [],
       "meta": {
         "client": true
@@ -1325,11 +1379,14 @@
       "registryDependencies": [
         "icons",
         "controllable-state",
-        "@diffgazer/keys/navigation",
+        "@diffgazer-keys/navigation",
         "compose-refs"
       ],
       "meta": {
-        "client": true
+        "client": true,
+        "optionalIntegrations": [
+          "keyboard-navigation"
+        ]
       },
       "files": [
         {
@@ -1424,6 +1481,9 @@
         "figlet"
       ],
       "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
       "files": [
         {
           "path": "registry/ui/logo/index.ts",
@@ -1485,6 +1545,9 @@
         "class-variance-authority"
       ],
       "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
       "files": [
         {
           "path": "registry/ui/toc/index.ts",
@@ -1513,6 +1576,9 @@
         "class-variance-authority"
       ],
       "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
       "files": [
         {
           "path": "registry/ui/typography/index.ts",
@@ -1599,6 +1665,9 @@
       "description": "Detect clicks outside a referenced element",
       "dependencies": [],
       "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
       "files": [
         {
           "path": "registry/hooks/use-outside-click.ts",
@@ -1787,6 +1856,9 @@
       "description": "Positioning engine for floating elements with 4-side placement, flip, shift, and collision detection. Zero dependencies.",
       "dependencies": [],
       "registryDependencies": [],
+      "meta": {
+        "client": true
+      },
       "files": [
         {
           "path": "registry/hooks/use-floating-position.ts",
@@ -1801,11 +1873,14 @@
       "description": "Shared listbox state and keyboard navigation hook. Manages selection, highlight, and container ARIA props for listbox-pattern components.",
       "registryDependencies": [
         "controllable-state",
-        "@diffgazer/keys/navigation",
+        "@diffgazer-keys/navigation",
         "compose-refs"
       ],
       "meta": {
-        "client": true
+        "client": true,
+        "optionalIntegrations": [
+          "keyboard-navigation"
+        ]
       },
       "files": [
         {

@@ -1,14 +1,14 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, type HTMLAttributes, type KeyboardEvent, type Ref } from "react";
 import { composeRefs } from "@/lib/compose-refs";
 import { useNavigation } from "@/hooks/use-navigation";
 import { cn } from "@/lib/utils";
 import { useTabsContext } from "./tabs-context";
 
-export interface TabsListProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface TabsListProps extends HTMLAttributes<HTMLDivElement> {
   loop?: boolean;
-  ref?: React.Ref<HTMLDivElement>;
+  ref?: Ref<HTMLDivElement>;
 }
 
 export function TabsList({ children, className, loop = true, onKeyDown, ref, ...rest }: TabsListProps) {
@@ -28,7 +28,7 @@ export function TabsList({ children, className, loop = true, onKeyDown, ref, ...
     }),
   });
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     onKeyDown?.(e);
     if (!e.defaultPrevented) navKeyDown(e);
   };

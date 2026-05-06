@@ -40,6 +40,7 @@ export interface SearchInputProps
   prefix?: ReactNode;
   size?: "sm" | "md" | "lg";
   error?: boolean;
+  invalid?: boolean;
   ref?: Ref<HTMLInputElement>;
 }
 
@@ -56,10 +57,13 @@ export function SearchInput({
   ref,
   size,
   error,
+  invalid,
   disabled,
   "aria-label": ariaLabel,
+  "aria-invalid": ariaInvalid,
   ...rest
 }: SearchInputProps) {
+  const isInvalid = invalid ?? error ?? ariaInvalid;
   const [current, setValue] = useControllableState({
     value,
     defaultValue: defaultValue ?? "",
@@ -80,7 +84,7 @@ export function SearchInput({
   return (
     <search
       className={cn(
-        searchInputVariants({ size, error, disabled }),
+        searchInputVariants({ size, error: !!isInvalid, disabled }),
         className,
       )}
     >
@@ -93,7 +97,7 @@ export function SearchInput({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         aria-label={ariaLabel ?? placeholder}
-        aria-invalid={error || undefined}
+        aria-invalid={isInvalid || undefined}
         disabled={disabled}
         {...rest}
         className="flex-1 bg-transparent font-mono text-foreground placeholder:text-foreground/50 focus:outline-none disabled:cursor-not-allowed [&::-webkit-search-cancel-button]:appearance-none"

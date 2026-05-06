@@ -10,7 +10,7 @@
       "defaultRouteSlugs": ["getting-started", "installation"],
       "artifactSource": {
         "workspaceDir": "libs/ui",
-        "packageName": "@diffgazer/ui-artifacts"
+        "packageName": "@diffgazer/ui"
       }
     },
     {
@@ -22,7 +22,7 @@
       "defaultRouteSlugs": ["getting-started", "installation"],
       "artifactSource": {
         "workspaceDir": "libs/keys",
-        "packageName": "@diffgazer/keys-artifacts"
+        "packageName": "@diffgazer/keys"
       }
     },
     {

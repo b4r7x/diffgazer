@@ -65,7 +65,17 @@ function fromLockfile(cwd: string): PackageManager | null {
 
 export function detectPackageManager(cwd: string, pkg?: PackageJson | null): PackageManager {
   const pkgJson = pkg ?? readPackageJson(cwd);
-  return fromPackageManagerField(pkgJson) ?? fromUserAgent() ?? fromLockfile(cwd) ?? "npm";
+  const declared = fromPackageManagerField(pkgJson);
+  const lockfile = fromLockfile(cwd);
+  const userAgent = fromUserAgent();
+
+  if (declared && userAgent && declared !== userAgent) {
+    warn(`Package manager mismatch: package.json declares ${declared}, but current executor looks like ${userAgent}. Using ${declared}.`);
+  } else if (!declared && lockfile && userAgent && lockfile !== userAgent) {
+    warn(`Package manager mismatch: lockfile suggests ${lockfile}, but current executor looks like ${userAgent}. Using ${lockfile}.`);
+  }
+
+  return declared ?? lockfile ?? userAgent ?? "npm";
 }
 
 export function readPackageVersion(importMetaUrl: string, relativePath: string): string {
@@ -78,6 +88,7 @@ export function detectSourceDir(cwd: string): string {
   const mapping = paths?.["@/*"];
   if (Array.isArray(mapping)) {
     for (const entry of mapping) {
+      if (entry === "./*" || entry === "*") return ".";
       const match = entry.match(/^\.\/([^*]+)\*/);
       if (match?.[1]) {
         return match[1].replace(/\/$/, "");

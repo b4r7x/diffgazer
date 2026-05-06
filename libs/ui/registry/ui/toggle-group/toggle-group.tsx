@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffectEvent, useMemo, useRef, type ReactNode, type Ref, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useCallback, useMemo, useRef, useState, type ReactNode, type Ref, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useNavigation } from "@/hooks/use-navigation";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { composeRefs } from "@/lib/compose-refs";
@@ -45,6 +45,7 @@ export function ToggleGroup({
   ref,
 }: ToggleGroupProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [items, setItems] = useState<Array<{ value: string; disabled: boolean }>>([]);
 
   const [value, setValue] = useControllableState<string | null>({
     value: controlledValue,
@@ -58,17 +59,33 @@ export function ToggleGroup({
     onChange: onHighlightChange,
   });
 
-  const handleValueChange = useEffectEvent((newValue: string) => {
+  const handleValueChange = useCallback((newValue: string) => {
     setValue((prev) => (prev === newValue && allowDeselect) ? null : newValue);
-  });
+  }, [allowDeselect, setValue]);
+
+  const registerItem = useCallback((itemValue: string, itemDisabled: boolean) => {
+    setItems((current) => {
+      const index = current.findIndex((item) => item.value === itemValue);
+      if (index === -1) return [...current, { value: itemValue, disabled: itemDisabled }];
+      const next = [...current];
+      next[index] = { value: itemValue, disabled: itemDisabled };
+      return next;
+    });
+    return () => {
+      setItems((current) => current.filter((item) => item.value !== itemValue));
+    };
+  }, []);
+
+  const firstEnabledValue = items.find((item) => !item.disabled)?.value ?? null;
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,
-    role: "radio",
+    role: allowDeselect ? "button" : "radio",
     orientation,
     wrap,
     moveFocus: true,
-    value: highlightedValue ?? undefined,
+    value: highlightedValue,
+    enabled: !disabled,
     onValueChange: handleValueChange,
   });
 
@@ -98,13 +115,16 @@ export function ToggleGroup({
     size,
     highlightedValue,
     containerRef,
-  }), [value, disabled, size, highlightedValue]);
+    allowDeselect,
+    firstEnabledValue,
+    registerItem,
+  }), [value, handleValueChange, setHighlightedValue, disabled, size, highlightedValue, allowDeselect, firstEnabledValue, registerItem]);
 
   return (
     <ToggleGroupContext value={contextValue}>
       <div
         ref={composeRefs(containerRef, ref)}
-        role="radiogroup"
+        role={allowDeselect ? "group" : "radiogroup"}
         aria-label={label}
         aria-labelledby={ariaLabelledBy}
         aria-orientation={orientation}

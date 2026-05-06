@@ -9,9 +9,25 @@ export interface CodeBlockContentProps extends ComponentProps<"div"> {
   showLineNumbers?: boolean;
 }
 
-export function CodeBlockContent({ showLineNumbers = true, className, children, ref, ...props }: CodeBlockContentProps) {
+export function CodeBlockContent({
+  showLineNumbers = true,
+  className,
+  children,
+  ref,
+  "aria-label": ariaLabel,
+  "aria-labelledby": ariaLabelledBy,
+  ...props
+}: CodeBlockContentProps) {
   return (
-    <ScrollArea orientation="both" tabIndex={0} ref={ref} className={cn("focus-visible:outline focus-visible:outline-1 focus-visible:outline-border", className)} {...props}>
+    <ScrollArea
+      orientation="both"
+      tabIndex={0}
+      ref={ref}
+      aria-label={ariaLabelledBy ? undefined : (ariaLabel ?? "Code content")}
+      aria-labelledby={ariaLabelledBy}
+      className={cn("focus-visible:outline focus-visible:outline-1 focus-visible:outline-border", className)}
+      {...props}
+    >
       <pre className="p-4 font-mono text-xs leading-relaxed">
         {typeof children === "string"
           ? children.split("\n").map((line, i) => (

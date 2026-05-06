@@ -4,10 +4,6 @@ import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
 import { Checkbox } from "./index.js"
 
-// The hidden input inside div[role="checkbox"] triggers nested-interactive;
-// it is aria-hidden, tabIndex=-1, sr-only — a false positive.
-const axeOpts = { rules: { "nested-interactive": { enabled: false } } }
-
 describe("Checkbox", () => {
   it("toggles on click and respects controlled value", async () => {
     const onChange = vi.fn()
@@ -67,13 +63,13 @@ describe("Checkbox", () => {
 
   it("has no a11y violations across states", async () => {
     const { container, rerender } = render(<Checkbox label="Accept terms" />)
-    expect(await axe(container, axeOpts)).toHaveNoViolations()
+    expect(await axe(container)).toHaveNoViolations()
 
     rerender(<Checkbox disabled label="Accept terms" />)
-    expect(await axe(container, axeOpts)).toHaveNoViolations()
+    expect(await axe(container)).toHaveNoViolations()
 
     rerender(<Checkbox checked="indeterminate" label="Select all" />)
-    expect(await axe(container, axeOpts)).toHaveNoViolations()
+    expect(await axe(container)).toHaveNoViolations()
   })
 })
 
@@ -114,6 +110,25 @@ describe("Checkbox.Group", () => {
     expect(onHighlight).toHaveBeenCalled()
   })
 
+  it("requires at least one checked item without making every item required", async () => {
+    render(
+      <form data-testid="form">
+        <Checkbox.Group label="Fruits" name="fruits" required>
+          <Checkbox.Item value="apple" label="Apple" />
+          <Checkbox.Item value="banana" label="Banana" />
+        </Checkbox.Group>
+      </form>
+    )
+
+    const form = screen.getByTestId("form") as HTMLFormElement
+    expect(form.checkValidity()).toBe(false)
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /banana/i }))
+
+    expect(form.checkValidity()).toBe(true)
+    expect(new FormData(form).getAll("fruits")).toEqual(["banana"])
+  })
+
   it("has no a11y violations", async () => {
     const { container } = render(
       <Checkbox.Group label="Fruits">
@@ -121,6 +136,6 @@ describe("Checkbox.Group", () => {
         <Checkbox.Item value="banana" label="Banana" />
       </Checkbox.Group>
     )
-    expect(await axe(container, { rules: { "nested-interactive": { enabled: false } } })).toHaveNoViolations()
+    expect(await axe(container)).toHaveNoViolations()
   })
 })

@@ -7,6 +7,7 @@ import {
 } from "./integration.js";
 
 export type InstallNamespace = "ui" | "keys";
+const CLI_INSTALLABLE_TYPES = new Set(["registry:ui", "registry:hook", "registry:lib"]);
 
 export interface InstallName {
   namespace: InstallNamespace;
@@ -27,15 +28,20 @@ export function parseInstallName(value: string): InstallName {
 }
 
 export function publicInstallNames(): string[] {
+  const uiItems = ctx.registry.getPublicItems().filter((item) => CLI_INSTALLABLE_TYPES.has(item.type));
   return [
-    ...ctx.registry.getPublicItems().map((item) => `ui/${item.name}`),
-    ...ctx.registry.getPublicItems().map((item) => item.name),
+    ...uiItems.map((item) => `ui/${item.name}`),
+    ...uiItems.map((item) => item.name),
     ...[...getKeysHookNames()].map((name) => `keys/${name}`),
   ];
 }
 
 export function validateInstallNames(names: string[]): void {
-  const uiNames = new Set(ctx.registry.getPublicItems().map((item) => item.name));
+  const uiNames = new Set(
+    ctx.registry.getPublicItems()
+      .filter((item) => CLI_INSTALLABLE_TYPES.has(item.type))
+      .map((item) => item.name),
+  );
   const keyNames = getKeysHookNames();
 
   for (const raw of names) {

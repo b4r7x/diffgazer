@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useEffectEvent, type RefObject } from "react";
+import { useCallback, useRef, useEffect } from "react";
 import type { PopoverTriggerMode } from "./popover-context";
 
 export interface UsePopoverBehaviorOptions {
@@ -10,7 +10,6 @@ export interface UsePopoverBehaviorOptions {
   triggerMode?: PopoverTriggerMode;
   delayMs?: number;
   closeDelayMs?: number;
-  triggerRef: RefObject<HTMLElement | null>;
 }
 
 export interface UsePopoverBehaviorReturn {
@@ -28,12 +27,11 @@ export function usePopoverBehavior({
   triggerMode = "click",
   delayMs = 500,
   closeDelayMs = 0,
-  triggerRef,
 }: UsePopoverBehaviorOptions): UsePopoverBehaviorReturn {
   const openTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function clearTimers() {
+  const clearTimers = useCallback(() => {
     if (openTimerRef.current) {
       clearTimeout(openTimerRef.current);
       openTimerRef.current = null;
@@ -42,20 +40,24 @@ export function usePopoverBehavior({
       clearTimeout(closeTimerRef.current);
       closeTimerRef.current = null;
     }
-  }
+  }, []);
 
-  const closePopover = useEffectEvent(() => {
+  const closePopover = useCallback(() => {
     clearTimers();
     onOpenChange(false);
-  });
+  }, [clearTimers, onOpenChange]);
 
-  const onTriggerEnter = useEffectEvent(() => {
+  const onTriggerEnter = useCallback(() => {
     if (!enabled || triggerMode !== "hover") return;
     clearTimers();
+    if (delayMs <= 0) {
+      onOpenChange(true);
+      return;
+    }
     openTimerRef.current = setTimeout(() => onOpenChange(true), delayMs);
-  });
+  }, [clearTimers, delayMs, enabled, onOpenChange, triggerMode]);
 
-  const scheduleClose = useEffectEvent(() => {
+  const scheduleClose = useCallback(() => {
     if (!enabled || triggerMode !== "hover") return;
     clearTimers();
     if (closeDelayMs > 0) {
@@ -63,36 +65,21 @@ export function usePopoverBehavior({
     } else {
       onOpenChange(false);
     }
-  });
+  }, [clearTimers, closeDelayMs, enabled, onOpenChange, triggerMode]);
 
-  const onTriggerClick = useEffectEvent(() => {
+  const onTriggerClick = useCallback(() => {
     if (!enabled || triggerMode !== "click") return;
     onOpenChange(prev => !prev);
-  });
+  }, [enabled, onOpenChange, triggerMode]);
 
-  const onContentEnter = useEffectEvent(() => {
+  const onContentEnter = useCallback(() => {
     if (!enabled || triggerMode !== "hover") return;
     clearTimers();
-  });
-
-  const handleKeyDown = useEffectEvent((e: KeyboardEvent) => {
-    if (e.key === "Escape") {
-      e.stopPropagation();
-      clearTimers();
-      onOpenChange(false);
-      triggerRef.current?.focus();
-    }
-  });
+  }, [clearTimers, enabled, triggerMode]);
 
   useEffect(() => {
     return () => clearTimers();
-  }, [triggerMode]);
-
-  useEffect(() => {
-    if (!open) return;
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open]);
+  }, [clearTimers]);
 
   useEffect(() => {
     if (!open || triggerMode !== "hover") return;
@@ -103,11 +90,11 @@ export function usePopoverBehavior({
       window.removeEventListener("scroll", closePopover, scrollOpts);
       window.removeEventListener("resize", closePopover);
     };
-  }, [open, triggerMode]);
+  }, [closePopover, open, triggerMode]);
 
   useEffect(() => {
     if (!enabled) closePopover();
-  }, [enabled]);
+  }, [closePopover, enabled]);
 
   return {
     onTriggerEnter,

@@ -11,6 +11,11 @@
       "path": "registry/ui/shared/portal.tsx",
       "content": "\"use client\";\n\nimport { createPortal } from \"react-dom\";\nimport type { ReactNode } from \"react\";\n\nexport interface PortalProps {\n  children: ReactNode;\n  container?: Element;\n}\n\nexport function Portal({ children, container }: PortalProps) {\n  const target = container ?? (typeof document !== \"undefined\" ? document.body : null);\n  if (!target) return null;\n  return createPortal(children, target);\n}",
       "type": "registry:ui"
+    },
+    {
+      "path": "registry/ui/shared/portal-context.tsx",
+      "content": "\"use client\";\n\nimport { createContext, useContext, type ReactNode } from \"react\";\n\nconst PortalContainerContext = createContext<Element | null>(null);\n\nexport function usePortalContainer() {\n  return useContext(PortalContainerContext);\n}\n\nexport function PortalContainerProvider({\n  container,\n  children,\n}: {\n  container: Element | null;\n  children: ReactNode;\n}) {\n  return (\n    <PortalContainerContext value={container}>\n      {children}\n    </PortalContainerContext>\n  );\n}\n",
+      "type": "registry:ui"
     }
   ],
   "meta": {

@@ -99,7 +99,7 @@ function aliasPlugin(): Plugin {
 export default defineConfig({
   entry,
   format: ["esm"],
-  dts: true,
+  dts: false,
   clean: true,
   splitting: true,
   outDir: "dist",
@@ -113,7 +113,6 @@ export default defineConfig({
     "clsx",
     "tailwind-merge",
     "figlet",
-    "lucide-react",
   ],
   esbuildPlugins: [aliasPlugin()],
   async onSuccess() {
@@ -126,15 +125,23 @@ export default defineConfig({
     cpSync(resolve(stylesDir, "theme.css"), resolve(dist, "theme.css"));
     cpSync(resolve(stylesDir, "styles.css"), resolve(dist, "styles.css"));
 
-    // Append component-level CSS to styles.css
-    const componentCssFiles = ["registry/ui/dialog/dialog.css"];
+    // Append component CSS files to styles.css. Theme CSS is already imported
+    // by styles.css and must not be appended after normal CSS rules.
+    const componentCssFiles = registry.items.flatMap((item) =>
+      item.type === "registry:theme"
+        ? []
+        : item.files
+            .map((file: { path: string }) => file.path)
+            .filter((path: string) => path.endsWith(".css")),
+    );
     const stylesPath = resolve(dist, "styles.css");
     let stylesContent = readFileSync(stylesPath, "utf-8");
     for (const cssFile of componentCssFiles) {
       const cssPath = resolve(import.meta.dirname, cssFile);
-      if (existsSync(cssPath)) {
-        stylesContent += `\n${readFileSync(cssPath, "utf-8")}`;
+      if (!existsSync(cssPath)) {
+        throw new Error(`Registry CSS file is missing: ${cssFile}`);
       }
+      stylesContent += `\n${readFileSync(cssPath, "utf-8")}`;
     }
     writeFileSync(stylesPath, stylesContent);
 
@@ -160,7 +167,7 @@ export default defineConfig({
       (i) => i.type === "registry:ui" && !i.meta?.client
     );
     if (uiWithoutClient.length) {
-      console.warn(`⚠ UI items missing meta.client: ${uiWithoutClient.map((i) => i.name).join(", ")}`);
+      throw new Error(`UI items missing meta.client: ${uiWithoutClient.map((i) => i.name).join(", ")}`);
     }
 
     // Validate all entries produced output
@@ -172,7 +179,7 @@ export default defineConfig({
       }
     }
     if (missing.length > 0) {
-      console.warn(`Warning: ${missing.length} entry points missing from dist: ${missing.join(', ')}`);
+      throw new Error(`${missing.length} entry points missing from dist: ${missing.join(", ")}`);
     }
   },
 });

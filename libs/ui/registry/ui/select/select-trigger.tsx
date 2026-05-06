@@ -1,23 +1,34 @@
 "use client";
 
-import type { ReactNode, KeyboardEvent } from "react";
+import type { ComponentPropsWithRef, KeyboardEvent, ReactNode } from "react";
+import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
 import { Chevron } from "../icons/chevron";
 import { useSelectContext } from "./select-context";
 
-export interface SelectTriggerProps {
+export interface SelectTriggerProps extends Omit<ComponentPropsWithRef<"button">, "children" | "type" | "disabled"> {
   children: ReactNode;
-  className?: string;
   /** Custom handle element. Defaults to an animated Chevron. Pass `null` to hide. */
   handle?: ReactNode | null;
   invalid?: boolean;
-  "aria-errormessage"?: string;
 }
 
-export function SelectTrigger({ children, className, handle, invalid, "aria-errormessage": ariaErrorMessage }: SelectTriggerProps) {
+export function SelectTrigger({
+  children,
+  className,
+  handle,
+  invalid,
+  "aria-errormessage": ariaErrorMessage,
+  ref,
+  onClick,
+  onKeyDown,
+  ...props
+}: SelectTriggerProps) {
   const { open, disabled, onOpenChange, triggerRef, variant, triggerId, listboxId, ariaInvalid } = useSelectContext("SelectTrigger");
 
-  const handleKeyDown = (e: KeyboardEvent) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
+    onKeyDown?.(e);
+    if (e.defaultPrevented) return;
     switch (e.key) {
       case "Enter":
       case " ":
@@ -34,7 +45,8 @@ export function SelectTrigger({ children, className, handle, invalid, "aria-erro
 
   return (
     <button
-      ref={triggerRef}
+      {...props}
+      ref={composeRefs(triggerRef, ref)}
       id={triggerId}
       type="button"
       disabled={disabled}
@@ -43,7 +55,10 @@ export function SelectTrigger({ children, className, handle, invalid, "aria-erro
       aria-controls={listboxId}
       aria-invalid={invalid || ariaInvalid || undefined}
       aria-errormessage={ariaErrorMessage}
-      onClick={() => onOpenChange(!open)}
+      onClick={(event) => {
+        onClick?.(event);
+        if (!event.defaultPrevented) onOpenChange(!open);
+      }}
       onKeyDown={handleKeyDown}
       className={cn(
         "flex items-center justify-between w-full px-3 py-2 text-sm font-mono cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",

@@ -499,9 +499,6 @@ importers:
       figlet:
         specifier: ^1.10.0
         version: 1.10.0
-      lucide-react:
-        specifier: '>=0.400.0'
-        version: 0.561.0(react@19.2.4)
       react:
         specifier: '>=19.0.0'
         version: 19.2.4
@@ -521,12 +518,18 @@ importers:
       '@types/figlet':
         specifier: ^1.7.0
         version: 1.7.0
+      '@types/node':
+        specifier: ^25.2.3
+        version: 25.2.3
       '@types/react':
         specifier: ^19.2.0
         version: 19.2.14
       '@types/react-dom':
         specifier: ^19.2.0
         version: 19.2.3(@types/react@19.2.14)
+      esbuild:
+        specifier: ^0.27.0
+        version: 0.27.3
       shadcn:
         specifier: ^2.10.0
         version: 2.10.0(@types/node@25.2.3)(typescript@5.9.3)
@@ -8105,6 +8108,7 @@ snapshots:
   lucide-react@0.561.0(react@19.2.4):
     dependencies:
       react: 19.2.4
+    optional: true
 
   lz-string@1.5.0: {}
 

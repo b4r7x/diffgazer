@@ -1,9 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useLayoutEffect, type ReactNode } from "react";
 import { useRadioGroupContext } from "./radio-group-context";
 import { Radio } from "./radio";
-import { resolveTabTarget } from "@/lib/resolve-tab-target";
 
 export interface RadioGroupItemProps {
   value: string;
@@ -21,11 +20,16 @@ export function RadioGroupItem({
   className,
 }: RadioGroupItemProps) {
   const context = useRadioGroupContext();
+  const { registerItem } = context;
   const isSelected = context.value === value;
   const isDisabled = context.disabled || !!itemDisabled;
   const isHighlighted = context.highlightedValue === value;
   const hasSelection = context.value !== undefined;
-  const isTabTarget = resolveTabTarget(isSelected, hasSelection, context.containerRef.current, value);
+  const isTabTarget = !isDisabled && (isSelected || (!hasSelection && context.firstEnabledValue === value));
+
+  useLayoutEffect(() => {
+    return registerItem(value, isDisabled);
+  }, [isDisabled, registerItem, value]);
 
   return (
     <Radio

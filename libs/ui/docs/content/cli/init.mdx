@@ -6,8 +6,10 @@ description: Initialize installer configuration for @diffgazer/ui and @diffgazer
 ## Usage
 
 ```bash
-dgadd init
+npx @diffgazer/add init
 ```
+
+Use this `npx` form only after `@diffgazer/add` is published. Before publication, install a locally packed tarball and run `pnpm exec dgadd init`.
 
 ## What It Does
 
@@ -26,7 +28,9 @@ dgadd init
 
 4. Installs required dependencies.
 
-5. Copies the shared theme file.
+5. Copies `src/styles/theme.css` and `src/styles/styles.css`.
+
+It does not edit `tsconfig.json`, Vite, Next, or your app CSS entrypoint. Configure `@/*` in the app before running `init`, or pass `--allow-missing-alias` only when your tooling already resolves that alias.
 
 ## Options
 
@@ -34,18 +38,20 @@ dgadd init
 |------|-------------|---------|
 | `--cwd <path>` | Working directory | `.` |
 | `--components-dir <path>` | Component install directory | `src/components/ui` |
+| `--allow-missing-alias` | Continue when no `@/*` alias is detected | `false` |
 | `--yes` | Skip confirmation prompts | `false` |
 
 ## Example
 
 ```bash
-$ dgadd init
+$ npx @diffgazer/add init
 
   Creating diffgazer.json
   Creating src/components/ui/
   Creating src/hooks/
   Creating src/lib/utils.ts
-  Copying styles/theme.css
+  Copying src/styles/theme.css
+  Copying src/styles/styles.css
 
-  Done. Add components with: dgadd add ui/button
+  Done. Add components with: npx @diffgazer/add add ui/button
 ```

@@ -9,25 +9,29 @@ export interface TextareaProps
   ref?: Ref<HTMLTextAreaElement>;
   size?: "sm" | "md" | "lg";
   error?: boolean;
+  invalid?: boolean;
 }
 
 export function Textarea({
   className,
   size,
   error,
+  invalid,
   ref,
+  "aria-invalid": ariaInvalid,
   ...props
 }: TextareaProps) {
+  const isInvalid = invalid ?? error ?? ariaInvalid;
   return (
     <textarea
       className={cn(
-        inputVariants({ size, error }),
+        inputVariants({ size, error: !!isInvalid }),
         "h-auto min-h-20 resize-y",
         className
       )}
       ref={ref}
-      aria-invalid={error || undefined}
       {...props}
+      aria-invalid={isInvalid || undefined}
     />
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, type ReactNode, type Ref, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useCallback, useMemo, useRef, useState, type ReactNode, type Ref, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useNavigation } from "@/hooks/use-navigation";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { composeRefs } from "@/lib/compose-refs";
@@ -30,38 +30,57 @@ export interface RadioGroupProps {
   ref?: Ref<HTMLDivElement>;
 }
 
-export function RadioGroup({
-  value: controlledValue,
-  defaultValue,
-  onChange,
-  onHighlightChange,
-  onKeyDown,
-  highlighted: controlledHighlighted,
-  orientation = "vertical",
-  wrap = true,
-  disabled = false,
-  size = "md",
-  variant = "bullet",
-  name,
-  required,
-  label,
-  labelledBy,
-  className,
-  children,
-  ref,
-}: RadioGroupProps) {
+export function RadioGroup(props: RadioGroupProps) {
+  const {
+    value: controlledValue,
+    defaultValue,
+    onChange,
+    onHighlightChange,
+    onKeyDown,
+    highlighted: controlledHighlighted,
+    orientation = "vertical",
+    wrap = true,
+    disabled = false,
+    size = "md",
+    variant = "bullet",
+    name,
+    required,
+    label,
+    labelledBy,
+    className,
+    children,
+    ref,
+  } = props;
   const containerRef = useRef<HTMLDivElement>(null);
+  const [items, setItems] = useState<Array<{ value: string; disabled: boolean }>>([]);
 
   const [value, setValue] = useControllableState<string | undefined>({
     value: controlledValue,
+    controlled: "value" in props,
     defaultValue,
     onChange: onChange as ((value: string | undefined) => void) | undefined,
   });
   const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({
     value: controlledHighlighted,
+    controlled: "highlighted" in props,
     defaultValue: null,
     onChange: onHighlightChange as ((value: string | null) => void) | undefined,
   });
+
+  const registerItem = useCallback((itemValue: string, itemDisabled: boolean) => {
+    setItems((current) => {
+      const index = current.findIndex((item) => item.value === itemValue);
+      if (index === -1) return [...current, { value: itemValue, disabled: itemDisabled }];
+      const next = [...current];
+      next[index] = { value: itemValue, disabled: itemDisabled };
+      return next;
+    });
+    return () => {
+      setItems((current) => current.filter((item) => item.value !== itemValue));
+    };
+  }, []);
+
+  const firstEnabledValue = items.find((item) => !item.disabled)?.value ?? null;
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,
@@ -71,7 +90,8 @@ export function RadioGroup({
     moveFocus: true,
     upKeys: ["ArrowUp", "ArrowLeft"],
     downKeys: ["ArrowDown", "ArrowRight"],
-    value: highlightedValue ?? undefined,
+    value: highlightedValue,
+    enabled: !disabled,
     onValueChange: (next) => {
       setHighlightedValue(next);
       setValue(next);
@@ -94,7 +114,9 @@ export function RadioGroup({
     name,
     required,
     containerRef,
-  }), [value, setValue, setHighlightedValue, disabled, size, variant, highlightedValue, name, required]);
+    firstEnabledValue,
+    registerItem,
+  }), [value, setValue, setHighlightedValue, disabled, size, variant, highlightedValue, name, required, firstEnabledValue, registerItem]);
 
   return (
     <RadioGroupContext value={contextValue}>

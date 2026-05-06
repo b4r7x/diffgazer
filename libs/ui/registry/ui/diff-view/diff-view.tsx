@@ -6,6 +6,7 @@ import {
   useRef,
   useMemo,
   type Ref,
+  type RefObject,
   type KeyboardEvent,
 } from "react";
 import { cn } from "@/lib/utils";
@@ -73,7 +74,7 @@ function DiffContent({
   disableWordDiff: boolean;
   activeHunk: string | null;
   onKeyDown: (e: KeyboardEvent) => void;
-  containerRef: React.RefObject<HTMLElement | null>;
+  containerRef: RefObject<HTMLElement | null>;
 }) {
   if (parsed.hunks.length === 0) {
     return (
@@ -131,7 +132,7 @@ export function DiffView(props: DiffViewProps) {
 
   useEffect(() => {
     setActiveHunk(null);
-  }, [parsed.hunks.length]);
+  }, [parsed]);
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,

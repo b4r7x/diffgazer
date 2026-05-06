@@ -18,7 +18,9 @@
   },
   "files": [
     "dist",
-    "bin/diffgazer.js"
+    "bin/diffgazer.js",
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=20.0.0"

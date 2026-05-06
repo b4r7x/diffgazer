@@ -1,9 +1,13 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi, afterEach } from "vitest"
 import { renderHook, act } from "@testing-library/react"
 import { usePresence } from "../use-presence.js"
 import { createRef, type AnimationEvent } from "react"
 
 describe("usePresence", () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it("starts hidden when open=false", () => {
     const { result } = renderHook(() => usePresence({ open: false }))
     expect(result.current.present).toBe(false)
@@ -104,5 +108,40 @@ describe("usePresence", () => {
     rerender({ open: true })
     expect(result.current.present).toBe(true)
     expect(result.current.exiting).toBe(false)
+  })
+
+  it("finishes closing when no animation event fires", () => {
+    vi.useFakeTimers()
+    const onExitComplete = vi.fn()
+    const { result, rerender } = renderHook(
+      ({ open }) => usePresence({ open, exitFallbackMs: 50, onExitComplete }),
+      { initialProps: { open: true } },
+    )
+
+    rerender({ open: false })
+    expect(result.current.present).toBe(true)
+
+    act(() => {
+      vi.advanceTimersByTime(50)
+    })
+
+    expect(result.current.present).toBe(false)
+    expect(onExitComplete).toHaveBeenCalledOnce()
+  })
+
+  it("finishes closing on animation cancel", () => {
+    const ref = createRef<HTMLElement>() as React.MutableRefObject<HTMLElement | null>
+    ref.current = document.createElement("div")
+    const { result, rerender } = renderHook(
+      ({ open }) => usePresence({ open, ref }),
+      { initialProps: { open: true } },
+    )
+
+    rerender({ open: false })
+    act(() => {
+      result.current.onAnimationCancel({ target: ref.current } as unknown as AnimationEvent)
+    })
+
+    expect(result.current.present).toBe(false)
   })
 })

@@ -6,6 +6,7 @@ export interface TabsContextValue {
   tabsId: string;
   value: string;
   onValueChange: (value: string) => void;
+  registerTab: (value: string) => () => void;
   orientation: "horizontal" | "vertical";
   variant: "default" | "underline";
   activationMode: "automatic" | "manual";

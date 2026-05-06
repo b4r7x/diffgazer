@@ -35,6 +35,14 @@ export const DiffgazerAddConfigSchema = z.object({
     installedAt: z.string(),
     integrationMode: z.enum(["none", "copy", "@diffgazer/keys"]).optional(),
     keysVersion: z.string().optional(),
+    files: z.array(z.object({
+      path: z.string(),
+      hash: z.string(),
+      item: z.string(),
+      registryIntegrity: z.string().optional(),
+      cliVersion: z.string().optional(),
+      integrationMode: z.enum(["none", "copy", "@diffgazer/keys"]).optional(),
+    })).optional(),
   })).optional(),
 });
 
@@ -43,6 +51,16 @@ export type DiffgazerAddConfig = z.infer<typeof DiffgazerAddConfigSchema>;
 export type ManifestInstallMetadata = {
   integrationMode?: "none" | "copy" | "@diffgazer/keys";
   keysVersion?: string;
+  files?: ManifestOwnedFile[];
+};
+
+export type ManifestOwnedFile = {
+  path: string;
+  hash: string;
+  item: string;
+  registryIntegrity?: string;
+  cliVersion?: string;
+  integrationMode?: "none" | "copy" | "@diffgazer/keys";
 };
 
 /** dgadd resolved config (component + hook paths). */

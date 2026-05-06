@@ -41,9 +41,11 @@ describe("Tooltip", () => {
   it("has no a11y violations when open", async () => {
     vi.useRealTimers()
     const { container } = render(
-      <Tooltip content="Tip text" defaultOpen>
-        <button>Hover me</button>
-      </Tooltip>
+      <div>
+        <Tooltip content="Tip text" defaultOpen>
+          <button>Hover me</button>
+        </Tooltip>
+      </div>
     )
     expect(await axe(container)).toHaveNoViolations()
   })
@@ -51,9 +53,11 @@ describe("Tooltip", () => {
   it("has no a11y violations when closed", async () => {
     vi.useRealTimers()
     const { container } = render(
-      <Tooltip content="Tip text">
-        <button>Hover me</button>
-      </Tooltip>
+      <div>
+        <Tooltip content="Tip text">
+          <button>Hover me</button>
+        </Tooltip>
+      </div>
     )
     expect(await axe(container)).toHaveNoViolations()
   })
@@ -84,5 +88,35 @@ describe("Tooltip keyboard", () => {
     await userEvent.keyboard("{Escape}")
 
     expect(screen.getByRole("tooltip")).toHaveAttribute("data-state", "closed")
+  })
+})
+
+describe("Tooltip trigger semantics", () => {
+  it("enhances an interactive child without nesting controls", async () => {
+    vi.useRealTimers()
+    render(
+      <Tooltip content="Tip text">
+        <button>Hover me</button>
+      </Tooltip>
+    )
+    const button = screen.getByRole("button", { name: "Hover me" })
+    expect(button).toBeInTheDocument()
+    expect(screen.getAllByRole("button")).toHaveLength(1)
+  })
+
+  it("wraps a disabled native trigger with a keyboard-activatable proxy", async () => {
+    vi.useRealTimers()
+    render(
+      <Tooltip content="Disabled tip" delayMs={0}>
+        <button disabled>Unavailable</button>
+      </Tooltip>
+    )
+
+    const proxy = screen.getByRole("button", { name: "Unavailable" })
+    expect(proxy.tagName).toBe("SPAN")
+
+    proxy.focus()
+    await userEvent.keyboard("{Enter}")
+    expect(screen.getByRole("tooltip")).toBeInTheDocument()
   })
 })

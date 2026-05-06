@@ -6,7 +6,6 @@ import { SelectSearch, type SelectSearchProps } from "./select-search";
 import { SelectValue, type SelectValueProps, type SelectValueDisplay, type SelectValueRenderProps } from "./select-value";
 import { SelectEmpty, type SelectEmptyProps } from "./select-empty";
 import { SelectTags, type SelectTagsProps } from "./select-tags";
-import { useSelectContext, type SelectContextValue } from "./select-context";
 
 const Select = Object.assign(SelectRoot, {
   Trigger: SelectTrigger,
@@ -26,4 +25,3 @@ export { SelectSearch, type SelectSearchProps };
 export { SelectValue, type SelectValueProps, type SelectValueDisplay, type SelectValueRenderProps };
 export { SelectEmpty, type SelectEmptyProps };
 export { SelectTags, type SelectTagsProps };
-export { useSelectContext, type SelectContextValue };

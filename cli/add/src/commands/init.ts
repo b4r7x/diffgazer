@@ -8,12 +8,16 @@ type FileResult = { action: "created" | "skipped"; path: string };
 
 function derivePaths(cwd: string, componentsDir: string) {
   const project = detectProject(cwd);
+  const sourcePrefix = project.sourceDir === "." ? "" : `${project.sourceDir}/`;
+  const resolvedComponentsDir = componentsDir === "src/components/ui" && project.sourceDir !== "src"
+    ? `${sourcePrefix}components/ui`
+    : componentsDir;
   return {
     project,
-    componentsDir,
-    libDir: `${project.sourceDir}/lib`,
-    stylesDir: `${project.sourceDir}/styles`,
-    hooksDir: `${project.sourceDir}/hooks`,
+    componentsDir: resolvedComponentsDir,
+    libDir: `${sourcePrefix}lib`,
+    stylesDir: `${sourcePrefix}styles`,
+    hooksDir: `${sourcePrefix}hooks`,
   };
 }
 
@@ -50,6 +54,7 @@ export const initCommand = createInitCommand({
   loadConfig: ctx.config.loadConfig,
   extraOptions: [
     { flags: "--components-dir <path>", description: "Component install directory", default: "src/components/ui" },
+    { flags: "--allow-missing-alias", description: "Initialize even when the app has no @/* TypeScript/bundler alias" },
   ],
   detectProject: (cwd, opts) => {
     const { project, componentsDir, libDir, stylesDir, hooksDir } = derivePaths(cwd, String(opts.componentsDir));
@@ -58,6 +63,14 @@ export const initCommand = createInitCommand({
     ensureWithinDir(resolve(cwd, libDir), cwd);
     ensureWithinDir(resolve(cwd, stylesDir), cwd);
     ensureWithinDir(resolve(cwd, hooksDir), cwd);
+
+    if (!project.hasPathAlias && !opts.allowMissingAlias) {
+      throw new Error(
+        "dgadd requires an @/* alias that resolves to your source directory. "
+        + "Configure it in your TypeScript and bundler config, then rerun init. "
+        + "Use --allow-missing-alias only if your app already resolves @/* another way.",
+      );
+    }
 
     return {
       display: [
@@ -90,7 +103,10 @@ export const initCommand = createInitCommand({
   writeConfig: (cwd, opts) => {
     const { project, componentsDir, libDir, stylesDir, hooksDir } = derivePaths(cwd, String(opts.componentsDir));
 
-    const stripSource = (p: string) => p.replace(/^src\//, "");
+    const stripSource = (p: string) => {
+      const prefix = project.sourceDir === "." ? "" : `${project.sourceDir}/`;
+      return prefix && p.startsWith(prefix) ? p.slice(prefix.length) : p;
+    };
     const aliases = {
       components: `@/${stripSource(componentsDir)}`,
       utils: `@/${stripSource(libDir)}/utils`,

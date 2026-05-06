@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { createHash } from "node:crypto";
 import { rewriteLocalImportsForKeysPackage } from "../utils/transform.js";
 import {
   createAddCommand,
@@ -6,7 +7,7 @@ import {
   parseEnumOption, info,
   type FileOp,
 } from "@diffgazer/registry/cli";
-import { ctx, type ResolvedConfig, type ManifestInstallMetadata, type RegistryItem } from "../context.js";
+import { ctx, getRegistry, VERSION, type ResolvedConfig, type ManifestInstallMetadata, type RegistryItem, type ManifestOwnedFile } from "../context.js";
 import {
   prepareFileContent,
   getInstallBaseForFilePath,
@@ -18,6 +19,7 @@ import {
 } from "../utils/integration.js";
 import {
   applyIntegrationDeps,
+  DEFAULT_KEYS_VERSION_SPEC,
   resolveIntegrations,
   type ResolvedIntegrationSelection,
 } from "../utils/add-integration.js";
@@ -49,7 +51,7 @@ function buildFileOp(
       : dirs.libDir;
   const targetPath = resolve(cwd, installDir, relativePath);
   ensureWithinDir(targetPath, targetRoot);
-  return { targetPath, content, relativePath, installDir };
+  return { targetPath, content, relativePath, installDir, sourceName: item.name };
 }
 
 function buildComponentFileOps(
@@ -121,6 +123,45 @@ function buildManifestMetadata(
   return metadata;
 }
 
+function sha256(content: string): string {
+  return `sha256-${createHash("sha256").update(content).digest("hex")}`;
+}
+
+function buildOwnedFilesByItem(
+  writeResult: { results: Array<{ op: FileOp; result: "written" | "skipped" | "overwritten" }> },
+  mode: ResolvedIntegrationSelection["mode"],
+): Map<string, ManifestOwnedFile[]> {
+  const registryIntegrity = getRegistry().integrity;
+  const byItem = new Map<string, ManifestOwnedFile[]>();
+  for (const { op, result } of writeResult.results) {
+    if (result === "skipped" || !op.sourceName) continue;
+    const files = byItem.get(op.sourceName) ?? [];
+    files.push({
+      path: `${op.installDir}/${op.relativePath}`,
+      hash: sha256(op.content),
+      item: op.sourceName,
+      registryIntegrity,
+      cliVersion: VERSION,
+      integrationMode: mode,
+    });
+    byItem.set(op.sourceName, files);
+  }
+  return byItem;
+}
+
+function updateOwnedManifestEntries(
+  cwd: string,
+  resolvedNames: string[],
+  writeResult: { results: Array<{ op: FileOp; result: "written" | "skipped" | "overwritten" }> },
+  metadata: ManifestInstallMetadata,
+): void {
+  const filesByItem = buildOwnedFilesByItem(writeResult, metadata.integrationMode ?? "none");
+  const ownedNames = resolvedNames.filter((name) => (filesByItem.get(name)?.length ?? 0) > 0);
+  for (const name of ownedNames) {
+    ctx.config.updateManifest(cwd, [name], undefined, { ...metadata, files: filesByItem.get(name) ?? [] });
+  }
+}
+
 function collectFileOps(
   resolved: string[],
   cwd: string,
@@ -157,7 +198,7 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
   validateRequestedNames: validateInstallNames,
   extraOptions: [
     { flags: "--integration <mode>", description: "Optional keyboard integration mode: ask | none | copy | keys", default: "ask" },
-    { flags: "--keys-version <version>", description: "Version/tag of @diffgazer/keys used for package mode", default: "latest" },
+    { flags: "--keys-version <version>", description: "Version/range of @diffgazer/keys used for package mode", default: DEFAULT_KEYS_VERSION_SPEC },
   ],
   buildPlan: async ({ cwd, config, names, opts }) => {
     const split = splitInstallNames(names);
@@ -168,10 +209,10 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
       "--integration",
     );
     const normalizedIntegrationMode = integrationMode === "keys" ? "@diffgazer/keys" : integrationMode;
-    const selection = await resolveIntegrations(split.ui, normalizedIntegrationMode, Boolean(opts.yes));
+    const resolved = ctx.registry.resolveDeps(split.ui);
+    const selection = await resolveIntegrations(resolved, normalizedIntegrationMode, Boolean(opts.yes));
     logIntegrationMode(selection.mode);
 
-    const resolved = ctx.registry.resolveDeps(split.ui);
     const neededKeysHooks = resolveKeysHooksFromRegistry(
       resolved.map((name) => ctx.items.getOrThrow(name)),
     );
@@ -194,12 +235,17 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
           info("Keys hooks would be installed from bundled offline sources.");
         }
       },
-      onApplied: ({ resolvedNames }) => {
+      onApplied: ({ resolvedNames, writeResult }) => {
         const uiResolvedNames = resolvedNames
           .filter((name) => name.startsWith("ui/"))
           .map((name) => name.slice("ui/".length));
         if (uiResolvedNames.length > 0) {
-          ctx.config.updateManifest(cwd, uiResolvedNames, undefined, buildManifestMetadata(selection.mode, keysVersionSpec));
+          updateOwnedManifestEntries(
+            cwd,
+            uiResolvedNames,
+            writeResult,
+            buildManifestMetadata(selection.mode, keysVersionSpec),
+          );
         }
         if (selection.hasKeyboardIntegration && selection.mode === "copy") {
           info("Keyboard hooks copied alongside components. No additional packages needed.");

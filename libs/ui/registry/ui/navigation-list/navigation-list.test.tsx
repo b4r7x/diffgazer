@@ -100,6 +100,27 @@ describe("NavigationList", () => {
     expect(onSelect).toHaveBeenCalledWith("one")
   })
 
+  it("only references mounted description elements", () => {
+    render(
+      <NavigationList aria-label="Test nav">
+        <NavigationList.Item id="one">
+          <NavigationList.Title>One</NavigationList.Title>
+        </NavigationList.Item>
+        <NavigationList.Item id="two">
+          <NavigationList.Title>Two</NavigationList.Title>
+          <NavigationList.Subtitle>Subtitle</NavigationList.Subtitle>
+          <NavigationList.Meta>Meta</NavigationList.Meta>
+        </NavigationList.Item>
+      </NavigationList>
+    )
+
+    expect(screen.getByRole("option", { name: "One" })).not.toHaveAttribute("aria-describedby")
+    const describedOption = screen.getByRole("option", { name: /Two/ })
+    const describedBy = describedOption.getAttribute("aria-describedby")
+    expect(describedBy).toContain("-two-desc-meta")
+    expect(describedBy).toContain("-two-desc-sub")
+  })
+
 })
 
 describe("NavigationList typeahead", () => {

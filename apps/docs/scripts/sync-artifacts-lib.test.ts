@@ -51,12 +51,12 @@ describe("sync artifacts helper config parsing", () => {
     expect(artifactLibraries).toEqual([
       {
         id: "ui",
-        packageName: "@diffgazer/ui-artifacts",
+        packageName: "@diffgazer/ui",
         workspaceDir: "libs/ui",
       },
       {
         id: "keys",
-        packageName: "@diffgazer/keys-artifacts",
+        packageName: "@diffgazer/keys",
         workspaceDir: "libs/keys",
       },
     ]);
@@ -98,7 +98,7 @@ describe("sync artifacts helper config parsing", () => {
       libraries: [
         {
           id: "ui",
-          packageName: "@diffgazer/ui-artifacts",
+          packageName: "@diffgazer/ui",
           workspaceDir: "libs/ui",
         },
         {
@@ -108,7 +108,7 @@ describe("sync artifacts helper config parsing", () => {
         },
       ],
       resolvePackage: (packageName: string) =>
-        packageName !== "@diffgazer/ui-artifacts",
+        packageName !== "@diffgazer/ui",
     });
 
     expect(mode).toBe("workspace");
@@ -119,7 +119,7 @@ describe("sync artifacts helper config parsing", () => {
       libraries: [
         {
           id: "ui",
-          packageName: "@diffgazer/ui-artifacts",
+          packageName: "@diffgazer/ui",
           workspaceDir: "libs/ui",
         },
       ],
@@ -134,7 +134,7 @@ describe("sync artifacts helper config parsing", () => {
       libraries: [
         {
           id: "ui",
-          packageName: "@diffgazer/ui-artifacts",
+          packageName: "@diffgazer/ui",
           workspaceDir: "libs/ui",
         },
       ],
@@ -175,7 +175,7 @@ describe("sync artifacts helper output validation", () => {
       libraries: [
         {
           id: "ui",
-          packageName: "@diffgazer/ui-artifacts",
+          packageName: "@diffgazer/ui",
           workspaceDir: "libs/ui",
         },
       ],

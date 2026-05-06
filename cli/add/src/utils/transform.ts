@@ -1,6 +1,6 @@
 import type { ResolvedConfig } from "../context.js";
 import { SOURCE_ALIASES } from "../context.js";
-import { getKeysHookNames } from "./integration.js";
+import { getKeysHookImportNames } from "./integration.js";
 
 const IMPORT_PREFIX = String.raw`(from\s+|import\(\s*|require\(\s*)(["'])`;
 
@@ -152,14 +152,16 @@ let _reLocalHookImport: RegExp | null = null;
 
 function getKeysHookFilesSet(): Set<string> {
   if (!_keysHookFiles) {
-    _keysHookFiles = getKeysHookNames();
+    _keysHookFiles = getKeysHookImportNames();
   }
   return _keysHookFiles;
 }
 
 function getLocalHookImportRegex(): RegExp {
   if (!_reLocalHookImport) {
-    const hookNames = [...getKeysHookFilesSet()];
+    const hookNames = [...getKeysHookFilesSet()]
+      .sort((a, b) => b.length - a.length)
+      .map(escapeForRegex);
     const alternation = hookNames.join("|");
     _reLocalHookImport = new RegExp(
       `^\\s*import\\s+(?:type\\s+)?\\{([^}]+)\\}\\s+from\\s+(["'])@\\/hooks\\/(${alternation})\\2\\s*;?\\s*$`,

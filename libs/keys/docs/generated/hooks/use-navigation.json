@@ -3,7 +3,7 @@
   "title": "useNavigation",
   "description": "Standalone keyboard navigation for role-based lists. Uses DOM queries to find navigable items. No provider needed.",
   "source": {
-    "raw": "\"use client\";\n\nimport {\n  useState,\n  useEffectEvent,\n  type RefObject,\n  type KeyboardEvent,\n} from \"react\";\nimport { resolveDirectionKeys, dispatchNavigationKey } from \"../internal/navigation-dispatch.js\";\n\nexport type NavigationRole = \"radio\" | \"checkbox\" | \"option\" | \"menuitem\" | \"button\" | \"tab\";\n\nexport interface UseNavigationOptions {\n  containerRef: RefObject<HTMLElement | null>;\n  role: NavigationRole;\n  value?: string | null;\n  onValueChange?: (value: string) => void;\n  onSelect?: (value: string, event: globalThis.KeyboardEvent) => void;\n  onEnter?: (value: string, event: globalThis.KeyboardEvent) => void;\n  onHighlightChange?: (value: string) => void;\n  wrap?: boolean;\n  enabled?: boolean;\n  preventDefault?: boolean;\n  onBoundaryReached?: (direction: \"up\" | \"down\") => void;\n  initialValue?: string | null;\n  upKeys?: string[];\n  downKeys?: string[];\n  orientation?: \"vertical\" | \"horizontal\";\n  skipDisabled?: boolean;\n  moveFocus?: boolean;\n}\n\nexport interface UseNavigationReturn {\n  highlighted: string | null;\n  isHighlighted: (value: string) => boolean;\n  highlight: (value: string) => void;\n  onKeyDown: (event: KeyboardEvent) => void;\n}\n\ninterface UseNavigationCoreReturn {\n  highlighted: string | null;\n  isHighlighted: (value: string) => boolean;\n  highlight: (value: string) => void;\n  move: (delta: 1 | -1) => void;\n  focusIndex: (index: number) => void;\n  handleSelect: (event: globalThis.KeyboardEvent) => void;\n  handleEnter: (event: globalThis.KeyboardEvent) => void;\n  getElements: () => HTMLElement[];\n}\n\nfunction queryElements(\n  containerRef: RefObject<HTMLElement | null>,\n  role: NavigationRole,\n  skipDisabled: boolean,\n): HTMLElement[] {\n  if (!containerRef.current) return [];\n  const selector = skipDisabled\n    ? `[role=\"${role}\"]:not([aria-disabled=\"true\"])`\n    : `[role=\"${role}\"]`;\n  return Array.from(containerRef.current.querySelectorAll<HTMLElement>(selector));\n}\n\nfunction wrapIndex(index: number, length: number, wrap: boolean): number | null {\n  if (index < 0) return wrap ? length - 1 : null;\n  if (index >= length) return wrap ? 0 : null;\n  return index;\n}\n\nexport function useNavigationCore({\n  containerRef,\n  role,\n  value,\n  onValueChange,\n  onSelect,\n  onEnter,\n  onHighlightChange,\n  wrap = true,\n  onBoundaryReached,\n  initialValue = null,\n  skipDisabled = true,\n  moveFocus = false,\n}: UseNavigationOptions): UseNavigationCoreReturn {\n  const [internalValue, setInternalValue] = useState<string | null>(initialValue);\n  const isControlled = value !== undefined;\n  const highlighted = isControlled ? value ?? null : internalValue;\n\n  const setFocusedValue = (nextValue: string) => {\n    if (isControlled) {\n      onValueChange?.(nextValue);\n    } else {\n      setInternalValue(nextValue);\n      onValueChange?.(nextValue);\n    }\n    onHighlightChange?.(nextValue);\n  };\n\n  const getElements = () => queryElements(containerRef, role, skipDisabled);\n\n  const getFocusedIndex = (): number => {\n    const elements = getElements();\n    if (elements.length === 0) return -1;\n    if (!highlighted) return 0;\n    const index = elements.findIndex((el) => el.dataset.value === highlighted);\n    return index >= 0 ? index : 0;\n  };\n\n  const focusIndex = useEffectEvent((index: number) => {\n    const elements = getElements();\n    const el = elements[index];\n    if (el?.dataset.value) {\n      el.scrollIntoView?.({ block: \"nearest\" });\n      if (moveFocus) el.focus();\n      setFocusedValue(el.dataset.value);\n    }\n  });\n\n  const move = useEffectEvent((delta: 1 | -1) => {\n    const elements = getElements();\n    if (elements.length === 0) return;\n\n    const current = getFocusedIndex();\n    const rawNext = current + delta;\n    const next = wrapIndex(rawNext, elements.length, wrap);\n    if (next === null) {\n      onBoundaryReached?.(delta < 0 ? \"up\" : \"down\");\n      return;\n    }\n\n    focusIndex(next);\n  });\n\n  const handleSelect = useEffectEvent((event: globalThis.KeyboardEvent) => {\n    if (highlighted) onSelect?.(highlighted, event);\n  });\n\n  const handleEnter = useEffectEvent((event: globalThis.KeyboardEvent) => {\n    if (highlighted) {\n      if (onEnter) onEnter(highlighted, event);\n      else onSelect?.(highlighted, event);\n    }\n  });\n\n  const isHighlighted = (v: string) => highlighted === v;\n  const highlight = (v: string) => setFocusedValue(v);\n\n  return { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements };\n}\n\nexport function useNavigation(options: UseNavigationOptions): UseNavigationReturn {\n  const {\n    enabled = true,\n    preventDefault = true,\n    orientation = \"vertical\",\n    upKeys,\n    downKeys,\n  } = options;\n\n  const { resolvedUpKeys, resolvedDownKeys } = resolveDirectionKeys(orientation, upKeys, downKeys);\n\n  const { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements } =\n    useNavigationCore(options);\n\n  const onKeyDown = useEffectEvent((event: KeyboardEvent) => {\n    if (!enabled) return;\n\n    const key = event.key;\n    const isMoveKey = resolvedUpKeys.includes(key) || resolvedDownKeys.includes(key);\n    const isSpecialKey = key === \"Home\" || key === \"End\" || (!options.moveFocus && (key === \"Enter\" || key === \" \"));\n    if (!isMoveKey && !isSpecialKey) return;\n\n    if (preventDefault) event.preventDefault();\n\n    dispatchNavigationKey(key, {\n      resolvedUpKeys,\n      resolvedDownKeys,\n      move,\n      focusIndex,\n      handleSelect: options.moveFocus ? undefined : (e) => handleSelect(e),\n      handleEnter: options.moveFocus ? undefined : (e) => handleEnter(e),\n      total: getElements().length,\n      nativeEvent: event.nativeEvent,\n    });\n  });\n\n  return { highlighted, isHighlighted, highlight, onKeyDown };\n}\n",
+    "raw": "\"use client\";\n\nimport {\n  useState,\n  useCallback,\n  useRef,\n  type RefObject,\n  type KeyboardEvent,\n} from \"react\";\nimport { resolveDirectionKeys, dispatchNavigationKey } from \"../internal/navigation-dispatch.js\";\n\nexport type NavigationRole = \"radio\" | \"checkbox\" | \"option\" | \"menuitem\" | \"button\" | \"tab\";\n\nexport interface UseNavigationOptions {\n  containerRef: RefObject<HTMLElement | null>;\n  role: NavigationRole;\n  value?: string | null;\n  onValueChange?: (value: string) => void;\n  onSelect?: (value: string, event: globalThis.KeyboardEvent) => void;\n  onEnter?: (value: string, event: globalThis.KeyboardEvent) => void;\n  onHighlightChange?: (value: string) => void;\n  wrap?: boolean;\n  enabled?: boolean;\n  preventDefault?: boolean;\n  onBoundaryReached?: (direction: \"up\" | \"down\") => void;\n  initialValue?: string | null;\n  upKeys?: string[];\n  downKeys?: string[];\n  orientation?: \"vertical\" | \"horizontal\";\n  skipDisabled?: boolean;\n  moveFocus?: boolean;\n}\n\nexport interface UseNavigationReturn {\n  highlighted: string | null;\n  isHighlighted: (value: string) => boolean;\n  highlight: (value: string) => void;\n  onKeyDown: (event: KeyboardEvent) => void;\n}\n\ninterface UseNavigationCoreReturn {\n  highlighted: string | null;\n  isHighlighted: (value: string) => boolean;\n  highlight: (value: string) => void;\n  move: (delta: 1 | -1) => void;\n  focusIndex: (index: number) => void;\n  handleSelect: (event: globalThis.KeyboardEvent) => void;\n  handleEnter: (event: globalThis.KeyboardEvent) => void;\n  getElements: () => HTMLElement[];\n}\n\nconst navigationItemDataAttributes = [\n  \"data-diffgazer-navigation-item\",\n  \"data-navigation-item\",\n] as const;\n\nfunction disabledSelector(skipDisabled: boolean): string {\n  return skipDisabled\n    ? ':not([aria-disabled=\"true\"]):not([data-disabled]):not(:disabled)'\n    : \"\";\n}\n\nfunction findElements(container: HTMLElement, selector: string): HTMLElement[] {\n  return Array.from(container.querySelectorAll<HTMLElement>(selector));\n}\n\nfunction queryFirstMatchingGroup(container: HTMLElement, selectors: string[]): HTMLElement[] {\n  for (const selector of selectors) {\n    const elements = findElements(container, selector);\n    if (elements.length > 0) return elements;\n  }\n  return [];\n}\n\nfunction buildNavigationSelectors(role: NavigationRole, skipDisabled: boolean): string[] {\n  const disabled = disabledSelector(skipDisabled);\n  const dataContractSelectors = navigationItemDataAttributes.flatMap((attribute) => [\n    `[${attribute}=\"${role}\"][data-value]${disabled}`,\n    `[${attribute}=\"true\"][data-value]${disabled}`,\n    `[${attribute}=\"\"][data-value]${disabled}`,\n    `[${attribute}][data-value]${disabled}`,\n  ]);\n\n  return [\n    dataContractSelectors.join(\",\"),\n    `[role=\"${role}\"][data-value]${disabled}`,\n    `[data-value]${disabled}`,\n    `[role=\"${role}\"]${disabled}`,\n  ];\n}\n\nfunction queryElements(\n  containerRef: RefObject<HTMLElement | null>,\n  role: NavigationRole,\n  skipDisabled: boolean,\n): HTMLElement[] {\n  if (!containerRef.current) return [];\n  return queryFirstMatchingGroup(\n    containerRef.current,\n    buildNavigationSelectors(role, skipDisabled),\n  );\n}\n\nfunction wrapIndex(index: number, length: number, wrap: boolean): number | null {\n  if (index < 0) return wrap ? length - 1 : null;\n  if (index >= length) return wrap ? 0 : null;\n  return index;\n}\n\nexport function useNavigationCore({\n  containerRef,\n  role,\n  value,\n  onValueChange,\n  onSelect,\n  onEnter,\n  onHighlightChange,\n  wrap = true,\n  onBoundaryReached,\n  initialValue = null,\n  skipDisabled = true,\n  moveFocus = false,\n}: UseNavigationOptions): UseNavigationCoreReturn {\n  const [internalValue, setInternalValue] = useState<string | null>(initialValue);\n  const isControlled = value !== undefined;\n  const highlighted = isControlled ? value ?? null : internalValue;\n\n  const setFocusedValue = useCallback((nextValue: string) => {\n    if (isControlled) {\n      onValueChange?.(nextValue);\n    } else {\n      setInternalValue(nextValue);\n      onValueChange?.(nextValue);\n    }\n    onHighlightChange?.(nextValue);\n  }, [isControlled, onValueChange, onHighlightChange]);\n\n  const getElements = useCallback(() => queryElements(containerRef, role, skipDisabled), [role, skipDisabled, containerRef]);\n\n  const getFocusedIndex = useCallback((): number => {\n    const elements = getElements();\n    if (elements.length === 0) return -1;\n    if (!highlighted) return 0;\n    const index = elements.findIndex((el) => el.dataset.value === highlighted);\n    return index >= 0 ? index : 0;\n  }, [getElements, highlighted]);\n\n  const focusIndexRef = useRef<((index: number) => void) | null>(null);\n  focusIndexRef.current = (index: number) => {\n    const elements = getElements();\n    const el = elements[index];\n    if (el?.dataset.value) {\n      el.scrollIntoView?.({ block: \"nearest\" });\n      if (moveFocus) el.focus();\n      setFocusedValue(el.dataset.value);\n    }\n  };\n\n  const focusIndex = useCallback((index: number) => {\n    focusIndexRef.current?.(index);\n  }, []);\n\n  const moveRef = useRef<((delta: 1 | -1) => void) | null>(null);\n  moveRef.current = (delta: 1 | -1) => {\n    const elements = getElements();\n    if (elements.length === 0) return;\n\n    const current = getFocusedIndex();\n    const rawNext = current + delta;\n    const next = wrapIndex(rawNext, elements.length, wrap);\n    if (next === null) {\n      onBoundaryReached?.(delta < 0 ? \"up\" : \"down\");\n      return;\n    }\n\n    focusIndexRef.current?.(next);\n  };\n\n  const move = useCallback((delta: 1 | -1) => {\n    moveRef.current?.(delta);\n  }, []);\n\n  const handleSelect = useCallback((event: globalThis.KeyboardEvent) => {\n    if (highlighted) onSelect?.(highlighted, event);\n  }, [highlighted, onSelect]);\n\n  const handleEnter = useCallback((event: globalThis.KeyboardEvent) => {\n    if (highlighted) {\n      if (onEnter) onEnter(highlighted, event);\n      else onSelect?.(highlighted, event);\n    }\n  }, [highlighted, onEnter, onSelect]);\n\n  const isHighlighted = useCallback((v: string) => highlighted === v, [highlighted]);\n  const highlight = useCallback((v: string) => setFocusedValue(v), [setFocusedValue]);\n\n  return { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements };\n}\n\nexport function useNavigation(options: UseNavigationOptions): UseNavigationReturn {\n  const {\n    enabled = true,\n    preventDefault = true,\n    orientation = \"vertical\",\n    upKeys,\n    downKeys,\n  } = options;\n\n  const { resolvedUpKeys, resolvedDownKeys } = resolveDirectionKeys(orientation, upKeys, downKeys);\n\n  const { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements } =\n    useNavigationCore(options);\n\n  const onKeyDown = useCallback((event: KeyboardEvent) => {\n    if (!enabled) return;\n\n    const key = event.key;\n    const isMoveKey = resolvedUpKeys.includes(key) || resolvedDownKeys.includes(key);\n    const isSpecialKey = key === \"Home\" || key === \"End\" || (!options.moveFocus && (key === \"Enter\" || key === \" \"));\n    if (!isMoveKey && !isSpecialKey) return;\n\n    if (preventDefault) event.preventDefault();\n\n    dispatchNavigationKey(key, {\n      resolvedUpKeys,\n      resolvedDownKeys,\n      move,\n      focusIndex,\n      handleSelect: options.moveFocus ? undefined : (e) => handleSelect(e),\n      handleEnter: options.moveFocus ? undefined : (e) => handleEnter(e),\n      total: getElements().length,\n      nativeEvent: event.nativeEvent,\n    });\n  }, [enabled, resolvedUpKeys, resolvedDownKeys, preventDefault, options.moveFocus, move, focusIndex, handleSelect, handleEnter, getElements]);\n\n  return { highlighted, isHighlighted, highlight, onKeyDown };\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -64,7 +64,7 @@
         "number": 5,
         "content": [
           {
-            "text": "  useEffectEvent",
+            "text": "  useCallback",
             "color": "var(--code-variable)"
           },
           {
@@ -77,15 +77,7 @@
         "number": 6,
         "content": [
           {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "type",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " RefObject",
+            "text": "  useRef",
             "color": "var(--code-variable)"
           },
           {
@@ -106,7 +98,7 @@
             "color": "var(--code-keyword)"
           },
           {
-            "text": " KeyboardEvent",
+            "text": " RefObject",
             "color": "var(--code-variable)"
           },
           {
@@ -117,6 +109,27 @@
       },
       {
         "number": 8,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "type",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " KeyboardEvent",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 9,
         "content": [
           {
             "text": "}",
@@ -153,7 +166,7 @@
         ]
       },
       {
-        "number": 9,
+        "number": 10,
         "content": [
           {
             "text": "import",
@@ -214,11 +227,11 @@
         ]
       },
       {
-        "number": 10,
+        "number": 11,
         "content": []
       },
       {
-        "number": 11,
+        "number": 12,
         "content": [
           {
             "text": "export",
@@ -391,11 +404,11 @@
         ]
       },
       {
-        "number": 12,
+        "number": 13,
         "content": []
       },
       {
-        "number": 13,
+        "number": 14,
         "content": [
           {
             "text": "export",
@@ -428,7 +441,7 @@
         ]
       },
       {
-        "number": 14,
+        "number": 15,
         "content": [
           {
             "text": "  containerRef",
@@ -477,7 +490,7 @@
         ]
       },
       {
-        "number": 15,
+        "number": 16,
         "content": [
           {
             "text": "  role",
@@ -502,7 +515,7 @@
         ]
       },
       {
-        "number": 16,
+        "number": 17,
         "content": [
           {
             "text": "  value",
@@ -543,7 +556,7 @@
         ]
       },
       {
-        "number": 17,
+        "number": 18,
         "content": [
           {
             "text": "  ",
@@ -608,7 +621,7 @@
         ]
       },
       {
-        "number": 18,
+        "number": 19,
         "content": [
           {
             "text": "  ",
@@ -701,7 +714,7 @@
         ]
       },
       {
-        "number": 19,
+        "number": 20,
         "content": [
           {
             "text": "  ",
@@ -794,7 +807,7 @@
         ]
       },
       {
-        "number": 20,
+        "number": 21,
         "content": [
           {
             "text": "  ",
@@ -859,7 +872,7 @@
         ]
       },
       {
-        "number": 21,
+        "number": 22,
         "content": [
           {
             "text": "  wrap",
@@ -884,7 +897,7 @@
         ]
       },
       {
-        "number": 22,
+        "number": 23,
         "content": [
           {
             "text": "  enabled",
@@ -909,7 +922,7 @@
         ]
       },
       {
-        "number": 23,
+        "number": 24,
         "content": [
           {
             "text": "  preventDefault",
@@ -934,7 +947,7 @@
         ]
       },
       {
-        "number": 24,
+        "number": 25,
         "content": [
           {
             "text": "  ",
@@ -1031,7 +1044,7 @@
         ]
       },
       {
-        "number": 25,
+        "number": 26,
         "content": [
           {
             "text": "  initialValue",
@@ -1072,7 +1085,7 @@
         ]
       },
       {
-        "number": 26,
+        "number": 27,
         "content": [
           {
             "text": "  upKeys",
@@ -1101,7 +1114,7 @@
         ]
       },
       {
-        "number": 27,
+        "number": 28,
         "content": [
           {
             "text": "  downKeys",
@@ -1130,7 +1143,7 @@
         ]
       },
       {
-        "number": 28,
+        "number": 29,
         "content": [
           {
             "text": "  orientation",
@@ -1187,7 +1200,7 @@
         ]
       },
       {
-        "number": 29,
+        "number": 30,
         "content": [
           {
             "text": "  skipDisabled",
@@ -1212,7 +1225,7 @@
         ]
       },
       {
-        "number": 30,
+        "number": 31,
         "content": [
           {
             "text": "  moveFocus",
@@ -1237,7 +1250,7 @@
         ]
       },
       {
-        "number": 31,
+        "number": 32,
         "content": [
           {
             "text": "}",
@@ -1246,11 +1259,11 @@
         ]
       },
       {
-        "number": 32,
+        "number": 33,
         "content": []
       },
       {
-        "number": 33,
+        "number": 34,
         "content": [
           {
             "text": "export",
@@ -1283,7 +1296,7 @@
         ]
       },
       {
-        "number": 34,
+        "number": 35,
         "content": [
           {
             "text": "  highlighted",
@@ -1324,7 +1337,7 @@
         ]
       },
       {
-        "number": 35,
+        "number": 36,
         "content": [
           {
             "text": "  ",
@@ -1389,7 +1402,7 @@
         ]
       },
       {
-        "number": 36,
+        "number": 37,
         "content": [
           {
             "text": "  ",
@@ -1454,7 +1467,7 @@
         ]
       },
       {
-        "number": 37,
+        "number": 38,
         "content": [
           {
             "text": "  ",
@@ -1519,7 +1532,7 @@
         ]
       },
       {
-        "number": 38,
+        "number": 39,
         "content": [
           {
             "text": "}",
@@ -1528,11 +1541,11 @@
         ]
       },
       {
-        "number": 39,
+        "number": 40,
         "content": []
       },
       {
-        "number": 40,
+        "number": 41,
         "content": [
           {
             "text": "interface",
@@ -1557,7 +1570,7 @@
         ]
       },
       {
-        "number": 41,
+        "number": 42,
         "content": [
           {
             "text": "  highlighted",
@@ -1598,7 +1611,7 @@
         ]
       },
       {
-        "number": 42,
+        "number": 43,
         "content": [
           {
             "text": "  ",
@@ -1663,7 +1676,7 @@
         ]
       },
       {
-        "number": 43,
+        "number": 44,
         "content": [
           {
             "text": "  ",
@@ -1728,7 +1741,7 @@
         ]
       },
       {
-        "number": 44,
+        "number": 45,
         "content": [
           {
             "text": "  ",
@@ -1809,7 +1822,7 @@
         ]
       },
       {
-        "number": 45,
+        "number": 46,
         "content": [
           {
             "text": "  ",
@@ -1874,7 +1887,7 @@
         ]
       },
       {
-        "number": 46,
+        "number": 47,
         "content": [
           {
             "text": "  ",
@@ -1947,7 +1960,7 @@
         ]
       },
       {
-        "number": 47,
+        "number": 48,
         "content": [
           {
             "text": "  ",
@@ -2020,7 +2033,7 @@
         ]
       },
       {
-        "number": 48,
+        "number": 49,
         "content": [
           {
             "text": "  ",
@@ -2069,7 +2082,7 @@
         ]
       },
       {
-        "number": 49,
+        "number": 50,
         "content": [
           {
             "text": "}",
@@ -2078,11 +2091,1373 @@
         ]
       },
       {
-        "number": 50,
+        "number": 51,
         "content": []
       },
       {
-        "number": 51,
+        "number": 52,
+        "content": [
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "navigationItemDataAttributes",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " [",
+            "color": "var(--code-variable)"
+          }
+        ]
+      },
+      {
+        "number": 53,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "data-diffgazer-navigation-item",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 54,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "data-navigation-item",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 55,
+        "content": [
+          {
+            "text": "] ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "as",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 56,
+        "content": []
+      },
+      {
+        "number": 57,
+        "content": [
+          {
+            "text": "function",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "disabledSelector",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "skipDisabled",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "boolean",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "):",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "string",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 58,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " skipDisabled",
+            "color": "var(--code-variable)"
+          }
+        ]
+      },
+      {
+        "number": 59,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "?",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "'",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ":not([aria-disabled=\"true\"]):not([data-disabled]):not(:disabled)",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "'",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 60,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 61,
+        "content": [
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 62,
+        "content": []
+      },
+      {
+        "number": 63,
+        "content": [
+          {
+            "text": "function",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "findElements",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "container",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "HTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " selector",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "string",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "):",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "HTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "[] ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 64,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "Array",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "from",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "container",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "querySelectorAll",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "<",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "HTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ">",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "(selector))",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 65,
+        "content": [
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 66,
+        "content": []
+      },
+      {
+        "number": 67,
+        "content": [
+          {
+            "text": "function",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "queryFirstMatchingGroup",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "container",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "HTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " selectors",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "string",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "[]",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "):",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "HTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "[] ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 68,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "for",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "selector",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "of",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " selectors) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 69,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "elements",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "findElements",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(container",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " selector)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 70,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "elements",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "length",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ">",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ") ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " elements",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 71,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 72,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " []",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 73,
+        "content": [
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 74,
+        "content": []
+      },
+      {
+        "number": 75,
+        "content": [
+          {
+            "text": "function",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "buildNavigationSelectors",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "role",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "NavigationRole",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " skipDisabled",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "boolean",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "):",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "string",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "[] ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 76,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "disabled",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "disabledSelector",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(skipDisabled)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 77,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "dataContractSelectors",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "navigationItemDataAttributes",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "flatMap",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "attribute",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " [",
+            "color": "var(--code-variable)"
+          }
+        ]
+      },
+      {
+        "number": 78,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "`",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "[",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "${",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "attribute",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "=\"",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "${",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "role",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "\"][data-value]",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "${",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "disabled",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "`",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 79,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "`",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "[",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "${",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "attribute",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "=\"true\"][data-value]",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "${",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "disabled",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "`",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 80,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "`",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "[",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "${",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "attribute",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "=\"\"][data-value]",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "${",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "disabled",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "`",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 81,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "`",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "[",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "${",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "attribute",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "][data-value]",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "${",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "disabled",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "`",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 82,
+        "content": [
+          {
+            "text": "  ])",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 83,
+        "content": []
+      },
+      {
+        "number": 84,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " [",
+            "color": "var(--code-variable)"
+          }
+        ]
+      },
+      {
+        "number": 85,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "dataContractSelectors",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "join",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 86,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "`",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "[role=\"",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "${",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "role",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "\"][data-value]",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "${",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "disabled",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "`",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 87,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "`",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "[data-value]",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "${",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "disabled",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "`",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 88,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "`",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "[role=\"",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "${",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "role",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "\"]",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "${",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "disabled",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": "`",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 89,
+        "content": [
+          {
+            "text": "  ]",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 90,
+        "content": [
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 91,
+        "content": []
+      },
+      {
+        "number": 92,
         "content": [
           {
             "text": "function",
@@ -2103,7 +3478,7 @@
         ]
       },
       {
-        "number": 52,
+        "number": 93,
         "content": [
           {
             "text": "  containerRef",
@@ -2152,7 +3527,7 @@
         ]
       },
       {
-        "number": 53,
+        "number": 94,
         "content": [
           {
             "text": "  role",
@@ -2177,7 +3552,7 @@
         ]
       },
       {
-        "number": 54,
+        "number": 95,
         "content": [
           {
             "text": "  skipDisabled",
@@ -2202,7 +3577,7 @@
         ]
       },
       {
-        "number": 55,
+        "number": 96,
         "content": [
           {
             "text": "):",
@@ -2227,7 +3602,7 @@
         ]
       },
       {
-        "number": 56,
+        "number": 97,
         "content": [
           {
             "text": "  ",
@@ -2272,134 +3647,7 @@
         ]
       },
       {
-        "number": 57,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "selector",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " skipDisabled",
-            "color": "var(--code-variable)"
-          }
-        ]
-      },
-      {
-        "number": 58,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "?",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "`",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "[role=\"",
-            "color": "var(--code-tag)"
-          },
-          {
-            "text": "${",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": "role",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": "\"]:not([aria-disabled=\"true\"])",
-            "color": "var(--code-tag)"
-          },
-          {
-            "text": "`",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 59,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "`",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "[role=\"",
-            "color": "var(--code-tag)"
-          },
-          {
-            "text": "${",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": "role",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": "\"]",
-            "color": "var(--code-tag)"
-          },
-          {
-            "text": "`",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 60,
+        "number": 98,
         "content": [
           {
             "text": "  ",
@@ -2414,19 +3662,20 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "Array",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "from",
+            "text": "queryFirstMatchingGroup",
             "color": "var(--code-function)"
           },
           {
             "text": "(",
+            "color": "var(--code-variable)"
+          }
+        ]
+      },
+      {
+        "number": 99,
+        "content": [
+          {
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -2439,30 +3688,48 @@
           },
           {
             "text": "current",
-            "color": "var(--code-number)"
+            "color": "var(--code-variable)"
           },
           {
-            "text": ".",
+            "text": ",",
             "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 100,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
           },
           {
-            "text": "querySelectorAll",
+            "text": "buildNavigationSelectors",
             "color": "var(--code-function)"
           },
           {
-            "text": "<",
+            "text": "(role",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
             "color": "var(--code-operator)"
           },
           {
-            "text": "HTMLElement",
-            "color": "var(--code-function)"
+            "text": " skipDisabled)",
+            "color": "var(--code-variable)"
           },
           {
-            "text": ">",
+            "text": ",",
             "color": "var(--code-operator)"
-          },
+          }
+        ]
+      },
+      {
+        "number": 101,
+        "content": [
           {
-            "text": "(selector))",
+            "text": "  )",
             "color": "var(--code-variable)"
           },
           {
@@ -2472,7 +3739,7 @@
         ]
       },
       {
-        "number": 61,
+        "number": 102,
         "content": [
           {
             "text": "}",
@@ -2481,11 +3748,11 @@
         ]
       },
       {
-        "number": 62,
+        "number": 103,
         "content": []
       },
       {
-        "number": 63,
+        "number": 104,
         "content": [
           {
             "text": "function",
@@ -2598,7 +3865,7 @@
         ]
       },
       {
-        "number": 64,
+        "number": 105,
         "content": [
           {
             "text": "  ",
@@ -2679,7 +3946,7 @@
         ]
       },
       {
-        "number": 65,
+        "number": 106,
         "content": [
           {
             "text": "  ",
@@ -2744,7 +4011,7 @@
         ]
       },
       {
-        "number": 66,
+        "number": 107,
         "content": [
           {
             "text": "  ",
@@ -2765,7 +4032,7 @@
         ]
       },
       {
-        "number": 67,
+        "number": 108,
         "content": [
           {
             "text": "}",
@@ -2774,11 +4041,11 @@
         ]
       },
       {
-        "number": 68,
+        "number": 109,
         "content": []
       },
       {
-        "number": 69,
+        "number": 110,
         "content": [
           {
             "text": "export",
@@ -2807,7 +4074,7 @@
         ]
       },
       {
-        "number": 70,
+        "number": 111,
         "content": [
           {
             "text": "  containerRef",
@@ -2820,7 +4087,7 @@
         ]
       },
       {
-        "number": 71,
+        "number": 112,
         "content": [
           {
             "text": "  role",
@@ -2833,7 +4100,7 @@
         ]
       },
       {
-        "number": 72,
+        "number": 113,
         "content": [
           {
             "text": "  value",
@@ -2846,7 +4113,7 @@
         ]
       },
       {
-        "number": 73,
+        "number": 114,
         "content": [
           {
             "text": "  onValueChange",
@@ -2859,7 +4126,7 @@
         ]
       },
       {
-        "number": 74,
+        "number": 115,
         "content": [
           {
             "text": "  onSelect",
@@ -2872,7 +4139,7 @@
         ]
       },
       {
-        "number": 75,
+        "number": 116,
         "content": [
           {
             "text": "  onEnter",
@@ -2885,7 +4152,7 @@
         ]
       },
       {
-        "number": 76,
+        "number": 117,
         "content": [
           {
             "text": "  onHighlightChange",
@@ -2898,7 +4165,7 @@
         ]
       },
       {
-        "number": 77,
+        "number": 118,
         "content": [
           {
             "text": "  wrap ",
@@ -2923,7 +4190,7 @@
         ]
       },
       {
-        "number": 78,
+        "number": 119,
         "content": [
           {
             "text": "  onBoundaryReached",
@@ -2936,7 +4203,7 @@
         ]
       },
       {
-        "number": 79,
+        "number": 120,
         "content": [
           {
             "text": "  initialValue ",
@@ -2961,7 +4228,7 @@
         ]
       },
       {
-        "number": 80,
+        "number": 121,
         "content": [
           {
             "text": "  skipDisabled ",
@@ -2986,7 +4253,7 @@
         ]
       },
       {
-        "number": 81,
+        "number": 122,
         "content": [
           {
             "text": "  moveFocus ",
@@ -3011,7 +4278,7 @@
         ]
       },
       {
-        "number": 82,
+        "number": 123,
         "content": [
           {
             "text": "}:",
@@ -3048,7 +4315,7 @@
         ]
       },
       {
-        "number": 83,
+        "number": 124,
         "content": [
           {
             "text": "  ",
@@ -3141,7 +4408,7 @@
         ]
       },
       {
-        "number": 84,
+        "number": 125,
         "content": [
           {
             "text": "  ",
@@ -3190,7 +4457,7 @@
         ]
       },
       {
-        "number": 85,
+        "number": 126,
         "content": [
           {
             "text": "  ",
@@ -3259,11 +4526,11 @@
         ]
       },
       {
-        "number": 86,
+        "number": 127,
         "content": []
       },
       {
-        "number": 87,
+        "number": 128,
         "content": [
           {
             "text": "  ",
@@ -3279,7 +4546,7 @@
           },
           {
             "text": "setFocusedValue",
-            "color": "var(--code-function)"
+            "color": "var(--code-number)"
           },
           {
             "text": " ",
@@ -3291,6 +4558,14 @@
           },
           {
             "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useCallback",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
             "color": "var(--code-variable)"
           },
           {
@@ -3336,7 +4611,7 @@
         ]
       },
       {
-        "number": 88,
+        "number": 129,
         "content": [
           {
             "text": "    ",
@@ -3357,7 +4632,7 @@
         ]
       },
       {
-        "number": 89,
+        "number": 130,
         "content": [
           {
             "text": "      ",
@@ -3382,7 +4657,7 @@
         ]
       },
       {
-        "number": 90,
+        "number": 131,
         "content": [
           {
             "text": "    ",
@@ -3411,7 +4686,7 @@
         ]
       },
       {
-        "number": 91,
+        "number": 132,
         "content": [
           {
             "text": "      ",
@@ -3432,7 +4707,7 @@
         ]
       },
       {
-        "number": 92,
+        "number": 133,
         "content": [
           {
             "text": "      ",
@@ -3457,7 +4732,7 @@
         ]
       },
       {
-        "number": 93,
+        "number": 134,
         "content": [
           {
             "text": "    ",
@@ -3470,7 +4745,7 @@
         ]
       },
       {
-        "number": 94,
+        "number": 135,
         "content": [
           {
             "text": "    ",
@@ -3495,24 +4770,48 @@
         ]
       },
       {
-        "number": 95,
+        "number": 136,
         "content": [
           {
             "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "};",
+            "text": "},",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " [isControlled",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " onValueChange",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " onHighlightChange])",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 96,
+        "number": 137,
         "content": []
       },
       {
-        "number": 97,
+        "number": 138,
         "content": [
           {
             "text": "  ",
@@ -3528,7 +4827,7 @@
           },
           {
             "text": "getElements",
-            "color": "var(--code-function)"
+            "color": "var(--code-number)"
           },
           {
             "text": " ",
@@ -3540,6 +4839,14 @@
           },
           {
             "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useCallback",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
             "color": "var(--code-variable)"
           },
           {
@@ -3583,17 +4890,41 @@
             "color": "var(--code-variable)"
           },
           {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " [role",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " skipDisabled",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " containerRef])",
+            "color": "var(--code-variable)"
+          },
+          {
             "text": ";",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 98,
+        "number": 139,
         "content": []
       },
       {
-        "number": 99,
+        "number": 140,
         "content": [
           {
             "text": "  ",
@@ -3609,7 +4940,7 @@
           },
           {
             "text": "getFocusedIndex",
-            "color": "var(--code-function)"
+            "color": "var(--code-number)"
           },
           {
             "text": " ",
@@ -3621,6 +4952,14 @@
           },
           {
             "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useCallback",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
             "color": "var(--code-variable)"
           },
           {
@@ -3654,7 +4993,7 @@
         ]
       },
       {
-        "number": 100,
+        "number": 141,
         "content": [
           {
             "text": "    ",
@@ -3699,7 +5038,7 @@
         ]
       },
       {
-        "number": 101,
+        "number": 142,
         "content": [
           {
             "text": "    ",
@@ -3768,7 +5107,7 @@
         ]
       },
       {
-        "number": 102,
+        "number": 143,
         "content": [
           {
             "text": "    ",
@@ -3809,7 +5148,7 @@
         ]
       },
       {
-        "number": 103,
+        "number": 144,
         "content": [
           {
             "text": "    ",
@@ -3914,7 +5253,7 @@
         ]
       },
       {
-        "number": 104,
+        "number": 145,
         "content": [
           {
             "text": "    ",
@@ -3971,24 +5310,40 @@
         ]
       },
       {
-        "number": 105,
+        "number": 146,
         "content": [
           {
             "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "};",
+            "text": "},",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " [getElements",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " highlighted])",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 106,
+        "number": 147,
         "content": []
       },
       {
-        "number": 107,
+        "number": 148,
         "content": [
           {
             "text": "  ",
@@ -4003,7 +5358,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "focusIndex",
+            "text": "focusIndexRef",
             "color": "var(--code-number)"
           },
           {
@@ -4019,11 +5374,124 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "useEffectEvent",
+            "text": "useRef",
             "color": "var(--code-function)"
           },
           {
+            "text": "<",
+            "color": "var(--code-operator)"
+          },
+          {
             "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "index",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "number",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "void",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ") ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "|",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ">",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 149,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "focusIndexRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
             "color": "var(--code-variable)"
           },
           {
@@ -4069,7 +5537,7 @@
         ]
       },
       {
-        "number": 108,
+        "number": 150,
         "content": [
           {
             "text": "    ",
@@ -4114,7 +5582,7 @@
         ]
       },
       {
-        "number": 109,
+        "number": 151,
         "content": [
           {
             "text": "    ",
@@ -4151,7 +5619,7 @@
         ]
       },
       {
-        "number": 110,
+        "number": 152,
         "content": [
           {
             "text": "    ",
@@ -4192,7 +5660,7 @@
         ]
       },
       {
-        "number": 111,
+        "number": 153,
         "content": [
           {
             "text": "      ",
@@ -4265,7 +5733,7 @@
         ]
       },
       {
-        "number": 112,
+        "number": 154,
         "content": [
           {
             "text": "      ",
@@ -4302,7 +5770,7 @@
         ]
       },
       {
-        "number": 113,
+        "number": 155,
         "content": [
           {
             "text": "      ",
@@ -4343,7 +5811,7 @@
         ]
       },
       {
-        "number": 114,
+        "number": 156,
         "content": [
           {
             "text": "    ",
@@ -4356,32 +5824,24 @@
         ]
       },
       {
-        "number": 115,
+        "number": 157,
         "content": [
           {
             "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "}",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
+            "text": "};",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 116,
+        "number": 158,
         "content": []
       },
       {
-        "number": 117,
+        "number": 159,
         "content": [
           {
             "text": "  ",
@@ -4396,7 +5856,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "move",
+            "text": "focusIndex",
             "color": "var(--code-number)"
           },
           {
@@ -4412,11 +5872,279 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "useEffectEvent",
+            "text": "useCallback",
             "color": "var(--code-function)"
           },
           {
             "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "index",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "number",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 160,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "focusIndexRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "(index)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 161,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "},",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " [])",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 162,
+        "content": []
+      },
+      {
+        "number": 163,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "moveRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useRef",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "<",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "delta",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "1",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "|",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " -",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "1",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "void",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ") ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "|",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ">",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 164,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "moveRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
             "color": "var(--code-variable)"
           },
           {
@@ -4478,7 +6206,7 @@
         ]
       },
       {
-        "number": 118,
+        "number": 165,
         "content": [
           {
             "text": "    ",
@@ -4523,7 +6251,7 @@
         ]
       },
       {
-        "number": 119,
+        "number": 166,
         "content": [
           {
             "text": "    ",
@@ -4580,11 +6308,11 @@
         ]
       },
       {
-        "number": 120,
+        "number": 167,
         "content": []
       },
       {
-        "number": 121,
+        "number": 168,
         "content": [
           {
             "text": "    ",
@@ -4629,7 +6357,7 @@
         ]
       },
       {
-        "number": 122,
+        "number": 169,
         "content": [
           {
             "text": "    ",
@@ -4674,7 +6402,7 @@
         ]
       },
       {
-        "number": 123,
+        "number": 170,
         "content": [
           {
             "text": "    ",
@@ -4747,7 +6475,7 @@
         ]
       },
       {
-        "number": 124,
+        "number": 171,
         "content": [
           {
             "text": "    ",
@@ -4784,7 +6512,7 @@
         ]
       },
       {
-        "number": 125,
+        "number": 172,
         "content": [
           {
             "text": "      ",
@@ -4873,7 +6601,7 @@
         ]
       },
       {
-        "number": 126,
+        "number": 173,
         "content": [
           {
             "text": "      ",
@@ -4890,7 +6618,7 @@
         ]
       },
       {
-        "number": 127,
+        "number": 174,
         "content": [
           {
             "text": "    ",
@@ -4903,19 +6631,31 @@
         ]
       },
       {
-        "number": 128,
+        "number": 175,
         "content": []
       },
       {
-        "number": 129,
+        "number": 176,
         "content": [
           {
             "text": "    ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "focusIndex",
+            "text": "focusIndexRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current",
             "color": "var(--code-function)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
           },
           {
             "text": "(next)",
@@ -4928,18 +6668,144 @@
         ]
       },
       {
-        "number": 130,
+        "number": 177,
         "content": [
           {
             "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "}",
+            "text": "};",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 178,
+        "content": []
+      },
+      {
+        "number": 179,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "move",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
             "color": "var(--code-operator)"
           },
           {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useCallback",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "delta",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "1",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "|",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " -",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "1",
+            "color": "var(--code-number)"
+          },
+          {
             "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 180,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "moveRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "(delta)",
             "color": "var(--code-variable)"
           },
           {
@@ -4949,11 +6815,32 @@
         ]
       },
       {
-        "number": 131,
+        "number": 181,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "},",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " [])",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 182,
         "content": []
       },
       {
-        "number": 132,
+        "number": 183,
         "content": [
           {
             "text": "  ",
@@ -4984,7 +6871,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "useEffectEvent",
+            "text": "useCallback",
             "color": "var(--code-function)"
           },
           {
@@ -5042,7 +6929,7 @@
         ]
       },
       {
-        "number": 133,
+        "number": 184,
         "content": [
           {
             "text": "    ",
@@ -5083,18 +6970,26 @@
         ]
       },
       {
-        "number": 134,
+        "number": 185,
         "content": [
           {
             "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "}",
+            "text": "},",
             "color": "var(--code-operator)"
           },
           {
-            "text": ")",
+            "text": " [highlighted",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " onSelect])",
             "color": "var(--code-variable)"
           },
           {
@@ -5104,11 +6999,11 @@
         ]
       },
       {
-        "number": 135,
+        "number": 186,
         "content": []
       },
       {
-        "number": 136,
+        "number": 187,
         "content": [
           {
             "text": "  ",
@@ -5139,7 +7034,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "useEffectEvent",
+            "text": "useCallback",
             "color": "var(--code-function)"
           },
           {
@@ -5197,7 +7092,7 @@
         ]
       },
       {
-        "number": 137,
+        "number": 188,
         "content": [
           {
             "text": "    ",
@@ -5218,7 +7113,7 @@
         ]
       },
       {
-        "number": 138,
+        "number": 189,
         "content": [
           {
             "text": "      ",
@@ -5255,7 +7150,7 @@
         ]
       },
       {
-        "number": 139,
+        "number": 190,
         "content": [
           {
             "text": "      ",
@@ -5296,7 +7191,7 @@
         ]
       },
       {
-        "number": 140,
+        "number": 191,
         "content": [
           {
             "text": "    ",
@@ -5309,18 +7204,34 @@
         ]
       },
       {
-        "number": 141,
+        "number": 192,
         "content": [
           {
             "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "}",
+            "text": "},",
             "color": "var(--code-operator)"
           },
           {
-            "text": ")",
+            "text": " [highlighted",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " onEnter",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " onSelect])",
             "color": "var(--code-variable)"
           },
           {
@@ -5330,11 +7241,11 @@
         ]
       },
       {
-        "number": 142,
+        "number": 193,
         "content": []
       },
       {
-        "number": 143,
+        "number": 194,
         "content": [
           {
             "text": "  ",
@@ -5350,7 +7261,7 @@
           },
           {
             "text": "isHighlighted",
-            "color": "var(--code-function)"
+            "color": "var(--code-number)"
           },
           {
             "text": " ",
@@ -5362,6 +7273,14 @@
           },
           {
             "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useCallback",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
             "color": "var(--code-variable)"
           },
           {
@@ -5409,13 +7328,21 @@
             "color": "var(--code-variable)"
           },
           {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " [highlighted])",
+            "color": "var(--code-variable)"
+          },
+          {
             "text": ";",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 144,
+        "number": 195,
         "content": [
           {
             "text": "  ",
@@ -5431,7 +7358,7 @@
           },
           {
             "text": "highlight",
-            "color": "var(--code-function)"
+            "color": "var(--code-number)"
           },
           {
             "text": " ",
@@ -5443,6 +7370,14 @@
           },
           {
             "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useCallback",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
             "color": "var(--code-variable)"
           },
           {
@@ -5490,17 +7425,25 @@
             "color": "var(--code-variable)"
           },
           {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " [setFocusedValue])",
+            "color": "var(--code-variable)"
+          },
+          {
             "text": ";",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 145,
+        "number": 196,
         "content": []
       },
       {
-        "number": 146,
+        "number": 197,
         "content": [
           {
             "text": "  ",
@@ -5585,7 +7528,7 @@
         ]
       },
       {
-        "number": 147,
+        "number": 198,
         "content": [
           {
             "text": "}",
@@ -5594,11 +7537,11 @@
         ]
       },
       {
-        "number": 148,
+        "number": 199,
         "content": []
       },
       {
-        "number": 149,
+        "number": 200,
         "content": [
           {
             "text": "export",
@@ -5663,7 +7606,7 @@
         ]
       },
       {
-        "number": 150,
+        "number": 201,
         "content": [
           {
             "text": "  ",
@@ -5684,7 +7627,7 @@
         ]
       },
       {
-        "number": 151,
+        "number": 202,
         "content": [
           {
             "text": "    ",
@@ -5717,7 +7660,7 @@
         ]
       },
       {
-        "number": 152,
+        "number": 203,
         "content": [
           {
             "text": "    ",
@@ -5750,7 +7693,7 @@
         ]
       },
       {
-        "number": 153,
+        "number": 204,
         "content": [
           {
             "text": "    ",
@@ -5791,7 +7734,7 @@
         ]
       },
       {
-        "number": 154,
+        "number": 205,
         "content": [
           {
             "text": "    ",
@@ -5808,7 +7751,7 @@
         ]
       },
       {
-        "number": 155,
+        "number": 206,
         "content": [
           {
             "text": "    ",
@@ -5825,7 +7768,7 @@
         ]
       },
       {
-        "number": 156,
+        "number": 207,
         "content": [
           {
             "text": "  ",
@@ -5854,11 +7797,11 @@
         ]
       },
       {
-        "number": 157,
+        "number": 208,
         "content": []
       },
       {
-        "number": 158,
+        "number": 209,
         "content": [
           {
             "text": "  ",
@@ -5947,11 +7890,11 @@
         ]
       },
       {
-        "number": 159,
+        "number": 210,
         "content": []
       },
       {
-        "number": 160,
+        "number": 211,
         "content": [
           {
             "text": "  ",
@@ -6080,7 +8023,7 @@
         ]
       },
       {
-        "number": 161,
+        "number": 212,
         "content": [
           {
             "text": "    ",
@@ -6101,11 +8044,11 @@
         ]
       },
       {
-        "number": 162,
+        "number": 213,
         "content": []
       },
       {
-        "number": 163,
+        "number": 214,
         "content": [
           {
             "text": "  ",
@@ -6136,7 +8079,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "useEffectEvent",
+            "text": "useCallback",
             "color": "var(--code-function)"
           },
           {
@@ -6186,7 +8129,7 @@
         ]
       },
       {
-        "number": 164,
+        "number": 215,
         "content": [
           {
             "text": "    ",
@@ -6219,11 +8162,11 @@
         ]
       },
       {
-        "number": 165,
+        "number": 216,
         "content": []
       },
       {
-        "number": 166,
+        "number": 217,
         "content": [
           {
             "text": "    ",
@@ -6272,7 +8215,7 @@
         ]
       },
       {
-        "number": 167,
+        "number": 218,
         "content": [
           {
             "text": "    ",
@@ -6349,7 +8292,7 @@
         ]
       },
       {
-        "number": 168,
+        "number": 219,
         "content": [
           {
             "text": "    ",
@@ -6530,7 +8473,7 @@
         ]
       },
       {
-        "number": 169,
+        "number": 220,
         "content": [
           {
             "text": "    ",
@@ -6579,11 +8522,11 @@
         ]
       },
       {
-        "number": 170,
+        "number": 221,
         "content": []
       },
       {
-        "number": 171,
+        "number": 222,
         "content": [
           {
             "text": "    ",
@@ -6620,11 +8563,11 @@
         ]
       },
       {
-        "number": 172,
+        "number": 223,
         "content": []
       },
       {
-        "number": 173,
+        "number": 224,
         "content": [
           {
             "text": "    ",
@@ -6653,7 +8596,7 @@
         ]
       },
       {
-        "number": 174,
+        "number": 225,
         "content": [
           {
             "text": "      resolvedUpKeys",
@@ -6666,7 +8609,7 @@
         ]
       },
       {
-        "number": 175,
+        "number": 226,
         "content": [
           {
             "text": "      resolvedDownKeys",
@@ -6679,7 +8622,7 @@
         ]
       },
       {
-        "number": 176,
+        "number": 227,
         "content": [
           {
             "text": "      move",
@@ -6692,7 +8635,7 @@
         ]
       },
       {
-        "number": 177,
+        "number": 228,
         "content": [
           {
             "text": "      focusIndex",
@@ -6705,7 +8648,7 @@
         ]
       },
       {
-        "number": 178,
+        "number": 229,
         "content": [
           {
             "text": "      handleSelect",
@@ -6794,7 +8737,7 @@
         ]
       },
       {
-        "number": 179,
+        "number": 230,
         "content": [
           {
             "text": "      handleEnter",
@@ -6883,7 +8826,7 @@
         ]
       },
       {
-        "number": 180,
+        "number": 231,
         "content": [
           {
             "text": "      total",
@@ -6920,7 +8863,7 @@
         ]
       },
       {
-        "number": 181,
+        "number": 232,
         "content": [
           {
             "text": "      nativeEvent",
@@ -6953,7 +8896,7 @@
         ]
       },
       {
-        "number": 182,
+        "number": 233,
         "content": [
           {
             "text": "    ",
@@ -6974,18 +8917,102 @@
         ]
       },
       {
-        "number": 183,
+        "number": 234,
         "content": [
           {
             "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "}",
+            "text": "},",
             "color": "var(--code-operator)"
           },
           {
-            "text": ")",
+            "text": " [enabled",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " resolvedUpKeys",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " resolvedDownKeys",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " preventDefault",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "options",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "moveFocus",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " move",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " focusIndex",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " handleSelect",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " handleEnter",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " getElements])",
             "color": "var(--code-variable)"
           },
           {
@@ -6995,11 +9022,11 @@
         ]
       },
       {
-        "number": 184,
+        "number": 235,
         "content": []
       },
       {
-        "number": 185,
+        "number": 236,
         "content": [
           {
             "text": "  ",
@@ -7052,7 +9079,7 @@
         ]
       },
       {
-        "number": 186,
+        "number": 237,
         "content": [
           {
             "text": "}",
@@ -7061,7 +9088,7 @@
         ]
       },
       {
-        "number": 187,
+        "number": 238,
         "content": []
       }
     ]

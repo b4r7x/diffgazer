@@ -47,6 +47,7 @@ export interface RunRemoveWorkflowOptions<TItem, TConfig> {
   names: string[];
   yes: boolean;
   dryRun: boolean;
+  force: boolean;
   itemPlural: string;
   requireConfig: (cwd: string) => TConfig;
   validateNames: (names: string[]) => void;
@@ -55,6 +56,13 @@ export interface RunRemoveWorkflowOptions<TItem, TConfig> {
   getItemName: (item: TItem) => string;
   isInstalled: (ctx: { cwd: string; config: TConfig; item: TItem }) => boolean;
   resolveFilesForItem: (ctx: { cwd: string; config: TConfig; item: TItem }) => RemoveWorkflowFile[];
+  canRemoveFile?: (ctx: {
+    cwd: string;
+    config: TConfig;
+    item: TItem;
+    file: RemoveWorkflowFile;
+    force: boolean;
+  }) => boolean;
   resolveAllowedBaseDirs: (ctx: { cwd: string; config: TConfig }) => string[];
   updateManifest: (ctx: { cwd: string; removedNames: string[] }) => void;
   findOrphanedDeps?: (ctx: {
@@ -84,7 +92,11 @@ function collectRetainedFiles<TItem, TConfig>(
 }
 
 function collectFilesToRemove<TItem, TConfig>(
-  ctx: ResolveCtx<TItem, TConfig> & { getItemOrThrow: (name: string) => TItem },
+  ctx: ResolveCtx<TItem, TConfig> & {
+    getItemOrThrow: (name: string) => TItem;
+    canRemoveFile?: RunRemoveWorkflowOptions<TItem, TConfig>["canRemoveFile"];
+    force: boolean;
+  },
   names: string[],
   retainedFiles: Set<string>,
 ): { files: Set<string>; dirs: Set<string> } {
@@ -92,8 +104,18 @@ function collectFilesToRemove<TItem, TConfig>(
   const dirs = new Set<string>();
   for (const name of names) {
     const item = ctx.getItemOrThrow(name);
+    const removableFiles: RemoveWorkflowFile[] = [];
+    let blocked = false;
     for (const file of ctx.resolveFilesForItem({ cwd: ctx.cwd, config: ctx.config, item })) {
       if (!existsSync(file.absolutePath) || retainedFiles.has(file.absolutePath)) continue;
+      if (ctx.canRemoveFile && !ctx.canRemoveFile({ cwd: ctx.cwd, config: ctx.config, item, file, force: ctx.force })) {
+        blocked = true;
+        break;
+      }
+      removableFiles.push(file);
+    }
+    if (blocked) continue;
+    for (const file of removableFiles) {
       files.add(file.absolutePath);
       dirs.add(dirname(file.absolutePath));
     }
@@ -174,7 +196,12 @@ function collectRemovalTargets<TItem, TConfig>(
     (i) => !removedSet.has(options.getItemName(i)) && options.isInstalled({ cwd, config, item: i }),
   );
   const retainedFiles = collectRetainedFiles(ctx, retainedItems);
-  return collectFilesToRemove({ ...ctx, getItemOrThrow: options.getItemOrThrow }, names, retainedFiles);
+  return collectFilesToRemove({
+    ...ctx,
+    getItemOrThrow: options.getItemOrThrow,
+    canRemoveFile: options.canRemoveFile,
+    force: options.force,
+  }, names, retainedFiles);
 }
 
 async function executeRemoval<TItem, TConfig>(

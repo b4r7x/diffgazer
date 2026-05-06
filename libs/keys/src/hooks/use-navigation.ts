@@ -2,7 +2,8 @@
 
 import {
   useState,
-  useEffectEvent,
+  useCallback,
+  useRef,
   type RefObject,
   type KeyboardEvent,
 } from "react";
@@ -48,16 +49,56 @@ interface UseNavigationCoreReturn {
   getElements: () => HTMLElement[];
 }
 
+const navigationItemDataAttributes = [
+  "data-diffgazer-navigation-item",
+  "data-navigation-item",
+] as const;
+
+function disabledSelector(skipDisabled: boolean): string {
+  return skipDisabled
+    ? ':not([aria-disabled="true"]):not([data-disabled]):not(:disabled)'
+    : "";
+}
+
+function findElements(container: HTMLElement, selector: string): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>(selector));
+}
+
+function queryFirstMatchingGroup(container: HTMLElement, selectors: string[]): HTMLElement[] {
+  for (const selector of selectors) {
+    const elements = findElements(container, selector);
+    if (elements.length > 0) return elements;
+  }
+  return [];
+}
+
+function buildNavigationSelectors(role: NavigationRole, skipDisabled: boolean): string[] {
+  const disabled = disabledSelector(skipDisabled);
+  const dataContractSelectors = navigationItemDataAttributes.flatMap((attribute) => [
+    `[${attribute}="${role}"][data-value]${disabled}`,
+    `[${attribute}="true"][data-value]${disabled}`,
+    `[${attribute}=""][data-value]${disabled}`,
+    `[${attribute}][data-value]${disabled}`,
+  ]);
+
+  return [
+    dataContractSelectors.join(","),
+    `[role="${role}"][data-value]${disabled}`,
+    `[data-value]${disabled}`,
+    `[role="${role}"]${disabled}`,
+  ];
+}
+
 function queryElements(
   containerRef: RefObject<HTMLElement | null>,
   role: NavigationRole,
   skipDisabled: boolean,
 ): HTMLElement[] {
   if (!containerRef.current) return [];
-  const selector = skipDisabled
-    ? `[role="${role}"]:not([aria-disabled="true"])`
-    : `[role="${role}"]`;
-  return Array.from(containerRef.current.querySelectorAll<HTMLElement>(selector));
+  return queryFirstMatchingGroup(
+    containerRef.current,
+    buildNavigationSelectors(role, skipDisabled),
+  );
 }
 
 function wrapIndex(index: number, length: number, wrap: boolean): number | null {
@@ -84,7 +125,7 @@ export function useNavigationCore({
   const isControlled = value !== undefined;
   const highlighted = isControlled ? value ?? null : internalValue;
 
-  const setFocusedValue = (nextValue: string) => {
+  const setFocusedValue = useCallback((nextValue: string) => {
     if (isControlled) {
       onValueChange?.(nextValue);
     } else {
@@ -92,19 +133,20 @@ export function useNavigationCore({
       onValueChange?.(nextValue);
     }
     onHighlightChange?.(nextValue);
-  };
+  }, [isControlled, onValueChange, onHighlightChange]);
 
-  const getElements = () => queryElements(containerRef, role, skipDisabled);
+  const getElements = useCallback(() => queryElements(containerRef, role, skipDisabled), [role, skipDisabled, containerRef]);
 
-  const getFocusedIndex = (): number => {
+  const getFocusedIndex = useCallback((): number => {
     const elements = getElements();
     if (elements.length === 0) return -1;
     if (!highlighted) return 0;
     const index = elements.findIndex((el) => el.dataset.value === highlighted);
     return index >= 0 ? index : 0;
-  };
+  }, [getElements, highlighted]);
 
-  const focusIndex = useEffectEvent((index: number) => {
+  const focusIndexRef = useRef<((index: number) => void) | null>(null);
+  focusIndexRef.current = (index: number) => {
     const elements = getElements();
     const el = elements[index];
     if (el?.dataset.value) {
@@ -112,9 +154,14 @@ export function useNavigationCore({
       if (moveFocus) el.focus();
       setFocusedValue(el.dataset.value);
     }
-  });
+  };
 
-  const move = useEffectEvent((delta: 1 | -1) => {
+  const focusIndex = useCallback((index: number) => {
+    focusIndexRef.current?.(index);
+  }, []);
+
+  const moveRef = useRef<((delta: 1 | -1) => void) | null>(null);
+  moveRef.current = (delta: 1 | -1) => {
     const elements = getElements();
     if (elements.length === 0) return;
 
@@ -126,22 +173,26 @@ export function useNavigationCore({
       return;
     }
 
-    focusIndex(next);
-  });
+    focusIndexRef.current?.(next);
+  };
 
-  const handleSelect = useEffectEvent((event: globalThis.KeyboardEvent) => {
+  const move = useCallback((delta: 1 | -1) => {
+    moveRef.current?.(delta);
+  }, []);
+
+  const handleSelect = useCallback((event: globalThis.KeyboardEvent) => {
     if (highlighted) onSelect?.(highlighted, event);
-  });
+  }, [highlighted, onSelect]);
 
-  const handleEnter = useEffectEvent((event: globalThis.KeyboardEvent) => {
+  const handleEnter = useCallback((event: globalThis.KeyboardEvent) => {
     if (highlighted) {
       if (onEnter) onEnter(highlighted, event);
       else onSelect?.(highlighted, event);
     }
-  });
+  }, [highlighted, onEnter, onSelect]);
 
-  const isHighlighted = (v: string) => highlighted === v;
-  const highlight = (v: string) => setFocusedValue(v);
+  const isHighlighted = useCallback((v: string) => highlighted === v, [highlighted]);
+  const highlight = useCallback((v: string) => setFocusedValue(v), [setFocusedValue]);
 
   return { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements };
 }
@@ -160,7 +211,7 @@ export function useNavigation(options: UseNavigationOptions): UseNavigationRetur
   const { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements } =
     useNavigationCore(options);
 
-  const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
+  const onKeyDown = useCallback((event: KeyboardEvent) => {
     if (!enabled) return;
 
     const key = event.key;
@@ -180,7 +231,7 @@ export function useNavigation(options: UseNavigationOptions): UseNavigationRetur
       total: getElements().length,
       nativeEvent: event.nativeEvent,
     });
-  });
+  }, [enabled, resolvedUpKeys, resolvedDownKeys, preventDefault, options.moveFocus, move, focusIndex, handleSelect, handleEnter, getElements]);
 
   return { highlighted, isHighlighted, highlight, onKeyDown };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import type { HTMLAttributes } from "react";
+import { useLayoutEffect, type HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 import { useDialogContext } from "./dialog-context";
 
@@ -12,7 +12,12 @@ export interface DialogTitleProps extends HTMLAttributes<HTMLHeadingElement> {
 const DASHES = "─".repeat(80);
 
 export function DialogTitle({ children, className, as: Tag = "h2", decorated = true, ...props }: DialogTitleProps) {
-  const { titleId } = useDialogContext();
+  const { titleId, onTitleMount, onTitleUnmount } = useDialogContext();
+
+  useLayoutEffect(() => {
+    onTitleMount();
+    return onTitleUnmount;
+  }, [onTitleMount, onTitleUnmount]);
 
   if (!decorated) {
     return (

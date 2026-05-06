@@ -51,13 +51,9 @@ describe("Radio", () => {
     expect(onChange).toHaveBeenCalledWith(true)
   })
 
-  // The hidden input inside div[role="radio"] triggers nested-interactive;
-  // it is aria-hidden, tabIndex=-1, sr-only — a false positive.
-  const axeOpts = { rules: { "nested-interactive": { enabled: false } } }
-
   it("has no a11y violations (standalone)", async () => {
     const { container } = render(<Radio label="Option A" aria-label="Option A" />)
-    expect(await axe(container, axeOpts)).toHaveNoViolations()
+    expect(await axe(container)).toHaveNoViolations()
   })
 })
 
@@ -86,6 +82,22 @@ describe("RadioGroup", () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
+  it("exposes one tabbable enabled item when unselected and skips disabled items", async () => {
+    render(
+      <RadioGroup label="Colors">
+        <RadioGroup.Item value="red" label="Red" disabled />
+        <RadioGroup.Item value="blue" label="Blue" />
+        <RadioGroup.Item value="green" label="Green" />
+      </RadioGroup>
+    )
+
+    const radios = screen.getAllByRole("radio")
+    expect(radios.map((radio) => radio.getAttribute("tabindex"))).toEqual(["-1", "0", "-1"])
+
+    await userEvent.tab()
+    expect(screen.getByRole("radio", { name: /blue/i })).toHaveFocus()
+  })
+
   it("respects controlled value", async () => {
     const onChange = vi.fn()
     render(
@@ -101,7 +113,21 @@ describe("RadioGroup", () => {
     expect(screen.getAllByRole("radio")[1]).toHaveAttribute("aria-checked", "false")
   })
 
-  const axeOpts = { rules: { "nested-interactive": { enabled: false } } }
+  it("keeps explicit value undefined controlled instead of adopting internal selection", async () => {
+    const onChange = vi.fn()
+    render(
+      <RadioGroup value={undefined} onChange={onChange} label="Colors">
+        <RadioGroup.Item value="red" label="Red" />
+        <RadioGroup.Item value="blue" label="Blue" />
+      </RadioGroup>
+    )
+
+    await userEvent.click(screen.getByText("Blue"))
+
+    expect(onChange).toHaveBeenCalledWith("blue")
+    expect(screen.getAllByRole("radio")[0]).toHaveAttribute("aria-checked", "false")
+    expect(screen.getAllByRole("radio")[1]).toHaveAttribute("aria-checked", "false")
+  })
 
   it("has no a11y violations (unselected and selected)", async () => {
     const { container, rerender } = render(
@@ -110,7 +136,7 @@ describe("RadioGroup", () => {
         <RadioGroup.Item value="blue" label="Blue" />
       </RadioGroup>
     )
-    expect(await axe(container, axeOpts)).toHaveNoViolations()
+    expect(await axe(container)).toHaveNoViolations()
 
     rerender(
       <RadioGroup label="Colors" defaultValue="red">
@@ -118,7 +144,7 @@ describe("RadioGroup", () => {
         <RadioGroup.Item value="blue" label="Blue" />
       </RadioGroup>
     )
-    expect(await axe(container, axeOpts)).toHaveNoViolations()
+    expect(await axe(container)).toHaveNoViolations()
   })
 
   it("navigates with ArrowDown and wraps around", async () => {
@@ -137,6 +163,23 @@ describe("RadioGroup", () => {
     expect(onChange).toHaveBeenLastCalledWith("green")
     await userEvent.keyboard("{ArrowDown}")
     expect(onChange).toHaveBeenLastCalledWith("red")
+  })
+
+  it("does not move focus to disabled radio items with arrow keys", async () => {
+    const onChange = vi.fn()
+    render(
+      <RadioGroup onChange={onChange} label="Colors">
+        <RadioGroup.Item value="red" label="Red" />
+        <RadioGroup.Item value="blue" label="Blue" disabled />
+        <RadioGroup.Item value="green" label="Green" />
+      </RadioGroup>
+    )
+
+    screen.getByRole("radio", { name: /red/i }).focus()
+    await userEvent.keyboard("{ArrowDown}")
+
+    expect(screen.getByRole("radio", { name: /green/i })).toHaveFocus()
+    expect(onChange).toHaveBeenCalledWith("green")
   })
 
   it("navigates with ArrowRight and ArrowLeft (APG: all four arrow keys)", async () => {

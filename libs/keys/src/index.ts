@@ -1,3 +1,5 @@
+"use client";
+
 export { KeyboardProvider } from "./providers/keyboard-provider.js";
 export type { HandlerOptions } from "./providers/keyboard-provider.js";
 

@@ -24,13 +24,35 @@ export default defineConfig({
 
 ## 3. Import the theme
 
+If you initialized with `dgadd`, import the copied CSS entry from your app CSS:
+
 ```css
 /* src/index.css */
+@import "./styles/styles.css";
+```
+
+`src/styles/styles.css` contains the Tailwind import and the copied theme import. If you are wiring files manually instead, use:
+
+```css
 @import "tailwindcss";
 @import "./styles/theme.css";
 ```
 
-> **Tip**: If you used `dgadd init`, the theme file is already copied to your project as `styles/theme.css`.
+`dgadd init` copies `src/styles/theme.css` and `src/styles/styles.css`, but it does not add either import to your app CSS entrypoint.
+
+## Package Mode Source Scanning
+
+If you install `@diffgazer/ui` as a runtime npm package instead of copying source files, add a Tailwind CSS v4 `@source` directive for the package output:
+
+> Runtime npm package mode is publish-gated until `@diffgazer/ui` and `@diffgazer/keys` are available on npm. Before that, use locally packed tarballs for validation.
+
+```css
+@import "tailwindcss";
+@source "../node_modules/@diffgazer/ui/dist";
+@import "@diffgazer/ui/styles.css";
+```
+
+Adjust the `@source` path so it is relative to the CSS file that contains it.
 
 ## Theme Variables
 

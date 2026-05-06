@@ -15,21 +15,21 @@ describe("Pager", () => {
     )
     const user = userEvent.setup()
     await user.tab()
-    expect(screen.getByRole("link", { name: "Go to previous page" })).toHaveFocus()
+    expect(screen.getByRole("link", { name: "Previous" })).toHaveFocus()
     await user.tab()
-    expect(screen.getByRole("link", { name: "Go to next page" })).toHaveFocus()
+    expect(screen.getByRole("link", { name: "Next" })).toHaveFocus()
   })
 
   it("passes props to render function children", () => {
     const renderFn = (props: PagerLinkRenderProps) => (
-      <a href={props.href} aria-label={props["aria-label"]}>Custom</a>
+      <a href={props.href} aria-label="Custom destination">Custom</a>
     )
     render(
       <Pager>
         <Pager.Link direction="next" href="/next">{renderFn}</Pager.Link>
       </Pager>
     )
-    expect(screen.getByRole("link", { name: "Go to next page" })).toHaveAttribute("href", "/next")
+    expect(screen.getByRole("link", { name: "Custom destination" })).toHaveAttribute("href", "/next")
   })
 
   it("has no a11y violations", async () => {

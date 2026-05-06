@@ -5,7 +5,7 @@ import { CopyButton } from "@/components/copy-button"
 import { CodeBlock, CodeBlockContent, CodeBlockLine } from "@/components/ui/code-block"
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion"
 import { resolveCrossDepFiles } from "@/lib/cross-deps-data"
-import { getDocsLibraryConfig, type DocsLibraryId } from "@/lib/docs-library"
+import { getInstallCommand, type DocsLibraryId } from "@/lib/docs-library"
 import { useCurrentLibrary } from "./use-current-library"
 
 export function SourceViewerBlock() {
@@ -19,8 +19,7 @@ export function SourceViewerBlock() {
 }
 
 function ComponentSourceViewer({ data, library }: { data: NonNullable<ReturnType<typeof useComponentData>>; library: DocsLibraryId }) {
-  const cliName = getDocsLibraryConfig(library).logoText
-  const installCommand = `npx ${cliName} add ${data.name}`
+  const installCommand = getInstallCommand(library, data.name) ?? undefined
   const sourceFiles = Object.entries(data.source).map(([path, file]) => ({
     path,
     raw: file.raw,
@@ -46,7 +45,6 @@ function ComponentSourceViewer({ data, library }: { data: NonNullable<ReturnType
     <SourceViewer
       files={sourceFiles}
       mergedSource={data.mergedSource}
-      name={data.name}
       installCommand={installCommand}
       integrationNote={integrationNote}
     />

@@ -24,5 +24,8 @@
       "content": "\"use client\";\n\nimport type { HTMLAttributes, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport interface KbdGroupProps extends HTMLAttributes<HTMLElement> {\n  ref?: Ref<HTMLElement>;\n}\n\nexport function KbdGroup({\n  ref,\n  className,\n  children,\n  ...props\n}: KbdGroupProps) {\n  return (\n    <kbd\n      ref={ref}\n      className={cn(\"inline-flex items-center gap-1\", className)}\n      {...props}\n    >\n      {children}\n    </kbd>\n  );\n}\n",
       "type": "registry:ui"
     }
-  ]
+  ],
+  "meta": {
+    "client": true
+  }
 }

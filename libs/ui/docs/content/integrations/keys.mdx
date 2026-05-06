@@ -7,34 +7,36 @@ Composable, scoped keyboard navigation hooks for React 19.
 
 - **Zero dependencies**, ~1.5 KB gzipped
 - **Scope stack** -- only the topmost scope receives events, no conflicts between layers
-- **React 19 only** -- uses `useEffectEvent` for stable handlers without stale closures
+- **React 19 ready** -- stable callback/ref patterns without stale closures
 - **ESM only**
 
 ```bash
 npm install @diffgazer/keys
 ```
 
+`@diffgazer/keys` is external publish-gated as of May 6, 2026. Use this install command only after `npm view @diffgazer/keys version` succeeds, or validate locally with a packed workspace tarball.
+
 ## Installation Options
 
-@diffgazer/ui components are visual-only — they don't handle keyboard events internally. @diffgazer/keys provides an optional keyboard layer, similar to how you might add roving-focus, focus traps, and scroll locks to Radix UI components. You have four ways to source these hooks:
+@diffgazer/ui components are not all visual-only. Some copied components include local keyboard handling, and some package-mode entries import hooks from `@diffgazer/keys`. You have four ways to source keyboard hooks:
 
-### Option 1: shadcn registry (automatic)
+### Option 1: `dgadd` component install
 
-When you install a @diffgazer/ui component that requires keyboard hooks via the shadcn CLI, the hooks are installed automatically:
+When you install a @diffgazer/ui component that requires keyboard hooks via `dgadd`, choose whether to copy the standalone hooks or import the @diffgazer/keys package:
 
 ```bash
-npx shadcn@latest add @ui/dialog   # installs use-focus-trap + use-scroll-lock
-npx shadcn@latest add @ui/menu     # installs use-navigation + use-focus-trap + use-scroll-lock
+npx @diffgazer/add add ui/menu --integration copy
+npx @diffgazer/add add ui/menu --integration keys
 ```
 
-This works via `registryDependencies` — @diffgazer/ui component entries declare which @diffgazer/keys hooks they depend on, and the shadcn CLI resolves them from your configured keys registry namespace. No separate step needed.
+This works from bundled registry metadata. Components that reference keyboard hooks declare the keys hook dependency, and `dgadd` installs the matching integration before writing files.
 
 You can also install hooks standalone:
 
 ```bash
-npx shadcn@latest add @keys/navigation
-npx shadcn@latest add @keys/focus-trap
-npx shadcn@latest add @keys/scroll-lock
+npx @diffgazer/add add keys/navigation
+npx @diffgazer/add add keys/focus-trap
+npx @diffgazer/add add keys/scroll-lock
 ```
 
 ### Option 2: Install @diffgazer/keys package
@@ -42,7 +44,7 @@ npx shadcn@latest add @keys/scroll-lock
 ```bash
 npm install @diffgazer/keys
 # or via dgadd:
-dgadd add ui/menu --integration keys
+npx @diffgazer/add add ui/menu --integration keys
 ```
 
 Components import hooks directly from the @diffgazer/keys package. Gives you the full API including `KeyboardProvider`, `useKey`, `useScope`, and `useFocusZone`.
@@ -50,8 +52,8 @@ Components import hooks directly from the @diffgazer/keys package. Gives you the
 ### Option 3: Copy standalone hooks
 
 ```bash
-dgadd add keys/navigation keys/focus-trap keys/scroll-lock
-dgadd add ui/menu --integration copy
+npx @diffgazer/add add keys/navigation keys/focus-trap keys/scroll-lock
+npx @diffgazer/add add ui/menu --integration copy
 ```
 
 Copies three standalone hooks into your project at `@/hooks/`. No @diffgazer/keys dependency required. Components import from local paths:
@@ -119,18 +121,18 @@ function Editor() {
 
 ## Patterns with @diffgazer/ui
 
-@diffgazer/ui components can optionally integrate @diffgazer/keys hooks (`useNavigation`, `useFocusTrap`, `useScrollLock`) for WCAG-compliant keyboard navigation. Components work without keyboard support; @diffgazer/keys provides the keyboard layer as an opt-in addition. Components also expose `highlighted`, `onHighlightChange`, and `onKeyDown` props for external control. See the [Patterns](/ui/docs/integrations/keys-patterns) page for complete integration examples with Menu, Dialog, CommandPalette, Tabs, and multi-zone layouts.
+@diffgazer/ui components declare their keyboard dependencies through registry metadata. In copy mode, `dgadd` can copy standalone hooks. In keys mode and runtime package mode, imports resolve through `@diffgazer/keys`. Components that expose `highlighted`, `onHighlightChange`, and `onKeyDown` props can still be controlled by app-level handlers. See the [Patterns](/ui/docs/integrations/keys-patterns) page for complete integration examples with Menu, Dialog, CommandPalette, Tabs, and multi-zone layouts.
 
 ---
 
 ## What Each Path Gives You
 
-| Capability | shadcn registry | Package install | CLI copy | Source copy |
+| Capability | `dgadd` component install | Package install | CLI copy | Source copy |
 |:-----------|:-:|:-:|:-:|:-:|
 | `useNavigation` | ✓ | ✓ | ✓ | ✓ |
 | `useFocusTrap` | ✓ | ✓ | ✓ | ✓ |
 | `useScrollLock` | ✓ | ✓ | ✓ | ✓ |
-| Auto-installed with component | ✓ | — | — | — |
+| Component install support | ✓ | — | ✓ | — |
 | `KeyboardProvider` | — | ✓ | — | — |
 | `useKey` (global shortcuts) | — | ✓ | — | — |
 | `useScope` (modal isolation) | — | ✓ | — | — |
@@ -146,6 +148,6 @@ function Editor() {
 
 ## Utility Hooks
 
-<LibraryHookSource library="ui" sectionTitle="Utility Hook Source Code" hint={<>Copy these hooks into your project or install via CLI: <code className="text-xs bg-border px-1 rounded">dgadd add ui/controllable-state</code></>} />
+<LibraryHookSource library="ui" sectionTitle="Utility Hook Source Code" hint={<>Copy these hooks into your project or install via CLI after publication: <code className="text-xs bg-border px-1 rounded">npx @diffgazer/add add ui/controllable-state</code></>} />
 
 For the complete API reference, visit the [@diffgazer/keys documentation](/keys/docs/api/reference).

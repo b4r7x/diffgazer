@@ -141,6 +141,13 @@ export interface RemoveCommandConfig<TItem, TConfig> {
   getItemName: (item: TItem) => string;
   isInstalled: (ctx: { cwd: string; config: TConfig; item: TItem }) => boolean;
   resolveFilesForItem: (ctx: { cwd: string; config: TConfig; item: TItem }) => RemoveWorkflowFile[];
+  canRemoveFile?: (ctx: {
+    cwd: string;
+    config: TConfig;
+    item: TItem;
+    file: RemoveWorkflowFile;
+    force: boolean;
+  }) => boolean;
   resolveAllowedBaseDirs: (ctx: { cwd: string; config: TConfig }) => string[];
   updateManifest: (ctx: { cwd: string; removedNames: string[] }) => void;
   findOrphanedDeps?: (ctx: { removedNames: string[]; cwd: string; config: TConfig }) => string[];
@@ -157,6 +164,7 @@ function buildRemoveAction<TItem, TConfig>(
       names,
       yes: opts.yes ?? false,
       dryRun: opts.dryRun ?? false,
+      force: opts.force ?? false,
       itemPlural: config.itemPlural,
       requireConfig: config.requireConfig,
       validateNames: config.validateNames,
@@ -165,6 +173,7 @@ function buildRemoveAction<TItem, TConfig>(
       getItemName: config.getItemName,
       isInstalled: config.isInstalled,
       resolveFilesForItem: config.resolveFilesForItem,
+      canRemoveFile: config.canRemoveFile,
       resolveAllowedBaseDirs: config.resolveAllowedBaseDirs,
       updateManifest: config.updateManifest,
       findOrphanedDeps: config.findOrphanedDeps,
@@ -181,6 +190,7 @@ export function createRemoveCommand<TItem, TConfig>(
     .option("--cwd <path>", "Working directory", ".")
     .option("-y, --yes", "Skip confirmation prompts", false)
     .option("--dry-run", "Preview changes without removing files", false)
+    .option("--force", "Remove files even when ownership metadata is missing or content changed", false)
     .action(buildRemoveAction(config));
 }
 

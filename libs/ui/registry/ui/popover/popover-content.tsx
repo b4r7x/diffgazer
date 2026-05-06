@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { composeRefs } from "@/lib/compose-refs";
 import { Portal } from "../shared/portal";
 import { usePortalContainer } from "../shared/portal-context";
-import { useOutsideClick } from "@/hooks/use-outside-click";
+import { useEscapeKey, useOutsideClick } from "@/hooks/use-outside-click";
 import { usePresence } from "@/hooks/use-presence";
 import {
   useFloatingPosition,
@@ -75,6 +75,13 @@ export function PopoverContent({
     open && isClick,
     [triggerRef],
   );
+
+  useEscapeKey((e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onOpenChange(false);
+    triggerRef.current?.focus();
+  }, open, { ref: contentRef, excludeRefs: [triggerRef] });
 
   useAutoFocus(contentRef, open && !isHover && autoFocus);
 

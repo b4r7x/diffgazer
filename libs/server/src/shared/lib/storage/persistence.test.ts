@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { z } from "zod";
 
-const { mockMkdir, mockReadFile, mockReaddir, mockUnlink } = vi.hoisted(() => ({
+const { mockMkdir, mockReadFile, mockReaddir, mockUnlink, mockAtomicWriteFile } = vi.hoisted(() => ({
   mockMkdir: vi.fn(),
   mockReadFile: vi.fn(),
   mockReaddir: vi.fn(),
   mockUnlink: vi.fn(),
+  mockAtomicWriteFile: vi.fn(),
 }));
 
 vi.mock("node:fs/promises", () => ({
@@ -15,7 +16,13 @@ vi.mock("node:fs/promises", () => ({
   unlink: mockUnlink,
 }));
 
-vi.mock("../fs.js");
+vi.mock("../fs.js", () => ({
+  atomicWriteFile: mockAtomicWriteFile,
+  isNodeError: (error: unknown, code?: string): error is NodeJS.ErrnoException =>
+    error instanceof Error &&
+    "code" in error &&
+    (code === undefined || (error as NodeJS.ErrnoException).code === code),
+}));
 
 import { atomicWriteFile } from "../fs.js";
 import { createCollection } from "./persistence.js";

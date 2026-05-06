@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useEffectEvent, useId, useMemo, useRef } from "react";
+import { useCallback, useLayoutEffect, useId, useMemo, useRef } from "react";
 import { useNavigation } from "@/hooks/use-navigation";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { matchesSearch } from "@/lib/search";
@@ -40,16 +40,16 @@ export function useCommandPaletteState({
   const listRef = useRef<HTMLDivElement>(null);
   const paletteId = useId();
 
-  const handleOpenChange = useEffectEvent((next: boolean) => {
+  const handleOpenChange = useCallback((next: boolean) => {
     if (!next) setSearch("");
     setIsOpen(next);
-  });
+  }, [setIsOpen, setSearch]);
 
-  const handleActivate = useEffectEvent((id: string) => {
+  const handleActivate = useCallback((id: string) => {
     getItemCallback(id)?.();
     onActivate?.(id);
     handleOpenChange(false);
-  });
+  }, [getItemCallback, handleOpenChange, onActivate]);
 
   const { onKeyDown: rawNavKeyDown } = useNavigation({
     containerRef: listRef,
@@ -60,19 +60,19 @@ export function useCommandPaletteState({
     onEnter: handleActivate,
     enabled: isOpen,
   });
-  const navKeyDown = useEffectEvent(rawNavKeyDown);
+  const navKeyDown = rawNavKeyDown;
 
-  const autoSelectFirst = useEffectEvent(() => {
+  const autoSelectFirst = useCallback(() => {
     if (isSelectedControlled) return;
     setSelectedId((currentId) => {
       if (currentId && items.includes(currentId)) return currentId;
       return items[0] ?? null;
     });
-  });
+  }, [isSelectedControlled, items, setSelectedId]);
 
   useLayoutEffect(() => {
     autoSelectFirst();
-  }, [items]);
+  }, [autoSelectFirst]);
 
   return useMemo(() => ({
     open: isOpen, onOpenChange: handleOpenChange, selectedId,
@@ -80,5 +80,5 @@ export function useCommandPaletteState({
     shouldFilter, filter, itemCount,
     registerItem, unregisterItem, setItemCallback, getItemCallback,
     listId: `${paletteId}-list`, listRef, navKeyDown,
-  }), [isOpen, selectedId, search, shouldFilter, filter, itemCount, registerItem, unregisterItem, setItemCallback, getItemCallback, paletteId]);
+  }), [isOpen, handleOpenChange, handleActivate, selectedId, search, setSearch, shouldFilter, filter, itemCount, registerItem, unregisterItem, setItemCallback, getItemCallback, paletteId, navKeyDown]);
 }

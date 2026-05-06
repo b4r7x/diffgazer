@@ -99,7 +99,23 @@ describe("SidebarSection collapsible", () => {
 
     await userEvent.click(title)
     expect(title).toHaveAttribute("aria-expanded", "false")
-    expect(screen.queryByRole("menuitem")).not.toBeInTheDocument()
+    expect(screen.queryByText("file.txt")).not.toBeInTheDocument()
+  })
+
+  it("uses a single navigation landmark by default", async () => {
+    render(
+      <Sidebar.Provider>
+        <Sidebar>
+          <Sidebar.Content>
+            <Sidebar.Item>Item</Sidebar.Item>
+          </Sidebar.Content>
+        </Sidebar>
+      </Sidebar.Provider>,
+    )
+    const navs = screen.getAllByRole("navigation")
+    expect(navs).toHaveLength(1)
+    expect(navs[0]).toHaveAccessibleName("Sidebar")
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument()
   })
 
 })

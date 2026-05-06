@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffectEvent, useLayoutEffect, useRef, type ReactNode, type KeyboardEvent, type Ref, type RefObject } from "react";
+import { useCallback, useLayoutEffect, useRef, type ReactNode, type KeyboardEvent, type Ref, type RefObject } from "react";
 import { useNavigation } from "@/hooks/use-navigation";
 import { usePresence } from "@/hooks/use-presence";
 import { useFloatingPosition, type FloatingSide, type FloatingAlign } from "@/hooks/use-floating-position";
@@ -10,6 +10,7 @@ import { Portal } from "../shared/portal";
 import { useSelectContext } from "./select-context";
 import { matchesSearch } from "@/lib/search";
 import { toOptionId } from "./select-utils";
+import type { SelectOptionMetadata } from "./select-context";
 
 export interface SelectContentProps {
   children: ReactNode;
@@ -47,6 +48,7 @@ export function SelectContent({
     listboxId,
     triggerId,
     searchInputRef,
+    hasSearch,
     triggerRef,
     labelsRef,
     searchQuery,
@@ -76,8 +78,8 @@ export function SelectContent({
     }, TYPEAHEAD_RESET_MS);
 
     const query = typeaheadBuffer.current.toLowerCase();
-    for (const [itemValue, label] of labelsRef.current) {
-      if (label.toLowerCase().startsWith(query)) {
+    for (const [itemValue, option] of labelsRef.current) {
+      if (!option.disabled && option.label.toLowerCase().startsWith(query)) {
         onHighlight(itemValue);
         break;
       }
@@ -96,20 +98,20 @@ export function SelectContent({
     avoidCollisions: true,
   });
 
-  const initHighlight = useEffectEvent(() => {
+  const initHighlight = useCallback(() => {
     if (highlighted) return;
     const selectedValues = Array.isArray(value) ? value : value ? [value] : [];
-    if (selectedValues[0]) {
+    if (selectedValues[0] && !labelsRef.current.get(selectedValues[0])?.disabled) {
       onHighlight(selectedValues[0]);
       return;
     }
-    const firstOption = containerRef.current?.querySelector<HTMLElement>(
-      '[role="option"]:not([aria-disabled="true"])',
-    );
-    if (firstOption?.dataset.value) {
-      onHighlight(firstOption.dataset.value);
+    for (const [itemValue, option] of labelsRef.current) {
+      if (!option.disabled) {
+        onHighlight(itemValue);
+        return;
+      }
     }
-  });
+  }, [highlighted, labelsRef, onHighlight, value]);
 
   const triggerWidthRef = useRef<number | undefined>(undefined);
 
@@ -122,8 +124,7 @@ export function SelectContent({
       containerRef.current?.focus();
     }
     initHighlight();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- searchInputRef/triggerRef are stable refs
-  }, [open]);
+  }, [initHighlight, isDropdown, open, searchInputRef, triggerRef]);
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Escape") {
@@ -155,7 +156,7 @@ export function SelectContent({
     role: "listbox" as const,
     tabIndex: -1,
     "aria-multiselectable": multiple || undefined,
-    "aria-activedescendant": !searchInputRef.current && highlighted ? toOptionId(listboxId, highlighted) : undefined,
+    "aria-activedescendant": !hasSearch && highlighted ? toOptionId(listboxId, highlighted) : undefined,
     "aria-labelledby": triggerId,
     onKeyDown: handleKeyDown,
   };
@@ -203,10 +204,10 @@ export function SelectContent({
   );
 }
 
-function MatchCount({ labelsRef, searchQuery }: { labelsRef: RefObject<Map<string, string>>; searchQuery: string }) {
+function MatchCount({ labelsRef, searchQuery }: { labelsRef: RefObject<Map<string, SelectOptionMetadata>>; searchQuery: string }) {
   let count = 0;
-  for (const label of labelsRef.current.values()) {
-    if (matchesSearch(label, searchQuery)) count++;
+  for (const option of labelsRef.current.values()) {
+    if (matchesSearch(option.label, searchQuery)) count++;
   }
   return (
     <div role="status" aria-live="polite" className="sr-only">

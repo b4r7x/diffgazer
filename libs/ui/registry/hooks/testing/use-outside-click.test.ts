@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest"
 import { renderHook } from "@testing-library/react"
-import { useOutsideClick } from "../use-outside-click.js"
+import { useEscapeKey, useOutsideClick } from "../use-outside-click.js"
 import { createRef } from "react"
 
 describe("useOutsideClick", () => {
@@ -98,5 +98,48 @@ describe("useOutsideClick", () => {
     expect(handler).not.toHaveBeenCalled()
 
     inside.remove()
+  })
+
+  it("only calls the topmost outside-click layer", () => {
+    const lower = document.createElement("div")
+    const upper = document.createElement("div")
+    const outside = document.createElement("button")
+    document.body.append(lower, upper, outside)
+
+    const lowerRef = createRef<HTMLElement>() as React.MutableRefObject<HTMLElement | null>
+    const upperRef = createRef<HTMLElement>() as React.MutableRefObject<HTMLElement | null>
+    lowerRef.current = lower
+    upperRef.current = upper
+    const lowerHandler = vi.fn()
+    const upperHandler = vi.fn()
+
+    renderHook(() => {
+      useOutsideClick(lowerRef, lowerHandler, true)
+      useOutsideClick(upperRef, upperHandler, true)
+    })
+
+    outside.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }))
+
+    expect(upperHandler).toHaveBeenCalledOnce()
+    expect(lowerHandler).not.toHaveBeenCalled()
+
+    lower.remove()
+    upper.remove()
+    outside.remove()
+  })
+
+  it("routes Escape to the topmost enabled layer", () => {
+    const lowerHandler = vi.fn()
+    const upperHandler = vi.fn()
+
+    renderHook(() => {
+      useEscapeKey(lowerHandler, true)
+      useEscapeKey(upperHandler, true)
+    })
+
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))
+
+    expect(upperHandler).toHaveBeenCalledOnce()
+    expect(lowerHandler).not.toHaveBeenCalled()
   })
 })

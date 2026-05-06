@@ -9,6 +9,7 @@ export interface MenuContextValue {
   highlight: (id: string) => void;
   variant: "default" | "hub";
   idPrefix: string;
+  itemRole: "menuitem" | "menuitemradio";
 }
 
 export const MenuContext = createContext<MenuContextValue | undefined>(undefined);

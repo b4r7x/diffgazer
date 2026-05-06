@@ -18,7 +18,7 @@ export interface Registry {
 }
 
 /**
- * Extract @diffgazer/keys hook names from registry item dependency refs.
+ * Extract @diffgazer keys hook names from registry item dependency refs.
  * Returns raw names (e.g., "navigation", "focus-trap") without `use-` prefix.
  */
 export function extractDiffgazerKeysHookNames(items: Pick<RegistryItem, "registryDependencies">[]): Set<string> {
@@ -27,6 +27,8 @@ export function extractDiffgazerKeysHookNames(items: Pick<RegistryItem, "registr
     for (const dep of item.registryDependencies ?? []) {
       if (dep.startsWith("@diffgazer/keys/")) {
         names.add(dep.replace("@diffgazer/keys/", ""));
+      } else if (dep.startsWith("@diffgazer-keys/")) {
+        names.add(dep.replace("@diffgazer-keys/", ""));
       }
     }
   }

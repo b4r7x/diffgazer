@@ -113,6 +113,19 @@ describe("Dialog", () => {
     expect(dialog).toHaveAttribute("aria-labelledby", title.id)
   })
 
+  it("uses an explicit aria-label without pointing to a missing title", () => {
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content aria-label="Named without title">
+          <Dialog.Body>Body content</Dialog.Body>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "Named without title" })
+    expect(dialog).not.toHaveAttribute("aria-labelledby")
+  })
+
   it("sets aria-describedby when description is present", () => {
     renderDialog({ defaultOpen: true })
     const dialog = screen.getByRole("dialog")
@@ -138,11 +151,86 @@ describe("Dialog", () => {
 
   it("has no a11y violations when open", async () => {
     const { container } = renderDialog({ defaultOpen: true })
-    expect(await axe(container, { rules: { "nested-interactive": { enabled: false } } })).toHaveNoViolations()
+    expect(await axe(container)).toHaveNoViolations()
   })
 
   it("has no a11y violations when closed", async () => {
     const { container } = renderDialog()
     expect(await axe(container)).toHaveNoViolations()
+  })
+
+  it("uses an interactive child as the trigger without nesting controls", async () => {
+    const { container } = render(
+      <Dialog>
+        <Dialog.Trigger>
+          <button type="button">Open child</button>
+        </Dialog.Trigger>
+        <Dialog.Content>
+          <Dialog.Title>Nested trigger target</Dialog.Title>
+          <Dialog.Close />
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const trigger = screen.getByRole("button", { name: "Open child" })
+    expect(container.querySelector("button button")).toBeNull()
+    expect(await axe(container)).toHaveNoViolations()
+
+    await userEvent.click(trigger)
+    expect(screen.getByRole("dialog")).toBeInTheDocument()
+    expect(trigger).toHaveAttribute("aria-expanded", "true")
+  })
+
+  it("stacks multiple dialogs correctly", async () => {
+    render(
+      <>
+        <Dialog defaultOpen>
+          <Dialog.Trigger>Dialog 1</Dialog.Trigger>
+          <Dialog.Content>
+            <Dialog.Title>Dialog 1</Dialog.Title>
+            <Dialog.Close />
+          </Dialog.Content>
+        </Dialog>
+        <Dialog defaultOpen>
+          <Dialog.Trigger>Dialog 2</Dialog.Trigger>
+          <Dialog.Content>
+            <Dialog.Title>Dialog 2</Dialog.Title>
+            <Dialog.Close />
+          </Dialog.Content>
+        </Dialog>
+      </>
+    )
+    const dialogs = screen.getAllByRole("dialog")
+    // Both dialogs should be present in DOM
+    expect(dialogs).toHaveLength(2)
+    // The last opened dialog should be focused/visible
+    expect(dialogs[1]).toHaveAttribute("data-state", "open")
+  })
+
+  it("closes only the top dialog when closing nested dialogs", async () => {
+    const onOpenChange1 = vi.fn()
+    const onOpenChange2 = vi.fn()
+    render(
+      <>
+        <Dialog onOpenChange={onOpenChange1} defaultOpen>
+          <Dialog.Trigger>Dialog 1</Dialog.Trigger>
+          <Dialog.Content>
+            <Dialog.Title>Dialog 1</Dialog.Title>
+            <Dialog.Close />
+          </Dialog.Content>
+        </Dialog>
+        <Dialog onOpenChange={onOpenChange2} defaultOpen>
+          <Dialog.Trigger>Dialog 2</Dialog.Trigger>
+          <Dialog.Content>
+            <Dialog.Title>Dialog 2</Dialog.Title>
+            <Dialog.Close />
+          </Dialog.Content>
+        </Dialog>
+      </>
+    )
+    // Close the top dialog
+    const closeButtons = screen.getAllByRole("button", { name: "Close dialog" })
+    await userEvent.click(closeButtons[closeButtons.length - 1])
+    expect(onOpenChange2).toHaveBeenCalledWith(false)
   })
 })

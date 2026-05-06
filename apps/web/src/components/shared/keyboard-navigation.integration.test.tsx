@@ -131,6 +131,7 @@ describe("UI keyboard navigation integration", () => {
     fireEvent.keyDown(listbox, { key: "Enter" });
 
     expect(activated).toEqual(["beta"]);
-    expect(screen.getByText("Beta").closest('[role="menuitem"]')?.getAttribute("aria-current")).toBe("true");
+    expect(screen.getByText("Beta").closest('[role="menuitemradio"]')?.getAttribute("data-active")).toBe("true");
+    expect(screen.getByText("Beta").closest('[role="menuitemradio"]')?.getAttribute("aria-checked")).toBe("true");
   });
 });

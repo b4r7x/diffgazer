@@ -13,12 +13,11 @@ import type React from "react"
 interface SourceViewerProps {
   files: (SourceFile & { path: string })[]
   mergedSource?: string
-  name?: string
   installCommand?: string
   integrationNote?: React.ReactNode
 }
 
-export function SourceViewer({ files, mergedSource, name, installCommand, integrationNote }: SourceViewerProps) {
+export function SourceViewer({ files, mergedSource, installCommand, integrationNote }: SourceViewerProps) {
   if (files.length === 0) return null
 
   return (
@@ -33,10 +32,17 @@ export function SourceViewer({ files, mergedSource, name, installCommand, integr
           />
         )}
       </div>
-      <p className="text-xs text-muted-foreground mb-3 mt-1">
-        Install via CLI: <code className="text-[0.7rem] bg-muted px-1 py-0.5 rounded">{installCommand ?? `npx @diffgazer/add${name ? ` ${name}` : ""}`}</code>.
-        {integrationNote && <>{" "}{integrationNote}</>}
-      </p>
+      {(installCommand || integrationNote) && (
+        <p className="text-xs text-muted-foreground mb-3 mt-1">
+          {installCommand && (
+            <>
+              Install via CLI: <code className="text-[0.7rem] bg-muted px-1 py-0.5 rounded">{installCommand}</code>.
+            </>
+          )}
+          {installCommand && integrationNote && " "}
+          {integrationNote}
+        </p>
+      )}
 
       <Accordion collapsible className="divide-y-0">
         <AccordionItem value="source" className="py-0">

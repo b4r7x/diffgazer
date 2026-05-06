@@ -26,7 +26,14 @@ export function computeFilledCount(
   max: number,
   barWidth: number,
 ): number {
-  return max > 0
-    ? Math.max(0, Math.min(Math.round((value / max) * barWidth), barWidth))
+  if (!Number.isFinite(value) || !Number.isFinite(max) || max <= 0) return 0;
+
+  const safeBarWidth = Number.isFinite(barWidth)
+    ? Math.max(0, Math.floor(barWidth))
     : 0;
+
+  return Math.max(
+    0,
+    Math.min(Math.round((Math.max(0, value) / max) * safeBarWidth), safeBarWidth),
+  );
 }

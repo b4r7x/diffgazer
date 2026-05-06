@@ -42,6 +42,22 @@ export function getEnabledDocsLibraries(): DocsLibraryConfig[] {
   return docsLibrariesConfig.libraries.filter((config) => config.enabled);
 }
 
+function prefixInstallItem(itemName: string, itemPrefix?: string): string {
+  const normalized = itemName.trim();
+  if (!itemPrefix || normalized.includes("/")) {
+    return normalized;
+  }
+  return `${itemPrefix}${normalized}`;
+}
+
+export function getInstallCommand(library: DocsLibraryId, itemName: string): string | null {
+  const installer = getDocsLibraryConfig(library).installer;
+  if (!installer) return null;
+
+  const item = prefixInstallItem(itemName, installer.itemPrefix);
+  return `${installer.command} ${item}`;
+}
+
 export function getLibrariesWithArtifacts(): (DocsLibraryConfig & { artifactSource: ArtifactSource })[] {
   return getEnabledDocsLibraries().filter(
     (c): c is DocsLibraryConfig & { artifactSource: ArtifactSource } => !!c.artifactSource,

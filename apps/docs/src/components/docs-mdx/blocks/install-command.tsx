@@ -1,6 +1,6 @@
 import { useComponentData } from "../doc-data-context"
 import { CopyButton } from "@/components/copy-button"
-import { getDocsLibraryConfig } from "@/lib/docs-library"
+import { getInstallCommand } from "@/lib/docs-library"
 import { useCurrentLibrary } from "./use-current-library"
 
 export function InstallCommand() {
@@ -9,8 +9,8 @@ export function InstallCommand() {
 
   if (!data) return null
 
-  const cliName = getDocsLibraryConfig(library).logoText
-  const command = `npx ${cliName} add ${data.name}`
+  const command = getInstallCommand(library, data.name)
+  if (!command) return null
 
   return (
     <div className="flex items-center gap-2 border border-border bg-background p-3 font-mono text-xs rounded-lg">

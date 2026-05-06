@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useRef, useState, useEffectEvent, type ReactNode } from "react";
+import { useCallback, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { DialogContext } from "./dialog-context";
 
@@ -19,9 +19,12 @@ export function Dialog({ open: controlledOpen, defaultOpen, onOpenChange, childr
   });
   const dialogId = useId();
   const triggerRef = useRef<HTMLElement>(null);
+  const [hasTitle, setHasTitle] = useState(false);
   const [hasDescription, setHasDescription] = useState(false);
-  const onDescriptionMount = useEffectEvent(() => setHasDescription(true));
-  const onDescriptionUnmount = useEffectEvent(() => setHasDescription(false));
+  const onTitleMount = useCallback(() => setHasTitle(true), []);
+  const onTitleUnmount = useCallback(() => setHasTitle(false), []);
+  const onDescriptionMount = useCallback(() => setHasDescription(true), []);
+  const onDescriptionUnmount = useCallback(() => setHasDescription(false), []);
 
   const contextValue = useMemo(
     () => ({
@@ -30,12 +33,15 @@ export function Dialog({ open: controlledOpen, defaultOpen, onOpenChange, childr
       contentId: `${dialogId}-content`,
       titleId: `${dialogId}-title`,
       descriptionId: `${dialogId}-description`,
+      hasTitle,
       hasDescription,
+      onTitleMount,
+      onTitleUnmount,
       onDescriptionMount,
       onDescriptionUnmount,
       triggerRef,
     }),
-    [isOpen, dialogId, hasDescription],
+    [isOpen, setIsOpen, dialogId, hasTitle, hasDescription, onTitleMount, onTitleUnmount, onDescriptionMount, onDescriptionUnmount],
   );
 
   return (

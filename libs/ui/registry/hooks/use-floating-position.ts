@@ -1,13 +1,13 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, useEffectEvent } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from "react";
 
 export type FloatingSide = "top" | "bottom" | "left" | "right";
 export type FloatingAlign = "start" | "center" | "end";
 export type FloatingPlacement = `${FloatingSide}` | `${FloatingSide}-${FloatingAlign}`;
 
 export interface UseFloatingPositionOptions {
-  triggerRef: React.RefObject<HTMLElement | null>;
+  triggerRef: RefObject<HTMLElement | null>;
   open: boolean;
   side?: FloatingSide;
   align?: FloatingAlign;
@@ -26,7 +26,7 @@ export interface FloatingPosition {
 
 export interface UseFloatingPositionReturn {
   position: FloatingPosition | null;
-  contentRef: React.RefObject<HTMLDivElement | null>;
+  contentRef: RefObject<HTMLDivElement | null>;
 }
 
 const OPPOSITE_SIDE: Record<FloatingSide, FloatingSide> = {
@@ -170,7 +170,7 @@ export function useFloatingPosition({
   const [position, setPosition] = useState<FloatingPosition | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
 
-  const update = useEffectEvent(() => {
+  const update = useCallback(() => {
     const trigger = triggerRef.current;
     const content = contentRef.current;
     if (!trigger || !content) return;
@@ -188,7 +188,7 @@ export function useFloatingPosition({
       : { x: resolvedX, y: resolvedY };
 
     setPosition({ x: pos.x, y: pos.y, side: finalSide, align: preferredAlign });
-  });
+  }, [alignOffset, avoidCollisions, collisionPadding, preferredAlign, preferredSide, sideOffset, triggerRef]);
 
   useLayoutEffect(() => {
     if (!open) {
@@ -229,7 +229,7 @@ export function useFloatingPosition({
       window.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
     };
-  }, [open]);
+  }, [open, triggerRef, update]);
 
   return { position, contentRef };
 }

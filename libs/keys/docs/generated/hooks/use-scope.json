@@ -3,10 +3,35 @@
   "title": "useScope",
   "description": "Push a named scope onto the keyboard scope stack. Handlers in deeper scopes take priority. Auto-pops on unmount.",
   "source": {
-    "raw": "import { useEffect } from \"react\";\nimport { useKeyboardContext } from \"../context/keyboard-context.js\";\n\ninterface UseScopeOptions {\n  enabled?: boolean;\n}\n\nexport function useScope(name: string | null, options: UseScopeOptions = {}): void {\n  const { enabled = true } = options;\n  const { pushScope } = useKeyboardContext();\n\n  useEffect(() => {\n    if (!enabled || name === null) return;\n    return pushScope(name);\n    // pushScope is useEffectEvent-based (stable reference), excluded from deps\n    // eslint-disable-next-line react-hooks/exhaustive-deps\n  }, [name, enabled]);\n}\n",
+    "raw": "\"use client\";\n\nimport { useEffect } from \"react\";\nimport { useKeyboardContext } from \"../context/keyboard-context.js\";\n\ninterface UseScopeOptions {\n  enabled?: boolean;\n}\n\nexport function useScope(name: string | null, options: UseScopeOptions = {}): void {\n  const { enabled = true } = options;\n  const { pushScope } = useKeyboardContext();\n\n  useEffect(() => {\n    if (!enabled || name === null) return;\n    return pushScope(name);\n  }, [pushScope, name, enabled]);\n}\n",
     "highlighted": [
       {
         "number": 1,
+        "content": [
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "use client",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 2,
+        "content": []
+      },
+      {
+        "number": 3,
         "content": [
           {
             "text": "import",
@@ -59,7 +84,7 @@
         ]
       },
       {
-        "number": 2,
+        "number": 4,
         "content": [
           {
             "text": "import",
@@ -112,11 +137,11 @@
         ]
       },
       {
-        "number": 3,
+        "number": 5,
         "content": []
       },
       {
-        "number": 4,
+        "number": 6,
         "content": [
           {
             "text": "interface",
@@ -141,7 +166,7 @@
         ]
       },
       {
-        "number": 5,
+        "number": 7,
         "content": [
           {
             "text": "  enabled",
@@ -166,7 +191,7 @@
         ]
       },
       {
-        "number": 6,
+        "number": 8,
         "content": [
           {
             "text": "}",
@@ -175,11 +200,11 @@
         ]
       },
       {
-        "number": 7,
+        "number": 9,
         "content": []
       },
       {
-        "number": 8,
+        "number": 10,
         "content": [
           {
             "text": "export",
@@ -292,7 +317,7 @@
         ]
       },
       {
-        "number": 9,
+        "number": 11,
         "content": [
           {
             "text": "  ",
@@ -361,7 +386,7 @@
         ]
       },
       {
-        "number": 10,
+        "number": 12,
         "content": [
           {
             "text": "  ",
@@ -422,11 +447,11 @@
         ]
       },
       {
-        "number": 11,
+        "number": 13,
         "content": []
       },
       {
-        "number": 12,
+        "number": 14,
         "content": [
           {
             "text": "  ",
@@ -463,7 +488,7 @@
         ]
       },
       {
-        "number": 13,
+        "number": 15,
         "content": [
           {
             "text": "    ",
@@ -520,7 +545,7 @@
         ]
       },
       {
-        "number": 14,
+        "number": 16,
         "content": [
           {
             "text": "    ",
@@ -549,32 +574,6 @@
         ]
       },
       {
-        "number": 15,
-        "content": [
-          {
-            "text": "    //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " pushScope is useEffectEvent-based (stable reference), excluded from deps",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 16,
-        "content": [
-          {
-            "text": "    //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " eslint-disable-next-line react-hooks/exhaustive-deps",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
         "number": 17,
         "content": [
           {
@@ -586,7 +585,15 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " [name",
+            "text": " [pushScope",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " name",
             "color": "var(--code-variable)"
           },
           {

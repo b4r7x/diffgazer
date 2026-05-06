@@ -4,10 +4,17 @@ import { buildLcsTable } from "./lcs.js";
 const CONTEXT = 3;
 
 export function computeDiff(before: string, after: string): ParsedDiff {
-  const oldLines = before.split("\n");
-  const newLines = after.split("\n");
+  const oldLines = splitDiffLines(before);
+  const newLines = splitDiffLines(after);
   const edits = lcsEdits(oldLines, newLines);
   return { oldPath: null, newPath: null, hunks: groupHunks(edits) };
+}
+
+function splitDiffLines(value: string): string[] {
+  if (value === "") return [];
+  const lines = value.split("\n");
+  if (lines[lines.length - 1] === "") lines.pop();
+  return lines;
 }
 
 function naiveEdits(oldLines: string[], newLines: string[]): DiffChange[] {

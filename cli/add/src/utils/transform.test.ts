@@ -74,16 +74,22 @@ describe("handleRscDirective", () => {
 });
 
 describe("rewriteLocalImportsForKeysPackage", () => {
-  test("rewrites local hook import to keys package import", () => {
+  test("rewrites registry hook-name import to keys package import", () => {
     const input = `import { useNavigation } from "@/hooks/navigation";`;
+    const result = rewriteLocalImportsForKeysPackage(input);
+    assert.equal(result, `import { useNavigation } from "@diffgazer/keys";`);
+  });
+
+  test("rewrites copied UI hook-file import to keys package import", () => {
+    const input = `import { useNavigation } from "@/hooks/use-navigation";`;
     const result = rewriteLocalImportsForKeysPackage(input);
     assert.equal(result, `import { useNavigation } from "@diffgazer/keys";`);
   });
 
   test("consolidates multiple keys hook imports into one", () => {
     const input = [
-      `import { useNavigation } from "@/hooks/navigation";`,
-      `import { useFocusTrap } from "@/hooks/focus-trap";`,
+      `import { useNavigation } from "@/hooks/use-navigation";`,
+      `import { useFocusTrap } from "@/hooks/use-focus-trap";`,
     ].join("\n");
     const result = rewriteLocalImportsForKeysPackage(input);
     assert.ok(result.includes(`from "@diffgazer/keys"`));

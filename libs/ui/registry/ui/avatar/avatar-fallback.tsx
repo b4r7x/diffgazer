@@ -12,33 +12,26 @@ export interface AvatarFallbackProps {
   className?: string;
 }
 
-function CascadingImage({ src, className }: { src: string; className?: string }) {
-  const { showImage, onLoad, onError } = useImageStatus(src);
-  if (!showImage) return null;
-  return (
-    <img
-      src={src}
-      alt=""
-      onLoad={onLoad}
-      onError={onError}
-      className={cn("absolute inset-0 size-full object-cover", className)}
-    />
-  );
-}
-
 export function AvatarFallback({
   src,
   children,
   className,
 }: AvatarFallbackProps) {
   const { imageStatus } = useAvatarContext();
+  const fallbackImage = useImageStatus(src);
 
   if (imageStatus === "loaded") return null;
-  if (src) return <CascadingImage src={src} className={className} />;
+  if (src && fallbackImage.showImage) {
+    return (
+      <img
+        src={src}
+        alt=""
+        onLoad={fallbackImage.onLoad}
+        onError={fallbackImage.onError}
+        className={cn("absolute inset-0 size-full object-cover", className)}
+      />
+    );
+  }
 
-  return (
-    <span aria-hidden="true" className={className}>
-      {children}
-    </span>
-  );
+  return <span className={className}>{children}</span>;
 }

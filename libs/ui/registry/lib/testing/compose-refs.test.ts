@@ -32,4 +32,78 @@ describe("composeRefs", () => {
     expect(fn).toHaveBeenCalledWith(el)
     expect(ref.current).toBe(el)
   })
+
+  it("returns a cleanup function when callback ref returns one", () => {
+    const cleanup = vi.fn()
+    const callbackRef = (el: any) => cleanup
+    const composed = composeRefs(callbackRef)
+    const el = document.createElement("div")
+
+    const result = composed(el)
+
+    expect(result).toBe(cleanup)
+  })
+
+  it("invokes cleanup function when the composed ref is called", () => {
+    const cleanup = vi.fn()
+    const callbackRef = vi.fn(() => cleanup)
+    const composed = composeRefs(callbackRef)
+    const el = document.createElement("div")
+
+    const cleanupFn = composed(el)
+    expect(cleanup).not.toHaveBeenCalled()
+
+    // Call the cleanup function
+    cleanupFn?.()
+    expect(cleanup).toHaveBeenCalled()
+  })
+
+  it("handles multiple callback refs with cleanup functions", () => {
+    const cleanup1 = vi.fn()
+    const cleanup2 = vi.fn()
+    const callbackRef1 = vi.fn(() => cleanup1)
+    const callbackRef2 = vi.fn(() => cleanup2)
+
+    const composed = composeRefs(callbackRef1, callbackRef2)
+    const el = document.createElement("div")
+
+    const cleanupFn = composed(el)
+    expect(cleanup1).not.toHaveBeenCalled()
+    expect(cleanup2).not.toHaveBeenCalled()
+
+    cleanupFn?.()
+    expect(cleanup1).toHaveBeenCalled()
+    expect(cleanup2).toHaveBeenCalled()
+  })
+
+  it("mixes callback refs with cleanup and object refs", () => {
+    const cleanup = vi.fn()
+    const callbackRef = vi.fn(() => cleanup)
+    const objectRef = { current: null as Element | null }
+
+    const composed = composeRefs(callbackRef, objectRef)
+    const el = document.createElement("div")
+
+    const cleanupFn = composed(el)
+    expect(objectRef.current).toBe(el)
+    expect(cleanup).not.toHaveBeenCalled()
+
+    cleanupFn?.()
+    expect(cleanup).toHaveBeenCalled()
+    expect(objectRef.current).toBeNull()
+  })
+
+  it("clears callback refs without cleanup when composed with object refs", () => {
+    const callbackRef = vi.fn()
+    const objectRef = { current: null as Element | null }
+    const composed = composeRefs(callbackRef, objectRef)
+    const el = document.createElement("div")
+
+    const cleanupFn = composed(el)
+    cleanupFn?.()
+
+    expect(callbackRef).toHaveBeenNthCalledWith(1, el)
+    expect(callbackRef).toHaveBeenNthCalledWith(2, null)
+    expect(objectRef.current).toBeNull()
+  })
 })

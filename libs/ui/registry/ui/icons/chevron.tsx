@@ -1,6 +1,7 @@
 "use client";
 
 import { cva, type VariantProps } from "class-variance-authority";
+import type { Ref } from "react";
 import { cn } from "@/lib/utils";
 
 const chevronVariants = cva(
@@ -33,7 +34,7 @@ export interface ChevronProps extends VariantProps<typeof chevronVariants> {
   /** When true, rotates 90° clockwise from base direction (expand/collapse toggle). */
   open?: boolean;
   className?: string;
-  ref?: React.Ref<SVGSVGElement>;
+  ref?: Ref<SVGSVGElement>;
 }
 
 export function Chevron({

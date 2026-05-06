@@ -13,7 +13,7 @@ export function CommandPaletteEmpty({ children, className }: CommandPaletteEmpty
   const { itemCount, search } = useCommandPaletteContext();
   if (itemCount > 0 || !search) return null;
   return (
-    <div className={cn("py-6 text-center text-sm text-muted-foreground", className)}>
+    <div role="status" aria-live="polite" className={cn("py-6 text-center text-sm text-muted-foreground", className)}>
       {children}
     </div>
   );

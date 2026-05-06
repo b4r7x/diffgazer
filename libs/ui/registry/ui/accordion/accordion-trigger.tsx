@@ -33,13 +33,12 @@ export function AccordionTrigger({ children, className, variant, handle }: Accor
   const isDisabled = disabled || (!collapsible && isOpen);
   const resolvedHandle = handle === undefined ? <Chevron open={isOpen} size="sm" /> : handle;
 
-  // role="button" is redundant on <button> but required: useNavigation queries [role="button"] as a CSS attribute selector
   return (
     <button
       type="button"
-      role="button"
       id={triggerId}
       data-value={value}
+      data-navigation-role="button"
       onClick={() => onToggle(value)}
       disabled={isDisabled}
       aria-expanded={isOpen}

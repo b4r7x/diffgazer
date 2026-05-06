@@ -58,7 +58,7 @@ function AccordionRoot(props: AccordionProps) {
 
   const contextValue = useMemo(
     () => ({ value: openValues, onToggle, collapsible }),
-    [openValues, collapsible],
+    [openValues, onToggle, collapsible],
   );
 
   return (

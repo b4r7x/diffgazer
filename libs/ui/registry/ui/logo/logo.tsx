@@ -1,24 +1,22 @@
-"use client";
-
 import type { HTMLAttributes, Ref } from "react"
 import { cn } from "@/lib/utils"
-import { getFigletText, type FigletFont } from "./get-figlet-text"
+import type { FigletFont } from "./get-figlet-text"
 
 export interface LogoProps extends HTMLAttributes<HTMLPreElement> {
   text: string
   font?: FigletFont
+  asciiText?: string
   ref?: Ref<HTMLPreElement>
 }
 
 export function Logo({
   ref,
   text,
-  font = "Big",
+  font: _font,
+  asciiText,
   className,
   ...props
 }: LogoProps) {
-  const asciiText = getFigletText(text, font)
-
   return (
     <pre
       ref={ref}

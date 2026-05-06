@@ -24,7 +24,12 @@ export function SelectSearch({
   className,
   "aria-label": ariaLabel,
 }: SelectSearchProps) {
-  const { open, searchQuery, onSearchChange, variant, searchInputRef, highlighted, listboxId } = useSelectContext("SelectSearch");
+  const { open, searchQuery, onSearchChange, variant, searchInputRef, highlighted, listboxId, setHasSearch } = useSelectContext("SelectSearch");
+
+  useLayoutEffect(() => {
+    setHasSearch(true);
+    return () => setHasSearch(false);
+  }, [setHasSearch]);
 
   useLayoutEffect(() => {
     if (open) searchInputRef.current?.focus();

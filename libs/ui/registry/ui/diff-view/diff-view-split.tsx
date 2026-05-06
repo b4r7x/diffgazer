@@ -1,6 +1,6 @@
 "use client";
 
-import { type KeyboardEvent, type RefObject } from "react";
+import { useMemo, type KeyboardEvent, type RefObject } from "react";
 import { cn } from "@/lib/utils";
 import { type ParsedDiff, type SplitCell, toSplitRows } from "@/lib/diff";
 import { LINE_STYLE, SR_LABEL, LINE_NUMBER_CLASS, formatHunkHeader, LineContent } from "./diff-view-line.js";
@@ -35,13 +35,16 @@ export function SplitView({ parsed, showLineNumbers, disableWordDiff, activeHunk
   onKeyDown: (e: KeyboardEvent) => void;
   containerRef: RefObject<HTMLElement | null>;
 }) {
-  const rows = toSplitRows(parsed.hunks, !disableWordDiff);
+  const rows = useMemo(
+    () => toSplitRows(parsed.hunks, !disableWordDiff),
+    [disableWordDiff, parsed.hunks],
+  );
 
   let hunkIndex = -1;
 
   return (
     <div
-      ref={containerRef as React.RefObject<never>}
+      ref={containerRef as RefObject<never>}
       aria-label="Split diff"
       aria-keyshortcuts="j k"
       className="overflow-x-auto focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -56,12 +59,10 @@ export function SplitView({ parsed, showLineNumbers, disableWordDiff, activeHunk
               return (
                 <div
                   key={i}
-                  role="button"
                   data-hunk
-                  tabIndex={-1}
+                  data-diffgazer-navigation-item="button"
                   data-value={String(hunkIndex)}
                   className={cn(LINE_STYLE.hunk, activeHunk === String(hunkIndex) && "ring-1 ring-ring")}
-                  aria-label={`Change section starting at line ${row.oldStart}`}
                 >
                   {formatHunkHeader(row)}
                 </div>

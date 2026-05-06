@@ -1,0 +1,39 @@
+---
+title: shadcn Namespace
+description: Configure shadcn registry aliases for @diffgazer/ui and @diffgazer/keys.
+---
+
+The shadcn CLI can install registry items by namespace after `components.json` maps each namespace to a registry URL.
+
+Configure both namespaces because some `@diffgazer/ui` items depend on `@diffgazer/keys` hooks:
+
+```json
+{
+  "registries": {
+    "@ui": "https://ui.diffgazer.com/r/{name}.json",
+    "@diffgazer-keys": "https://keys.diffgazer.com/r/{name}.json"
+  }
+}
+```
+
+Use the actual registry host for the environment you are testing. For local docs or preview deployments, replace the host names with the matching local/public registry URLs.
+
+Then install namespaced items:
+
+```bash
+npx shadcn@latest add "@ui/accordion"
+npx shadcn@latest add "@ui/dialog" "@ui/popover"
+npx shadcn@latest add "@ui/compose-refs"
+```
+
+When an item references `@diffgazer-keys/navigation`, shadcn resolves it through the second namespace mapping.
+
+## Validation
+
+For a handoff-ready release, verify a clean shadcn app can run:
+
+```bash
+npx shadcn@latest add "@ui/accordion" "@ui/dialog" "@ui/popover"
+```
+
+Then run the app type-check/build. Do not publish shadcn instructions for a registry host until those URLs serve the generated JSON files.

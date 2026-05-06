@@ -14,7 +14,12 @@ vi.mock("zhipu-ai-provider", () => ({
 }));
 
 vi.mock("@openrouter/ai-sdk-provider", () => ({
-  createOpenRouter: vi.fn(() => ({ chat: vi.fn(() => ({})) })),
+  createOpenRouter: vi.fn(() => ({
+    chat: vi.fn(() => ({
+      doGenerate: vi.fn(),
+      doStream: vi.fn(),
+    })),
+  })),
 }));
 
 vi.mock("../config/store.js", () => ({

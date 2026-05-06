@@ -1,7 +1,7 @@
-const MAX_LCS_SIZE = 5_000;
+const MAX_LCS_CELLS = 250_000;
 
 export function buildLcsTable(a: string[], b: string[]): number[][] | null {
-  if (a.length > MAX_LCS_SIZE || b.length > MAX_LCS_SIZE) {
+  if (a.length * b.length > MAX_LCS_CELLS) {
     return null;
   }
 

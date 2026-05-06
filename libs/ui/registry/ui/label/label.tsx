@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentPropsWithRef } from "react";
+import type { ComponentPropsWithRef, MouseEvent } from "react";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
@@ -42,7 +42,7 @@ export function Label({
   onMouseDown,
   ...props
 }: LabelProps) {
-  const handleMouseDown = (event: React.MouseEvent<HTMLLabelElement>) => {
+  const handleMouseDown = (event: MouseEvent<HTMLLabelElement>) => {
     const target = event.target as HTMLElement;
     if (target.closest("button, input, select, textarea")) return;
     onMouseDown?.(event);

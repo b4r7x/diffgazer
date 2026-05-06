@@ -29,7 +29,20 @@ function ensureContainsFiles(fileList, required, label) {
   return { ok: missing.length === 0, missing };
 }
 
-function assertPackageMetadata(path, expectedName, expectedHomePageSuffix, expectedRepoDir, expectedExports, expectedFiles, requireSideEffects) {
+function valuesEqual(actual, expected) {
+  return JSON.stringify(actual) === JSON.stringify(expected);
+}
+
+function hasExport(exportsKeys, expectedExport) {
+  if (!expectedExport.endsWith("/*")) {
+    return exportsKeys.includes(expectedExport);
+  }
+
+  const prefix = expectedExport.slice(0, -1);
+  return exportsKeys.some((name) => name.startsWith(prefix) && !name.includes("*"));
+}
+
+function assertPackageMetadata(path, expectedName, expectedHomePageSuffix, expectedRepoDir, expectedExports, expectedFiles, expectedSideEffects) {
   const pkg = readJSON(path);
   const missing = [];
 
@@ -43,8 +56,8 @@ function assertPackageMetadata(path, expectedName, expectedHomePageSuffix, expec
   if (repoDir !== expectedRepoDir) {
     missing.push(`repository.directory: ${repoDir}`);
   }
-  if (typeof pkg.sideEffects !== "boolean" || pkg.sideEffects !== requireSideEffects) {
-    missing.push(`sideEffects: ${String(pkg.sideEffects)}`);
+  if (!valuesEqual(pkg.sideEffects, expectedSideEffects)) {
+    missing.push(`sideEffects: ${JSON.stringify(pkg.sideEffects)}`);
   }
 
   const fileCheck = ensureContainsFiles(pkg.files, expectedFiles, "files");
@@ -53,7 +66,12 @@ function assertPackageMetadata(path, expectedName, expectedHomePageSuffix, expec
   }
 
   const exportsKeys = pkg.exports ? Object.keys(pkg.exports) : [];
-  const missingExports = expectedExports.filter((name) => !exportsKeys.includes(name));
+  const wildcardExports = exportsKeys.filter((name) => name.includes("*"));
+  if (wildcardExports.length) {
+    missing.push(`wildcard exports: ${wildcardExports.join(", ")}`);
+  }
+
+  const missingExports = expectedExports.filter((name) => !hasExport(exportsKeys, name));
   if (missingExports.length) {
     missing.push(`exports missing: ${missingExports.join(", ")}`);
   }
@@ -174,7 +192,7 @@ try {
 addResult("no nested repo config", nestedRepoConfig.length === 0, nestedRepoConfig.split("\n").slice(0, 10).join(", "));
 
 const nestedGitDirs = execSync(
-  "find . -type d -name .git -not -path './.git'",
+  "find . -path './.worktrees' -prune -o -type d -name .git -not -path './.git' -print",
   { encoding: "utf8" },
 )
   .trim()
@@ -183,7 +201,7 @@ const nestedGitDirs = execSync(
 addResult("no nested .git directories", nestedGitDirs.length === 0, nestedGitDirs.slice(0, 5).join(", "));
 
 const nestedLocks = execSync(
-  "find . -name pnpm-lock.yaml -type f -not -path './pnpm-lock.yaml' -not -path './node_modules/*'",
+  "find . -path './.worktrees' -prune -o -name pnpm-lock.yaml -type f -not -path './pnpm-lock.yaml' -not -path './node_modules/*' -print",
   { encoding: "utf8" },
 )
   .trim()
@@ -192,7 +210,7 @@ const nestedLocks = execSync(
 addResult("no nested pnpm-lock.yaml", nestedLocks.length === 0, nestedLocks.slice(0, 5).join(", "));
 
 const nestedWorkspaces = execSync(
-  "find . -name pnpm-workspace.yaml -type f -not -path './pnpm-workspace.yaml' -not -path './node_modules/*'",
+  "find . -path './.worktrees' -prune -o -name pnpm-workspace.yaml -type f -not -path './pnpm-workspace.yaml' -not -path './node_modules/*' -print",
   { encoding: "utf8" },
 )
   .trim()
@@ -285,7 +303,7 @@ assertPackageMetadata(
   "libs/ui",
   ["./components/*", "./hooks/*", "./lib/*", "./theme-base.css", "./theme.css", "./styles.css"],
   ["dist"],
-  false,
+  ["**/*.css"],
 );
 
 assertPackageMetadata(

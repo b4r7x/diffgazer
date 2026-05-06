@@ -1,0 +1,56 @@
+name: Release Readiness
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  verify:
+    name: Build, Verify, and Pack
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Verify
+        run: pnpm run verify
+
+      - name: Package smoke
+        run: pnpm run smoke:packages
+
+      - name: Changeset status
+        run: pnpm changeset status --since=origin/main
+
+      - name: Pack @diffgazer/add
+        run: pnpm --filter @diffgazer/add pack --dry-run
+
+      - name: Pack @diffgazer/ui
+        run: pnpm --filter @diffgazer/ui pack --dry-run
+
+      - name: Pack @diffgazer/keys
+        run: pnpm --filter @diffgazer/keys pack --dry-run

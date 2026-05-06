@@ -189,5 +189,27 @@ describe("useFocusTrap", () => {
       rerender({ enabled: true });
       expect(document.activeElement).toBe(container.querySelector("#a"));
     });
+
+    it("moves the trap when the container ref changes", () => {
+      const first = createContainer('<button id="a">A</button>');
+      const second = createContainer('<button id="b">B</button>');
+      container = first;
+      const firstRef: RefObject<HTMLElement | null> = { current: first };
+      const secondRef: RefObject<HTMLElement | null> = { current: second };
+
+      const { rerender } = renderHook(
+        ({ ref }) => {
+          useFocusTrap(ref);
+        },
+        { initialProps: { ref: firstRef } },
+      );
+
+      expect(document.activeElement).toBe(first.querySelector("#a"));
+
+      rerender({ ref: secondRef });
+      expect(document.activeElement).toBe(second.querySelector("#b"));
+
+      second.remove();
+    });
   });
 });

@@ -11,6 +11,7 @@ export interface FileOp {
   content: string;
   relativePath: string;
   installDir: string;
+  sourceName?: string;
 }
 
 function tryQuietly(fn: () => void, label: string): boolean {
@@ -46,6 +47,7 @@ export interface WriteFilesResult {
   newFiles: string[];
   backups: Array<{ path: string; content: string }>;
   createdDirs: string[];
+  results: Array<{ op: FileOp; result: WriteResult }>;
 }
 
 function trackNewDir(dir: string, existingDirs: Set<string>, createdDirs: string[], createdDirSet: Set<string>): void {
@@ -113,7 +115,15 @@ export function writeFilesWithRollback(
   }
 
   const { written, skipped, overwritten } = countResults(results);
-  return { written, skipped, overwritten, newFiles, backups, createdDirs };
+  return {
+    written,
+    skipped,
+    overwritten,
+    newFiles,
+    backups,
+    createdDirs,
+    results: fileOps.map((op, index) => ({ op, result: results[index] ?? "skipped" })),
+  };
 }
 
 export function showDryRunPreview(fileOps: FileOp[], overwrite: boolean): void {

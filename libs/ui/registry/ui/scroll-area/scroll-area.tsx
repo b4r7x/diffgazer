@@ -23,11 +23,17 @@ export function ScrollArea({
   keyboardScrollable = true,
   ref,
   onKeyDown,
+  role: roleProp,
+  tabIndex,
+  "aria-label": ariaLabel,
+  "aria-labelledby": ariaLabelledBy,
   ...props
 }: ScrollAreaProps) {
   const canScrollV = orientation === "vertical" || orientation === "both";
   const canScrollH = orientation === "horizontal" || orientation === "both";
-  const role = props["aria-label"] || props["aria-labelledby"] ? "region" : undefined;
+  const hasAccessibleName = Boolean(ariaLabel || ariaLabelledBy);
+  const canKeyboardScroll = keyboardScrollable && hasAccessibleName;
+  const role = roleProp ?? (hasAccessibleName ? "region" : undefined);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     onKeyDown?.(e);
@@ -82,11 +88,13 @@ export function ScrollArea({
     <div
       ref={ref}
       role={role}
-      tabIndex={keyboardScrollable ? 0 : undefined}
-      onKeyDown={keyboardScrollable ? handleKeyDown : onKeyDown}
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
+      tabIndex={canKeyboardScroll ? (tabIndex ?? 0) : tabIndex}
+      onKeyDown={canKeyboardScroll ? handleKeyDown : onKeyDown}
       className={cn(
         "scrollbar-thin rounded-[inherit] [scrollbar-gutter:stable]",
-        keyboardScrollable && "focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        canKeyboardScroll && "focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
         orientationClasses[orientation],
         className,
       )}

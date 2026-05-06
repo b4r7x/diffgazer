@@ -4,9 +4,13 @@ import React from "react"
 import { useOverflow, type OverflowDirection } from "../use-overflow.js"
 
 let resizeCallbacks: (() => void)[] = []
+let mutationCallbacks: (() => void)[] = []
+let animationCallbacks: FrameRequestCallback[] = []
 
 beforeEach(() => {
   resizeCallbacks = []
+  mutationCallbacks = []
+  animationCallbacks = []
   vi.stubGlobal(
     "ResizeObserver",
     class {
@@ -21,6 +25,27 @@ beforeEach(() => {
       disconnect() {}
     },
   )
+  vi.stubGlobal(
+    "MutationObserver",
+    class {
+      private cb: () => void
+      constructor(cb: () => void) {
+        this.cb = cb
+      }
+      observe() {
+        mutationCallbacks.push(this.cb)
+      }
+      disconnect() {}
+      takeRecords() {
+        return []
+      }
+    },
+  )
+  vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+    animationCallbacks.push(cb)
+    return animationCallbacks.length
+  })
+  vi.stubGlobal("cancelAnimationFrame", vi.fn())
 })
 
 function TestComponent({ direction, onResult }: { direction?: OverflowDirection; onResult: (v: boolean) => void }) {
@@ -34,6 +59,12 @@ function mockDimensions(el: HTMLElement, dims: { scrollWidth: number; clientWidt
   Object.defineProperty(el, "clientWidth", { value: dims.clientWidth, configurable: true })
   Object.defineProperty(el, "scrollHeight", { value: dims.scrollHeight, configurable: true })
   Object.defineProperty(el, "clientHeight", { value: dims.clientHeight, configurable: true })
+}
+
+function flushScheduledChecks() {
+  const callbacks = animationCallbacks
+  animationCallbacks = []
+  for (const cb of callbacks) cb(0)
 }
 
 describe("useOverflow", () => {
@@ -56,6 +87,7 @@ describe("useOverflow", () => {
 
     act(() => {
       for (const cb of resizeCallbacks) cb()
+      flushScheduledChecks()
     })
 
     expect(lastResult).toBe(true)
@@ -75,6 +107,7 @@ describe("useOverflow", () => {
 
     act(() => {
       for (const cb of resizeCallbacks) cb()
+      flushScheduledChecks()
     })
 
     expect(lastResult).toBe(true)
@@ -94,6 +127,7 @@ describe("useOverflow", () => {
 
     act(() => {
       for (const cb of resizeCallbacks) cb()
+      flushScheduledChecks()
     })
 
     expect(lastResult).toBe(false)
@@ -113,6 +147,7 @@ describe("useOverflow", () => {
 
     act(() => {
       for (const cb of resizeCallbacks) cb()
+      flushScheduledChecks()
     })
 
     expect(lastResult).toBe(true)
@@ -132,6 +167,41 @@ describe("useOverflow", () => {
 
     act(() => {
       for (const cb of resizeCallbacks) cb()
+      flushScheduledChecks()
+    })
+
+    expect(lastResult).toBe(true)
+  })
+
+  it("updates when text content changes", () => {
+    let lastResult = false
+    const { getByTestId, rerender } = render(
+      React.createElement(TestComponent, {
+        direction: "horizontal",
+        onResult: (v: boolean) => { lastResult = v },
+      }),
+    )
+
+    const el = getByTestId("target")
+    mockDimensions(el, { scrollWidth: 100, clientWidth: 100, scrollHeight: 100, clientHeight: 100 })
+
+    act(() => {
+      for (const cb of resizeCallbacks) cb()
+      flushScheduledChecks()
+    })
+    expect(lastResult).toBe(false)
+
+    rerender(
+      React.createElement(TestComponent, {
+        direction: "horizontal",
+        onResult: (v: boolean) => { lastResult = v },
+      }),
+    )
+    mockDimensions(el, { scrollWidth: 200, clientWidth: 100, scrollHeight: 100, clientHeight: 100 })
+
+    act(() => {
+      for (const cb of mutationCallbacks) cb()
+      flushScheduledChecks()
     })
 
     expect(lastResult).toBe(true)

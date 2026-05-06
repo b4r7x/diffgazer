@@ -1,6 +1,6 @@
 "use client";
 
-import type { HTMLAttributes } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import {
@@ -31,7 +31,7 @@ export interface BlockBarSegmentProps
     Omit<HTMLAttributes<HTMLSpanElement>, "children"> {
   value: number;
   char?: string;
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
 export function BlockBarSegment({

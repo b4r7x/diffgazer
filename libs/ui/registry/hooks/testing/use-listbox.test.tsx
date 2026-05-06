@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
@@ -62,8 +62,8 @@ describe("useListbox", () => {
     listbox.focus()
     await user.keyboard("{ArrowDown}")
 
-    expect(listbox).toHaveAttribute("aria-activedescendant", "lb-b")
-    expect(onHighlight).toHaveBeenCalledWith("b")
+    expect(listbox).toHaveAttribute("aria-activedescendant", "lb-a")
+    expect(onHighlight).toHaveBeenCalledWith("a")
   })
 
   it("selects item on Enter key", async () => {
@@ -75,7 +75,7 @@ describe("useListbox", () => {
     listbox.focus()
     await user.keyboard("{ArrowDown}{Enter}")
 
-    expect(onSelect).toHaveBeenCalledWith("b")
+    expect(onSelect).toHaveBeenCalledWith("a")
   })
 
   it("selects item on Space key", async () => {
@@ -87,7 +87,7 @@ describe("useListbox", () => {
     listbox.focus()
     await user.keyboard("{ArrowDown} ")
 
-    expect(onSelect).toHaveBeenCalledWith("b")
+    expect(onSelect).toHaveBeenCalledWith("a")
   })
 
   it("supports menu role", async () => {
@@ -101,6 +101,15 @@ describe("useListbox", () => {
     render(<Listbox items={defaultItems} selectedId="b" />)
     const listbox = screen.getByRole("listbox")
     expect(listbox).toHaveAttribute("aria-activedescendant", "lb-b")
+  })
+
+  it("removes aria-activedescendant when the active item is removed", async () => {
+    const { rerender } = render(<Listbox items={defaultItems} selectedId="b" />)
+    const listbox = screen.getByRole("listbox")
+    expect(listbox).toHaveAttribute("aria-activedescendant", "lb-b")
+
+    rerender(<Listbox items={defaultItems.filter((item) => item.id !== "b")} selectedId="b" />)
+    await waitFor(() => expect(listbox).not.toHaveAttribute("aria-activedescendant"))
   })
 
   it("forwards custom onKeyDown handler with the keyboard event", async () => {

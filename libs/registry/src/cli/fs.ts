@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync, readdirSync, renameSync, cpSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync, readdirSync, renameSync, cpSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { randomBytes } from "node:crypto";
 
@@ -57,6 +57,8 @@ export function ensureWithinDir(targetPath: string, baseDir: string): void {
       `Path traversal detected: "${targetPath}" escapes "${baseDir}"`,
     );
   }
+
+  ensureRealPathWithinDir(resolvedTarget, resolvedBase);
 }
 
 export function ensureWithinAnyDir(targetPath: string, baseDirs: string[]): void {
@@ -64,10 +66,47 @@ export function ensureWithinAnyDir(targetPath: string, baseDirs: string[]): void
   for (const dir of baseDirs) {
     const resolvedBase = resolve(dir);
     const rel = relative(resolvedBase, resolvedTarget);
-    if (!rel.startsWith("..") && !isAbsolute(rel)) return;
+    if (!rel.startsWith("..") && !isAbsolute(rel) && isRealPathWithinDir(resolvedTarget, resolvedBase)) return;
   }
   throw new Error(
     `Path traversal detected: "${targetPath}" escapes all allowed directories: ${baseDirs.map(d => `"${d}"`).join(", ")}`,
+  );
+}
+
+function realpathExisting(path: string): string | null {
+  try {
+    return realpathSync.native(path);
+  } catch (e) {
+    if (isEnoent(e)) return null;
+    throw e;
+  }
+}
+
+function nearestExistingRealpath(path: string): string | null {
+  let current = path;
+  while (!existsSync(current)) {
+    const parent = dirname(current);
+    if (parent === current) return null;
+    current = parent;
+  }
+  return realpathSync.native(current);
+}
+
+function isPathWithinBase(targetPath: string, baseDir: string): boolean {
+  const rel = relative(baseDir, targetPath);
+  return !rel.startsWith("..") && !isAbsolute(rel);
+}
+
+function isRealPathWithinDir(targetPath: string, baseDir: string): boolean {
+  const realBase = realpathExisting(baseDir) ?? nearestExistingRealpath(baseDir) ?? resolve(baseDir);
+  const realTarget = realpathExisting(targetPath) ?? nearestExistingRealpath(dirname(targetPath)) ?? resolve(dirname(targetPath));
+  return isPathWithinBase(realTarget, realBase);
+}
+
+function ensureRealPathWithinDir(targetPath: string, baseDir: string): void {
+  if (isRealPathWithinDir(targetPath, baseDir)) return;
+  throw new Error(
+    `Path traversal detected: "${targetPath}" escapes "${baseDir}" through a symlink or realpath.`,
   );
 }
 

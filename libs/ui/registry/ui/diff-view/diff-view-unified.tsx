@@ -1,8 +1,8 @@
 "use client";
 
-import { type KeyboardEvent, type RefObject } from "react";
+import { useMemo, type KeyboardEvent, type RefObject } from "react";
 import { cn } from "@/lib/utils";
-import { type ParsedDiff, type AnnotatedChange, annotateWordDiff } from "@/lib/diff";
+import { type AnnotatedChange, type ParsedDiff, annotateWordDiff } from "@/lib/diff";
 import { LINE_STYLE, SR_LABEL, LINE_PREFIX, LINE_NUMBER_CLASS, formatHunkHeader, LineContent } from "./diff-view-line.js";
 
 export function UnifiedView({ parsed, showLineNumbers, disableWordDiff, activeHunk, onKeyDown, containerRef }: {
@@ -13,9 +13,17 @@ export function UnifiedView({ parsed, showLineNumbers, disableWordDiff, activeHu
   onKeyDown: (e: KeyboardEvent) => void;
   containerRef: RefObject<HTMLElement | null>;
 }) {
+  const hunks = useMemo(
+    () => parsed.hunks.map((hunk) => ({
+      hunk,
+      changes: (disableWordDiff ? hunk.changes : annotateWordDiff(hunk.changes)) as AnnotatedChange[],
+    })),
+    [disableWordDiff, parsed.hunks],
+  );
+
   return (
     <pre
-      ref={containerRef as React.RefObject<never>}
+      ref={containerRef as RefObject<never>}
       aria-label="Unified diff"
       aria-keyshortcuts="j k"
       className="p-2 overflow-x-auto focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -23,17 +31,14 @@ export function UnifiedView({ parsed, showLineNumbers, disableWordDiff, activeHu
       onKeyDown={onKeyDown}
     >
       <code>
-        {parsed.hunks.map((hunk, hi) => {
-          const changes: AnnotatedChange[] = disableWordDiff ? hunk.changes : annotateWordDiff(hunk.changes);
+        {hunks.map(({ hunk, changes }, hi) => {
           return (
             <div key={hi}>
               <div
-                role="button"
                 data-hunk
-                tabIndex={-1}
+                data-diffgazer-navigation-item="button"
                 data-value={String(hi)}
                 className={cn(LINE_STYLE.hunk, activeHunk === String(hi) && "ring-1 ring-ring")}
-                aria-label={`Change section starting at line ${hunk.oldStart}`}
               >
                 {formatHunkHeader(hunk)}
               </div>

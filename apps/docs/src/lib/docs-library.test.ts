@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  getInstallCommand,
   routeSlugsFromSourcePath,
   sourceSlugsForLibrary,
 } from "@/lib/docs-library"
@@ -42,5 +43,11 @@ describe("docs-library source path mapping", () => {
     ])
     expect(routeSlugsFromSourcePath("ui", "/docs/keys/guides/navigation")).toBeNull()
     expect(routeSlugsFromSourcePath("keys", "/docs/ui/components/button")).toBeNull()
+  })
+
+  it("does not generate public install commands while packages are unpublished", () => {
+    expect(getInstallCommand("ui", "button")).toBeNull()
+    expect(getInstallCommand("ui", "ui/button")).toBeNull()
+    expect(getInstallCommand("keys", "navigation")).toBeNull()
   })
 })

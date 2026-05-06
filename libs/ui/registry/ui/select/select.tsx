@@ -17,6 +17,7 @@ interface SelectBaseProps {
   width?: "sm" | "md" | "lg" | "full";
   /** Name attribute for the hidden form input */
   name?: string;
+  required?: boolean;
   "aria-invalid"?: boolean;
   children: ReactNode;
   className?: string;
@@ -60,6 +61,7 @@ export function Select(props: SelectProps) {
     variant = "default",
     width,
     name,
+    required,
     "aria-invalid": ariaInvalid,
     children,
     className,
@@ -78,6 +80,7 @@ export function Select(props: SelectProps) {
     disabled,
     variant,
     ariaInvalid,
+    required,
   });
 
   return (
@@ -94,10 +97,51 @@ export function Select(props: SelectProps) {
         {children}
         {name && (
           Array.isArray(contextValue.value)
-            ? contextValue.value.map((v) => (
-                <input key={v} type="hidden" name={name} value={v} />
-              ))
-            : <input type="hidden" name={name} value={contextValue.value} />
+            ? (
+                <>
+                  <select
+                    name={name}
+                    multiple
+                    value={contextValue.value}
+                    disabled={disabled}
+                    tabIndex={-1}
+                    aria-hidden="true"
+                    className="sr-only"
+                    onChange={() => {}}
+                  >
+                    {contextValue.value.map((v) => (
+                      <option key={v} value={v}>{v}</option>
+                    ))}
+                  </select>
+                  {required && (
+                    <input
+                      type="checkbox"
+                      required
+                      checked={contextValue.value.length > 0}
+                      disabled={disabled}
+                      tabIndex={-1}
+                      aria-hidden="true"
+                      readOnly
+                      className="sr-only"
+                    />
+                  )}
+                </>
+              )
+            : (
+                <select
+                  name={name}
+                  value={contextValue.value}
+                  required={required}
+                  disabled={disabled}
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  className="sr-only"
+                  onChange={() => {}}
+                >
+                  <option value="" />
+                  {contextValue.value && <option value={contextValue.value}>{contextValue.value}</option>}
+                </select>
+              )
         )}
       </div>
     </SelectContext>

@@ -5,7 +5,6 @@ import {
   type ReactNode,
   type Ref,
   useEffect,
-  useEffectEvent,
   useMemo,
   useState,
 } from "react";
@@ -59,14 +58,10 @@ function AvatarRoot({
   const resolvedSize = size ?? groupCtx?.size;
   const [imageStatus, setImageStatus] = useState<AvatarStatus>("idle");
 
-  const notifyStatusChange = useEffectEvent((status: AvatarStatus) => {
-    onStatusChange?.(status);
-  });
-
   useEffect(() => {
     if (imageStatus === "idle") return;
-    notifyStatusChange(imageStatus);
-  }, [imageStatus]);
+    onStatusChange?.(imageStatus);
+  }, [imageStatus, onStatusChange]);
 
   const contextValue = useMemo(() => ({ imageStatus, setImageStatus }), [imageStatus]);
 

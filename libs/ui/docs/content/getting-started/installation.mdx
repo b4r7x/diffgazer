@@ -5,25 +5,86 @@ description: Get started with @diffgazer/ui by initializing your project and add
 
 `@diffgazer/ui` components are installed as source files. Use `dgadd` to copy components and optional `@diffgazer/keys` hooks into your app.
 
+> Public npm package names are external publish-gated as of May 6, 2026. Use the local workspace smoke flow below until `npm view @diffgazer/add`, `npm view @diffgazer/ui`, and `npm view @diffgazer/keys` return versions.
+
+## Current Local Validation
+
+From this repository:
+
+```bash
+pnpm run smoke:packages
+```
+
+To test `dgadd` in a separate fixture app before publication, pack and install the local CLI package:
+
+```bash
+pnpm --filter @diffgazer/add build
+pnpm --filter @diffgazer/add pack --pack-destination /tmp/diffgazer-packs
+pnpm add -D /tmp/diffgazer-packs/diffgazer-add-*.tgz
+pnpm exec dgadd init
+pnpm exec dgadd add ui/button
+```
+
+## Required App Wiring
+
+Configure the `@/*` alias before running `dgadd init`. The initializer rejects projects without this alias unless `--allow-missing-alias` is passed for an app whose tooling already resolves `@/*`.
+
+Add the `@/*` alias to TypeScript and to your bundler or framework:
+
+```json
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
+}
+```
+
+For Vite, mirror the alias in `vite.config.ts`:
+
+```ts
+import { resolve } from "node:path"
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      "@": resolve(__dirname, "./src"),
+    },
+  },
+})
+```
+
+Then import the copied Tailwind/theme entry from your app CSS:
+
+```css
+@import "./styles/styles.css";
+```
+
+See [TypeScript](/ui/docs/getting-started/typescript) and [Tailwind Setup](/ui/docs/getting-started/tailwind-setup) for framework-specific details.
+
 ## Initialize
+
+After `@diffgazer/add` is published and the required app wiring is in place, use one command style consistently:
 
 ```bash
 npx @diffgazer/add init
+npx @diffgazer/add add ui/button
 ```
 
-This creates `diffgazer.json`, configures aliases, and writes the shared theme files.
+This creates `diffgazer.json`, records the aliases used by `dgadd`, creates install directories, writes `src/lib/utils.ts`, and copies `src/styles/theme.css` plus `src/styles/styles.css`. It does not edit your TypeScript config, bundler config, or app CSS entrypoint.
 
 ## Add Components
 
 ```bash
-dgadd add ui/button
-dgadd add ui/dialog ui/tabs ui/menu
+npx @diffgazer/add add ui/dialog ui/tabs ui/menu
 ```
 
 Bare names are treated as UI components:
 
 ```bash
-dgadd add button
+npx @diffgazer/add add button
 ```
 
 ## Add Keyboard Hooks
@@ -31,14 +92,14 @@ dgadd add button
 Standalone hooks can be copied directly:
 
 ```bash
-dgadd add keys/navigation keys/focus-trap keys/scroll-lock
+npx @diffgazer/add add keys/navigation keys/focus-trap keys/scroll-lock
 ```
 
 Components with keyboard behavior can choose copy mode or package mode:
 
 ```bash
-dgadd add ui/menu --integration copy
-dgadd add ui/menu --integration keys
+npx @diffgazer/add add ui/menu --integration copy
+npx @diffgazer/add add ui/menu --integration keys
 ```
 
 `copy` mode installs local hook source. `keys` mode imports hooks from `@diffgazer/keys`.
@@ -51,6 +112,8 @@ npx @diffgazer/add init
 yarn dlx @diffgazer/add init
 bunx @diffgazer/add init
 ```
+
+Use these package-manager one-shot commands only after `@diffgazer/add` is published.
 
 ## Result
 

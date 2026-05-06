@@ -6,8 +6,8 @@ description: Install @diffgazer/keys hooks into your project.
 ## Copy Standalone Hooks
 
 ```bash
-dgadd add keys/navigation
-dgadd add keys/focus-trap keys/scroll-lock
+npx @diffgazer/add add keys/navigation
+npx @diffgazer/add add keys/focus-trap keys/scroll-lock
 ```
 
 Standalone hooks are copied into your project as source files and have no runtime dependency on `@diffgazer/keys`.
@@ -20,6 +20,8 @@ Provider-based hooks such as `useKey`, `useScope`, and `useFocusZone` come from 
 npm install @diffgazer/keys
 ```
 
+This package install is publish-gated until `npm view @diffgazer/keys version` succeeds.
+
 ```tsx
 import { KeyboardProvider, useKey } from "@diffgazer/keys"
 ```
@@ -27,5 +29,5 @@ import { KeyboardProvider, useKey } from "@diffgazer/keys"
 UI components can also be installed in package integration mode:
 
 ```bash
-dgadd add ui/menu --integration keys
+npx @diffgazer/add add ui/menu --integration keys
 ```

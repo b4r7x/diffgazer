@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, type ButtonHTMLAttributes, type MouseEvent, type Ref } from "react";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useTabsContext } from "./tabs-context";
@@ -35,18 +36,34 @@ export const tabsTriggerVariants = cva(
   }
 );
 
-export interface TabsTriggerProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "value" | "disabled"> {
+export interface TabsTriggerProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "value" | "disabled"> {
   value: string;
   disabled?: boolean;
-  ref?: React.Ref<HTMLButtonElement>;
+  ref?: Ref<HTMLButtonElement>;
 }
 
-export function TabsTrigger({ value, children, className, disabled, ref, ...rest }: TabsTriggerProps) {
-  const { tabsId, value: selectedValue, onValueChange, variant, orientation } = useTabsContext();
+export function TabsTrigger({ value, children, className, disabled, ref, onClick, ...rest }: TabsTriggerProps) {
+  const { tabsId, value: selectedValue, onValueChange, registerTab, variant, orientation } = useTabsContext();
   const isActive = selectedValue === value;
+
+  useEffect(() => {
+    if (disabled) return;
+    return registerTab(value);
+  }, [disabled, registerTab, value]);
+
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    if (disabled) {
+      event.preventDefault();
+      return;
+    }
+
+    onClick?.(event);
+    if (!event.defaultPrevented) onValueChange(value);
+  };
 
   return (
     <button
+      {...rest}
       ref={ref}
       type="button"
       id={`${tabsId}-tab-${value}`}
@@ -54,16 +71,17 @@ export function TabsTrigger({ value, children, className, disabled, ref, ...rest
       aria-selected={isActive}
       aria-controls={`${tabsId}-tabpanel-${value}`}
       aria-disabled={disabled || undefined}
+      disabled={disabled}
       tabIndex={isActive && !disabled ? 0 : -1}
+      data-diffgazer-navigation-item="tab"
       data-value={value}
       data-state={isActive ? "active" : "inactive"}
       data-orientation={orientation}
-      onClick={() => { if (disabled) return; onValueChange(value); }}
+      onClick={handleClick}
       className={cn(
         tabsTriggerVariants({ variant, state: isActive ? "active" : "inactive", disabled: !!disabled }),
         className
       )}
-      {...rest}
     >
       {children}
     </button>

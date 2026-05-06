@@ -4,8 +4,8 @@ import type { AnchorHTMLAttributes, ComponentPropsWithRef, ReactNode, Ref } from
 import { cn } from "@/lib/utils"
 
 const DIRECTION_CONFIG = {
-  previous: { rel: "prev", ariaLabel: "Go to previous page" },
-  next: { rel: "next", ariaLabel: "Go to next page" },
+  previous: { rel: "prev" },
+  next: { rel: "next" },
 } as const
 
 export type PagerLinkRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
@@ -21,7 +21,7 @@ export interface PagerLinkProps extends Omit<ComponentPropsWithRef<"a">, "childr
 }
 
 export function PagerLink({ className, ref, children, direction, ...props }: PagerLinkProps) {
-  const { rel, ariaLabel } = DIRECTION_CONFIG[direction]
+  const { rel } = DIRECTION_CONFIG[direction]
   const resolvedClassName = cn(
     "text-xs font-mono text-muted-foreground hover:text-foreground transition-colors",
     direction === "next" && "ml-auto",
@@ -29,14 +29,13 @@ export function PagerLink({ className, ref, children, direction, ...props }: Pag
   )
 
   if (typeof children === "function") {
-    return <>{children({ ref: ref ?? null, className: resolvedClassName, rel, direction, "aria-label": ariaLabel, ...props })}</>
+    return <>{children({ ref: ref ?? null, className: resolvedClassName, rel, direction, ...props })}</>
   }
 
   return (
     <a
       ref={ref}
       rel={rel}
-      aria-label={ariaLabel}
       className={resolvedClassName}
       {...props}
     >

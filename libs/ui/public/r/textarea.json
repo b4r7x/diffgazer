@@ -16,8 +16,11 @@
     },
     {
       "path": "registry/ui/textarea/textarea.tsx",
-      "content": "\"use client\";\n\nimport type { TextareaHTMLAttributes, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { inputVariants } from \"@/lib/input-variants\";\n\nexport interface TextareaProps\n  extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, \"size\"> {\n  ref?: Ref<HTMLTextAreaElement>;\n  size?: \"sm\" | \"md\" | \"lg\";\n  error?: boolean;\n}\n\nexport function Textarea({\n  className,\n  size,\n  error,\n  ref,\n  ...props\n}: TextareaProps) {\n  return (\n    <textarea\n      className={cn(\n        inputVariants({ size, error }),\n        \"h-auto min-h-20 resize-y\",\n        className\n      )}\n      ref={ref}\n      aria-invalid={error || undefined}\n      {...props}\n    />\n  );\n}\n",
+      "content": "\"use client\";\n\nimport type { TextareaHTMLAttributes, Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { inputVariants } from \"@/lib/input-variants\";\n\nexport interface TextareaProps\n  extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, \"size\"> {\n  ref?: Ref<HTMLTextAreaElement>;\n  size?: \"sm\" | \"md\" | \"lg\";\n  error?: boolean;\n  invalid?: boolean;\n}\n\nexport function Textarea({\n  className,\n  size,\n  error,\n  invalid,\n  ref,\n  \"aria-invalid\": ariaInvalid,\n  ...props\n}: TextareaProps) {\n  const isInvalid = invalid ?? error ?? ariaInvalid;\n  return (\n    <textarea\n      className={cn(\n        inputVariants({ size, error: !!isInvalid }),\n        \"h-auto min-h-20 resize-y\",\n        className\n      )}\n      ref={ref}\n      {...props}\n      aria-invalid={isInvalid || undefined}\n    />\n  );\n}\n",
       "type": "registry:ui"
     }
-  ]
+  ],
+  "meta": {
+    "client": true
+  }
 }

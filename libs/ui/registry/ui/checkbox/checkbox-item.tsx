@@ -33,7 +33,6 @@ export function CheckboxItem({ value, label, description, disabled = false, clas
       variant={ctx.variant}
       strikethrough={ctx.strikethrough}
       name={ctx.name}
-      required={ctx.required}
       className={className}
     />
   );

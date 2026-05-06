@@ -1,10 +1,10 @@
 "use client";
 
-import type { Ref } from "react";
+import type { HTMLAttributes, Ref } from "react";
 import { cn } from "@/lib/utils";
 import { useTabsContext } from "./tabs-context";
 
-export interface TabsContentProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface TabsContentProps extends HTMLAttributes<HTMLDivElement> {
   value: string;
   ref?: Ref<HTMLDivElement>;
 }

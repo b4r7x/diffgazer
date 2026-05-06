@@ -11,6 +11,7 @@ export async function loadDocData<T>(
     const mod = await import(`../generated/${library}/${type}/${name}.json`)
     return mod.default as T
   } catch {
+    if (type === "components") return null
     if (options?.optional) return null
     throw new Error(`Failed to load ${type}/${name} for ${library}`)
   }

@@ -1,4 +1,6 @@
-import { createContext, useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+"use client";
+
+import { createContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { isInputElement, matchesHotkey } from "../utils/keyboard-utils.js";
 
 type Handler = (event: KeyboardEvent) => void;
@@ -43,7 +45,7 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
 
   const activeScope = scopeStack[scopeStack.length - 1]?.name ?? null;
 
-  const pushScope = useEffectEvent((scope: string) => {
+  const pushScope = useCallback((scope: string) => {
     const id = nextScopeId.current++;
     setScopeStack((prev) => [...prev, { name: scope, id }]);
     return () => {
@@ -55,7 +57,7 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
         return next;
       });
     };
-  });
+  }, []);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -94,7 +96,7 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [activeScope]);
 
-  const register = useEffectEvent((scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => {
+  const register = useCallback((scope: string, hotkey: string, handler: Handler, options?: HandlerOptions) => {
     let scopeHandlers = handlers.current.get(scope);
     if (!scopeHandlers) {
       scopeHandlers = new Map<string, HandlerEntry[]>();
@@ -124,13 +126,11 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
         activeScopeHandlers.set(hotkey, remainingEntries);
       }
     };
-  });
+  }, []);
 
   const contextValue = useMemo<KeyboardContextValue>(
     () => ({ activeScope, pushScope, register }),
-    // pushScope and register are useEffectEvent — stable by contract, excluded from deps
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeScope],
+    [activeScope, pushScope, register],
   );
 
   return <KeyboardContext.Provider value={contextValue}>{children}</KeyboardContext.Provider>;

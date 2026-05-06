@@ -9,6 +9,8 @@ description: Install @diffgazer/keys as a package or copy standalone hooks with 
 
 Use the package when you need provider-backed hooks such as `KeyboardProvider`, `useKey`, `useScope`, or `useFocusZone`.
 
+`@diffgazer/keys` is external publish-gated as of May 6, 2026. Use the npm command only after `npm view @diffgazer/keys version` succeeds, or validate with a locally packed workspace tarball.
+
 ```bash
 npm install @diffgazer/keys
 ```
@@ -27,6 +29,8 @@ npx @diffgazer/add add keys/navigation
 npx @diffgazer/add add keys/focus-trap keys/scroll-lock
 ```
 
+`@diffgazer/add` is also publish-gated. Before publication, install a local `@diffgazer/add` tarball into a fixture app and run `pnpm exec dgadd`.
+
 The copied hooks are installed into your configured hooks directory, usually `src/hooks`.
 
 ## With @diffgazer/ui
@@ -34,8 +38,8 @@ The copied hooks are installed into your configured hooks directory, usually `sr
 Keyboard-enabled UI components can install required hooks automatically:
 
 ```bash
-dgadd add ui/menu --integration copy
-dgadd add ui/dialog --integration keys
+npx @diffgazer/add add ui/menu --integration copy
+npx @diffgazer/add add ui/dialog --integration keys
 ```
 
 `copy` mode writes local hook source. `keys` mode imports from the `@diffgazer/keys` package.

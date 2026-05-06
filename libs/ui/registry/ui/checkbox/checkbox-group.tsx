@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffectEvent, useMemo, useRef, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from "react";
+import { useCallback, useMemo, useRef, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from "react";
 import { useNavigation } from "@/hooks/use-navigation";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { composeRefs } from "@/lib/compose-refs";
@@ -71,20 +71,20 @@ export function CheckboxGroup<T extends string = string>({
     onValueChange: setHighlightedValue,
   });
 
-  const stableOnHighlightChange = useEffectEvent((value: string) => setHighlightedValue(value));
+  const handleHighlightChange = useCallback((value: string) => setHighlightedValue(value), [setHighlightedValue]);
 
-  const toggle = useEffectEvent((itemValue: string) => {
+  const toggle = useCallback((itemValue: string) => {
     if (disabled) return;
     const typed = itemValue as T;
     setValue((cur) => (cur.includes(typed) ? cur.filter((v) => v !== typed) : [...cur, typed]));
-  });
+  }, [disabled, setValue]);
 
   const handleKeyDown = (e: ReactKeyboardEvent) => {
     onKeyDown?.(e);
     if (!e.defaultPrevented && e.key !== " ") navKeyDown(e);
   };
 
-  const contextValue = useMemo(() => ({ value, toggle, disabled, size, variant, strikethrough, onHighlightChange: stableOnHighlightChange, highlightedValue: highlightedValue ?? null, name, required }), [value, disabled, size, variant, strikethrough, highlightedValue, name, required]);
+  const contextValue = useMemo(() => ({ value, toggle, disabled, size, variant, strikethrough, onHighlightChange: handleHighlightChange, highlightedValue: highlightedValue ?? null, name, required }), [value, toggle, disabled, size, variant, strikethrough, handleHighlightChange, highlightedValue, name, required]);
 
   return (
     <CheckboxGroupContext value={contextValue}>
@@ -98,6 +98,18 @@ export function CheckboxGroup<T extends string = string>({
         className={cn("flex flex-col gap-2", className)}
         onKeyDown={handleKeyDown}
       >
+        {required && (
+          <input
+            type="checkbox"
+            required
+            checked={value.length > 0}
+            disabled={disabled}
+            tabIndex={-1}
+            aria-hidden="true"
+            readOnly
+            className="sr-only"
+          />
+        )}
         {children}
       </div>
     </CheckboxGroupContext>

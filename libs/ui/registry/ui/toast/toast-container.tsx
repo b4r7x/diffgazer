@@ -22,11 +22,8 @@ export function Toaster({ position = "bottom-right" }: ToasterProps) {
 
   return (
     <div
-      role="log"
+      role="region"
       aria-label="Notifications"
-      aria-live="polite"
-      aria-atomic="false"
-      aria-relevant="additions"
       onMouseEnter={hasToasts ? pause : undefined}
       onMouseLeave={hasToasts ? resume : undefined}
       onFocus={hasToasts ? pause : undefined}

@@ -39,7 +39,7 @@ export const avatarDoc: ComponentDoc = {
     {
       title: "Composition",
       content:
-        "Avatar works standalone or inside AvatarGroup. Combine with useSelectContext() to build avatar pickers in Select triggers.",
+        "Avatar works standalone or inside AvatarGroup. Combine Avatar with public Select parts to build avatar pickers.",
     },
   ],
   usage: { example: "avatar-default" },

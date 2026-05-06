@@ -1,0 +1,69 @@
+---
+title: Consumption Modes
+description: Choose copy-first source install or runtime package imports.
+---
+
+`@diffgazer/ui` has two intended consumption modes. The npm packages are external publish-gated as of May 6, 2026, so public npm commands are publish-gated until `npm view @diffgazer/add`, `npm view @diffgazer/ui`, and `npm view @diffgazer/keys` return versions.
+
+## Copy-First Mode
+
+Use copy-first mode when the consuming app should own and customize component source.
+
+```bash
+npx @diffgazer/add init
+npx @diffgazer/add add ui/button
+```
+
+Before publication, validate this path with a locally packed `@diffgazer/add` tarball and `pnpm exec dgadd`.
+
+This mode copies component files, shared utilities, theme CSS, and optional standalone keyboard hooks into the app. The app owns future edits and reviews updates through:
+
+```bash
+npx @diffgazer/add diff ui/button
+npx @diffgazer/add add ui/button --overwrite
+```
+
+Copy-first prerequisites:
+
+- React 19.
+- Tailwind CSS v4.
+- `@/*` TypeScript and bundler/framework alias configured before `dgadd init`.
+- Copied `src/styles/styles.css` imported from the app CSS entrypoint.
+
+## Runtime Package Mode
+
+Use runtime package mode when you want versioned imports and do not need source customization.
+
+```bash
+npm install @diffgazer/ui @diffgazer/keys
+```
+
+Before publication, validate this path with locally packed `@diffgazer/ui` and `@diffgazer/keys` tarballs.
+
+Runtime package prerequisites:
+
+- React 19.
+- Tailwind CSS v4.
+- `@diffgazer/keys` installed as a required peer.
+- Tailwind scans package output from the CSS file that imports Tailwind:
+
+```css
+@import "tailwindcss";
+@source "../node_modules/@diffgazer/ui/dist";
+@import "@diffgazer/ui/styles.css";
+```
+
+Adjust the `@source` path so it is relative to that CSS file.
+
+## Keyboard Integration
+
+Copy-first mode has two keyboard integration options:
+
+- `--integration copy` copies standalone hooks into the app.
+- `--integration keys` rewrites imports to the `@diffgazer/keys` package.
+
+Runtime package mode always requires `@diffgazer/keys` because package entries can import keyboard hooks.
+
+## Support Contract
+
+During `0.x`, public APIs can still change. Breaking changes require a changeset and migration notes. Runtime package consumers update with their package manager. Copy-first consumers compare and re-apply source updates manually.

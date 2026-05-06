@@ -84,7 +84,7 @@ export const selectDoc: ComponentDoc = {
     {
       title: "Custom Trigger Content",
       content:
-        "For advanced customization, pass a render function as children to SelectValue: <SelectValue>{({ selected, labels }) => ...}</SelectValue>. For full control, import useSelectContext from the select barrel and build your own component inside SelectTrigger.",
+        "For advanced customization, pass a render function as children to SelectValue: <SelectValue>{({ selected, labels }) => ...}</SelectValue>. Use the public Select parts for custom trigger and value layouts.",
     },
   ],
   usage: { example: "select-default" },

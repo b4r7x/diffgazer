@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useEffectEvent } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { useEscapeKey } from "@/hooks/use-outside-click";
 import type { Toast } from "./toast-store";
 import { dismiss, pause, resume } from "./toast-store";
 
@@ -8,19 +9,17 @@ export function useToastContainer(
   toasts: Toast[],
   dismissingIds: Set<string>,
 ) {
-  const handleEscape = useEffectEvent(() => {
-    const last = toasts.findLast((t) => !dismissingIds.has(t.id));
-    if (last) dismiss(last.id);
-  });
+  const stateRef = useRef({ toasts, dismissingIds });
+  stateRef.current = { toasts, dismissingIds };
 
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.defaultPrevented) return;
-      if (e.key === "Escape") handleEscape();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+  const handleEscape = useCallback(() => {
+    if (document.querySelector("dialog[open]")) return;
+    const current = stateRef.current;
+    const last = current.toasts.findLast((t) => !current.dismissingIds.has(t.id));
+    if (last) dismiss(last.id);
   }, []);
+
+  useEscapeKey(handleEscape, toasts.length > 0, { priority: 0 });
 
   useEffect(() => {
     if (!document.hidden) resume();

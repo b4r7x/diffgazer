@@ -1,10 +1,12 @@
 "use client";
 
-import { type ReactNode, type Ref, useMemo } from "react";
+import { Children, isValidElement, type ReactNode, type Ref, useMemo } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useNavigationListContext } from "./navigation-list-context";
 import { NavigationListItemContext } from "./navigation-list-item-context";
+import { NavigationListMeta } from "./navigation-list-meta";
+import { NavigationListSubtitle } from "./navigation-list-subtitle";
 
 const itemVariants = cva("flex cursor-pointer group", {
   variants: {
@@ -37,6 +39,14 @@ const contentVariants = cva("flex-1 grid grid-cols-[1fr_auto] auto-rows-auto gap
 
 type Density = NonNullable<VariantProps<typeof contentVariants>["density"]>;
 
+function hasDescriptionChild(children: ReactNode, childType: typeof NavigationListMeta | typeof NavigationListSubtitle): boolean {
+  return Children.toArray(children).some((child) => {
+    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
+    if (child.type === childType) return true;
+    return hasDescriptionChild(child.props.children, childType);
+  });
+}
+
 export interface NavigationListItemProps {
   id: string;
   density?: Density;
@@ -61,6 +71,10 @@ export function NavigationListItem({
   const isActive = (isSelected || isHighlighted) && focused;
   const labelId = `${idPrefix}-${id}-label`;
   const descId = `${idPrefix}-${id}-desc`;
+  const describedBy = [
+    hasDescriptionChild(children, NavigationListMeta) ? `${descId}-meta` : null,
+    hasDescriptionChild(children, NavigationListSubtitle) ? `${descId}-sub` : null,
+  ].filter(Boolean).join(" ") || undefined;
 
   const handleClick = () => {
     if (!disabled) activate(id);
@@ -82,7 +96,7 @@ export function NavigationListItem({
         id={`${idPrefix}-${id}`}
         role="option"
         aria-labelledby={labelId}
-        aria-describedby={`${descId}-meta ${descId}-sub`}
+        aria-describedby={describedBy}
         data-value={id}
         data-active={isActive || undefined}
         data-state={isSelected ? "selected" : "unselected"}

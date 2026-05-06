@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useRef, useEffect } from "react";
+import { type ReactNode, useRef, useLayoutEffect } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useCommandPaletteContext } from "./command-palette-context";
@@ -32,21 +32,24 @@ export function CommandPaletteContent({ children, className, size, label = "Comm
   const { open, onOpenChange, search, onSearchChange, itemCount } = useCommandPaletteContext();
   const previousFocusRef = useRef<Element | null>(null);
 
-  useEffect(() => {
-    if (open) {
+  useLayoutEffect(() => {
+    if (open && !previousFocusRef.current) {
       previousFocusRef.current = document.activeElement;
-    } else if (previousFocusRef.current) {
-      const el = previousFocusRef.current as HTMLElement;
-      previousFocusRef.current = null;
-      el.focus?.();
     }
   }, [open]);
+
+  const restoreFocus = () => {
+    const el = previousFocusRef.current as HTMLElement | null;
+    previousFocusRef.current = null;
+    el?.focus?.();
+  };
 
   return (
     <DialogShell
       open={open}
       onBackdropClick={() => onOpenChange(false)}
       onCancel={() => search ? onSearchChange("") : onOpenChange(false)}
+      onClose={restoreFocus}
       className={cn(contentVariants({ size }), className)}
       aria-label={label}
     >

@@ -1,6 +1,7 @@
 {
   "title": "Utils",
   "pages": [
+    "shadcn-namespace",
     "compose-refs"
   ]
 }

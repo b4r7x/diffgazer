@@ -7,15 +7,17 @@ export interface InputProps
   ref?: Ref<HTMLInputElement>;
   size?: "sm" | "md" | "lg";
   error?: boolean;
+  invalid?: boolean;
 }
 
-export function Input({ className, size, error, ref, ...props }: InputProps) {
+export function Input({ className, size, error, invalid, ref, "aria-invalid": ariaInvalid, ...props }: InputProps) {
+  const isInvalid = invalid ?? error ?? ariaInvalid;
   return (
     <input
-      className={cn(inputVariants({ size, error }), className)}
+      className={cn(inputVariants({ size, error: !!isInvalid }), className)}
       ref={ref}
-      aria-invalid={error || undefined}
       {...props}
+      aria-invalid={isInvalid || undefined}
     />
   );
 }

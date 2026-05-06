@@ -10,6 +10,9 @@ export interface ToggleGroupContextValue {
   size: "sm" | "md";
   highlightedValue: string | null;
   containerRef: RefObject<HTMLDivElement | null>;
+  allowDeselect: boolean;
+  firstEnabledValue: string | null;
+  registerItem: (value: string, disabled: boolean) => () => void;
 }
 
 export const ToggleGroupContext = createContext<ToggleGroupContextValue | undefined>(undefined);

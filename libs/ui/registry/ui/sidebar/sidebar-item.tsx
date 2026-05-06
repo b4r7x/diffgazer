@@ -32,7 +32,6 @@ const sidebarItemVariants = cva(
 
 export interface SidebarItemRenderProps {
   ref?: Ref<HTMLElement>;
-  role: "menuitem";
   className: string;
   disabled?: boolean;
   "aria-current"?: "page";
@@ -80,7 +79,6 @@ export function SidebarItem(props: SidebarItemProps) {
   if (sectionContext && !sectionContext.open) return null;
 
   const sharedProps = {
-    role: "menuitem" as const,
     className: cn(sidebarItemVariants({ active, disabled }), className),
     "aria-current": active ? ("page" as const) : undefined,
     "aria-disabled": disabled || undefined,
