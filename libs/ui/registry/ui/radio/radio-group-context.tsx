@@ -14,9 +14,10 @@ export interface RadioGroupContextValue {
   highlightedValue: string | null;
   name?: string;
   required?: boolean;
+  requiredInvalid: boolean;
+  onRequiredInvalid: () => void;
   containerRef: RefObject<HTMLDivElement | null>;
   firstEnabledValue: string | null;
-  registerItem: (value: string, disabled: boolean) => () => void;
 }
 
 export const RadioGroupContext = createContext<RadioGroupContextValue | undefined>(undefined);

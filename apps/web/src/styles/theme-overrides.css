@@ -1,5 +1,5 @@
 /* Diffgazer Theme Overrides - GitHub Dark inspired terminal colors
- * Loaded AFTER @diffgazer/ui/theme.css to override monochrome values with GitHub palette.
+ * Loaded AFTER @diffgazer/ui/styles.css to override monochrome values with GitHub palette.
  * Preserves diffgazer-only domain tokens (severity, status) and JetBrains Mono font. */
 
 :root,

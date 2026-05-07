@@ -1,3 +1,5 @@
+"use client";
+
 import { Tabs as TabsRoot, type TabsProps } from "./tabs";
 import { TabsList, type TabsListProps } from "./tabs-list";
 import { TabsTrigger, type TabsTriggerProps, tabsTriggerVariants } from "./tabs-trigger";

@@ -5,6 +5,7 @@ import { createContext, useContext, type RefObject, type KeyboardEvent as ReactK
 export interface CommandPaletteContextValue {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  previousFocusRef: RefObject<Element | null>;
   selectedId: string | null;
   onActivate: (id: string) => void;
   search: string;
@@ -12,10 +13,6 @@ export interface CommandPaletteContextValue {
   shouldFilter: boolean;
   filter: (value: string, search: string) => boolean;
   itemCount: number;
-  registerItem: (id: string) => void;
-  unregisterItem: (id: string) => void;
-  setItemCallback: (id: string, onSelect?: () => void) => void;
-  getItemCallback: (id: string) => (() => void) | undefined;
   listId: string;
   listRef: RefObject<HTMLDivElement | null>;
   navKeyDown: (event: ReactKeyboardEvent) => void;

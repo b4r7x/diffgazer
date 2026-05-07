@@ -18,10 +18,35 @@
   "props": {},
   "source": {
     "registry/ui/avatar/index.ts": {
-      "raw": "import { Avatar as AvatarRoot, type AvatarProps, type AvatarStatus } from \"./avatar\";\nimport { AvatarImage, type AvatarImageProps } from \"./avatar-image\";\nimport { AvatarFallback, type AvatarFallbackProps } from \"./avatar-fallback\";\nimport { AvatarGroup, type AvatarGroupProps } from \"./avatar-group\";\nimport { AvatarIndicator, type AvatarIndicatorProps } from \"./avatar-indicator\";\n\nconst Avatar = Object.assign(AvatarRoot, {\n  Image: AvatarImage,\n  Fallback: AvatarFallback,\n  Group: AvatarGroup,\n  Indicator: AvatarIndicator,\n});\n\nexport { Avatar, type AvatarProps, type AvatarStatus };\nexport { AvatarImage, type AvatarImageProps };\nexport { AvatarFallback, type AvatarFallbackProps };\nexport { AvatarGroup, type AvatarGroupProps };\nexport { AvatarIndicator, type AvatarIndicatorProps };\n",
+      "raw": "\"use client\";\n\nimport { Avatar as AvatarRoot, type AvatarProps, type AvatarStatus } from \"./avatar\";\nimport { AvatarImage, type AvatarImageProps } from \"./avatar-image\";\nimport { AvatarFallback, type AvatarFallbackProps } from \"./avatar-fallback\";\nimport { AvatarGroup, type AvatarGroupProps } from \"./avatar-group\";\nimport { AvatarIndicator, type AvatarIndicatorProps } from \"./avatar-indicator\";\n\nconst Avatar = Object.assign(AvatarRoot, {\n  Image: AvatarImage,\n  Fallback: AvatarFallback,\n  Group: AvatarGroup,\n  Indicator: AvatarIndicator,\n});\n\nexport { Avatar, type AvatarProps, type AvatarStatus };\nexport { AvatarImage, type AvatarImageProps };\nexport { AvatarFallback, type AvatarFallbackProps };\nexport { AvatarGroup, type AvatarGroupProps };\nexport { AvatarIndicator, type AvatarIndicatorProps };\n",
       "highlighted": [
         {
           "number": 1,
+          "content": [
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "use client",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
           "content": [
             {
               "text": "import",
@@ -114,7 +139,7 @@
           ]
         },
         {
-          "number": 2,
+          "number": 4,
           "content": [
             {
               "text": "import",
@@ -183,7 +208,7 @@
           ]
         },
         {
-          "number": 3,
+          "number": 5,
           "content": [
             {
               "text": "import",
@@ -252,7 +277,7 @@
           ]
         },
         {
-          "number": 4,
+          "number": 6,
           "content": [
             {
               "text": "import",
@@ -321,7 +346,7 @@
           ]
         },
         {
-          "number": 5,
+          "number": 7,
           "content": [
             {
               "text": "import",
@@ -390,11 +415,11 @@
           ]
         },
         {
-          "number": 6,
+          "number": 8,
           "content": []
         },
         {
-          "number": 7,
+          "number": 9,
           "content": [
             {
               "text": "const",
@@ -451,7 +476,7 @@
           ]
         },
         {
-          "number": 8,
+          "number": 10,
           "content": [
             {
               "text": "  Image",
@@ -472,7 +497,7 @@
           ]
         },
         {
-          "number": 9,
+          "number": 11,
           "content": [
             {
               "text": "  Fallback",
@@ -493,7 +518,7 @@
           ]
         },
         {
-          "number": 10,
+          "number": 12,
           "content": [
             {
               "text": "  Group",
@@ -514,7 +539,7 @@
           ]
         },
         {
-          "number": 11,
+          "number": 13,
           "content": [
             {
               "text": "  Indicator",
@@ -535,7 +560,7 @@
           ]
         },
         {
-          "number": 12,
+          "number": 14,
           "content": [
             {
               "text": "}",
@@ -552,11 +577,11 @@
           ]
         },
         {
-          "number": 13,
+          "number": 15,
           "content": []
         },
         {
-          "number": 14,
+          "number": 16,
           "content": [
             {
               "text": "export",
@@ -613,7 +638,7 @@
           ]
         },
         {
-          "number": 15,
+          "number": 17,
           "content": [
             {
               "text": "export",
@@ -654,7 +679,7 @@
           ]
         },
         {
-          "number": 16,
+          "number": 18,
           "content": [
             {
               "text": "export",
@@ -695,7 +720,7 @@
           ]
         },
         {
-          "number": 17,
+          "number": 19,
           "content": [
             {
               "text": "export",
@@ -736,7 +761,7 @@
           ]
         },
         {
-          "number": 18,
+          "number": 20,
           "content": [
             {
               "text": "export",
@@ -777,7 +802,7 @@
           ]
         },
         {
-          "number": 19,
+          "number": 21,
           "content": []
         }
       ]
@@ -9452,7 +9477,7 @@
       ]
     },
     "registry/ui/avatar/use-image-status.ts": {
-      "raw": "\"use client\";\nimport { useState } from \"react\";\nimport type { AvatarStatus } from \"./avatar-context\";\n\nexport function useImageStatus(src: string | undefined) {\n  const [status, setStatus] = useState<AvatarStatus>(src ? \"loading\" : \"idle\");\n\n  const [prevSrc, setPrevSrc] = useState(src);\n  if (src !== prevSrc) {\n    setPrevSrc(src);\n    setStatus(src ? \"loading\" : \"idle\");\n  }\n\n  return {\n    status,\n    showImage: !!src && status !== \"error\",\n    onLoad: () => setStatus(\"loaded\"),\n    onError: () => setStatus(\"error\"),\n  };\n}\n",
+      "raw": "\"use client\";\nimport { useEffect, useState } from \"react\";\nimport type { AvatarStatus } from \"./avatar-context\";\n\ninterface ImageStatusState {\n  src: string | undefined;\n  status: AvatarStatus;\n}\n\nexport function useImageStatus(src: string | undefined) {\n  const [state, setState] = useState<ImageStatusState>(() => ({\n    src,\n    status: src ? \"loading\" : \"idle\",\n  }));\n\n  const status = state.src === src ? state.status : (src ? \"loading\" : \"idle\");\n\n  useEffect(() => {\n    setState((current) => (\n      current.src === src\n        ? current\n        : { src, status: src ? \"loading\" : \"idle\" }\n    ));\n  }, [src]);\n\n  return {\n    status,\n    showImage: !!src && status !== \"error\",\n    onLoad: () => setState({ src, status: \"loaded\" }),\n    onError: () => setState({ src, status: \"error\" }),\n  };\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -9488,6 +9513,14 @@
             },
             {
               "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " useEffect",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
               "color": "var(--code-operator)"
             },
             {
@@ -9597,6 +9630,110 @@
           "number": 5,
           "content": [
             {
+              "text": "interface",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ImageStatusState",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "content": [
+            {
+              "text": "  src",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "string",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "undefined",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "content": [
+            {
+              "text": "  status",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "AvatarStatus",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "content": []
+        },
+        {
+          "number": 10,
+          "content": [
+            {
               "text": "export",
               "color": "var(--code-keyword)"
             },
@@ -9667,7 +9804,7 @@
           ]
         },
         {
-          "number": 6,
+          "number": 11,
           "content": [
             {
               "text": "  ",
@@ -9686,7 +9823,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "status",
+              "text": "state",
               "color": "var(--code-number)"
             },
             {
@@ -9698,7 +9835,7 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "setStatus",
+              "text": "setState",
               "color": "var(--code-number)"
             },
             {
@@ -9726,7 +9863,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "AvatarStatus",
+              "text": "ImageStatusState",
               "color": "var(--code-function)"
             },
             {
@@ -9734,7 +9871,57 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "(src ",
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 12,
+          "content": [
+            {
+              "text": "    src",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 13,
+          "content": [
+            {
+              "text": "    status",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " src ",
               "color": "var(--code-variable)"
             },
             {
@@ -9782,7 +9969,24 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": ")",
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 14,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "))",
               "color": "var(--code-variable)"
             },
             {
@@ -9792,11 +9996,11 @@
           ]
         },
         {
-          "number": 7,
+          "number": 15,
           "content": []
         },
         {
-          "number": 8,
+          "number": 16,
           "content": [
             {
               "text": "  ",
@@ -9811,28 +10015,8 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "[",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "prevSrc",
+              "text": "status",
               "color": "var(--code-number)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "setPrevSrc",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": "]",
-              "color": "var(--code-operator)"
             },
             {
               "text": " ",
@@ -9847,82 +10031,51 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "useState",
-              "color": "var(--code-function)"
+              "text": "state",
+              "color": "var(--code-number)"
             },
             {
-              "text": "(src)",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ";",
+              "text": ".",
               "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 9,
-          "content": [
+            },
             {
-              "text": "  ",
+              "text": "src ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "if",
-              "color": "var(--code-keyword)"
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " src ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "?",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "state",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "status ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
             },
             {
               "text": " (src ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "!==",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " prevSrc) ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "{",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 10,
-          "content": [
-            {
-              "text": "    ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "setPrevSrc",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "(src)",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ";",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 11,
-          "content": [
-            {
-              "text": "    ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "setStatus",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "(src ",
               "color": "var(--code-variable)"
             },
             {
@@ -9980,10 +10133,218 @@
           ]
         },
         {
-          "number": 12,
+          "number": 17,
+          "content": []
+        },
+        {
+          "number": 18,
           "content": [
             {
               "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useEffect",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 19,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "setState",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "current",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 20,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "current",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "src ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " src",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 21,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "?",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " current",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 22,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " src",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " status",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " src ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "?",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "loading",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "idle",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
               "color": "var(--code-variable)"
             },
             {
@@ -9993,11 +10354,45 @@
           ]
         },
         {
-          "number": 13,
+          "number": 23,
+          "content": [
+            {
+              "text": "    ))",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 24,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " [src])",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 25,
           "content": []
         },
         {
-          "number": 14,
+          "number": 26,
           "content": [
             {
               "text": "  ",
@@ -10018,7 +10413,7 @@
           ]
         },
         {
-          "number": 15,
+          "number": 27,
           "content": [
             {
               "text": "    status",
@@ -10031,7 +10426,7 @@
           ]
         },
         {
-          "number": 16,
+          "number": 28,
           "content": [
             {
               "text": "    showImage",
@@ -10088,7 +10483,7 @@
           ]
         },
         {
-          "number": 17,
+          "number": 29,
           "content": [
             {
               "text": "    ",
@@ -10123,11 +10518,35 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "setStatus",
+              "text": "setState",
               "color": "var(--code-function)"
             },
             {
               "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " src",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " status",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
               "color": "var(--code-variable)"
             },
             {
@@ -10143,6 +10562,14 @@
               "color": "var(--code-operator)"
             },
             {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
               "text": ")",
               "color": "var(--code-variable)"
             },
@@ -10153,7 +10580,7 @@
           ]
         },
         {
-          "number": 18,
+          "number": 30,
           "content": [
             {
               "text": "    ",
@@ -10188,11 +10615,35 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "setStatus",
+              "text": "setState",
               "color": "var(--code-function)"
             },
             {
               "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " src",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " status",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
               "color": "var(--code-variable)"
             },
             {
@@ -10208,6 +10659,14 @@
               "color": "var(--code-operator)"
             },
             {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
               "text": ")",
               "color": "var(--code-variable)"
             },
@@ -10218,7 +10677,7 @@
           ]
         },
         {
-          "number": 19,
+          "number": 31,
           "content": [
             {
               "text": "  ",
@@ -10231,7 +10690,7 @@
           ]
         },
         {
-          "number": 20,
+          "number": 32,
           "content": [
             {
               "text": "}",
@@ -10240,16 +10699,41 @@
           ]
         },
         {
-          "number": 21,
+          "number": 33,
           "content": []
         }
       ]
     }
   },
-  "mergedSource": "import { Avatar as AvatarRoot, type AvatarProps, type AvatarStatus } from \"./avatar\";\nimport { AvatarImage, type AvatarImageProps } from \"./avatar-image\";\nimport { AvatarFallback, type AvatarFallbackProps } from \"./avatar-fallback\";\nimport { AvatarGroup, type AvatarGroupProps } from \"./avatar-group\";\nimport { AvatarIndicator, type AvatarIndicatorProps } from \"./avatar-indicator\";\n\nconst Avatar = Object.assign(AvatarRoot, {\n  Image: AvatarImage,\n  Fallback: AvatarFallback,\n  Group: AvatarGroup,\n  Indicator: AvatarIndicator,\n});\n\nexport { Avatar, type AvatarProps, type AvatarStatus };\nexport { AvatarImage, type AvatarImageProps };\nexport { AvatarFallback, type AvatarFallbackProps };\nexport { AvatarGroup, type AvatarGroupProps };\nexport { AvatarIndicator, type AvatarIndicatorProps };\n\n\n\"use client\";\n\nimport { createContext, useContext } from \"react\";\n\nexport type AvatarStatus = \"idle\" | \"loading\" | \"loaded\" | \"error\";\n\nexport interface AvatarGroupContextValue {\n  size?: \"sm\" | \"md\" | \"lg\" | null;\n}\n\nexport const AvatarGroupContext = createContext<\n  AvatarGroupContextValue | undefined\n>(undefined);\n\nexport function useAvatarGroupContext() {\n  return useContext(AvatarGroupContext);\n}\n\nexport interface AvatarContextValue {\n  imageStatus: AvatarStatus;\n  setImageStatus: (status: AvatarStatus) => void;\n}\n\nexport const AvatarContext = createContext<AvatarContextValue | undefined>(\n  undefined,\n);\n\nexport function useAvatarContext() {\n  const ctx = useContext(AvatarContext);\n  if (!ctx) {\n    throw new Error(\n      \"Avatar.Image and Avatar.Fallback must be used within Avatar\",\n    );\n  }\n  return ctx;\n}\n\n\n\"use client\";\n\nimport {\n  type HTMLAttributes,\n  type ReactNode,\n  type Ref,\n  useEffect,\n  useMemo,\n  useState,\n} from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { AvatarContext, useAvatarGroupContext, type AvatarStatus } from \"./avatar-context\";\nimport { AvatarImage } from \"./avatar-image\";\nimport { AvatarFallback } from \"./avatar-fallback\";\n\nexport { type AvatarStatus };\n\nexport const avatarVariants = cva(\n  \"relative inline-flex items-center justify-center border border-foreground/40 font-mono font-medium text-foreground bg-background overflow-hidden shrink-0\",\n  {\n    variants: {\n      size: {\n        sm: \"size-6 text-[10px]\",\n        md: \"size-8 text-xs\",\n        lg: \"size-10 text-sm\",\n      },\n    },\n    defaultVariants: { size: \"md\" },\n  },\n);\n\nexport interface AvatarProps\n  extends HTMLAttributes<HTMLSpanElement>,\n    VariantProps<typeof avatarVariants> {\n  /** Image source URL. Ignored when children are provided. */\n  src?: string;\n  alt?: string;\n  /** Fallback content shown when image fails. Ignored when children are provided. */\n  fallback?: ReactNode;\n  onStatusChange?: (status: AvatarStatus) => void;\n  ref?: Ref<HTMLSpanElement>;\n  children?: ReactNode;\n}\n\nfunction AvatarRoot({\n  src,\n  alt,\n  fallback,\n  size,\n  className,\n  ref,\n  onStatusChange,\n  children,\n  ...props\n}: AvatarProps) {\n  const groupCtx = useAvatarGroupContext();\n  const resolvedSize = size ?? groupCtx?.size;\n  const [imageStatus, setImageStatus] = useState<AvatarStatus>(\"idle\");\n\n  useEffect(() => {\n    if (imageStatus === \"idle\") return;\n    onStatusChange?.(imageStatus);\n  }, [imageStatus, onStatusChange]);\n\n  const contextValue = useMemo(() => ({ imageStatus, setImageStatus }), [imageStatus]);\n\n  const label = alt ?? (typeof fallback === \"string\" ? fallback : undefined);\n\n  return (\n    <AvatarContext value={contextValue}>\n      <span\n        ref={ref}\n        role={label ? \"img\" : \"presentation\"}\n        aria-label={label || undefined}\n        className={cn(avatarVariants({ size: resolvedSize }), className)}\n        {...props}\n      >\n        {children ?? (\n          <>\n            {src && <AvatarImage src={src} />}\n            <AvatarFallback>{fallback ?? \"?\"}</AvatarFallback>\n          </>\n        )}\n      </span>\n    </AvatarContext>\n  );\n}\n\nexport { AvatarRoot as Avatar };\n\n\n\"use client\";\n\nimport { useEffect, type ImgHTMLAttributes, type Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useAvatarContext } from \"./avatar-context\";\nimport { useImageStatus } from \"./use-image-status\";\n\nexport interface AvatarImageProps\n  extends Omit<ImgHTMLAttributes<HTMLImageElement>, \"alt\"> {\n  alt?: string;\n  ref?: Ref<HTMLImageElement>;\n}\n\nexport function AvatarImage({\n  src,\n  alt,\n  className,\n  ref,\n  ...imgProps\n}: AvatarImageProps) {\n  const { setImageStatus } = useAvatarContext();\n  const { status, showImage, onLoad, onError } = useImageStatus(src);\n\n  useEffect(() => {\n    setImageStatus(status);\n    return () => setImageStatus(\"idle\");\n  }, [status, setImageStatus]);\n\n  if (!showImage) return null;\n\n  return (\n    <img\n      ref={ref}\n      src={src}\n      alt={alt ?? \"\"}\n      onLoad={onLoad}\n      onError={onError}\n      className={cn(\"absolute inset-0 size-full object-cover\", className)}\n      {...imgProps}\n    />\n  );\n}\n\n\n\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useAvatarContext } from \"./avatar-context\";\nimport { useImageStatus } from \"./use-image-status\";\n\nexport interface AvatarFallbackProps {\n  /** Cascading fallback image URL. Tried before rendering children. */\n  src?: string;\n  children?: ReactNode;\n  className?: string;\n}\n\nexport function AvatarFallback({\n  src,\n  children,\n  className,\n}: AvatarFallbackProps) {\n  const { imageStatus } = useAvatarContext();\n  const fallbackImage = useImageStatus(src);\n\n  if (imageStatus === \"loaded\") return null;\n  if (src && fallbackImage.showImage) {\n    return (\n      <img\n        src={src}\n        alt=\"\"\n        onLoad={fallbackImage.onLoad}\n        onError={fallbackImage.onError}\n        className={cn(\"absolute inset-0 size-full object-cover\", className)}\n      />\n    );\n  }\n\n  return <span className={className}>{children}</span>;\n}\n\n\n\"use client\";\n\nimport { type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { avatarVariants } from \"./avatar\";\nimport { useAvatarGroupContext } from \"./avatar-context\";\n\nexport interface AvatarIndicatorProps extends VariantProps<typeof avatarVariants> {\n  count: number;\n  className?: string;\n}\n\nexport function AvatarIndicator({ count, size, className }: AvatarIndicatorProps) {\n  const groupCtx = useAvatarGroupContext();\n  const resolvedSize = size ?? groupCtx?.size;\n  return (\n    <span\n      role=\"img\"\n      aria-label={`${count} more`}\n      className={cn(avatarVariants({ size: resolvedSize }), \"border-dashed bg-muted text-foreground\", className)}\n    >\n      <span aria-hidden=\"true\">+{count}</span>\n    </span>\n  );\n}\n\n\n\"use client\";\n\nimport { Children, useMemo, type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { AvatarGroupContext } from \"./avatar-context\";\nimport { AvatarIndicator } from \"./avatar-indicator\";\nimport { Overflow } from \"../overflow/overflow\";\n\nexport interface AvatarGroupProps {\n  max?: number;\n  /** How avatars are spaced. \"overlap\" (default) stacks them, \"gap\" adds spacing between. */\n  spacing?: \"overlap\" | \"gap\";\n  children: ReactNode;\n  size?: \"sm\" | \"md\" | \"lg\" | null;\n  className?: string;\n  \"aria-label\"?: string;\n}\n\nconst spacingClasses = {\n  overlap: \"-space-x-1.5\",\n  gap: \"gap-1\",\n} satisfies Record<string, string>;\n\nexport function AvatarGroup({ max, spacing = \"overlap\", children, size = \"md\", className, \"aria-label\": ariaLabel = \"Avatars\" }: AvatarGroupProps) {\n  const allItems = Children.toArray(children);\n  const groupContextValue = useMemo(() => ({ size }), [size]);\n\n  if (max != null) {\n    const visibleItems = allItems.slice(0, max);\n    const overflowCount = allItems.length - max;\n\n    return (\n      <AvatarGroupContext value={groupContextValue}>\n        <div role=\"group\" aria-label={ariaLabel} className={cn(\"flex w-fit items-center\", spacingClasses[spacing], className)}>\n          {visibleItems}\n          {overflowCount > 0 && <AvatarIndicator count={overflowCount} />}\n        </div>\n      </AvatarGroupContext>\n    );\n  }\n\n  return (\n    <AvatarGroupContext value={groupContextValue}>\n      <div role=\"group\" aria-label={ariaLabel}>\n        <Overflow\n          mode=\"items\"\n          gap={spacingClasses[spacing]}\n          className={className}\n          indicator={({ count }) => <AvatarIndicator count={count} />}\n        >\n          {allItems}\n        </Overflow>\n      </div>\n    </AvatarGroupContext>\n  );\n}\n\n\n\"use client\";\nimport { useState } from \"react\";\nimport type { AvatarStatus } from \"./avatar-context\";\n\nexport function useImageStatus(src: string | undefined) {\n  const [status, setStatus] = useState<AvatarStatus>(src ? \"loading\" : \"idle\");\n\n  const [prevSrc, setPrevSrc] = useState(src);\n  if (src !== prevSrc) {\n    setPrevSrc(src);\n    setStatus(src ? \"loading\" : \"idle\");\n  }\n\n  return {\n    status,\n    showImage: !!src && status !== \"error\",\n    onLoad: () => setStatus(\"loaded\"),\n    onError: () => setStatus(\"error\"),\n  };\n}\n",
+  "mergedSource": "\"use client\";\n\nimport { Avatar as AvatarRoot, type AvatarProps, type AvatarStatus } from \"./avatar\";\nimport { AvatarImage, type AvatarImageProps } from \"./avatar-image\";\nimport { AvatarFallback, type AvatarFallbackProps } from \"./avatar-fallback\";\nimport { AvatarGroup, type AvatarGroupProps } from \"./avatar-group\";\nimport { AvatarIndicator, type AvatarIndicatorProps } from \"./avatar-indicator\";\n\nconst Avatar = Object.assign(AvatarRoot, {\n  Image: AvatarImage,\n  Fallback: AvatarFallback,\n  Group: AvatarGroup,\n  Indicator: AvatarIndicator,\n});\n\nexport { Avatar, type AvatarProps, type AvatarStatus };\nexport { AvatarImage, type AvatarImageProps };\nexport { AvatarFallback, type AvatarFallbackProps };\nexport { AvatarGroup, type AvatarGroupProps };\nexport { AvatarIndicator, type AvatarIndicatorProps };\n\n\n\"use client\";\n\nimport { createContext, useContext } from \"react\";\n\nexport type AvatarStatus = \"idle\" | \"loading\" | \"loaded\" | \"error\";\n\nexport interface AvatarGroupContextValue {\n  size?: \"sm\" | \"md\" | \"lg\" | null;\n}\n\nexport const AvatarGroupContext = createContext<\n  AvatarGroupContextValue | undefined\n>(undefined);\n\nexport function useAvatarGroupContext() {\n  return useContext(AvatarGroupContext);\n}\n\nexport interface AvatarContextValue {\n  imageStatus: AvatarStatus;\n  setImageStatus: (status: AvatarStatus) => void;\n}\n\nexport const AvatarContext = createContext<AvatarContextValue | undefined>(\n  undefined,\n);\n\nexport function useAvatarContext() {\n  const ctx = useContext(AvatarContext);\n  if (!ctx) {\n    throw new Error(\n      \"Avatar.Image and Avatar.Fallback must be used within Avatar\",\n    );\n  }\n  return ctx;\n}\n\n\n\"use client\";\n\nimport {\n  type HTMLAttributes,\n  type ReactNode,\n  type Ref,\n  useEffect,\n  useMemo,\n  useState,\n} from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { AvatarContext, useAvatarGroupContext, type AvatarStatus } from \"./avatar-context\";\nimport { AvatarImage } from \"./avatar-image\";\nimport { AvatarFallback } from \"./avatar-fallback\";\n\nexport { type AvatarStatus };\n\nexport const avatarVariants = cva(\n  \"relative inline-flex items-center justify-center border border-foreground/40 font-mono font-medium text-foreground bg-background overflow-hidden shrink-0\",\n  {\n    variants: {\n      size: {\n        sm: \"size-6 text-[10px]\",\n        md: \"size-8 text-xs\",\n        lg: \"size-10 text-sm\",\n      },\n    },\n    defaultVariants: { size: \"md\" },\n  },\n);\n\nexport interface AvatarProps\n  extends HTMLAttributes<HTMLSpanElement>,\n    VariantProps<typeof avatarVariants> {\n  /** Image source URL. Ignored when children are provided. */\n  src?: string;\n  alt?: string;\n  /** Fallback content shown when image fails. Ignored when children are provided. */\n  fallback?: ReactNode;\n  onStatusChange?: (status: AvatarStatus) => void;\n  ref?: Ref<HTMLSpanElement>;\n  children?: ReactNode;\n}\n\nfunction AvatarRoot({\n  src,\n  alt,\n  fallback,\n  size,\n  className,\n  ref,\n  onStatusChange,\n  children,\n  ...props\n}: AvatarProps) {\n  const groupCtx = useAvatarGroupContext();\n  const resolvedSize = size ?? groupCtx?.size;\n  const [imageStatus, setImageStatus] = useState<AvatarStatus>(\"idle\");\n\n  useEffect(() => {\n    if (imageStatus === \"idle\") return;\n    onStatusChange?.(imageStatus);\n  }, [imageStatus, onStatusChange]);\n\n  const contextValue = useMemo(() => ({ imageStatus, setImageStatus }), [imageStatus]);\n\n  const label = alt ?? (typeof fallback === \"string\" ? fallback : undefined);\n\n  return (\n    <AvatarContext value={contextValue}>\n      <span\n        ref={ref}\n        role={label ? \"img\" : \"presentation\"}\n        aria-label={label || undefined}\n        className={cn(avatarVariants({ size: resolvedSize }), className)}\n        {...props}\n      >\n        {children ?? (\n          <>\n            {src && <AvatarImage src={src} />}\n            <AvatarFallback>{fallback ?? \"?\"}</AvatarFallback>\n          </>\n        )}\n      </span>\n    </AvatarContext>\n  );\n}\n\nexport { AvatarRoot as Avatar };\n\n\n\"use client\";\n\nimport { useEffect, type ImgHTMLAttributes, type Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useAvatarContext } from \"./avatar-context\";\nimport { useImageStatus } from \"./use-image-status\";\n\nexport interface AvatarImageProps\n  extends Omit<ImgHTMLAttributes<HTMLImageElement>, \"alt\"> {\n  alt?: string;\n  ref?: Ref<HTMLImageElement>;\n}\n\nexport function AvatarImage({\n  src,\n  alt,\n  className,\n  ref,\n  ...imgProps\n}: AvatarImageProps) {\n  const { setImageStatus } = useAvatarContext();\n  const { status, showImage, onLoad, onError } = useImageStatus(src);\n\n  useEffect(() => {\n    setImageStatus(status);\n    return () => setImageStatus(\"idle\");\n  }, [status, setImageStatus]);\n\n  if (!showImage) return null;\n\n  return (\n    <img\n      ref={ref}\n      src={src}\n      alt={alt ?? \"\"}\n      onLoad={onLoad}\n      onError={onError}\n      className={cn(\"absolute inset-0 size-full object-cover\", className)}\n      {...imgProps}\n    />\n  );\n}\n\n\n\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useAvatarContext } from \"./avatar-context\";\nimport { useImageStatus } from \"./use-image-status\";\n\nexport interface AvatarFallbackProps {\n  /** Cascading fallback image URL. Tried before rendering children. */\n  src?: string;\n  children?: ReactNode;\n  className?: string;\n}\n\nexport function AvatarFallback({\n  src,\n  children,\n  className,\n}: AvatarFallbackProps) {\n  const { imageStatus } = useAvatarContext();\n  const fallbackImage = useImageStatus(src);\n\n  if (imageStatus === \"loaded\") return null;\n  if (src && fallbackImage.showImage) {\n    return (\n      <img\n        src={src}\n        alt=\"\"\n        onLoad={fallbackImage.onLoad}\n        onError={fallbackImage.onError}\n        className={cn(\"absolute inset-0 size-full object-cover\", className)}\n      />\n    );\n  }\n\n  return <span className={className}>{children}</span>;\n}\n\n\n\"use client\";\n\nimport { type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { avatarVariants } from \"./avatar\";\nimport { useAvatarGroupContext } from \"./avatar-context\";\n\nexport interface AvatarIndicatorProps extends VariantProps<typeof avatarVariants> {\n  count: number;\n  className?: string;\n}\n\nexport function AvatarIndicator({ count, size, className }: AvatarIndicatorProps) {\n  const groupCtx = useAvatarGroupContext();\n  const resolvedSize = size ?? groupCtx?.size;\n  return (\n    <span\n      role=\"img\"\n      aria-label={`${count} more`}\n      className={cn(avatarVariants({ size: resolvedSize }), \"border-dashed bg-muted text-foreground\", className)}\n    >\n      <span aria-hidden=\"true\">+{count}</span>\n    </span>\n  );\n}\n\n\n\"use client\";\n\nimport { Children, useMemo, type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { AvatarGroupContext } from \"./avatar-context\";\nimport { AvatarIndicator } from \"./avatar-indicator\";\nimport { Overflow } from \"../overflow/overflow\";\n\nexport interface AvatarGroupProps {\n  max?: number;\n  /** How avatars are spaced. \"overlap\" (default) stacks them, \"gap\" adds spacing between. */\n  spacing?: \"overlap\" | \"gap\";\n  children: ReactNode;\n  size?: \"sm\" | \"md\" | \"lg\" | null;\n  className?: string;\n  \"aria-label\"?: string;\n}\n\nconst spacingClasses = {\n  overlap: \"-space-x-1.5\",\n  gap: \"gap-1\",\n} satisfies Record<string, string>;\n\nexport function AvatarGroup({ max, spacing = \"overlap\", children, size = \"md\", className, \"aria-label\": ariaLabel = \"Avatars\" }: AvatarGroupProps) {\n  const allItems = Children.toArray(children);\n  const groupContextValue = useMemo(() => ({ size }), [size]);\n\n  if (max != null) {\n    const visibleItems = allItems.slice(0, max);\n    const overflowCount = allItems.length - max;\n\n    return (\n      <AvatarGroupContext value={groupContextValue}>\n        <div role=\"group\" aria-label={ariaLabel} className={cn(\"flex w-fit items-center\", spacingClasses[spacing], className)}>\n          {visibleItems}\n          {overflowCount > 0 && <AvatarIndicator count={overflowCount} />}\n        </div>\n      </AvatarGroupContext>\n    );\n  }\n\n  return (\n    <AvatarGroupContext value={groupContextValue}>\n      <div role=\"group\" aria-label={ariaLabel}>\n        <Overflow\n          mode=\"items\"\n          gap={spacingClasses[spacing]}\n          className={className}\n          indicator={({ count }) => <AvatarIndicator count={count} />}\n        >\n          {allItems}\n        </Overflow>\n      </div>\n    </AvatarGroupContext>\n  );\n}\n\n\n\"use client\";\nimport { useEffect, useState } from \"react\";\nimport type { AvatarStatus } from \"./avatar-context\";\n\ninterface ImageStatusState {\n  src: string | undefined;\n  status: AvatarStatus;\n}\n\nexport function useImageStatus(src: string | undefined) {\n  const [state, setState] = useState<ImageStatusState>(() => ({\n    src,\n    status: src ? \"loading\" : \"idle\",\n  }));\n\n  const status = state.src === src ? state.status : (src ? \"loading\" : \"idle\");\n\n  useEffect(() => {\n    setState((current) => (\n      current.src === src\n        ? current\n        : { src, status: src ? \"loading\" : \"idle\" }\n    ));\n  }, [src]);\n\n  return {\n    status,\n    showImage: !!src && status !== \"error\",\n    onLoad: () => setState({ src, status: \"loaded\" }),\n    onError: () => setState({ src, status: \"error\" }),\n  };\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
+      "content": [
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "use client",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "content": []
+    },
+    {
+      "number": 3,
       "content": [
         {
           "text": "import",
@@ -10342,7 +10826,7 @@
       ]
     },
     {
-      "number": 2,
+      "number": 4,
       "content": [
         {
           "text": "import",
@@ -10411,7 +10895,7 @@
       ]
     },
     {
-      "number": 3,
+      "number": 5,
       "content": [
         {
           "text": "import",
@@ -10480,7 +10964,7 @@
       ]
     },
     {
-      "number": 4,
+      "number": 6,
       "content": [
         {
           "text": "import",
@@ -10549,7 +11033,7 @@
       ]
     },
     {
-      "number": 5,
+      "number": 7,
       "content": [
         {
           "text": "import",
@@ -10618,11 +11102,11 @@
       ]
     },
     {
-      "number": 6,
+      "number": 8,
       "content": []
     },
     {
-      "number": 7,
+      "number": 9,
       "content": [
         {
           "text": "const",
@@ -10679,7 +11163,7 @@
       ]
     },
     {
-      "number": 8,
+      "number": 10,
       "content": [
         {
           "text": "  Image",
@@ -10700,7 +11184,7 @@
       ]
     },
     {
-      "number": 9,
+      "number": 11,
       "content": [
         {
           "text": "  Fallback",
@@ -10721,7 +11205,7 @@
       ]
     },
     {
-      "number": 10,
+      "number": 12,
       "content": [
         {
           "text": "  Group",
@@ -10742,7 +11226,7 @@
       ]
     },
     {
-      "number": 11,
+      "number": 13,
       "content": [
         {
           "text": "  Indicator",
@@ -10763,7 +11247,7 @@
       ]
     },
     {
-      "number": 12,
+      "number": 14,
       "content": [
         {
           "text": "}",
@@ -10780,11 +11264,11 @@
       ]
     },
     {
-      "number": 13,
+      "number": 15,
       "content": []
     },
     {
-      "number": 14,
+      "number": 16,
       "content": [
         {
           "text": "export",
@@ -10841,7 +11325,7 @@
       ]
     },
     {
-      "number": 15,
+      "number": 17,
       "content": [
         {
           "text": "export",
@@ -10882,7 +11366,7 @@
       ]
     },
     {
-      "number": 16,
+      "number": 18,
       "content": [
         {
           "text": "export",
@@ -10923,7 +11407,7 @@
       ]
     },
     {
-      "number": 17,
+      "number": 19,
       "content": [
         {
           "text": "export",
@@ -10964,7 +11448,7 @@
       ]
     },
     {
-      "number": 18,
+      "number": 20,
       "content": [
         {
           "text": "export",
@@ -11005,15 +11489,15 @@
       ]
     },
     {
-      "number": 19,
-      "content": []
-    },
-    {
-      "number": 20,
-      "content": []
-    },
-    {
       "number": 21,
+      "content": []
+    },
+    {
+      "number": 22,
+      "content": []
+    },
+    {
+      "number": 23,
       "content": [
         {
           "text": "\"",
@@ -11034,11 +11518,11 @@
       ]
     },
     {
-      "number": 22,
+      "number": 24,
       "content": []
     },
     {
-      "number": 23,
+      "number": 25,
       "content": [
         {
           "text": "import",
@@ -11099,11 +11583,11 @@
       ]
     },
     {
-      "number": 24,
+      "number": 26,
       "content": []
     },
     {
-      "number": 25,
+      "number": 27,
       "content": [
         {
           "text": "export",
@@ -11228,11 +11712,11 @@
       ]
     },
     {
-      "number": 26,
+      "number": 28,
       "content": []
     },
     {
-      "number": 27,
+      "number": 29,
       "content": [
         {
           "text": "export",
@@ -11265,7 +11749,7 @@
       ]
     },
     {
-      "number": 28,
+      "number": 30,
       "content": [
         {
           "text": "  size",
@@ -11362,7 +11846,7 @@
       ]
     },
     {
-      "number": 29,
+      "number": 31,
       "content": [
         {
           "text": "}",
@@ -11371,11 +11855,11 @@
       ]
     },
     {
-      "number": 30,
+      "number": 32,
       "content": []
     },
     {
-      "number": 31,
+      "number": 33,
       "content": [
         {
           "text": "export",
@@ -11416,7 +11900,7 @@
       ]
     },
     {
-      "number": 32,
+      "number": 34,
       "content": [
         {
           "text": "  AvatarGroupContextValue ",
@@ -11437,7 +11921,7 @@
       ]
     },
     {
-      "number": 33,
+      "number": 35,
       "content": [
         {
           "text": ">",
@@ -11462,11 +11946,11 @@
       ]
     },
     {
-      "number": 34,
+      "number": 36,
       "content": []
     },
     {
-      "number": 35,
+      "number": 37,
       "content": [
         {
           "text": "export",
@@ -11503,7 +11987,7 @@
       ]
     },
     {
-      "number": 36,
+      "number": 38,
       "content": [
         {
           "text": "  ",
@@ -11532,7 +12016,7 @@
       ]
     },
     {
-      "number": 37,
+      "number": 39,
       "content": [
         {
           "text": "}",
@@ -11541,11 +12025,11 @@
       ]
     },
     {
-      "number": 38,
+      "number": 40,
       "content": []
     },
     {
-      "number": 39,
+      "number": 41,
       "content": [
         {
           "text": "export",
@@ -11578,7 +12062,7 @@
       ]
     },
     {
-      "number": 40,
+      "number": 42,
       "content": [
         {
           "text": "  imageStatus",
@@ -11603,7 +12087,7 @@
       ]
     },
     {
-      "number": 41,
+      "number": 43,
       "content": [
         {
           "text": "  ",
@@ -11668,7 +12152,7 @@
       ]
     },
     {
-      "number": 42,
+      "number": 44,
       "content": [
         {
           "text": "}",
@@ -11677,11 +12161,11 @@
       ]
     },
     {
-      "number": 43,
+      "number": 45,
       "content": []
     },
     {
-      "number": 44,
+      "number": 46,
       "content": [
         {
           "text": "export",
@@ -11754,7 +12238,7 @@
       ]
     },
     {
-      "number": 45,
+      "number": 47,
       "content": [
         {
           "text": "  ",
@@ -11771,7 +12255,7 @@
       ]
     },
     {
-      "number": 46,
+      "number": 48,
       "content": [
         {
           "text": ")",
@@ -11784,11 +12268,11 @@
       ]
     },
     {
-      "number": 47,
+      "number": 49,
       "content": []
     },
     {
-      "number": 48,
+      "number": 50,
       "content": [
         {
           "text": "export",
@@ -11825,7 +12309,7 @@
       ]
     },
     {
-      "number": 49,
+      "number": 51,
       "content": [
         {
           "text": "  ",
@@ -11870,7 +12354,7 @@
       ]
     },
     {
-      "number": 50,
+      "number": 52,
       "content": [
         {
           "text": "  ",
@@ -11899,7 +12383,7 @@
       ]
     },
     {
-      "number": 51,
+      "number": 53,
       "content": [
         {
           "text": "    ",
@@ -11932,7 +12416,7 @@
       ]
     },
     {
-      "number": 52,
+      "number": 54,
       "content": [
         {
           "text": "      ",
@@ -11957,7 +12441,7 @@
       ]
     },
     {
-      "number": 53,
+      "number": 55,
       "content": [
         {
           "text": "    )",
@@ -11970,7 +12454,7 @@
       ]
     },
     {
-      "number": 54,
+      "number": 56,
       "content": [
         {
           "text": "  ",
@@ -11983,7 +12467,7 @@
       ]
     },
     {
-      "number": 55,
+      "number": 57,
       "content": [
         {
           "text": "  ",
@@ -12004,7 +12488,7 @@
       ]
     },
     {
-      "number": 56,
+      "number": 58,
       "content": [
         {
           "text": "}",
@@ -12013,15 +12497,15 @@
       ]
     },
     {
-      "number": 57,
-      "content": []
-    },
-    {
-      "number": 58,
-      "content": []
-    },
-    {
       "number": 59,
+      "content": []
+    },
+    {
+      "number": 60,
+      "content": []
+    },
+    {
+      "number": 61,
       "content": [
         {
           "text": "\"",
@@ -12042,11 +12526,11 @@
       ]
     },
     {
-      "number": 60,
+      "number": 62,
       "content": []
     },
     {
-      "number": 61,
+      "number": 63,
       "content": [
         {
           "text": "import",
@@ -12063,7 +12547,7 @@
       ]
     },
     {
-      "number": 62,
+      "number": 64,
       "content": [
         {
           "text": "  ",
@@ -12084,7 +12568,7 @@
       ]
     },
     {
-      "number": 63,
+      "number": 65,
       "content": [
         {
           "text": "  ",
@@ -12105,7 +12589,7 @@
       ]
     },
     {
-      "number": 64,
+      "number": 66,
       "content": [
         {
           "text": "  ",
@@ -12126,7 +12610,7 @@
       ]
     },
     {
-      "number": 65,
+      "number": 67,
       "content": [
         {
           "text": "  useEffect",
@@ -12139,7 +12623,7 @@
       ]
     },
     {
-      "number": 66,
+      "number": 68,
       "content": [
         {
           "text": "  useMemo",
@@ -12152,7 +12636,7 @@
       ]
     },
     {
-      "number": 67,
+      "number": 69,
       "content": [
         {
           "text": "  useState",
@@ -12165,7 +12649,7 @@
       ]
     },
     {
-      "number": 68,
+      "number": 70,
       "content": [
         {
           "text": "}",
@@ -12202,7 +12686,7 @@
       ]
     },
     {
-      "number": 69,
+      "number": 71,
       "content": [
         {
           "text": "import",
@@ -12271,7 +12755,7 @@
       ]
     },
     {
-      "number": 70,
+      "number": 72,
       "content": [
         {
           "text": "import",
@@ -12324,7 +12808,7 @@
       ]
     },
     {
-      "number": 71,
+      "number": 73,
       "content": [
         {
           "text": "import",
@@ -12401,7 +12885,7 @@
       ]
     },
     {
-      "number": 72,
+      "number": 74,
       "content": [
         {
           "text": "import",
@@ -12454,7 +12938,7 @@
       ]
     },
     {
-      "number": 73,
+      "number": 75,
       "content": [
         {
           "text": "import",
@@ -12507,11 +12991,11 @@
       ]
     },
     {
-      "number": 74,
+      "number": 76,
       "content": []
     },
     {
-      "number": 75,
+      "number": 77,
       "content": [
         {
           "text": "export",
@@ -12544,11 +13028,11 @@
       ]
     },
     {
-      "number": 76,
+      "number": 78,
       "content": []
     },
     {
-      "number": 77,
+      "number": 79,
       "content": [
         {
           "text": "export",
@@ -12593,7 +13077,7 @@
       ]
     },
     {
-      "number": 78,
+      "number": 80,
       "content": [
         {
           "text": "  ",
@@ -12618,7 +13102,7 @@
       ]
     },
     {
-      "number": 79,
+      "number": 81,
       "content": [
         {
           "text": "  ",
@@ -12631,7 +13115,7 @@
       ]
     },
     {
-      "number": 80,
+      "number": 82,
       "content": [
         {
           "text": "    variants",
@@ -12652,7 +13136,7 @@
       ]
     },
     {
-      "number": 81,
+      "number": 83,
       "content": [
         {
           "text": "      size",
@@ -12673,7 +13157,7 @@
       ]
     },
     {
-      "number": 82,
+      "number": 84,
       "content": [
         {
           "text": "        sm",
@@ -12706,7 +13190,7 @@
       ]
     },
     {
-      "number": 83,
+      "number": 85,
       "content": [
         {
           "text": "        md",
@@ -12739,7 +13223,7 @@
       ]
     },
     {
-      "number": 84,
+      "number": 86,
       "content": [
         {
           "text": "        lg",
@@ -12772,7 +13256,7 @@
       ]
     },
     {
-      "number": 85,
+      "number": 87,
       "content": [
         {
           "text": "      ",
@@ -12785,7 +13269,7 @@
       ]
     },
     {
-      "number": 86,
+      "number": 88,
       "content": [
         {
           "text": "    ",
@@ -12798,7 +13282,7 @@
       ]
     },
     {
-      "number": 87,
+      "number": 89,
       "content": [
         {
           "text": "    defaultVariants",
@@ -12851,7 +13335,7 @@
       ]
     },
     {
-      "number": 88,
+      "number": 90,
       "content": [
         {
           "text": "  ",
@@ -12864,7 +13348,7 @@
       ]
     },
     {
-      "number": 89,
+      "number": 91,
       "content": [
         {
           "text": ")",
@@ -12877,11 +13361,11 @@
       ]
     },
     {
-      "number": 90,
+      "number": 92,
       "content": []
     },
     {
-      "number": 91,
+      "number": 93,
       "content": [
         {
           "text": "export",
@@ -12906,7 +13390,7 @@
       ]
     },
     {
-      "number": 92,
+      "number": 94,
       "content": [
         {
           "text": "  ",
@@ -12939,7 +13423,7 @@
       ]
     },
     {
-      "number": 93,
+      "number": 95,
       "content": [
         {
           "text": "    ",
@@ -12972,7 +13456,7 @@
       ]
     },
     {
-      "number": 94,
+      "number": 96,
       "content": [
         {
           "text": "  ",
@@ -12993,7 +13477,7 @@
       ]
     },
     {
-      "number": 95,
+      "number": 97,
       "content": [
         {
           "text": "  src",
@@ -13018,7 +13502,7 @@
       ]
     },
     {
-      "number": 96,
+      "number": 98,
       "content": [
         {
           "text": "  alt",
@@ -13043,7 +13527,7 @@
       ]
     },
     {
-      "number": 97,
+      "number": 99,
       "content": [
         {
           "text": "  ",
@@ -13064,7 +13548,7 @@
       ]
     },
     {
-      "number": 98,
+      "number": 100,
       "content": [
         {
           "text": "  fallback",
@@ -13089,7 +13573,7 @@
       ]
     },
     {
-      "number": 99,
+      "number": 101,
       "content": [
         {
           "text": "  ",
@@ -13154,7 +13638,7 @@
       ]
     },
     {
-      "number": 100,
+      "number": 102,
       "content": [
         {
           "text": "  ref",
@@ -13187,7 +13671,7 @@
       ]
     },
     {
-      "number": 101,
+      "number": 103,
       "content": [
         {
           "text": "  children",
@@ -13212,7 +13696,7 @@
       ]
     },
     {
-      "number": 102,
+      "number": 104,
       "content": [
         {
           "text": "}",
@@ -13221,11 +13705,11 @@
       ]
     },
     {
-      "number": 103,
+      "number": 105,
       "content": []
     },
     {
-      "number": 104,
+      "number": 106,
       "content": [
         {
           "text": "function",
@@ -13246,7 +13730,7 @@
       ]
     },
     {
-      "number": 105,
+      "number": 107,
       "content": [
         {
           "text": "  src",
@@ -13259,7 +13743,7 @@
       ]
     },
     {
-      "number": 106,
+      "number": 108,
       "content": [
         {
           "text": "  alt",
@@ -13272,7 +13756,7 @@
       ]
     },
     {
-      "number": 107,
+      "number": 109,
       "content": [
         {
           "text": "  fallback",
@@ -13285,7 +13769,7 @@
       ]
     },
     {
-      "number": 108,
+      "number": 110,
       "content": [
         {
           "text": "  size",
@@ -13298,7 +13782,7 @@
       ]
     },
     {
-      "number": 109,
+      "number": 111,
       "content": [
         {
           "text": "  className",
@@ -13311,7 +13795,7 @@
       ]
     },
     {
-      "number": 110,
+      "number": 112,
       "content": [
         {
           "text": "  ref",
@@ -13324,7 +13808,7 @@
       ]
     },
     {
-      "number": 111,
+      "number": 113,
       "content": [
         {
           "text": "  onStatusChange",
@@ -13337,7 +13821,7 @@
       ]
     },
     {
-      "number": 112,
+      "number": 114,
       "content": [
         {
           "text": "  children",
@@ -13350,7 +13834,7 @@
       ]
     },
     {
-      "number": 113,
+      "number": 115,
       "content": [
         {
           "text": "  ",
@@ -13367,7 +13851,7 @@
       ]
     },
     {
-      "number": 114,
+      "number": 116,
       "content": [
         {
           "text": "}:",
@@ -13396,7 +13880,7 @@
       ]
     },
     {
-      "number": 115,
+      "number": 117,
       "content": [
         {
           "text": "  ",
@@ -13441,7 +13925,7 @@
       ]
     },
     {
-      "number": 116,
+      "number": 118,
       "content": [
         {
           "text": "  ",
@@ -13498,7 +13982,7 @@
       ]
     },
     {
-      "number": 117,
+      "number": 119,
       "content": [
         {
           "text": "  ",
@@ -13591,11 +14075,11 @@
       ]
     },
     {
-      "number": 118,
+      "number": 120,
       "content": []
     },
     {
-      "number": 119,
+      "number": 121,
       "content": [
         {
           "text": "  ",
@@ -13632,7 +14116,7 @@
       ]
     },
     {
-      "number": 120,
+      "number": 122,
       "content": [
         {
           "text": "    ",
@@ -13681,7 +14165,7 @@
       ]
     },
     {
-      "number": 121,
+      "number": 123,
       "content": [
         {
           "text": "    ",
@@ -13706,7 +14190,7 @@
       ]
     },
     {
-      "number": 122,
+      "number": 124,
       "content": [
         {
           "text": "  ",
@@ -13735,11 +14219,11 @@
       ]
     },
     {
-      "number": 123,
+      "number": 125,
       "content": []
     },
     {
-      "number": 124,
+      "number": 126,
       "content": [
         {
           "text": "  ",
@@ -13832,11 +14316,11 @@
       ]
     },
     {
-      "number": 125,
+      "number": 127,
       "content": []
     },
     {
-      "number": 126,
+      "number": 128,
       "content": [
         {
           "text": "  ",
@@ -13937,11 +14421,11 @@
       ]
     },
     {
-      "number": 127,
+      "number": 129,
       "content": []
     },
     {
-      "number": 128,
+      "number": 130,
       "content": [
         {
           "text": "  ",
@@ -13958,7 +14442,7 @@
       ]
     },
     {
-      "number": 129,
+      "number": 131,
       "content": [
         {
           "text": "    ",
@@ -13995,7 +14479,7 @@
       ]
     },
     {
-      "number": 130,
+      "number": 132,
       "content": [
         {
           "text": "      ",
@@ -14012,7 +14496,7 @@
       ]
     },
     {
-      "number": 131,
+      "number": 133,
       "content": [
         {
           "text": "        ",
@@ -14037,7 +14521,7 @@
       ]
     },
     {
-      "number": 132,
+      "number": 134,
       "content": [
         {
           "text": "        ",
@@ -14106,7 +14590,7 @@
       ]
     },
     {
-      "number": 133,
+      "number": 135,
       "content": [
         {
           "text": "        ",
@@ -14143,7 +14627,7 @@
       ]
     },
     {
-      "number": 134,
+      "number": 136,
       "content": [
         {
           "text": "        ",
@@ -14212,7 +14696,7 @@
       ]
     },
     {
-      "number": 135,
+      "number": 137,
       "content": [
         {
           "text": "        ",
@@ -14233,7 +14717,7 @@
       ]
     },
     {
-      "number": 136,
+      "number": 138,
       "content": [
         {
           "text": "      ",
@@ -14246,7 +14730,7 @@
       ]
     },
     {
-      "number": 137,
+      "number": 139,
       "content": [
         {
           "text": "        ",
@@ -14271,7 +14755,7 @@
       ]
     },
     {
-      "number": 138,
+      "number": 140,
       "content": [
         {
           "text": "          ",
@@ -14284,7 +14768,7 @@
       ]
     },
     {
-      "number": 139,
+      "number": 141,
       "content": [
         {
           "text": "            ",
@@ -14345,7 +14829,7 @@
       ]
     },
     {
-      "number": 140,
+      "number": 142,
       "content": [
         {
           "text": "            ",
@@ -14402,7 +14886,7 @@
       ]
     },
     {
-      "number": 141,
+      "number": 143,
       "content": [
         {
           "text": "          ",
@@ -14415,7 +14899,7 @@
       ]
     },
     {
-      "number": 142,
+      "number": 144,
       "content": [
         {
           "text": "        )",
@@ -14428,7 +14912,7 @@
       ]
     },
     {
-      "number": 143,
+      "number": 145,
       "content": [
         {
           "text": "      ",
@@ -14449,7 +14933,7 @@
       ]
     },
     {
-      "number": 144,
+      "number": 146,
       "content": [
         {
           "text": "    ",
@@ -14470,7 +14954,7 @@
       ]
     },
     {
-      "number": 145,
+      "number": 147,
       "content": [
         {
           "text": "  )",
@@ -14483,7 +14967,7 @@
       ]
     },
     {
-      "number": 146,
+      "number": 148,
       "content": [
         {
           "text": "}",
@@ -14492,11 +14976,11 @@
       ]
     },
     {
-      "number": 147,
+      "number": 149,
       "content": []
     },
     {
-      "number": 148,
+      "number": 150,
       "content": [
         {
           "text": "export",
@@ -14529,15 +15013,15 @@
       ]
     },
     {
-      "number": 149,
-      "content": []
-    },
-    {
-      "number": 150,
-      "content": []
-    },
-    {
       "number": 151,
+      "content": []
+    },
+    {
+      "number": 152,
+      "content": []
+    },
+    {
+      "number": 153,
       "content": [
         {
           "text": "\"",
@@ -14558,11 +15042,11 @@
       ]
     },
     {
-      "number": 152,
+      "number": 154,
       "content": []
     },
     {
-      "number": 153,
+      "number": 155,
       "content": [
         {
           "text": "import",
@@ -14647,7 +15131,7 @@
       ]
     },
     {
-      "number": 154,
+      "number": 156,
       "content": [
         {
           "text": "import",
@@ -14700,7 +15184,7 @@
       ]
     },
     {
-      "number": 155,
+      "number": 157,
       "content": [
         {
           "text": "import",
@@ -14753,7 +15237,7 @@
       ]
     },
     {
-      "number": 156,
+      "number": 158,
       "content": [
         {
           "text": "import",
@@ -14806,11 +15290,11 @@
       ]
     },
     {
-      "number": 157,
+      "number": 159,
       "content": []
     },
     {
-      "number": 158,
+      "number": 160,
       "content": [
         {
           "text": "export",
@@ -14835,7 +15319,7 @@
       ]
     },
     {
-      "number": 159,
+      "number": 161,
       "content": [
         {
           "text": "  ",
@@ -14904,7 +15388,7 @@
       ]
     },
     {
-      "number": 160,
+      "number": 162,
       "content": [
         {
           "text": "  alt",
@@ -14929,7 +15413,7 @@
       ]
     },
     {
-      "number": 161,
+      "number": 163,
       "content": [
         {
           "text": "  ref",
@@ -14962,7 +15446,7 @@
       ]
     },
     {
-      "number": 162,
+      "number": 164,
       "content": [
         {
           "text": "}",
@@ -14971,11 +15455,11 @@
       ]
     },
     {
-      "number": 163,
+      "number": 165,
       "content": []
     },
     {
-      "number": 164,
+      "number": 166,
       "content": [
         {
           "text": "export",
@@ -15004,7 +15488,7 @@
       ]
     },
     {
-      "number": 165,
+      "number": 167,
       "content": [
         {
           "text": "  src",
@@ -15017,7 +15501,7 @@
       ]
     },
     {
-      "number": 166,
+      "number": 168,
       "content": [
         {
           "text": "  alt",
@@ -15030,7 +15514,7 @@
       ]
     },
     {
-      "number": 167,
+      "number": 169,
       "content": [
         {
           "text": "  className",
@@ -15043,7 +15527,7 @@
       ]
     },
     {
-      "number": 168,
+      "number": 170,
       "content": [
         {
           "text": "  ref",
@@ -15056,7 +15540,7 @@
       ]
     },
     {
-      "number": 169,
+      "number": 171,
       "content": [
         {
           "text": "  ",
@@ -15073,7 +15557,7 @@
       ]
     },
     {
-      "number": 170,
+      "number": 172,
       "content": [
         {
           "text": "}:",
@@ -15102,7 +15586,7 @@
       ]
     },
     {
-      "number": 171,
+      "number": 173,
       "content": [
         {
           "text": "  ",
@@ -15163,7 +15647,7 @@
       ]
     },
     {
-      "number": 172,
+      "number": 174,
       "content": [
         {
           "text": "  ",
@@ -15260,11 +15744,11 @@
       ]
     },
     {
-      "number": 173,
+      "number": 175,
       "content": []
     },
     {
-      "number": 174,
+      "number": 176,
       "content": [
         {
           "text": "  ",
@@ -15301,7 +15785,7 @@
       ]
     },
     {
-      "number": 175,
+      "number": 177,
       "content": [
         {
           "text": "    ",
@@ -15322,7 +15806,7 @@
       ]
     },
     {
-      "number": 176,
+      "number": 178,
       "content": [
         {
           "text": "    ",
@@ -15383,7 +15867,7 @@
       ]
     },
     {
-      "number": 177,
+      "number": 179,
       "content": [
         {
           "text": "  ",
@@ -15412,11 +15896,11 @@
       ]
     },
     {
-      "number": 178,
+      "number": 180,
       "content": []
     },
     {
-      "number": 179,
+      "number": 181,
       "content": [
         {
           "text": "  ",
@@ -15457,11 +15941,11 @@
       ]
     },
     {
-      "number": 180,
+      "number": 182,
       "content": []
     },
     {
-      "number": 181,
+      "number": 183,
       "content": [
         {
           "text": "  ",
@@ -15478,7 +15962,7 @@
       ]
     },
     {
-      "number": 182,
+      "number": 184,
       "content": [
         {
           "text": "    ",
@@ -15495,57 +15979,57 @@
       ]
     },
     {
-      "number": 183,
-      "content": [
-        {
-          "text": "      ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "ref",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "={",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "ref",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 184,
-      "content": [
-        {
-          "text": "      ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "src",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "={",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "src",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
       "number": 185,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 186,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "src",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "src",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 187,
       "content": [
         {
           "text": "      ",
@@ -15582,57 +16066,57 @@
       ]
     },
     {
-      "number": 186,
-      "content": [
-        {
-          "text": "      ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "onLoad",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "={",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "onLoad",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 187,
-      "content": [
-        {
-          "text": "      ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "onError",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "={",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "onError",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
       "number": 188,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "onLoad",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "onLoad",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 189,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "onError",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "onError",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 190,
       "content": [
         {
           "text": "      ",
@@ -15681,7 +16165,7 @@
       ]
     },
     {
-      "number": 189,
+      "number": 191,
       "content": [
         {
           "text": "      ",
@@ -15702,7 +16186,7 @@
       ]
     },
     {
-      "number": 190,
+      "number": 192,
       "content": [
         {
           "text": "    ",
@@ -15715,7 +16199,7 @@
       ]
     },
     {
-      "number": 191,
+      "number": 193,
       "content": [
         {
           "text": "  )",
@@ -15728,7 +16212,7 @@
       ]
     },
     {
-      "number": 192,
+      "number": 194,
       "content": [
         {
           "text": "}",
@@ -15737,15 +16221,15 @@
       ]
     },
     {
-      "number": 193,
-      "content": []
-    },
-    {
-      "number": 194,
-      "content": []
-    },
-    {
       "number": 195,
+      "content": []
+    },
+    {
+      "number": 196,
+      "content": []
+    },
+    {
+      "number": 197,
       "content": [
         {
           "text": "\"",
@@ -15766,11 +16250,11 @@
       ]
     },
     {
-      "number": 196,
+      "number": 198,
       "content": []
     },
     {
-      "number": 197,
+      "number": 199,
       "content": [
         {
           "text": "import",
@@ -15831,7 +16315,7 @@
       ]
     },
     {
-      "number": 198,
+      "number": 200,
       "content": [
         {
           "text": "import",
@@ -15884,7 +16368,7 @@
       ]
     },
     {
-      "number": 199,
+      "number": 201,
       "content": [
         {
           "text": "import",
@@ -15937,7 +16421,7 @@
       ]
     },
     {
-      "number": 200,
+      "number": 202,
       "content": [
         {
           "text": "import",
@@ -15990,11 +16474,11 @@
       ]
     },
     {
-      "number": 201,
+      "number": 203,
       "content": []
     },
     {
-      "number": 202,
+      "number": 204,
       "content": [
         {
           "text": "export",
@@ -16027,7 +16511,7 @@
       ]
     },
     {
-      "number": 203,
+      "number": 205,
       "content": [
         {
           "text": "  ",
@@ -16048,7 +16532,7 @@
       ]
     },
     {
-      "number": 204,
+      "number": 206,
       "content": [
         {
           "text": "  src",
@@ -16073,7 +16557,7 @@
       ]
     },
     {
-      "number": 205,
+      "number": 207,
       "content": [
         {
           "text": "  children",
@@ -16098,7 +16582,7 @@
       ]
     },
     {
-      "number": 206,
+      "number": 208,
       "content": [
         {
           "text": "  className",
@@ -16123,7 +16607,7 @@
       ]
     },
     {
-      "number": 207,
+      "number": 209,
       "content": [
         {
           "text": "}",
@@ -16132,11 +16616,11 @@
       ]
     },
     {
-      "number": 208,
+      "number": 210,
       "content": []
     },
     {
-      "number": 209,
+      "number": 211,
       "content": [
         {
           "text": "export",
@@ -16165,7 +16649,7 @@
       ]
     },
     {
-      "number": 210,
+      "number": 212,
       "content": [
         {
           "text": "  src",
@@ -16178,7 +16662,7 @@
       ]
     },
     {
-      "number": 211,
+      "number": 213,
       "content": [
         {
           "text": "  children",
@@ -16191,7 +16675,7 @@
       ]
     },
     {
-      "number": 212,
+      "number": 214,
       "content": [
         {
           "text": "  className",
@@ -16204,7 +16688,7 @@
       ]
     },
     {
-      "number": 213,
+      "number": 215,
       "content": [
         {
           "text": "}:",
@@ -16233,7 +16717,7 @@
       ]
     },
     {
-      "number": 214,
+      "number": 216,
       "content": [
         {
           "text": "  ",
@@ -16294,7 +16778,7 @@
       ]
     },
     {
-      "number": 215,
+      "number": 217,
       "content": [
         {
           "text": "  ",
@@ -16339,11 +16823,11 @@
       ]
     },
     {
-      "number": 216,
+      "number": 218,
       "content": []
     },
     {
-      "number": 217,
+      "number": 219,
       "content": [
         {
           "text": "  ",
@@ -16400,7 +16884,7 @@
       ]
     },
     {
-      "number": 218,
+      "number": 220,
       "content": [
         {
           "text": "  ",
@@ -16441,7 +16925,7 @@
       ]
     },
     {
-      "number": 219,
+      "number": 221,
       "content": [
         {
           "text": "    ",
@@ -16458,7 +16942,7 @@
       ]
     },
     {
-      "number": 220,
+      "number": 222,
       "content": [
         {
           "text": "      ",
@@ -16475,7 +16959,7 @@
       ]
     },
     {
-      "number": 221,
+      "number": 223,
       "content": [
         {
           "text": "        ",
@@ -16500,7 +16984,7 @@
       ]
     },
     {
-      "number": 222,
+      "number": 224,
       "content": [
         {
           "text": "        ",
@@ -16521,73 +17005,73 @@
       ]
     },
     {
-      "number": 223,
-      "content": [
-        {
-          "text": "        ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "onLoad",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "={",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "fallbackImage",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ".",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "onLoad",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 224,
-      "content": [
-        {
-          "text": "        ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "onError",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "={",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "fallbackImage",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ".",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "onError",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
       "number": 225,
+      "content": [
+        {
+          "text": "        ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "onLoad",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "fallbackImage",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "onLoad",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 226,
+      "content": [
+        {
+          "text": "        ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "onError",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "fallbackImage",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "onError",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 227,
       "content": [
         {
           "text": "        ",
@@ -16636,7 +17120,7 @@
       ]
     },
     {
-      "number": 226,
+      "number": 228,
       "content": [
         {
           "text": "      ",
@@ -16649,7 +17133,7 @@
       ]
     },
     {
-      "number": 227,
+      "number": 229,
       "content": [
         {
           "text": "    )",
@@ -16662,7 +17146,7 @@
       ]
     },
     {
-      "number": 228,
+      "number": 230,
       "content": [
         {
           "text": "  ",
@@ -16675,11 +17159,11 @@
       ]
     },
     {
-      "number": 229,
+      "number": 231,
       "content": []
     },
     {
-      "number": 230,
+      "number": 232,
       "content": [
         {
           "text": "  ",
@@ -16740,7 +17224,7 @@
       ]
     },
     {
-      "number": 231,
+      "number": 233,
       "content": [
         {
           "text": "}",
@@ -16749,15 +17233,15 @@
       ]
     },
     {
-      "number": 232,
-      "content": []
-    },
-    {
-      "number": 233,
-      "content": []
-    },
-    {
       "number": 234,
+      "content": []
+    },
+    {
+      "number": 235,
+      "content": []
+    },
+    {
+      "number": 236,
       "content": [
         {
           "text": "\"",
@@ -16778,11 +17262,11 @@
       ]
     },
     {
-      "number": 235,
+      "number": 237,
       "content": []
     },
     {
-      "number": 236,
+      "number": 238,
       "content": [
         {
           "text": "import",
@@ -16843,7 +17327,7 @@
       ]
     },
     {
-      "number": 237,
+      "number": 239,
       "content": [
         {
           "text": "import",
@@ -16896,7 +17380,7 @@
       ]
     },
     {
-      "number": 238,
+      "number": 240,
       "content": [
         {
           "text": "import",
@@ -16949,7 +17433,7 @@
       ]
     },
     {
-      "number": 239,
+      "number": 241,
       "content": [
         {
           "text": "import",
@@ -17002,11 +17486,11 @@
       ]
     },
     {
-      "number": 240,
+      "number": 242,
       "content": []
     },
     {
-      "number": 241,
+      "number": 243,
       "content": [
         {
           "text": "export",
@@ -17067,7 +17551,7 @@
       ]
     },
     {
-      "number": 242,
+      "number": 244,
       "content": [
         {
           "text": "  count",
@@ -17092,7 +17576,7 @@
       ]
     },
     {
-      "number": 243,
+      "number": 245,
       "content": [
         {
           "text": "  className",
@@ -17117,7 +17601,7 @@
       ]
     },
     {
-      "number": 244,
+      "number": 246,
       "content": [
         {
           "text": "}",
@@ -17126,11 +17610,11 @@
       ]
     },
     {
-      "number": 245,
+      "number": 247,
       "content": []
     },
     {
-      "number": 246,
+      "number": 248,
       "content": [
         {
           "text": "export",
@@ -17203,7 +17687,7 @@
       ]
     },
     {
-      "number": 247,
+      "number": 249,
       "content": [
         {
           "text": "  ",
@@ -17248,7 +17732,7 @@
       ]
     },
     {
-      "number": 248,
+      "number": 250,
       "content": [
         {
           "text": "  ",
@@ -17305,7 +17789,7 @@
       ]
     },
     {
-      "number": 249,
+      "number": 251,
       "content": [
         {
           "text": "  ",
@@ -17322,7 +17806,7 @@
       ]
     },
     {
-      "number": 250,
+      "number": 252,
       "content": [
         {
           "text": "    ",
@@ -17339,7 +17823,7 @@
       ]
     },
     {
-      "number": 251,
+      "number": 253,
       "content": [
         {
           "text": "      ",
@@ -17368,7 +17852,7 @@
       ]
     },
     {
-      "number": 252,
+      "number": 254,
       "content": [
         {
           "text": "      ",
@@ -17413,7 +17897,7 @@
       ]
     },
     {
-      "number": 253,
+      "number": 255,
       "content": [
         {
           "text": "      ",
@@ -17502,7 +17986,7 @@
       ]
     },
     {
-      "number": 254,
+      "number": 256,
       "content": [
         {
           "text": "    ",
@@ -17515,7 +17999,7 @@
       ]
     },
     {
-      "number": 255,
+      "number": 257,
       "content": [
         {
           "text": "      ",
@@ -17584,7 +18068,7 @@
       ]
     },
     {
-      "number": 256,
+      "number": 258,
       "content": [
         {
           "text": "    ",
@@ -17605,7 +18089,7 @@
       ]
     },
     {
-      "number": 257,
+      "number": 259,
       "content": [
         {
           "text": "  )",
@@ -17618,7 +18102,7 @@
       ]
     },
     {
-      "number": 258,
+      "number": 260,
       "content": [
         {
           "text": "}",
@@ -17627,15 +18111,15 @@
       ]
     },
     {
-      "number": 259,
-      "content": []
-    },
-    {
-      "number": 260,
-      "content": []
-    },
-    {
       "number": 261,
+      "content": []
+    },
+    {
+      "number": 262,
+      "content": []
+    },
+    {
+      "number": 263,
       "content": [
         {
           "text": "\"",
@@ -17656,11 +18140,11 @@
       ]
     },
     {
-      "number": 262,
+      "number": 264,
       "content": []
     },
     {
-      "number": 263,
+      "number": 265,
       "content": [
         {
           "text": "import",
@@ -17737,7 +18221,7 @@
       ]
     },
     {
-      "number": 264,
+      "number": 266,
       "content": [
         {
           "text": "import",
@@ -17790,7 +18274,7 @@
       ]
     },
     {
-      "number": 265,
+      "number": 267,
       "content": [
         {
           "text": "import",
@@ -17843,7 +18327,7 @@
       ]
     },
     {
-      "number": 266,
+      "number": 268,
       "content": [
         {
           "text": "import",
@@ -17896,7 +18380,7 @@
       ]
     },
     {
-      "number": 267,
+      "number": 269,
       "content": [
         {
           "text": "import",
@@ -17949,11 +18433,11 @@
       ]
     },
     {
-      "number": 268,
+      "number": 270,
       "content": []
     },
     {
-      "number": 269,
+      "number": 271,
       "content": [
         {
           "text": "export",
@@ -17986,7 +18470,7 @@
       ]
     },
     {
-      "number": 270,
+      "number": 272,
       "content": [
         {
           "text": "  max",
@@ -18011,7 +18495,7 @@
       ]
     },
     {
-      "number": 271,
+      "number": 273,
       "content": [
         {
           "text": "  ",
@@ -18032,7 +18516,7 @@
       ]
     },
     {
-      "number": 272,
+      "number": 274,
       "content": [
         {
           "text": "  spacing",
@@ -18089,7 +18573,7 @@
       ]
     },
     {
-      "number": 273,
+      "number": 275,
       "content": [
         {
           "text": "  children",
@@ -18114,7 +18598,7 @@
       ]
     },
     {
-      "number": 274,
+      "number": 276,
       "content": [
         {
           "text": "  size",
@@ -18211,7 +18695,7 @@
       ]
     },
     {
-      "number": 275,
+      "number": 277,
       "content": [
         {
           "text": "  className",
@@ -18236,7 +18720,7 @@
       ]
     },
     {
-      "number": 276,
+      "number": 278,
       "content": [
         {
           "text": "  ",
@@ -18273,7 +18757,7 @@
       ]
     },
     {
-      "number": 277,
+      "number": 279,
       "content": [
         {
           "text": "}",
@@ -18282,11 +18766,11 @@
       ]
     },
     {
-      "number": 278,
+      "number": 280,
       "content": []
     },
     {
-      "number": 279,
+      "number": 281,
       "content": [
         {
           "text": "const",
@@ -18319,7 +18803,7 @@
       ]
     },
     {
-      "number": 280,
+      "number": 282,
       "content": [
         {
           "text": "  overlap",
@@ -18352,7 +18836,7 @@
       ]
     },
     {
-      "number": 281,
+      "number": 283,
       "content": [
         {
           "text": "  gap",
@@ -18385,7 +18869,7 @@
       ]
     },
     {
-      "number": 282,
+      "number": 284,
       "content": [
         {
           "text": "}",
@@ -18434,11 +18918,11 @@
       ]
     },
     {
-      "number": 283,
+      "number": 285,
       "content": []
     },
     {
-      "number": 284,
+      "number": 286,
       "content": [
         {
           "text": "export",
@@ -18619,7 +19103,7 @@
       ]
     },
     {
-      "number": 285,
+      "number": 287,
       "content": [
         {
           "text": "  ",
@@ -18672,7 +19156,7 @@
       ]
     },
     {
-      "number": 286,
+      "number": 288,
       "content": [
         {
           "text": "  ",
@@ -18757,11 +19241,11 @@
       ]
     },
     {
-      "number": 287,
+      "number": 289,
       "content": []
     },
     {
-      "number": 288,
+      "number": 290,
       "content": [
         {
           "text": "  ",
@@ -18798,7 +19282,7 @@
       ]
     },
     {
-      "number": 289,
+      "number": 291,
       "content": [
         {
           "text": "    ",
@@ -18863,7 +19347,7 @@
       ]
     },
     {
-      "number": 290,
+      "number": 292,
       "content": [
         {
           "text": "    ",
@@ -18924,11 +19408,11 @@
       ]
     },
     {
-      "number": 291,
+      "number": 293,
       "content": []
     },
     {
-      "number": 292,
+      "number": 294,
       "content": [
         {
           "text": "    ",
@@ -18945,7 +19429,7 @@
       ]
     },
     {
-      "number": 293,
+      "number": 295,
       "content": [
         {
           "text": "      ",
@@ -18982,7 +19466,7 @@
       ]
     },
     {
-      "number": 294,
+      "number": 296,
       "content": [
         {
           "text": "        ",
@@ -19095,7 +19579,7 @@
       ]
     },
     {
-      "number": 295,
+      "number": 297,
       "content": [
         {
           "text": "          ",
@@ -19116,7 +19600,7 @@
       ]
     },
     {
-      "number": 296,
+      "number": 298,
       "content": [
         {
           "text": "          ",
@@ -19193,7 +19677,7 @@
       ]
     },
     {
-      "number": 297,
+      "number": 299,
       "content": [
         {
           "text": "        ",
@@ -19214,7 +19698,7 @@
       ]
     },
     {
-      "number": 298,
+      "number": 300,
       "content": [
         {
           "text": "      ",
@@ -19235,7 +19719,7 @@
       ]
     },
     {
-      "number": 299,
+      "number": 301,
       "content": [
         {
           "text": "    )",
@@ -19248,7 +19732,7 @@
       ]
     },
     {
-      "number": 300,
+      "number": 302,
       "content": [
         {
           "text": "  ",
@@ -19261,11 +19745,11 @@
       ]
     },
     {
-      "number": 301,
+      "number": 303,
       "content": []
     },
     {
-      "number": 302,
+      "number": 304,
       "content": [
         {
           "text": "  ",
@@ -19282,7 +19766,7 @@
       ]
     },
     {
-      "number": 303,
+      "number": 305,
       "content": [
         {
           "text": "    ",
@@ -19319,7 +19803,7 @@
       ]
     },
     {
-      "number": 304,
+      "number": 306,
       "content": [
         {
           "text": "      ",
@@ -19380,7 +19864,7 @@
       ]
     },
     {
-      "number": 305,
+      "number": 307,
       "content": [
         {
           "text": "        ",
@@ -19397,7 +19881,7 @@
       ]
     },
     {
-      "number": 306,
+      "number": 308,
       "content": [
         {
           "text": "          ",
@@ -19426,7 +19910,7 @@
       ]
     },
     {
-      "number": 307,
+      "number": 309,
       "content": [
         {
           "text": "          ",
@@ -19451,7 +19935,7 @@
       ]
     },
     {
-      "number": 308,
+      "number": 310,
       "content": [
         {
           "text": "          ",
@@ -19476,7 +19960,7 @@
       ]
     },
     {
-      "number": 309,
+      "number": 311,
       "content": [
         {
           "text": "          ",
@@ -19549,7 +20033,7 @@
       ]
     },
     {
-      "number": 310,
+      "number": 312,
       "content": [
         {
           "text": "        ",
@@ -19562,7 +20046,7 @@
       ]
     },
     {
-      "number": 311,
+      "number": 313,
       "content": [
         {
           "text": "          ",
@@ -19583,7 +20067,7 @@
       ]
     },
     {
-      "number": 312,
+      "number": 314,
       "content": [
         {
           "text": "        ",
@@ -19604,7 +20088,7 @@
       ]
     },
     {
-      "number": 313,
+      "number": 315,
       "content": [
         {
           "text": "      ",
@@ -19625,7 +20109,7 @@
       ]
     },
     {
-      "number": 314,
+      "number": 316,
       "content": [
         {
           "text": "    ",
@@ -19646,7 +20130,7 @@
       ]
     },
     {
-      "number": 315,
+      "number": 317,
       "content": [
         {
           "text": "  )",
@@ -19659,7 +20143,7 @@
       ]
     },
     {
-      "number": 316,
+      "number": 318,
       "content": [
         {
           "text": "}",
@@ -19668,15 +20152,15 @@
       ]
     },
     {
-      "number": 317,
-      "content": []
-    },
-    {
-      "number": 318,
-      "content": []
-    },
-    {
       "number": 319,
+      "content": []
+    },
+    {
+      "number": 320,
+      "content": []
+    },
+    {
+      "number": 321,
       "content": [
         {
           "text": "\"",
@@ -19697,7 +20181,7 @@
       ]
     },
     {
-      "number": 320,
+      "number": 322,
       "content": [
         {
           "text": "import",
@@ -19709,6 +20193,14 @@
         },
         {
           "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " useEffect",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
           "color": "var(--code-operator)"
         },
         {
@@ -19750,7 +20242,7 @@
       ]
     },
     {
-      "number": 321,
+      "number": 323,
       "content": [
         {
           "text": "import",
@@ -19811,11 +20303,115 @@
       ]
     },
     {
-      "number": 322,
+      "number": 324,
       "content": []
     },
     {
-      "number": 323,
+      "number": 325,
+      "content": [
+        {
+          "text": "interface",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ImageStatusState",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 326,
+      "content": [
+        {
+          "text": "  src",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "string",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "undefined",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 327,
+      "content": [
+        {
+          "text": "  status",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "AvatarStatus",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 328,
+      "content": [
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 329,
+      "content": []
+    },
+    {
+      "number": 330,
       "content": [
         {
           "text": "export",
@@ -19888,7 +20484,7 @@
       ]
     },
     {
-      "number": 324,
+      "number": 331,
       "content": [
         {
           "text": "  ",
@@ -19907,7 +20503,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "status",
+          "text": "state",
           "color": "var(--code-number)"
         },
         {
@@ -19919,7 +20515,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "setStatus",
+          "text": "setState",
           "color": "var(--code-number)"
         },
         {
@@ -19947,7 +20543,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "AvatarStatus",
+          "text": "ImageStatusState",
           "color": "var(--code-function)"
         },
         {
@@ -19955,7 +20551,57 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "(src ",
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "()",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=>",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 332,
+      "content": [
+        {
+          "text": "    src",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 333,
+      "content": [
+        {
+          "text": "    status",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " src ",
           "color": "var(--code-variable)"
         },
         {
@@ -20003,7 +20649,24 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": ")",
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 334,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "))",
           "color": "var(--code-variable)"
         },
         {
@@ -20013,11 +20676,11 @@
       ]
     },
     {
-      "number": 325,
+      "number": 335,
       "content": []
     },
     {
-      "number": 326,
+      "number": 336,
       "content": [
         {
           "text": "  ",
@@ -20032,28 +20695,8 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "[",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "prevSrc",
+          "text": "status",
           "color": "var(--code-number)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "setPrevSrc",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": "]",
-          "color": "var(--code-operator)"
         },
         {
           "text": " ",
@@ -20068,82 +20711,51 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "useState",
-          "color": "var(--code-function)"
+          "text": "state",
+          "color": "var(--code-number)"
         },
         {
-          "text": "(src)",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ";",
+          "text": ".",
           "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 327,
-      "content": [
+        },
         {
-          "text": "  ",
+          "text": "src ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "if",
-          "color": "var(--code-keyword)"
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " src ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "?",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "state",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "status ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
         },
         {
           "text": " (src ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "!==",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " prevSrc) ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "{",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 328,
-      "content": [
-        {
-          "text": "    ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "setPrevSrc",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "(src)",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ";",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 329,
-      "content": [
-        {
-          "text": "    ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "setStatus",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "(src ",
           "color": "var(--code-variable)"
         },
         {
@@ -20201,10 +20813,218 @@
       ]
     },
     {
-      "number": 330,
+      "number": 337,
+      "content": []
+    },
+    {
+      "number": 338,
       "content": [
         {
           "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "useEffect",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "()",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=>",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 339,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "setState",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "current",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ")",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=>",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 340,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "current",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "src ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " src",
+          "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 341,
+      "content": [
+        {
+          "text": "        ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "?",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " current",
+          "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 342,
+      "content": [
+        {
+          "text": "        ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " src",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " status",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " src ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "?",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "loading",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "idle",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
           "color": "var(--code-variable)"
         },
         {
@@ -20214,11 +21034,45 @@
       ]
     },
     {
-      "number": 331,
+      "number": 343,
+      "content": [
+        {
+          "text": "    ))",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 344,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "},",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " [src])",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 345,
       "content": []
     },
     {
-      "number": 332,
+      "number": 346,
       "content": [
         {
           "text": "  ",
@@ -20239,7 +21093,7 @@
       ]
     },
     {
-      "number": 333,
+      "number": 347,
       "content": [
         {
           "text": "    status",
@@ -20252,7 +21106,7 @@
       ]
     },
     {
-      "number": 334,
+      "number": 348,
       "content": [
         {
           "text": "    showImage",
@@ -20309,7 +21163,7 @@
       ]
     },
     {
-      "number": 335,
+      "number": 349,
       "content": [
         {
           "text": "    ",
@@ -20344,11 +21198,35 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "setStatus",
+          "text": "setState",
           "color": "var(--code-function)"
         },
         {
           "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " src",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " status",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
           "color": "var(--code-variable)"
         },
         {
@@ -20364,6 +21242,14 @@
           "color": "var(--code-operator)"
         },
         {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
           "text": ")",
           "color": "var(--code-variable)"
         },
@@ -20374,7 +21260,7 @@
       ]
     },
     {
-      "number": 336,
+      "number": 350,
       "content": [
         {
           "text": "    ",
@@ -20409,11 +21295,35 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "setStatus",
+          "text": "setState",
           "color": "var(--code-function)"
         },
         {
           "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " src",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " status",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
           "color": "var(--code-variable)"
         },
         {
@@ -20429,6 +21339,14 @@
           "color": "var(--code-operator)"
         },
         {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
           "text": ")",
           "color": "var(--code-variable)"
         },
@@ -20439,7 +21357,7 @@
       ]
     },
     {
-      "number": 337,
+      "number": 351,
       "content": [
         {
           "text": "  ",
@@ -20452,7 +21370,7 @@
       ]
     },
     {
-      "number": 338,
+      "number": 352,
       "content": [
         {
           "text": "}",
@@ -20461,7 +21379,7 @@
       ]
     },
     {
-      "number": 339,
+      "number": 353,
       "content": []
     }
   ],

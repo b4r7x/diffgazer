@@ -12,10 +12,35 @@
   "props": {},
   "source": {
     "registry/ui/label/index.ts": {
-      "raw": "export { Label, labelVariants, type LabelProps, type LabelColor, type LabelOrientation } from \"./label\";\n",
+      "raw": "\"use client\";\n\nexport { Label, labelVariants, type LabelProps, type LabelColor, type LabelOrientation } from \"./label\";\n",
       "highlighted": [
         {
           "number": 1,
+          "content": [
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "use client",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
           "content": [
             {
               "text": "export",
@@ -124,7 +149,7 @@
           ]
         },
         {
-          "number": 2,
+          "number": 4,
           "content": []
         }
       ]
@@ -2659,10 +2684,35 @@
       ]
     }
   },
-  "mergedSource": "export { Label, labelVariants, type LabelProps, type LabelColor, type LabelOrientation } from \"./label\";\n\n\n\"use client\";\n\nimport type { ComponentPropsWithRef, MouseEvent } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport type LabelColor = \"default\" | \"primary\" | \"success\" | \"warning\" | \"error\";\nexport type LabelOrientation = \"vertical\" | \"horizontal\";\n\nexport interface LabelProps extends ComponentPropsWithRef<\"label\"> {\n  color?: LabelColor;\n  label?: string;\n  orientation?: LabelOrientation;\n  required?: boolean;\n}\n\nexport const labelVariants = cva(\"text-xs uppercase font-bold select-none\", {\n  variants: {\n    color: {\n      default: \"text-muted-foreground\",\n      primary: \"text-foreground\",\n      success: \"text-success\",\n      warning: \"text-warning\",\n      error: \"text-destructive\",\n    },\n  },\n  defaultVariants: { color: \"default\" },\n});\n\nfunction RequiredIndicator() {\n  return <span className=\"text-destructive\" aria-hidden=\"true\"> *</span>;\n}\n\nexport function Label({\n  color = \"default\",\n  label,\n  orientation = \"vertical\",\n  required,\n  className,\n  ref,\n  children,\n  onMouseDown,\n  ...props\n}: LabelProps) {\n  const handleMouseDown = (event: MouseEvent<HTMLLabelElement>) => {\n    const target = event.target as HTMLElement;\n    if (target.closest(\"button, input, select, textarea\")) return;\n    onMouseDown?.(event);\n    if (!event.defaultPrevented && event.detail > 1) event.preventDefault();\n  };\n\n  if (label) {\n    return (\n      <label\n        ref={ref}\n        className={cn(\n          orientation === \"vertical\" ? \"flex flex-col gap-1\" : \"flex items-center gap-2\",\n          \"has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-70\",\n          className,\n        )}\n        onMouseDown={handleMouseDown}\n        {...props}\n      >\n        <span className={labelVariants({ color })}>\n          {label}\n          {required && <RequiredIndicator />}\n        </span>\n        {children}\n      </label>\n    );\n  }\n\n  return (\n    <label\n      ref={ref}\n      className={cn(\n        labelVariants({ color }),\n        \"peer-disabled:cursor-not-allowed peer-disabled:opacity-70\",\n        className,\n      )}\n      onMouseDown={handleMouseDown}\n      {...props}\n    >\n      {children}\n      {required && <RequiredIndicator />}\n    </label>\n  );\n}\n",
+  "mergedSource": "\"use client\";\n\nexport { Label, labelVariants, type LabelProps, type LabelColor, type LabelOrientation } from \"./label\";\n\n\n\"use client\";\n\nimport type { ComponentPropsWithRef, MouseEvent } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport type LabelColor = \"default\" | \"primary\" | \"success\" | \"warning\" | \"error\";\nexport type LabelOrientation = \"vertical\" | \"horizontal\";\n\nexport interface LabelProps extends ComponentPropsWithRef<\"label\"> {\n  color?: LabelColor;\n  label?: string;\n  orientation?: LabelOrientation;\n  required?: boolean;\n}\n\nexport const labelVariants = cva(\"text-xs uppercase font-bold select-none\", {\n  variants: {\n    color: {\n      default: \"text-muted-foreground\",\n      primary: \"text-foreground\",\n      success: \"text-success\",\n      warning: \"text-warning\",\n      error: \"text-destructive\",\n    },\n  },\n  defaultVariants: { color: \"default\" },\n});\n\nfunction RequiredIndicator() {\n  return <span className=\"text-destructive\" aria-hidden=\"true\"> *</span>;\n}\n\nexport function Label({\n  color = \"default\",\n  label,\n  orientation = \"vertical\",\n  required,\n  className,\n  ref,\n  children,\n  onMouseDown,\n  ...props\n}: LabelProps) {\n  const handleMouseDown = (event: MouseEvent<HTMLLabelElement>) => {\n    const target = event.target as HTMLElement;\n    if (target.closest(\"button, input, select, textarea\")) return;\n    onMouseDown?.(event);\n    if (!event.defaultPrevented && event.detail > 1) event.preventDefault();\n  };\n\n  if (label) {\n    return (\n      <label\n        ref={ref}\n        className={cn(\n          orientation === \"vertical\" ? \"flex flex-col gap-1\" : \"flex items-center gap-2\",\n          \"has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-70\",\n          className,\n        )}\n        onMouseDown={handleMouseDown}\n        {...props}\n      >\n        <span className={labelVariants({ color })}>\n          {label}\n          {required && <RequiredIndicator />}\n        </span>\n        {children}\n      </label>\n    );\n  }\n\n  return (\n    <label\n      ref={ref}\n      className={cn(\n        labelVariants({ color }),\n        \"peer-disabled:cursor-not-allowed peer-disabled:opacity-70\",\n        className,\n      )}\n      onMouseDown={handleMouseDown}\n      {...props}\n    >\n      {children}\n      {required && <RequiredIndicator />}\n    </label>\n  );\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
+      "content": [
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "use client",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "content": []
+    },
+    {
+      "number": 3,
       "content": [
         {
           "text": "export",
@@ -2771,15 +2821,15 @@
       ]
     },
     {
-      "number": 2,
-      "content": []
-    },
-    {
-      "number": 3,
-      "content": []
-    },
-    {
       "number": 4,
+      "content": []
+    },
+    {
+      "number": 5,
+      "content": []
+    },
+    {
+      "number": 6,
       "content": [
         {
           "text": "\"",
@@ -2800,11 +2850,11 @@
       ]
     },
     {
-      "number": 5,
+      "number": 7,
       "content": []
     },
     {
-      "number": 6,
+      "number": 8,
       "content": [
         {
           "text": "import",
@@ -2873,7 +2923,7 @@
       ]
     },
     {
-      "number": 7,
+      "number": 9,
       "content": [
         {
           "text": "import",
@@ -2926,7 +2976,7 @@
       ]
     },
     {
-      "number": 8,
+      "number": 10,
       "content": [
         {
           "text": "import",
@@ -2979,11 +3029,11 @@
       ]
     },
     {
-      "number": 9,
+      "number": 11,
       "content": []
     },
     {
-      "number": 10,
+      "number": 12,
       "content": [
         {
           "text": "export",
@@ -3132,7 +3182,7 @@
       ]
     },
     {
-      "number": 11,
+      "number": 13,
       "content": [
         {
           "text": "export",
@@ -3209,11 +3259,11 @@
       ]
     },
     {
-      "number": 12,
+      "number": 14,
       "content": []
     },
     {
-      "number": 13,
+      "number": 15,
       "content": [
         {
           "text": "export",
@@ -3282,7 +3332,7 @@
       ]
     },
     {
-      "number": 14,
+      "number": 16,
       "content": [
         {
           "text": "  color",
@@ -3307,7 +3357,7 @@
       ]
     },
     {
-      "number": 15,
+      "number": 17,
       "content": [
         {
           "text": "  label",
@@ -3332,7 +3382,7 @@
       ]
     },
     {
-      "number": 16,
+      "number": 18,
       "content": [
         {
           "text": "  orientation",
@@ -3357,7 +3407,7 @@
       ]
     },
     {
-      "number": 17,
+      "number": 19,
       "content": [
         {
           "text": "  required",
@@ -3382,7 +3432,7 @@
       ]
     },
     {
-      "number": 18,
+      "number": 20,
       "content": [
         {
           "text": "}",
@@ -3391,11 +3441,11 @@
       ]
     },
     {
-      "number": 19,
+      "number": 21,
       "content": []
     },
     {
-      "number": 20,
+      "number": 22,
       "content": [
         {
           "text": "export",
@@ -3464,7 +3514,7 @@
       ]
     },
     {
-      "number": 21,
+      "number": 23,
       "content": [
         {
           "text": "  variants",
@@ -3485,7 +3535,7 @@
       ]
     },
     {
-      "number": 22,
+      "number": 24,
       "content": [
         {
           "text": "    color",
@@ -3506,7 +3556,7 @@
       ]
     },
     {
-      "number": 23,
+      "number": 25,
       "content": [
         {
           "text": "      default",
@@ -3539,7 +3589,7 @@
       ]
     },
     {
-      "number": 24,
+      "number": 26,
       "content": [
         {
           "text": "      primary",
@@ -3572,7 +3622,7 @@
       ]
     },
     {
-      "number": 25,
+      "number": 27,
       "content": [
         {
           "text": "      success",
@@ -3605,7 +3655,7 @@
       ]
     },
     {
-      "number": 26,
+      "number": 28,
       "content": [
         {
           "text": "      warning",
@@ -3638,7 +3688,7 @@
       ]
     },
     {
-      "number": 27,
+      "number": 29,
       "content": [
         {
           "text": "      error",
@@ -3671,7 +3721,7 @@
       ]
     },
     {
-      "number": 28,
+      "number": 30,
       "content": [
         {
           "text": "    ",
@@ -3684,7 +3734,7 @@
       ]
     },
     {
-      "number": 29,
+      "number": 31,
       "content": [
         {
           "text": "  ",
@@ -3697,7 +3747,7 @@
       ]
     },
     {
-      "number": 30,
+      "number": 32,
       "content": [
         {
           "text": "  defaultVariants",
@@ -3750,7 +3800,7 @@
       ]
     },
     {
-      "number": 31,
+      "number": 33,
       "content": [
         {
           "text": "}",
@@ -3767,11 +3817,11 @@
       ]
     },
     {
-      "number": 32,
+      "number": 34,
       "content": []
     },
     {
-      "number": 33,
+      "number": 35,
       "content": [
         {
           "text": "function",
@@ -3800,7 +3850,7 @@
       ]
     },
     {
-      "number": 34,
+      "number": 36,
       "content": [
         {
           "text": "  ",
@@ -3893,7 +3943,7 @@
       ]
     },
     {
-      "number": 35,
+      "number": 37,
       "content": [
         {
           "text": "}",
@@ -3902,11 +3952,11 @@
       ]
     },
     {
-      "number": 36,
+      "number": 38,
       "content": []
     },
     {
-      "number": 37,
+      "number": 39,
       "content": [
         {
           "text": "export",
@@ -3935,7 +3985,7 @@
       ]
     },
     {
-      "number": 38,
+      "number": 40,
       "content": [
         {
           "text": "  color ",
@@ -3968,7 +4018,7 @@
       ]
     },
     {
-      "number": 39,
+      "number": 41,
       "content": [
         {
           "text": "  label",
@@ -3981,7 +4031,7 @@
       ]
     },
     {
-      "number": 40,
+      "number": 42,
       "content": [
         {
           "text": "  orientation ",
@@ -4014,7 +4064,7 @@
       ]
     },
     {
-      "number": 41,
+      "number": 43,
       "content": [
         {
           "text": "  required",
@@ -4027,7 +4077,7 @@
       ]
     },
     {
-      "number": 42,
+      "number": 44,
       "content": [
         {
           "text": "  className",
@@ -4040,7 +4090,7 @@
       ]
     },
     {
-      "number": 43,
+      "number": 45,
       "content": [
         {
           "text": "  ref",
@@ -4053,7 +4103,7 @@
       ]
     },
     {
-      "number": 44,
+      "number": 46,
       "content": [
         {
           "text": "  children",
@@ -4066,7 +4116,7 @@
       ]
     },
     {
-      "number": 45,
+      "number": 47,
       "content": [
         {
           "text": "  onMouseDown",
@@ -4079,7 +4129,7 @@
       ]
     },
     {
-      "number": 46,
+      "number": 48,
       "content": [
         {
           "text": "  ",
@@ -4096,7 +4146,7 @@
       ]
     },
     {
-      "number": 47,
+      "number": 49,
       "content": [
         {
           "text": "}:",
@@ -4125,7 +4175,7 @@
       ]
     },
     {
-      "number": 48,
+      "number": 50,
       "content": [
         {
           "text": "  ",
@@ -4206,7 +4256,7 @@
       ]
     },
     {
-      "number": 49,
+      "number": 51,
       "content": [
         {
           "text": "    ",
@@ -4267,7 +4317,7 @@
       ]
     },
     {
-      "number": 50,
+      "number": 52,
       "content": [
         {
           "text": "    ",
@@ -4324,7 +4374,7 @@
       ]
     },
     {
-      "number": 51,
+      "number": 53,
       "content": [
         {
           "text": "    ",
@@ -4349,7 +4399,7 @@
       ]
     },
     {
-      "number": 52,
+      "number": 54,
       "content": [
         {
           "text": "    ",
@@ -4438,7 +4488,7 @@
       ]
     },
     {
-      "number": 53,
+      "number": 55,
       "content": [
         {
           "text": "  ",
@@ -4451,11 +4501,11 @@
       ]
     },
     {
-      "number": 54,
+      "number": 56,
       "content": []
     },
     {
-      "number": 55,
+      "number": 57,
       "content": [
         {
           "text": "  ",
@@ -4476,7 +4526,7 @@
       ]
     },
     {
-      "number": 56,
+      "number": 58,
       "content": [
         {
           "text": "    ",
@@ -4493,7 +4543,7 @@
       ]
     },
     {
-      "number": 57,
+      "number": 59,
       "content": [
         {
           "text": "      ",
@@ -4510,7 +4560,7 @@
       ]
     },
     {
-      "number": 58,
+      "number": 60,
       "content": [
         {
           "text": "        ",
@@ -4535,7 +4585,7 @@
       ]
     },
     {
-      "number": 59,
+      "number": 61,
       "content": [
         {
           "text": "        ",
@@ -4560,7 +4610,7 @@
       ]
     },
     {
-      "number": 60,
+      "number": 62,
       "content": [
         {
           "text": "          orientation ",
@@ -4641,7 +4691,7 @@
       ]
     },
     {
-      "number": 61,
+      "number": 63,
       "content": [
         {
           "text": "          ",
@@ -4666,7 +4716,7 @@
       ]
     },
     {
-      "number": 62,
+      "number": 64,
       "content": [
         {
           "text": "          className",
@@ -4679,7 +4729,7 @@
       ]
     },
     {
-      "number": 63,
+      "number": 65,
       "content": [
         {
           "text": "        )",
@@ -4692,7 +4742,7 @@
       ]
     },
     {
-      "number": 64,
+      "number": 66,
       "content": [
         {
           "text": "        ",
@@ -4717,7 +4767,7 @@
       ]
     },
     {
-      "number": 65,
+      "number": 67,
       "content": [
         {
           "text": "        ",
@@ -4738,7 +4788,7 @@
       ]
     },
     {
-      "number": 66,
+      "number": 68,
       "content": [
         {
           "text": "      ",
@@ -4751,7 +4801,7 @@
       ]
     },
     {
-      "number": 67,
+      "number": 69,
       "content": [
         {
           "text": "        ",
@@ -4808,7 +4858,7 @@
       ]
     },
     {
-      "number": 68,
+      "number": 70,
       "content": [
         {
           "text": "          ",
@@ -4829,7 +4879,7 @@
       ]
     },
     {
-      "number": 69,
+      "number": 71,
       "content": [
         {
           "text": "          ",
@@ -4870,7 +4920,7 @@
       ]
     },
     {
-      "number": 70,
+      "number": 72,
       "content": [
         {
           "text": "        ",
@@ -4891,7 +4941,7 @@
       ]
     },
     {
-      "number": 71,
+      "number": 73,
       "content": [
         {
           "text": "        ",
@@ -4912,7 +4962,7 @@
       ]
     },
     {
-      "number": 72,
+      "number": 74,
       "content": [
         {
           "text": "      ",
@@ -4933,7 +4983,7 @@
       ]
     },
     {
-      "number": 73,
+      "number": 75,
       "content": [
         {
           "text": "    )",
@@ -4946,7 +4996,7 @@
       ]
     },
     {
-      "number": 74,
+      "number": 76,
       "content": [
         {
           "text": "  ",
@@ -4959,11 +5009,11 @@
       ]
     },
     {
-      "number": 75,
+      "number": 77,
       "content": []
     },
     {
-      "number": 76,
+      "number": 78,
       "content": [
         {
           "text": "  ",
@@ -4980,7 +5030,7 @@
       ]
     },
     {
-      "number": 77,
+      "number": 79,
       "content": [
         {
           "text": "    ",
@@ -4997,7 +5047,7 @@
       ]
     },
     {
-      "number": 78,
+      "number": 80,
       "content": [
         {
           "text": "      ",
@@ -5022,7 +5072,7 @@
       ]
     },
     {
-      "number": 79,
+      "number": 81,
       "content": [
         {
           "text": "      ",
@@ -5047,7 +5097,7 @@
       ]
     },
     {
-      "number": 80,
+      "number": 82,
       "content": [
         {
           "text": "        ",
@@ -5084,7 +5134,7 @@
       ]
     },
     {
-      "number": 81,
+      "number": 83,
       "content": [
         {
           "text": "        ",
@@ -5109,7 +5159,7 @@
       ]
     },
     {
-      "number": 82,
+      "number": 84,
       "content": [
         {
           "text": "        className",
@@ -5122,7 +5172,7 @@
       ]
     },
     {
-      "number": 83,
+      "number": 85,
       "content": [
         {
           "text": "      )",
@@ -5135,7 +5185,7 @@
       ]
     },
     {
-      "number": 84,
+      "number": 86,
       "content": [
         {
           "text": "      ",
@@ -5160,7 +5210,7 @@
       ]
     },
     {
-      "number": 85,
+      "number": 87,
       "content": [
         {
           "text": "      ",
@@ -5181,7 +5231,7 @@
       ]
     },
     {
-      "number": 86,
+      "number": 88,
       "content": [
         {
           "text": "    ",
@@ -5194,7 +5244,7 @@
       ]
     },
     {
-      "number": 87,
+      "number": 89,
       "content": [
         {
           "text": "      ",
@@ -5215,7 +5265,7 @@
       ]
     },
     {
-      "number": 88,
+      "number": 90,
       "content": [
         {
           "text": "      ",
@@ -5256,7 +5306,7 @@
       ]
     },
     {
-      "number": 89,
+      "number": 91,
       "content": [
         {
           "text": "    ",
@@ -5277,7 +5327,7 @@
       ]
     },
     {
-      "number": 90,
+      "number": 92,
       "content": [
         {
           "text": "  )",
@@ -5290,7 +5340,7 @@
       ]
     },
     {
-      "number": 91,
+      "number": 93,
       "content": [
         {
           "text": "}",
@@ -5299,7 +5349,7 @@
       ]
     },
     {
-      "number": 92,
+      "number": 94,
       "content": []
     }
   ],

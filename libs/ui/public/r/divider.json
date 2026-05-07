@@ -21,6 +21,6 @@
     }
   ],
   "meta": {
-    "client": true
+    "client": false
   }
 }

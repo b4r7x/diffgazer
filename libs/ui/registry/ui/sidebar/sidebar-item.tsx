@@ -4,6 +4,7 @@ import { cva } from "class-variance-authority";
 import type {
   AnchorHTMLAttributes,
   ButtonHTMLAttributes,
+  MouseEventHandler,
   MouseEvent as ReactMouseEvent,
   ReactNode,
   Ref,
@@ -34,9 +35,12 @@ export interface SidebarItemRenderProps {
   ref?: Ref<HTMLElement>;
   className: string;
   disabled?: boolean;
+  onClick?: MouseEventHandler<HTMLElement>;
   "aria-current"?: "page";
+  "data-diffgazer-navigation-item"?: "button";
   "data-value"?: string;
   "data-disabled"?: "";
+  tabIndex?: number;
 }
 
 interface SidebarItemSharedProps {
@@ -63,7 +67,7 @@ export interface SidebarItemAsAnchorProps
 
 export type SidebarItemProps = SidebarItemAsButtonProps | SidebarItemAsAnchorProps;
 
-export function SidebarItem(props: SidebarItemProps) {
+export function SidebarItem(props: SidebarItemProps): ReactNode {
   const {
     active = false,
     value,
@@ -78,24 +82,40 @@ export function SidebarItem(props: SidebarItemProps) {
 
   if (sectionContext && !sectionContext.open) return null;
 
+  const guardedClick = (onClick?: MouseEventHandler<HTMLElement>): MouseEventHandler<HTMLElement> => (
+    event,
+  ) => {
+    if (disabled) {
+      event.preventDefault();
+      return;
+    }
+
+    onClick?.(event);
+  };
+
   const sharedProps = {
     className: cn(sidebarItemVariants({ active, disabled }), className),
     "aria-current": active ? ("page" as const) : undefined,
     "aria-disabled": disabled || undefined,
+    "data-diffgazer-navigation-item": "button" as const,
     "data-value": value,
     "data-disabled": disabled ? ("" as const) : undefined,
+    tabIndex: disabled ? -1 : undefined,
   };
 
   if (typeof children === "function") {
+    const { onClick } = rest as { onClick?: MouseEventHandler<HTMLElement> };
+
     return children({
       ref: props.ref as Ref<HTMLElement>,
       disabled: disabled || undefined,
+      onClick: guardedClick(onClick),
       ...sharedProps,
     });
   }
 
   if (elementType === "a") {
-    const { ref, ...anchorProps } = rest as Omit<
+    const { ref, onClick, ...anchorProps } = rest as Omit<
       SidebarItemAsAnchorProps,
       keyof SidebarItemSharedProps | "as"
     >;
@@ -105,7 +125,14 @@ export function SidebarItem(props: SidebarItemProps) {
         {...anchorProps}
         ref={ref}
         {...sharedProps}
-        {...(disabled ? { onClick: (e: ReactMouseEvent) => e.preventDefault() } : undefined)}
+        onClick={(event: ReactMouseEvent<HTMLAnchorElement>) => {
+          if (disabled) {
+            event.preventDefault();
+            return;
+          }
+
+          onClick?.(event);
+        }}
       >
         {children}
       </a>

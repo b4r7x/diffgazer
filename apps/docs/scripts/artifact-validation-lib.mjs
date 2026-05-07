@@ -12,7 +12,14 @@ function toPosixPath(path) {
   return path.split(/[\\/]+/).join("/");
 }
 
-function collectFiles(dirPath) {
+function artifactCopyFilter(path) {
+  return !/\.(md)$/i.test(path)
+    && !/\.(test|spec)\.(ts|tsx|js|jsx)$/i.test(path)
+    && !path.includes("__tests__");
+}
+
+function collectFiles(dirPath, options = {}) {
+  const { filter } = options;
   const files = [];
   const stack = [dirPath];
 
@@ -23,9 +30,13 @@ function collectFiles(dirPath) {
     for (const entry of readdirSync(current, { withFileTypes: true })) {
       const entryPath = resolve(current, entry.name);
       if (entry.isDirectory()) {
-        stack.push(entryPath);
+        if (!filter || filter(entryPath)) {
+          stack.push(entryPath);
+        }
       } else if (entry.isFile()) {
-        files.push(entryPath);
+        if (!filter || filter(entryPath)) {
+          files.push(entryPath);
+        }
       }
     }
   }
@@ -71,7 +82,7 @@ export function computeStrictInputsFingerprint(rootDir, inputs) {
   return { fingerprint: hash.digest("hex"), missing };
 }
 
-function compareFileTrees(sourceDir, artifactDir, label, errors) {
+function compareFileTrees(sourceDir, artifactDir, label, errors, options = {}) {
   if (!existsSync(sourceDir)) {
     errors.push(`${label}: missing source directory ${sourceDir}`);
     return;
@@ -81,18 +92,22 @@ function compareFileTrees(sourceDir, artifactDir, label, errors) {
     return;
   }
 
-  const sourceFiles = collectFiles(sourceDir).map((file) => toPosixPath(relative(sourceDir, file)));
-  const artifactFiles = collectFiles(artifactDir).map((file) => toPosixPath(relative(artifactDir, file)));
-  const allFiles = new Set([...sourceFiles, ...artifactFiles]);
+  const sourceFiles = collectFiles(sourceDir, { filter: options.sourceFilter })
+    .map((file) => toPosixPath(relative(sourceDir, file)));
+  const artifactFiles = collectFiles(artifactDir, { filter: options.artifactFilter })
+    .map((file) => toPosixPath(relative(artifactDir, file)));
+  const expectedFiles = new Set(sourceFiles);
+  const actualFiles = new Set(artifactFiles);
+  const allFiles = new Set([...expectedFiles, ...actualFiles]);
 
   for (const relPath of [...allFiles].sort()) {
     const sourcePath = resolve(sourceDir, relPath);
     const artifactPath = resolve(artifactDir, relPath);
-    if (!existsSync(sourcePath)) {
+    if (!expectedFiles.has(relPath)) {
       errors.push(`${label}: stale artifact file ${relPath}`);
       continue;
     }
-    if (!existsSync(artifactPath)) {
+    if (!actualFiles.has(relPath)) {
       errors.push(`${label}: missing artifact file ${relPath}`);
       continue;
     }
@@ -103,6 +118,46 @@ function compareFileTrees(sourceDir, artifactDir, label, errors) {
       errors.push(`${label}: artifact differs from source for ${relPath}`);
     }
   }
+}
+
+function compareCopiedPath(sourcePath, artifactPath, label, errors, options = {}) {
+  if (!existsSync(sourcePath)) {
+    errors.push(`${label}: missing source path ${sourcePath}`);
+    return;
+  }
+  if (!existsSync(artifactPath)) {
+    errors.push(`${label}: missing artifact path ${artifactPath}`);
+    return;
+  }
+
+  const sourceStats = statSync(sourcePath);
+  const artifactStats = statSync(artifactPath);
+
+  if (sourceStats.isDirectory() && artifactStats.isDirectory()) {
+    compareFileTrees(sourcePath, artifactPath, label, errors, options);
+    return;
+  }
+
+  if (sourceStats.isFile() && artifactStats.isFile()) {
+    if (!filesAreEquivalent(sourcePath, artifactPath)) {
+      errors.push(`${label}: artifact differs from source`);
+    }
+    return;
+  }
+
+  errors.push(`${label}: source and artifact path types differ`);
+}
+
+export function collectPathParityErrors(sourcePath, artifactPath, label, options = {}) {
+  const errors = [];
+  compareCopiedPath(sourcePath, artifactPath, label, errors, options);
+  return errors;
+}
+
+export function collectTreeParityErrors(sourceDir, artifactDir, label, options = {}) {
+  const errors = [];
+  compareFileTrees(sourceDir, artifactDir, label, errors, options);
+  return errors;
 }
 
 function filesAreEquivalent(sourcePath, artifactPath) {
@@ -131,14 +186,67 @@ function validateGeneratedEntries(rootDir, artifactRoot, generated, label, error
   for (const [name, relPath] of Object.entries(generated)) {
     const sourcePath = resolve(rootDir, "docs", relPath);
     const artifactPath = resolve(artifactRoot, relPath);
-    if (!existsSync(sourcePath)) {
-      errors.push(`${label}: missing generated source ${name} at docs/${relPath}`);
-      continue;
-    }
-    if (!existsSync(artifactPath)) {
-      errors.push(`${label}: missing generated artifact ${name} at ${relPath}`);
-      continue;
-    }
+    compareCopiedPath(sourcePath, artifactPath, `${label} generated ${name}`, errors, {
+      sourceFilter: artifactCopyFilter,
+    });
+  }
+}
+
+function validateManifestDeclaredCopiedDirs(rootDir, artifactRootAbs, manifest, label, errors) {
+  compareFileTrees(
+    resolve(rootDir, "docs/content"),
+    resolve(artifactRootAbs, manifest.docs.contentDir),
+    `${label} docs content`,
+    errors,
+    { sourceFilter: artifactCopyFilter },
+  );
+
+  if (manifest.docs.assetsDir) {
+    compareFileTrees(
+      resolve(rootDir, "docs/assets"),
+      resolve(artifactRootAbs, manifest.docs.assetsDir),
+      `${label} docs assets`,
+      errors,
+      { sourceFilter: artifactCopyFilter },
+    );
+  }
+
+  if (manifest.docs.generatedDir) {
+    compareFileTrees(
+      resolve(rootDir, "docs/generated"),
+      resolve(artifactRootAbs, manifest.docs.generatedDir),
+      `${label} docs generated`,
+      errors,
+      { sourceFilter: artifactCopyFilter },
+    );
+  }
+
+  compareFileTrees(
+    resolve(rootDir, "public/r"),
+    resolve(artifactRootAbs, manifest.registry.publicDir),
+    `${label} public/r`,
+    errors,
+    { sourceFilter: artifactCopyFilter },
+  );
+
+  if (manifest.source?.registryDir) {
+    compareFileTrees(
+      resolve(rootDir, "registry"),
+      resolve(artifactRootAbs, manifest.source.registryDir),
+      `${label} source registry`,
+      errors,
+      { sourceFilter: artifactCopyFilter },
+    );
+  }
+
+  if (manifest.source?.stylesDir) {
+    compareFileTrees(
+      resolve(rootDir, "styles"),
+      resolve(artifactRootAbs, manifest.source.stylesDir),
+      `${label} source styles`,
+      errors,
+      { sourceFilter: artifactCopyFilter },
+    );
   }
 }
 
@@ -174,11 +282,7 @@ export function validateLibraryArtifacts(options) {
     errors.push(`${label}: artifact fingerprint mismatch; expected ${fingerprint}, found ${recorded}`);
   }
 
-  const publicDir = manifest.registry?.publicDir;
-  if (publicDir) {
-    compareFileTrees(resolve(rootDir, "public/r"), resolve(artifactRootAbs, publicDir), `${label} public/r`, errors);
-  }
-
+  validateManifestDeclaredCopiedDirs(rootDir, artifactRootAbs, manifest, label, errors);
   validateGeneratedEntries(rootDir, artifactRootAbs, manifest.generated, label, errors);
 
   return errors;

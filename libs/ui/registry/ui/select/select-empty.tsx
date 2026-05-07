@@ -11,9 +11,9 @@ export interface SelectEmptyProps {
 }
 
 export function SelectEmpty({ children, className }: SelectEmptyProps) {
-  const { searchQuery, labelsRef } = useSelectContext("SelectEmpty");
+  const { searchQuery, options } = useSelectContext("SelectEmpty");
 
-  if (!searchQuery || hasMatch(labelsRef.current, searchQuery)) return null;
+  if (!searchQuery || hasMatch(options, searchQuery)) return null;
 
   return (
     <div
@@ -27,7 +27,7 @@ export function SelectEmpty({ children, className }: SelectEmptyProps) {
   );
 }
 
-function hasMatch(labels: Map<string, SelectOptionMetadata>, query: string): boolean {
+function hasMatch(labels: ReadonlyMap<string, SelectOptionMetadata>, query: string): boolean {
   for (const option of labels.values()) {
     if (matchesSearch(option.label, query)) return true;
   }

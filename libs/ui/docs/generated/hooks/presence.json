@@ -3,7 +3,7 @@
   "title": "usePresence",
   "description": "Hook for animating mount/unmount transitions with CSS animations — keeps element in DOM during exit animation, removes after completion.",
   "source": {
-    "raw": "\"use client\";\n\nimport { useCallback, useEffect, useState, type AnimationEvent, type RefObject } from \"react\";\n\ntype Phase = \"hidden\" | \"open\" | \"closing\";\n\nexport interface UsePresenceOptions {\n  open: boolean;\n  ref?: RefObject<HTMLElement | null>;\n  exitFallbackMs?: number;\n  onExitComplete?: () => void;\n}\n\nconst DEFAULT_EXIT_FALLBACK_MS = 250;\n\nexport function usePresence({\n  open,\n  ref,\n  exitFallbackMs = DEFAULT_EXIT_FALLBACK_MS,\n  onExitComplete,\n}: UsePresenceOptions) {\n  const [phase, setPhase] = useState<Phase>(open ? \"open\" : \"hidden\");\n\n  // Intentional \"adjust state during render\" pattern supported by React 19:\n  // synchronously sync phase with the `open` prop before commit.\n  if (open && phase !== \"open\") {\n    setPhase(\"open\");\n  }\n\n  if (!open && phase === \"open\") {\n    setPhase(\"closing\");\n  }\n\n  const finishExit = useCallback(() => {\n    if (phase === \"closing\") {\n      setPhase(\"hidden\");\n      onExitComplete?.();\n    }\n  }, [onExitComplete, phase]);\n\n  const onAnimationEnd = useCallback((e: AnimationEvent) => {\n    if (ref && e.target !== ref.current) return;\n    finishExit();\n  }, [finishExit, ref]);\n\n  const onAnimationCancel = useCallback((e: AnimationEvent) => {\n    if (ref && e.target !== ref.current) return;\n    finishExit();\n  }, [finishExit, ref]);\n\n  useEffect(() => {\n    const element = ref?.current;\n    if (!element || phase !== \"closing\") return;\n    const handleAnimationCancel = (event: globalThis.AnimationEvent) => {\n      if (event.target !== element) return;\n      finishExit();\n    };\n    element.addEventListener(\"animationcancel\", handleAnimationCancel);\n    return () => element.removeEventListener(\"animationcancel\", handleAnimationCancel);\n  }, [finishExit, phase, ref]);\n\n  useEffect(() => {\n    if (phase !== \"closing\") return;\n    const timer = setTimeout(finishExit, exitFallbackMs);\n    return () => clearTimeout(timer);\n  }, [exitFallbackMs, finishExit, phase]);\n\n  return { present: phase !== \"hidden\", exiting: phase === \"closing\", onAnimationEnd, onAnimationCancel } as const;\n}\n",
+    "raw": "\"use client\";\n\nimport { useCallback, useEffect, useState, type AnimationEvent, type RefObject } from \"react\";\n\ntype Phase = \"hidden\" | \"open\" | \"closing\";\n\nexport interface UsePresenceOptions {\n  open: boolean;\n  ref?: RefObject<HTMLElement | null>;\n  exitFallbackMs?: number;\n  onExitComplete?: () => void;\n}\n\nconst DEFAULT_EXIT_FALLBACK_MS = 250;\n\nexport function usePresence({\n  open,\n  ref,\n  exitFallbackMs = DEFAULT_EXIT_FALLBACK_MS,\n  onExitComplete,\n}: UsePresenceOptions) {\n  const [phase, setPhase] = useState<Phase>(open ? \"open\" : \"hidden\");\n\n  useEffect(() => {\n    if (open) {\n      setPhase(\"open\");\n      return;\n    }\n\n    setPhase((current) => current === \"open\" ? \"closing\" : current);\n  }, [open]);\n\n  const finishExit = useCallback(() => {\n    if (phase === \"closing\") {\n      setPhase(\"hidden\");\n      onExitComplete?.();\n    }\n  }, [onExitComplete, phase]);\n\n  const onAnimationEnd = useCallback((e: AnimationEvent) => {\n    if (ref && e.target !== ref.current) return;\n    finishExit();\n  }, [finishExit, ref]);\n\n  const onAnimationCancel = useCallback((e: AnimationEvent) => {\n    if (ref && e.target !== ref.current) return;\n    finishExit();\n  }, [finishExit, ref]);\n\n  useEffect(() => {\n    const element = ref?.current;\n    if (!element || phase !== \"closing\") return;\n    const handleAnimationCancel = (event: globalThis.AnimationEvent) => {\n      if (event.target !== element) return;\n      finishExit();\n    };\n    element.addEventListener(\"animationcancel\", handleAnimationCancel);\n    return () => element.removeEventListener(\"animationcancel\", handleAnimationCancel);\n  }, [finishExit, phase, ref]);\n\n  useEffect(() => {\n    if (phase !== \"closing\") return;\n    const timer = setTimeout(finishExit, exitFallbackMs);\n    return () => clearTimeout(timer);\n  }, [exitFallbackMs, finishExit, phase]);\n\n  return { present: phase !== \"hidden\", exiting: phase === \"closing\", onAnimationEnd, onAnimationCancel } as const;\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -718,53 +718,19 @@
         "number": 24,
         "content": [
           {
-            "text": "  //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " Intentional \"adjust state during render\" pattern supported by React 19:",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 25,
-        "content": [
-          {
-            "text": "  //",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " synchronously sync phase with the `open` prop before commit.",
-            "color": "var(--code-comment)"
-          }
-        ]
-      },
-      {
-        "number": 26,
-        "content": [
-          {
             "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "if",
-            "color": "var(--code-keyword)"
+            "text": "useEffect",
+            "color": "var(--code-function)"
           },
           {
-            "text": " (open ",
+            "text": "(",
             "color": "var(--code-variable)"
           },
           {
-            "text": "&&",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " phase ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "!==",
+            "text": "()",
             "color": "var(--code-operator)"
           },
           {
@@ -772,19 +738,11 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "\"",
-            "color": "var(--code-operator)"
+            "text": "=>",
+            "color": "var(--code-keyword)"
           },
           {
-            "text": "open",
-            "color": "var(--code-tag)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ") ",
+            "text": " ",
             "color": "var(--code-variable)"
           },
           {
@@ -794,10 +752,31 @@
         ]
       },
       {
-        "number": 27,
+        "number": 25,
         "content": [
           {
             "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (open) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 26,
+        "content": [
+          {
+            "text": "      ",
             "color": "var(--code-variable)"
           },
           {
@@ -831,10 +810,27 @@
         ]
       },
       {
+        "number": 27,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
         "number": 28,
         "content": [
           {
-            "text": "  ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -851,31 +847,39 @@
         "number": 30,
         "content": [
           {
-            "text": "  ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "if",
+            "text": "setPhase",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
             "color": "var(--code-keyword)"
           },
           {
-            "text": " (",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "!",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "open ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "&&",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " phase ",
+            "text": " current ",
             "color": "var(--code-variable)"
           },
           {
@@ -899,28 +903,15 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": ") ",
+            "text": " ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "{",
+            "text": "?",
             "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 31,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
           },
           {
-            "text": "setPhase",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
+            "text": " ",
             "color": "var(--code-variable)"
           },
           {
@@ -936,7 +927,36 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": ")",
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " current)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 31,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "},",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " [open])",
             "color": "var(--code-variable)"
           },
           {
@@ -947,23 +967,10 @@
       },
       {
         "number": 32,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 33,
         "content": []
       },
       {
-        "number": 34,
+        "number": 33,
         "content": [
           {
             "text": "  ",
@@ -1024,7 +1031,7 @@
         ]
       },
       {
-        "number": 35,
+        "number": 34,
         "content": [
           {
             "text": "    ",
@@ -1069,7 +1076,7 @@
         ]
       },
       {
-        "number": 36,
+        "number": 35,
         "content": [
           {
             "text": "      ",
@@ -1106,7 +1113,7 @@
         ]
       },
       {
-        "number": 37,
+        "number": 36,
         "content": [
           {
             "text": "      ",
@@ -1131,7 +1138,7 @@
         ]
       },
       {
-        "number": 38,
+        "number": 37,
         "content": [
           {
             "text": "    ",
@@ -1144,7 +1151,7 @@
         ]
       },
       {
-        "number": 39,
+        "number": 38,
         "content": [
           {
             "text": "  ",
@@ -1173,11 +1180,11 @@
         ]
       },
       {
-        "number": 40,
+        "number": 39,
         "content": []
       },
       {
-        "number": 41,
+        "number": 40,
         "content": [
           {
             "text": "  ",
@@ -1258,7 +1265,7 @@
         ]
       },
       {
-        "number": 42,
+        "number": 41,
         "content": [
           {
             "text": "    ",
@@ -1323,7 +1330,7 @@
         ]
       },
       {
-        "number": 43,
+        "number": 42,
         "content": [
           {
             "text": "    ",
@@ -1344,7 +1351,7 @@
         ]
       },
       {
-        "number": 44,
+        "number": 43,
         "content": [
           {
             "text": "  ",
@@ -1373,11 +1380,11 @@
         ]
       },
       {
-        "number": 45,
+        "number": 44,
         "content": []
       },
       {
-        "number": 46,
+        "number": 45,
         "content": [
           {
             "text": "  ",
@@ -1458,7 +1465,7 @@
         ]
       },
       {
-        "number": 47,
+        "number": 46,
         "content": [
           {
             "text": "    ",
@@ -1523,7 +1530,7 @@
         ]
       },
       {
-        "number": 48,
+        "number": 47,
         "content": [
           {
             "text": "    ",
@@ -1544,7 +1551,7 @@
         ]
       },
       {
-        "number": 49,
+        "number": 48,
         "content": [
           {
             "text": "  ",
@@ -1573,11 +1580,11 @@
         ]
       },
       {
-        "number": 50,
+        "number": 49,
         "content": []
       },
       {
-        "number": 51,
+        "number": 50,
         "content": [
           {
             "text": "  ",
@@ -1614,7 +1621,7 @@
         ]
       },
       {
-        "number": 52,
+        "number": 51,
         "content": [
           {
             "text": "    ",
@@ -1663,7 +1670,7 @@
         ]
       },
       {
-        "number": 53,
+        "number": 52,
         "content": [
           {
             "text": "    ",
@@ -1728,7 +1735,7 @@
         ]
       },
       {
-        "number": 54,
+        "number": 53,
         "content": [
           {
             "text": "    ",
@@ -1809,7 +1816,7 @@
         ]
       },
       {
-        "number": 55,
+        "number": 54,
         "content": [
           {
             "text": "      ",
@@ -1854,7 +1861,7 @@
         ]
       },
       {
-        "number": 56,
+        "number": 55,
         "content": [
           {
             "text": "      ",
@@ -1875,7 +1882,7 @@
         ]
       },
       {
-        "number": 57,
+        "number": 56,
         "content": [
           {
             "text": "    ",
@@ -1888,7 +1895,7 @@
         ]
       },
       {
-        "number": 58,
+        "number": 57,
         "content": [
           {
             "text": "    ",
@@ -1937,7 +1944,7 @@
         ]
       },
       {
-        "number": 59,
+        "number": 58,
         "content": [
           {
             "text": "    ",
@@ -2010,7 +2017,7 @@
         ]
       },
       {
-        "number": 60,
+        "number": 59,
         "content": [
           {
             "text": "  ",
@@ -2047,11 +2054,11 @@
         ]
       },
       {
-        "number": 61,
+        "number": 60,
         "content": []
       },
       {
-        "number": 62,
+        "number": 61,
         "content": [
           {
             "text": "  ",
@@ -2088,7 +2095,7 @@
         ]
       },
       {
-        "number": 63,
+        "number": 62,
         "content": [
           {
             "text": "    ",
@@ -2137,7 +2144,7 @@
         ]
       },
       {
-        "number": 64,
+        "number": 63,
         "content": [
           {
             "text": "    ",
@@ -2190,7 +2197,7 @@
         ]
       },
       {
-        "number": 65,
+        "number": 64,
         "content": [
           {
             "text": "    ",
@@ -2235,7 +2242,7 @@
         ]
       },
       {
-        "number": 66,
+        "number": 65,
         "content": [
           {
             "text": "  ",
@@ -2272,11 +2279,11 @@
         ]
       },
       {
-        "number": 67,
+        "number": 66,
         "content": []
       },
       {
-        "number": 68,
+        "number": 67,
         "content": [
           {
             "text": "  ",
@@ -2405,7 +2412,7 @@
         ]
       },
       {
-        "number": 69,
+        "number": 68,
         "content": [
           {
             "text": "}",
@@ -2414,7 +2421,7 @@
         ]
       },
       {
-        "number": 70,
+        "number": 69,
         "content": []
       }
     ]
@@ -2799,8 +2806,194 @@
       ]
     }
   ],
-  "examples": [],
-  "exampleSource": {},
+  "examples": [
+    "use-presence-basic",
+    "use-presence-tooltip"
+  ],
+  "exampleSource": {
+    "use-presence-basic": {
+      "raw": "\"use client\";\n\nexport { default } from \"../use-presence/use-presence-basic\"\n",
+      "highlighted": [
+        {
+          "number": 1,
+          "content": [
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "use client",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "default",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "../use-presence/use-presence-basic",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "content": []
+        }
+      ]
+    },
+    "use-presence-tooltip": {
+      "raw": "\"use client\";\n\nexport { default } from \"../use-presence/use-presence-tooltip\"\n",
+      "highlighted": [
+        {
+          "number": 1,
+          "content": [
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "use client",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "default",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "../use-presence/use-presence-tooltip",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "content": []
+        }
+      ]
+    }
+  },
   "parameters": [
     {
       "name": "open",

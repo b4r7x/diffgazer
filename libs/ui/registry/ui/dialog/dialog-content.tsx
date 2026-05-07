@@ -1,9 +1,20 @@
 "use client";
 
-import { useRef, useState, useLayoutEffect, type HTMLAttributes, type ReactNode, type SyntheticEvent } from "react";
+import {
+  Children,
+  isValidElement,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type HTMLAttributes,
+  type ReactNode,
+  type SyntheticEvent,
+} from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useDialogContext } from "./dialog-context";
+import { DialogTitle } from "./dialog-title";
 import { DialogShell } from "../shared/dialog-shell";
 import { PortalContainerProvider } from "../shared/portal-context";
 
@@ -24,6 +35,10 @@ const dialogContentVariants = cva(
   }
 );
 
+type RuntimeWithProcess = typeof globalThis & {
+  process?: { env?: { NODE_ENV?: string } };
+};
+
 export interface DialogContentProps
   extends VariantProps<typeof dialogContentVariants>,
     Omit<HTMLAttributes<HTMLDialogElement>, "children" | "className"> {
@@ -31,7 +46,12 @@ export interface DialogContentProps
   className?: string;
   role?: "dialog" | "alertdialog";
   closeOnBackdropClick?: boolean;
+  onCancel?: (e: SyntheticEvent<HTMLDialogElement>) => void;
   onEscapeKeyDown?: (e: SyntheticEvent<HTMLDialogElement>) => void;
+}
+
+function hasNonEmptyText(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
 }
 
 export function DialogContent({
@@ -40,34 +60,52 @@ export function DialogContent({
   size,
   closeOnBackdropClick = true,
   onEscapeKeyDown,
+  onCancel,
+  onAnimationEnd,
   "aria-label": ariaLabel,
   "aria-labelledby": ariaLabelledBy,
   ...rest
 }: DialogContentProps) {
-  const { open, onOpenChange, contentId, titleId, descriptionId, hasTitle, hasDescription, triggerRef } = useDialogContext();
+  const { open, onOpenChange, contentId, titleId, descriptionId, hasMountedTitleRef, hasTitle, hasDescription, triggerRef } = useDialogContext();
   const close = () => onOpenChange(false);
   const shellRef = useRef<HTMLDialogElement>(null);
   const [container, setContainer] = useState<Element | null>(null);
+  const hasAriaLabel = hasNonEmptyText(ariaLabel);
+  const hasAriaLabelledBy = hasNonEmptyText(ariaLabelledBy);
+  const hasRenderableTitle = hasTitle || containsDialogTitleElement(children);
+  const runtime = globalThis as RuntimeWithProcess;
+  const shouldValidateTitle = runtime.process?.env?.NODE_ENV !== "production";
+  const labelledBy = hasAriaLabelledBy ? ariaLabelledBy : hasAriaLabel || !hasRenderableTitle ? undefined : titleId;
 
-  useLayoutEffect(() => {
-    setContainer(shellRef.current);
+  const setShellRef = useCallback((node: HTMLDialogElement | null) => {
+    shellRef.current = node;
+    setContainer(node);
   }, []);
+
+  useEffect(() => {
+    if (!shouldValidateTitle || !open || hasAriaLabel || hasAriaLabelledBy || hasTitle || hasMountedTitleRef.current || containsDialogTitleElement(children)) return;
+    console.warn("Dialog.Content requires Dialog.Title, aria-label, or aria-labelledby.");
+  }, [children, hasAriaLabel, hasAriaLabelledBy, hasMountedTitleRef, hasTitle, open, shouldValidateTitle]);
 
   return (
     <DialogShell
       {...rest}
       open={open}
       id={contentId}
-      dialogRef={shellRef}
+      dialogRef={setShellRef}
       onBackdropClick={closeOnBackdropClick ? close : undefined}
       onCancel={(e) => {
+        onCancel?.(e);
+        if (e.defaultPrevented) return;
         onEscapeKeyDown?.(e);
         if (!e.defaultPrevented) close();
       }}
       onClose={() => triggerRef.current?.focus()}
+      onAnimationEnd={onAnimationEnd}
       className={cn(dialogContentVariants({ size }), className)}
-      aria-label={ariaLabel}
-      aria-labelledby={ariaLabelledBy ?? (!ariaLabel && hasTitle ? titleId : undefined)}
+      aria-modal="true"
+      aria-label={hasAriaLabel ? ariaLabel : undefined}
+      aria-labelledby={labelledBy}
       aria-describedby={hasDescription ? descriptionId : undefined}
     >
       <PortalContainerProvider container={container}>
@@ -75,4 +113,12 @@ export function DialogContent({
       </PortalContainerProvider>
     </DialogShell>
   );
+}
+
+function containsDialogTitleElement(children: ReactNode): boolean {
+  return Children.toArray(children).some((child) => {
+    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
+    if (child.type === DialogTitle) return true;
+    return containsDialogTitleElement(child.props.children);
+  });
 }

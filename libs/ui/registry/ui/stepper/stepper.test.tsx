@@ -74,6 +74,80 @@ describe("Stepper", () => {
     expect(screen.getByRole("button", { name: /Step 1/ })).toHaveAttribute("aria-expanded", "true")
   })
 
+  it("calls consumer trigger onClick before expanding", async () => {
+    const onClick = vi.fn()
+    render(
+      <Stepper>
+        <Stepper.Step stepId="s1" status="active">
+          <Stepper.Trigger onClick={onClick}>Step 1</Stepper.Trigger>
+          <Stepper.Content>Content 1</Stepper.Content>
+        </Stepper.Step>
+      </Stepper>,
+    )
+    const trigger = screen.getByRole("button", { name: /Step 1/ })
+
+    await userEvent.click(trigger)
+
+    expect(onClick).toHaveBeenCalled()
+    expect(trigger).toHaveAttribute("aria-expanded", "true")
+  })
+
+  it("does not expand when trigger click is prevented", async () => {
+    render(
+      <Stepper>
+        <Stepper.Step stepId="s1" status="active">
+          <Stepper.Trigger onClick={(event) => event.preventDefault()}>Step 1</Stepper.Trigger>
+          <Stepper.Content>Content 1</Stepper.Content>
+        </Stepper.Step>
+      </Stepper>,
+    )
+    const trigger = screen.getByRole("button", { name: /Step 1/ })
+
+    await userEvent.click(trigger)
+
+    expect(trigger).toHaveAttribute("aria-expanded", "false")
+  })
+
+  it("only emits aria-controls when the referenced content exists", () => {
+    render(
+      <Stepper>
+        <Stepper.Step stepId="s1" status="active">
+          <Stepper.Trigger>With content</Stepper.Trigger>
+          <Stepper.Content>Content 1</Stepper.Content>
+        </Stepper.Step>
+        <Stepper.Step stepId="s2" status="pending">
+          <Stepper.Trigger>No content</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    )
+
+    const withContent = screen.getByRole("button", { name: /With content/ })
+    const withoutContent = screen.getByRole("button", { name: /No content/ })
+    const contentId = withContent.getAttribute("aria-controls")
+
+    expect(contentId).toBeTruthy()
+    expect(document.getElementById(contentId!)).toBeInTheDocument()
+    expect(withoutContent).not.toHaveAttribute("aria-controls")
+    expect(withoutContent).not.toHaveAttribute("aria-expanded")
+  })
+
+  it("does not toggle steps that have no content", async () => {
+    const onExpandedChange = vi.fn()
+    render(
+      <Stepper onExpandedChange={onExpandedChange}>
+        <Stepper.Step stepId="s1" status="active">
+          <Stepper.Trigger>No content</Stepper.Trigger>
+        </Stepper.Step>
+      </Stepper>,
+    )
+
+    const trigger = screen.getByRole("button", { name: /No content/ })
+    await userEvent.click(trigger)
+
+    expect(onExpandedChange).not.toHaveBeenCalled()
+    expect(trigger).not.toHaveAttribute("aria-expanded")
+  })
+
   it("has no a11y violations", async () => {
     const { container } = renderStepper({ defaultExpandedIds: ["s1"] })
     expect(await axe(container)).toHaveNoViolations()

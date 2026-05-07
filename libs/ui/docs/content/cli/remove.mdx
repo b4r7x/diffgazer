@@ -6,15 +6,17 @@ description: Remove installed @diffgazer/ui components and @diffgazer/keys hooks
 ## Usage
 
 ```bash
-npx @diffgazer/add remove <item> [item...]
+pnpm exec dgadd remove <item> [item...]
 ```
+
+Use `npx @diffgazer/add remove ...` only after `npm view @diffgazer/add version` succeeds. Before publication, install a locally packed `@diffgazer/add` tarball into the target app and run `pnpm exec dgadd`.
 
 ## Examples
 
 ```bash
-npx @diffgazer/add remove ui/button
-npx @diffgazer/add remove ui/tabs ui/menu keys/navigation
-npx @diffgazer/add remove ui/tabs --dry-run
+pnpm exec dgadd remove ui/button
+pnpm exec dgadd remove ui/tabs ui/menu keys/navigation
+pnpm exec dgadd remove ui/tabs --dry-run
 ```
 
 ## What It Does

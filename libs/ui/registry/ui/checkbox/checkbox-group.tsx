@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useMemo, useRef, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from "react";
+import { useCallback, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from "react";
 import { useNavigation } from "@/hooks/use-navigation";
 import { useControllableState } from "@/hooks/use-controllable-state";
+import { useFormReset } from "@/hooks/use-form-reset";
 import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
 import type { SelectableVariant } from "@/lib/selectable-variants";
@@ -12,6 +13,8 @@ import { CheckboxGroupContext } from "./checkbox-group-context";
 export type CheckboxGroupProps<T extends string = string> = {
   value?: T[];
   defaultValue?: T[];
+  onValueChange?: (value: T[]) => void;
+  /** @deprecated Use `onValueChange` for controlled value updates. */
   onChange?: (value: T[]) => void;
   onHighlightChange?: (value: string) => void;
   onKeyDown?: (event: ReactKeyboardEvent) => void;
@@ -26,6 +29,8 @@ export type CheckboxGroupProps<T extends string = string> = {
   className?: string;
   label?: string;
   labelledBy?: string;
+  "aria-label"?: string;
+  "aria-labelledby"?: string;
   children: ReactNode;
   ref?: Ref<HTMLDivElement>;
 };
@@ -33,6 +38,7 @@ export type CheckboxGroupProps<T extends string = string> = {
 export function CheckboxGroup<T extends string = string>({
   value: controlledValue,
   defaultValue = [] as T[],
+  onValueChange,
   onChange,
   onHighlightChange,
   onKeyDown,
@@ -47,6 +53,8 @@ export function CheckboxGroup<T extends string = string>({
   className,
   label,
   labelledBy,
+  "aria-label": ariaLabel,
+  "aria-labelledby": ariaLabelledBy,
   children,
   ref,
 }: CheckboxGroupProps<T>) {
@@ -54,8 +62,10 @@ export function CheckboxGroup<T extends string = string>({
   const [value, setValue] = useControllableState<T[]>({
     value: controlledValue,
     defaultValue,
-    onChange,
+    onChange: onValueChange ?? onChange,
   });
+  const [nativeInvalid, setNativeInvalid] = useState(false);
+  useFormReset(containerRef, defaultValue, setValue, controlledValue === undefined);
 
   const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({
     value: controlledHighlighted,
@@ -75,6 +85,7 @@ export function CheckboxGroup<T extends string = string>({
 
   const toggle = useCallback((itemValue: string) => {
     if (disabled) return;
+    setNativeInvalid(false);
     const typed = itemValue as T;
     setValue((cur) => (cur.includes(typed) ? cur.filter((v) => v !== typed) : [...cur, typed]));
   }, [disabled, setValue]);
@@ -91,10 +102,10 @@ export function CheckboxGroup<T extends string = string>({
       <div
         ref={composeRefs(containerRef, ref)}
         role="group"
-        aria-label={label}
-        aria-labelledby={labelledBy}
+        aria-label={ariaLabel ?? label}
+        aria-labelledby={ariaLabelledBy ?? labelledBy}
         aria-disabled={disabled || undefined}
-        aria-required={required || undefined}
+        aria-invalid={nativeInvalid && required && value.length === 0 ? true : undefined}
         className={cn("flex flex-col gap-2", className)}
         onKeyDown={handleKeyDown}
       >
@@ -105,9 +116,16 @@ export function CheckboxGroup<T extends string = string>({
             checked={value.length > 0}
             disabled={disabled}
             tabIndex={-1}
-            aria-hidden="true"
+            aria-hidden={true}
+            aria-label={ariaLabel ?? (typeof label === "string" ? label : "Required checkbox group")}
+            aria-labelledby={ariaLabelledBy ?? labelledBy}
             readOnly
             className="sr-only"
+            onInvalid={(event) => {
+              event.preventDefault();
+              setNativeInvalid(true);
+              containerRef.current?.querySelector<HTMLElement>('[role="checkbox"]:not([aria-disabled="true"])')?.focus();
+            }}
           />
         )}
         {children}

@@ -14,6 +14,10 @@ export const stepperDoc: ComponentDoc = {
       title: "Expansion Modes",
       content: "Supports controlled (expandedIds + onExpandedChange) and uncontrolled (defaultExpandedIds) expansion. Multiple steps can be expanded simultaneously.",
     },
+    {
+      title: "Composition Contract",
+      content: "Keep StepperTrigger and StepperContent as explicit children of StepperStep. StepperStep only links aria-controls when it can see a direct StepperContent child; opaque wrappers that create content internally are not part of the current public contract.",
+    },
   ],
   usage: { example: "stepper-default" },
   examples: [
@@ -25,7 +29,7 @@ export const stepperDoc: ComponentDoc = {
   ],
   keyboard: {
     description:
-      "All steps render as focusable buttons. Press Enter or Space to toggle the expanded content. Steps without a Content child still toggle expansion state but have no visible content panel.",
+      "All step triggers render as focusable buttons. Press Enter or Space to toggle direct StepperContent. Steps without a direct StepperContent child have no visible content panel and do not expose aria-controls.",
     examples: [
       { name: "stepper-interactive", title: "Controlled expansion with keyboard" },
       { name: "stepper-keyboard", title: "Keyboard navigation" },

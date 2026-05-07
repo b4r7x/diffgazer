@@ -3,13 +3,12 @@
 import {
   useState,
   useCallback,
-  useRef,
   type RefObject,
   type KeyboardEvent,
 } from "react";
-import { resolveDirectionKeys, dispatchNavigationKey } from "../internal/navigation-dispatch.js";
+import { resolveDirectionKeys, dispatchNavigationKey } from "./internal/navigation-dispatch.js";
 
-export type NavigationRole = "radio" | "checkbox" | "option" | "menuitem" | "button" | "tab";
+export type NavigationRole = "radio" | "checkbox" | "option" | "menuitem" | "menuitemradio" | "button" | "tab";
 
 export interface UseNavigationOptions {
   containerRef: RefObject<HTMLElement | null>;
@@ -107,6 +106,11 @@ function wrapIndex(index: number, length: number, wrap: boolean): number | null 
   return index;
 }
 
+function containsActiveElement(el: HTMLElement): boolean {
+  const activeElement = el.ownerDocument.activeElement;
+  return activeElement instanceof HTMLElement && el.contains(activeElement);
+}
+
 export function useNavigationCore({
   containerRef,
   role,
@@ -126,42 +130,41 @@ export function useNavigationCore({
   const highlighted = isControlled ? value ?? null : internalValue;
 
   const setFocusedValue = useCallback((nextValue: string) => {
-    if (isControlled) {
-      onValueChange?.(nextValue);
-    } else {
-      setInternalValue(nextValue);
-      onValueChange?.(nextValue);
-    }
+    if (!isControlled) setInternalValue(nextValue);
+    onValueChange?.(nextValue);
     onHighlightChange?.(nextValue);
   }, [isControlled, onValueChange, onHighlightChange]);
 
-  const getElements = useCallback(() => queryElements(containerRef, role, skipDisabled), [role, skipDisabled, containerRef]);
+  const getElements = useCallback(
+    () => queryElements(containerRef, role, skipDisabled),
+    [containerRef, role, skipDisabled],
+  );
 
   const getFocusedIndex = useCallback((): number => {
     const elements = getElements();
     if (elements.length === 0) return -1;
-    if (!highlighted) return 0;
-    const index = elements.findIndex((el) => el.dataset.value === highlighted);
-    return index >= 0 ? index : 0;
+
+    if (highlighted !== null) {
+      const index = elements.findIndex((el) => el.dataset.value === highlighted);
+      if (index >= 0) return index;
+    }
+
+    return elements.findIndex(containsActiveElement);
   }, [getElements, highlighted]);
 
-  const focusIndexRef = useRef<((index: number) => void) | null>(null);
-  focusIndexRef.current = (index: number) => {
+  const focusIndex = useCallback((index: number) => {
     const elements = getElements();
     const el = elements[index];
-    if (el?.dataset.value) {
-      el.scrollIntoView?.({ block: "nearest" });
-      if (moveFocus) el.focus();
-      setFocusedValue(el.dataset.value);
-    }
-  };
+    if (!el) return;
+    const nextValue = el.dataset.value;
+    if (nextValue === undefined) return;
 
-  const focusIndex = useCallback((index: number) => {
-    focusIndexRef.current?.(index);
-  }, []);
+    el.scrollIntoView?.({ block: "nearest" });
+    if (moveFocus) el.focus();
+    setFocusedValue(nextValue);
+  }, [getElements, moveFocus, setFocusedValue]);
 
-  const moveRef = useRef<((delta: 1 | -1) => void) | null>(null);
-  moveRef.current = (delta: 1 | -1) => {
+  const move = useCallback((delta: 1 | -1) => {
     const elements = getElements();
     if (elements.length === 0) return;
 
@@ -173,22 +176,17 @@ export function useNavigationCore({
       return;
     }
 
-    focusIndexRef.current?.(next);
-  };
-
-  const move = useCallback((delta: 1 | -1) => {
-    moveRef.current?.(delta);
-  }, []);
+    focusIndex(next);
+  }, [focusIndex, getElements, getFocusedIndex, onBoundaryReached, wrap]);
 
   const handleSelect = useCallback((event: globalThis.KeyboardEvent) => {
-    if (highlighted) onSelect?.(highlighted, event);
+    if (highlighted !== null) onSelect?.(highlighted, event);
   }, [highlighted, onSelect]);
 
   const handleEnter = useCallback((event: globalThis.KeyboardEvent) => {
-    if (highlighted) {
-      if (onEnter) onEnter(highlighted, event);
-      else onSelect?.(highlighted, event);
-    }
+    if (highlighted === null) return;
+    if (onEnter) onEnter(highlighted, event);
+    else onSelect?.(highlighted, event);
   }, [highlighted, onEnter, onSelect]);
 
   const isHighlighted = useCallback((v: string) => highlighted === v, [highlighted]);
@@ -231,7 +229,18 @@ export function useNavigation(options: UseNavigationOptions): UseNavigationRetur
       total: getElements().length,
       nativeEvent: event.nativeEvent,
     });
-  }, [enabled, resolvedUpKeys, resolvedDownKeys, preventDefault, options.moveFocus, move, focusIndex, handleSelect, handleEnter, getElements]);
+  }, [
+    enabled,
+    resolvedUpKeys,
+    resolvedDownKeys,
+    preventDefault,
+    options.moveFocus,
+    move,
+    focusIndex,
+    handleSelect,
+    handleEnter,
+    getElements,
+  ]);
 
   return { highlighted, isHighlighted, highlight, onKeyDown };
 }

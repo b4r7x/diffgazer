@@ -1,18 +1,18 @@
 "use client";
 
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useEffectEvent, type RefObject } from "react";
 
 type OutsideClickEntry = {
   id: symbol;
   ref: RefObject<HTMLElement | null>;
-  handlerRef: { current: () => void };
+  handler: () => void;
   excludeRefs?: ReadonlyArray<RefObject<HTMLElement | null>>;
   priority: number;
 };
 
 type EscapeKeyEntry = {
   id: symbol;
-  handlerRef: { current: (event: KeyboardEvent) => void };
+  handler: (event: KeyboardEvent) => void;
   ref?: RefObject<HTMLElement | null>;
   excludeRefs?: ReadonlyArray<RefObject<HTMLElement | null>>;
   priority: number;
@@ -25,6 +25,7 @@ export interface OverlayStackOptions {
 }
 
 const DEFAULT_OVERLAY_PRIORITY = 1;
+const DOCUMENT_POINTER_LISTENER_OPTIONS: AddEventListenerOptions = { capture: true };
 const outsideClickEntries: OutsideClickEntry[] = [];
 const escapeKeyEntries: EscapeKeyEntry[] = [];
 
@@ -42,7 +43,7 @@ function isTargetInside(target: Node, element: HTMLElement | null): boolean {
   return element?.contains(target) ?? false;
 }
 
-function isInEntry(event: MouseEvent, target: Node, entry: OutsideClickEntry): boolean {
+function isInEntry(event: Event, target: Node, entry: OutsideClickEntry): boolean {
   const path = getComposedPath(event);
   if (pathContains(path, entry.ref.current) || isTargetInside(target, entry.ref.current)) return true;
   return entry.excludeRefs?.some((r) => pathContains(path, r.current) || isTargetInside(target, r.current)) ?? false;
@@ -94,19 +95,39 @@ function getTopEscapeKeyEntry(): EscapeKeyEntry | undefined {
   }, undefined);
 }
 
-function handleDocumentMouseDown(event: MouseEvent) {
+let lastTouchTarget: EventTarget | null = null;
+let lastTouchTime = 0;
+
+function supportsPointerEvents(): boolean {
+  return typeof window !== "undefined" && typeof window.PointerEvent !== "undefined";
+}
+
+function isDuplicateTouchFallback(event: Event): boolean {
+  if (event.type === "touchstart") {
+    lastTouchTarget = event.target;
+    lastTouchTime = Date.now();
+    return false;
+  }
+
+  const isDuplicate = event.type === "mousedown" && lastTouchTarget === event.target && Date.now() - lastTouchTime < 750;
+  if (isDuplicate) lastTouchTarget = null;
+  return isDuplicate;
+}
+
+function handleDocumentOutsidePointer(event: Event) {
+  if (isDuplicateTouchFallback(event)) return;
   if (!(event.target instanceof Node)) return;
   const entry = getTopOutsideClickEntry();
   if (!entry) return;
   if (isInEntry(event, event.target, entry)) return;
-  entry.handlerRef.current();
+  entry.handler();
 }
 
 function handleDocumentKeyDown(event: KeyboardEvent) {
   if (event.defaultPrevented || event.key !== "Escape") return;
   const entry = getTopEscapeKeyEntry();
   if (!entry) return;
-  entry.handlerRef.current(event);
+  entry.handler(event);
 }
 
 function removeEntry<Entry extends { id: symbol }>(entries: Entry[], id: symbol) {
@@ -121,27 +142,37 @@ export function useOutsideClick(
   excludeRefs?: ReadonlyArray<RefObject<HTMLElement | null>>,
   options?: OverlayStackOptions,
 ): void {
-  const handlerRef = useRef(handler);
-  handlerRef.current = handler;
+  const handleOutsideClick = useEffectEvent(handler);
 
   useEffect(() => {
     if (!enabled) return;
     const id = Symbol("outside-click-layer");
+    const usePointerEvents = supportsPointerEvents();
     outsideClickEntries.push({
       id,
       ref,
-      handlerRef,
+      handler: handleOutsideClick,
       excludeRefs,
       priority: options?.priority ?? DEFAULT_OVERLAY_PRIORITY,
     });
     if (outsideClickEntries.length === 1) {
-      document.addEventListener("mousedown", handleDocumentMouseDown);
+      if (usePointerEvents) {
+        document.addEventListener("pointerdown", handleDocumentOutsidePointer, DOCUMENT_POINTER_LISTENER_OPTIONS);
+      } else {
+        document.addEventListener("touchstart", handleDocumentOutsidePointer, DOCUMENT_POINTER_LISTENER_OPTIONS);
+        document.addEventListener("mousedown", handleDocumentOutsidePointer, DOCUMENT_POINTER_LISTENER_OPTIONS);
+      }
     }
 
     return () => {
       removeEntry(outsideClickEntries, id);
       if (outsideClickEntries.length === 0) {
-        document.removeEventListener("mousedown", handleDocumentMouseDown);
+        if (usePointerEvents) {
+          document.removeEventListener("pointerdown", handleDocumentOutsidePointer, DOCUMENT_POINTER_LISTENER_OPTIONS);
+        } else {
+          document.removeEventListener("touchstart", handleDocumentOutsidePointer, DOCUMENT_POINTER_LISTENER_OPTIONS);
+          document.removeEventListener("mousedown", handleDocumentOutsidePointer, DOCUMENT_POINTER_LISTENER_OPTIONS);
+        }
       }
     };
   }, [enabled, excludeRefs, options?.priority, ref]);
@@ -152,15 +183,14 @@ export function useEscapeKey(
   enabled: boolean = true,
   options?: OverlayStackOptions,
 ): void {
-  const handlerRef = useRef(handler);
-  handlerRef.current = handler;
+  const handleEscape = useEffectEvent(handler);
 
   useEffect(() => {
     if (!enabled) return;
     const id = Symbol("escape-key-layer");
     escapeKeyEntries.push({
       id,
-      handlerRef,
+      handler: handleEscape,
       ref: options?.ref,
       excludeRefs: options?.excludeRefs,
       priority: options?.priority ?? DEFAULT_OVERLAY_PRIORITY,

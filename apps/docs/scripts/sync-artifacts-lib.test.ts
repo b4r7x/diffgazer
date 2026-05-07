@@ -188,4 +188,55 @@ describe("sync artifacts helper output validation", () => {
       "Generated namespace is empty: src/generated/ui",
     );
   });
+
+  it("reports generated sync output drift against loaded artifacts", () => {
+    const tempRoot = makeTempDir();
+    const artifactRoot = resolve(tempRoot, "artifact");
+
+    writeFile(tempRoot, "content/docs/meta.json");
+    writeFile(tempRoot, "registry/registry.json");
+    writeFile(tempRoot, "styles/styles.css", "/* styles */\n");
+    writeFile(tempRoot, "src/generated/demo-loaders.ts", "export {}\n");
+    writeFile(tempRoot, "content/docs/ui/meta.json");
+    writeFile(tempRoot, "content/docs/ui/index.mdx", "# Intro\n");
+    writeFile(tempRoot, "public/r/ui/registry.json", "{\"items\":[]}\n");
+    writeFile(tempRoot, "src/generated/ui/component-list.json", "[\"stale\"]\n");
+
+    writeFile(artifactRoot, "docs/meta.json");
+    writeFile(artifactRoot, "docs/index.mdx", "# Intro\n");
+    writeFile(artifactRoot, "registry/registry.json", "{\"items\":[]}\n");
+    writeFile(artifactRoot, "generated/component-list.json", "[]\n");
+
+    const errors = collectArtifactSyncValidationErrors({
+      docsRoot: tempRoot,
+      primaryLibraryId: "ui",
+      libraries: [
+        {
+          id: "ui",
+          packageName: "@diffgazer/ui",
+          workspaceDir: "libs/ui",
+        },
+      ],
+      artifacts: [
+        {
+          id: "ui",
+          artifactRoot,
+          manifest: {
+            docs: {
+              contentDir: "docs",
+              generatedDir: "generated",
+            },
+            registry: {
+              publicDir: "registry",
+            },
+          },
+          generatedFiles: ["generated/component-list.json"],
+        },
+      ],
+    });
+
+    expect(errors).toContain(
+      "ui generated sync: artifact differs from source for component-list.json",
+    );
+  });
 });

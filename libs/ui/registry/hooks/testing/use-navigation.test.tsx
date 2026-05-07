@@ -1,6 +1,6 @@
 import { render, screen, act, cleanup } from "@testing-library/react";
 import { useRef, type KeyboardEventHandler } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { useNavigation } from "../use-navigation";
 
 function onKeyDownProp(fn: (event: globalThis.KeyboardEvent) => void): KeyboardEventHandler {
@@ -41,8 +41,8 @@ describe("useNavigation", () => {
     expect(screen.getByTestId("focused")).toHaveTextContent("b");
   });
 
-  it("falls back to data-value items when copied components omit role attributes", () => {
-    function DataValueList() {
+  it("supports native buttons with data values", () => {
+    function NativeButtonList() {
       const ref = useRef<HTMLDivElement>(null);
       const result = useNavigation({
         containerRef: ref,
@@ -60,7 +60,7 @@ describe("useNavigation", () => {
       );
     }
 
-    render(<DataValueList />);
+    render(<NativeButtonList />);
 
     act(() => fireKeyOnElement(screen.getByTestId("list"), "ArrowDown"));
     expect(screen.getByTestId("focused")).toHaveTextContent("b");
@@ -114,5 +114,42 @@ describe("useNavigation", () => {
     act(() => fireKeyOnElement(screen.getByTestId("list"), "ArrowDown"));
     expect(screen.getByRole("button", { name: "C" })).toHaveFocus();
     expect(screen.getByTestId("focused")).toHaveTextContent("c");
+  });
+
+  it("supports empty string item values for highlight and selection", () => {
+    const onSelect = vi.fn();
+
+    function EmptyValueList() {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useNavigation({
+        containerRef: ref,
+        role: "option",
+        initialValue: "",
+        onSelect,
+      });
+
+      return (
+        <div ref={ref} data-testid="list" onKeyDown={onKeyDownProp(result.onKeyDown)}>
+          <div role="option" data-value="" />
+          <div role="option" data-value="b" />
+          <span data-testid="focused">{result.highlighted ?? "null"}</span>
+          <span data-testid="is-empty">{String(result.isHighlighted(""))}</span>
+        </div>
+      );
+    }
+
+    render(<EmptyValueList />);
+    const container = screen.getByTestId("list");
+
+    expect(screen.getByTestId("is-empty")).toHaveTextContent("true");
+
+    act(() => fireKeyOnElement(container, "Enter"));
+    expect(onSelect).toHaveBeenCalledWith("", expect.any(KeyboardEvent));
+
+    act(() => fireKeyOnElement(container, "ArrowDown"));
+    expect(screen.getByTestId("focused")).toHaveTextContent("b");
+
+    act(() => fireKeyOnElement(container, "ArrowUp"));
+    expect(screen.getByTestId("is-empty")).toHaveTextContent("true");
   });
 });

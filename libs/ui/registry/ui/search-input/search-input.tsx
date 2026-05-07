@@ -1,9 +1,11 @@
 "use client";
 
-import type { InputHTMLAttributes, KeyboardEvent, ReactNode, Ref } from "react";
+import { useRef, type InputHTMLAttributes, type KeyboardEvent, type ReactNode, type Ref } from "react";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useControllableState } from "@/hooks/use-controllable-state";
+import { useFormReset } from "@/hooks/use-form-reset";
+import { composeRefs } from "@/lib/compose-refs";
 
 const searchInputVariants = cva(
   "flex items-center gap-2 bg-background border-x border-b border-border font-mono shrink-0 transition-colors focus-within:border-foreground",
@@ -44,6 +46,24 @@ export interface SearchInputProps
   ref?: Ref<HTMLInputElement>;
 }
 
+function resolveInvalidState(
+  invalid: boolean | undefined,
+  error: boolean | undefined,
+  ariaInvalid: InputHTMLAttributes<HTMLInputElement>["aria-invalid"],
+) {
+  if (invalid || error) return { isInvalid: true, ariaInvalid: true };
+
+  if (ariaInvalid === true || ariaInvalid === "true" || ariaInvalid === "grammar" || ariaInvalid === "spelling") {
+    return { isInvalid: true, ariaInvalid };
+  }
+
+  if (ariaInvalid === false || ariaInvalid === "false") {
+    return { isInvalid: false, ariaInvalid };
+  }
+
+  return { isInvalid: false, ariaInvalid: undefined };
+}
+
 export function SearchInput({
   value,
   defaultValue,
@@ -63,14 +83,19 @@ export function SearchInput({
   "aria-invalid": ariaInvalid,
   ...rest
 }: SearchInputProps) {
-  const isInvalid = invalid ?? error ?? ariaInvalid;
+  const invalidState = resolveInvalidState(invalid, error, ariaInvalid);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [current, setValue] = useControllableState({
     value,
     defaultValue: defaultValue ?? "",
     onChange,
   });
+  useFormReset(inputRef, defaultValue ?? "", setValue, value === undefined);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    onKeyDown?.(e);
+    if (e.defaultPrevented) return;
+
     if (e.key === "Escape") {
       e.preventDefault();
       onEscape?.();
@@ -78,26 +103,25 @@ export function SearchInput({
       e.preventDefault();
       onEnter();
     }
-    onKeyDown?.(e);
   };
 
   return (
     <search
       className={cn(
-        searchInputVariants({ size, error: !!isInvalid, disabled }),
+        searchInputVariants({ size, error: invalidState.isInvalid, disabled }),
         className,
       )}
     >
       {prefix}
       <input
-        ref={ref}
+        ref={composeRefs(inputRef, ref)}
         type="search"
         value={current}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         aria-label={ariaLabel ?? placeholder}
-        aria-invalid={isInvalid || undefined}
+        aria-invalid={invalidState.ariaInvalid}
         disabled={disabled}
         {...rest}
         className="flex-1 bg-transparent font-mono text-foreground placeholder:text-foreground/50 focus:outline-none disabled:cursor-not-allowed [&::-webkit-search-cancel-button]:appearance-none"

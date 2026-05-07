@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
@@ -61,6 +61,58 @@ describe("Checkbox", () => {
     expect(checkbox).toHaveAttribute("aria-required", "true")
   })
 
+  it("resets uncontrolled checked state with native form reset", async () => {
+    render(
+      <form data-testid="form">
+        <Checkbox name="terms" defaultChecked label="Accept terms" />
+      </form>
+    )
+
+    await userEvent.click(screen.getByRole("checkbox"))
+    const form = screen.getByTestId("form") as HTMLFormElement
+    expect(new FormData(form).has("terms")).toBe(false)
+
+    form.reset()
+    await waitFor(() => expect(new FormData(form).get("terms")).toBe("on"))
+    expect(screen.getByRole("checkbox")).toHaveAttribute("aria-checked", "true")
+  })
+
+  it("focuses the visible checkbox when native required validation fails", async () => {
+    render(
+      <form data-testid="form">
+        <Checkbox name="terms" required label="Accept terms" />
+      </form>
+    )
+
+    const form = screen.getByTestId("form") as HTMLFormElement
+    const checkbox = screen.getByRole("checkbox", { name: /accept terms/i })
+
+    expect(form.reportValidity()).toBe(false)
+    expect(checkbox).toHaveFocus()
+    await waitFor(() => expect(checkbox).toHaveAttribute("aria-invalid", "true"))
+  })
+
+  it("validates required unnamed checkboxes without contributing FormData", async () => {
+    render(
+      <form data-testid="form">
+        <Checkbox required label="Accept terms" />
+      </form>
+    )
+
+    const form = screen.getByTestId("form") as HTMLFormElement
+    const checkbox = screen.getByRole("checkbox", { name: /accept terms/i })
+
+    expect(form.reportValidity()).toBe(false)
+    expect(checkbox).toHaveFocus()
+    await waitFor(() => expect(checkbox).toHaveAttribute("aria-invalid", "true"))
+    expect(new FormData(form).entries().next().done).toBe(true)
+
+    await userEvent.click(checkbox)
+    expect(form.checkValidity()).toBe(true)
+    expect(checkbox).not.toHaveAttribute("aria-invalid")
+    expect(new FormData(form).entries().next().done).toBe(true)
+  })
+
   it("has no a11y violations across states", async () => {
     const { container, rerender } = render(<Checkbox label="Accept terms" />)
     expect(await axe(container)).toHaveNoViolations()
@@ -85,6 +137,19 @@ describe("Checkbox.Group", () => {
     expect(screen.getAllByRole("checkbox")[0]).toHaveAttribute("aria-checked", "true")
     await userEvent.click(screen.getByText("Banana"))
     expect(onChange).toHaveBeenCalledWith(["apple", "banana"])
+  })
+
+  it("calls onValueChange as the preferred group callback", async () => {
+    const onValueChange = vi.fn()
+    render(
+      <Checkbox.Group value={["apple"]} onValueChange={onValueChange} label="Fruits">
+        <Checkbox.Item value="apple" label="Apple" />
+        <Checkbox.Item value="banana" label="Banana" />
+      </Checkbox.Group>
+    )
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /banana/i }))
+    expect(onValueChange).toHaveBeenCalledWith(["apple", "banana"])
   })
 
   it("sets aria-disabled on group when disabled", () => {
@@ -122,11 +187,35 @@ describe("Checkbox.Group", () => {
 
     const form = screen.getByTestId("form") as HTMLFormElement
     expect(form.checkValidity()).toBe(false)
+    expect(form.querySelector("input[required]")).toHaveAttribute("aria-hidden", "true")
+    expect(screen.getAllByRole("checkbox")).toHaveLength(2)
+    expect(form.reportValidity()).toBe(false)
+    expect(screen.getByRole("checkbox", { name: /apple/i })).toHaveFocus()
+    await waitFor(() => expect(screen.getByRole("group")).toHaveAttribute("aria-invalid", "true"))
 
     await userEvent.click(screen.getByRole("checkbox", { name: /banana/i }))
 
     expect(form.checkValidity()).toBe(true)
+    expect(screen.getByRole("group")).not.toHaveAttribute("aria-invalid")
     expect(new FormData(form).getAll("fruits")).toEqual(["banana"])
+  })
+
+  it("resets uncontrolled grouped checkbox values with native form reset", async () => {
+    render(
+      <form data-testid="form">
+        <Checkbox.Group label="Fruits" name="fruits" defaultValue={["apple"]}>
+          <Checkbox.Item value="apple" label="Apple" />
+          <Checkbox.Item value="banana" label="Banana" />
+        </Checkbox.Group>
+      </form>
+    )
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /banana/i }))
+    const form = screen.getByTestId("form") as HTMLFormElement
+    expect(new FormData(form).getAll("fruits")).toEqual(["apple", "banana"])
+
+    form.reset()
+    await waitFor(() => expect(new FormData(form).getAll("fruits")).toEqual(["apple"]))
   })
 
   it("has no a11y violations", async () => {

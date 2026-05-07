@@ -4,8 +4,10 @@ description: List available @diffgazer/keys hooks.
 ---
 
 ```bash
-npx @diffgazer/add list
+pnpm exec dgadd list
 ```
+
+Before publication, install a locally packed `@diffgazer/add` tarball into the target app and run `pnpm exec dgadd`. Use `npx @diffgazer/add list` only after `npm view @diffgazer/add version` succeeds.
 
 Available hooks are listed with the `keys/*` namespace:
 

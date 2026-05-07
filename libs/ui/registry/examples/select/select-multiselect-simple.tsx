@@ -13,7 +13,7 @@ export default function SelectMultiselectSimple() {
   const [value, setValue] = useState<string[]>([])
   return (
     <div className="w-64">
-      <Select multiple value={value} onChange={setValue}>
+      <Select multiple value={value} onValueChange={setValue}>
         <SelectTrigger>
           <SelectValue placeholder="Select tags..." display="list" />
         </SelectTrigger>

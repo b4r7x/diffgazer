@@ -1,3 +1,5 @@
+"use client";
+
 import { CodeBlock as CodeBlockRoot, type CodeBlockProps } from "./code-block";
 import { CodeBlockContent, type CodeBlockContentProps } from "./code-block-content";
 import { CodeBlockHeader, type CodeBlockHeaderProps } from "./code-block-header";

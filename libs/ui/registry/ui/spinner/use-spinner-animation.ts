@@ -11,16 +11,22 @@ export function useSpinnerAnimation({ totalFrames, speed }: UseSpinnerAnimationO
   const [frame, setFrame] = useState(0);
 
   useEffect(() => {
-    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (!Number.isFinite(totalFrames) || totalFrames <= 0 || !Number.isFinite(speed) || speed <= 0) {
+      setFrame(0);
+      return;
+    }
 
     let intervalId: ReturnType<typeof setInterval> | undefined;
+    const mql = typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)")
+      : null;
 
     function sync() {
       if (intervalId !== undefined) {
         clearInterval(intervalId);
         intervalId = undefined;
       }
-      if (mql.matches) {
+      if (mql?.matches) {
         setFrame(0);
       } else {
         intervalId = setInterval(() => setFrame(f => (f + 1) % totalFrames), speed);
@@ -28,10 +34,10 @@ export function useSpinnerAnimation({ totalFrames, speed }: UseSpinnerAnimationO
     }
 
     sync();
-    mql.addEventListener("change", sync);
+    mql?.addEventListener("change", sync);
 
     return () => {
-      mql.removeEventListener("change", sync);
+      mql?.removeEventListener("change", sync);
       if (intervalId !== undefined) clearInterval(intervalId);
     };
   }, [speed, totalFrames]);

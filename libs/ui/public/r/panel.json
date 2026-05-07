@@ -16,7 +16,7 @@
     },
     {
       "path": "registry/ui/panel/panel.tsx",
-      "content": "import type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const panelVariants = cva(\"relative bg-background\", {\n  variants: {\n    variant: {\n      default: \"border border-border shadow-2xl\",\n      borderless: \"\",\n    },\n  },\n  defaultVariants: { variant: \"default\" },\n});\n\ntype PanelTag = \"div\" | \"article\" | \"section\" | \"aside\";\n\nexport type PanelProps = ComponentPropsWithRef<\"div\"> &\n  VariantProps<typeof panelVariants> & {\n    as?: PanelTag;\n  };\n\nexport function Panel({ className, variant, as: Tag = \"div\", ...props }: PanelProps) {\n  return <Tag data-slot=\"panel\" className={cn(panelVariants({ variant }), className)} {...props} />;\n}\n",
+      "content": "import type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const panelVariants = cva(\"relative bg-background\", {\n  variants: {\n    variant: {\n      default: \"border border-border shadow-2xl\",\n      borderless: \"\",\n    },\n  },\n  defaultVariants: { variant: \"default\" },\n});\n\ntype PanelOwnProps = VariantProps<typeof panelVariants>;\ntype PanelElement = \"div\" | \"article\" | \"section\" | \"aside\";\ntype PanelElementProps<T extends PanelElement> = Omit<\n  ComponentPropsWithRef<T>,\n  keyof PanelOwnProps | \"as\"\n> &\n  PanelOwnProps & {\n    as: T;\n  };\n\nexport type PanelProps =\n  | (Omit<PanelElementProps<\"div\">, \"as\"> & { as?: \"div\" })\n  | PanelElementProps<\"article\">\n  | PanelElementProps<\"section\">\n  | PanelElementProps<\"aside\">;\n\nexport function Panel(props: PanelProps) {\n  const { className, variant } = props;\n  const resolvedClassName = cn(panelVariants({ variant }), className);\n\n  if (props.as === \"article\") {\n    const { as, ref, className: omittedClassName, variant: omittedVariant, ...articleProps } = props;\n    return <article data-slot=\"panel\" ref={ref} className={resolvedClassName} {...articleProps} />;\n  }\n  if (props.as === \"section\") {\n    const { as, ref, className: omittedClassName, variant: omittedVariant, ...sectionProps } = props;\n    return <section data-slot=\"panel\" ref={ref} className={resolvedClassName} {...sectionProps} />;\n  }\n  if (props.as === \"aside\") {\n    const { as, ref, className: omittedClassName, variant: omittedVariant, ...asideProps } = props;\n    return <aside data-slot=\"panel\" ref={ref} className={resolvedClassName} {...asideProps} />;\n  }\n\n  const { as, ref, className: omittedClassName, variant: omittedVariant, ...divProps } = props;\n  return <div data-slot=\"panel\" ref={ref} className={resolvedClassName} {...divProps} />;\n}\n",
       "type": "registry:ui"
     },
     {
@@ -36,6 +36,6 @@
     }
   ],
   "meta": {
-    "client": true
+    "client": false
   }
 }

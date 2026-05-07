@@ -665,7 +665,7 @@
       ]
     },
     "registry/ui/panel/panel.tsx": {
-      "raw": "import type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const panelVariants = cva(\"relative bg-background\", {\n  variants: {\n    variant: {\n      default: \"border border-border shadow-2xl\",\n      borderless: \"\",\n    },\n  },\n  defaultVariants: { variant: \"default\" },\n});\n\ntype PanelTag = \"div\" | \"article\" | \"section\" | \"aside\";\n\nexport type PanelProps = ComponentPropsWithRef<\"div\"> &\n  VariantProps<typeof panelVariants> & {\n    as?: PanelTag;\n  };\n\nexport function Panel({ className, variant, as: Tag = \"div\", ...props }: PanelProps) {\n  return <Tag data-slot=\"panel\" className={cn(panelVariants({ variant }), className)} {...props} />;\n}\n",
+      "raw": "import type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const panelVariants = cva(\"relative bg-background\", {\n  variants: {\n    variant: {\n      default: \"border border-border shadow-2xl\",\n      borderless: \"\",\n    },\n  },\n  defaultVariants: { variant: \"default\" },\n});\n\ntype PanelOwnProps = VariantProps<typeof panelVariants>;\ntype PanelElement = \"div\" | \"article\" | \"section\" | \"aside\";\ntype PanelElementProps<T extends PanelElement> = Omit<\n  ComponentPropsWithRef<T>,\n  keyof PanelOwnProps | \"as\"\n> &\n  PanelOwnProps & {\n    as: T;\n  };\n\nexport type PanelProps =\n  | (Omit<PanelElementProps<\"div\">, \"as\"> & { as?: \"div\" })\n  | PanelElementProps<\"article\">\n  | PanelElementProps<\"section\">\n  | PanelElementProps<\"aside\">;\n\nexport function Panel(props: PanelProps) {\n  const { className, variant } = props;\n  const resolvedClassName = cn(panelVariants({ variant }), className);\n\n  if (props.as === \"article\") {\n    const { as, ref, className: omittedClassName, variant: omittedVariant, ...articleProps } = props;\n    return <article data-slot=\"panel\" ref={ref} className={resolvedClassName} {...articleProps} />;\n  }\n  if (props.as === \"section\") {\n    const { as, ref, className: omittedClassName, variant: omittedVariant, ...sectionProps } = props;\n    return <section data-slot=\"panel\" ref={ref} className={resolvedClassName} {...sectionProps} />;\n  }\n  if (props.as === \"aside\") {\n    const { as, ref, className: omittedClassName, variant: omittedVariant, ...asideProps } = props;\n    return <aside data-slot=\"panel\" ref={ref} className={resolvedClassName} {...asideProps} />;\n  }\n\n  const { as, ref, className: omittedClassName, variant: omittedVariant, ...divProps } = props;\n  return <div data-slot=\"panel\" ref={ref} className={resolvedClassName} {...divProps} />;\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -1135,7 +1135,52 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "PanelTag",
+              "text": "PanelOwnProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "VariantProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<typeof",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " panelVariants",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ">;",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 16,
+          "content": [
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "PanelElement",
               "color": "var(--code-function)"
             },
             {
@@ -1241,11 +1286,230 @@
           ]
         },
         {
-          "number": 16,
+          "number": 17,
+          "content": [
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "PanelElementProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "T",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "extends",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "PanelElement",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Omit",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 18,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ComponentPropsWithRef",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "T",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ">,",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 19,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "keyof",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "PanelOwnProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 20,
+          "content": [
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 21,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "PanelOwnProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 22,
+          "content": [
+            {
+              "text": "    as",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "T",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 23,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "};",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 24,
           "content": []
         },
         {
-          "number": 17,
+          "number": 25,
           "content": [
             {
               "text": "export",
@@ -1274,13 +1538,34 @@
             {
               "text": "=",
               "color": "var(--code-operator)"
-            },
+            }
+          ]
+        },
+        {
+          "number": 26,
+          "content": [
             {
-              "text": " ",
+              "text": "  ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "ComponentPropsWithRef",
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Omit",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "PanelElementProps",
               "color": "var(--code-function)"
             },
             {
@@ -1300,7 +1585,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": ">",
+              "text": ">,",
               "color": "var(--code-operator)"
             },
             {
@@ -1308,29 +1593,16 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "&",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 18,
-          "content": [
-            {
-              "text": "  ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "VariantProps",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "<typeof",
+              "text": "\"",
               "color": "var(--code-operator)"
             },
             {
-              "text": " panelVariants",
-              "color": "var(--code-variable)"
+              "text": "as",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
             },
             {
               "text": ">",
@@ -1351,14 +1623,9 @@
             {
               "text": "{",
               "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 19,
-          "content": [
+            },
             {
-              "text": "    as",
+              "text": " as",
               "color": "var(--code-variable)"
             },
             {
@@ -1370,34 +1637,160 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "PanelTag",
-              "color": "var(--code-function)"
+              "text": "\"",
+              "color": "var(--code-operator)"
             },
             {
-              "text": ";",
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
               "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
             }
           ]
         },
         {
-          "number": 20,
+          "number": 27,
           "content": [
             {
               "text": "  ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "};",
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "PanelElementProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "article",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
               "color": "var(--code-operator)"
             }
           ]
         },
         {
-          "number": 21,
+          "number": 28,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "PanelElementProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "section",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 29,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "PanelElementProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "aside",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">;",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 30,
           "content": []
         },
         {
-          "number": 22,
+          "number": 31,
           "content": [
             {
               "text": "export",
@@ -1420,75 +1813,15 @@
               "color": "var(--code-function)"
             },
             {
-              "text": "({",
+              "text": "(",
               "color": "var(--code-operator)"
             },
             {
-              "text": " className",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " variant",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " as",
+              "text": "props",
               "color": "var(--code-variable)"
             },
             {
               "text": ":",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " Tag ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "=",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "div",
-              "color": "var(--code-tag)"
-            },
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "...",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "props ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "}:",
               "color": "var(--code-operator)"
             },
             {
@@ -1514,14 +1847,14 @@
           ]
         },
         {
-          "number": 23,
+          "number": 32,
           "content": [
             {
               "text": "  ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "return",
+              "text": "const",
               "color": "var(--code-keyword)"
             },
             {
@@ -1529,35 +1862,7 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "<",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "Tag",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "data-slot",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "=",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "panel",
-              "color": "var(--code-tag)"
-            },
-            {
-              "text": "\"",
+              "text": "{",
               "color": "var(--code-operator)"
             },
             {
@@ -1566,11 +1871,76 @@
             },
             {
               "text": "className",
-              "color": "var(--code-function)"
+              "color": "var(--code-number)"
             },
             {
-              "text": "={",
+              "text": ",",
               "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "variant",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " props",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 33,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "resolvedClassName",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
             },
             {
               "text": "cn",
@@ -1613,6 +1983,277 @@
               "color": "var(--code-variable)"
             },
             {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 34,
+          "content": []
+        },
+        {
+          "number": 35,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "props",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "as ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "article",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 36,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " className",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedClassName",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " variant",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedVariant",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "articleProps",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " props",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 37,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "article",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "data-slot",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "panel",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "resolvedClassName",
+              "color": "var(--code-variable)"
+            },
+            {
               "text": "}",
               "color": "var(--code-operator)"
             },
@@ -1625,7 +2266,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "props",
+              "text": "articleProps",
               "color": "var(--code-variable)"
             },
             {
@@ -1643,7 +2284,866 @@
           ]
         },
         {
-          "number": 24,
+          "number": 38,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 39,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "props",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "as ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "section",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 40,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " className",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedClassName",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " variant",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedVariant",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "sectionProps",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " props",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 41,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "section",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "data-slot",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "panel",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "resolvedClassName",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "sectionProps",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "/>;",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 42,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 43,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "props",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "as ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "aside",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 44,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " className",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedClassName",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " variant",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedVariant",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "asideProps",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " props",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 45,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "aside",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "data-slot",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "panel",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "resolvedClassName",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "asideProps",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "/>;",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 46,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 47,
+          "content": []
+        },
+        {
+          "number": 48,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " className",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedClassName",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " variant",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedVariant",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "divProps",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " props",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 49,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "data-slot",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "panel",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "resolvedClassName",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "divProps",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "/>;",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 50,
           "content": [
             {
               "text": "}",
@@ -1652,7 +3152,7 @@
           ]
         },
         {
-          "number": 25,
+          "number": 51,
           "content": []
         }
       ]
@@ -3684,7 +5184,7 @@
       ]
     }
   },
-  "mergedSource": "import { Panel as PanelRoot, type PanelProps, panelVariants } from \"./panel\";\nimport { PanelHeader, type PanelHeaderProps, panelHeaderVariants } from \"./panel-header\";\nimport { PanelContent, type PanelContentProps, panelContentVariants } from \"./panel-content\";\nimport { PanelFooter, type PanelFooterProps } from \"./panel-footer\";\n\nconst Panel = Object.assign(PanelRoot, {\n  Header: PanelHeader,\n  Content: PanelContent,\n  Footer: PanelFooter,\n});\n\nexport { Panel, type PanelProps, panelVariants };\nexport { PanelHeader, type PanelHeaderProps, panelHeaderVariants };\nexport { PanelContent, type PanelContentProps, panelContentVariants };\nexport { PanelFooter, type PanelFooterProps };\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const panelVariants = cva(\"relative bg-background\", {\n  variants: {\n    variant: {\n      default: \"border border-border shadow-2xl\",\n      borderless: \"\",\n    },\n  },\n  defaultVariants: { variant: \"default\" },\n});\n\ntype PanelTag = \"div\" | \"article\" | \"section\" | \"aside\";\n\nexport type PanelProps = ComponentPropsWithRef<\"div\"> &\n  VariantProps<typeof panelVariants> & {\n    as?: PanelTag;\n  };\n\nexport function Panel({ className, variant, as: Tag = \"div\", ...props }: PanelProps) {\n  return <Tag data-slot=\"panel\" className={cn(panelVariants({ variant }), className)} {...props} />;\n}\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const panelHeaderVariants = cva(\"\", {\n  variants: {\n    variant: {\n      default: \"flex items-center justify-between border-b border-border bg-secondary/30 px-6 py-4 text-sm font-semibold text-foreground\",\n      terminal:\n        \"flex items-center justify-between bg-secondary text-muted-foreground text-xs px-3 py-1 border-b border-border font-bold uppercase tracking-wider\",\n      subtle:\n        \"bg-secondary/30 text-muted-foreground text-xs p-2 border-b border-border uppercase tracking-widest text-center\",\n    },\n  },\n  defaultVariants: { variant: \"default\" },\n});\n\nexport type PanelHeaderProps = ComponentPropsWithRef<\"div\"> &\n  VariantProps<typeof panelHeaderVariants>;\n\nexport function PanelHeader({ className, variant, ...props }: PanelHeaderProps) {\n  return <div data-slot=\"panel-header\" className={cn(panelHeaderVariants({ variant }), className)} {...props} />;\n}\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const panelContentVariants = cva(\"p-4 text-sm\", {\n  variants: {\n    spacing: {\n      none: \"\",\n      sm: \"space-y-2\",\n      md: \"space-y-4\",\n    },\n  },\n  defaultVariants: { spacing: \"md\" },\n});\n\nexport type PanelContentProps = ComponentPropsWithRef<\"div\"> & VariantProps<typeof panelContentVariants>;\n\nexport function PanelContent({ className, spacing, ...props }: PanelContentProps) {\n  return <div data-slot=\"panel-content\" className={cn(panelContentVariants({ spacing }), className)} {...props} />;\n}\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type PanelFooterProps = ComponentPropsWithRef<\"div\">;\n\nexport function PanelFooter({ className, ...props }: PanelFooterProps) {\n  return <div data-slot=\"panel-footer\" className={cn(\"border-t border-border bg-secondary/30 px-4 py-3 text-sm\", className)} {...props} />;\n}\n",
+  "mergedSource": "import { Panel as PanelRoot, type PanelProps, panelVariants } from \"./panel\";\nimport { PanelHeader, type PanelHeaderProps, panelHeaderVariants } from \"./panel-header\";\nimport { PanelContent, type PanelContentProps, panelContentVariants } from \"./panel-content\";\nimport { PanelFooter, type PanelFooterProps } from \"./panel-footer\";\n\nconst Panel = Object.assign(PanelRoot, {\n  Header: PanelHeader,\n  Content: PanelContent,\n  Footer: PanelFooter,\n});\n\nexport { Panel, type PanelProps, panelVariants };\nexport { PanelHeader, type PanelHeaderProps, panelHeaderVariants };\nexport { PanelContent, type PanelContentProps, panelContentVariants };\nexport { PanelFooter, type PanelFooterProps };\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const panelVariants = cva(\"relative bg-background\", {\n  variants: {\n    variant: {\n      default: \"border border-border shadow-2xl\",\n      borderless: \"\",\n    },\n  },\n  defaultVariants: { variant: \"default\" },\n});\n\ntype PanelOwnProps = VariantProps<typeof panelVariants>;\ntype PanelElement = \"div\" | \"article\" | \"section\" | \"aside\";\ntype PanelElementProps<T extends PanelElement> = Omit<\n  ComponentPropsWithRef<T>,\n  keyof PanelOwnProps | \"as\"\n> &\n  PanelOwnProps & {\n    as: T;\n  };\n\nexport type PanelProps =\n  | (Omit<PanelElementProps<\"div\">, \"as\"> & { as?: \"div\" })\n  | PanelElementProps<\"article\">\n  | PanelElementProps<\"section\">\n  | PanelElementProps<\"aside\">;\n\nexport function Panel(props: PanelProps) {\n  const { className, variant } = props;\n  const resolvedClassName = cn(panelVariants({ variant }), className);\n\n  if (props.as === \"article\") {\n    const { as, ref, className: omittedClassName, variant: omittedVariant, ...articleProps } = props;\n    return <article data-slot=\"panel\" ref={ref} className={resolvedClassName} {...articleProps} />;\n  }\n  if (props.as === \"section\") {\n    const { as, ref, className: omittedClassName, variant: omittedVariant, ...sectionProps } = props;\n    return <section data-slot=\"panel\" ref={ref} className={resolvedClassName} {...sectionProps} />;\n  }\n  if (props.as === \"aside\") {\n    const { as, ref, className: omittedClassName, variant: omittedVariant, ...asideProps } = props;\n    return <aside data-slot=\"panel\" ref={ref} className={resolvedClassName} {...asideProps} />;\n  }\n\n  const { as, ref, className: omittedClassName, variant: omittedVariant, ...divProps } = props;\n  return <div data-slot=\"panel\" ref={ref} className={resolvedClassName} {...divProps} />;\n}\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const panelHeaderVariants = cva(\"\", {\n  variants: {\n    variant: {\n      default: \"flex items-center justify-between border-b border-border bg-secondary/30 px-6 py-4 text-sm font-semibold text-foreground\",\n      terminal:\n        \"flex items-center justify-between bg-secondary text-muted-foreground text-xs px-3 py-1 border-b border-border font-bold uppercase tracking-wider\",\n      subtle:\n        \"bg-secondary/30 text-muted-foreground text-xs p-2 border-b border-border uppercase tracking-widest text-center\",\n    },\n  },\n  defaultVariants: { variant: \"default\" },\n});\n\nexport type PanelHeaderProps = ComponentPropsWithRef<\"div\"> &\n  VariantProps<typeof panelHeaderVariants>;\n\nexport function PanelHeader({ className, variant, ...props }: PanelHeaderProps) {\n  return <div data-slot=\"panel-header\" className={cn(panelHeaderVariants({ variant }), className)} {...props} />;\n}\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const panelContentVariants = cva(\"p-4 text-sm\", {\n  variants: {\n    spacing: {\n      none: \"\",\n      sm: \"space-y-2\",\n      md: \"space-y-4\",\n    },\n  },\n  defaultVariants: { spacing: \"md\" },\n});\n\nexport type PanelContentProps = ComponentPropsWithRef<\"div\"> & VariantProps<typeof panelContentVariants>;\n\nexport function PanelContent({ className, spacing, ...props }: PanelContentProps) {\n  return <div data-slot=\"panel-content\" className={cn(panelContentVariants({ spacing }), className)} {...props} />;\n}\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type PanelFooterProps = ComponentPropsWithRef<\"div\">;\n\nexport function PanelFooter({ className, ...props }: PanelFooterProps) {\n  return <div data-slot=\"panel-footer\" className={cn(\"border-t border-border bg-secondary/30 px-4 py-3 text-sm\", className)} {...props} />;\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
@@ -4803,7 +6303,52 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "PanelTag",
+          "text": "PanelOwnProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "VariantProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<typeof",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " panelVariants",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ">;",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 33,
+      "content": [
+        {
+          "text": "type",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "PanelElement",
           "color": "var(--code-function)"
         },
         {
@@ -4909,11 +6454,230 @@
       ]
     },
     {
-      "number": 33,
+      "number": 34,
+      "content": [
+        {
+          "text": "type",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "PanelElementProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "T",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "extends",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "PanelElement",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": ">",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "Omit",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 35,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ComponentPropsWithRef",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "T",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": ">,",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 36,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "keyof",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "PanelOwnProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "as",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 37,
+      "content": [
+        {
+          "text": ">",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 38,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "PanelOwnProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 39,
+      "content": [
+        {
+          "text": "    as",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "T",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 40,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "};",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 41,
       "content": []
     },
     {
-      "number": 34,
+      "number": 42,
       "content": [
         {
           "text": "export",
@@ -4942,13 +6706,34 @@
         {
           "text": "=",
           "color": "var(--code-operator)"
-        },
+        }
+      ]
+    },
+    {
+      "number": 43,
+      "content": [
         {
-          "text": " ",
+          "text": "  ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "ComponentPropsWithRef",
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "Omit",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "PanelElementProps",
           "color": "var(--code-function)"
         },
         {
@@ -4968,7 +6753,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": ">",
+          "text": ">,",
           "color": "var(--code-operator)"
         },
         {
@@ -4976,29 +6761,16 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "&",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 35,
-      "content": [
-        {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "VariantProps",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "<typeof",
+          "text": "\"",
           "color": "var(--code-operator)"
         },
         {
-          "text": " panelVariants",
-          "color": "var(--code-variable)"
+          "text": "as",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
         },
         {
           "text": ">",
@@ -5019,14 +6791,9 @@
         {
           "text": "{",
           "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 36,
-      "content": [
+        },
         {
-          "text": "    as",
+          "text": " as",
           "color": "var(--code-variable)"
         },
         {
@@ -5038,34 +6805,160 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "PanelTag",
-          "color": "var(--code-function)"
+          "text": "\"",
+          "color": "var(--code-operator)"
         },
         {
-          "text": ";",
+          "text": "div",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
           "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ")",
+          "color": "var(--code-variable)"
         }
       ]
     },
     {
-      "number": 37,
+      "number": 44,
       "content": [
         {
           "text": "  ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "};",
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "PanelElementProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "article",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ">",
           "color": "var(--code-operator)"
         }
       ]
     },
     {
-      "number": 38,
+      "number": 45,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "PanelElementProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "section",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ">",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 46,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "PanelElementProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "aside",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ">;",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 47,
       "content": []
     },
     {
-      "number": 39,
+      "number": 48,
       "content": [
         {
           "text": "export",
@@ -5088,75 +6981,15 @@
           "color": "var(--code-function)"
         },
         {
-          "text": "({",
+          "text": "(",
           "color": "var(--code-operator)"
         },
         {
-          "text": " className",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " variant",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " as",
+          "text": "props",
           "color": "var(--code-variable)"
         },
         {
           "text": ":",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " Tag ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "=",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "div",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "...",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "props ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}:",
           "color": "var(--code-operator)"
         },
         {
@@ -5182,14 +7015,14 @@
       ]
     },
     {
-      "number": 40,
+      "number": 49,
       "content": [
         {
           "text": "  ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "return",
+          "text": "const",
           "color": "var(--code-keyword)"
         },
         {
@@ -5197,35 +7030,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "<",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "Tag",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "data-slot",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "=",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "panel",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
+          "text": "{",
           "color": "var(--code-operator)"
         },
         {
@@ -5234,11 +7039,76 @@
         },
         {
           "text": "className",
-          "color": "var(--code-function)"
+          "color": "var(--code-number)"
         },
         {
-          "text": "={",
+          "text": ",",
           "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "variant",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " props",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 50,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "resolvedClassName",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
         },
         {
           "text": "cn",
@@ -5281,6 +7151,277 @@
           "color": "var(--code-variable)"
         },
         {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 51,
+      "content": []
+    },
+    {
+      "number": 52,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "props",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "as ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "article",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ") ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 53,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "as",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " className",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedClassName",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " variant",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedVariant",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "articleProps",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " props",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 54,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "article",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "data-slot",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "panel",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "className",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "resolvedClassName",
+          "color": "var(--code-variable)"
+        },
+        {
           "text": "}",
           "color": "var(--code-operator)"
         },
@@ -5293,7 +7434,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "props",
+          "text": "articleProps",
           "color": "var(--code-variable)"
         },
         {
@@ -5311,7 +7452,866 @@
       ]
     },
     {
-      "number": 41,
+      "number": 55,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 56,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "props",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "as ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "section",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ") ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 57,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "as",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " className",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedClassName",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " variant",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedVariant",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "sectionProps",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " props",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 58,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "section",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "data-slot",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "panel",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "className",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "resolvedClassName",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "sectionProps",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "/>;",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 59,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 60,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "props",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "as ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "aside",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ") ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 61,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "as",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " className",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedClassName",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " variant",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedVariant",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "asideProps",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " props",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 62,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "aside",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "data-slot",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "panel",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "className",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "resolvedClassName",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "asideProps",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "/>;",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 63,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 64,
+      "content": []
+    },
+    {
+      "number": 65,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "as",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " className",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedClassName",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " variant",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedVariant",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "divProps",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " props",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 66,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "div",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "data-slot",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "panel",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "className",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "resolvedClassName",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "divProps",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "/>;",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 67,
       "content": [
         {
           "text": "}",
@@ -5320,15 +8320,15 @@
       ]
     },
     {
-      "number": 42,
+      "number": 68,
       "content": []
     },
     {
-      "number": 43,
+      "number": 69,
       "content": []
     },
     {
-      "number": 44,
+      "number": 70,
       "content": [
         {
           "text": "import",
@@ -5389,7 +8389,7 @@
       ]
     },
     {
-      "number": 45,
+      "number": 71,
       "content": [
         {
           "text": "import",
@@ -5458,7 +8458,7 @@
       ]
     },
     {
-      "number": 46,
+      "number": 72,
       "content": [
         {
           "text": "import",
@@ -5511,11 +8511,11 @@
       ]
     },
     {
-      "number": 47,
+      "number": 73,
       "content": []
     },
     {
-      "number": 48,
+      "number": 74,
       "content": [
         {
           "text": "export",
@@ -5576,7 +8576,7 @@
       ]
     },
     {
-      "number": 49,
+      "number": 75,
       "content": [
         {
           "text": "  variants",
@@ -5597,7 +8597,7 @@
       ]
     },
     {
-      "number": 50,
+      "number": 76,
       "content": [
         {
           "text": "    variant",
@@ -5618,7 +8618,7 @@
       ]
     },
     {
-      "number": 51,
+      "number": 77,
       "content": [
         {
           "text": "      default",
@@ -5651,7 +8651,7 @@
       ]
     },
     {
-      "number": 52,
+      "number": 78,
       "content": [
         {
           "text": "      terminal",
@@ -5664,7 +8664,7 @@
       ]
     },
     {
-      "number": 53,
+      "number": 79,
       "content": [
         {
           "text": "        ",
@@ -5689,7 +8689,7 @@
       ]
     },
     {
-      "number": 54,
+      "number": 80,
       "content": [
         {
           "text": "      subtle",
@@ -5702,7 +8702,7 @@
       ]
     },
     {
-      "number": 55,
+      "number": 81,
       "content": [
         {
           "text": "        ",
@@ -5727,7 +8727,7 @@
       ]
     },
     {
-      "number": 56,
+      "number": 82,
       "content": [
         {
           "text": "    ",
@@ -5740,7 +8740,7 @@
       ]
     },
     {
-      "number": 57,
+      "number": 83,
       "content": [
         {
           "text": "  ",
@@ -5753,7 +8753,7 @@
       ]
     },
     {
-      "number": 58,
+      "number": 84,
       "content": [
         {
           "text": "  defaultVariants",
@@ -5806,7 +8806,7 @@
       ]
     },
     {
-      "number": 59,
+      "number": 85,
       "content": [
         {
           "text": "}",
@@ -5823,11 +8823,11 @@
       ]
     },
     {
-      "number": 60,
+      "number": 86,
       "content": []
     },
     {
-      "number": 61,
+      "number": 87,
       "content": [
         {
           "text": "export",
@@ -5896,7 +8896,7 @@
       ]
     },
     {
-      "number": 62,
+      "number": 88,
       "content": [
         {
           "text": "  ",
@@ -5921,11 +8921,11 @@
       ]
     },
     {
-      "number": 63,
+      "number": 89,
       "content": []
     },
     {
-      "number": 64,
+      "number": 90,
       "content": [
         {
           "text": "export",
@@ -6006,7 +9006,7 @@
       ]
     },
     {
-      "number": 65,
+      "number": 91,
       "content": [
         {
           "text": "  ",
@@ -6135,7 +9135,7 @@
       ]
     },
     {
-      "number": 66,
+      "number": 92,
       "content": [
         {
           "text": "}",
@@ -6144,15 +9144,15 @@
       ]
     },
     {
-      "number": 67,
+      "number": 93,
       "content": []
     },
     {
-      "number": 68,
+      "number": 94,
       "content": []
     },
     {
-      "number": 69,
+      "number": 95,
       "content": [
         {
           "text": "import",
@@ -6213,7 +9213,7 @@
       ]
     },
     {
-      "number": 70,
+      "number": 96,
       "content": [
         {
           "text": "import",
@@ -6282,7 +9282,7 @@
       ]
     },
     {
-      "number": 71,
+      "number": 97,
       "content": [
         {
           "text": "import",
@@ -6335,11 +9335,11 @@
       ]
     },
     {
-      "number": 72,
+      "number": 98,
       "content": []
     },
     {
-      "number": 73,
+      "number": 99,
       "content": [
         {
           "text": "export",
@@ -6408,7 +9408,7 @@
       ]
     },
     {
-      "number": 74,
+      "number": 100,
       "content": [
         {
           "text": "  variants",
@@ -6429,7 +9429,7 @@
       ]
     },
     {
-      "number": 75,
+      "number": 101,
       "content": [
         {
           "text": "    spacing",
@@ -6450,7 +9450,7 @@
       ]
     },
     {
-      "number": 76,
+      "number": 102,
       "content": [
         {
           "text": "      none",
@@ -6475,7 +9475,7 @@
       ]
     },
     {
-      "number": 77,
+      "number": 103,
       "content": [
         {
           "text": "      sm",
@@ -6508,7 +9508,7 @@
       ]
     },
     {
-      "number": 78,
+      "number": 104,
       "content": [
         {
           "text": "      md",
@@ -6541,7 +9541,7 @@
       ]
     },
     {
-      "number": 79,
+      "number": 105,
       "content": [
         {
           "text": "    ",
@@ -6554,7 +9554,7 @@
       ]
     },
     {
-      "number": 80,
+      "number": 106,
       "content": [
         {
           "text": "  ",
@@ -6567,7 +9567,7 @@
       ]
     },
     {
-      "number": 81,
+      "number": 107,
       "content": [
         {
           "text": "  defaultVariants",
@@ -6620,7 +9620,7 @@
       ]
     },
     {
-      "number": 82,
+      "number": 108,
       "content": [
         {
           "text": "}",
@@ -6637,11 +9637,11 @@
       ]
     },
     {
-      "number": 83,
+      "number": 109,
       "content": []
     },
     {
-      "number": 84,
+      "number": 110,
       "content": [
         {
           "text": "export",
@@ -6730,11 +9730,11 @@
       ]
     },
     {
-      "number": 85,
+      "number": 111,
       "content": []
     },
     {
-      "number": 86,
+      "number": 112,
       "content": [
         {
           "text": "export",
@@ -6815,7 +9815,7 @@
       ]
     },
     {
-      "number": 87,
+      "number": 113,
       "content": [
         {
           "text": "  ",
@@ -6944,7 +9944,7 @@
       ]
     },
     {
-      "number": 88,
+      "number": 114,
       "content": [
         {
           "text": "}",
@@ -6953,15 +9953,15 @@
       ]
     },
     {
-      "number": 89,
+      "number": 115,
       "content": []
     },
     {
-      "number": 90,
+      "number": 116,
       "content": []
     },
     {
-      "number": 91,
+      "number": 117,
       "content": [
         {
           "text": "import",
@@ -7022,7 +10022,7 @@
       ]
     },
     {
-      "number": 92,
+      "number": 118,
       "content": [
         {
           "text": "import",
@@ -7075,11 +10075,11 @@
       ]
     },
     {
-      "number": 93,
+      "number": 119,
       "content": []
     },
     {
-      "number": 94,
+      "number": 120,
       "content": [
         {
           "text": "export",
@@ -7140,11 +10140,11 @@
       ]
     },
     {
-      "number": 95,
+      "number": 121,
       "content": []
     },
     {
-      "number": 96,
+      "number": 122,
       "content": [
         {
           "text": "export",
@@ -7217,7 +10217,7 @@
       ]
     },
     {
-      "number": 97,
+      "number": 123,
       "content": [
         {
           "text": "  ",
@@ -7334,7 +10334,7 @@
       ]
     },
     {
-      "number": 98,
+      "number": 124,
       "content": [
         {
           "text": "}",
@@ -7343,7 +10343,7 @@
       ]
     },
     {
-      "number": 99,
+      "number": 125,
       "content": []
     }
   ],

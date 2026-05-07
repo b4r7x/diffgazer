@@ -11,26 +11,41 @@ import {
 } from "react";
 import { usePresence } from "@/hooks/use-presence";
 import { composeRefs } from "@/lib/compose-refs";
-import "./dialog.css";
 
 export interface DialogShellProps
-  extends Omit<HTMLAttributes<HTMLDialogElement>, "onClick"> {
+  extends HTMLAttributes<HTMLDialogElement> {
   open: boolean;
   onBackdropClick?: (e: MouseEvent<HTMLDialogElement>) => void;
   onCancel?: (e: SyntheticEvent<HTMLDialogElement>) => void;
+  onBeforeShowModal?: () => void;
+  onAfterShowModal?: () => void;
   onClose?: () => void;
   children: ReactNode;
   dialogRef?: Ref<HTMLDialogElement>;
+}
+
+function isClickOutsideDialogRect(event: MouseEvent<HTMLDialogElement>, dialog: HTMLDialogElement): boolean {
+  const rect = dialog.getBoundingClientRect();
+  return (
+    event.clientX < rect.left ||
+    event.clientX > rect.right ||
+    event.clientY < rect.top ||
+    event.clientY > rect.bottom
+  );
 }
 
 export function DialogShell({
   open,
   onBackdropClick,
   onCancel,
+  onBeforeShowModal,
+  onAfterShowModal,
   onClose,
   children,
   className,
   dialogRef: externalDialogRef,
+  onClick,
+  onAnimationEnd: externalOnAnimationEnd,
   ...props
 }: DialogShellProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -45,25 +60,36 @@ export function DialogShell({
 
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
-    if (dialog && !dialog.open) dialog.showModal();
-  }, [present]);
+    if (open && present && dialog && !dialog.open) {
+      onBeforeShowModal?.();
+      dialog.showModal();
+      onAfterShowModal?.();
+    }
+  }, [onAfterShowModal, onBeforeShowModal, open, present]);
 
   if (!present) return null;
 
   return (
     <dialog
+      {...props}
       ref={externalDialogRef ? composeRefs(dialogRef, externalDialogRef) : dialogRef}
       data-state={open ? "open" : "closed"}
       className={className}
       onClick={(e: MouseEvent<HTMLDialogElement>) => {
-        if (e.target === dialogRef.current) onBackdropClick?.(e);
+        onClick?.(e);
+        const dialog = dialogRef.current;
+        if (dialog && e.target === dialog && isClickOutsideDialogRect(e, dialog)) {
+          onBackdropClick?.(e);
+        }
       }}
       onCancel={(e) => {
         onCancel?.(e);
         e.preventDefault();
       }}
-      onAnimationEnd={onAnimationEnd}
-      {...props}
+      onAnimationEnd={(e) => {
+        externalOnAnimationEnd?.(e);
+        onAnimationEnd(e);
+      }}
     >
       {children}
     </dialog>

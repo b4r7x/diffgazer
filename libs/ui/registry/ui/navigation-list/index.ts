@@ -1,3 +1,5 @@
+"use client";
+
 import { NavigationList as NavigationListRoot, type NavigationListProps } from "./navigation-list";
 import { NavigationListItem, type NavigationListItemProps } from "./navigation-list-item";
 import { NavigationListTitle, type NavigationListTitleProps } from "./navigation-list-title";

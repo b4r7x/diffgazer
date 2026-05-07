@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, type RefObject, type MouseEventHandler } from "react";
+import { createContext, useContext, type MouseEventHandler, type RefObject } from "react";
 
 export interface DialogContextValue {
   open: boolean;
@@ -8,6 +8,7 @@ export interface DialogContextValue {
   contentId: string;
   titleId: string;
   descriptionId: string;
+  hasMountedTitleRef: RefObject<boolean>;
   hasTitle: boolean;
   hasDescription: boolean;
   onTitleMount: () => void;

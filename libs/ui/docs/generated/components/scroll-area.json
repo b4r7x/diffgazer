@@ -10,10 +10,35 @@
   "props": {},
   "source": {
     "registry/ui/scroll-area/index.ts": {
-      "raw": "export { ScrollArea, type ScrollAreaProps, type ScrollOrientation } from \"./scroll-area\";\n",
+      "raw": "\"use client\";\n\nexport { ScrollArea, type ScrollAreaProps, type ScrollOrientation } from \"./scroll-area\";\n",
       "highlighted": [
         {
           "number": 1,
+          "content": [
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "use client",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
           "content": [
             {
               "text": "export",
@@ -98,13 +123,13 @@
           ]
         },
         {
-          "number": 2,
+          "number": 4,
           "content": []
         }
       ]
     },
     "registry/ui/scroll-area/scroll-area.tsx": {
-      "raw": "\"use client\";\n\nimport { type ComponentPropsWithRef, type KeyboardEvent } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type ScrollOrientation = \"vertical\" | \"horizontal\" | \"both\";\n\nconst orientationClasses: Record<ScrollOrientation, string> = {\n  vertical: \"overflow-y-auto overflow-x-hidden\",\n  horizontal: \"overflow-x-auto overflow-y-hidden\",\n  both: \"overflow-auto\",\n};\n\nexport interface ScrollAreaProps extends ComponentPropsWithRef<\"div\"> {\n  orientation?: ScrollOrientation;\n  keyboardScrollable?: boolean;\n}\n\nexport function ScrollArea({\n  children,\n  className,\n  orientation = \"vertical\",\n  keyboardScrollable = true,\n  ref,\n  onKeyDown,\n  role: roleProp,\n  tabIndex,\n  \"aria-label\": ariaLabel,\n  \"aria-labelledby\": ariaLabelledBy,\n  ...props\n}: ScrollAreaProps) {\n  const canScrollV = orientation === \"vertical\" || orientation === \"both\";\n  const canScrollH = orientation === \"horizontal\" || orientation === \"both\";\n  const hasAccessibleName = Boolean(ariaLabel || ariaLabelledBy);\n  const canKeyboardScroll = keyboardScrollable && hasAccessibleName;\n  const role = roleProp ?? (hasAccessibleName ? \"region\" : undefined);\n\n  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {\n    onKeyDown?.(e);\n    if (e.defaultPrevented) return;\n\n    const el = e.currentTarget;\n    const pageStep = el.clientHeight * 0.8;\n\n    switch (e.key) {\n      case \"ArrowUp\":\n        if (!canScrollV) break;\n        el.scrollTop -= 40;\n        e.preventDefault();\n        break;\n      case \"ArrowDown\":\n        if (!canScrollV) break;\n        el.scrollTop += 40;\n        e.preventDefault();\n        break;\n      case \"ArrowLeft\":\n        if (!canScrollH) break;\n        el.scrollLeft -= 40;\n        e.preventDefault();\n        break;\n      case \"ArrowRight\":\n        if (!canScrollH) break;\n        el.scrollLeft += 40;\n        e.preventDefault();\n        break;\n      case \"PageUp\":\n        el.scrollTop -= pageStep;\n        e.preventDefault();\n        break;\n      case \"PageDown\":\n        el.scrollTop += pageStep;\n        e.preventDefault();\n        break;\n      case \"Home\":\n        el.scrollTop = 0;\n        if (canScrollH) el.scrollLeft = 0;\n        e.preventDefault();\n        break;\n      case \"End\":\n        el.scrollTop = el.scrollHeight;\n        if (canScrollH) el.scrollLeft = el.scrollWidth;\n        e.preventDefault();\n        break;\n    }\n  };\n\n  return (\n    <div\n      ref={ref}\n      role={role}\n      aria-label={ariaLabel}\n      aria-labelledby={ariaLabelledBy}\n      tabIndex={canKeyboardScroll ? (tabIndex ?? 0) : tabIndex}\n      onKeyDown={canKeyboardScroll ? handleKeyDown : onKeyDown}\n      className={cn(\n        \"scrollbar-thin rounded-[inherit] [scrollbar-gutter:stable]\",\n        canKeyboardScroll && \"focus:outline-none focus-visible:ring-1 focus-visible:ring-ring\",\n        orientationClasses[orientation],\n        className,\n      )}\n      {...props}\n    >\n      {children}\n    </div>\n  );\n}\n",
+      "raw": "\"use client\";\n\nimport { type ComponentPropsWithRef, type KeyboardEvent } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type ScrollOrientation = \"vertical\" | \"horizontal\" | \"both\";\n\nconst orientationClasses: Record<ScrollOrientation, string> = {\n  vertical: \"overflow-y-auto overflow-x-hidden\",\n  horizontal: \"overflow-x-auto overflow-y-hidden\",\n  both: \"overflow-auto\",\n};\n\nexport interface ScrollAreaProps extends ComponentPropsWithRef<\"div\"> {\n  orientation?: ScrollOrientation;\n  keyboardScrollable?: boolean;\n}\n\nexport function ScrollArea({\n  children,\n  className,\n  orientation = \"vertical\",\n  keyboardScrollable = true,\n  ref,\n  onKeyDown,\n  role: roleProp,\n  tabIndex,\n  \"aria-label\": ariaLabel,\n  \"aria-labelledby\": ariaLabelledBy,\n  ...props\n}: ScrollAreaProps) {\n  const canScrollV = orientation === \"vertical\" || orientation === \"both\";\n  const canScrollH = orientation === \"horizontal\" || orientation === \"both\";\n  const hasAccessibleName = Boolean(ariaLabel || ariaLabelledBy);\n  const canKeyboardScroll = keyboardScrollable && hasAccessibleName;\n  const role = roleProp ?? (hasAccessibleName ? \"region\" : undefined);\n\n  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {\n    onKeyDown?.(e);\n    if (e.defaultPrevented) return;\n\n    const el = e.currentTarget;\n    const pageStepV = el.clientHeight * 0.8;\n    const pageStepH = el.clientWidth * 0.8;\n    const pageScrollsHorizontal = orientation === \"horizontal\";\n\n    switch (e.key) {\n      case \"ArrowUp\":\n        if (!canScrollV) break;\n        el.scrollTop -= 40;\n        e.preventDefault();\n        break;\n      case \"ArrowDown\":\n        if (!canScrollV) break;\n        el.scrollTop += 40;\n        e.preventDefault();\n        break;\n      case \"ArrowLeft\":\n        if (!canScrollH) break;\n        el.scrollLeft -= 40;\n        e.preventDefault();\n        break;\n      case \"ArrowRight\":\n        if (!canScrollH) break;\n        el.scrollLeft += 40;\n        e.preventDefault();\n        break;\n      case \"PageUp\":\n        if (pageScrollsHorizontal) {\n          el.scrollLeft -= pageStepH;\n        } else if (canScrollV) {\n          el.scrollTop -= pageStepV;\n        } else {\n          break;\n        }\n        e.preventDefault();\n        break;\n      case \"PageDown\":\n        if (pageScrollsHorizontal) {\n          el.scrollLeft += pageStepH;\n        } else if (canScrollV) {\n          el.scrollTop += pageStepV;\n        } else {\n          break;\n        }\n        e.preventDefault();\n        break;\n      case \"Home\":\n        if (canScrollV) el.scrollTop = 0;\n        if (canScrollH) el.scrollLeft = 0;\n        e.preventDefault();\n        break;\n      case \"End\":\n        if (canScrollV) el.scrollTop = el.scrollHeight;\n        if (canScrollH) el.scrollLeft = el.scrollWidth;\n        e.preventDefault();\n        break;\n    }\n  };\n\n  return (\n    <div\n      ref={ref}\n      role={role}\n      aria-label={ariaLabel}\n      aria-labelledby={ariaLabelledBy}\n      tabIndex={canKeyboardScroll ? (tabIndex ?? 0) : tabIndex}\n      onKeyDown={canKeyboardScroll ? handleKeyDown : onKeyDown}\n      className={cn(\n        \"scrollbar-thin rounded-[inherit] [scrollbar-gutter:stable]\",\n        canKeyboardScroll && \"focus:outline-none focus-visible:ring-1 focus-visible:ring-ring\",\n        orientationClasses[orientation],\n        className,\n      )}\n      {...props}\n    >\n      {children}\n    </div>\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -1545,7 +1570,7 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "pageStep",
+              "text": "pageStepV",
               "color": "var(--code-number)"
             },
             {
@@ -1592,10 +1617,128 @@
         },
         {
           "number": 44,
-          "content": []
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "pageStepH",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "el",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "clientWidth ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "*",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "0.8",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
         },
         {
           "number": 45,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "pageScrollsHorizontal",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " orientation ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "horizontal",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 46,
+          "content": []
+        },
+        {
+          "number": 47,
           "content": [
             {
               "text": "    ",
@@ -1628,7 +1771,7 @@
           ]
         },
         {
-          "number": 46,
+          "number": 48,
           "content": [
             {
               "text": "      ",
@@ -1661,7 +1804,7 @@
           ]
         },
         {
-          "number": 47,
+          "number": 49,
           "content": [
             {
               "text": "        ",
@@ -1694,7 +1837,7 @@
           ]
         },
         {
-          "number": 48,
+          "number": 50,
           "content": [
             {
               "text": "        ",
@@ -1731,7 +1874,7 @@
           ]
         },
         {
-          "number": 49,
+          "number": 51,
           "content": [
             {
               "text": "        ",
@@ -1760,7 +1903,7 @@
           ]
         },
         {
-          "number": 50,
+          "number": 52,
           "content": [
             {
               "text": "        ",
@@ -1777,7 +1920,7 @@
           ]
         },
         {
-          "number": 51,
+          "number": 53,
           "content": [
             {
               "text": "      ",
@@ -1810,7 +1953,7 @@
           ]
         },
         {
-          "number": 52,
+          "number": 54,
           "content": [
             {
               "text": "        ",
@@ -1843,7 +1986,7 @@
           ]
         },
         {
-          "number": 53,
+          "number": 55,
           "content": [
             {
               "text": "        ",
@@ -1880,7 +2023,7 @@
           ]
         },
         {
-          "number": 54,
+          "number": 56,
           "content": [
             {
               "text": "        ",
@@ -1909,7 +2052,7 @@
           ]
         },
         {
-          "number": 55,
+          "number": 57,
           "content": [
             {
               "text": "        ",
@@ -1926,7 +2069,7 @@
           ]
         },
         {
-          "number": 56,
+          "number": 58,
           "content": [
             {
               "text": "      ",
@@ -1959,7 +2102,7 @@
           ]
         },
         {
-          "number": 57,
+          "number": 59,
           "content": [
             {
               "text": "        ",
@@ -1992,7 +2135,7 @@
           ]
         },
         {
-          "number": 58,
+          "number": 60,
           "content": [
             {
               "text": "        ",
@@ -2029,7 +2172,7 @@
           ]
         },
         {
-          "number": 59,
+          "number": 61,
           "content": [
             {
               "text": "        ",
@@ -2058,7 +2201,7 @@
           ]
         },
         {
-          "number": 60,
+          "number": 62,
           "content": [
             {
               "text": "        ",
@@ -2075,7 +2218,7 @@
           ]
         },
         {
-          "number": 61,
+          "number": 63,
           "content": [
             {
               "text": "      ",
@@ -2108,7 +2251,7 @@
           ]
         },
         {
-          "number": 62,
+          "number": 64,
           "content": [
             {
               "text": "        ",
@@ -2141,7 +2284,7 @@
           ]
         },
         {
-          "number": 63,
+          "number": 65,
           "content": [
             {
               "text": "        ",
@@ -2178,7 +2321,7 @@
           ]
         },
         {
-          "number": 64,
+          "number": 66,
           "content": [
             {
               "text": "        ",
@@ -2207,7 +2350,7 @@
           ]
         },
         {
-          "number": 65,
+          "number": 67,
           "content": [
             {
               "text": "        ",
@@ -2224,7 +2367,7 @@
           ]
         },
         {
-          "number": 66,
+          "number": 68,
           "content": [
             {
               "text": "      ",
@@ -2257,10 +2400,101 @@
           ]
         },
         {
-          "number": 67,
+          "number": 69,
           "content": [
             {
               "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (pageScrollsHorizontal) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 70,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "el",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "scrollLeft ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "-=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " pageStepH",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 71,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "else",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (canScrollV) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 72,
+          "content": [
+            {
+              "text": "          ",
               "color": "var(--code-variable)"
             },
             {
@@ -2280,7 +2514,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": " pageStep",
+              "text": " pageStepV",
               "color": "var(--code-variable)"
             },
             {
@@ -2290,7 +2524,66 @@
           ]
         },
         {
-          "number": 68,
+          "number": 73,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "else",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 74,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "break",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 75,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 76,
           "content": [
             {
               "text": "        ",
@@ -2319,7 +2612,7 @@
           ]
         },
         {
-          "number": 69,
+          "number": 77,
           "content": [
             {
               "text": "        ",
@@ -2336,7 +2629,7 @@
           ]
         },
         {
-          "number": 70,
+          "number": 78,
           "content": [
             {
               "text": "      ",
@@ -2369,10 +2662,101 @@
           ]
         },
         {
-          "number": 71,
+          "number": 79,
           "content": [
             {
               "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (pageScrollsHorizontal) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 80,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "el",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "scrollLeft ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "+=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " pageStepH",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 81,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "else",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (canScrollV) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 82,
+          "content": [
+            {
+              "text": "          ",
               "color": "var(--code-variable)"
             },
             {
@@ -2392,7 +2776,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": " pageStep",
+              "text": " pageStepV",
               "color": "var(--code-variable)"
             },
             {
@@ -2402,7 +2786,66 @@
           ]
         },
         {
-          "number": 72,
+          "number": 83,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "else",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 84,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "break",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 85,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 86,
           "content": [
             {
               "text": "        ",
@@ -2431,7 +2874,7 @@
           ]
         },
         {
-          "number": 73,
+          "number": 87,
           "content": [
             {
               "text": "        ",
@@ -2448,7 +2891,7 @@
           ]
         },
         {
-          "number": 74,
+          "number": 88,
           "content": [
             {
               "text": "      ",
@@ -2481,10 +2924,18 @@
           ]
         },
         {
-          "number": 75,
+          "number": 89,
           "content": [
             {
               "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (canScrollV) ",
               "color": "var(--code-variable)"
             },
             {
@@ -2518,7 +2969,7 @@
           ]
         },
         {
-          "number": 76,
+          "number": 90,
           "content": [
             {
               "text": "        ",
@@ -2563,7 +3014,7 @@
           ]
         },
         {
-          "number": 77,
+          "number": 91,
           "content": [
             {
               "text": "        ",
@@ -2592,7 +3043,7 @@
           ]
         },
         {
-          "number": 78,
+          "number": 92,
           "content": [
             {
               "text": "        ",
@@ -2609,7 +3060,7 @@
           ]
         },
         {
-          "number": 79,
+          "number": 93,
           "content": [
             {
               "text": "      ",
@@ -2642,10 +3093,18 @@
           ]
         },
         {
-          "number": 80,
+          "number": 94,
           "content": [
             {
               "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (canScrollV) ",
               "color": "var(--code-variable)"
             },
             {
@@ -2687,7 +3146,7 @@
           ]
         },
         {
-          "number": 81,
+          "number": 95,
           "content": [
             {
               "text": "        ",
@@ -2740,7 +3199,7 @@
           ]
         },
         {
-          "number": 82,
+          "number": 96,
           "content": [
             {
               "text": "        ",
@@ -2769,7 +3228,7 @@
           ]
         },
         {
-          "number": 83,
+          "number": 97,
           "content": [
             {
               "text": "        ",
@@ -2786,7 +3245,7 @@
           ]
         },
         {
-          "number": 84,
+          "number": 98,
           "content": [
             {
               "text": "    ",
@@ -2799,7 +3258,7 @@
           ]
         },
         {
-          "number": 85,
+          "number": 99,
           "content": [
             {
               "text": "  ",
@@ -2812,11 +3271,11 @@
           ]
         },
         {
-          "number": 86,
+          "number": 100,
           "content": []
         },
         {
-          "number": 87,
+          "number": 101,
           "content": [
             {
               "text": "  ",
@@ -2833,7 +3292,7 @@
           ]
         },
         {
-          "number": 88,
+          "number": 102,
           "content": [
             {
               "text": "    ",
@@ -2850,7 +3309,7 @@
           ]
         },
         {
-          "number": 89,
+          "number": 103,
           "content": [
             {
               "text": "      ",
@@ -2875,7 +3334,7 @@
           ]
         },
         {
-          "number": 90,
+          "number": 104,
           "content": [
             {
               "text": "      ",
@@ -2900,7 +3359,7 @@
           ]
         },
         {
-          "number": 91,
+          "number": 105,
           "content": [
             {
               "text": "      ",
@@ -2925,7 +3384,7 @@
           ]
         },
         {
-          "number": 92,
+          "number": 106,
           "content": [
             {
               "text": "      ",
@@ -2950,7 +3409,7 @@
           ]
         },
         {
-          "number": 93,
+          "number": 107,
           "content": [
             {
               "text": "      ",
@@ -3007,7 +3466,7 @@
           ]
         },
         {
-          "number": 94,
+          "number": 108,
           "content": [
             {
               "text": "      ",
@@ -3048,7 +3507,7 @@
           ]
         },
         {
-          "number": 95,
+          "number": 109,
           "content": [
             {
               "text": "      ",
@@ -3073,7 +3532,7 @@
           ]
         },
         {
-          "number": 96,
+          "number": 110,
           "content": [
             {
               "text": "        ",
@@ -3098,7 +3557,7 @@
           ]
         },
         {
-          "number": 97,
+          "number": 111,
           "content": [
             {
               "text": "        canKeyboardScroll ",
@@ -3131,7 +3590,7 @@
           ]
         },
         {
-          "number": 98,
+          "number": 112,
           "content": [
             {
               "text": "        orientationClasses[orientation]",
@@ -3144,7 +3603,7 @@
           ]
         },
         {
-          "number": 99,
+          "number": 113,
           "content": [
             {
               "text": "        className",
@@ -3157,7 +3616,7 @@
           ]
         },
         {
-          "number": 100,
+          "number": 114,
           "content": [
             {
               "text": "      )",
@@ -3170,7 +3629,7 @@
           ]
         },
         {
-          "number": 101,
+          "number": 115,
           "content": [
             {
               "text": "      ",
@@ -3191,7 +3650,7 @@
           ]
         },
         {
-          "number": 102,
+          "number": 116,
           "content": [
             {
               "text": "    ",
@@ -3204,7 +3663,7 @@
           ]
         },
         {
-          "number": 103,
+          "number": 117,
           "content": [
             {
               "text": "      ",
@@ -3225,7 +3684,7 @@
           ]
         },
         {
-          "number": 104,
+          "number": 118,
           "content": [
             {
               "text": "    ",
@@ -3246,7 +3705,7 @@
           ]
         },
         {
-          "number": 105,
+          "number": 119,
           "content": [
             {
               "text": "  )",
@@ -3259,7 +3718,7 @@
           ]
         },
         {
-          "number": 106,
+          "number": 120,
           "content": [
             {
               "text": "}",
@@ -3268,16 +3727,41 @@
           ]
         },
         {
-          "number": 107,
+          "number": 121,
           "content": []
         }
       ]
     }
   },
-  "mergedSource": "export { ScrollArea, type ScrollAreaProps, type ScrollOrientation } from \"./scroll-area\";\n\n\n\"use client\";\n\nimport { type ComponentPropsWithRef, type KeyboardEvent } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type ScrollOrientation = \"vertical\" | \"horizontal\" | \"both\";\n\nconst orientationClasses: Record<ScrollOrientation, string> = {\n  vertical: \"overflow-y-auto overflow-x-hidden\",\n  horizontal: \"overflow-x-auto overflow-y-hidden\",\n  both: \"overflow-auto\",\n};\n\nexport interface ScrollAreaProps extends ComponentPropsWithRef<\"div\"> {\n  orientation?: ScrollOrientation;\n  keyboardScrollable?: boolean;\n}\n\nexport function ScrollArea({\n  children,\n  className,\n  orientation = \"vertical\",\n  keyboardScrollable = true,\n  ref,\n  onKeyDown,\n  role: roleProp,\n  tabIndex,\n  \"aria-label\": ariaLabel,\n  \"aria-labelledby\": ariaLabelledBy,\n  ...props\n}: ScrollAreaProps) {\n  const canScrollV = orientation === \"vertical\" || orientation === \"both\";\n  const canScrollH = orientation === \"horizontal\" || orientation === \"both\";\n  const hasAccessibleName = Boolean(ariaLabel || ariaLabelledBy);\n  const canKeyboardScroll = keyboardScrollable && hasAccessibleName;\n  const role = roleProp ?? (hasAccessibleName ? \"region\" : undefined);\n\n  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {\n    onKeyDown?.(e);\n    if (e.defaultPrevented) return;\n\n    const el = e.currentTarget;\n    const pageStep = el.clientHeight * 0.8;\n\n    switch (e.key) {\n      case \"ArrowUp\":\n        if (!canScrollV) break;\n        el.scrollTop -= 40;\n        e.preventDefault();\n        break;\n      case \"ArrowDown\":\n        if (!canScrollV) break;\n        el.scrollTop += 40;\n        e.preventDefault();\n        break;\n      case \"ArrowLeft\":\n        if (!canScrollH) break;\n        el.scrollLeft -= 40;\n        e.preventDefault();\n        break;\n      case \"ArrowRight\":\n        if (!canScrollH) break;\n        el.scrollLeft += 40;\n        e.preventDefault();\n        break;\n      case \"PageUp\":\n        el.scrollTop -= pageStep;\n        e.preventDefault();\n        break;\n      case \"PageDown\":\n        el.scrollTop += pageStep;\n        e.preventDefault();\n        break;\n      case \"Home\":\n        el.scrollTop = 0;\n        if (canScrollH) el.scrollLeft = 0;\n        e.preventDefault();\n        break;\n      case \"End\":\n        el.scrollTop = el.scrollHeight;\n        if (canScrollH) el.scrollLeft = el.scrollWidth;\n        e.preventDefault();\n        break;\n    }\n  };\n\n  return (\n    <div\n      ref={ref}\n      role={role}\n      aria-label={ariaLabel}\n      aria-labelledby={ariaLabelledBy}\n      tabIndex={canKeyboardScroll ? (tabIndex ?? 0) : tabIndex}\n      onKeyDown={canKeyboardScroll ? handleKeyDown : onKeyDown}\n      className={cn(\n        \"scrollbar-thin rounded-[inherit] [scrollbar-gutter:stable]\",\n        canKeyboardScroll && \"focus:outline-none focus-visible:ring-1 focus-visible:ring-ring\",\n        orientationClasses[orientation],\n        className,\n      )}\n      {...props}\n    >\n      {children}\n    </div>\n  );\n}\n",
+  "mergedSource": "\"use client\";\n\nexport { ScrollArea, type ScrollAreaProps, type ScrollOrientation } from \"./scroll-area\";\n\n\n\"use client\";\n\nimport { type ComponentPropsWithRef, type KeyboardEvent } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type ScrollOrientation = \"vertical\" | \"horizontal\" | \"both\";\n\nconst orientationClasses: Record<ScrollOrientation, string> = {\n  vertical: \"overflow-y-auto overflow-x-hidden\",\n  horizontal: \"overflow-x-auto overflow-y-hidden\",\n  both: \"overflow-auto\",\n};\n\nexport interface ScrollAreaProps extends ComponentPropsWithRef<\"div\"> {\n  orientation?: ScrollOrientation;\n  keyboardScrollable?: boolean;\n}\n\nexport function ScrollArea({\n  children,\n  className,\n  orientation = \"vertical\",\n  keyboardScrollable = true,\n  ref,\n  onKeyDown,\n  role: roleProp,\n  tabIndex,\n  \"aria-label\": ariaLabel,\n  \"aria-labelledby\": ariaLabelledBy,\n  ...props\n}: ScrollAreaProps) {\n  const canScrollV = orientation === \"vertical\" || orientation === \"both\";\n  const canScrollH = orientation === \"horizontal\" || orientation === \"both\";\n  const hasAccessibleName = Boolean(ariaLabel || ariaLabelledBy);\n  const canKeyboardScroll = keyboardScrollable && hasAccessibleName;\n  const role = roleProp ?? (hasAccessibleName ? \"region\" : undefined);\n\n  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {\n    onKeyDown?.(e);\n    if (e.defaultPrevented) return;\n\n    const el = e.currentTarget;\n    const pageStepV = el.clientHeight * 0.8;\n    const pageStepH = el.clientWidth * 0.8;\n    const pageScrollsHorizontal = orientation === \"horizontal\";\n\n    switch (e.key) {\n      case \"ArrowUp\":\n        if (!canScrollV) break;\n        el.scrollTop -= 40;\n        e.preventDefault();\n        break;\n      case \"ArrowDown\":\n        if (!canScrollV) break;\n        el.scrollTop += 40;\n        e.preventDefault();\n        break;\n      case \"ArrowLeft\":\n        if (!canScrollH) break;\n        el.scrollLeft -= 40;\n        e.preventDefault();\n        break;\n      case \"ArrowRight\":\n        if (!canScrollH) break;\n        el.scrollLeft += 40;\n        e.preventDefault();\n        break;\n      case \"PageUp\":\n        if (pageScrollsHorizontal) {\n          el.scrollLeft -= pageStepH;\n        } else if (canScrollV) {\n          el.scrollTop -= pageStepV;\n        } else {\n          break;\n        }\n        e.preventDefault();\n        break;\n      case \"PageDown\":\n        if (pageScrollsHorizontal) {\n          el.scrollLeft += pageStepH;\n        } else if (canScrollV) {\n          el.scrollTop += pageStepV;\n        } else {\n          break;\n        }\n        e.preventDefault();\n        break;\n      case \"Home\":\n        if (canScrollV) el.scrollTop = 0;\n        if (canScrollH) el.scrollLeft = 0;\n        e.preventDefault();\n        break;\n      case \"End\":\n        if (canScrollV) el.scrollTop = el.scrollHeight;\n        if (canScrollH) el.scrollLeft = el.scrollWidth;\n        e.preventDefault();\n        break;\n    }\n  };\n\n  return (\n    <div\n      ref={ref}\n      role={role}\n      aria-label={ariaLabel}\n      aria-labelledby={ariaLabelledBy}\n      tabIndex={canKeyboardScroll ? (tabIndex ?? 0) : tabIndex}\n      onKeyDown={canKeyboardScroll ? handleKeyDown : onKeyDown}\n      className={cn(\n        \"scrollbar-thin rounded-[inherit] [scrollbar-gutter:stable]\",\n        canKeyboardScroll && \"focus:outline-none focus-visible:ring-1 focus-visible:ring-ring\",\n        orientationClasses[orientation],\n        className,\n      )}\n      {...props}\n    >\n      {children}\n    </div>\n  );\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
+      "content": [
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "use client",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "content": []
+    },
+    {
+      "number": 3,
       "content": [
         {
           "text": "export",
@@ -3362,15 +3846,15 @@
       ]
     },
     {
-      "number": 2,
-      "content": []
-    },
-    {
-      "number": 3,
-      "content": []
-    },
-    {
       "number": 4,
+      "content": []
+    },
+    {
+      "number": 5,
+      "content": []
+    },
+    {
+      "number": 6,
       "content": [
         {
           "text": "\"",
@@ -3391,11 +3875,11 @@
       ]
     },
     {
-      "number": 5,
+      "number": 7,
       "content": []
     },
     {
-      "number": 6,
+      "number": 8,
       "content": [
         {
           "text": "import",
@@ -3472,7 +3956,7 @@
       ]
     },
     {
-      "number": 7,
+      "number": 9,
       "content": [
         {
           "text": "import",
@@ -3525,11 +4009,11 @@
       ]
     },
     {
-      "number": 8,
+      "number": 10,
       "content": []
     },
     {
-      "number": 9,
+      "number": 11,
       "content": [
         {
           "text": "export",
@@ -3630,11 +4114,11 @@
       ]
     },
     {
-      "number": 10,
+      "number": 12,
       "content": []
     },
     {
-      "number": 11,
+      "number": 13,
       "content": [
         {
           "text": "const",
@@ -3703,7 +4187,7 @@
       ]
     },
     {
-      "number": 12,
+      "number": 14,
       "content": [
         {
           "text": "  vertical",
@@ -3736,7 +4220,7 @@
       ]
     },
     {
-      "number": 13,
+      "number": 15,
       "content": [
         {
           "text": "  horizontal",
@@ -3769,7 +4253,7 @@
       ]
     },
     {
-      "number": 14,
+      "number": 16,
       "content": [
         {
           "text": "  both",
@@ -3802,7 +4286,7 @@
       ]
     },
     {
-      "number": 15,
+      "number": 17,
       "content": [
         {
           "text": "};",
@@ -3811,11 +4295,11 @@
       ]
     },
     {
-      "number": 16,
+      "number": 18,
       "content": []
     },
     {
-      "number": 17,
+      "number": 19,
       "content": [
         {
           "text": "export",
@@ -3884,7 +4368,7 @@
       ]
     },
     {
-      "number": 18,
+      "number": 20,
       "content": [
         {
           "text": "  orientation",
@@ -3909,7 +4393,7 @@
       ]
     },
     {
-      "number": 19,
+      "number": 21,
       "content": [
         {
           "text": "  keyboardScrollable",
@@ -3934,7 +4418,7 @@
       ]
     },
     {
-      "number": 20,
+      "number": 22,
       "content": [
         {
           "text": "}",
@@ -3943,11 +4427,11 @@
       ]
     },
     {
-      "number": 21,
+      "number": 23,
       "content": []
     },
     {
-      "number": 22,
+      "number": 24,
       "content": [
         {
           "text": "export",
@@ -3976,7 +4460,7 @@
       ]
     },
     {
-      "number": 23,
+      "number": 25,
       "content": [
         {
           "text": "  children",
@@ -3989,7 +4473,7 @@
       ]
     },
     {
-      "number": 24,
+      "number": 26,
       "content": [
         {
           "text": "  className",
@@ -4002,7 +4486,7 @@
       ]
     },
     {
-      "number": 25,
+      "number": 27,
       "content": [
         {
           "text": "  orientation ",
@@ -4035,7 +4519,7 @@
       ]
     },
     {
-      "number": 26,
+      "number": 28,
       "content": [
         {
           "text": "  keyboardScrollable ",
@@ -4060,7 +4544,7 @@
       ]
     },
     {
-      "number": 27,
+      "number": 29,
       "content": [
         {
           "text": "  ref",
@@ -4073,7 +4557,7 @@
       ]
     },
     {
-      "number": 28,
+      "number": 30,
       "content": [
         {
           "text": "  onKeyDown",
@@ -4086,7 +4570,7 @@
       ]
     },
     {
-      "number": 29,
+      "number": 31,
       "content": [
         {
           "text": "  role",
@@ -4107,7 +4591,7 @@
       ]
     },
     {
-      "number": 30,
+      "number": 32,
       "content": [
         {
           "text": "  tabIndex",
@@ -4120,7 +4604,7 @@
       ]
     },
     {
-      "number": 31,
+      "number": 33,
       "content": [
         {
           "text": "  ",
@@ -4153,7 +4637,7 @@
       ]
     },
     {
-      "number": 32,
+      "number": 34,
       "content": [
         {
           "text": "  ",
@@ -4186,7 +4670,7 @@
       ]
     },
     {
-      "number": 33,
+      "number": 35,
       "content": [
         {
           "text": "  ",
@@ -4203,7 +4687,7 @@
       ]
     },
     {
-      "number": 34,
+      "number": 36,
       "content": [
         {
           "text": "}:",
@@ -4232,7 +4716,7 @@
       ]
     },
     {
-      "number": 35,
+      "number": 37,
       "content": [
         {
           "text": "  ",
@@ -4321,7 +4805,7 @@
       ]
     },
     {
-      "number": 36,
+      "number": 38,
       "content": [
         {
           "text": "  ",
@@ -4410,7 +4894,7 @@
       ]
     },
     {
-      "number": 37,
+      "number": 39,
       "content": [
         {
           "text": "  ",
@@ -4463,7 +4947,7 @@
       ]
     },
     {
-      "number": 38,
+      "number": 40,
       "content": [
         {
           "text": "  ",
@@ -4508,7 +4992,7 @@
       ]
     },
     {
-      "number": 39,
+      "number": 41,
       "content": [
         {
           "text": "  ",
@@ -4593,11 +5077,11 @@
       ]
     },
     {
-      "number": 40,
+      "number": 42,
       "content": []
     },
     {
-      "number": 41,
+      "number": 43,
       "content": [
         {
           "text": "  ",
@@ -4678,7 +5162,7 @@
       ]
     },
     {
-      "number": 42,
+      "number": 44,
       "content": [
         {
           "text": "    ",
@@ -4703,7 +5187,7 @@
       ]
     },
     {
-      "number": 43,
+      "number": 45,
       "content": [
         {
           "text": "    ",
@@ -4740,11 +5224,11 @@
       ]
     },
     {
-      "number": 44,
+      "number": 46,
       "content": []
     },
     {
-      "number": 45,
+      "number": 47,
       "content": [
         {
           "text": "    ",
@@ -4793,7 +5277,7 @@
       ]
     },
     {
-      "number": 46,
+      "number": 48,
       "content": [
         {
           "text": "    ",
@@ -4808,7 +5292,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "pageStep",
+          "text": "pageStepV",
           "color": "var(--code-number)"
         },
         {
@@ -4854,11 +5338,129 @@
       ]
     },
     {
-      "number": 47,
+      "number": 49,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "pageStepH",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "el",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "clientWidth ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "*",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "0.8",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 50,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "pageScrollsHorizontal",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " orientation ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "horizontal",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 51,
       "content": []
     },
     {
-      "number": 48,
+      "number": 52,
       "content": [
         {
           "text": "    ",
@@ -4891,7 +5493,7 @@
       ]
     },
     {
-      "number": 49,
+      "number": 53,
       "content": [
         {
           "text": "      ",
@@ -4924,7 +5526,7 @@
       ]
     },
     {
-      "number": 50,
+      "number": 54,
       "content": [
         {
           "text": "        ",
@@ -4957,7 +5559,7 @@
       ]
     },
     {
-      "number": 51,
+      "number": 55,
       "content": [
         {
           "text": "        ",
@@ -4994,7 +5596,7 @@
       ]
     },
     {
-      "number": 52,
+      "number": 56,
       "content": [
         {
           "text": "        ",
@@ -5023,7 +5625,7 @@
       ]
     },
     {
-      "number": 53,
+      "number": 57,
       "content": [
         {
           "text": "        ",
@@ -5040,7 +5642,7 @@
       ]
     },
     {
-      "number": 54,
+      "number": 58,
       "content": [
         {
           "text": "      ",
@@ -5073,7 +5675,7 @@
       ]
     },
     {
-      "number": 55,
+      "number": 59,
       "content": [
         {
           "text": "        ",
@@ -5106,7 +5708,7 @@
       ]
     },
     {
-      "number": 56,
+      "number": 60,
       "content": [
         {
           "text": "        ",
@@ -5143,7 +5745,7 @@
       ]
     },
     {
-      "number": 57,
+      "number": 61,
       "content": [
         {
           "text": "        ",
@@ -5172,7 +5774,7 @@
       ]
     },
     {
-      "number": 58,
+      "number": 62,
       "content": [
         {
           "text": "        ",
@@ -5189,7 +5791,7 @@
       ]
     },
     {
-      "number": 59,
+      "number": 63,
       "content": [
         {
           "text": "      ",
@@ -5222,7 +5824,7 @@
       ]
     },
     {
-      "number": 60,
+      "number": 64,
       "content": [
         {
           "text": "        ",
@@ -5255,7 +5857,7 @@
       ]
     },
     {
-      "number": 61,
+      "number": 65,
       "content": [
         {
           "text": "        ",
@@ -5292,7 +5894,7 @@
       ]
     },
     {
-      "number": 62,
+      "number": 66,
       "content": [
         {
           "text": "        ",
@@ -5321,7 +5923,7 @@
       ]
     },
     {
-      "number": 63,
+      "number": 67,
       "content": [
         {
           "text": "        ",
@@ -5338,7 +5940,7 @@
       ]
     },
     {
-      "number": 64,
+      "number": 68,
       "content": [
         {
           "text": "      ",
@@ -5371,7 +5973,7 @@
       ]
     },
     {
-      "number": 65,
+      "number": 69,
       "content": [
         {
           "text": "        ",
@@ -5404,7 +6006,7 @@
       ]
     },
     {
-      "number": 66,
+      "number": 70,
       "content": [
         {
           "text": "        ",
@@ -5433,118 +6035,6 @@
         {
           "text": "40",
           "color": "var(--code-number)"
-        },
-        {
-          "text": ";",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 67,
-      "content": [
-        {
-          "text": "        ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "e",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ".",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "preventDefault",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "()",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ";",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 68,
-      "content": [
-        {
-          "text": "        ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "break",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": ";",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 69,
-      "content": [
-        {
-          "text": "      ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "case",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "PageUp",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": ":",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 70,
-      "content": [
-        {
-          "text": "        ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "el",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ".",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "scrollTop ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "-=",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " pageStep",
-          "color": "var(--code-variable)"
         },
         {
           "text": ";",
@@ -5618,7 +6108,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "PageDown",
+          "text": "PageUp",
           "color": "var(--code-tag)"
         },
         {
@@ -5639,6 +6129,97 @@
           "color": "var(--code-variable)"
         },
         {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (pageScrollsHorizontal) ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 75,
+      "content": [
+        {
+          "text": "          ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "el",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "scrollLeft ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "-=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " pageStepH",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 76,
+      "content": [
+        {
+          "text": "        ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "else",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (canScrollV) ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 77,
+      "content": [
+        {
+          "text": "          ",
+          "color": "var(--code-variable)"
+        },
+        {
           "text": "el",
           "color": "var(--code-number)"
         },
@@ -5651,11 +6232,11 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "+=",
+          "text": "-=",
           "color": "var(--code-operator)"
         },
         {
-          "text": " pageStep",
+          "text": " pageStepV",
           "color": "var(--code-variable)"
         },
         {
@@ -5665,7 +6246,66 @@
       ]
     },
     {
-      "number": 75,
+      "number": 78,
+      "content": [
+        {
+          "text": "        ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "else",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 79,
+      "content": [
+        {
+          "text": "          ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "break",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 80,
+      "content": [
+        {
+          "text": "        ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 81,
       "content": [
         {
           "text": "        ",
@@ -5694,7 +6334,7 @@
       ]
     },
     {
-      "number": 76,
+      "number": 82,
       "content": [
         {
           "text": "        ",
@@ -5711,7 +6351,269 @@
       ]
     },
     {
-      "number": 77,
+      "number": 83,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "case",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "PageDown",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 84,
+      "content": [
+        {
+          "text": "        ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (pageScrollsHorizontal) ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 85,
+      "content": [
+        {
+          "text": "          ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "el",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "scrollLeft ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "+=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " pageStepH",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 86,
+      "content": [
+        {
+          "text": "        ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "else",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (canScrollV) ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 87,
+      "content": [
+        {
+          "text": "          ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "el",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "scrollTop ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "+=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " pageStepV",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 88,
+      "content": [
+        {
+          "text": "        ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "else",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 89,
+      "content": [
+        {
+          "text": "          ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "break",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 90,
+      "content": [
+        {
+          "text": "        ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 91,
+      "content": [
+        {
+          "text": "        ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "e",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "preventDefault",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "()",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 92,
+      "content": [
+        {
+          "text": "        ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "break",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 93,
       "content": [
         {
           "text": "      ",
@@ -5744,10 +6646,18 @@
       ]
     },
     {
-      "number": 78,
+      "number": 94,
       "content": [
         {
           "text": "        ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (canScrollV) ",
           "color": "var(--code-variable)"
         },
         {
@@ -5781,7 +6691,7 @@
       ]
     },
     {
-      "number": 79,
+      "number": 95,
       "content": [
         {
           "text": "        ",
@@ -5826,7 +6736,7 @@
       ]
     },
     {
-      "number": 80,
+      "number": 96,
       "content": [
         {
           "text": "        ",
@@ -5855,7 +6765,7 @@
       ]
     },
     {
-      "number": 81,
+      "number": 97,
       "content": [
         {
           "text": "        ",
@@ -5872,7 +6782,7 @@
       ]
     },
     {
-      "number": 82,
+      "number": 98,
       "content": [
         {
           "text": "      ",
@@ -5905,10 +6815,18 @@
       ]
     },
     {
-      "number": 83,
+      "number": 99,
       "content": [
         {
           "text": "        ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (canScrollV) ",
           "color": "var(--code-variable)"
         },
         {
@@ -5950,7 +6868,7 @@
       ]
     },
     {
-      "number": 84,
+      "number": 100,
       "content": [
         {
           "text": "        ",
@@ -6003,7 +6921,7 @@
       ]
     },
     {
-      "number": 85,
+      "number": 101,
       "content": [
         {
           "text": "        ",
@@ -6032,7 +6950,7 @@
       ]
     },
     {
-      "number": 86,
+      "number": 102,
       "content": [
         {
           "text": "        ",
@@ -6049,7 +6967,7 @@
       ]
     },
     {
-      "number": 87,
+      "number": 103,
       "content": [
         {
           "text": "    ",
@@ -6062,7 +6980,7 @@
       ]
     },
     {
-      "number": 88,
+      "number": 104,
       "content": [
         {
           "text": "  ",
@@ -6075,11 +6993,11 @@
       ]
     },
     {
-      "number": 89,
+      "number": 105,
       "content": []
     },
     {
-      "number": 90,
+      "number": 106,
       "content": [
         {
           "text": "  ",
@@ -6096,7 +7014,7 @@
       ]
     },
     {
-      "number": 91,
+      "number": 107,
       "content": [
         {
           "text": "    ",
@@ -6113,7 +7031,7 @@
       ]
     },
     {
-      "number": 92,
+      "number": 108,
       "content": [
         {
           "text": "      ",
@@ -6138,7 +7056,7 @@
       ]
     },
     {
-      "number": 93,
+      "number": 109,
       "content": [
         {
           "text": "      ",
@@ -6163,7 +7081,7 @@
       ]
     },
     {
-      "number": 94,
+      "number": 110,
       "content": [
         {
           "text": "      ",
@@ -6188,7 +7106,7 @@
       ]
     },
     {
-      "number": 95,
+      "number": 111,
       "content": [
         {
           "text": "      ",
@@ -6213,7 +7131,7 @@
       ]
     },
     {
-      "number": 96,
+      "number": 112,
       "content": [
         {
           "text": "      ",
@@ -6270,7 +7188,7 @@
       ]
     },
     {
-      "number": 97,
+      "number": 113,
       "content": [
         {
           "text": "      ",
@@ -6311,7 +7229,7 @@
       ]
     },
     {
-      "number": 98,
+      "number": 114,
       "content": [
         {
           "text": "      ",
@@ -6336,7 +7254,7 @@
       ]
     },
     {
-      "number": 99,
+      "number": 115,
       "content": [
         {
           "text": "        ",
@@ -6361,7 +7279,7 @@
       ]
     },
     {
-      "number": 100,
+      "number": 116,
       "content": [
         {
           "text": "        canKeyboardScroll ",
@@ -6394,7 +7312,7 @@
       ]
     },
     {
-      "number": 101,
+      "number": 117,
       "content": [
         {
           "text": "        orientationClasses[orientation]",
@@ -6407,7 +7325,7 @@
       ]
     },
     {
-      "number": 102,
+      "number": 118,
       "content": [
         {
           "text": "        className",
@@ -6420,7 +7338,7 @@
       ]
     },
     {
-      "number": 103,
+      "number": 119,
       "content": [
         {
           "text": "      )",
@@ -6433,7 +7351,7 @@
       ]
     },
     {
-      "number": 104,
+      "number": 120,
       "content": [
         {
           "text": "      ",
@@ -6454,7 +7372,7 @@
       ]
     },
     {
-      "number": 105,
+      "number": 121,
       "content": [
         {
           "text": "    ",
@@ -6467,7 +7385,7 @@
       ]
     },
     {
-      "number": 106,
+      "number": 122,
       "content": [
         {
           "text": "      ",
@@ -6488,7 +7406,7 @@
       ]
     },
     {
-      "number": 107,
+      "number": 123,
       "content": [
         {
           "text": "    ",
@@ -6509,7 +7427,7 @@
       ]
     },
     {
-      "number": 108,
+      "number": 124,
       "content": [
         {
           "text": "  )",
@@ -6522,7 +7440,7 @@
       ]
     },
     {
-      "number": 109,
+      "number": 125,
       "content": [
         {
           "text": "}",
@@ -6531,7 +7449,7 @@
       ]
     },
     {
-      "number": 110,
+      "number": 126,
       "content": []
     }
   ],

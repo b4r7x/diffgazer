@@ -4,7 +4,7 @@ import { createContext, useContext, type RefObject } from "react";
 
 export interface ToggleGroupContextValue {
   value: string | null;
-  onChange: (value: string) => void;
+  onValueChange: (value: string) => void;
   onHighlightChange: (value: string | null) => void;
   disabled: boolean;
   size: "sm" | "md";
@@ -12,7 +12,6 @@ export interface ToggleGroupContextValue {
   containerRef: RefObject<HTMLDivElement | null>;
   allowDeselect: boolean;
   firstEnabledValue: string | null;
-  registerItem: (value: string, disabled: boolean) => () => void;
 }
 
 export const ToggleGroupContext = createContext<ToggleGroupContextValue | undefined>(undefined);

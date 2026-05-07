@@ -1,3 +1,5 @@
+"use client";
+
 import { Breadcrumbs as BreadcrumbsRoot, type BreadcrumbsProps } from "./breadcrumbs"
 import { BreadcrumbsEllipsis, type BreadcrumbsEllipsisProps } from "./breadcrumbs-ellipsis"
 import { BreadcrumbsItem, type BreadcrumbsItemProps } from "./breadcrumbs-item"

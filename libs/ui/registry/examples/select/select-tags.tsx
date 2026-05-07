@@ -13,7 +13,7 @@ export default function SelectTagsExample() {
   const [value, setValue] = useState<string[]>(["typescript", "rust"])
 
   return (
-    <Select multiple width="lg" value={value} onChange={setValue}>
+    <Select multiple width="lg" value={value} onValueChange={setValue}>
       <SelectTrigger>
         <SelectTags placeholder="Select languages..." />
       </SelectTrigger>

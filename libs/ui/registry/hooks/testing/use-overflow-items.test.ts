@@ -83,6 +83,31 @@ function TestOverflowItems({
   )
 }
 
+function TestOverflowItemsWithListener({
+  listener,
+}: {
+  listener: (count: number) => void
+}) {
+  const { ref, visibleCount } = useOverflowItems({
+    itemCount: 3,
+    onVisibleCountChange: listener,
+  })
+
+  return (
+    React.createElement(React.Fragment, null,
+      React.createElement(
+        "div",
+        { ref, "data-testid": "container", style: { gap: "10px" } },
+        React.createElement("span", { "data-testid": "item-0", "data-width": 50 }, "Item 0"),
+        React.createElement("span", { "data-testid": "item-1", "data-width": 50 }, "Item 1"),
+        React.createElement("span", { "data-testid": "item-2", "data-width": 50 }, "Item 2"),
+        React.createElement("span", { "data-testid": "indicator", "data-width": 30 }, "More"),
+      ),
+      React.createElement("output", { "aria-label": "visible count" }, visibleCount),
+    )
+  )
+}
+
 function setRenderedWidths(containerWidth: number) {
   mockOffsetWidth(screen.getByTestId("container"), containerWidth)
   for (const el of screen.getAllByTestId(/^item-/)) {
@@ -204,5 +229,28 @@ describe("useOverflowItems", () => {
 
     unmount()
     expect(disconnectCount).toBeGreaterThan(0)
+  })
+
+  it("notifies the latest visible-count listener after rerender", () => {
+    const firstListener = vi.fn()
+    const secondListener = vi.fn()
+    const { rerender } = render(
+      React.createElement(TestOverflowItemsWithListener, { listener: firstListener }),
+    )
+
+    setRenderedWidths(150)
+    rerender(
+      React.createElement(TestOverflowItemsWithListener, { listener: secondListener }),
+    )
+    setRenderedWidths(150)
+
+    act(() => {
+      for (const cb of resizeCallbacks) cb()
+      flushScheduledChecks()
+    })
+
+    expect(screen.getByLabelText("visible count")).toHaveTextContent("2")
+    expect(secondListener).toHaveBeenCalledWith(2)
+    expect(firstListener).not.toHaveBeenCalledWith(2)
   })
 })

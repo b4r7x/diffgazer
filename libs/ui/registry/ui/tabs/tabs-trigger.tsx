@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, type ButtonHTMLAttributes, type MouseEvent, type Ref } from "react";
+import { type ButtonHTMLAttributes, type MouseEvent, type Ref } from "react";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { useTabsContext } from "./tabs-context";
+import { getTabPanelId, getTabTriggerId, useTabsContext } from "./tabs-context";
 
 export const tabsTriggerVariants = cva(
   "text-sm font-mono transition-colors motion-reduce:transition-none cursor-pointer focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
@@ -43,13 +43,9 @@ export interface TabsTriggerProps extends Omit<ButtonHTMLAttributes<HTMLButtonEl
 }
 
 export function TabsTrigger({ value, children, className, disabled, ref, onClick, ...rest }: TabsTriggerProps) {
-  const { tabsId, value: selectedValue, onValueChange, registerTab, variant, orientation } = useTabsContext();
+  const { tabsId, value: selectedValue, onValueChange, panelValues, variant, orientation } = useTabsContext();
   const isActive = selectedValue === value;
-
-  useEffect(() => {
-    if (disabled) return;
-    return registerTab(value);
-  }, [disabled, registerTab, value]);
+  const panelId = panelValues.includes(value) ? getTabPanelId(tabsId, value) : undefined;
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     if (disabled) {
@@ -66,10 +62,10 @@ export function TabsTrigger({ value, children, className, disabled, ref, onClick
       {...rest}
       ref={ref}
       type="button"
-      id={`${tabsId}-tab-${value}`}
+      id={getTabTriggerId(tabsId, value)}
       role="tab"
       aria-selected={isActive}
-      aria-controls={`${tabsId}-tabpanel-${value}`}
+      aria-controls={panelId}
       aria-disabled={disabled || undefined}
       disabled={disabled}
       tabIndex={isActive && !disabled ? 0 : -1}

@@ -81,6 +81,13 @@ function assertPackageMetadata(path, expectedName, expectedHomePageSuffix, expec
     missing.push(`README missing: ${readmePath}`);
   }
 
+  for (const policyFile of ["SECURITY.md", "SUPPORT.md"]) {
+    const policyPath = path.replace("package.json", policyFile);
+    if (!existsSync(policyPath)) {
+      missing.push(`${policyFile} missing: ${policyPath}`);
+    }
+  }
+
   addResult(
     `${path}: package metadata`,
     missing.length === 0,
@@ -122,6 +129,13 @@ function assertCliPackageMetadata(path, expectedName, expectedBinName, expectedR
     missing.push(`README missing: ${readmePath}`);
   }
 
+  for (const policyFile of ["SECURITY.md", "SUPPORT.md"]) {
+    const policyPath = path.replace("package.json", policyFile);
+    if (!existsSync(policyPath)) {
+      missing.push(`${policyFile} missing: ${policyPath}`);
+    }
+  }
+
   addResult(
     `${path}: CLI package metadata`,
     missing.length === 0,
@@ -159,6 +173,7 @@ function listPackageJsonFiles() {
 const jsonOut = process.argv.includes("--json");
 
 addResult("root workspace file exists", existsSync("pnpm-workspace.yaml"));
+addResult("root policy files exist", existsSync("SECURITY.md") && existsSync("SUPPORT.md"));
 assertRootMetadata();
 
 const workspaceYaml = readFileSync("pnpm-workspace.yaml", "utf8");
@@ -302,7 +317,7 @@ assertPackageMetadata(
   "libs/ui",
   "libs/ui",
   ["./components/*", "./hooks/*", "./lib/*", "./theme-base.css", "./theme.css", "./styles.css"],
-  ["dist"],
+  ["dist", "LICENSE", "README.md", "SECURITY.md", "SUPPORT.md"],
   ["**/*.css"],
 );
 
@@ -312,7 +327,7 @@ assertPackageMetadata(
   "libs/keys",
   "libs/keys",
   ["."],
-  ["dist", "registry", "public/r", "internal-docs-manifest.json"],
+  ["dist", "registry", "public/r", "internal-docs-manifest.json", "README.md", "LICENSE", "SECURITY.md", "SUPPORT.md"],
   false,
 );
 
@@ -321,7 +336,7 @@ assertCliPackageMetadata(
   "diffgazer",
   "diffgazer",
   "cli/diffgazer",
-  ["dist", "bin/diffgazer.js"],
+  ["dist", "bin/diffgazer.js", "README.md", "LICENSE", "SECURITY.md", "SUPPORT.md"],
 );
 
 assertCliPackageMetadata(
@@ -329,7 +344,7 @@ assertCliPackageMetadata(
   "@diffgazer/add",
   "dgadd",
   "cli/add",
-  ["dist", "README.md"],
+  ["dist", "README.md", "LICENSE", "SECURITY.md", "SUPPORT.md"],
 );
 
 if (jsonOut) {

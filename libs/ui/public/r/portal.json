@@ -9,12 +9,12 @@
   "files": [
     {
       "path": "registry/ui/shared/portal.tsx",
-      "content": "\"use client\";\n\nimport { createPortal } from \"react-dom\";\nimport type { ReactNode } from \"react\";\n\nexport interface PortalProps {\n  children: ReactNode;\n  container?: Element;\n}\n\nexport function Portal({ children, container }: PortalProps) {\n  const target = container ?? (typeof document !== \"undefined\" ? document.body : null);\n  if (!target) return null;\n  return createPortal(children, target);\n}",
+      "content": "\"use client\";\n\nimport { createPortal } from \"react-dom\";\nimport type { ReactNode } from \"react\";\nimport { isPendingPortalContainer, usePortalContainer, type PortalContainerValue } from \"./portal-context\";\n\nexport interface PortalProps {\n  children: ReactNode;\n  container?: PortalContainerValue | null;\n}\n\nexport function Portal({ children, container }: PortalProps) {\n  const scopedContainer = usePortalContainer();\n  const target = container !== undefined\n    ? container\n    : scopedContainer !== undefined\n      ? scopedContainer\n      : typeof document !== \"undefined\"\n        ? document.body\n        : null;\n\n  if (!target || isPendingPortalContainer(target)) return null;\n  return createPortal(children, target);\n}\n",
       "type": "registry:ui"
     },
     {
       "path": "registry/ui/shared/portal-context.tsx",
-      "content": "\"use client\";\n\nimport { createContext, useContext, type ReactNode } from \"react\";\n\nconst PortalContainerContext = createContext<Element | null>(null);\n\nexport function usePortalContainer() {\n  return useContext(PortalContainerContext);\n}\n\nexport function PortalContainerProvider({\n  container,\n  children,\n}: {\n  container: Element | null;\n  children: ReactNode;\n}) {\n  return (\n    <PortalContainerContext value={container}>\n      {children}\n    </PortalContainerContext>\n  );\n}\n",
+      "content": "\"use client\";\n\nimport { createContext, useContext, type ReactNode } from \"react\";\n\nexport const PENDING_PORTAL_CONTAINER = Symbol(\"PENDING_PORTAL_CONTAINER\");\n\nexport type PortalContainerValue = Element | typeof PENDING_PORTAL_CONTAINER;\n\nconst PortalContainerContext = createContext<PortalContainerValue | undefined>(undefined);\n\nexport function usePortalContainer() {\n  return useContext(PortalContainerContext);\n}\n\nexport function isPendingPortalContainer(value: unknown): value is typeof PENDING_PORTAL_CONTAINER {\n  return value === PENDING_PORTAL_CONTAINER;\n}\n\nexport function PortalContainerProvider({\n  container,\n  children,\n}: {\n  container: Element | null;\n  children: ReactNode;\n}) {\n  return (\n    <PortalContainerContext value={container ?? PENDING_PORTAL_CONTAINER}>\n      {children}\n    </PortalContainerContext>\n  );\n}\n",
       "type": "registry:ui"
     }
   ],

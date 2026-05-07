@@ -3,22 +3,23 @@ title: Changelog
 description: Release notes for @diffgazer/ui.
 ---
 
-## 0.1.0 (2026-02-XX)
+## 0.1.0 (2026-05-06)
 
-Initial release.
+Initial publish candidate. Public npm and hosted registry endpoints are deferred until the publication phase.
 
-### Components (28)
+### Components
 
-Badge, Block Bar, Button, Callout, Card, Checkbox, Checklist, Code Block,
-Dialog, Diff View, Empty State, Focusable Pane, Horizontal Stepper, Input,
-Key Value, Key Value Row, Labeled Field, Menu, Navigation List, Panel,
-Radio Group, Scroll Area, Search Input, Section Header, Stepper, Tabs,
-Toast, Toggle Group.
+Accordion, Avatar, Badge, Block Bar, Breadcrumbs, Button, Callout, Card,
+Checkbox, Code Block, Command Palette, Dialog, Diff View, Divider, Empty State,
+Horizontal Stepper, Icons, Input, Kbd, Key Value, Label, Logo, Menu,
+Navigation List, Overflow, Pager, Panel, Popover, Radio, Scroll Area,
+Search Input, Section Header, Select, Sidebar, Spinner, Stepper, Tabs,
+Textarea, Toast, TOC, Toggle Group, Tooltip, Typography.
 
 ### Features
 
-- CLI: `dgadd init`, `add`, `list`
-- Two-layer CSS variable theme system (GitHub Dark palette)
+- CLI: `dgadd init`, `add`, `list`, `diff`, `remove`
+- Two-layer CSS variable theme system (Diffgazer monochrome palette)
 - Dark mode default with `[data-theme]` switching
 - All components use Tailwind 4 + CVA
-- No keyboard handling baked in -- your app, your keyboard logic
+- Keyboard behavior can use copied hooks or `@diffgazer/keys`

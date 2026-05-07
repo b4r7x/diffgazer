@@ -1,3 +1,5 @@
+"use client";
+
 import { Dialog as DialogRoot, type DialogProps } from "./dialog";
 import { DialogTrigger, type DialogTriggerProps, type DialogTriggerRenderProps } from "./dialog-trigger";
 import { DialogContent, type DialogContentProps } from "./dialog-content";

@@ -14,10 +14,35 @@
   "props": {},
   "source": {
     "registry/ui/code-block/index.ts": {
-      "raw": "import { CodeBlock as CodeBlockRoot, type CodeBlockProps } from \"./code-block\";\nimport { CodeBlockContent, type CodeBlockContentProps } from \"./code-block-content\";\nimport { CodeBlockHeader, type CodeBlockHeaderProps } from \"./code-block-header\";\nimport { CodeBlockLabel, type CodeBlockLabelProps } from \"./code-block-label\";\nimport { CodeBlockLine, type CodeBlockLineProps, type CodeBlockToken, type CodeBlockLineType } from \"./code-block-line\";\n\nconst CodeBlock = Object.assign(CodeBlockRoot, {\n  Content: CodeBlockContent,\n  Header: CodeBlockHeader,\n  Label: CodeBlockLabel,\n  Line: CodeBlockLine,\n});\n\nexport {\n  CodeBlock,\n  CodeBlockContent,\n  CodeBlockHeader,\n  CodeBlockLabel,\n  CodeBlockLine,\n  type CodeBlockProps,\n  type CodeBlockContentProps,\n  type CodeBlockHeaderProps,\n  type CodeBlockLabelProps,\n  type CodeBlockLineProps,\n  type CodeBlockToken,\n  type CodeBlockLineType,\n};\n",
+      "raw": "\"use client\";\n\nimport { CodeBlock as CodeBlockRoot, type CodeBlockProps } from \"./code-block\";\nimport { CodeBlockContent, type CodeBlockContentProps } from \"./code-block-content\";\nimport { CodeBlockHeader, type CodeBlockHeaderProps } from \"./code-block-header\";\nimport { CodeBlockLabel, type CodeBlockLabelProps } from \"./code-block-label\";\nimport { CodeBlockLine, type CodeBlockLineProps, type CodeBlockToken, type CodeBlockLineType } from \"./code-block-line\";\n\nconst CodeBlock = Object.assign(CodeBlockRoot, {\n  Content: CodeBlockContent,\n  Header: CodeBlockHeader,\n  Label: CodeBlockLabel,\n  Line: CodeBlockLine,\n});\n\nexport {\n  CodeBlock,\n  CodeBlockContent,\n  CodeBlockHeader,\n  CodeBlockLabel,\n  CodeBlockLine,\n  type CodeBlockProps,\n  type CodeBlockContentProps,\n  type CodeBlockHeaderProps,\n  type CodeBlockLabelProps,\n  type CodeBlockLineProps,\n  type CodeBlockToken,\n  type CodeBlockLineType,\n};\n",
       "highlighted": [
         {
           "number": 1,
+          "content": [
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "use client",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
           "content": [
             {
               "text": "import",
@@ -94,7 +119,7 @@
           ]
         },
         {
-          "number": 2,
+          "number": 4,
           "content": [
             {
               "text": "import",
@@ -163,7 +188,7 @@
           ]
         },
         {
-          "number": 3,
+          "number": 5,
           "content": [
             {
               "text": "import",
@@ -232,7 +257,7 @@
           ]
         },
         {
-          "number": 4,
+          "number": 6,
           "content": [
             {
               "text": "import",
@@ -301,7 +326,7 @@
           ]
         },
         {
-          "number": 5,
+          "number": 7,
           "content": [
             {
               "text": "import",
@@ -402,11 +427,11 @@
           ]
         },
         {
-          "number": 6,
+          "number": 8,
           "content": []
         },
         {
-          "number": 7,
+          "number": 9,
           "content": [
             {
               "text": "const",
@@ -463,7 +488,7 @@
           ]
         },
         {
-          "number": 8,
+          "number": 10,
           "content": [
             {
               "text": "  Content",
@@ -484,7 +509,7 @@
           ]
         },
         {
-          "number": 9,
+          "number": 11,
           "content": [
             {
               "text": "  Header",
@@ -505,7 +530,7 @@
           ]
         },
         {
-          "number": 10,
+          "number": 12,
           "content": [
             {
               "text": "  Label",
@@ -526,7 +551,7 @@
           ]
         },
         {
-          "number": 11,
+          "number": 13,
           "content": [
             {
               "text": "  Line",
@@ -547,7 +572,7 @@
           ]
         },
         {
-          "number": 12,
+          "number": 14,
           "content": [
             {
               "text": "}",
@@ -564,11 +589,11 @@
           ]
         },
         {
-          "number": 13,
+          "number": 15,
           "content": []
         },
         {
-          "number": 14,
+          "number": 16,
           "content": [
             {
               "text": "export",
@@ -585,7 +610,7 @@
           ]
         },
         {
-          "number": 15,
+          "number": 17,
           "content": [
             {
               "text": "  CodeBlock",
@@ -598,7 +623,7 @@
           ]
         },
         {
-          "number": 16,
+          "number": 18,
           "content": [
             {
               "text": "  CodeBlockContent",
@@ -611,7 +636,7 @@
           ]
         },
         {
-          "number": 17,
+          "number": 19,
           "content": [
             {
               "text": "  CodeBlockHeader",
@@ -624,7 +649,7 @@
           ]
         },
         {
-          "number": 18,
+          "number": 20,
           "content": [
             {
               "text": "  CodeBlockLabel",
@@ -637,52 +662,10 @@
           ]
         },
         {
-          "number": 19,
-          "content": [
-            {
-              "text": "  CodeBlockLine",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 20,
-          "content": [
-            {
-              "text": "  ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "type",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " CodeBlockProps",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
           "number": 21,
           "content": [
             {
-              "text": "  ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "type",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " CodeBlockContentProps",
+              "text": "  CodeBlockLine",
               "color": "var(--code-variable)"
             },
             {
@@ -703,7 +686,7 @@
               "color": "var(--code-keyword)"
             },
             {
-              "text": " CodeBlockHeaderProps",
+              "text": " CodeBlockProps",
               "color": "var(--code-variable)"
             },
             {
@@ -724,7 +707,7 @@
               "color": "var(--code-keyword)"
             },
             {
-              "text": " CodeBlockLabelProps",
+              "text": " CodeBlockContentProps",
               "color": "var(--code-variable)"
             },
             {
@@ -745,7 +728,7 @@
               "color": "var(--code-keyword)"
             },
             {
-              "text": " CodeBlockLineProps",
+              "text": " CodeBlockHeaderProps",
               "color": "var(--code-variable)"
             },
             {
@@ -766,7 +749,7 @@
               "color": "var(--code-keyword)"
             },
             {
-              "text": " CodeBlockToken",
+              "text": " CodeBlockLabelProps",
               "color": "var(--code-variable)"
             },
             {
@@ -787,7 +770,7 @@
               "color": "var(--code-keyword)"
             },
             {
-              "text": " CodeBlockLineType",
+              "text": " CodeBlockLineProps",
               "color": "var(--code-variable)"
             },
             {
@@ -800,13 +783,55 @@
           "number": 27,
           "content": [
             {
-              "text": "};",
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " CodeBlockToken",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
               "color": "var(--code-operator)"
             }
           ]
         },
         {
           "number": 28,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " CodeBlockLineType",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 29,
+          "content": [
+            {
+              "text": "};",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 30,
           "content": []
         }
       ]
@@ -5476,10 +5501,35 @@
       ]
     }
   },
-  "mergedSource": "import { CodeBlock as CodeBlockRoot, type CodeBlockProps } from \"./code-block\";\nimport { CodeBlockContent, type CodeBlockContentProps } from \"./code-block-content\";\nimport { CodeBlockHeader, type CodeBlockHeaderProps } from \"./code-block-header\";\nimport { CodeBlockLabel, type CodeBlockLabelProps } from \"./code-block-label\";\nimport { CodeBlockLine, type CodeBlockLineProps, type CodeBlockToken, type CodeBlockLineType } from \"./code-block-line\";\n\nconst CodeBlock = Object.assign(CodeBlockRoot, {\n  Content: CodeBlockContent,\n  Header: CodeBlockHeader,\n  Label: CodeBlockLabel,\n  Line: CodeBlockLine,\n});\n\nexport {\n  CodeBlock,\n  CodeBlockContent,\n  CodeBlockHeader,\n  CodeBlockLabel,\n  CodeBlockLine,\n  type CodeBlockProps,\n  type CodeBlockContentProps,\n  type CodeBlockHeaderProps,\n  type CodeBlockLabelProps,\n  type CodeBlockLineProps,\n  type CodeBlockToken,\n  type CodeBlockLineType,\n};\n\n\n\"use client\";\n\nimport type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport interface CodeBlockProps extends ComponentProps<\"div\"> {\n  language?: string;\n  label?: string;\n}\n\nexport function CodeBlock({ language, label, className, children, ref, ...props }: CodeBlockProps) {\n  return (\n    <div ref={ref} role=\"region\" aria-roledescription=\"code block\" aria-label={label ?? (language ? `${language} code` : \"Code block\")} data-language={language} className={cn(\"border border-border bg-background overflow-hidden rounded-sm\", className)} {...props}>\n      {children}\n    </div>\n  );\n}\n\n\n\"use client\";\n\nimport type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { ScrollArea } from \"../scroll-area/scroll-area\";\nimport { CodeBlockLine } from \"./code-block-line\";\n\nexport interface CodeBlockContentProps extends ComponentProps<\"div\"> {\n  showLineNumbers?: boolean;\n}\n\nexport function CodeBlockContent({\n  showLineNumbers = true,\n  className,\n  children,\n  ref,\n  \"aria-label\": ariaLabel,\n  \"aria-labelledby\": ariaLabelledBy,\n  ...props\n}: CodeBlockContentProps) {\n  return (\n    <ScrollArea\n      orientation=\"both\"\n      tabIndex={0}\n      ref={ref}\n      aria-label={ariaLabelledBy ? undefined : (ariaLabel ?? \"Code content\")}\n      aria-labelledby={ariaLabelledBy}\n      className={cn(\"focus-visible:outline focus-visible:outline-1 focus-visible:outline-border\", className)}\n      {...props}\n    >\n      <pre className=\"p-4 font-mono text-xs leading-relaxed\">\n        {typeof children === \"string\"\n          ? children.split(\"\\n\").map((line, i) => (\n              <CodeBlockLine key={i} number={showLineNumbers ? i + 1 : undefined} content={line} />\n            ))\n          : children}\n      </pre>\n    </ScrollArea>\n  );\n}\n\n\n\"use client\";\n\nimport type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CodeBlockHeaderProps = ComponentProps<\"div\">;\n\nexport function CodeBlockHeader({ className, ref, ...props }: CodeBlockHeaderProps) {\n  return <div ref={ref} className={cn(\"flex items-center justify-between px-4 py-2 border-b border-border bg-border/10\", className)} {...props} />;\n}\n\n\n\"use client\";\n\nimport type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CodeBlockLabelProps = ComponentProps<\"span\">;\n\nexport function CodeBlockLabel({ className, children, ref, ...props }: CodeBlockLabelProps) {\n  return (\n    <span ref={ref} className={cn(\"text-xs text-foreground/60 font-bold uppercase tracking-wider\", className)} {...props}>\n      {children}\n    </span>\n  );\n}\n\n\n\"use client\";\n\nimport type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** @see @diffgazer/registry docs-data CodeBlockToken (base without `className`) */\nexport interface CodeBlockToken {\n  text: string;\n  color?: string;\n  className?: string;\n}\n\nexport type CodeBlockLineType = \"highlight\" | \"added\" | \"removed\";\n\nexport interface CodeBlockLineProps extends Omit<ComponentProps<\"span\">, \"content\"> {\n  number?: number;\n  content: string | CodeBlockToken[];\n  type?: CodeBlockLineType;\n}\n\nexport function CodeBlockLine({ number, content, type, className, ref, ...props }: CodeBlockLineProps) {\n  return (\n    <span ref={ref} className={cn(\"flex\", type === \"highlight\" && \"bg-muted/50\", className)} {...props}>\n      {number != null && (\n        <span aria-hidden=\"true\" className=\"w-8 text-muted-foreground border-r border-border mr-2 text-right pr-1 select-none shrink-0\">\n          {number}\n        </span>\n      )}\n      {(type === \"added\" || type === \"removed\") && (\n        <span className=\"sr-only\">{type === \"added\" ? \"Added: \" : \"Removed: \"}</span>\n      )}\n      <code className={cn(\"whitespace-pre\", type === \"added\" && \"text-success\", type === \"removed\" && \"text-destructive\")}>\n        {typeof content === \"string\"\n          ? content\n          : content.map((token, i) => (\n              <span key={i} style={{ color: token.color }} className={token.className}>\n                {token.text}\n              </span>\n            ))}\n      </code>\n    </span>\n  );\n}\n",
+  "mergedSource": "\"use client\";\n\nimport { CodeBlock as CodeBlockRoot, type CodeBlockProps } from \"./code-block\";\nimport { CodeBlockContent, type CodeBlockContentProps } from \"./code-block-content\";\nimport { CodeBlockHeader, type CodeBlockHeaderProps } from \"./code-block-header\";\nimport { CodeBlockLabel, type CodeBlockLabelProps } from \"./code-block-label\";\nimport { CodeBlockLine, type CodeBlockLineProps, type CodeBlockToken, type CodeBlockLineType } from \"./code-block-line\";\n\nconst CodeBlock = Object.assign(CodeBlockRoot, {\n  Content: CodeBlockContent,\n  Header: CodeBlockHeader,\n  Label: CodeBlockLabel,\n  Line: CodeBlockLine,\n});\n\nexport {\n  CodeBlock,\n  CodeBlockContent,\n  CodeBlockHeader,\n  CodeBlockLabel,\n  CodeBlockLine,\n  type CodeBlockProps,\n  type CodeBlockContentProps,\n  type CodeBlockHeaderProps,\n  type CodeBlockLabelProps,\n  type CodeBlockLineProps,\n  type CodeBlockToken,\n  type CodeBlockLineType,\n};\n\n\n\"use client\";\n\nimport type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport interface CodeBlockProps extends ComponentProps<\"div\"> {\n  language?: string;\n  label?: string;\n}\n\nexport function CodeBlock({ language, label, className, children, ref, ...props }: CodeBlockProps) {\n  return (\n    <div ref={ref} role=\"region\" aria-roledescription=\"code block\" aria-label={label ?? (language ? `${language} code` : \"Code block\")} data-language={language} className={cn(\"border border-border bg-background overflow-hidden rounded-sm\", className)} {...props}>\n      {children}\n    </div>\n  );\n}\n\n\n\"use client\";\n\nimport type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { ScrollArea } from \"../scroll-area/scroll-area\";\nimport { CodeBlockLine } from \"./code-block-line\";\n\nexport interface CodeBlockContentProps extends ComponentProps<\"div\"> {\n  showLineNumbers?: boolean;\n}\n\nexport function CodeBlockContent({\n  showLineNumbers = true,\n  className,\n  children,\n  ref,\n  \"aria-label\": ariaLabel,\n  \"aria-labelledby\": ariaLabelledBy,\n  ...props\n}: CodeBlockContentProps) {\n  return (\n    <ScrollArea\n      orientation=\"both\"\n      tabIndex={0}\n      ref={ref}\n      aria-label={ariaLabelledBy ? undefined : (ariaLabel ?? \"Code content\")}\n      aria-labelledby={ariaLabelledBy}\n      className={cn(\"focus-visible:outline focus-visible:outline-1 focus-visible:outline-border\", className)}\n      {...props}\n    >\n      <pre className=\"p-4 font-mono text-xs leading-relaxed\">\n        {typeof children === \"string\"\n          ? children.split(\"\\n\").map((line, i) => (\n              <CodeBlockLine key={i} number={showLineNumbers ? i + 1 : undefined} content={line} />\n            ))\n          : children}\n      </pre>\n    </ScrollArea>\n  );\n}\n\n\n\"use client\";\n\nimport type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CodeBlockHeaderProps = ComponentProps<\"div\">;\n\nexport function CodeBlockHeader({ className, ref, ...props }: CodeBlockHeaderProps) {\n  return <div ref={ref} className={cn(\"flex items-center justify-between px-4 py-2 border-b border-border bg-border/10\", className)} {...props} />;\n}\n\n\n\"use client\";\n\nimport type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CodeBlockLabelProps = ComponentProps<\"span\">;\n\nexport function CodeBlockLabel({ className, children, ref, ...props }: CodeBlockLabelProps) {\n  return (\n    <span ref={ref} className={cn(\"text-xs text-foreground/60 font-bold uppercase tracking-wider\", className)} {...props}>\n      {children}\n    </span>\n  );\n}\n\n\n\"use client\";\n\nimport type { ComponentProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\n/** @see @diffgazer/registry docs-data CodeBlockToken (base without `className`) */\nexport interface CodeBlockToken {\n  text: string;\n  color?: string;\n  className?: string;\n}\n\nexport type CodeBlockLineType = \"highlight\" | \"added\" | \"removed\";\n\nexport interface CodeBlockLineProps extends Omit<ComponentProps<\"span\">, \"content\"> {\n  number?: number;\n  content: string | CodeBlockToken[];\n  type?: CodeBlockLineType;\n}\n\nexport function CodeBlockLine({ number, content, type, className, ref, ...props }: CodeBlockLineProps) {\n  return (\n    <span ref={ref} className={cn(\"flex\", type === \"highlight\" && \"bg-muted/50\", className)} {...props}>\n      {number != null && (\n        <span aria-hidden=\"true\" className=\"w-8 text-muted-foreground border-r border-border mr-2 text-right pr-1 select-none shrink-0\">\n          {number}\n        </span>\n      )}\n      {(type === \"added\" || type === \"removed\") && (\n        <span className=\"sr-only\">{type === \"added\" ? \"Added: \" : \"Removed: \"}</span>\n      )}\n      <code className={cn(\"whitespace-pre\", type === \"added\" && \"text-success\", type === \"removed\" && \"text-destructive\")}>\n        {typeof content === \"string\"\n          ? content\n          : content.map((token, i) => (\n              <span key={i} style={{ color: token.color }} className={token.className}>\n                {token.text}\n              </span>\n            ))}\n      </code>\n    </span>\n  );\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
+      "content": [
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "use client",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "content": []
+    },
+    {
+      "number": 3,
       "content": [
         {
           "text": "import",
@@ -5556,7 +5606,7 @@
       ]
     },
     {
-      "number": 2,
+      "number": 4,
       "content": [
         {
           "text": "import",
@@ -5625,7 +5675,7 @@
       ]
     },
     {
-      "number": 3,
+      "number": 5,
       "content": [
         {
           "text": "import",
@@ -5694,7 +5744,7 @@
       ]
     },
     {
-      "number": 4,
+      "number": 6,
       "content": [
         {
           "text": "import",
@@ -5763,7 +5813,7 @@
       ]
     },
     {
-      "number": 5,
+      "number": 7,
       "content": [
         {
           "text": "import",
@@ -5864,11 +5914,11 @@
       ]
     },
     {
-      "number": 6,
+      "number": 8,
       "content": []
     },
     {
-      "number": 7,
+      "number": 9,
       "content": [
         {
           "text": "const",
@@ -5925,7 +5975,7 @@
       ]
     },
     {
-      "number": 8,
+      "number": 10,
       "content": [
         {
           "text": "  Content",
@@ -5946,7 +5996,7 @@
       ]
     },
     {
-      "number": 9,
+      "number": 11,
       "content": [
         {
           "text": "  Header",
@@ -5967,7 +6017,7 @@
       ]
     },
     {
-      "number": 10,
+      "number": 12,
       "content": [
         {
           "text": "  Label",
@@ -5988,7 +6038,7 @@
       ]
     },
     {
-      "number": 11,
+      "number": 13,
       "content": [
         {
           "text": "  Line",
@@ -6009,7 +6059,7 @@
       ]
     },
     {
-      "number": 12,
+      "number": 14,
       "content": [
         {
           "text": "}",
@@ -6026,11 +6076,11 @@
       ]
     },
     {
-      "number": 13,
+      "number": 15,
       "content": []
     },
     {
-      "number": 14,
+      "number": 16,
       "content": [
         {
           "text": "export",
@@ -6047,7 +6097,7 @@
       ]
     },
     {
-      "number": 15,
+      "number": 17,
       "content": [
         {
           "text": "  CodeBlock",
@@ -6060,7 +6110,7 @@
       ]
     },
     {
-      "number": 16,
+      "number": 18,
       "content": [
         {
           "text": "  CodeBlockContent",
@@ -6073,7 +6123,7 @@
       ]
     },
     {
-      "number": 17,
+      "number": 19,
       "content": [
         {
           "text": "  CodeBlockHeader",
@@ -6086,7 +6136,7 @@
       ]
     },
     {
-      "number": 18,
+      "number": 20,
       "content": [
         {
           "text": "  CodeBlockLabel",
@@ -6099,52 +6149,10 @@
       ]
     },
     {
-      "number": 19,
-      "content": [
-        {
-          "text": "  CodeBlockLine",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 20,
-      "content": [
-        {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "type",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " CodeBlockProps",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
       "number": 21,
       "content": [
         {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "type",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " CodeBlockContentProps",
+          "text": "  CodeBlockLine",
           "color": "var(--code-variable)"
         },
         {
@@ -6165,7 +6173,7 @@
           "color": "var(--code-keyword)"
         },
         {
-          "text": " CodeBlockHeaderProps",
+          "text": " CodeBlockProps",
           "color": "var(--code-variable)"
         },
         {
@@ -6186,7 +6194,7 @@
           "color": "var(--code-keyword)"
         },
         {
-          "text": " CodeBlockLabelProps",
+          "text": " CodeBlockContentProps",
           "color": "var(--code-variable)"
         },
         {
@@ -6207,7 +6215,7 @@
           "color": "var(--code-keyword)"
         },
         {
-          "text": " CodeBlockLineProps",
+          "text": " CodeBlockHeaderProps",
           "color": "var(--code-variable)"
         },
         {
@@ -6228,7 +6236,7 @@
           "color": "var(--code-keyword)"
         },
         {
-          "text": " CodeBlockToken",
+          "text": " CodeBlockLabelProps",
           "color": "var(--code-variable)"
         },
         {
@@ -6249,7 +6257,7 @@
           "color": "var(--code-keyword)"
         },
         {
-          "text": " CodeBlockLineType",
+          "text": " CodeBlockLineProps",
           "color": "var(--code-variable)"
         },
         {
@@ -6262,21 +6270,63 @@
       "number": 27,
       "content": [
         {
-          "text": "};",
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "type",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " CodeBlockToken",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
           "color": "var(--code-operator)"
         }
       ]
     },
     {
       "number": 28,
-      "content": []
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "type",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " CodeBlockLineType",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
     },
     {
       "number": 29,
-      "content": []
+      "content": [
+        {
+          "text": "};",
+          "color": "var(--code-operator)"
+        }
+      ]
     },
     {
       "number": 30,
+      "content": []
+    },
+    {
+      "number": 31,
+      "content": []
+    },
+    {
+      "number": 32,
       "content": [
         {
           "text": "\"",
@@ -6297,11 +6347,11 @@
       ]
     },
     {
-      "number": 31,
+      "number": 33,
       "content": []
     },
     {
-      "number": 32,
+      "number": 34,
       "content": [
         {
           "text": "import",
@@ -6362,7 +6412,7 @@
       ]
     },
     {
-      "number": 33,
+      "number": 35,
       "content": [
         {
           "text": "import",
@@ -6415,11 +6465,11 @@
       ]
     },
     {
-      "number": 34,
+      "number": 36,
       "content": []
     },
     {
-      "number": 35,
+      "number": 37,
       "content": [
         {
           "text": "export",
@@ -6488,7 +6538,7 @@
       ]
     },
     {
-      "number": 36,
+      "number": 38,
       "content": [
         {
           "text": "  language",
@@ -6513,7 +6563,7 @@
       ]
     },
     {
-      "number": 37,
+      "number": 39,
       "content": [
         {
           "text": "  label",
@@ -6538,7 +6588,7 @@
       ]
     },
     {
-      "number": 38,
+      "number": 40,
       "content": [
         {
           "text": "}",
@@ -6547,11 +6597,11 @@
       ]
     },
     {
-      "number": 39,
+      "number": 41,
       "content": []
     },
     {
-      "number": 40,
+      "number": 42,
       "content": [
         {
           "text": "export",
@@ -6656,7 +6706,7 @@
       ]
     },
     {
-      "number": 41,
+      "number": 43,
       "content": [
         {
           "text": "  ",
@@ -6673,7 +6723,7 @@
       ]
     },
     {
-      "number": 42,
+      "number": 44,
       "content": [
         {
           "text": "    ",
@@ -6926,7 +6976,7 @@
       ]
     },
     {
-      "number": 43,
+      "number": 45,
       "content": [
         {
           "text": "      ",
@@ -6947,7 +6997,7 @@
       ]
     },
     {
-      "number": 44,
+      "number": 46,
       "content": [
         {
           "text": "    ",
@@ -6968,7 +7018,7 @@
       ]
     },
     {
-      "number": 45,
+      "number": 47,
       "content": [
         {
           "text": "  )",
@@ -6981,7 +7031,7 @@
       ]
     },
     {
-      "number": 46,
+      "number": 48,
       "content": [
         {
           "text": "}",
@@ -6990,15 +7040,15 @@
       ]
     },
     {
-      "number": 47,
-      "content": []
-    },
-    {
-      "number": 48,
-      "content": []
-    },
-    {
       "number": 49,
+      "content": []
+    },
+    {
+      "number": 50,
+      "content": []
+    },
+    {
+      "number": 51,
       "content": [
         {
           "text": "\"",
@@ -7019,11 +7069,11 @@
       ]
     },
     {
-      "number": 50,
+      "number": 52,
       "content": []
     },
     {
-      "number": 51,
+      "number": 53,
       "content": [
         {
           "text": "import",
@@ -7084,7 +7134,7 @@
       ]
     },
     {
-      "number": 52,
+      "number": 54,
       "content": [
         {
           "text": "import",
@@ -7137,7 +7187,7 @@
       ]
     },
     {
-      "number": 53,
+      "number": 55,
       "content": [
         {
           "text": "import",
@@ -7190,7 +7240,7 @@
       ]
     },
     {
-      "number": 54,
+      "number": 56,
       "content": [
         {
           "text": "import",
@@ -7243,11 +7293,11 @@
       ]
     },
     {
-      "number": 55,
+      "number": 57,
       "content": []
     },
     {
-      "number": 56,
+      "number": 58,
       "content": [
         {
           "text": "export",
@@ -7316,7 +7366,7 @@
       ]
     },
     {
-      "number": 57,
+      "number": 59,
       "content": [
         {
           "text": "  showLineNumbers",
@@ -7341,7 +7391,7 @@
       ]
     },
     {
-      "number": 58,
+      "number": 60,
       "content": [
         {
           "text": "}",
@@ -7350,11 +7400,11 @@
       ]
     },
     {
-      "number": 59,
+      "number": 61,
       "content": []
     },
     {
-      "number": 60,
+      "number": 62,
       "content": [
         {
           "text": "export",
@@ -7383,7 +7433,7 @@
       ]
     },
     {
-      "number": 61,
+      "number": 63,
       "content": [
         {
           "text": "  showLineNumbers ",
@@ -7408,7 +7458,7 @@
       ]
     },
     {
-      "number": 62,
+      "number": 64,
       "content": [
         {
           "text": "  className",
@@ -7421,7 +7471,7 @@
       ]
     },
     {
-      "number": 63,
+      "number": 65,
       "content": [
         {
           "text": "  children",
@@ -7434,7 +7484,7 @@
       ]
     },
     {
-      "number": 64,
+      "number": 66,
       "content": [
         {
           "text": "  ref",
@@ -7447,7 +7497,7 @@
       ]
     },
     {
-      "number": 65,
+      "number": 67,
       "content": [
         {
           "text": "  ",
@@ -7480,7 +7530,7 @@
       ]
     },
     {
-      "number": 66,
+      "number": 68,
       "content": [
         {
           "text": "  ",
@@ -7513,7 +7563,7 @@
       ]
     },
     {
-      "number": 67,
+      "number": 69,
       "content": [
         {
           "text": "  ",
@@ -7530,7 +7580,7 @@
       ]
     },
     {
-      "number": 68,
+      "number": 70,
       "content": [
         {
           "text": "}:",
@@ -7559,7 +7609,7 @@
       ]
     },
     {
-      "number": 69,
+      "number": 71,
       "content": [
         {
           "text": "  ",
@@ -7576,7 +7626,7 @@
       ]
     },
     {
-      "number": 70,
+      "number": 72,
       "content": [
         {
           "text": "    ",
@@ -7593,7 +7643,7 @@
       ]
     },
     {
-      "number": 71,
+      "number": 73,
       "content": [
         {
           "text": "      ",
@@ -7622,7 +7672,7 @@
       ]
     },
     {
-      "number": 72,
+      "number": 74,
       "content": [
         {
           "text": "      ",
@@ -7647,7 +7697,7 @@
       ]
     },
     {
-      "number": 73,
+      "number": 75,
       "content": [
         {
           "text": "      ",
@@ -7672,7 +7722,7 @@
       ]
     },
     {
-      "number": 74,
+      "number": 76,
       "content": [
         {
           "text": "      ",
@@ -7745,7 +7795,7 @@
       ]
     },
     {
-      "number": 75,
+      "number": 77,
       "content": [
         {
           "text": "      ",
@@ -7770,7 +7820,7 @@
       ]
     },
     {
-      "number": 76,
+      "number": 78,
       "content": [
         {
           "text": "      ",
@@ -7819,7 +7869,7 @@
       ]
     },
     {
-      "number": 77,
+      "number": 79,
       "content": [
         {
           "text": "      ",
@@ -7840,7 +7890,7 @@
       ]
     },
     {
-      "number": 78,
+      "number": 80,
       "content": [
         {
           "text": "    ",
@@ -7853,7 +7903,7 @@
       ]
     },
     {
-      "number": 79,
+      "number": 81,
       "content": [
         {
           "text": "      ",
@@ -7898,7 +7948,7 @@
       ]
     },
     {
-      "number": 80,
+      "number": 82,
       "content": [
         {
           "text": "        ",
@@ -7935,7 +7985,7 @@
       ]
     },
     {
-      "number": 81,
+      "number": 83,
       "content": [
         {
           "text": "          ",
@@ -8028,7 +8078,7 @@
       ]
     },
     {
-      "number": 82,
+      "number": 84,
       "content": [
         {
           "text": "              ",
@@ -8149,7 +8199,7 @@
       ]
     },
     {
-      "number": 83,
+      "number": 85,
       "content": [
         {
           "text": "            ))",
@@ -8158,7 +8208,7 @@
       ]
     },
     {
-      "number": 84,
+      "number": 86,
       "content": [
         {
           "text": "          ",
@@ -8179,7 +8229,7 @@
       ]
     },
     {
-      "number": 85,
+      "number": 87,
       "content": [
         {
           "text": "      ",
@@ -8200,7 +8250,7 @@
       ]
     },
     {
-      "number": 86,
+      "number": 88,
       "content": [
         {
           "text": "    ",
@@ -8221,7 +8271,7 @@
       ]
     },
     {
-      "number": 87,
+      "number": 89,
       "content": [
         {
           "text": "  )",
@@ -8234,7 +8284,7 @@
       ]
     },
     {
-      "number": 88,
+      "number": 90,
       "content": [
         {
           "text": "}",
@@ -8243,15 +8293,15 @@
       ]
     },
     {
-      "number": 89,
-      "content": []
-    },
-    {
-      "number": 90,
-      "content": []
-    },
-    {
       "number": 91,
+      "content": []
+    },
+    {
+      "number": 92,
+      "content": []
+    },
+    {
+      "number": 93,
       "content": [
         {
           "text": "\"",
@@ -8272,11 +8322,11 @@
       ]
     },
     {
-      "number": 92,
+      "number": 94,
       "content": []
     },
     {
-      "number": 93,
+      "number": 95,
       "content": [
         {
           "text": "import",
@@ -8337,7 +8387,7 @@
       ]
     },
     {
-      "number": 94,
+      "number": 96,
       "content": [
         {
           "text": "import",
@@ -8390,11 +8440,11 @@
       ]
     },
     {
-      "number": 95,
+      "number": 97,
       "content": []
     },
     {
-      "number": 96,
+      "number": 98,
       "content": [
         {
           "text": "export",
@@ -8455,11 +8505,11 @@
       ]
     },
     {
-      "number": 97,
+      "number": 99,
       "content": []
     },
     {
-      "number": 98,
+      "number": 100,
       "content": [
         {
           "text": "export",
@@ -8540,7 +8590,7 @@
       ]
     },
     {
-      "number": 99,
+      "number": 101,
       "content": [
         {
           "text": "  ",
@@ -8653,7 +8703,7 @@
       ]
     },
     {
-      "number": 100,
+      "number": 102,
       "content": [
         {
           "text": "}",
@@ -8662,15 +8712,15 @@
       ]
     },
     {
-      "number": 101,
-      "content": []
-    },
-    {
-      "number": 102,
-      "content": []
-    },
-    {
       "number": 103,
+      "content": []
+    },
+    {
+      "number": 104,
+      "content": []
+    },
+    {
+      "number": 105,
       "content": [
         {
           "text": "\"",
@@ -8691,11 +8741,11 @@
       ]
     },
     {
-      "number": 104,
+      "number": 106,
       "content": []
     },
     {
-      "number": 105,
+      "number": 107,
       "content": [
         {
           "text": "import",
@@ -8756,7 +8806,7 @@
       ]
     },
     {
-      "number": 106,
+      "number": 108,
       "content": [
         {
           "text": "import",
@@ -8809,11 +8859,11 @@
       ]
     },
     {
-      "number": 107,
+      "number": 109,
       "content": []
     },
     {
-      "number": 108,
+      "number": 110,
       "content": [
         {
           "text": "export",
@@ -8874,11 +8924,11 @@
       ]
     },
     {
-      "number": 109,
+      "number": 111,
       "content": []
     },
     {
-      "number": 110,
+      "number": 112,
       "content": [
         {
           "text": "export",
@@ -8967,7 +9017,7 @@
       ]
     },
     {
-      "number": 111,
+      "number": 113,
       "content": [
         {
           "text": "  ",
@@ -8984,7 +9034,7 @@
       ]
     },
     {
-      "number": 112,
+      "number": 114,
       "content": [
         {
           "text": "    ",
@@ -9081,7 +9131,7 @@
       ]
     },
     {
-      "number": 113,
+      "number": 115,
       "content": [
         {
           "text": "      ",
@@ -9102,7 +9152,7 @@
       ]
     },
     {
-      "number": 114,
+      "number": 116,
       "content": [
         {
           "text": "    ",
@@ -9123,7 +9173,7 @@
       ]
     },
     {
-      "number": 115,
+      "number": 117,
       "content": [
         {
           "text": "  )",
@@ -9136,7 +9186,7 @@
       ]
     },
     {
-      "number": 116,
+      "number": 118,
       "content": [
         {
           "text": "}",
@@ -9145,15 +9195,15 @@
       ]
     },
     {
-      "number": 117,
-      "content": []
-    },
-    {
-      "number": 118,
-      "content": []
-    },
-    {
       "number": 119,
+      "content": []
+    },
+    {
+      "number": 120,
+      "content": []
+    },
+    {
+      "number": 121,
       "content": [
         {
           "text": "\"",
@@ -9174,11 +9224,11 @@
       ]
     },
     {
-      "number": 120,
+      "number": 122,
       "content": []
     },
     {
-      "number": 121,
+      "number": 123,
       "content": [
         {
           "text": "import",
@@ -9239,7 +9289,7 @@
       ]
     },
     {
-      "number": 122,
+      "number": 124,
       "content": [
         {
           "text": "import",
@@ -9292,11 +9342,11 @@
       ]
     },
     {
-      "number": 123,
+      "number": 125,
       "content": []
     },
     {
-      "number": 124,
+      "number": 126,
       "content": [
         {
           "text": "/**",
@@ -9325,7 +9375,7 @@
       ]
     },
     {
-      "number": 125,
+      "number": 127,
       "content": [
         {
           "text": "export",
@@ -9358,7 +9408,7 @@
       ]
     },
     {
-      "number": 126,
+      "number": 128,
       "content": [
         {
           "text": "  text",
@@ -9383,7 +9433,7 @@
       ]
     },
     {
-      "number": 127,
+      "number": 129,
       "content": [
         {
           "text": "  color",
@@ -9408,7 +9458,7 @@
       ]
     },
     {
-      "number": 128,
+      "number": 130,
       "content": [
         {
           "text": "  className",
@@ -9433,7 +9483,7 @@
       ]
     },
     {
-      "number": 129,
+      "number": 131,
       "content": [
         {
           "text": "}",
@@ -9442,11 +9492,11 @@
       ]
     },
     {
-      "number": 130,
+      "number": 132,
       "content": []
     },
     {
-      "number": 131,
+      "number": 133,
       "content": [
         {
           "text": "export",
@@ -9547,11 +9597,11 @@
       ]
     },
     {
-      "number": 132,
+      "number": 134,
       "content": []
     },
     {
-      "number": 133,
+      "number": 135,
       "content": [
         {
           "text": "export",
@@ -9648,7 +9698,7 @@
       ]
     },
     {
-      "number": 134,
+      "number": 136,
       "content": [
         {
           "text": "  number",
@@ -9673,7 +9723,7 @@
       ]
     },
     {
-      "number": 135,
+      "number": 137,
       "content": [
         {
           "text": "  content",
@@ -9718,7 +9768,7 @@
       ]
     },
     {
-      "number": 136,
+      "number": 138,
       "content": [
         {
           "text": "  type",
@@ -9743,7 +9793,7 @@
       ]
     },
     {
-      "number": 137,
+      "number": 139,
       "content": [
         {
           "text": "}",
@@ -9752,11 +9802,11 @@
       ]
     },
     {
-      "number": 138,
+      "number": 140,
       "content": []
     },
     {
-      "number": 139,
+      "number": 141,
       "content": [
         {
           "text": "export",
@@ -9861,7 +9911,7 @@
       ]
     },
     {
-      "number": 140,
+      "number": 142,
       "content": [
         {
           "text": "  ",
@@ -9878,7 +9928,7 @@
       ]
     },
     {
-      "number": 141,
+      "number": 143,
       "content": [
         {
           "text": "    ",
@@ -10027,7 +10077,7 @@
       ]
     },
     {
-      "number": 142,
+      "number": 144,
       "content": [
         {
           "text": "      ",
@@ -10068,7 +10118,7 @@
       ]
     },
     {
-      "number": 143,
+      "number": 145,
       "content": [
         {
           "text": "        ",
@@ -10137,7 +10187,7 @@
       ]
     },
     {
-      "number": 144,
+      "number": 146,
       "content": [
         {
           "text": "          ",
@@ -10158,7 +10208,7 @@
       ]
     },
     {
-      "number": 145,
+      "number": 147,
       "content": [
         {
           "text": "        ",
@@ -10179,7 +10229,7 @@
       ]
     },
     {
-      "number": 146,
+      "number": 148,
       "content": [
         {
           "text": "      )",
@@ -10192,7 +10242,7 @@
       ]
     },
     {
-      "number": 147,
+      "number": 149,
       "content": [
         {
           "text": "      ",
@@ -10273,7 +10323,7 @@
       ]
     },
     {
-      "number": 148,
+      "number": 150,
       "content": [
         {
           "text": "        ",
@@ -10402,7 +10452,7 @@
       ]
     },
     {
-      "number": 149,
+      "number": 151,
       "content": [
         {
           "text": "      )",
@@ -10415,7 +10465,7 @@
       ]
     },
     {
-      "number": 150,
+      "number": 152,
       "content": [
         {
           "text": "      ",
@@ -10576,7 +10626,7 @@
       ]
     },
     {
-      "number": 151,
+      "number": 153,
       "content": [
         {
           "text": "        ",
@@ -10613,7 +10663,7 @@
       ]
     },
     {
-      "number": 152,
+      "number": 154,
       "content": [
         {
           "text": "          ",
@@ -10630,7 +10680,7 @@
       ]
     },
     {
-      "number": 153,
+      "number": 155,
       "content": [
         {
           "text": "          ",
@@ -10695,7 +10745,7 @@
       ]
     },
     {
-      "number": 154,
+      "number": 156,
       "content": [
         {
           "text": "              ",
@@ -10800,7 +10850,7 @@
       ]
     },
     {
-      "number": 155,
+      "number": 157,
       "content": [
         {
           "text": "                ",
@@ -10829,7 +10879,7 @@
       ]
     },
     {
-      "number": 156,
+      "number": 158,
       "content": [
         {
           "text": "              ",
@@ -10850,7 +10900,7 @@
       ]
     },
     {
-      "number": 157,
+      "number": 159,
       "content": [
         {
           "text": "            ))",
@@ -10863,7 +10913,7 @@
       ]
     },
     {
-      "number": 158,
+      "number": 160,
       "content": [
         {
           "text": "      ",
@@ -10884,7 +10934,7 @@
       ]
     },
     {
-      "number": 159,
+      "number": 161,
       "content": [
         {
           "text": "    ",
@@ -10905,7 +10955,7 @@
       ]
     },
     {
-      "number": 160,
+      "number": 162,
       "content": [
         {
           "text": "  )",
@@ -10918,7 +10968,7 @@
       ]
     },
     {
-      "number": 161,
+      "number": 163,
       "content": [
         {
           "text": "}",
@@ -10927,7 +10977,7 @@
       ]
     },
     {
-      "number": 162,
+      "number": 164,
       "content": []
     }
   ],

@@ -62,7 +62,11 @@ function toFileStem(path: string): string {
 }
 
 function isHookFilePath(path: string): boolean {
-  return path.startsWith("hooks/") || path.startsWith("src/hooks/");
+  const relativePath = toHookRelativePath(path);
+  return (
+    !relativePath.startsWith("internal/") &&
+    (path.startsWith("hooks/") || path.startsWith("src/hooks/"))
+  );
 }
 
 function validateAndCollectFiles(

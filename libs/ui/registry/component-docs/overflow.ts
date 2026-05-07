@@ -4,13 +4,13 @@ export const overflowDoc: ComponentDoc = {
   description:
     "Container-aware overflow handling for items (dynamic fitting with indicator) and text (line clamping with auto-tooltip when truncated).",
   anatomy: [
-    { name: "Overflow", indent: 0, note: "Root — items mode (default) or text mode (with lines prop)" },
+    { name: "Overflow", indent: 0, note: "Root — text mode by default; set mode=\"items\" for fitting child items" },
   ],
   notes: [
     {
       title: "Two Modes",
       content:
-        "Items mode (default): measures children against container width via ResizeObserver, shows what fits plus an overflow indicator. Text mode (lines prop): CSS truncation with useOverflow hook detecting actual overflow + Tooltip that only appears when content is truly clipped.",
+        "Text mode is the default: CSS truncation with useOverflow hook detecting actual overflow + Tooltip that only appears when content is truly clipped. Items mode requires mode=\"items\" and measures children against container width via ResizeObserver, showing what fits plus an overflow indicator.",
     },
     {
       title: "Items Mode",

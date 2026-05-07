@@ -5,6 +5,10 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
+    "diffgazer#build": {
+      "dependsOn": ["^build", "@diffgazer/web#build"],
+      "outputs": ["dist/**"]
+    },
     "type-check": {
       "dependsOn": ["^type-check"]
     },

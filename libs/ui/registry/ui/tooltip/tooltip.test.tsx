@@ -104,19 +104,35 @@ describe("Tooltip trigger semantics", () => {
     expect(screen.getAllByRole("button")).toHaveLength(1)
   })
 
-  it("wraps a disabled native trigger with a keyboard-activatable proxy", async () => {
-    vi.useRealTimers()
+  it("does not expose passive text as a button", () => {
+    render(
+      <Tooltip content="Text tip" delayMs={0}>
+        Passive text
+      </Tooltip>
+    )
+
+    const trigger = screen.getByText("Passive text")
+    expect(screen.queryByRole("button", { name: "Passive text" })).not.toBeInTheDocument()
+
+    fireEvent.mouseEnter(trigger)
+    expect(screen.getByRole("tooltip")).toBeInTheDocument()
+  })
+
+  it("wraps a disabled native trigger without replacing its semantics", () => {
     render(
       <Tooltip content="Disabled tip" delayMs={0}>
         <button disabled>Unavailable</button>
       </Tooltip>
     )
 
-    const proxy = screen.getByRole("button", { name: "Unavailable" })
-    expect(proxy.tagName).toBe("SPAN")
+    const button = screen.getByRole("button", { name: "Unavailable" })
+    const wrapper = button.parentElement as HTMLElement
+    expect(button).toBeDisabled()
+    expect(screen.getAllByRole("button")).toHaveLength(1)
+    expect(wrapper).not.toHaveAttribute("role")
+    expect(wrapper).not.toHaveAttribute("tabindex")
 
-    proxy.focus()
-    await userEvent.keyboard("{Enter}")
+    fireEvent.mouseEnter(wrapper)
     expect(screen.getByRole("tooltip")).toBeInTheDocument()
   })
 })

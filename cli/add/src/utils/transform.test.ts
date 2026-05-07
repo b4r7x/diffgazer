@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import test, { describe } from "node:test";
-import { transformImports, handleRscDirective, rewriteLocalImportsForKeysPackage } from "./transform.js";
+import {
+  transformImports,
+  handleRscDirective,
+  rewriteLocalImportsForKeysPackage,
+  rewriteRelativeJsExtensionsForCopy,
+} from "./transform.js";
 
 const aliases = {
   components: "@/components/ui",
@@ -54,10 +59,10 @@ describe("transformImports", () => {
 });
 
 describe("handleRscDirective", () => {
-  test("strips 'use client' when rsc is false", () => {
+  test("preserves existing 'use client' when rsc is false", () => {
     const input = `"use client";\n\nexport function Foo() {}`;
     const result = handleRscDirective(input, true, false);
-    assert.equal(result, "export function Foo() {}");
+    assert.equal(result, input);
   });
 
   test("preserves 'use client' when rsc is true and isClient", () => {
@@ -70,6 +75,29 @@ describe("handleRscDirective", () => {
     const input = `export function Foo() {}`;
     const result = handleRscDirective(input, false, true);
     assert.ok(!result.includes("use client"));
+  });
+});
+
+describe("rewriteRelativeJsExtensionsForCopy", () => {
+  test("removes .js from relative import specifiers for copied source", () => {
+    const input = [
+      `import { parseDiff } from "./parse.js";`,
+      `import type { DiffHunk } from "../diff/parse.js";`,
+      `export { computeDiff } from "./compute.js";`,
+    ].join("\n");
+
+    const result = rewriteRelativeJsExtensionsForCopy(input);
+
+    assert.equal(result, [
+      `import { parseDiff } from "./parse";`,
+      `import type { DiffHunk } from "../diff/parse";`,
+      `export { computeDiff } from "./compute";`,
+    ].join("\n"));
+  });
+
+  test("leaves package imports unchanged", () => {
+    const input = `import { Button } from "@diffgazer/ui/components/button";`;
+    assert.equal(rewriteRelativeJsExtensionsForCopy(input), input);
   });
 });
 

@@ -2,11 +2,24 @@
 
 import { createContext, useContext } from "react";
 
+function encodeIdPart(value: string): string {
+  return encodeURIComponent(value);
+}
+
+export function getTabTriggerId(tabsId: string, value: string): string {
+  return `${tabsId}-tab-${encodeIdPart(value)}`;
+}
+
+export function getTabPanelId(tabsId: string, value: string): string {
+  return `${tabsId}-tabpanel-${encodeIdPart(value)}`;
+}
+
 export interface TabsContextValue {
   tabsId: string;
   value: string;
   onValueChange: (value: string) => void;
-  registerTab: (value: string) => () => void;
+  panelValues: string[];
+  triggerValues: string[];
   orientation: "horizontal" | "vertical";
   variant: "default" | "underline";
   activationMode: "automatic" | "manual";

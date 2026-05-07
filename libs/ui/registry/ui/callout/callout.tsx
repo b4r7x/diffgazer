@@ -33,15 +33,23 @@ export interface CalloutProps extends HTMLAttributes<HTMLDivElement> {
   defaultVisible?: boolean;
   onVisibleChange?: (visible: boolean) => void;
   layout?: CalloutLayout;
+  /** Adds live-region semantics. Error callouts are alerts by default. */
+  live?: boolean;
   ref?: Ref<HTMLDivElement>;
 }
 
 const variantRole: Record<CalloutVariant, string | undefined> = {
-  info: undefined,
+  info: "status",
   warning: "status",
   error: "alert",
   success: "status",
 };
+
+function getRole(variant: CalloutVariant, live: boolean): string | undefined {
+  if (variant === "error") return "alert";
+  if (live) return variantRole[variant];
+  return undefined;
+}
 
 export function Callout({
   className,
@@ -50,6 +58,7 @@ export function Callout({
   defaultVisible,
   onVisibleChange,
   layout = "column",
+  live = false,
   ref,
   children,
   ...props
@@ -69,11 +78,13 @@ export function Callout({
 
   if (!visible) return null;
 
+  const role = getRole(variant, live);
+
   return (
     <CalloutContext value={contextValue}>
       <div
         ref={ref}
-        role={variantRole[variant]}
+        role={role}
         className={cn(
           calloutVariants({ variant }),
           layoutClasses[layout],

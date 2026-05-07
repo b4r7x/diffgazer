@@ -1,6 +1,15 @@
 "use client";
 
-import { useRef, type ComponentPropsWithoutRef, type KeyboardEvent, type ReactNode, type Ref } from "react";
+import {
+  useMemo,
+  useRef,
+  type ComponentPropsWithoutRef,
+  type AnimationEvent,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+  type Ref,
+} from "react";
 import { cn } from "@/lib/utils";
 import { composeRefs } from "@/lib/compose-refs";
 import { Portal } from "../shared/portal";
@@ -12,13 +21,13 @@ import {
   type FloatingSide,
   type FloatingAlign,
 } from "@/hooks/use-floating-position";
-import { usePopoverContext } from "./popover-context";
+import { usePopoverContext, type PopoverPopupRole } from "./popover-context";
 import { useAutoFocus } from "./use-auto-focus";
-import { FOCUSABLE_SELECTOR } from "@/lib/focus";
 
 export interface PopoverContentProps
   extends Omit<ComponentPropsWithoutRef<"div">, "children" | "id" | "role" | "style"> {
   children: ReactNode;
+  role?: PopoverPopupRole;
   side?: FloatingSide;
   align?: FloatingAlign;
   sideOffset?: number;
@@ -40,14 +49,27 @@ export function PopoverContent({
   avoidCollisions = true,
   collisionPadding = 8,
   className,
+  role,
   autoFocus = true,
   "aria-label": ariaLabel,
   "aria-labelledby": ariaLabelledBy,
   tabIndex,
   ref,
+  onMouseEnter,
+  onMouseLeave,
+  onKeyDown,
+  onAnimationEnd: externalOnAnimationEnd,
   ...rest
 }: PopoverContentProps) {
-  const { open, triggerRef, popoverId, triggerMode, onOpenChange, onContentEnter, onContentLeave } =
+  const {
+    open,
+    triggerRef,
+    popoverId,
+    triggerMode,
+    onOpenChange,
+    onContentEnter,
+    onContentLeave,
+  } =
     usePopoverContext();
   const presenceRef = useRef<HTMLDivElement>(null);
   const { present, onAnimationEnd } = usePresence({ open, ref: presenceRef });
@@ -65,6 +87,18 @@ export function PopoverContent({
   const portalContainer = usePortalContainer();
   const isHover = triggerMode === "hover";
   const isClick = triggerMode === "click";
+  const contentRole = isHover ? "tooltip" : role;
+  const hasAccessibleName = Boolean(ariaLabel || ariaLabelledBy);
+  const isDialog = contentRole === "dialog";
+  const triggerExcludeRefs = useMemo(() => [triggerRef], [triggerRef]);
+  const escapeKeyOptions = useMemo(
+    () => ({ ref: contentRef, excludeRefs: triggerExcludeRefs }),
+    [contentRef, triggerExcludeRefs],
+  );
+
+  if (isDialog && !hasAccessibleName) {
+    throw new Error("Popover.Content with role=\"dialog\" requires aria-label or aria-labelledby.");
+  }
 
   useOutsideClick(
     contentRef,
@@ -73,7 +107,7 @@ export function PopoverContent({
       triggerRef.current?.focus();
     },
     open && isClick,
-    [triggerRef],
+    triggerExcludeRefs,
   );
 
   useEscapeKey((e) => {
@@ -81,38 +115,35 @@ export function PopoverContent({
     e.preventDefault();
     onOpenChange(false);
     triggerRef.current?.focus();
-  }, open, { ref: contentRef, excludeRefs: [triggerRef] });
+  }, open, escapeKeyOptions);
 
-  useAutoFocus(contentRef, open && !isHover && autoFocus);
+  useAutoFocus(contentRef, open && isDialog && autoFocus);
+
+  const handleMouseEnter = (e: MouseEvent<HTMLDivElement>) => {
+    onMouseEnter?.(e);
+    if (isHover) onContentEnter();
+  };
+
+  const handleMouseLeave = (e: MouseEvent<HTMLDivElement>) => {
+    onMouseLeave?.(e);
+    if (isHover) onContentLeave();
+  };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    onKeyDown?.(e);
+    if (e.defaultPrevented) return;
+
     if (e.key === "Escape") {
       e.stopPropagation();
       e.preventDefault();
       onOpenChange(false);
       triggerRef.current?.focus();
-      return;
     }
+  };
 
-    if (!isClick) return;
-    if (e.key !== "Tab") return;
-
-    const el = contentRef.current;
-    if (!el) return;
-
-    const focusable = Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
-    if (focusable.length === 0) return;
-
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-
-    if (e.shiftKey && document.activeElement === first) {
-      e.preventDefault();
-      last.focus();
-    } else if (!e.shiftKey && document.activeElement === last) {
-      e.preventDefault();
-      first.focus();
-    }
+  const handleAnimationEnd = (e: AnimationEvent<HTMLDivElement>) => {
+    externalOnAnimationEnd?.(e);
+    onAnimationEnd(e);
   };
 
   if (!present) return null;
@@ -123,17 +154,17 @@ export function PopoverContent({
         {...rest}
         ref={composeRefs(presenceRef, contentRef, ref)}
         id={popoverId}
-        role={isHover ? "tooltip" : "dialog"}
+        role={contentRole}
         aria-label={ariaLabel}
         aria-labelledby={ariaLabelledBy}
-        tabIndex={tabIndex ?? (isHover ? undefined : -1)}
+        tabIndex={tabIndex ?? (isDialog ? -1 : undefined)}
         data-state={open ? "open" : "closed"}
         data-side={position?.side}
         data-align={position?.align}
-        onMouseEnter={isHover ? onContentEnter : undefined}
-        onMouseLeave={isHover ? onContentLeave : undefined}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         onKeyDown={handleKeyDown}
-        onAnimationEnd={onAnimationEnd}
+        onAnimationEnd={handleAnimationEnd}
         className={cn(
           "fixed z-9999",
           "data-[state=open]:animate-[slide-in_0.15s_ease-out]",

@@ -202,9 +202,10 @@ export function useFloatingPosition({
     const content = contentRef.current;
     if (!trigger || !content) return;
 
-    const observer = new ResizeObserver(update);
-    observer.observe(trigger);
-    observer.observe(content);
+    const ResizeObserverCtor = globalThis.ResizeObserver;
+    const observer = typeof ResizeObserverCtor === "function" ? new ResizeObserverCtor(update) : null;
+    observer?.observe(trigger);
+    observer?.observe(content);
 
     const scrollParents: Element[] = [];
     let el: Element | null = trigger;
@@ -222,7 +223,7 @@ export function useFloatingPosition({
     window.addEventListener("resize", update);
 
     return () => {
-      observer.disconnect();
+      observer?.disconnect();
       for (const parent of scrollParents) {
         parent.removeEventListener("scroll", update);
       }

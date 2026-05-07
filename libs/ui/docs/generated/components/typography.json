@@ -98,7 +98,7 @@
       ]
     },
     "registry/ui/typography/typography.tsx": {
-      "raw": "import type { HTMLAttributes, Ref } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const typographyVariants = cva(\"font-mono text-muted-foreground\", {\n  variants: {\n    variant: {\n      default: \"leading-relaxed\",\n      prose: \"leading-loose\",\n      compact: \"leading-normal\",\n    },\n    size: {\n      xs: \"text-xs\",\n      sm: \"text-sm\",\n      base: \"text-base\",\n    },\n    lineClamp: {\n      1: \"line-clamp-1\",\n      2: \"line-clamp-2\",\n      3: \"line-clamp-3\",\n      4: \"line-clamp-4\",\n      5: \"line-clamp-5\",\n      6: \"line-clamp-6\",\n    },\n  },\n  defaultVariants: {\n    variant: \"default\",\n    size: \"sm\",\n  },\n});\n\nexport interface TypographyProps\n  extends HTMLAttributes<HTMLElement>,\n    VariantProps<typeof typographyVariants> {\n  as?: \"div\" | \"p\" | \"span\";\n  ref?: Ref<HTMLElement>;\n}\n\nexport function Typography({\n  className,\n  variant,\n  size,\n  lineClamp,\n  as: Tag = \"div\",\n  ref,\n  ...rest\n}: TypographyProps) {\n  return (\n    <Tag\n      ref={ref as Ref<never>}\n      className={cn(typographyVariants({ variant, size, lineClamp }), className)}\n      {...rest}\n    />\n  );\n}\n",
+      "raw": "import type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const typographyVariants = cva(\"font-mono text-muted-foreground\", {\n  variants: {\n    variant: {\n      default: \"leading-relaxed\",\n      prose: \"leading-loose\",\n      compact: \"leading-normal\",\n    },\n    size: {\n      xs: \"text-xs\",\n      sm: \"text-sm\",\n      base: \"text-base\",\n    },\n    lineClamp: {\n      1: \"line-clamp-1\",\n      2: \"line-clamp-2\",\n      3: \"line-clamp-3\",\n      4: \"line-clamp-4\",\n      5: \"line-clamp-5\",\n      6: \"line-clamp-6\",\n    },\n  },\n  defaultVariants: {\n    variant: \"default\",\n    size: \"sm\",\n  },\n});\n\ntype TypographyOwnProps = VariantProps<typeof typographyVariants>;\ntype TypographyElement = \"div\" | \"p\" | \"span\";\ntype TypographyElementProps<T extends TypographyElement> = Omit<\n  ComponentPropsWithRef<T>,\n  keyof TypographyOwnProps | \"as\"\n> &\n  TypographyOwnProps & {\n    as: T;\n  };\n\nexport type TypographyProps =\n  | (Omit<TypographyElementProps<\"div\">, \"as\"> & { as?: \"div\" })\n  | TypographyElementProps<\"p\">\n  | TypographyElementProps<\"span\">;\n\nexport function Typography(props: TypographyProps) {\n  const { className, variant, size, lineClamp } = props;\n  const resolvedClassName = cn(typographyVariants({ variant, size, lineClamp }), className);\n\n  if (props.as === \"p\") {\n    const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, lineClamp: omittedLineClamp, ...pProps } = props;\n    return <p ref={ref} className={resolvedClassName} {...pProps} />;\n  }\n  if (props.as === \"span\") {\n    const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, lineClamp: omittedLineClamp, ...spanProps } = props;\n    return <span ref={ref} className={resolvedClassName} {...spanProps} />;\n  }\n\n  const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, lineClamp: omittedLineClamp, ...divProps } = props;\n  return (\n    <div ref={ref} className={resolvedClassName} {...divProps} />\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -124,15 +124,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": " HTMLAttributes",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " Ref ",
+              "text": " ComponentPropsWithRef ",
               "color": "var(--code-variable)"
             },
             {
@@ -1045,7 +1037,7 @@
           "number": 32,
           "content": [
             {
-              "text": "export",
+              "text": "type",
               "color": "var(--code-keyword)"
             },
             {
@@ -1053,57 +1045,19 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "interface",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "TypographyProps",
-              "color": "var(--code-function)"
-            }
-          ]
-        },
-        {
-          "number": 33,
-          "content": [
-            {
-              "text": "  ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "extends",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "HTMLAttributes",
+              "text": "TypographyOwnProps",
               "color": "var(--code-function)"
             },
             {
-              "text": "<",
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
               "color": "var(--code-operator)"
             },
             {
-              "text": "HTMLElement",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": ">,",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 34,
-          "content": [
-            {
-              "text": "    ",
+              "text": " ",
               "color": "var(--code-variable)"
             },
             {
@@ -1119,28 +1073,32 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": ">",
+              "text": ">;",
               "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 33,
+          "content": [
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
             },
             {
               "text": " ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "{",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 35,
-          "content": [
+              "text": "TypographyElement",
+              "color": "var(--code-function)"
+            },
             {
-              "text": "  as",
+              "text": " ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "?:",
+              "text": "=",
               "color": "var(--code-operator)"
             },
             {
@@ -1214,10 +1172,346 @@
           ]
         },
         {
+          "number": 34,
+          "content": [
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "TypographyElementProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "T",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "extends",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "TypographyElement",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Omit",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 35,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ComponentPropsWithRef",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "T",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ">,",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
           "number": 36,
           "content": [
             {
-              "text": "  ref",
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "keyof",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "TypographyOwnProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 37,
+          "content": [
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 38,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "TypographyOwnProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 39,
+          "content": [
+            {
+              "text": "    as",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "T",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 40,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "};",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 41,
+          "content": []
+        },
+        {
+          "number": 42,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "TypographyProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 43,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Omit",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "TypographyElementProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">,",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " as",
               "color": "var(--code-variable)"
             },
             {
@@ -1229,7 +1523,48 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "Ref",
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 44,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "TypographyElementProps",
               "color": "var(--code-function)"
             },
             {
@@ -1237,8 +1572,57 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "HTMLElement",
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "p",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 45,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "TypographyElementProps",
               "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "span",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
             },
             {
               "text": ">;",
@@ -1247,20 +1631,11 @@
           ]
         },
         {
-          "number": 37,
-          "content": [
-            {
-              "text": "}",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 38,
+          "number": 46,
           "content": []
         },
         {
-          "number": 39,
+          "number": 47,
           "content": [
             {
               "text": "export",
@@ -1283,139 +1658,15 @@
               "color": "var(--code-function)"
             },
             {
-              "text": "({",
+              "text": "(",
               "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 40,
-          "content": [
-            {
-              "text": "  className",
-              "color": "var(--code-variable)"
             },
             {
-              "text": ",",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 41,
-          "content": [
-            {
-              "text": "  variant",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 42,
-          "content": [
-            {
-              "text": "  size",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 43,
-          "content": [
-            {
-              "text": "  lineClamp",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 44,
-          "content": [
-            {
-              "text": "  as",
+              "text": "props",
               "color": "var(--code-variable)"
             },
             {
               "text": ":",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " Tag ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "=",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "div",
-              "color": "var(--code-tag)"
-            },
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 45,
-          "content": [
-            {
-              "text": "  ref",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 46,
-          "content": [
-            {
-              "text": "  ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "...",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "rest",
-              "color": "var(--code-variable)"
-            }
-          ]
-        },
-        {
-          "number": 47,
-          "content": [
-            {
-              "text": "}:",
               "color": "var(--code-operator)"
             },
             {
@@ -1448,53 +1699,7 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "return",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " (",
-              "color": "var(--code-variable)"
-            }
-          ]
-        },
-        {
-          "number": 49,
-          "content": [
-            {
-              "text": "    ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "<",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "Tag",
-              "color": "var(--code-number)"
-            }
-          ]
-        },
-        {
-          "number": 50,
-          "content": [
-            {
-              "text": "      ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "ref",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "={",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "ref ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "as",
+              "text": "const",
               "color": "var(--code-keyword)"
             },
             {
@@ -1502,37 +1707,109 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "Ref",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "<",
+              "text": "{",
               "color": "var(--code-operator)"
             },
             {
-              "text": "never",
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
               "color": "var(--code-number)"
             },
             {
-              "text": ">}",
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "variant",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "size",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "lineClamp",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " props",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
               "color": "var(--code-operator)"
             }
           ]
         },
         {
-          "number": 51,
+          "number": 49,
           "content": [
             {
-              "text": "      ",
+              "text": "  ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "className",
-              "color": "var(--code-function)"
+              "text": "const",
+              "color": "var(--code-keyword)"
             },
             {
-              "text": "={",
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "resolvedClassName",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
               "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
             },
             {
               "text": "cn",
@@ -1591,7 +1868,68 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "}",
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 50,
+          "content": []
+        },
+        {
+          "number": 51,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "props",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "as ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "p",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
               "color": "var(--code-operator)"
             }
           ]
@@ -1600,19 +1938,159 @@
           "number": 52,
           "content": [
             {
-              "text": "      ",
+              "text": "    ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "{...",
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
               "color": "var(--code-operator)"
             },
             {
-              "text": "rest",
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " className",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedClassName",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " variant",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedVariant",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " size",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedSize",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " lineClamp",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedLineClamp",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "pProps",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
               "color": "var(--code-variable)"
             },
             {
               "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " props",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
               "color": "var(--code-operator)"
             }
           ]
@@ -1625,13 +2103,685 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "/>",
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "p",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "resolvedClassName",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "pProps",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "/>;",
               "color": "var(--code-operator)"
             }
           ]
         },
         {
           "number": 54,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 55,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "props",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "as ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "span",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 56,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " className",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedClassName",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " variant",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedVariant",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " size",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedSize",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " lineClamp",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedLineClamp",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "spanProps",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " props",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 57,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "span",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "resolvedClassName",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "spanProps",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "/>;",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 58,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 59,
+          "content": []
+        },
+        {
+          "number": 60,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " className",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedClassName",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " variant",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedVariant",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " size",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedSize",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " lineClamp",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedLineClamp",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "divProps",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " props",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 61,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 62,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "resolvedClassName",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "divProps",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "/>",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 63,
           "content": [
             {
               "text": "  )",
@@ -1644,7 +2794,7 @@
           ]
         },
         {
-          "number": 55,
+          "number": 64,
           "content": [
             {
               "text": "}",
@@ -1653,13 +2803,13 @@
           ]
         },
         {
-          "number": 56,
+          "number": 65,
           "content": []
         }
       ]
     }
   },
-  "mergedSource": "export { Typography, typographyVariants, type TypographyProps } from \"./typography\";\n\n\nimport type { HTMLAttributes, Ref } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const typographyVariants = cva(\"font-mono text-muted-foreground\", {\n  variants: {\n    variant: {\n      default: \"leading-relaxed\",\n      prose: \"leading-loose\",\n      compact: \"leading-normal\",\n    },\n    size: {\n      xs: \"text-xs\",\n      sm: \"text-sm\",\n      base: \"text-base\",\n    },\n    lineClamp: {\n      1: \"line-clamp-1\",\n      2: \"line-clamp-2\",\n      3: \"line-clamp-3\",\n      4: \"line-clamp-4\",\n      5: \"line-clamp-5\",\n      6: \"line-clamp-6\",\n    },\n  },\n  defaultVariants: {\n    variant: \"default\",\n    size: \"sm\",\n  },\n});\n\nexport interface TypographyProps\n  extends HTMLAttributes<HTMLElement>,\n    VariantProps<typeof typographyVariants> {\n  as?: \"div\" | \"p\" | \"span\";\n  ref?: Ref<HTMLElement>;\n}\n\nexport function Typography({\n  className,\n  variant,\n  size,\n  lineClamp,\n  as: Tag = \"div\",\n  ref,\n  ...rest\n}: TypographyProps) {\n  return (\n    <Tag\n      ref={ref as Ref<never>}\n      className={cn(typographyVariants({ variant, size, lineClamp }), className)}\n      {...rest}\n    />\n  );\n}\n",
+  "mergedSource": "export { Typography, typographyVariants, type TypographyProps } from \"./typography\";\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const typographyVariants = cva(\"font-mono text-muted-foreground\", {\n  variants: {\n    variant: {\n      default: \"leading-relaxed\",\n      prose: \"leading-loose\",\n      compact: \"leading-normal\",\n    },\n    size: {\n      xs: \"text-xs\",\n      sm: \"text-sm\",\n      base: \"text-base\",\n    },\n    lineClamp: {\n      1: \"line-clamp-1\",\n      2: \"line-clamp-2\",\n      3: \"line-clamp-3\",\n      4: \"line-clamp-4\",\n      5: \"line-clamp-5\",\n      6: \"line-clamp-6\",\n    },\n  },\n  defaultVariants: {\n    variant: \"default\",\n    size: \"sm\",\n  },\n});\n\ntype TypographyOwnProps = VariantProps<typeof typographyVariants>;\ntype TypographyElement = \"div\" | \"p\" | \"span\";\ntype TypographyElementProps<T extends TypographyElement> = Omit<\n  ComponentPropsWithRef<T>,\n  keyof TypographyOwnProps | \"as\"\n> &\n  TypographyOwnProps & {\n    as: T;\n  };\n\nexport type TypographyProps =\n  | (Omit<TypographyElementProps<\"div\">, \"as\"> & { as?: \"div\" })\n  | TypographyElementProps<\"p\">\n  | TypographyElementProps<\"span\">;\n\nexport function Typography(props: TypographyProps) {\n  const { className, variant, size, lineClamp } = props;\n  const resolvedClassName = cn(typographyVariants({ variant, size, lineClamp }), className);\n\n  if (props.as === \"p\") {\n    const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, lineClamp: omittedLineClamp, ...pProps } = props;\n    return <p ref={ref} className={resolvedClassName} {...pProps} />;\n  }\n  if (props.as === \"span\") {\n    const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, lineClamp: omittedLineClamp, ...spanProps } = props;\n    return <span ref={ref} className={resolvedClassName} {...spanProps} />;\n  }\n\n  const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, lineClamp: omittedLineClamp, ...divProps } = props;\n  return (\n    <div ref={ref} className={resolvedClassName} {...divProps} />\n  );\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
@@ -1770,15 +2920,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": " HTMLAttributes",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " Ref ",
+          "text": " ComponentPropsWithRef ",
           "color": "var(--code-variable)"
         },
         {
@@ -2691,7 +3833,7 @@
       "number": 35,
       "content": [
         {
-          "text": "export",
+          "text": "type",
           "color": "var(--code-keyword)"
         },
         {
@@ -2699,57 +3841,19 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "interface",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "TypographyProps",
-          "color": "var(--code-function)"
-        }
-      ]
-    },
-    {
-      "number": 36,
-      "content": [
-        {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "extends",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "HTMLAttributes",
+          "text": "TypographyOwnProps",
           "color": "var(--code-function)"
         },
         {
-          "text": "<",
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
           "color": "var(--code-operator)"
         },
         {
-          "text": "HTMLElement",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": ">,",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 37,
-      "content": [
-        {
-          "text": "    ",
+          "text": " ",
           "color": "var(--code-variable)"
         },
         {
@@ -2765,28 +3869,32 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": ">",
+          "text": ">;",
           "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 36,
+      "content": [
+        {
+          "text": "type",
+          "color": "var(--code-keyword)"
         },
         {
           "text": " ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "{",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 38,
-      "content": [
+          "text": "TypographyElement",
+          "color": "var(--code-function)"
+        },
         {
-          "text": "  as",
+          "text": " ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "?:",
+          "text": "=",
           "color": "var(--code-operator)"
         },
         {
@@ -2860,10 +3968,346 @@
       ]
     },
     {
+      "number": 37,
+      "content": [
+        {
+          "text": "type",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "TypographyElementProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "T",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "extends",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "TypographyElement",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": ">",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "Omit",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 38,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ComponentPropsWithRef",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "T",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": ">,",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
       "number": 39,
       "content": [
         {
-          "text": "  ref",
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "keyof",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "TypographyOwnProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "as",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 40,
+      "content": [
+        {
+          "text": ">",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 41,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "TypographyOwnProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 42,
+      "content": [
+        {
+          "text": "    as",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "T",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 43,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "};",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 44,
+      "content": []
+    },
+    {
+      "number": 45,
+      "content": [
+        {
+          "text": "export",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "type",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "TypographyProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 46,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "Omit",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "TypographyElementProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "div",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ">,",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "as",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ">",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " as",
           "color": "var(--code-variable)"
         },
         {
@@ -2875,7 +4319,48 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "Ref",
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "div",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ")",
+          "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 47,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "TypographyElementProps",
           "color": "var(--code-function)"
         },
         {
@@ -2883,8 +4368,57 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "HTMLElement",
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "p",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ">",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 48,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "TypographyElementProps",
           "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "span",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
         },
         {
           "text": ">;",
@@ -2893,20 +4427,11 @@
       ]
     },
     {
-      "number": 40,
-      "content": [
-        {
-          "text": "}",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 41,
+      "number": 49,
       "content": []
     },
     {
-      "number": 42,
+      "number": 50,
       "content": [
         {
           "text": "export",
@@ -2929,139 +4454,15 @@
           "color": "var(--code-function)"
         },
         {
-          "text": "({",
+          "text": "(",
           "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 43,
-      "content": [
-        {
-          "text": "  className",
-          "color": "var(--code-variable)"
         },
         {
-          "text": ",",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 44,
-      "content": [
-        {
-          "text": "  variant",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 45,
-      "content": [
-        {
-          "text": "  size",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 46,
-      "content": [
-        {
-          "text": "  lineClamp",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 47,
-      "content": [
-        {
-          "text": "  as",
+          "text": "props",
           "color": "var(--code-variable)"
         },
         {
           "text": ":",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " Tag ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "=",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "div",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 48,
-      "content": [
-        {
-          "text": "  ref",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 49,
-      "content": [
-        {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "...",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "rest",
-          "color": "var(--code-variable)"
-        }
-      ]
-    },
-    {
-      "number": 50,
-      "content": [
-        {
-          "text": "}:",
           "color": "var(--code-operator)"
         },
         {
@@ -3094,53 +4495,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "return",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " (",
-          "color": "var(--code-variable)"
-        }
-      ]
-    },
-    {
-      "number": 52,
-      "content": [
-        {
-          "text": "    ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "<",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "Tag",
-          "color": "var(--code-number)"
-        }
-      ]
-    },
-    {
-      "number": 53,
-      "content": [
-        {
-          "text": "      ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "ref",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "={",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "ref ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "as",
+          "text": "const",
           "color": "var(--code-keyword)"
         },
         {
@@ -3148,37 +4503,109 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "Ref",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "<",
+          "text": "{",
           "color": "var(--code-operator)"
         },
         {
-          "text": "never",
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "className",
           "color": "var(--code-number)"
         },
         {
-          "text": ">}",
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "variant",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "size",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "lineClamp",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " props",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
           "color": "var(--code-operator)"
         }
       ]
     },
     {
-      "number": 54,
+      "number": 52,
       "content": [
         {
-          "text": "      ",
+          "text": "  ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "className",
-          "color": "var(--code-function)"
+          "text": "const",
+          "color": "var(--code-keyword)"
         },
         {
-          "text": "={",
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "resolvedClassName",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
           "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
         },
         {
           "text": "cn",
@@ -3237,7 +4664,68 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "}",
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 53,
+      "content": []
+    },
+    {
+      "number": 54,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "props",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "as ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "p",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ") ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
           "color": "var(--code-operator)"
         }
       ]
@@ -3246,19 +4734,159 @@
       "number": 55,
       "content": [
         {
-          "text": "      ",
+          "text": "    ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "{...",
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
           "color": "var(--code-operator)"
         },
         {
-          "text": "rest",
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "as",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " className",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedClassName",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " variant",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedVariant",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " size",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedSize",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " lineClamp",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedLineClamp",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "pProps",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
           "color": "var(--code-variable)"
         },
         {
           "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " props",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
           "color": "var(--code-operator)"
         }
       ]
@@ -3271,13 +4899,685 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "/>",
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "p",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "className",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "resolvedClassName",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "pProps",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "/>;",
           "color": "var(--code-operator)"
         }
       ]
     },
     {
       "number": 57,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 58,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "props",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "as ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "span",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ") ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 59,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "as",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " className",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedClassName",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " variant",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedVariant",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " size",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedSize",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " lineClamp",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedLineClamp",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "spanProps",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " props",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 60,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "span",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "className",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "resolvedClassName",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "spanProps",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "/>;",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 61,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 62,
+      "content": []
+    },
+    {
+      "number": 63,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "as",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " className",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedClassName",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " variant",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedVariant",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " size",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedSize",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " lineClamp",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedLineClamp",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "divProps",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " props",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 64,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 65,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "div",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "className",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "resolvedClassName",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "divProps",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "/>",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 66,
       "content": [
         {
           "text": "  )",
@@ -3290,7 +5590,7 @@
       ]
     },
     {
-      "number": 58,
+      "number": 67,
       "content": [
         {
           "text": "}",
@@ -3299,7 +5599,7 @@
       ]
     },
     {
-      "number": 59,
+      "number": 68,
       "content": []
     }
   ],

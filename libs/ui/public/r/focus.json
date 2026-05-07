@@ -10,5 +10,8 @@
       "content": "export const FOCUSABLE_SELECTOR =\n  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex=\"-1\"]):not([disabled])';\n",
       "type": "registry:lib"
     }
-  ]
+  ],
+  "meta": {
+    "client": false
+  }
 }

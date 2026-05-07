@@ -7,7 +7,7 @@ description: How @diffgazer/ui's headless-friendly component philosophy works wi
 
 @diffgazer/ui components are **headless-friendly primitives**. They render the UI layer and expose controlled props/events/ARIA hooks so keyboard behavior can be composed at the app level.
 
-Some components include local keyboard behavior, and some package-mode entries import hooks from `@diffgazer/keys`. Others only expose control points such as `highlighted`, `onHighlightChange`, and `onKeyDown`. Check each component's dependency metadata before choosing copy mode or package mode.
+Some components include local keyboard behavior, and some package-mode entries import hooks from `@diffgazer/keys`. Others expose control points such as highlighted state, selection state, and `onKeyDown`. Check each component's dependency metadata before choosing copy mode or package mode.
 
 ## Why This Approach
 
@@ -40,51 +40,24 @@ function BasicMenu() {
 
 Items are clickable and selectable. Components with built-in navigation can still respond to keys; components without it need an `onKeyDown` handler if keyboard navigation is required.
 
-## Adding Keyboard Support
+## Controlling Keyboard State
 
-To add keyboard navigation, manage `highlighted` state and handle `onKeyDown`:
+Menu includes local arrow-key, Home/End, Enter/Space, and typeahead behavior. Control `highlightedId` only when the app needs to coordinate highlight state outside the menu:
 
 ```tsx
 import { useState } from "react"
 import { Menu, MenuItem } from "@/components/ui/menu"
 
-const items = ["file-new", "file-open", "file-save", "file-close"]
-
 function KeyboardMenu() {
   const [selected, setSelected] = useState<string | null>(null)
-  const [focused, setFocused] = useState<string | null>(null)
-
-  const handleKeyDown = (event: React.KeyboardEvent) => {
-    const currentIndex = items.indexOf(focused ?? "")
-
-    switch (event.key) {
-      case "ArrowDown": {
-        event.preventDefault()
-        const next = currentIndex < items.length - 1 ? currentIndex + 1 : 0
-        setFocused(items[next])
-        break
-      }
-      case "ArrowUp": {
-        event.preventDefault()
-        const prev = currentIndex > 0 ? currentIndex - 1 : items.length - 1
-        setFocused(items[prev])
-        break
-      }
-      case "Enter": {
-        if (focused) {
-          setSelected(focused)
-        }
-        break
-      }
-    }
-  }
+  const [highlighted, setHighlighted] = useState<string | null>(null)
 
   return (
     <Menu
       selectedId={selected}
       onSelect={setSelected}
-      highlighted={focused}
-      onKeyDown={handleKeyDown}
+      highlightedId={highlighted}
+      onHighlightChange={setHighlighted}
       aria-label="File menu"
     >
       <MenuItem id="file-new">New File</MenuItem>
@@ -96,7 +69,7 @@ function KeyboardMenu() {
 }
 ```
 
-This gives you arrow key navigation with wrapping, plus Enter to select. You can add Escape handling, Home/End keys, type-ahead search, or any other behavior your app needs.
+Use `onKeyDown` only to compose extra app-level shortcuts. Call your handler first and leave the event unprevented when the component's local keyboard behavior should still run.
 
 ## Keyboard-Aware Components
 
@@ -104,23 +77,23 @@ The following components expose keyboard integration points:
 
 | Component | Props |
 |---|---|
-| `Menu` | `onKeyDown`, `highlighted`, `selectedId`, `onSelect` |
-| `NavigationList` | `onKeyDown`, `highlighted`, `selectedId`, `onSelect`, `isHighlighted` |
+| `Menu` | `onKeyDown`, `highlightedId`, `onHighlightChange`, `selectedId`, `onSelect` |
+| `NavigationList` | `onKeyDown`, `highlightedId`, `onHighlightChange`, `focused`, `selectedId`, `onSelect` |
 | `CheckboxGroup` | `onKeyDown`, `highlighted`, `onHighlightChange`, `onValueChange` |
 | `RadioGroup` | `onKeyDown`, `highlighted`, `onHighlightChange`, `onValueChange`, `orientation` |
 | `ToggleGroup` | `onKeyDown`, `highlighted`, `onHighlightChange`, `onValueChange` |
 | `TabsList` + `Tabs` | `onKeyDown` (TabsList) + controlled `value`/`onValueChange` (Tabs) |
 | `Select` + `SelectContent` | controlled `highlighted`/`onHighlightChange` + `onKeyDown` on content |
-| `CommandPalette` stack | controlled `selectedId`/`onSelectedIdChange` + `onKeyDown` on input |
+| `CommandPalette` stack | controlled `highlightedId`/`onHighlightChange` + `onKeyDown` on input |
 
-- **`highlighted` / `selectedId`** -- controls which item appears highlighted (visual highlight)
+- **highlight state / `highlightedId`** -- controls which item appears highlighted
 - **`onKeyDown`** -- receives keyboard events for app-level handlers
-- **`selectedId`** -- the currently selected item
+- **`selectedId`** -- the currently selected item; for `CommandPalette`, use `highlightedId` because `selectedId` is only a deprecated highlight-state alias
 - **`onSelect`** -- called when an item is selected (via click or Enter/Space)
-- **`isHighlighted`** (NavigationList only) -- whether the list itself is highlighted
+- **`focused`** (NavigationList only) -- whether item highlight visuals are shown while the list is active
 
 ## Accessibility
 
 Components ship with proper ARIA attributes regardless of whether you add keyboard handling. Roles, labels, and states are built in.
 
-Adding keyboard support makes components fully accessible -- users can navigate and activate items without a mouse. If your app is used in contexts where keyboard access matters (and it usually does), adding `onKeyDown` and `highlighted` is the way to get there.
+For components without built-in keyboard behavior, compose `onKeyDown` or @diffgazer/keys hooks so users can navigate and activate items without a mouse.

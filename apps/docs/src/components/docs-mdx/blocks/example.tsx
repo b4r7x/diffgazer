@@ -11,7 +11,9 @@ export function Example({ name }: { name: string }) {
   if (!data) return null
   const d = data.data
   const src = d.exampleSource?.[name]
-  if (!src) return null
+  if (!src) {
+    throw new Error(`Missing ${library} docs example source: ${name}`)
+  }
 
   return (
     <DemoPreview

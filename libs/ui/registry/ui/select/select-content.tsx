@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useRef, type ReactNode, type KeyboardEvent, type Ref, type RefObject } from "react";
+import { Children, isValidElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type AriaAttributes, type ReactNode, type KeyboardEvent, type Ref } from "react";
 import { useNavigation } from "@/hooks/use-navigation";
 import { usePresence } from "@/hooks/use-presence";
 import { useFloatingPosition, type FloatingSide, type FloatingAlign } from "@/hooks/use-floating-position";
@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
 import { Portal } from "../shared/portal";
 import { useSelectContext } from "./select-context";
 import { matchesSearch } from "@/lib/search";
-import { toOptionId } from "./select-utils";
+import { isActiveOptionVisible, toOptionId } from "./select-utils";
+import { SelectSearch } from "./select-search";
 import type { SelectOptionMetadata } from "./select-context";
 
 export interface SelectContentProps {
@@ -25,6 +26,19 @@ export interface SelectContentProps {
 
 const NAV_KEYS = new Set(["ArrowUp", "ArrowDown", "Enter", "Home", "End"]);
 const TYPEAHEAD_RESET_MS = 500;
+type ListboxProps = {
+  id: string;
+  role: "listbox";
+  tabIndex: -1;
+  "aria-multiselectable": boolean | undefined;
+  "aria-activedescendant": string | undefined;
+  "aria-labelledby": string;
+  "aria-required": boolean | undefined;
+  "aria-invalid": AriaAttributes["aria-invalid"] | undefined;
+  onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
+};
+
+type SearchableListboxProps = Omit<ListboxProps, "onKeyDown">;
 
 export function SelectContent({
   children,
@@ -48,13 +62,17 @@ export function SelectContent({
     listboxId,
     triggerId,
     searchInputRef,
-    hasSearch,
     triggerRef,
-    labelsRef,
+    contentRef: selectContentRef,
+    options,
     searchQuery,
+    required,
+    ariaInvalid,
   } = useSelectContext("SelectContent");
   const containerRef = useRef<HTMLDivElement>(null);
   const isDropdown = variant !== "card";
+  const [triggerWidth, setTriggerWidth] = useState<number | undefined>(undefined);
+  const hasSearch = containsSelectSearchElement(children);
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,
@@ -78,7 +96,7 @@ export function SelectContent({
     }, TYPEAHEAD_RESET_MS);
 
     const query = typeaheadBuffer.current.toLowerCase();
-    for (const [itemValue, option] of labelsRef.current) {
+    for (const [itemValue, option] of options) {
       if (!option.disabled && option.label.toLowerCase().startsWith(query)) {
         onHighlight(itemValue);
         break;
@@ -87,7 +105,7 @@ export function SelectContent({
   }
 
   const { present, onAnimationEnd } = usePresence({ open: isDropdown && open, ref: containerRef });
-  const { position, contentRef } = useFloatingPosition({
+  const { position, contentRef: floatingContentRef } = useFloatingPosition({
     triggerRef,
     open: isDropdown && present,
     side,
@@ -99,26 +117,25 @@ export function SelectContent({
   });
 
   const initHighlight = useCallback(() => {
-    if (highlighted) return;
-    const selectedValues = Array.isArray(value) ? value : value ? [value] : [];
-    if (selectedValues[0] && !labelsRef.current.get(selectedValues[0])?.disabled) {
-      onHighlight(selectedValues[0]);
+    if (highlighted !== null) return;
+    const selectedValues = Array.isArray(value) ? value : value === null ? [] : [value];
+    const firstSelected = selectedValues[0];
+    if (firstSelected !== undefined && !options.get(firstSelected)?.disabled) {
+      onHighlight(firstSelected);
       return;
     }
-    for (const [itemValue, option] of labelsRef.current) {
+    for (const [itemValue, option] of options) {
       if (!option.disabled) {
         onHighlight(itemValue);
         return;
       }
     }
-  }, [highlighted, labelsRef, onHighlight, value]);
-
-  const triggerWidthRef = useRef<number | undefined>(undefined);
+  }, [highlighted, options, onHighlight, value]);
 
   useLayoutEffect(() => {
     if (!open) return;
     if (isDropdown) {
-      triggerWidthRef.current = triggerRef.current?.getBoundingClientRect().width;
+      setTriggerWidth(triggerRef.current?.getBoundingClientRect().width);
     }
     if (!searchInputRef.current) {
       containerRef.current?.focus();
@@ -126,7 +143,14 @@ export function SelectContent({
     initHighlight();
   }, [initHighlight, isDropdown, open, searchInputRef, triggerRef]);
 
+  useEffect(() => {
+    return () => clearTimeout(typeaheadTimer.current);
+  }, []);
+
   const handleKeyDown = (e: KeyboardEvent) => {
+    onKeyDown?.(e);
+    if (e.defaultPrevented) return;
+
     if (e.key === "Escape") {
       e.preventDefault();
       onOpenChange(false);
@@ -135,7 +159,7 @@ export function SelectContent({
     }
 
     if (e.key === "Tab") {
-      if (highlighted && !multiple) selectItem(highlighted);
+      if (highlighted !== null && !multiple) selectItem(highlighted);
       onOpenChange(false);
       return;
     }
@@ -148,29 +172,38 @@ export function SelectContent({
       if (!e.ctrlKey && !e.metaKey && !e.altKey) handleTypeahead(e.key);
     }
 
-    onKeyDown?.(e);
   };
 
-  const listboxProps = {
+  const activeDescendant = isActiveOptionVisible(options, highlighted, searchQuery, matchesSearch)
+    ? toOptionId(listboxId, highlighted)
+    : undefined;
+  const listboxPropsBase = {
     id: listboxId,
     role: "listbox" as const,
     tabIndex: -1,
     "aria-multiselectable": multiple || undefined,
-    "aria-activedescendant": !hasSearch && highlighted ? toOptionId(listboxId, highlighted) : undefined,
+    "aria-activedescendant": !hasSearch ? activeDescendant : undefined,
     "aria-labelledby": triggerId,
-    onKeyDown: handleKeyDown,
-  };
+    "aria-required": required,
+    "aria-invalid": ariaInvalid,
+  } satisfies SearchableListboxProps;
+  const listboxProps = hasSearch
+    ? listboxPropsBase
+    : { ...listboxPropsBase, onKeyDown: handleKeyDown } satisfies ListboxProps;
+  const contentBody = hasSearch
+    ? <SearchableContent listboxProps={listboxProps} ref={containerRef}>{children}</SearchableContent>
+    : children;
 
   if (!isDropdown) {
     return (
       <div
-        {...listboxProps}
-        ref={composeRefs(containerRef, ref)}
+        {...(hasSearch ? { onKeyDown: handleKeyDown } : listboxProps)}
+        ref={hasSearch ? composeRefs(selectContentRef, ref) : composeRefs(containerRef, selectContentRef, ref)}
         hidden={!open}
         className={cn("w-full overflow-hidden p-1 space-y-0.5 outline-none", className)}
       >
-        {children}
-        {searchQuery && <MatchCount labelsRef={labelsRef} searchQuery={searchQuery} />}
+        {contentBody}
+        {searchQuery && <MatchCount options={options} searchQuery={searchQuery} />}
       </div>
     );
   }
@@ -180,8 +213,8 @@ export function SelectContent({
   return (
     <Portal>
       <div
-        {...listboxProps}
-        ref={composeRefs(containerRef, contentRef, ref)}
+        {...(hasSearch ? { onKeyDown: handleKeyDown } : listboxProps)}
+        ref={hasSearch ? composeRefs(selectContentRef, floatingContentRef, ref) : composeRefs(containerRef, selectContentRef, floatingContentRef, ref)}
         data-state={open ? "open" : "closed"}
         data-side={position?.side}
         onAnimationEnd={onAnimationEnd}
@@ -193,20 +226,59 @@ export function SelectContent({
         )}
         style={
           position
-            ? { top: position.y, left: position.x, width: triggerWidthRef.current }
+            ? { top: position.y, left: position.x, width: triggerWidth }
             : { visibility: "hidden" as const, position: "fixed" as const, top: 0, left: 0 }
         }
       >
-        {children}
-        {searchQuery && <MatchCount labelsRef={labelsRef} searchQuery={searchQuery} />}
+        {contentBody}
+        {searchQuery && <MatchCount options={options} searchQuery={searchQuery} />}
       </div>
     </Portal>
   );
 }
 
-function MatchCount({ labelsRef, searchQuery }: { labelsRef: RefObject<Map<string, SelectOptionMetadata>>; searchQuery: string }) {
+function SearchableContent({
+  children,
+  listboxProps,
+  ref,
+}: {
+  children: ReactNode;
+  listboxProps: SearchableListboxProps;
+  ref: Ref<HTMLDivElement>;
+}) {
+  const searchChildren: ReactNode[] = [];
+  const optionChildren: ReactNode[] = [];
+
+  Children.forEach(children, (child) => {
+    if (isSelectSearchElement(child)) searchChildren.push(child);
+    else optionChildren.push(child);
+  });
+
+  return (
+    <>
+      {searchChildren}
+      <div {...listboxProps} ref={ref} className="p-1 space-y-0.5 outline-none">
+        {optionChildren}
+      </div>
+    </>
+  );
+}
+
+function isSelectSearchElement(child: ReactNode): boolean {
+  return isValidElement(child) && child.type === SelectSearch;
+}
+
+function containsSelectSearchElement(children: ReactNode): boolean {
+  return Children.toArray(children).some((child) => {
+    if (isSelectSearchElement(child)) return true;
+    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
+    return containsSelectSearchElement(child.props.children);
+  });
+}
+
+function MatchCount({ options, searchQuery }: { options: ReadonlyMap<string, SelectOptionMetadata>; searchQuery: string }) {
   let count = 0;
-  for (const option of labelsRef.current.values()) {
+  for (const option of options.values()) {
     if (matchesSearch(option.label, searchQuery)) count++;
   }
   return (

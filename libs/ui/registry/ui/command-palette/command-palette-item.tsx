@@ -1,9 +1,10 @@
 "use client";
 
-import { useLayoutEffect, type ReactNode } from "react";
+import { type ComponentPropsWithRef, type MouseEvent, type ReactNode } from "react";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useCommandPaletteContext } from "./command-palette-context";
+import { getCommandPaletteItemDomId } from "./use-command-palette-state";
 
 const itemVariants = cva(
   "w-full text-left flex items-center justify-between px-3 py-2.5 text-sm group cursor-pointer select-none",
@@ -21,7 +22,8 @@ const itemVariants = cva(
   }
 );
 
-export interface CommandPaletteItemProps {
+export interface CommandPaletteItemProps
+  extends Omit<ComponentPropsWithRef<"div">, "children" | "id" | "onSelect"> {
   id: string;
   value?: string;
   icon?: ReactNode;
@@ -29,40 +31,44 @@ export interface CommandPaletteItemProps {
   onSelect?: () => void;
   disabled?: boolean;
   children: ReactNode;
-  className?: string;
 }
 
 export function CommandPaletteItem({
-  id, value, icon, shortcut, onSelect, disabled = false, children, className,
+  id,
+  value,
+  icon,
+  shortcut,
+  onSelect,
+  disabled = false,
+  children,
+  className,
+  ref,
+  onClick,
+  ...props
 }: CommandPaletteItemProps) {
-  const { selectedId, onActivate, registerItem, unregisterItem, setItemCallback, search, shouldFilter, filter } = useCommandPaletteContext();
+  const { selectedId, onActivate, search, shouldFilter, filter, listId } = useCommandPaletteContext();
 
   const searchValue = value ?? id;
   const isVisible = !shouldFilter || !search || filter(searchValue, search);
 
-  useLayoutEffect(() => {
-    if (disabled || !isVisible) return;
-    registerItem(id);
-    return () => unregisterItem(id);
-  }, [id, disabled, isVisible]);
-
-  useLayoutEffect(() => {
-    setItemCallback(id, disabled ? undefined : onSelect);
-    return () => setItemCallback(id, undefined);
-  }, [id, onSelect, disabled]);
-
   if (!isVisible) return null;
 
   const isSelected = selectedId === id;
+  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
+    onClick?.(event);
+    if (!event.defaultPrevented && !disabled) onActivate(id);
+  };
 
   return (
     <div
-      id={id}
+      {...props}
+      ref={ref}
+      id={getCommandPaletteItemDomId(listId, id)}
       role="option"
       data-value={id}
       aria-selected={isSelected}
       aria-disabled={disabled || undefined}
-      onClick={() => { if (disabled) return; onActivate(id); }}
+      onClick={handleClick}
       className={cn(itemVariants({ selected: isSelected, disabled }), className)}
     >
       <div className="flex items-center gap-3">

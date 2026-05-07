@@ -3,7 +3,7 @@
   "title": "Active Heading",
   "description": "Configurable active heading detection for table of contents. Tracks which heading is currently active based on scroll position, with top-line or viewport-center activation modes and a programmatic scrollTo helper.",
   "source": {
-    "raw": "\"use client\";\n\nimport { useCallback, useEffect, useRef, useState } from \"react\";\n\nexport type ActiveHeadingActivation = \"top-line\" | \"viewport-center\" | (number & {});\n\nexport interface UseActiveHeadingOptions {\n  ids: string[];\n  containerId?: string;\n  /** @default \"top-line\" */\n  activation?: ActiveHeadingActivation;\n  topOffset?: number;\n  scrollOffset?: number;\n  bottomMargin?: number;\n  threshold?: number;\n  bottomLock?: boolean;\n  enabled?: boolean;\n  settleDelay?: number;\n  /** Watch for DOM changes via MutationObserver. Disable for static content. @default true */\n  observe?: boolean;\n}\n\nexport interface UseActiveHeadingReturn {\n  activeId: string | null;\n  scrollTo: (id: string) => void;\n}\n\nfunction getContainer(id: string | undefined): HTMLElement | null {\n  if (!id) return null;\n  const el = document.getElementById(id);\n  return el instanceof HTMLElement ? el : null;\n}\n\nfunction getViewportMetrics(container: HTMLElement | null) {\n  if (container) {\n    return {\n      top: container.getBoundingClientRect().top,\n      height: container.clientHeight,\n      scrollTop: container.scrollTop,\n      scrollHeight: container.scrollHeight,\n    };\n  }\n\n  const root = document.documentElement;\n  const body = document.body;\n  const scrollTop = window.scrollY || root.scrollTop || body?.scrollTop || 0;\n  const scrollHeight = Math.max(root.scrollHeight, body?.scrollHeight ?? 0);\n\n  return {\n    top: 0,\n    height: window.innerHeight,\n    scrollTop,\n    scrollHeight,\n  };\n}\n\nfunction findLastAbove(elements: HTMLElement[], line: number, thresholdRatio = 0): string | null {\n  for (let i = elements.length - 1; i >= 0; i--) {\n    const rect = elements[i]!.getBoundingClientRect();\n    if (rect.top + rect.height * thresholdRatio <= line) return elements[i]!.id;\n  }\n  return null;\n}\n\nfunction resolveScrollBehavior(): ScrollBehavior {\n  return typeof window.matchMedia === \"function\" &&\n    window.matchMedia(\"(prefers-reduced-motion: reduce)\").matches\n    ? \"auto\"\n    : \"smooth\";\n}\n\nfunction resolveActivationLine(\n  top: number,\n  height: number,\n  activation: ActiveHeadingActivation,\n  topOffset: number,\n): number {\n  if (typeof activation === \"number\") {\n    return top + height * Math.max(0, Math.min(1, activation));\n  }\n  if (activation === \"viewport-center\") return top + height / 2;\n  return top + topOffset;\n}\n\nexport function useActiveHeading({\n  ids,\n  containerId,\n  activation = \"top-line\",\n  topOffset = 96,\n  scrollOffset = topOffset,\n  bottomMargin = 0,\n  threshold = 0,\n  bottomLock = true,\n  enabled = true,\n  settleDelay = 150,\n  observe = true,\n}: UseActiveHeadingOptions): UseActiveHeadingReturn {\n  const idsKey = ids.join(\"\\0\");\n  const [activeId, setActiveId] = useState<string | null>(ids[0] ?? null);\n  const scrollingToRef = useRef<string | null>(null);\n  const settleTimerRef = useRef<number>(0);\n  const optionsRef = useRef({\n    ids,\n    containerId,\n    activation,\n    topOffset,\n    bottomMargin,\n    threshold,\n    bottomLock,\n  });\n  optionsRef.current = {\n    ids,\n    containerId,\n    activation,\n    topOffset,\n    bottomMargin,\n    threshold,\n    bottomLock,\n  };\n\n  const update = useCallback((): void => {\n    if (scrollingToRef.current !== null) return;\n    const current = optionsRef.current;\n\n    const container = getContainer(current.containerId);\n    const elements = current.ids\n      .map((id) => document.getElementById(id))\n      .filter((el): el is HTMLElement => el instanceof HTMLElement);\n\n    if (elements.length === 0) {\n      setActiveId(current.ids[0] ?? null);\n      return;\n    }\n\n    const { top, height, scrollTop, scrollHeight } = getViewportMetrics(container);\n    const bottomMarginPx = Math.max(0, current.bottomMargin) * height;\n\n    if (current.bottomLock && scrollTop + height >= scrollHeight - 2 - bottomMarginPx) {\n      setActiveId(elements[elements.length - 1]?.id ?? null);\n      return;\n    }\n\n    const activationLine = resolveActivationLine(top, height, current.activation, current.topOffset);\n    const t = Math.max(0, Math.min(1, current.threshold));\n    let next = findLastAbove(elements, activationLine, t) ?? elements[0]?.id ?? null;\n\n    if (next && elements.length > 1) {\n      const pickedEl = document.getElementById(next);\n      if (pickedEl && pickedEl.getBoundingClientRect().bottom < top) {\n        next = findLastAbove(elements, top + height * 0.5) ?? next;\n      }\n    }\n\n    setActiveId(next);\n  }, []);\n\n  useEffect(() => {\n    if (!enabled || ids.length === 0) {\n      setActiveId(null);\n      return;\n    }\n\n    setActiveId(ids[0] ?? null);\n\n    const container = getContainer(containerId);\n    const scrollTarget: EventTarget = container ?? window;\n    const hasScrollEnd = \"onscrollend\" in window;\n    let frame = 0;\n\n    const scheduleUpdate = (): void => {\n      if (scrollingToRef.current !== null) {\n        if (!hasScrollEnd) {\n          if (settleTimerRef.current !== 0) window.clearTimeout(settleTimerRef.current);\n          settleTimerRef.current = window.setTimeout(() => {\n            settleTimerRef.current = 0;\n            scrollingToRef.current = null;\n            update();\n          }, settleDelay);\n        }\n        return;\n      }\n\n      if (frame !== 0) return;\n      frame = window.requestAnimationFrame(() => {\n        frame = 0;\n        update();\n      });\n    };\n\n    const handleScrollEnd = (): void => {\n      if (scrollingToRef.current === null) return;\n      scrollingToRef.current = null;\n      update();\n    };\n\n    scrollTarget.addEventListener(\"scroll\", scheduleUpdate, { passive: true });\n    window.addEventListener(\"resize\", scheduleUpdate);\n    if (hasScrollEnd) scrollTarget.addEventListener(\"scrollend\", handleScrollEnd);\n\n    let mutationObs: MutationObserver | null = null;\n    if (observe) {\n      mutationObs = new MutationObserver(scheduleUpdate);\n      mutationObs.observe(container ?? document.body, { childList: true, subtree: true });\n    }\n\n    scheduleUpdate();\n\n    return () => {\n      scrollTarget.removeEventListener(\"scroll\", scheduleUpdate);\n      window.removeEventListener(\"resize\", scheduleUpdate);\n      if (hasScrollEnd) scrollTarget.removeEventListener(\"scrollend\", handleScrollEnd);\n      mutationObs?.disconnect();\n      if (frame !== 0) window.cancelAnimationFrame(frame);\n      if (settleTimerRef.current !== 0) window.clearTimeout(settleTimerRef.current);\n    };\n  }, [idsKey, containerId, activation, topOffset, bottomMargin, threshold, bottomLock, enabled, settleDelay, observe, update]);\n\n  const scrollTo = useCallback((id: string) => {\n    const heading = document.getElementById(id);\n    if (!(heading instanceof HTMLElement)) return;\n\n    scrollingToRef.current = id;\n    setActiveId(id);\n\n    const container = getContainer(containerId);\n    const behavior = resolveScrollBehavior();\n\n    if (container) {\n      const containerRect = container.getBoundingClientRect();\n      const headingRect = heading.getBoundingClientRect();\n      const relativeTop = headingRect.top - containerRect.top + container.scrollTop;\n      container.scrollTo({ top: Math.max(0, relativeTop - scrollOffset), behavior });\n    } else {\n      window.scrollTo({\n        top: Math.max(0, window.scrollY + heading.getBoundingClientRect().top - scrollOffset),\n        behavior,\n      });\n    }\n  }, [containerId, scrollOffset]);\n\n  return { activeId, scrollTo };\n}\n",
+    "raw": "\"use client\";\n\nimport { useCallback, useEffect, useEffectEvent, useRef, useState } from \"react\";\n\nexport type ActiveHeadingActivation = \"top-line\" | \"viewport-center\" | (number & {});\n\nexport interface UseActiveHeadingOptions {\n  ids: string[];\n  containerId?: string;\n  /** @default \"top-line\" */\n  activation?: ActiveHeadingActivation;\n  topOffset?: number;\n  scrollOffset?: number;\n  bottomMargin?: number;\n  threshold?: number;\n  bottomLock?: boolean;\n  enabled?: boolean;\n  settleDelay?: number;\n  /** Watch for DOM changes via MutationObserver. Disable for static content. @default true */\n  observe?: boolean;\n}\n\nexport interface UseActiveHeadingReturn {\n  activeId: string | null;\n  scrollTo: (id: string) => void;\n}\n\nfunction getContainer(id: string | undefined): HTMLElement | null {\n  if (!id) return null;\n  const el = document.getElementById(id);\n  return el instanceof HTMLElement ? el : null;\n}\n\nfunction getViewportMetrics(container: HTMLElement | null) {\n  if (container) {\n    return {\n      top: container.getBoundingClientRect().top,\n      height: container.clientHeight,\n      scrollTop: container.scrollTop,\n      scrollHeight: container.scrollHeight,\n    };\n  }\n\n  const root = document.documentElement;\n  const body = document.body;\n  const scrollTop = window.scrollY || root.scrollTop || body?.scrollTop || 0;\n  const scrollHeight = Math.max(root.scrollHeight, body?.scrollHeight ?? 0);\n\n  return {\n    top: 0,\n    height: window.innerHeight,\n    scrollTop,\n    scrollHeight,\n  };\n}\n\nfunction findLastAbove(elements: HTMLElement[], line: number, thresholdRatio = 0): string | null {\n  for (let i = elements.length - 1; i >= 0; i--) {\n    const rect = elements[i]!.getBoundingClientRect();\n    if (rect.top + rect.height * thresholdRatio <= line) return elements[i]!.id;\n  }\n  return null;\n}\n\nfunction resolveScrollBehavior(): ScrollBehavior {\n  return typeof window.matchMedia === \"function\" &&\n    window.matchMedia(\"(prefers-reduced-motion: reduce)\").matches\n    ? \"auto\"\n    : \"smooth\";\n}\n\nfunction resolveActivationLine(\n  top: number,\n  height: number,\n  activation: ActiveHeadingActivation,\n  topOffset: number,\n): number {\n  if (typeof activation === \"number\") {\n    return top + height * Math.max(0, Math.min(1, activation));\n  }\n  if (activation === \"viewport-center\") return top + height / 2;\n  return top + topOffset;\n}\n\nexport function useActiveHeading({\n  ids,\n  containerId,\n  activation = \"top-line\",\n  topOffset = 96,\n  scrollOffset = topOffset,\n  bottomMargin = 0,\n  threshold = 0,\n  bottomLock = true,\n  enabled = true,\n  settleDelay = 150,\n  observe = true,\n}: UseActiveHeadingOptions): UseActiveHeadingReturn {\n  const idsKey = ids.join(\"\\0\");\n  const [activeId, setActiveId] = useState<string | null>(ids[0] ?? null);\n  const scrollingToRef = useRef<string | null>(null);\n  const settleTimerRef = useRef<number>(0);\n  const update = useEffectEvent((): void => {\n    if (scrollingToRef.current !== null) return;\n\n    const container = getContainer(containerId);\n    const elements = ids\n      .map((id) => document.getElementById(id))\n      .filter((el): el is HTMLElement => el instanceof HTMLElement);\n\n    if (elements.length === 0) {\n      setActiveId(ids[0] ?? null);\n      return;\n    }\n\n    const { top, height, scrollTop, scrollHeight } = getViewportMetrics(container);\n    const bottomMarginPx = Math.max(0, bottomMargin) * height;\n\n    if (bottomLock && scrollTop + height >= scrollHeight - 2 - bottomMarginPx) {\n      setActiveId(elements[elements.length - 1]?.id ?? null);\n      return;\n    }\n\n    const activationLine = resolveActivationLine(top, height, activation, topOffset);\n    const t = Math.max(0, Math.min(1, threshold));\n    let next = findLastAbove(elements, activationLine, t) ?? elements[0]?.id ?? null;\n\n    if (next && elements.length > 1) {\n      const pickedEl = document.getElementById(next);\n      if (pickedEl && pickedEl.getBoundingClientRect().bottom < top) {\n        next = findLastAbove(elements, top + height * 0.5) ?? next;\n      }\n    }\n\n    setActiveId(next);\n  });\n\n  useEffect(() => {\n    if (!enabled || ids.length === 0) {\n      setActiveId(null);\n      return;\n    }\n\n    setActiveId(ids[0] ?? null);\n\n    const container = getContainer(containerId);\n    const scrollTarget: EventTarget = container ?? window;\n    const hasScrollEnd = \"onscrollend\" in window;\n    let frame = 0;\n\n    const scheduleUpdate = (): void => {\n      if (scrollingToRef.current !== null) {\n        if (!hasScrollEnd) {\n          if (settleTimerRef.current !== 0) window.clearTimeout(settleTimerRef.current);\n          settleTimerRef.current = window.setTimeout(() => {\n            settleTimerRef.current = 0;\n            scrollingToRef.current = null;\n            update();\n          }, settleDelay);\n        }\n        return;\n      }\n\n      if (frame !== 0) return;\n      frame = window.requestAnimationFrame(() => {\n        frame = 0;\n        update();\n      });\n    };\n\n    const handleScrollEnd = (): void => {\n      if (scrollingToRef.current === null) return;\n      scrollingToRef.current = null;\n      update();\n    };\n\n    scrollTarget.addEventListener(\"scroll\", scheduleUpdate, { passive: true });\n    window.addEventListener(\"resize\", scheduleUpdate);\n    if (hasScrollEnd) scrollTarget.addEventListener(\"scrollend\", handleScrollEnd);\n\n    let mutationObs: MutationObserver | null = null;\n    if (observe) {\n      mutationObs = new MutationObserver(scheduleUpdate);\n      mutationObs.observe(container ?? document.body, { childList: true, subtree: true });\n    }\n\n    scheduleUpdate();\n\n    return () => {\n      scrollTarget.removeEventListener(\"scroll\", scheduleUpdate);\n      window.removeEventListener(\"resize\", scheduleUpdate);\n      if (hasScrollEnd) scrollTarget.removeEventListener(\"scrollend\", handleScrollEnd);\n      mutationObs?.disconnect();\n      if (frame !== 0) window.cancelAnimationFrame(frame);\n      if (settleTimerRef.current !== 0) window.clearTimeout(settleTimerRef.current);\n    };\n  }, [idsKey, containerId, activation, topOffset, bottomMargin, threshold, bottomLock, enabled, settleDelay, observe]);\n\n  const scrollTo = useCallback((id: string) => {\n    const heading = document.getElementById(id);\n    if (!(heading instanceof HTMLElement)) return;\n\n    scrollingToRef.current = id;\n    setActiveId(id);\n\n    const container = getContainer(containerId);\n    const behavior = resolveScrollBehavior();\n\n    if (container) {\n      const containerRect = container.getBoundingClientRect();\n      const headingRect = heading.getBoundingClientRect();\n      const relativeTop = headingRect.top - containerRect.top + container.scrollTop;\n      container.scrollTo({ top: Math.max(0, relativeTop - scrollOffset), behavior });\n    } else {\n      window.scrollTo({\n        top: Math.max(0, window.scrollY + heading.getBoundingClientRect().top - scrollOffset),\n        behavior,\n      });\n    }\n  }, [containerId, scrollOffset]);\n\n  return { activeId, scrollTo };\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -55,6 +55,14 @@
           },
           {
             "text": " useEffect",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " useEffectEvent",
             "color": "var(--code-variable)"
           },
           {
@@ -3482,304 +3490,6 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "optionsRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useRef",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 103,
-        "content": [
-          {
-            "text": "    ids",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 104,
-        "content": [
-          {
-            "text": "    containerId",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 105,
-        "content": [
-          {
-            "text": "    activation",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 106,
-        "content": [
-          {
-            "text": "    topOffset",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 107,
-        "content": [
-          {
-            "text": "    bottomMargin",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 108,
-        "content": [
-          {
-            "text": "    threshold",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 109,
-        "content": [
-          {
-            "text": "    bottomLock",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 110,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 111,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "optionsRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 112,
-        "content": [
-          {
-            "text": "    ids",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 113,
-        "content": [
-          {
-            "text": "    containerId",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 114,
-        "content": [
-          {
-            "text": "    activation",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 115,
-        "content": [
-          {
-            "text": "    topOffset",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 116,
-        "content": [
-          {
-            "text": "    bottomMargin",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 117,
-        "content": [
-          {
-            "text": "    threshold",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 118,
-        "content": [
-          {
-            "text": "    bottomLock",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 119,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "};",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 120,
-        "content": []
-      },
-      {
-        "number": 121,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
             "text": "update",
             "color": "var(--code-number)"
           },
@@ -3796,7 +3506,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "useCallback",
+            "text": "useEffectEvent",
             "color": "var(--code-function)"
           },
           {
@@ -3834,7 +3544,7 @@
         ]
       },
       {
-        "number": 122,
+        "number": 103,
         "content": [
           {
             "text": "    ",
@@ -3887,60 +3597,11 @@
         ]
       },
       {
-        "number": 123,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "optionsRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 124,
+        "number": 104,
         "content": []
       },
       {
-        "number": 125,
+        "number": 105,
         "content": [
           {
             "text": "    ",
@@ -3975,19 +3636,7 @@
             "color": "var(--code-function)"
           },
           {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "containerId)",
+            "text": "(containerId)",
             "color": "var(--code-variable)"
           },
           {
@@ -3997,7 +3646,7 @@
         ]
       },
       {
-        "number": 126,
+        "number": 106,
         "content": [
           {
             "text": "    ",
@@ -4024,25 +3673,13 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "ids",
+            "text": " ids",
             "color": "var(--code-variable)"
           }
         ]
       },
       {
-        "number": 127,
+        "number": 107,
         "content": [
           {
             "text": "      ",
@@ -4103,7 +3740,7 @@
         ]
       },
       {
-        "number": 128,
+        "number": 108,
         "content": [
           {
             "text": "      ",
@@ -4184,11 +3821,11 @@
         ]
       },
       {
-        "number": 129,
+        "number": 109,
         "content": []
       },
       {
-        "number": 130,
+        "number": 110,
         "content": [
           {
             "text": "    ",
@@ -4241,7 +3878,7 @@
         ]
       },
       {
-        "number": 131,
+        "number": 111,
         "content": [
           {
             "text": "      ",
@@ -4252,19 +3889,7 @@
             "color": "var(--code-function)"
           },
           {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "ids[",
+            "text": "(ids[",
             "color": "var(--code-variable)"
           },
           {
@@ -4298,7 +3923,7 @@
         ]
       },
       {
-        "number": 132,
+        "number": 112,
         "content": [
           {
             "text": "      ",
@@ -4315,7 +3940,7 @@
         ]
       },
       {
-        "number": 133,
+        "number": 113,
         "content": [
           {
             "text": "    ",
@@ -4328,11 +3953,11 @@
         ]
       },
       {
-        "number": 134,
+        "number": 114,
         "content": []
       },
       {
-        "number": 135,
+        "number": 115,
         "content": [
           {
             "text": "    ",
@@ -4429,7 +4054,7 @@
         ]
       },
       {
-        "number": 136,
+        "number": 116,
         "content": [
           {
             "text": "    ",
@@ -4484,19 +4109,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "bottomMargin) ",
+            "text": " bottomMargin) ",
             "color": "var(--code-variable)"
           },
           {
@@ -4514,11 +4127,11 @@
         ]
       },
       {
-        "number": 137,
+        "number": 117,
         "content": []
       },
       {
-        "number": 138,
+        "number": 118,
         "content": [
           {
             "text": "    ",
@@ -4529,19 +4142,7 @@
             "color": "var(--code-keyword)"
           },
           {
-            "text": " (",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "bottomLock ",
+            "text": " (bottomLock ",
             "color": "var(--code-variable)"
           },
           {
@@ -4599,7 +4200,7 @@
         ]
       },
       {
-        "number": 139,
+        "number": 119,
         "content": [
           {
             "text": "      ",
@@ -4676,7 +4277,7 @@
         ]
       },
       {
-        "number": 140,
+        "number": 120,
         "content": [
           {
             "text": "      ",
@@ -4693,7 +4294,7 @@
         ]
       },
       {
-        "number": 141,
+        "number": 121,
         "content": [
           {
             "text": "    ",
@@ -4706,11 +4307,11 @@
         ]
       },
       {
-        "number": 142,
+        "number": 122,
         "content": []
       },
       {
-        "number": 143,
+        "number": 123,
         "content": [
           {
             "text": "    ",
@@ -4761,19 +4362,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "activation",
+            "text": " activation",
             "color": "var(--code-variable)"
           },
           {
@@ -4781,19 +4370,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "topOffset)",
+            "text": " topOffset)",
             "color": "var(--code-variable)"
           },
           {
@@ -4803,7 +4380,7 @@
         ]
       },
       {
-        "number": 144,
+        "number": 124,
         "content": [
           {
             "text": "    ",
@@ -4886,19 +4463,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "threshold))",
+            "text": " threshold))",
             "color": "var(--code-variable)"
           },
           {
@@ -4908,7 +4473,7 @@
         ]
       },
       {
-        "number": 145,
+        "number": 125,
         "content": [
           {
             "text": "    ",
@@ -4997,11 +4562,11 @@
         ]
       },
       {
-        "number": 146,
+        "number": 126,
         "content": []
       },
       {
-        "number": 147,
+        "number": 127,
         "content": [
           {
             "text": "    ",
@@ -5062,7 +4627,7 @@
         ]
       },
       {
-        "number": 148,
+        "number": 128,
         "content": [
           {
             "text": "      ",
@@ -5115,7 +4680,7 @@
         ]
       },
       {
-        "number": 149,
+        "number": 129,
         "content": [
           {
             "text": "      ",
@@ -5176,7 +4741,7 @@
         ]
       },
       {
-        "number": 150,
+        "number": 130,
         "content": [
           {
             "text": "        next ",
@@ -5245,7 +4810,7 @@
         ]
       },
       {
-        "number": 151,
+        "number": 131,
         "content": [
           {
             "text": "      ",
@@ -5258,7 +4823,7 @@
         ]
       },
       {
-        "number": 152,
+        "number": 132,
         "content": [
           {
             "text": "    ",
@@ -5271,11 +4836,11 @@
         ]
       },
       {
-        "number": 153,
+        "number": 133,
         "content": []
       },
       {
-        "number": 154,
+        "number": 134,
         "content": [
           {
             "text": "    ",
@@ -5296,18 +4861,18 @@
         ]
       },
       {
-        "number": 155,
+        "number": 135,
         "content": [
           {
             "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "},",
+            "text": "}",
             "color": "var(--code-operator)"
           },
           {
-            "text": " [])",
+            "text": ")",
             "color": "var(--code-variable)"
           },
           {
@@ -5317,11 +4882,11 @@
         ]
       },
       {
-        "number": 156,
+        "number": 136,
         "content": []
       },
       {
-        "number": 157,
+        "number": 137,
         "content": [
           {
             "text": "  ",
@@ -5358,7 +4923,7 @@
         ]
       },
       {
-        "number": 158,
+        "number": 138,
         "content": [
           {
             "text": "    ",
@@ -5427,7 +4992,7 @@
         ]
       },
       {
-        "number": 159,
+        "number": 139,
         "content": [
           {
             "text": "      ",
@@ -5456,7 +5021,7 @@
         ]
       },
       {
-        "number": 160,
+        "number": 140,
         "content": [
           {
             "text": "      ",
@@ -5473,7 +5038,7 @@
         ]
       },
       {
-        "number": 161,
+        "number": 141,
         "content": [
           {
             "text": "    ",
@@ -5486,11 +5051,11 @@
         ]
       },
       {
-        "number": 162,
+        "number": 142,
         "content": []
       },
       {
-        "number": 163,
+        "number": 143,
         "content": [
           {
             "text": "    ",
@@ -5535,11 +5100,11 @@
         ]
       },
       {
-        "number": 164,
+        "number": 144,
         "content": []
       },
       {
-        "number": 165,
+        "number": 145,
         "content": [
           {
             "text": "    ",
@@ -5584,7 +5149,7 @@
         ]
       },
       {
-        "number": 166,
+        "number": 146,
         "content": [
           {
             "text": "    ",
@@ -5641,7 +5206,7 @@
         ]
       },
       {
-        "number": 167,
+        "number": 147,
         "content": [
           {
             "text": "    ",
@@ -5702,7 +5267,7 @@
         ]
       },
       {
-        "number": 168,
+        "number": 148,
         "content": [
           {
             "text": "    ",
@@ -5735,11 +5300,11 @@
         ]
       },
       {
-        "number": 169,
+        "number": 149,
         "content": []
       },
       {
-        "number": 170,
+        "number": 150,
         "content": [
           {
             "text": "    ",
@@ -5800,7 +5365,7 @@
         ]
       },
       {
-        "number": 171,
+        "number": 151,
         "content": [
           {
             "text": "      ",
@@ -5849,7 +5414,7 @@
         ]
       },
       {
-        "number": 172,
+        "number": 152,
         "content": [
           {
             "text": "        ",
@@ -5878,7 +5443,7 @@
         ]
       },
       {
-        "number": 173,
+        "number": 153,
         "content": [
           {
             "text": "          ",
@@ -5955,7 +5520,7 @@
         ]
       },
       {
-        "number": 174,
+        "number": 154,
         "content": [
           {
             "text": "          ",
@@ -6020,7 +5585,7 @@
         ]
       },
       {
-        "number": 175,
+        "number": 155,
         "content": [
           {
             "text": "            ",
@@ -6057,7 +5622,7 @@
         ]
       },
       {
-        "number": 176,
+        "number": 156,
         "content": [
           {
             "text": "            ",
@@ -6094,7 +5659,7 @@
         ]
       },
       {
-        "number": 177,
+        "number": 157,
         "content": [
           {
             "text": "            ",
@@ -6115,7 +5680,7 @@
         ]
       },
       {
-        "number": 178,
+        "number": 158,
         "content": [
           {
             "text": "          ",
@@ -6136,7 +5701,7 @@
         ]
       },
       {
-        "number": 179,
+        "number": 159,
         "content": [
           {
             "text": "        ",
@@ -6149,7 +5714,7 @@
         ]
       },
       {
-        "number": 180,
+        "number": 160,
         "content": [
           {
             "text": "        ",
@@ -6166,7 +5731,7 @@
         ]
       },
       {
-        "number": 181,
+        "number": 161,
         "content": [
           {
             "text": "      ",
@@ -6179,11 +5744,11 @@
         ]
       },
       {
-        "number": 182,
+        "number": 162,
         "content": []
       },
       {
-        "number": 183,
+        "number": 163,
         "content": [
           {
             "text": "      ",
@@ -6224,7 +5789,7 @@
         ]
       },
       {
-        "number": 184,
+        "number": 164,
         "content": [
           {
             "text": "      frame ",
@@ -6277,7 +5842,7 @@
         ]
       },
       {
-        "number": 185,
+        "number": 165,
         "content": [
           {
             "text": "        frame ",
@@ -6302,7 +5867,7 @@
         ]
       },
       {
-        "number": 186,
+        "number": 166,
         "content": [
           {
             "text": "        ",
@@ -6323,7 +5888,7 @@
         ]
       },
       {
-        "number": 187,
+        "number": 167,
         "content": [
           {
             "text": "      ",
@@ -6344,7 +5909,7 @@
         ]
       },
       {
-        "number": 188,
+        "number": 168,
         "content": [
           {
             "text": "    ",
@@ -6357,11 +5922,11 @@
         ]
       },
       {
-        "number": 189,
+        "number": 169,
         "content": []
       },
       {
-        "number": 190,
+        "number": 170,
         "content": [
           {
             "text": "    ",
@@ -6422,7 +5987,7 @@
         ]
       },
       {
-        "number": 191,
+        "number": 171,
         "content": [
           {
             "text": "      ",
@@ -6475,7 +6040,7 @@
         ]
       },
       {
-        "number": 192,
+        "number": 172,
         "content": [
           {
             "text": "      ",
@@ -6512,7 +6077,7 @@
         ]
       },
       {
-        "number": 193,
+        "number": 173,
         "content": [
           {
             "text": "      ",
@@ -6533,7 +6098,7 @@
         ]
       },
       {
-        "number": 194,
+        "number": 174,
         "content": [
           {
             "text": "    ",
@@ -6546,11 +6111,11 @@
         ]
       },
       {
-        "number": 195,
+        "number": 175,
         "content": []
       },
       {
-        "number": 196,
+        "number": 176,
         "content": [
           {
             "text": "    ",
@@ -6639,7 +6204,7 @@
         ]
       },
       {
-        "number": 197,
+        "number": 177,
         "content": [
           {
             "text": "    ",
@@ -6688,7 +6253,7 @@
         ]
       },
       {
-        "number": 198,
+        "number": 178,
         "content": [
           {
             "text": "    ",
@@ -6745,11 +6310,11 @@
         ]
       },
       {
-        "number": 199,
+        "number": 179,
         "content": []
       },
       {
-        "number": 200,
+        "number": 180,
         "content": [
           {
             "text": "    ",
@@ -6814,7 +6379,7 @@
         ]
       },
       {
-        "number": 201,
+        "number": 181,
         "content": [
           {
             "text": "    ",
@@ -6835,7 +6400,7 @@
         ]
       },
       {
-        "number": 202,
+        "number": 182,
         "content": [
           {
             "text": "      mutationObs ",
@@ -6872,7 +6437,7 @@
         ]
       },
       {
-        "number": 203,
+        "number": 183,
         "content": [
           {
             "text": "      ",
@@ -6981,7 +6546,7 @@
         ]
       },
       {
-        "number": 204,
+        "number": 184,
         "content": [
           {
             "text": "    ",
@@ -6994,11 +6559,11 @@
         ]
       },
       {
-        "number": 205,
+        "number": 185,
         "content": []
       },
       {
-        "number": 206,
+        "number": 186,
         "content": [
           {
             "text": "    ",
@@ -7019,11 +6584,11 @@
         ]
       },
       {
-        "number": 207,
+        "number": 187,
         "content": []
       },
       {
-        "number": 208,
+        "number": 188,
         "content": [
           {
             "text": "    ",
@@ -7060,7 +6625,7 @@
         ]
       },
       {
-        "number": 209,
+        "number": 189,
         "content": [
           {
             "text": "      ",
@@ -7109,7 +6674,7 @@
         ]
       },
       {
-        "number": 210,
+        "number": 190,
         "content": [
           {
             "text": "      ",
@@ -7158,7 +6723,7 @@
         ]
       },
       {
-        "number": 211,
+        "number": 191,
         "content": [
           {
             "text": "      ",
@@ -7215,7 +6780,7 @@
         ]
       },
       {
-        "number": 212,
+        "number": 192,
         "content": [
           {
             "text": "      ",
@@ -7244,7 +6809,7 @@
         ]
       },
       {
-        "number": 213,
+        "number": 193,
         "content": [
           {
             "text": "      ",
@@ -7297,7 +6862,7 @@
         ]
       },
       {
-        "number": 214,
+        "number": 194,
         "content": [
           {
             "text": "      ",
@@ -7374,7 +6939,7 @@
         ]
       },
       {
-        "number": 215,
+        "number": 195,
         "content": [
           {
             "text": "    ",
@@ -7387,7 +6952,7 @@
         ]
       },
       {
-        "number": 216,
+        "number": 196,
         "content": [
           {
             "text": "  ",
@@ -7470,15 +7035,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " observe",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " update])",
+            "text": " observe])",
             "color": "var(--code-variable)"
           },
           {
@@ -7488,11 +7045,11 @@
         ]
       },
       {
-        "number": 217,
+        "number": 197,
         "content": []
       },
       {
-        "number": 218,
+        "number": 198,
         "content": [
           {
             "text": "  ",
@@ -7573,7 +7130,7 @@
         ]
       },
       {
-        "number": 219,
+        "number": 199,
         "content": [
           {
             "text": "    ",
@@ -7626,7 +7183,7 @@
         ]
       },
       {
-        "number": 220,
+        "number": 200,
         "content": [
           {
             "text": "    ",
@@ -7675,11 +7232,11 @@
         ]
       },
       {
-        "number": 221,
+        "number": 201,
         "content": []
       },
       {
-        "number": 222,
+        "number": 202,
         "content": [
           {
             "text": "    ",
@@ -7712,7 +7269,7 @@
         ]
       },
       {
-        "number": 223,
+        "number": 203,
         "content": [
           {
             "text": "    ",
@@ -7733,11 +7290,11 @@
         ]
       },
       {
-        "number": 224,
+        "number": 204,
         "content": []
       },
       {
-        "number": 225,
+        "number": 205,
         "content": [
           {
             "text": "    ",
@@ -7782,7 +7339,7 @@
         ]
       },
       {
-        "number": 226,
+        "number": 206,
         "content": [
           {
             "text": "    ",
@@ -7827,11 +7384,11 @@
         ]
       },
       {
-        "number": 227,
+        "number": 207,
         "content": []
       },
       {
-        "number": 228,
+        "number": 208,
         "content": [
           {
             "text": "    ",
@@ -7852,7 +7409,7 @@
         ]
       },
       {
-        "number": 229,
+        "number": 209,
         "content": [
           {
             "text": "      ",
@@ -7905,7 +7462,7 @@
         ]
       },
       {
-        "number": 230,
+        "number": 210,
         "content": [
           {
             "text": "      ",
@@ -7958,7 +7515,7 @@
         ]
       },
       {
-        "number": 231,
+        "number": 211,
         "content": [
           {
             "text": "      ",
@@ -8047,7 +7604,7 @@
         ]
       },
       {
-        "number": 232,
+        "number": 212,
         "content": [
           {
             "text": "      ",
@@ -8144,7 +7701,7 @@
         ]
       },
       {
-        "number": 233,
+        "number": 213,
         "content": [
           {
             "text": "    ",
@@ -8173,7 +7730,7 @@
         ]
       },
       {
-        "number": 234,
+        "number": 214,
         "content": [
           {
             "text": "      ",
@@ -8202,7 +7759,7 @@
         ]
       },
       {
-        "number": 235,
+        "number": 215,
         "content": [
           {
             "text": "        top",
@@ -8303,7 +7860,7 @@
         ]
       },
       {
-        "number": 236,
+        "number": 216,
         "content": [
           {
             "text": "        behavior",
@@ -8316,7 +7873,7 @@
         ]
       },
       {
-        "number": 237,
+        "number": 217,
         "content": [
           {
             "text": "      ",
@@ -8337,7 +7894,7 @@
         ]
       },
       {
-        "number": 238,
+        "number": 218,
         "content": [
           {
             "text": "    ",
@@ -8350,7 +7907,7 @@
         ]
       },
       {
-        "number": 239,
+        "number": 219,
         "content": [
           {
             "text": "  ",
@@ -8379,11 +7936,11 @@
         ]
       },
       {
-        "number": 240,
+        "number": 220,
         "content": []
       },
       {
-        "number": 241,
+        "number": 221,
         "content": [
           {
             "text": "  ",
@@ -8420,7 +7977,7 @@
         ]
       },
       {
-        "number": 242,
+        "number": 222,
         "content": [
           {
             "text": "}",
@@ -8429,7 +7986,7 @@
         ]
       },
       {
-        "number": 243,
+        "number": 223,
         "content": []
       }
     ]

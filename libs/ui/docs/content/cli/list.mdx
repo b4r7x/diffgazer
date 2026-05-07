@@ -6,15 +6,17 @@ description: List available @diffgazer/ui components and @diffgazer/keys hooks.
 ## Usage
 
 ```bash
-npx @diffgazer/add list
+pnpm exec dgadd list
 ```
+
+Use `npx @diffgazer/add list` only after `npm view @diffgazer/add version` succeeds. Before publication, install a locally packed `@diffgazer/add` tarball into the target app and run `pnpm exec dgadd`.
 
 ## Examples
 
 ```bash
-npx @diffgazer/add list
-npx @diffgazer/add list --json
-npx @diffgazer/add list --installed
+pnpm exec dgadd list
+pnpm exec dgadd list --json
+pnpm exec dgadd list --installed
 ```
 
 ## Options

@@ -19,10 +19,17 @@ export function Dialog({ open: controlledOpen, defaultOpen, onOpenChange, childr
   });
   const dialogId = useId();
   const triggerRef = useRef<HTMLElement>(null);
+  const hasMountedTitleRef = useRef(false);
   const [hasTitle, setHasTitle] = useState(false);
   const [hasDescription, setHasDescription] = useState(false);
-  const onTitleMount = useCallback(() => setHasTitle(true), []);
-  const onTitleUnmount = useCallback(() => setHasTitle(false), []);
+  const onTitleMount = useCallback(() => {
+    hasMountedTitleRef.current = true;
+    setHasTitle(true);
+  }, []);
+  const onTitleUnmount = useCallback(() => {
+    hasMountedTitleRef.current = false;
+    setHasTitle(false);
+  }, []);
   const onDescriptionMount = useCallback(() => setHasDescription(true), []);
   const onDescriptionUnmount = useCallback(() => setHasDescription(false), []);
 
@@ -33,6 +40,7 @@ export function Dialog({ open: controlledOpen, defaultOpen, onOpenChange, childr
       contentId: `${dialogId}-content`,
       titleId: `${dialogId}-title`,
       descriptionId: `${dialogId}-description`,
+      hasMountedTitleRef,
       hasTitle,
       hasDescription,
       onTitleMount,

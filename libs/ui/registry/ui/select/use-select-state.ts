@@ -1,66 +1,137 @@
 "use client";
 
-import { useState, useRef, useId, useCallback, useMemo, type RefObject } from "react";
+import { useState, useRef, useId, useCallback, useMemo, type AriaAttributes, type RefObject } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
+import { useFormReset } from "@/hooks/use-form-reset";
 import { useOutsideClick } from "@/hooks/use-outside-click";
 import type { SelectContextValue, SelectOptionMetadata } from "./select-context";
 import { matchesSearch } from "@/lib/search";
 
-export interface UseSelectStateOptions {
+type SelectValue = string | null | string[];
+
+interface UseSelectStateBaseOptions {
   open?: boolean;
+  openControlled?: boolean;
   onOpenChange?: (open: boolean) => void;
   defaultOpen?: boolean;
-  value?: string | string[];
-  onChange?: ((value: string) => void) | ((value: string[]) => void);
-  defaultValue?: string | string[];
   highlighted?: string | null;
+  highlightedControlled?: boolean;
+  onHighlightChange?: (value: string | null) => void;
+  /** @deprecated Use `onHighlightChange` for controlled highlight updates. */
   onHighlight?: (value: string | null) => void;
-  multiple?: boolean;
   disabled?: boolean;
   variant?: "default" | "card";
-  ariaInvalid?: boolean;
+  ariaInvalid?: AriaAttributes["aria-invalid"];
   required?: boolean;
+  options: ReadonlyMap<string, SelectOptionMetadata>;
 }
+
+interface UseSelectStateSingleOptions extends UseSelectStateBaseOptions {
+  multiple?: false;
+  value?: string;
+  valueControlled?: boolean;
+  onValueChange?: (value: string) => void;
+  /** @deprecated Use `onValueChange` for controlled value updates. */
+  onChange?: (value: string) => void;
+  defaultValue?: string;
+}
+
+interface UseSelectStateMultipleOptions extends UseSelectStateBaseOptions {
+  multiple: true;
+  value?: string[];
+  valueControlled?: boolean;
+  onValueChange?: (value: string[]) => void;
+  /** @deprecated Use `onValueChange` for controlled value updates. */
+  onChange?: (value: string[]) => void;
+  defaultValue?: string[];
+}
+
+export type UseSelectStateOptions =
+  | UseSelectStateSingleOptions
+  | UseSelectStateMultipleOptions;
 
 export interface UseSelectStateReturn {
   contextValue: SelectContextValue;
   wrapperRef: RefObject<HTMLDivElement | null>;
 }
 
-export function useSelectState({
-  open: controlledOpen,
-  onOpenChange,
-  defaultOpen = false,
-  value: controlledValue,
-  onChange,
-  defaultValue,
-  highlighted: controlledHighlighted,
-  onHighlight,
-  multiple = false,
-  disabled = false,
-  variant = "default",
-  ariaInvalid,
-}: UseSelectStateOptions): UseSelectStateReturn {
+function getDefaultSelectValue(multiple: boolean, defaultValue: SelectValue | undefined): SelectValue {
+  return defaultValue ?? (multiple ? [] : null);
+}
+
+function getSelectValueChangeHandler(options: UseSelectStateOptions) {
+  if (options.multiple) {
+    const onValueChange = options.onValueChange ?? options.onChange;
+    return onValueChange
+      ? (nextValue: SelectValue) => {
+          if (Array.isArray(nextValue)) onValueChange(nextValue);
+        }
+      : undefined;
+  }
+
+  const onValueChange = options.onValueChange ?? options.onChange;
+  return onValueChange
+    ? (nextValue: SelectValue) => {
+        if (typeof nextValue === "string") onValueChange(nextValue);
+      }
+    : undefined;
+}
+
+export function useSelectState(options: UseSelectStateOptions): UseSelectStateReturn {
+  const {
+    open: controlledOpen,
+    openControlled,
+    onOpenChange,
+    defaultOpen = false,
+    value: controlledValue,
+    valueControlled,
+    defaultValue,
+    highlighted: controlledHighlighted,
+    highlightedControlled,
+    onHighlight,
+    onHighlightChange,
+    multiple = false,
+    disabled = false,
+    variant = "default",
+    ariaInvalid,
+    required,
+    options: optionMetadata,
+  } = options;
+  const resetValue = useMemo(
+    () => getDefaultSelectValue(multiple, defaultValue),
+    [defaultValue, multiple],
+  );
+  const valueChangeHandler = useMemo(
+    () => getSelectValueChangeHandler(options),
+    [multiple, options.onChange, options.onValueChange],
+  );
+  const isOpenControlled = openControlled ?? controlledOpen !== undefined;
+  const isValueControlled = valueControlled ?? controlledValue !== undefined;
+  const isHighlightedControlled = highlightedControlled ?? controlledHighlighted !== undefined;
+
   const [isOpen, setIsOpen] = useControllableState<boolean>({
-    value: controlledOpen,
+    value: isOpenControlled ? controlledOpen ?? false : controlledOpen,
+    controlled: isOpenControlled,
     defaultValue: defaultOpen,
     onChange: onOpenChange,
   });
-  const [value, setValue] = useControllableState<string | string[]>({
-    value: controlledValue,
-    defaultValue: defaultValue ?? (multiple ? [] : ""),
-    onChange: onChange as ((value: string | string[]) => void) | undefined,
+  const [value, setValue] = useControllableState<SelectValue>({
+    value: isValueControlled ? controlledValue ?? resetValue : controlledValue,
+    controlled: isValueControlled,
+    defaultValue: resetValue,
+    onChange: valueChangeHandler,
   });
   const [searchQuery, setSearchQuery] = useState("");
-  const [hasSearch, setHasSearch] = useState(false);
+  const [nativeInvalid, setNativeInvalid] = useState(false);
   const [highlighted, setHighlighted] = useControllableState<string | null>({
-    value: controlledHighlighted,
+    value: isHighlightedControlled ? controlledHighlighted ?? null : controlledHighlighted,
+    controlled: isHighlightedControlled,
     defaultValue: null,
-    onChange: onHighlight,
+    onChange: onHighlightChange ?? onHighlight,
   });
 
-  const labelsRef = useRef<Map<string, SelectOptionMetadata>>(new Map());
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
@@ -74,29 +145,23 @@ export function useSelectState({
     }
   }, [disabled, setIsOpen, setHighlighted]);
 
-  useOutsideClick(wrapperRef, () => handleOpenChange(false), isOpen);
+  const outsideClickExcludeRefs = useMemo(() => [contentRef], [contentRef]);
+  useOutsideClick(wrapperRef, () => handleOpenChange(false), isOpen, outsideClickExcludeRefs);
 
   const onSearchChange = useCallback((query: string) => {
     setSearchQuery(query);
-    if (highlighted) {
-      const option = labelsRef.current.get(highlighted);
+    if (highlighted !== null) {
+      const option = optionMetadata.get(highlighted);
       if (option && (!matchesSearch(option.label, query) || option.disabled)) {
         setHighlighted(null);
       }
     }
-  }, [highlighted, setHighlighted]);
-
-  const registerOption = useCallback((itemValue: string, metadata: SelectOptionMetadata) => {
-    labelsRef.current.set(itemValue, metadata);
-    return () => { labelsRef.current.delete(itemValue); };
-  }, []);
-
-  const isOptionDisabled = useCallback((itemValue: string) => {
-    return labelsRef.current.get(itemValue)?.disabled ?? false;
-  }, []);
+  }, [highlighted, optionMetadata, setHighlighted]);
 
   const selectItem = useCallback((itemValue: string) => {
-    if (disabled || isOptionDisabled(itemValue)) return;
+    const option = optionMetadata.get(itemValue);
+    if (disabled || !option || option.disabled || !matchesSearch(option.label, searchQuery)) return;
+    setNativeInvalid(false);
     if (multiple) {
       setValue((prev) => {
         const current = Array.isArray(prev) ? prev : [];
@@ -109,7 +174,17 @@ export function useSelectState({
       handleOpenChange(false);
       triggerRef.current?.focus();
     }
-  }, [disabled, isOptionDisabled, multiple, setValue, handleOpenChange]);
+  }, [disabled, multiple, optionMetadata, searchQuery, setValue, handleOpenChange]);
+
+  useFormReset(wrapperRef, resetValue, setValue, !isValueControlled);
+
+  const hasRequiredValue = Array.isArray(value) ? value.length > 0 : value !== null && value !== "";
+  const resolvedAriaInvalid = nativeInvalid && required && !hasRequiredValue ? true : ariaInvalid;
+
+  const onNativeInvalid = useCallback(() => {
+    setNativeInvalid(true);
+    (searchInputRef.current ?? triggerRef.current)?.focus();
+  }, []);
 
   const contextValue: SelectContextValue = useMemo(() => ({
     open: isOpen,
@@ -122,18 +197,17 @@ export function useSelectState({
     highlighted,
     onHighlight: setHighlighted,
     selectItem,
-    labelsRef,
-    registerOption,
-    isOptionDisabled,
+    options: optionMetadata,
     triggerRef,
+    contentRef,
     searchInputRef,
-    hasSearch,
-    setHasSearch,
     variant,
     listboxId,
     triggerId: `${listboxId}-trigger`,
-    ariaInvalid: ariaInvalid || undefined,
-  }), [isOpen, disabled, handleOpenChange, value, multiple, searchQuery, onSearchChange, highlighted, setHighlighted, selectItem, registerOption, isOptionDisabled, hasSearch, variant, listboxId, ariaInvalid]);
+    ariaInvalid: resolvedAriaInvalid,
+    required: required || undefined,
+    onNativeInvalid,
+  }), [isOpen, disabled, handleOpenChange, value, multiple, searchQuery, onSearchChange, highlighted, setHighlighted, selectItem, optionMetadata, variant, listboxId, resolvedAriaInvalid, required, onNativeInvalid]);
 
   return { contextValue, wrapperRef };
 }

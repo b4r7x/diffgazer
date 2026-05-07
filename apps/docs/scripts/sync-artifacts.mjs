@@ -9,6 +9,7 @@ import {
 import {
   assertArtifactSyncOutputs,
   getArtifactLibraries,
+  materializePrimaryStylesFromArtifact,
   readDocsLibrariesConfig,
   resolveArtifactSyncMode,
 } from "./sync-artifacts-lib.mjs";
@@ -20,18 +21,25 @@ const DOCS_LIBRARIES_CONFIG_PATH = resolve(DOCS_ROOT, "config/docs-libraries.jso
 const docsLibraries = readDocsLibrariesConfig(DOCS_LIBRARIES_CONFIG_PATH);
 const artifactLibraries = getArtifactLibraries(docsLibraries);
 
-syncDocsFromArtifacts({
+const syncMode = resolveArtifactSyncMode(process.env, {
+  libraries: artifactLibraries,
+  resolveFromDir: DOCS_ROOT,
+});
+
+const syncResult = syncDocsFromArtifacts({
   docsRoot: DOCS_ROOT,
   workspaceRoot: WORKSPACE_ROOT,
   libraries: artifactLibraries,
   primaryLibraryId: docsLibraries.primaryLibraryId,
   origin: normalizeOrigin(process.env.REGISTRY_ORIGIN, { defaultOrigin: REGISTRY_ORIGIN }),
   sourceOrigin: REGISTRY_ORIGIN,
-  mode: resolveArtifactSyncMode(process.env, {
-    libraries: artifactLibraries,
-    resolveFromDir: DOCS_ROOT,
-  }),
+  mode: syncMode,
 });
+
+const primaryArtifact = syncResult.artifacts.find((artifact) => artifact.id === docsLibraries.primaryLibraryId);
+if (primaryArtifact) {
+  materializePrimaryStylesFromArtifact(DOCS_ROOT, primaryArtifact);
+}
 
 // Generate demo-loaders.ts from discovered demo-index files.
 const demoEntries = artifactLibraries
@@ -94,4 +102,5 @@ assertArtifactSyncOutputs({
   docsRoot: DOCS_ROOT,
   primaryLibraryId: docsLibraries.primaryLibraryId,
   libraries: artifactLibraries,
+  artifacts: syncResult.artifacts,
 });

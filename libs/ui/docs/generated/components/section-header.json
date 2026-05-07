@@ -122,35 +122,10 @@
       ]
     },
     "registry/ui/section-header/section-header.tsx": {
-      "raw": "\"use client\";\n\nimport type { HTMLAttributes, Ref } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\ntype HeadingTag = \"h2\" | \"h3\" | \"h4\";\n\nexport const sectionHeaderVariants = cva(\n  \"font-bold mb-2 uppercase text-xs tracking-wider\",\n  {\n    variants: {\n      variant: {\n        default: \"text-foreground\",\n        muted: \"text-muted-foreground\",\n      },\n      bordered: {\n        true: \"border-b border-border pb-2\",\n      },\n    },\n    defaultVariants: { variant: \"default\", bordered: false },\n  },\n);\n\nexport interface SectionHeaderProps\n  extends HTMLAttributes<HTMLHeadingElement>,\n    VariantProps<typeof sectionHeaderVariants> {\n  as?: HeadingTag;\n  ref?: Ref<HTMLHeadingElement>;\n}\n\nexport function SectionHeader({\n  ref,\n  className,\n  variant,\n  bordered,\n  as: Tag = \"h3\",\n  children,\n  ...props\n}: SectionHeaderProps) {\n  return (\n    <Tag\n      ref={ref}\n      className={cn(sectionHeaderVariants({ variant, bordered }), className)}\n      {...props}\n    >\n      {children}\n    </Tag>\n  );\n}\n",
+      "raw": "import type { HTMLAttributes, Ref } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\ntype HeadingTag = \"h2\" | \"h3\" | \"h4\";\n\nexport const sectionHeaderVariants = cva(\n  \"font-bold mb-2 uppercase text-xs tracking-wider\",\n  {\n    variants: {\n      variant: {\n        default: \"text-foreground\",\n        muted: \"text-muted-foreground\",\n      },\n      bordered: {\n        true: \"border-b border-border pb-2\",\n      },\n    },\n    defaultVariants: { variant: \"default\", bordered: false },\n  },\n);\n\nexport interface SectionHeaderProps\n  extends HTMLAttributes<HTMLHeadingElement>,\n    VariantProps<typeof sectionHeaderVariants> {\n  as?: HeadingTag;\n  ref?: Ref<HTMLHeadingElement>;\n}\n\nexport function SectionHeader({\n  ref,\n  className,\n  variant,\n  bordered,\n  as: Tag = \"h3\",\n  children,\n  ...props\n}: SectionHeaderProps) {\n  return (\n    <Tag\n      ref={ref}\n      className={cn(sectionHeaderVariants({ variant, bordered }), className)}\n      {...props}\n    >\n      {children}\n    </Tag>\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
-          "content": [
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "use client",
-              "color": "var(--code-tag)"
-            },
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": ";",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 2,
-          "content": []
-        },
-        {
-          "number": 3,
           "content": [
             {
               "text": "import",
@@ -219,7 +194,7 @@
           ]
         },
         {
-          "number": 4,
+          "number": 2,
           "content": [
             {
               "text": "import",
@@ -288,7 +263,7 @@
           ]
         },
         {
-          "number": 5,
+          "number": 3,
           "content": [
             {
               "text": "import",
@@ -341,11 +316,11 @@
           ]
         },
         {
-          "number": 6,
+          "number": 4,
           "content": []
         },
         {
-          "number": 7,
+          "number": 5,
           "content": [
             {
               "text": "type",
@@ -438,11 +413,11 @@
           ]
         },
         {
-          "number": 8,
+          "number": 6,
           "content": []
         },
         {
-          "number": 9,
+          "number": 7,
           "content": [
             {
               "text": "export",
@@ -487,7 +462,7 @@
           ]
         },
         {
-          "number": 10,
+          "number": 8,
           "content": [
             {
               "text": "  ",
@@ -512,7 +487,7 @@
           ]
         },
         {
-          "number": 11,
+          "number": 9,
           "content": [
             {
               "text": "  ",
@@ -525,7 +500,7 @@
           ]
         },
         {
-          "number": 12,
+          "number": 10,
           "content": [
             {
               "text": "    variants",
@@ -546,7 +521,7 @@
           ]
         },
         {
-          "number": 13,
+          "number": 11,
           "content": [
             {
               "text": "      variant",
@@ -567,7 +542,7 @@
           ]
         },
         {
-          "number": 14,
+          "number": 12,
           "content": [
             {
               "text": "        default",
@@ -600,7 +575,7 @@
           ]
         },
         {
-          "number": 15,
+          "number": 13,
           "content": [
             {
               "text": "        muted",
@@ -633,7 +608,7 @@
           ]
         },
         {
-          "number": 16,
+          "number": 14,
           "content": [
             {
               "text": "      ",
@@ -646,7 +621,7 @@
           ]
         },
         {
-          "number": 17,
+          "number": 15,
           "content": [
             {
               "text": "      bordered",
@@ -667,7 +642,7 @@
           ]
         },
         {
-          "number": 18,
+          "number": 16,
           "content": [
             {
               "text": "        true",
@@ -700,7 +675,7 @@
           ]
         },
         {
-          "number": 19,
+          "number": 17,
           "content": [
             {
               "text": "      ",
@@ -713,7 +688,7 @@
           ]
         },
         {
-          "number": 20,
+          "number": 18,
           "content": [
             {
               "text": "    ",
@@ -726,7 +701,7 @@
           ]
         },
         {
-          "number": 21,
+          "number": 19,
           "content": [
             {
               "text": "    defaultVariants",
@@ -799,7 +774,7 @@
           ]
         },
         {
-          "number": 22,
+          "number": 20,
           "content": [
             {
               "text": "  ",
@@ -812,7 +787,7 @@
           ]
         },
         {
-          "number": 23,
+          "number": 21,
           "content": [
             {
               "text": ")",
@@ -825,11 +800,11 @@
           ]
         },
         {
-          "number": 24,
+          "number": 22,
           "content": []
         },
         {
-          "number": 25,
+          "number": 23,
           "content": [
             {
               "text": "export",
@@ -854,7 +829,7 @@
           ]
         },
         {
-          "number": 26,
+          "number": 24,
           "content": [
             {
               "text": "  ",
@@ -887,7 +862,7 @@
           ]
         },
         {
-          "number": 27,
+          "number": 25,
           "content": [
             {
               "text": "    ",
@@ -920,7 +895,7 @@
           ]
         },
         {
-          "number": 28,
+          "number": 26,
           "content": [
             {
               "text": "  as",
@@ -945,7 +920,7 @@
           ]
         },
         {
-          "number": 29,
+          "number": 27,
           "content": [
             {
               "text": "  ref",
@@ -978,7 +953,7 @@
           ]
         },
         {
-          "number": 30,
+          "number": 28,
           "content": [
             {
               "text": "}",
@@ -987,11 +962,11 @@
           ]
         },
         {
-          "number": 31,
+          "number": 29,
           "content": []
         },
         {
-          "number": 32,
+          "number": 30,
           "content": [
             {
               "text": "export",
@@ -1020,7 +995,7 @@
           ]
         },
         {
-          "number": 33,
+          "number": 31,
           "content": [
             {
               "text": "  ref",
@@ -1033,7 +1008,7 @@
           ]
         },
         {
-          "number": 34,
+          "number": 32,
           "content": [
             {
               "text": "  className",
@@ -1046,7 +1021,7 @@
           ]
         },
         {
-          "number": 35,
+          "number": 33,
           "content": [
             {
               "text": "  variant",
@@ -1059,7 +1034,7 @@
           ]
         },
         {
-          "number": 36,
+          "number": 34,
           "content": [
             {
               "text": "  bordered",
@@ -1072,7 +1047,7 @@
           ]
         },
         {
-          "number": 37,
+          "number": 35,
           "content": [
             {
               "text": "  as",
@@ -1113,7 +1088,7 @@
           ]
         },
         {
-          "number": 38,
+          "number": 36,
           "content": [
             {
               "text": "  children",
@@ -1126,7 +1101,7 @@
           ]
         },
         {
-          "number": 39,
+          "number": 37,
           "content": [
             {
               "text": "  ",
@@ -1143,7 +1118,7 @@
           ]
         },
         {
-          "number": 40,
+          "number": 38,
           "content": [
             {
               "text": "}:",
@@ -1172,7 +1147,7 @@
           ]
         },
         {
-          "number": 41,
+          "number": 39,
           "content": [
             {
               "text": "  ",
@@ -1189,7 +1164,7 @@
           ]
         },
         {
-          "number": 42,
+          "number": 40,
           "content": [
             {
               "text": "    ",
@@ -1206,7 +1181,7 @@
           ]
         },
         {
-          "number": 43,
+          "number": 41,
           "content": [
             {
               "text": "      ",
@@ -1231,7 +1206,7 @@
           ]
         },
         {
-          "number": 44,
+          "number": 42,
           "content": [
             {
               "text": "      ",
@@ -1300,7 +1275,7 @@
           ]
         },
         {
-          "number": 45,
+          "number": 43,
           "content": [
             {
               "text": "      ",
@@ -1321,7 +1296,7 @@
           ]
         },
         {
-          "number": 46,
+          "number": 44,
           "content": [
             {
               "text": "    ",
@@ -1334,7 +1309,7 @@
           ]
         },
         {
-          "number": 47,
+          "number": 45,
           "content": [
             {
               "text": "      ",
@@ -1355,7 +1330,7 @@
           ]
         },
         {
-          "number": 48,
+          "number": 46,
           "content": [
             {
               "text": "    ",
@@ -1376,7 +1351,7 @@
           ]
         },
         {
-          "number": 49,
+          "number": 47,
           "content": [
             {
               "text": "  )",
@@ -1389,7 +1364,7 @@
           ]
         },
         {
-          "number": 50,
+          "number": 48,
           "content": [
             {
               "text": "}",
@@ -1398,13 +1373,13 @@
           ]
         },
         {
-          "number": 51,
+          "number": 49,
           "content": []
         }
       ]
     }
   },
-  "mergedSource": "export {\n  SectionHeader,\n  sectionHeaderVariants,\n  type SectionHeaderProps,\n} from \"./section-header\";\n\n\n\"use client\";\n\nimport type { HTMLAttributes, Ref } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\ntype HeadingTag = \"h2\" | \"h3\" | \"h4\";\n\nexport const sectionHeaderVariants = cva(\n  \"font-bold mb-2 uppercase text-xs tracking-wider\",\n  {\n    variants: {\n      variant: {\n        default: \"text-foreground\",\n        muted: \"text-muted-foreground\",\n      },\n      bordered: {\n        true: \"border-b border-border pb-2\",\n      },\n    },\n    defaultVariants: { variant: \"default\", bordered: false },\n  },\n);\n\nexport interface SectionHeaderProps\n  extends HTMLAttributes<HTMLHeadingElement>,\n    VariantProps<typeof sectionHeaderVariants> {\n  as?: HeadingTag;\n  ref?: Ref<HTMLHeadingElement>;\n}\n\nexport function SectionHeader({\n  ref,\n  className,\n  variant,\n  bordered,\n  as: Tag = \"h3\",\n  children,\n  ...props\n}: SectionHeaderProps) {\n  return (\n    <Tag\n      ref={ref}\n      className={cn(sectionHeaderVariants({ variant, bordered }), className)}\n      {...props}\n    >\n      {children}\n    </Tag>\n  );\n}\n",
+  "mergedSource": "export {\n  SectionHeader,\n  sectionHeaderVariants,\n  type SectionHeaderProps,\n} from \"./section-header\";\n\n\nimport type { HTMLAttributes, Ref } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\ntype HeadingTag = \"h2\" | \"h3\" | \"h4\";\n\nexport const sectionHeaderVariants = cva(\n  \"font-bold mb-2 uppercase text-xs tracking-wider\",\n  {\n    variants: {\n      variant: {\n        default: \"text-foreground\",\n        muted: \"text-muted-foreground\",\n      },\n      bordered: {\n        true: \"border-b border-border pb-2\",\n      },\n    },\n    defaultVariants: { variant: \"default\", bordered: false },\n  },\n);\n\nexport interface SectionHeaderProps\n  extends HTMLAttributes<HTMLHeadingElement>,\n    VariantProps<typeof sectionHeaderVariants> {\n  as?: HeadingTag;\n  ref?: Ref<HTMLHeadingElement>;\n}\n\nexport function SectionHeader({\n  ref,\n  className,\n  variant,\n  bordered,\n  as: Tag = \"h3\",\n  children,\n  ...props\n}: SectionHeaderProps) {\n  return (\n    <Tag\n      ref={ref}\n      className={cn(sectionHeaderVariants({ variant, bordered }), className)}\n      {...props}\n    >\n      {children}\n    </Tag>\n  );\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
@@ -1519,31 +1494,6 @@
       "number": 8,
       "content": [
         {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "use client",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": ";",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 9,
-      "content": []
-    },
-    {
-      "number": 10,
-      "content": [
-        {
           "text": "import",
           "color": "var(--code-keyword)"
         },
@@ -1610,7 +1560,7 @@
       ]
     },
     {
-      "number": 11,
+      "number": 9,
       "content": [
         {
           "text": "import",
@@ -1679,7 +1629,7 @@
       ]
     },
     {
-      "number": 12,
+      "number": 10,
       "content": [
         {
           "text": "import",
@@ -1732,11 +1682,11 @@
       ]
     },
     {
-      "number": 13,
+      "number": 11,
       "content": []
     },
     {
-      "number": 14,
+      "number": 12,
       "content": [
         {
           "text": "type",
@@ -1829,11 +1779,11 @@
       ]
     },
     {
-      "number": 15,
+      "number": 13,
       "content": []
     },
     {
-      "number": 16,
+      "number": 14,
       "content": [
         {
           "text": "export",
@@ -1878,7 +1828,7 @@
       ]
     },
     {
-      "number": 17,
+      "number": 15,
       "content": [
         {
           "text": "  ",
@@ -1903,7 +1853,7 @@
       ]
     },
     {
-      "number": 18,
+      "number": 16,
       "content": [
         {
           "text": "  ",
@@ -1916,7 +1866,7 @@
       ]
     },
     {
-      "number": 19,
+      "number": 17,
       "content": [
         {
           "text": "    variants",
@@ -1937,7 +1887,7 @@
       ]
     },
     {
-      "number": 20,
+      "number": 18,
       "content": [
         {
           "text": "      variant",
@@ -1958,7 +1908,7 @@
       ]
     },
     {
-      "number": 21,
+      "number": 19,
       "content": [
         {
           "text": "        default",
@@ -1991,7 +1941,7 @@
       ]
     },
     {
-      "number": 22,
+      "number": 20,
       "content": [
         {
           "text": "        muted",
@@ -2024,7 +1974,7 @@
       ]
     },
     {
-      "number": 23,
+      "number": 21,
       "content": [
         {
           "text": "      ",
@@ -2037,7 +1987,7 @@
       ]
     },
     {
-      "number": 24,
+      "number": 22,
       "content": [
         {
           "text": "      bordered",
@@ -2058,7 +2008,7 @@
       ]
     },
     {
-      "number": 25,
+      "number": 23,
       "content": [
         {
           "text": "        true",
@@ -2091,7 +2041,7 @@
       ]
     },
     {
-      "number": 26,
+      "number": 24,
       "content": [
         {
           "text": "      ",
@@ -2104,7 +2054,7 @@
       ]
     },
     {
-      "number": 27,
+      "number": 25,
       "content": [
         {
           "text": "    ",
@@ -2117,7 +2067,7 @@
       ]
     },
     {
-      "number": 28,
+      "number": 26,
       "content": [
         {
           "text": "    defaultVariants",
@@ -2190,7 +2140,7 @@
       ]
     },
     {
-      "number": 29,
+      "number": 27,
       "content": [
         {
           "text": "  ",
@@ -2203,7 +2153,7 @@
       ]
     },
     {
-      "number": 30,
+      "number": 28,
       "content": [
         {
           "text": ")",
@@ -2216,11 +2166,11 @@
       ]
     },
     {
-      "number": 31,
+      "number": 29,
       "content": []
     },
     {
-      "number": 32,
+      "number": 30,
       "content": [
         {
           "text": "export",
@@ -2245,7 +2195,7 @@
       ]
     },
     {
-      "number": 33,
+      "number": 31,
       "content": [
         {
           "text": "  ",
@@ -2278,7 +2228,7 @@
       ]
     },
     {
-      "number": 34,
+      "number": 32,
       "content": [
         {
           "text": "    ",
@@ -2311,7 +2261,7 @@
       ]
     },
     {
-      "number": 35,
+      "number": 33,
       "content": [
         {
           "text": "  as",
@@ -2336,7 +2286,7 @@
       ]
     },
     {
-      "number": 36,
+      "number": 34,
       "content": [
         {
           "text": "  ref",
@@ -2369,7 +2319,7 @@
       ]
     },
     {
-      "number": 37,
+      "number": 35,
       "content": [
         {
           "text": "}",
@@ -2378,11 +2328,11 @@
       ]
     },
     {
-      "number": 38,
+      "number": 36,
       "content": []
     },
     {
-      "number": 39,
+      "number": 37,
       "content": [
         {
           "text": "export",
@@ -2411,7 +2361,7 @@
       ]
     },
     {
-      "number": 40,
+      "number": 38,
       "content": [
         {
           "text": "  ref",
@@ -2424,7 +2374,7 @@
       ]
     },
     {
-      "number": 41,
+      "number": 39,
       "content": [
         {
           "text": "  className",
@@ -2437,7 +2387,7 @@
       ]
     },
     {
-      "number": 42,
+      "number": 40,
       "content": [
         {
           "text": "  variant",
@@ -2450,7 +2400,7 @@
       ]
     },
     {
-      "number": 43,
+      "number": 41,
       "content": [
         {
           "text": "  bordered",
@@ -2463,7 +2413,7 @@
       ]
     },
     {
-      "number": 44,
+      "number": 42,
       "content": [
         {
           "text": "  as",
@@ -2504,7 +2454,7 @@
       ]
     },
     {
-      "number": 45,
+      "number": 43,
       "content": [
         {
           "text": "  children",
@@ -2517,7 +2467,7 @@
       ]
     },
     {
-      "number": 46,
+      "number": 44,
       "content": [
         {
           "text": "  ",
@@ -2534,7 +2484,7 @@
       ]
     },
     {
-      "number": 47,
+      "number": 45,
       "content": [
         {
           "text": "}:",
@@ -2563,7 +2513,7 @@
       ]
     },
     {
-      "number": 48,
+      "number": 46,
       "content": [
         {
           "text": "  ",
@@ -2580,7 +2530,7 @@
       ]
     },
     {
-      "number": 49,
+      "number": 47,
       "content": [
         {
           "text": "    ",
@@ -2597,7 +2547,7 @@
       ]
     },
     {
-      "number": 50,
+      "number": 48,
       "content": [
         {
           "text": "      ",
@@ -2622,7 +2572,7 @@
       ]
     },
     {
-      "number": 51,
+      "number": 49,
       "content": [
         {
           "text": "      ",
@@ -2691,7 +2641,7 @@
       ]
     },
     {
-      "number": 52,
+      "number": 50,
       "content": [
         {
           "text": "      ",
@@ -2712,7 +2662,7 @@
       ]
     },
     {
-      "number": 53,
+      "number": 51,
       "content": [
         {
           "text": "    ",
@@ -2725,7 +2675,7 @@
       ]
     },
     {
-      "number": 54,
+      "number": 52,
       "content": [
         {
           "text": "      ",
@@ -2746,7 +2696,7 @@
       ]
     },
     {
-      "number": 55,
+      "number": 53,
       "content": [
         {
           "text": "    ",
@@ -2767,7 +2717,7 @@
       ]
     },
     {
-      "number": 56,
+      "number": 54,
       "content": [
         {
           "text": "  )",
@@ -2780,7 +2730,7 @@
       ]
     },
     {
-      "number": 57,
+      "number": 55,
       "content": [
         {
           "text": "}",
@@ -2789,7 +2739,7 @@
       ]
     },
     {
-      "number": 58,
+      "number": 56,
       "content": []
     }
   ],

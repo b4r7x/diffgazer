@@ -1,3 +1,4 @@
+import { createRef } from "react"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
@@ -21,6 +22,59 @@ function renderList(props: Record<string, unknown> = {}) {
 }
 
 describe("NavigationList", () => {
+  it("supports direct namespaced item parts with rich item UI", async () => {
+    const onSelect = vi.fn()
+    render(
+      <NavigationList aria-label="Test nav" onSelect={onSelect}>
+        <NavigationList.Item id="one">
+          <NavigationList.Title>One</NavigationList.Title>
+          <NavigationList.Status>Live</NavigationList.Status>
+          <NavigationList.Meta>
+            <NavigationList.Badge>new</NavigationList.Badge>
+          </NavigationList.Meta>
+          <NavigationList.Subtitle>First item</NavigationList.Subtitle>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+
+    await userEvent.click(screen.getByRole("option", { name: /One/ }))
+
+    expect(onSelect).toHaveBeenCalledWith("one")
+    expect(screen.getByText("new")).toBeInTheDocument()
+  })
+
+  it("passes native root props and composes key handling with list navigation", async () => {
+    const ref = createRef<HTMLDivElement>()
+    const onClick = vi.fn()
+    const onKeyDown = vi.fn()
+
+    renderList({
+      ref,
+      id: "nav-root",
+      "data-testid": "nav-root",
+      "data-state": "ready",
+      "aria-describedby": "nav-help",
+      style: { maxWidth: "12px" },
+      defaultHighlightedId: "one",
+      onClick,
+      onKeyDown,
+    })
+
+    const list = screen.getByRole("listbox")
+    await userEvent.click(list)
+    await userEvent.keyboard("{ArrowDown}")
+
+    expect(list).toHaveAttribute("id", "nav-root")
+    expect(list).toHaveAttribute("data-state", "ready")
+    expect(list).toHaveAttribute("aria-describedby", "nav-help")
+    expect(list).toHaveStyle({ maxWidth: "12px" })
+    expect(list).toHaveAttribute("tabindex", "0")
+    expect(onClick).toHaveBeenCalled()
+    expect(onKeyDown).toHaveBeenCalled()
+    expect(list).toHaveAttribute("aria-activedescendant", expect.stringContaining("-two"))
+    expect(ref.current).toBe(list)
+  })
+
   it("fires onSelect when an item is clicked", async () => {
     const onSelect = vi.fn()
     renderList({ onSelect })
@@ -33,6 +87,37 @@ describe("NavigationList", () => {
     renderList({ onSelect })
     await userEvent.click(screen.getByText("Three"))
     expect(onSelect).not.toHaveBeenCalled()
+  })
+
+  it("focuses the listbox after clicking an enabled item so keyboard navigation continues", async () => {
+    const user = userEvent.setup()
+    renderList()
+    const listbox = screen.getByRole("listbox")
+
+    await user.click(screen.getByText("One"))
+    expect(listbox).toHaveFocus()
+
+    await user.keyboard("{ArrowDown}")
+    expect(listbox).toHaveAttribute(
+      "aria-activedescendant",
+      expect.stringContaining("-two"),
+    )
+  })
+
+  it("does not focus or select when a disabled item is clicked", async () => {
+    const onSelect = vi.fn()
+    const user = userEvent.setup()
+    renderList({ onSelect })
+    const listbox = screen.getByRole("listbox")
+
+    await user.click(screen.getByText("Three"))
+
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(listbox).not.toHaveFocus()
+    expect(screen.getByRole("option", { name: "Three" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    )
   })
 
   it("fires onSelect in controlled mode without internal state change", async () => {
@@ -119,6 +204,57 @@ describe("NavigationList", () => {
     const describedBy = describedOption.getAttribute("aria-describedby")
     expect(describedBy).toContain("-two-desc-meta")
     expect(describedBy).toContain("-two-desc-sub")
+  })
+
+  it("keeps item ids unchanged while encoding DOM id references", async () => {
+    const id = "release notes/v1.2?"
+    const onSelect = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <NavigationList aria-label="Test nav" defaultHighlightedId={id} onSelect={onSelect}>
+        <NavigationList.Item id={id}>
+          <NavigationList.Title>Release</NavigationList.Title>
+          <NavigationList.Subtitle>Draft</NavigationList.Subtitle>
+          <NavigationList.Meta>Updated</NavigationList.Meta>
+        </NavigationList.Item>
+        <NavigationList.Item id="other">
+          <NavigationList.Title>Other</NavigationList.Title>
+        </NavigationList.Item>
+      </NavigationList>
+    )
+
+    const listbox = screen.getByRole("listbox")
+    const option = screen.getByRole("option", { name: /Release/ })
+    const encodedId = encodeURIComponent(id)
+
+    expect(option).toHaveAttribute("data-value", id)
+    expect(option.id).toContain(encodedId)
+    expect(listbox).toHaveAttribute("aria-activedescendant", option.id)
+    expect(option).toHaveAttribute("aria-labelledby", `${option.id}-label`)
+    expect(option.getAttribute("aria-describedby")).toContain(`${option.id}-desc-meta`)
+    expect(option.getAttribute("aria-describedby")).toContain(`${option.id}-desc-sub`)
+
+    await user.click(option)
+    expect(onSelect).toHaveBeenCalledWith(id)
+  })
+
+  it("treats an empty string item id as a valid active descendant value", () => {
+    render(
+      <NavigationList aria-label="Test nav" defaultHighlightedId="">
+        <NavigationList.Item id="">
+          <NavigationList.Title>Empty id</NavigationList.Title>
+        </NavigationList.Item>
+        <NavigationList.Item id="other">
+          <NavigationList.Title>Other</NavigationList.Title>
+        </NavigationList.Item>
+      </NavigationList>,
+    )
+
+    const listbox = screen.getByRole("listbox")
+    const option = screen.getByText("Empty id").closest("[role='option']")!
+
+    expect(listbox).toHaveAttribute("aria-activedescendant", option.id)
+    expect(document.getElementById(option.id)).toBe(option)
   })
 
 })

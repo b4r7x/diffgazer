@@ -19,8 +19,8 @@
           "type": "registry:hook"
         },
         {
-          "path": "src/internal/navigation-dispatch.ts",
-          "type": "registry:internal"
+          "path": "src/hooks/internal/navigation-dispatch.ts",
+          "type": "registry:hook"
         }
       ]
     },

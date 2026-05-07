@@ -21,7 +21,7 @@ export const useScopedNavigationDoc: HookDoc = {
     },
     {
       name: "role",
-      type: '"radio" | "checkbox" | "option" | "menuitem" | "button" | "tab"',
+      type: '"radio" | "checkbox" | "option" | "menuitem" | "menuitemradio" | "button" | "tab"',
       required: true,
       description:
         "ARIA role used to query navigable children within the container.",

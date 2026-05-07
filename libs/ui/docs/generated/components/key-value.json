@@ -14,10 +14,35 @@
   "props": {},
   "source": {
     "registry/ui/key-value/index.ts": {
-      "raw": "import { KeyValue as KeyValueRoot, type KeyValueProps } from \"./key-value\";\nimport type { KeyValueLayout, KeyValueVariant } from \"./key-value-context\";\nimport { KeyValueItem, type KeyValueItemProps } from \"./key-value-item\";\n\nconst KeyValue = Object.assign(KeyValueRoot, { Item: KeyValueItem });\n\nexport { KeyValue, type KeyValueProps, type KeyValueLayout };\nexport { KeyValueItem, type KeyValueItemProps, type KeyValueVariant };\n\n",
+      "raw": "\"use client\";\n\nimport { KeyValue as KeyValueRoot, type KeyValueProps } from \"./key-value\";\nimport type { KeyValueLayout, KeyValueVariant } from \"./key-value-context\";\nimport { KeyValueItem, type KeyValueItemProps } from \"./key-value-item\";\n\nconst KeyValue = Object.assign(KeyValueRoot, { Item: KeyValueItem });\n\nexport { KeyValue, type KeyValueProps, type KeyValueLayout };\nexport { KeyValueItem, type KeyValueItemProps, type KeyValueVariant };\n\n",
       "highlighted": [
         {
           "number": 1,
+          "content": [
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "use client",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
           "content": [
             {
               "text": "import",
@@ -94,7 +119,7 @@
           ]
         },
         {
-          "number": 2,
+          "number": 4,
           "content": [
             {
               "text": "import",
@@ -163,7 +188,7 @@
           ]
         },
         {
-          "number": 3,
+          "number": 5,
           "content": [
             {
               "text": "import",
@@ -232,11 +257,11 @@
           ]
         },
         {
-          "number": 4,
+          "number": 6,
           "content": []
         },
         {
-          "number": 5,
+          "number": 7,
           "content": [
             {
               "text": "const",
@@ -317,11 +342,11 @@
           ]
         },
         {
-          "number": 6,
+          "number": 8,
           "content": []
         },
         {
-          "number": 7,
+          "number": 9,
           "content": [
             {
               "text": "export",
@@ -378,7 +403,7 @@
           ]
         },
         {
-          "number": 8,
+          "number": 10,
           "content": [
             {
               "text": "export",
@@ -435,17 +460,17 @@
           ]
         },
         {
-          "number": 9,
+          "number": 11,
           "content": []
         },
         {
-          "number": 10,
+          "number": 12,
           "content": []
         }
       ]
     },
     "registry/ui/key-value/key-value.tsx": {
-      "raw": "\"use client\";\n\nimport { useMemo, type ComponentPropsWithRef, type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { KeyValueContext, type KeyValueLayout } from \"./key-value-context\";\n\nexport interface KeyValueProps extends ComponentPropsWithRef<\"dl\"> {\n  layout?: KeyValueLayout;\n  bordered?: boolean;\n  children: ReactNode;\n}\n\nexport function KeyValue({\n  layout = \"horizontal\",\n  bordered = false,\n  children,\n  className,\n  ref,\n  ...props\n}: KeyValueProps) {\n  const contextValue = useMemo(() => ({ layout, bordered }), [layout, bordered]);\n\n  return (\n    <KeyValueContext value={contextValue}>\n      <dl ref={ref} className={cn(\"flex flex-col\", className)} {...props}>\n        {children}\n      </dl>\n    </KeyValueContext>\n  );\n}\n",
+      "raw": "\"use client\";\n\nimport { useMemo, type ComponentPropsWithRef, type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { KeyValueContext, type KeyValueLayout } from \"./key-value-context\";\n\nexport interface KeyValueProps extends ComponentPropsWithRef<\"dl\"> {\n  layout?: KeyValueLayout;\n  bordered?: boolean;\n  children: ReactNode;\n}\n\nexport function KeyValue({\n  layout = \"horizontal\",\n  bordered = false,\n  children,\n  className,\n  ref,\n  ...props\n}: KeyValueProps) {\n  const contextValue = useMemo(() => ({ layout, bordered }), [layout, bordered]);\n\n  return (\n    <KeyValueContext value={contextValue}>\n      <dl\n        ref={ref}\n        className={cn(\n          \"grid\",\n          layout === \"horizontal\"\n            ? \"grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-6 gap-y-2\"\n            : \"grid-cols-1 gap-y-1\",\n          bordered && \"gap-y-0\",\n          className,\n        )}\n        {...props}\n      >\n        {children}\n      </dl>\n    </KeyValueContext>\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -1185,9 +1210,14 @@
             {
               "text": "dl",
               "color": "var(--code-tag)"
-            },
+            }
+          ]
+        },
+        {
+          "number": 26,
+          "content": [
             {
-              "text": " ",
+              "text": "        ",
               "color": "var(--code-variable)"
             },
             {
@@ -1205,9 +1235,14 @@
             {
               "text": "}",
               "color": "var(--code-operator)"
-            },
+            }
+          ]
+        },
+        {
+          "number": 27,
+          "content": [
             {
-              "text": " ",
+              "text": "        ",
               "color": "var(--code-variable)"
             },
             {
@@ -1225,13 +1260,22 @@
             {
               "text": "(",
               "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 28,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
             },
             {
               "text": "\"",
               "color": "var(--code-operator)"
             },
             {
-              "text": "flex flex-col",
+              "text": "grid",
               "color": "var(--code-tag)"
             },
             {
@@ -1241,17 +1285,164 @@
             {
               "text": ",",
               "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 29,
+          "content": [
+            {
+              "text": "          layout ",
+              "color": "var(--code-variable)"
             },
             {
-              "text": " className)",
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "horizontal",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 30,
+          "content": [
+            {
+              "text": "            ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "?",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-6 gap-y-2",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 31,
+          "content": [
+            {
+              "text": "            ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "grid-cols-1 gap-y-1",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 32,
+          "content": [
+            {
+              "text": "          bordered ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "gap-y-0",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 33,
+          "content": [
+            {
+              "text": "          className",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 34,
+          "content": [
+            {
+              "text": "        )",
               "color": "var(--code-variable)"
             },
             {
               "text": "}",
               "color": "var(--code-operator)"
-            },
+            }
+          ]
+        },
+        {
+          "number": 35,
+          "content": [
             {
-              "text": " ",
+              "text": "        ",
               "color": "var(--code-variable)"
             },
             {
@@ -1263,13 +1454,26 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "}>",
+              "text": "}",
               "color": "var(--code-operator)"
             }
           ]
         },
         {
-          "number": 26,
+          "number": 36,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 37,
           "content": [
             {
               "text": "        ",
@@ -1290,7 +1494,7 @@
           ]
         },
         {
-          "number": 27,
+          "number": 38,
           "content": [
             {
               "text": "      ",
@@ -1311,7 +1515,7 @@
           ]
         },
         {
-          "number": 28,
+          "number": 39,
           "content": [
             {
               "text": "    ",
@@ -1332,7 +1536,7 @@
           ]
         },
         {
-          "number": 29,
+          "number": 40,
           "content": [
             {
               "text": "  )",
@@ -1345,7 +1549,7 @@
           ]
         },
         {
-          "number": 30,
+          "number": 41,
           "content": [
             {
               "text": "}",
@@ -1354,13 +1558,13 @@
           ]
         },
         {
-          "number": 31,
+          "number": 42,
           "content": []
         }
       ]
     },
     "registry/ui/key-value/key-value-item.tsx": {
-      "raw": "\"use client\";\n\nimport type { ComponentPropsWithRef, ReactNode } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { useKeyValueContext, type KeyValueLayout, type KeyValueVariant } from \"./key-value-context\";\n\nexport interface KeyValueItemProps extends ComponentPropsWithRef<\"div\"> {\n  label: ReactNode;\n  value: ReactNode;\n  variant?: KeyValueVariant;\n  layout?: KeyValueLayout;\n  bordered?: boolean;\n}\n\nconst keyValueItemVariants = cva(\"\", {\n  variants: {\n    layout: {\n      horizontal: \"flex justify-between items-center\",\n      vertical: \"flex flex-col gap-1\",\n    },\n    bordered: {\n      true: \"py-4 border-b border-border last:border-b-0\",\n      false: \"\",\n    },\n  },\n  defaultVariants: { layout: \"horizontal\", bordered: false },\n});\n\nconst valueVariants = cva(\"\", {\n  variants: {\n    variant: {\n      default: \"font-bold text-foreground\",\n      warning: \"font-bold text-warning\",\n      info: \"font-mono text-foreground\",\n      success: \"font-bold text-success\",\n      error: \"font-bold text-destructive\",\n    },\n    bordered: { true: \"text-xs\", false: \"\" },\n  },\n  defaultVariants: { variant: \"default\", bordered: false },\n});\n\nexport function KeyValueItem({\n  label,\n  value,\n  variant = \"default\",\n  className,\n  ref,\n  layout: layoutProp,\n  bordered: borderedProp,\n  ...rest\n}: KeyValueItemProps) {\n  const ctx = useKeyValueContext();\n  const layout = layoutProp ?? ctx.layout;\n  const bordered = borderedProp ?? ctx.bordered;\n\n  return (\n    <div\n      ref={ref}\n      className={cn(keyValueItemVariants({ layout, bordered }), className)}\n      {...rest}\n    >\n      <dt className={cn(\"text-muted-foreground\", bordered ? \"text-xs\" : \"text-sm\")}>{label}</dt>\n      <dd className={valueVariants({ variant, bordered })}>{value}</dd>\n    </div>\n  );\n}\n",
+      "raw": "\"use client\";\n\nimport type { ComponentPropsWithRef, ReactNode } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { useKeyValueContext, type KeyValueLayout, type KeyValueVariant } from \"./key-value-context\";\n\nexport interface KeyValueItemProps extends Omit<ComponentPropsWithRef<\"dt\">, \"children\"> {\n  label: ReactNode;\n  value: ReactNode;\n  variant?: KeyValueVariant;\n  layout?: KeyValueLayout;\n  bordered?: boolean;\n}\n\nconst labelVariants = cva(\"text-muted-foreground\", {\n  variants: {\n    layout: {\n      horizontal: \"\",\n      vertical: \"\",\n    },\n    bordered: {\n      true: \"pt-4 border-t border-border first:border-t-0 text-xs\",\n      false: \"text-sm\",\n    },\n  },\n  defaultVariants: { layout: \"horizontal\", bordered: false },\n});\n\nconst valueVariants = cva(\"\", {\n  variants: {\n    variant: {\n      default: \"font-bold text-foreground\",\n      warning: \"font-bold text-warning\",\n      info: \"font-mono text-foreground\",\n      success: \"font-bold text-success\",\n      error: \"font-bold text-destructive\",\n    },\n    bordered: { true: \"text-xs\", false: \"\" },\n    layout: {\n      horizontal: \"text-right\",\n      vertical: \"pb-3\",\n    },\n  },\n  compoundVariants: [\n    { layout: \"horizontal\", bordered: true, class: \"pt-4 border-t border-border [&:nth-child(2)]:border-t-0\" },\n  ],\n  defaultVariants: { variant: \"default\", bordered: false, layout: \"horizontal\" },\n});\n\nexport function KeyValueItem({\n  label,\n  value,\n  variant = \"default\",\n  className,\n  ref,\n  layout: layoutProp,\n  bordered: borderedProp,\n  ...rest\n}: KeyValueItemProps) {\n  const ctx = useKeyValueContext();\n  const layout = layoutProp ?? ctx.layout;\n  const bordered = borderedProp ?? ctx.bordered;\n\n  return (\n    <>\n      <dt\n        ref={ref}\n        className={cn(labelVariants({ layout, bordered }), className)}\n        {...rest}\n      >\n        {label}\n      </dt>\n      <dd className={valueVariants({ variant, bordered, layout })}>{value}</dd>\n    </>\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -1687,6 +1891,14 @@
               "color": "var(--code-variable)"
             },
             {
+              "text": "Omit",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
               "text": "ComponentPropsWithRef",
               "color": "var(--code-function)"
             },
@@ -1699,7 +1911,27 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "div",
+              "text": "dt",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">,",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "children",
               "color": "var(--code-tag)"
             },
             {
@@ -1870,7 +2102,7 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "keyValueItemVariants",
+              "text": "labelVariants",
               "color": "var(--code-number)"
             },
             {
@@ -1894,7 +2126,15 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "\"\"",
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-muted-foreground",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
               "color": "var(--code-operator)"
             },
             {
@@ -1969,15 +2209,7 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "flex justify-between items-center",
-              "color": "var(--code-tag)"
-            },
-            {
-              "text": "\"",
+              "text": "\"\"",
               "color": "var(--code-operator)"
             },
             {
@@ -2002,15 +2234,7 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "flex flex-col gap-1",
-              "color": "var(--code-tag)"
-            },
-            {
-              "text": "\"",
+              "text": "\"\"",
               "color": "var(--code-operator)"
             },
             {
@@ -2073,7 +2297,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "py-4 border-b border-border last:border-b-0",
+              "text": "pt-4 border-t border-border first:border-t-0 text-xs",
               "color": "var(--code-tag)"
             },
             {
@@ -2102,7 +2326,15 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "\"\"",
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-sm",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
               "color": "var(--code-operator)"
             },
             {
@@ -2581,6 +2813,106 @@
           "number": 40,
           "content": [
             {
+              "text": "    layout",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 41,
+          "content": [
+            {
+              "text": "      horizontal",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "text-right",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 42,
+          "content": [
+            {
+              "text": "      vertical",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "pb-3",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 43,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 44,
+          "content": [
+            {
               "text": "  ",
               "color": "var(--code-variable)"
             },
@@ -2591,7 +2923,130 @@
           ]
         },
         {
-          "number": 41,
+          "number": 45,
+          "content": [
+            {
+              "text": "  compoundVariants",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " [",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 46,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " layout",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "horizontal",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " bordered",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "true",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " class",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "pt-4 border-t border-border [&:nth-child(2)]:border-t-0",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 47,
+          "content": [
+            {
+              "text": "  ]",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 48,
           "content": [
             {
               "text": "  defaultVariants",
@@ -2654,6 +3109,34 @@
               "color": "var(--code-number)"
             },
             {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " layout",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "horizontal",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
               "text": " ",
               "color": "var(--code-variable)"
             },
@@ -2664,7 +3147,7 @@
           ]
         },
         {
-          "number": 42,
+          "number": 49,
           "content": [
             {
               "text": "}",
@@ -2681,11 +3164,11 @@
           ]
         },
         {
-          "number": 43,
+          "number": 50,
           "content": []
         },
         {
-          "number": 44,
+          "number": 51,
           "content": [
             {
               "text": "export",
@@ -2714,7 +3197,7 @@
           ]
         },
         {
-          "number": 45,
+          "number": 52,
           "content": [
             {
               "text": "  label",
@@ -2727,7 +3210,7 @@
           ]
         },
         {
-          "number": 46,
+          "number": 53,
           "content": [
             {
               "text": "  value",
@@ -2740,7 +3223,7 @@
           ]
         },
         {
-          "number": 47,
+          "number": 54,
           "content": [
             {
               "text": "  variant ",
@@ -2773,7 +3256,7 @@
           ]
         },
         {
-          "number": 48,
+          "number": 55,
           "content": [
             {
               "text": "  className",
@@ -2786,7 +3269,7 @@
           ]
         },
         {
-          "number": 49,
+          "number": 56,
           "content": [
             {
               "text": "  ref",
@@ -2799,7 +3282,7 @@
           ]
         },
         {
-          "number": 50,
+          "number": 57,
           "content": [
             {
               "text": "  layout",
@@ -2820,7 +3303,7 @@
           ]
         },
         {
-          "number": 51,
+          "number": 58,
           "content": [
             {
               "text": "  bordered",
@@ -2841,7 +3324,7 @@
           ]
         },
         {
-          "number": 52,
+          "number": 59,
           "content": [
             {
               "text": "  ",
@@ -2858,7 +3341,7 @@
           ]
         },
         {
-          "number": 53,
+          "number": 60,
           "content": [
             {
               "text": "}:",
@@ -2887,7 +3370,7 @@
           ]
         },
         {
-          "number": 54,
+          "number": 61,
           "content": [
             {
               "text": "  ",
@@ -2932,7 +3415,7 @@
           ]
         },
         {
-          "number": 55,
+          "number": 62,
           "content": [
             {
               "text": "  ",
@@ -2989,7 +3472,7 @@
           ]
         },
         {
-          "number": 56,
+          "number": 63,
           "content": [
             {
               "text": "  ",
@@ -3046,11 +3529,11 @@
           ]
         },
         {
-          "number": 57,
+          "number": 64,
           "content": []
         },
         {
-          "number": 58,
+          "number": 65,
           "content": [
             {
               "text": "  ",
@@ -3067,10 +3550,23 @@
           ]
         },
         {
-          "number": 59,
+          "number": 66,
           "content": [
             {
               "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<>",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 67,
+          "content": [
+            {
+              "text": "      ",
               "color": "var(--code-variable)"
             },
             {
@@ -3078,16 +3574,16 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "div",
+              "text": "dt",
               "color": "var(--code-tag)"
             }
           ]
         },
         {
-          "number": 60,
+          "number": 68,
           "content": [
             {
-              "text": "      ",
+              "text": "        ",
               "color": "var(--code-variable)"
             },
             {
@@ -3109,10 +3605,10 @@
           ]
         },
         {
-          "number": 61,
+          "number": 69,
           "content": [
             {
-              "text": "      ",
+              "text": "        ",
               "color": "var(--code-variable)"
             },
             {
@@ -3132,7 +3628,7 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "keyValueItemVariants",
+              "text": "labelVariants",
               "color": "var(--code-function)"
             },
             {
@@ -3178,10 +3674,10 @@
           ]
         },
         {
-          "number": 62,
+          "number": 70,
           "content": [
             {
-              "text": "      ",
+              "text": "        ",
               "color": "var(--code-variable)"
             },
             {
@@ -3199,10 +3695,10 @@
           ]
         },
         {
-          "number": 63,
+          "number": 71,
           "content": [
             {
-              "text": "    ",
+              "text": "      ",
               "color": "var(--code-variable)"
             },
             {
@@ -3212,110 +3708,14 @@
           ]
         },
         {
-          "number": 64,
+          "number": 72,
           "content": [
             {
-              "text": "      ",
+              "text": "        ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "<",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "dt",
-              "color": "var(--code-tag)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "className",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "={",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "cn",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "(",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "text-muted-foreground",
-              "color": "var(--code-tag)"
-            },
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " bordered ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "?",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "text-xs",
-              "color": "var(--code-tag)"
-            },
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ":",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "text-sm",
-              "color": "var(--code-tag)"
-            },
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": ")",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "}>{",
+              "text": "{",
               "color": "var(--code-operator)"
             },
             {
@@ -3323,7 +3723,20 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "}</",
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 73,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
               "color": "var(--code-operator)"
             },
             {
@@ -3337,7 +3750,7 @@
           ]
         },
         {
-          "number": 65,
+          "number": 74,
           "content": [
             {
               "text": "      ",
@@ -3384,7 +3797,15 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": " bordered ",
+              "text": " bordered",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " layout ",
               "color": "var(--code-variable)"
             },
             {
@@ -3418,28 +3839,20 @@
           ]
         },
         {
-          "number": 66,
+          "number": 75,
           "content": [
             {
               "text": "    ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "</",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "div",
-              "color": "var(--code-tag)"
-            },
-            {
-              "text": ">",
+              "text": "</>",
               "color": "var(--code-operator)"
             }
           ]
         },
         {
-          "number": 67,
+          "number": 76,
           "content": [
             {
               "text": "  )",
@@ -3452,7 +3865,7 @@
           ]
         },
         {
-          "number": 68,
+          "number": 77,
           "content": [
             {
               "text": "}",
@@ -3461,7 +3874,7 @@
           ]
         },
         {
-          "number": 69,
+          "number": 78,
           "content": []
         }
       ]
@@ -4217,10 +4630,35 @@
       ]
     }
   },
-  "mergedSource": "import { KeyValue as KeyValueRoot, type KeyValueProps } from \"./key-value\";\nimport type { KeyValueLayout, KeyValueVariant } from \"./key-value-context\";\nimport { KeyValueItem, type KeyValueItemProps } from \"./key-value-item\";\n\nconst KeyValue = Object.assign(KeyValueRoot, { Item: KeyValueItem });\n\nexport { KeyValue, type KeyValueProps, type KeyValueLayout };\nexport { KeyValueItem, type KeyValueItemProps, type KeyValueVariant };\n\n\n\n\"use client\";\n\nimport { useMemo, type ComponentPropsWithRef, type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { KeyValueContext, type KeyValueLayout } from \"./key-value-context\";\n\nexport interface KeyValueProps extends ComponentPropsWithRef<\"dl\"> {\n  layout?: KeyValueLayout;\n  bordered?: boolean;\n  children: ReactNode;\n}\n\nexport function KeyValue({\n  layout = \"horizontal\",\n  bordered = false,\n  children,\n  className,\n  ref,\n  ...props\n}: KeyValueProps) {\n  const contextValue = useMemo(() => ({ layout, bordered }), [layout, bordered]);\n\n  return (\n    <KeyValueContext value={contextValue}>\n      <dl ref={ref} className={cn(\"flex flex-col\", className)} {...props}>\n        {children}\n      </dl>\n    </KeyValueContext>\n  );\n}\n\n\n\"use client\";\n\nimport type { ComponentPropsWithRef, ReactNode } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { useKeyValueContext, type KeyValueLayout, type KeyValueVariant } from \"./key-value-context\";\n\nexport interface KeyValueItemProps extends ComponentPropsWithRef<\"div\"> {\n  label: ReactNode;\n  value: ReactNode;\n  variant?: KeyValueVariant;\n  layout?: KeyValueLayout;\n  bordered?: boolean;\n}\n\nconst keyValueItemVariants = cva(\"\", {\n  variants: {\n    layout: {\n      horizontal: \"flex justify-between items-center\",\n      vertical: \"flex flex-col gap-1\",\n    },\n    bordered: {\n      true: \"py-4 border-b border-border last:border-b-0\",\n      false: \"\",\n    },\n  },\n  defaultVariants: { layout: \"horizontal\", bordered: false },\n});\n\nconst valueVariants = cva(\"\", {\n  variants: {\n    variant: {\n      default: \"font-bold text-foreground\",\n      warning: \"font-bold text-warning\",\n      info: \"font-mono text-foreground\",\n      success: \"font-bold text-success\",\n      error: \"font-bold text-destructive\",\n    },\n    bordered: { true: \"text-xs\", false: \"\" },\n  },\n  defaultVariants: { variant: \"default\", bordered: false },\n});\n\nexport function KeyValueItem({\n  label,\n  value,\n  variant = \"default\",\n  className,\n  ref,\n  layout: layoutProp,\n  bordered: borderedProp,\n  ...rest\n}: KeyValueItemProps) {\n  const ctx = useKeyValueContext();\n  const layout = layoutProp ?? ctx.layout;\n  const bordered = borderedProp ?? ctx.bordered;\n\n  return (\n    <div\n      ref={ref}\n      className={cn(keyValueItemVariants({ layout, bordered }), className)}\n      {...rest}\n    >\n      <dt className={cn(\"text-muted-foreground\", bordered ? \"text-xs\" : \"text-sm\")}>{label}</dt>\n      <dd className={valueVariants({ variant, bordered })}>{value}</dd>\n    </div>\n  );\n}\n\n\n\"use client\";\n\nimport { createContext, useContext } from \"react\";\n\nexport type KeyValueLayout = \"horizontal\" | \"vertical\";\nexport type KeyValueVariant = \"default\" | \"warning\" | \"info\" | \"success\" | \"error\";\n\ninterface KeyValueContextValue {\n  layout: KeyValueLayout;\n  bordered: boolean;\n}\n\nconst KeyValueContext = createContext<KeyValueContextValue | undefined>(undefined);\n\nfunction useKeyValueContext(): KeyValueContextValue {\n  const context = useContext(KeyValueContext);\n  if (context === undefined) {\n    throw new Error(\"KeyValue.Item must be used within KeyValue\");\n  }\n  return context;\n}\n\nexport { KeyValueContext, useKeyValueContext };\n",
+  "mergedSource": "\"use client\";\n\nimport { KeyValue as KeyValueRoot, type KeyValueProps } from \"./key-value\";\nimport type { KeyValueLayout, KeyValueVariant } from \"./key-value-context\";\nimport { KeyValueItem, type KeyValueItemProps } from \"./key-value-item\";\n\nconst KeyValue = Object.assign(KeyValueRoot, { Item: KeyValueItem });\n\nexport { KeyValue, type KeyValueProps, type KeyValueLayout };\nexport { KeyValueItem, type KeyValueItemProps, type KeyValueVariant };\n\n\n\n\"use client\";\n\nimport { useMemo, type ComponentPropsWithRef, type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { KeyValueContext, type KeyValueLayout } from \"./key-value-context\";\n\nexport interface KeyValueProps extends ComponentPropsWithRef<\"dl\"> {\n  layout?: KeyValueLayout;\n  bordered?: boolean;\n  children: ReactNode;\n}\n\nexport function KeyValue({\n  layout = \"horizontal\",\n  bordered = false,\n  children,\n  className,\n  ref,\n  ...props\n}: KeyValueProps) {\n  const contextValue = useMemo(() => ({ layout, bordered }), [layout, bordered]);\n\n  return (\n    <KeyValueContext value={contextValue}>\n      <dl\n        ref={ref}\n        className={cn(\n          \"grid\",\n          layout === \"horizontal\"\n            ? \"grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-6 gap-y-2\"\n            : \"grid-cols-1 gap-y-1\",\n          bordered && \"gap-y-0\",\n          className,\n        )}\n        {...props}\n      >\n        {children}\n      </dl>\n    </KeyValueContext>\n  );\n}\n\n\n\"use client\";\n\nimport type { ComponentPropsWithRef, ReactNode } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { useKeyValueContext, type KeyValueLayout, type KeyValueVariant } from \"./key-value-context\";\n\nexport interface KeyValueItemProps extends Omit<ComponentPropsWithRef<\"dt\">, \"children\"> {\n  label: ReactNode;\n  value: ReactNode;\n  variant?: KeyValueVariant;\n  layout?: KeyValueLayout;\n  bordered?: boolean;\n}\n\nconst labelVariants = cva(\"text-muted-foreground\", {\n  variants: {\n    layout: {\n      horizontal: \"\",\n      vertical: \"\",\n    },\n    bordered: {\n      true: \"pt-4 border-t border-border first:border-t-0 text-xs\",\n      false: \"text-sm\",\n    },\n  },\n  defaultVariants: { layout: \"horizontal\", bordered: false },\n});\n\nconst valueVariants = cva(\"\", {\n  variants: {\n    variant: {\n      default: \"font-bold text-foreground\",\n      warning: \"font-bold text-warning\",\n      info: \"font-mono text-foreground\",\n      success: \"font-bold text-success\",\n      error: \"font-bold text-destructive\",\n    },\n    bordered: { true: \"text-xs\", false: \"\" },\n    layout: {\n      horizontal: \"text-right\",\n      vertical: \"pb-3\",\n    },\n  },\n  compoundVariants: [\n    { layout: \"horizontal\", bordered: true, class: \"pt-4 border-t border-border [&:nth-child(2)]:border-t-0\" },\n  ],\n  defaultVariants: { variant: \"default\", bordered: false, layout: \"horizontal\" },\n});\n\nexport function KeyValueItem({\n  label,\n  value,\n  variant = \"default\",\n  className,\n  ref,\n  layout: layoutProp,\n  bordered: borderedProp,\n  ...rest\n}: KeyValueItemProps) {\n  const ctx = useKeyValueContext();\n  const layout = layoutProp ?? ctx.layout;\n  const bordered = borderedProp ?? ctx.bordered;\n\n  return (\n    <>\n      <dt\n        ref={ref}\n        className={cn(labelVariants({ layout, bordered }), className)}\n        {...rest}\n      >\n        {label}\n      </dt>\n      <dd className={valueVariants({ variant, bordered, layout })}>{value}</dd>\n    </>\n  );\n}\n\n\n\"use client\";\n\nimport { createContext, useContext } from \"react\";\n\nexport type KeyValueLayout = \"horizontal\" | \"vertical\";\nexport type KeyValueVariant = \"default\" | \"warning\" | \"info\" | \"success\" | \"error\";\n\ninterface KeyValueContextValue {\n  layout: KeyValueLayout;\n  bordered: boolean;\n}\n\nconst KeyValueContext = createContext<KeyValueContextValue | undefined>(undefined);\n\nfunction useKeyValueContext(): KeyValueContextValue {\n  const context = useContext(KeyValueContext);\n  if (context === undefined) {\n    throw new Error(\"KeyValue.Item must be used within KeyValue\");\n  }\n  return context;\n}\n\nexport { KeyValueContext, useKeyValueContext };\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
+      "content": [
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "use client",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "content": []
+    },
+    {
+      "number": 3,
       "content": [
         {
           "text": "import",
@@ -4297,7 +4735,7 @@
       ]
     },
     {
-      "number": 2,
+      "number": 4,
       "content": [
         {
           "text": "import",
@@ -4366,7 +4804,7 @@
       ]
     },
     {
-      "number": 3,
+      "number": 5,
       "content": [
         {
           "text": "import",
@@ -4435,11 +4873,11 @@
       ]
     },
     {
-      "number": 4,
+      "number": 6,
       "content": []
     },
     {
-      "number": 5,
+      "number": 7,
       "content": [
         {
           "text": "const",
@@ -4520,11 +4958,11 @@
       ]
     },
     {
-      "number": 6,
+      "number": 8,
       "content": []
     },
     {
-      "number": 7,
+      "number": 9,
       "content": [
         {
           "text": "export",
@@ -4581,7 +5019,7 @@
       ]
     },
     {
-      "number": 8,
+      "number": 10,
       "content": [
         {
           "text": "export",
@@ -4638,19 +5076,19 @@
       ]
     },
     {
-      "number": 9,
-      "content": []
-    },
-    {
-      "number": 10,
-      "content": []
-    },
-    {
       "number": 11,
       "content": []
     },
     {
       "number": 12,
+      "content": []
+    },
+    {
+      "number": 13,
+      "content": []
+    },
+    {
+      "number": 14,
       "content": [
         {
           "text": "\"",
@@ -4671,11 +5109,11 @@
       ]
     },
     {
-      "number": 13,
+      "number": 15,
       "content": []
     },
     {
-      "number": 14,
+      "number": 16,
       "content": [
         {
           "text": "import",
@@ -4760,7 +5198,7 @@
       ]
     },
     {
-      "number": 15,
+      "number": 17,
       "content": [
         {
           "text": "import",
@@ -4813,7 +5251,7 @@
       ]
     },
     {
-      "number": 16,
+      "number": 18,
       "content": [
         {
           "text": "import",
@@ -4882,11 +5320,11 @@
       ]
     },
     {
-      "number": 17,
+      "number": 19,
       "content": []
     },
     {
-      "number": 18,
+      "number": 20,
       "content": [
         {
           "text": "export",
@@ -4955,7 +5393,7 @@
       ]
     },
     {
-      "number": 19,
+      "number": 21,
       "content": [
         {
           "text": "  layout",
@@ -4980,7 +5418,7 @@
       ]
     },
     {
-      "number": 20,
+      "number": 22,
       "content": [
         {
           "text": "  bordered",
@@ -5005,7 +5443,7 @@
       ]
     },
     {
-      "number": 21,
+      "number": 23,
       "content": [
         {
           "text": "  children",
@@ -5030,7 +5468,7 @@
       ]
     },
     {
-      "number": 22,
+      "number": 24,
       "content": [
         {
           "text": "}",
@@ -5039,11 +5477,11 @@
       ]
     },
     {
-      "number": 23,
+      "number": 25,
       "content": []
     },
     {
-      "number": 24,
+      "number": 26,
       "content": [
         {
           "text": "export",
@@ -5072,7 +5510,7 @@
       ]
     },
     {
-      "number": 25,
+      "number": 27,
       "content": [
         {
           "text": "  layout ",
@@ -5105,7 +5543,7 @@
       ]
     },
     {
-      "number": 26,
+      "number": 28,
       "content": [
         {
           "text": "  bordered ",
@@ -5130,7 +5568,7 @@
       ]
     },
     {
-      "number": 27,
+      "number": 29,
       "content": [
         {
           "text": "  children",
@@ -5143,7 +5581,7 @@
       ]
     },
     {
-      "number": 28,
+      "number": 30,
       "content": [
         {
           "text": "  className",
@@ -5156,7 +5594,7 @@
       ]
     },
     {
-      "number": 29,
+      "number": 31,
       "content": [
         {
           "text": "  ref",
@@ -5169,7 +5607,7 @@
       ]
     },
     {
-      "number": 30,
+      "number": 32,
       "content": [
         {
           "text": "  ",
@@ -5186,7 +5624,7 @@
       ]
     },
     {
-      "number": 31,
+      "number": 33,
       "content": [
         {
           "text": "}:",
@@ -5215,7 +5653,7 @@
       ]
     },
     {
-      "number": 32,
+      "number": 34,
       "content": [
         {
           "text": "  ",
@@ -5316,11 +5754,11 @@
       ]
     },
     {
-      "number": 33,
+      "number": 35,
       "content": []
     },
     {
-      "number": 34,
+      "number": 36,
       "content": [
         {
           "text": "  ",
@@ -5337,7 +5775,7 @@
       ]
     },
     {
-      "number": 35,
+      "number": 37,
       "content": [
         {
           "text": "    ",
@@ -5374,7 +5812,7 @@
       ]
     },
     {
-      "number": 36,
+      "number": 38,
       "content": [
         {
           "text": "      ",
@@ -5387,9 +5825,14 @@
         {
           "text": "dl",
           "color": "var(--code-tag)"
-        },
+        }
+      ]
+    },
+    {
+      "number": 39,
+      "content": [
         {
-          "text": " ",
+          "text": "        ",
           "color": "var(--code-variable)"
         },
         {
@@ -5407,9 +5850,14 @@
         {
           "text": "}",
           "color": "var(--code-operator)"
-        },
+        }
+      ]
+    },
+    {
+      "number": 40,
+      "content": [
         {
-          "text": " ",
+          "text": "        ",
           "color": "var(--code-variable)"
         },
         {
@@ -5427,13 +5875,22 @@
         {
           "text": "(",
           "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 41,
+      "content": [
+        {
+          "text": "          ",
+          "color": "var(--code-variable)"
         },
         {
           "text": "\"",
           "color": "var(--code-operator)"
         },
         {
-          "text": "flex flex-col",
+          "text": "grid",
           "color": "var(--code-tag)"
         },
         {
@@ -5443,17 +5900,164 @@
         {
           "text": ",",
           "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 42,
+      "content": [
+        {
+          "text": "          layout ",
+          "color": "var(--code-variable)"
         },
         {
-          "text": " className)",
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "horizontal",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 43,
+      "content": [
+        {
+          "text": "            ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "?",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-6 gap-y-2",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 44,
+      "content": [
+        {
+          "text": "            ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "grid-cols-1 gap-y-1",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 45,
+      "content": [
+        {
+          "text": "          bordered ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&&",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "gap-y-0",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 46,
+      "content": [
+        {
+          "text": "          className",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 47,
+      "content": [
+        {
+          "text": "        )",
           "color": "var(--code-variable)"
         },
         {
           "text": "}",
           "color": "var(--code-operator)"
-        },
+        }
+      ]
+    },
+    {
+      "number": 48,
+      "content": [
         {
-          "text": " ",
+          "text": "        ",
           "color": "var(--code-variable)"
         },
         {
@@ -5465,13 +6069,26 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "}>",
+          "text": "}",
           "color": "var(--code-operator)"
         }
       ]
     },
     {
-      "number": 37,
+      "number": 49,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ">",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 50,
       "content": [
         {
           "text": "        ",
@@ -5492,7 +6109,7 @@
       ]
     },
     {
-      "number": 38,
+      "number": 51,
       "content": [
         {
           "text": "      ",
@@ -5513,7 +6130,7 @@
       ]
     },
     {
-      "number": 39,
+      "number": 52,
       "content": [
         {
           "text": "    ",
@@ -5534,7 +6151,7 @@
       ]
     },
     {
-      "number": 40,
+      "number": 53,
       "content": [
         {
           "text": "  )",
@@ -5547,7 +6164,7 @@
       ]
     },
     {
-      "number": 41,
+      "number": 54,
       "content": [
         {
           "text": "}",
@@ -5556,15 +6173,15 @@
       ]
     },
     {
-      "number": 42,
+      "number": 55,
       "content": []
     },
     {
-      "number": 43,
+      "number": 56,
       "content": []
     },
     {
-      "number": 44,
+      "number": 57,
       "content": [
         {
           "text": "\"",
@@ -5585,11 +6202,11 @@
       ]
     },
     {
-      "number": 45,
+      "number": 58,
       "content": []
     },
     {
-      "number": 46,
+      "number": 59,
       "content": [
         {
           "text": "import",
@@ -5658,7 +6275,7 @@
       ]
     },
     {
-      "number": 47,
+      "number": 60,
       "content": [
         {
           "text": "import",
@@ -5711,7 +6328,7 @@
       ]
     },
     {
-      "number": 48,
+      "number": 61,
       "content": [
         {
           "text": "import",
@@ -5764,7 +6381,7 @@
       ]
     },
     {
-      "number": 49,
+      "number": 62,
       "content": [
         {
           "text": "import",
@@ -5849,11 +6466,11 @@
       ]
     },
     {
-      "number": 50,
+      "number": 63,
       "content": []
     },
     {
-      "number": 51,
+      "number": 64,
       "content": [
         {
           "text": "export",
@@ -5888,6 +6505,14 @@
           "color": "var(--code-variable)"
         },
         {
+          "text": "Omit",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
           "text": "ComponentPropsWithRef",
           "color": "var(--code-function)"
         },
@@ -5900,7 +6525,27 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "div",
+          "text": "dt",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ">,",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "children",
           "color": "var(--code-tag)"
         },
         {
@@ -5922,7 +6567,7 @@
       ]
     },
     {
-      "number": 52,
+      "number": 65,
       "content": [
         {
           "text": "  label",
@@ -5947,7 +6592,7 @@
       ]
     },
     {
-      "number": 53,
+      "number": 66,
       "content": [
         {
           "text": "  value",
@@ -5972,7 +6617,7 @@
       ]
     },
     {
-      "number": 54,
+      "number": 67,
       "content": [
         {
           "text": "  variant",
@@ -5997,7 +6642,7 @@
       ]
     },
     {
-      "number": 55,
+      "number": 68,
       "content": [
         {
           "text": "  layout",
@@ -6022,7 +6667,7 @@
       ]
     },
     {
-      "number": 56,
+      "number": 69,
       "content": [
         {
           "text": "  bordered",
@@ -6047,7 +6692,7 @@
       ]
     },
     {
-      "number": 57,
+      "number": 70,
       "content": [
         {
           "text": "}",
@@ -6056,11 +6701,11 @@
       ]
     },
     {
-      "number": 58,
+      "number": 71,
       "content": []
     },
     {
-      "number": 59,
+      "number": 72,
       "content": [
         {
           "text": "const",
@@ -6071,7 +6716,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "keyValueItemVariants",
+          "text": "labelVariants",
           "color": "var(--code-number)"
         },
         {
@@ -6095,7 +6740,15 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "\"\"",
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "text-muted-foreground",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
           "color": "var(--code-operator)"
         },
         {
@@ -6113,7 +6766,7 @@
       ]
     },
     {
-      "number": 60,
+      "number": 73,
       "content": [
         {
           "text": "  variants",
@@ -6134,7 +6787,7 @@
       ]
     },
     {
-      "number": 61,
+      "number": 74,
       "content": [
         {
           "text": "    layout",
@@ -6155,143 +6808,10 @@
       ]
     },
     {
-      "number": 62,
+      "number": 75,
       "content": [
         {
           "text": "      horizontal",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ":",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "flex justify-between items-center",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 63,
-      "content": [
-        {
-          "text": "      vertical",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ":",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "flex flex-col gap-1",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 64,
-      "content": [
-        {
-          "text": "    ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "},",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 65,
-      "content": [
-        {
-          "text": "    bordered",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ":",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "{",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 66,
-      "content": [
-        {
-          "text": "      true",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ":",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "py-4 border-b border-border last:border-b-0",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 67,
-      "content": [
-        {
-          "text": "      false",
           "color": "var(--code-variable)"
         },
         {
@@ -6313,7 +6833,32 @@
       ]
     },
     {
-      "number": 68,
+      "number": 76,
+      "content": [
+        {
+          "text": "      vertical",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 77,
       "content": [
         {
           "text": "    ",
@@ -6326,7 +6871,107 @@
       ]
     },
     {
-      "number": 69,
+      "number": 78,
+      "content": [
+        {
+          "text": "    bordered",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 79,
+      "content": [
+        {
+          "text": "      true",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "pt-4 border-t border-border first:border-t-0 text-xs",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 80,
+      "content": [
+        {
+          "text": "      false",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "text-sm",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 81,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "},",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 82,
       "content": [
         {
           "text": "  ",
@@ -6339,7 +6984,7 @@
       ]
     },
     {
-      "number": 70,
+      "number": 83,
       "content": [
         {
           "text": "  defaultVariants",
@@ -6412,7 +7057,7 @@
       ]
     },
     {
-      "number": 71,
+      "number": 84,
       "content": [
         {
           "text": "}",
@@ -6429,11 +7074,11 @@
       ]
     },
     {
-      "number": 72,
+      "number": 85,
       "content": []
     },
     {
-      "number": 73,
+      "number": 86,
       "content": [
         {
           "text": "const",
@@ -6486,7 +7131,7 @@
       ]
     },
     {
-      "number": 74,
+      "number": 87,
       "content": [
         {
           "text": "  variants",
@@ -6507,7 +7152,7 @@
       ]
     },
     {
-      "number": 75,
+      "number": 88,
       "content": [
         {
           "text": "    variant",
@@ -6528,7 +7173,7 @@
       ]
     },
     {
-      "number": 76,
+      "number": 89,
       "content": [
         {
           "text": "      default",
@@ -6561,7 +7206,7 @@
       ]
     },
     {
-      "number": 77,
+      "number": 90,
       "content": [
         {
           "text": "      warning",
@@ -6594,7 +7239,7 @@
       ]
     },
     {
-      "number": 78,
+      "number": 91,
       "content": [
         {
           "text": "      info",
@@ -6627,7 +7272,7 @@
       ]
     },
     {
-      "number": 79,
+      "number": 92,
       "content": [
         {
           "text": "      success",
@@ -6660,7 +7305,7 @@
       ]
     },
     {
-      "number": 80,
+      "number": 93,
       "content": [
         {
           "text": "      error",
@@ -6693,7 +7338,7 @@
       ]
     },
     {
-      "number": 81,
+      "number": 94,
       "content": [
         {
           "text": "    ",
@@ -6706,7 +7351,7 @@
       ]
     },
     {
-      "number": 82,
+      "number": 95,
       "content": [
         {
           "text": "    bordered",
@@ -6779,7 +7424,107 @@
       ]
     },
     {
-      "number": 83,
+      "number": 96,
+      "content": [
+        {
+          "text": "    layout",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 97,
+      "content": [
+        {
+          "text": "      horizontal",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "text-right",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 98,
+      "content": [
+        {
+          "text": "      vertical",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "pb-3",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 99,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "},",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 100,
       "content": [
         {
           "text": "  ",
@@ -6792,7 +7537,130 @@
       ]
     },
     {
-      "number": 84,
+      "number": 101,
+      "content": [
+        {
+          "text": "  compoundVariants",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " [",
+          "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 102,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " layout",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "horizontal",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " bordered",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "true",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " class",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "pt-4 border-t border-border [&:nth-child(2)]:border-t-0",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "},",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 103,
+      "content": [
+        {
+          "text": "  ]",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 104,
       "content": [
         {
           "text": "  defaultVariants",
@@ -6855,6 +7723,34 @@
           "color": "var(--code-number)"
         },
         {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " layout",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "horizontal",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
           "text": " ",
           "color": "var(--code-variable)"
         },
@@ -6865,7 +7761,7 @@
       ]
     },
     {
-      "number": 85,
+      "number": 105,
       "content": [
         {
           "text": "}",
@@ -6882,11 +7778,11 @@
       ]
     },
     {
-      "number": 86,
+      "number": 106,
       "content": []
     },
     {
-      "number": 87,
+      "number": 107,
       "content": [
         {
           "text": "export",
@@ -6915,7 +7811,7 @@
       ]
     },
     {
-      "number": 88,
+      "number": 108,
       "content": [
         {
           "text": "  label",
@@ -6928,7 +7824,7 @@
       ]
     },
     {
-      "number": 89,
+      "number": 109,
       "content": [
         {
           "text": "  value",
@@ -6941,7 +7837,7 @@
       ]
     },
     {
-      "number": 90,
+      "number": 110,
       "content": [
         {
           "text": "  variant ",
@@ -6974,7 +7870,7 @@
       ]
     },
     {
-      "number": 91,
+      "number": 111,
       "content": [
         {
           "text": "  className",
@@ -6987,7 +7883,7 @@
       ]
     },
     {
-      "number": 92,
+      "number": 112,
       "content": [
         {
           "text": "  ref",
@@ -7000,7 +7896,7 @@
       ]
     },
     {
-      "number": 93,
+      "number": 113,
       "content": [
         {
           "text": "  layout",
@@ -7021,7 +7917,7 @@
       ]
     },
     {
-      "number": 94,
+      "number": 114,
       "content": [
         {
           "text": "  bordered",
@@ -7042,7 +7938,7 @@
       ]
     },
     {
-      "number": 95,
+      "number": 115,
       "content": [
         {
           "text": "  ",
@@ -7059,7 +7955,7 @@
       ]
     },
     {
-      "number": 96,
+      "number": 116,
       "content": [
         {
           "text": "}:",
@@ -7088,7 +7984,7 @@
       ]
     },
     {
-      "number": 97,
+      "number": 117,
       "content": [
         {
           "text": "  ",
@@ -7133,7 +8029,7 @@
       ]
     },
     {
-      "number": 98,
+      "number": 118,
       "content": [
         {
           "text": "  ",
@@ -7190,7 +8086,7 @@
       ]
     },
     {
-      "number": 99,
+      "number": 119,
       "content": [
         {
           "text": "  ",
@@ -7247,11 +8143,11 @@
       ]
     },
     {
-      "number": 100,
+      "number": 120,
       "content": []
     },
     {
-      "number": 101,
+      "number": 121,
       "content": [
         {
           "text": "  ",
@@ -7268,10 +8164,23 @@
       ]
     },
     {
-      "number": 102,
+      "number": 122,
       "content": [
         {
           "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "<>",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 123,
+      "content": [
+        {
+          "text": "      ",
           "color": "var(--code-variable)"
         },
         {
@@ -7279,16 +8188,16 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "div",
+          "text": "dt",
           "color": "var(--code-tag)"
         }
       ]
     },
     {
-      "number": 103,
+      "number": 124,
       "content": [
         {
-          "text": "      ",
+          "text": "        ",
           "color": "var(--code-variable)"
         },
         {
@@ -7310,10 +8219,10 @@
       ]
     },
     {
-      "number": 104,
+      "number": 125,
       "content": [
         {
-          "text": "      ",
+          "text": "        ",
           "color": "var(--code-variable)"
         },
         {
@@ -7333,7 +8242,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "keyValueItemVariants",
+          "text": "labelVariants",
           "color": "var(--code-function)"
         },
         {
@@ -7379,10 +8288,10 @@
       ]
     },
     {
-      "number": 105,
+      "number": 126,
       "content": [
         {
-          "text": "      ",
+          "text": "        ",
           "color": "var(--code-variable)"
         },
         {
@@ -7400,10 +8309,10 @@
       ]
     },
     {
-      "number": 106,
+      "number": 127,
       "content": [
         {
-          "text": "    ",
+          "text": "      ",
           "color": "var(--code-variable)"
         },
         {
@@ -7413,110 +8322,14 @@
       ]
     },
     {
-      "number": 107,
+      "number": 128,
       "content": [
         {
-          "text": "      ",
+          "text": "        ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "<",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "dt",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "className",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "={",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "cn",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "(",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "text-muted-foreground",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " bordered ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "?",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "text-xs",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ":",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "text-sm",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": ")",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}>{",
+          "text": "{",
           "color": "var(--code-operator)"
         },
         {
@@ -7524,7 +8337,20 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "}</",
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 129,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "</",
           "color": "var(--code-operator)"
         },
         {
@@ -7538,7 +8364,7 @@
       ]
     },
     {
-      "number": 108,
+      "number": 130,
       "content": [
         {
           "text": "      ",
@@ -7585,7 +8411,15 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": " bordered ",
+          "text": " bordered",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " layout ",
           "color": "var(--code-variable)"
         },
         {
@@ -7619,28 +8453,20 @@
       ]
     },
     {
-      "number": 109,
+      "number": 131,
       "content": [
         {
           "text": "    ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "</",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "div",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": ">",
+          "text": "</>",
           "color": "var(--code-operator)"
         }
       ]
     },
     {
-      "number": 110,
+      "number": 132,
       "content": [
         {
           "text": "  )",
@@ -7653,7 +8479,7 @@
       ]
     },
     {
-      "number": 111,
+      "number": 133,
       "content": [
         {
           "text": "}",
@@ -7662,15 +8488,15 @@
       ]
     },
     {
-      "number": 112,
+      "number": 134,
       "content": []
     },
     {
-      "number": 113,
+      "number": 135,
       "content": []
     },
     {
-      "number": 114,
+      "number": 136,
       "content": [
         {
           "text": "\"",
@@ -7691,11 +8517,11 @@
       ]
     },
     {
-      "number": 115,
+      "number": 137,
       "content": []
     },
     {
-      "number": 116,
+      "number": 138,
       "content": [
         {
           "text": "import",
@@ -7756,11 +8582,11 @@
       ]
     },
     {
-      "number": 117,
+      "number": 139,
       "content": []
     },
     {
-      "number": 118,
+      "number": 140,
       "content": [
         {
           "text": "export",
@@ -7837,7 +8663,7 @@
       ]
     },
     {
-      "number": 119,
+      "number": 141,
       "content": [
         {
           "text": "export",
@@ -7986,11 +8812,11 @@
       ]
     },
     {
-      "number": 120,
+      "number": 142,
       "content": []
     },
     {
-      "number": 121,
+      "number": 143,
       "content": [
         {
           "text": "interface",
@@ -8015,7 +8841,7 @@
       ]
     },
     {
-      "number": 122,
+      "number": 144,
       "content": [
         {
           "text": "  layout",
@@ -8040,7 +8866,7 @@
       ]
     },
     {
-      "number": 123,
+      "number": 145,
       "content": [
         {
           "text": "  bordered",
@@ -8065,7 +8891,7 @@
       ]
     },
     {
-      "number": 124,
+      "number": 146,
       "content": [
         {
           "text": "}",
@@ -8074,11 +8900,11 @@
       ]
     },
     {
-      "number": 125,
+      "number": 147,
       "content": []
     },
     {
-      "number": 126,
+      "number": 148,
       "content": [
         {
           "text": "const",
@@ -8155,11 +8981,11 @@
       ]
     },
     {
-      "number": 127,
+      "number": 149,
       "content": []
     },
     {
-      "number": 128,
+      "number": 150,
       "content": [
         {
           "text": "function",
@@ -8196,7 +9022,7 @@
       ]
     },
     {
-      "number": 129,
+      "number": 151,
       "content": [
         {
           "text": "  ",
@@ -8241,7 +9067,7 @@
       ]
     },
     {
-      "number": 130,
+      "number": 152,
       "content": [
         {
           "text": "  ",
@@ -8278,7 +9104,7 @@
       ]
     },
     {
-      "number": 131,
+      "number": 153,
       "content": [
         {
           "text": "    ",
@@ -8331,7 +9157,7 @@
       ]
     },
     {
-      "number": 132,
+      "number": 154,
       "content": [
         {
           "text": "  ",
@@ -8344,7 +9170,7 @@
       ]
     },
     {
-      "number": 133,
+      "number": 155,
       "content": [
         {
           "text": "  ",
@@ -8365,7 +9191,7 @@
       ]
     },
     {
-      "number": 134,
+      "number": 156,
       "content": [
         {
           "text": "}",
@@ -8374,11 +9200,11 @@
       ]
     },
     {
-      "number": 135,
+      "number": 157,
       "content": []
     },
     {
-      "number": 136,
+      "number": 158,
       "content": [
         {
           "text": "export",
@@ -8411,7 +9237,7 @@
       ]
     },
     {
-      "number": 137,
+      "number": 159,
       "content": []
     }
   ],

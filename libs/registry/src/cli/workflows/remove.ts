@@ -99,9 +99,10 @@ function collectFilesToRemove<TItem, TConfig>(
   },
   names: string[],
   retainedFiles: Set<string>,
-): { files: Set<string>; dirs: Set<string> } {
+): { files: Set<string>; dirs: Set<string>; removedNames: string[] } {
   const files = new Set<string>();
   const dirs = new Set<string>();
+  const removedNames: string[] = [];
   for (const name of names) {
     const item = ctx.getItemOrThrow(name);
     const removableFiles: RemoveWorkflowFile[] = [];
@@ -115,12 +116,15 @@ function collectFilesToRemove<TItem, TConfig>(
       removableFiles.push(file);
     }
     if (blocked) continue;
+    if (removableFiles.length > 0) {
+      removedNames.push(name);
+    }
     for (const file of removableFiles) {
       files.add(file.absolutePath);
       dirs.add(dirname(file.absolutePath));
     }
   }
-  return { files, dirs };
+  return { files, dirs, removedNames };
 }
 
 function showRemovePreview(cwd: string, files: Set<string>): void {
@@ -188,7 +192,7 @@ function finalizeRemoval<TConfig>(opts: {
 function collectRemovalTargets<TItem, TConfig>(
   options: RunRemoveWorkflowOptions<TItem, TConfig>,
   config: TConfig,
-): { files: Set<string>; dirs: Set<string> } {
+): { files: Set<string>; dirs: Set<string>; removedNames: string[] } {
   const { cwd, names } = options;
   const removedSet = new Set(names);
   const ctx = { cwd, config, resolveFilesForItem: options.resolveFilesForItem };
@@ -209,8 +213,9 @@ async function executeRemoval<TItem, TConfig>(
   config: TConfig,
   files: Set<string>,
   dirs: Set<string>,
+  removedNames: string[],
 ): Promise<void> {
-  const { cwd, names, yes, dryRun } = options;
+  const { cwd, yes, dryRun } = options;
   showRemovePreview(cwd, files);
   const shouldProceed = await confirmRemoval(files, yes, dryRun);
   if (!shouldProceed) return;
@@ -218,7 +223,7 @@ async function executeRemoval<TItem, TConfig>(
   const allowedBaseDirs = options.resolveAllowedBaseDirs({ cwd, config });
   const removed = deleteFiles(cwd, files, allowedBaseDirs);
   finalizeRemoval({
-    cwd, names, removed, dirs, config,
+    cwd, names: removedNames, removed, dirs, config,
     updateManifest: options.updateManifest,
     findOrphanedDeps: options.findOrphanedDeps,
   });
@@ -230,11 +235,11 @@ export async function runRemoveWorkflow<TItem, TConfig>(
   const config = options.requireConfig(options.cwd);
   options.validateNames(options.names);
 
-  const { files, dirs } = collectRemovalTargets(options, config);
+  const { files, dirs, removedNames } = collectRemovalTargets(options, config);
   if (files.size === 0) {
     info(`No installed files found for the specified ${options.itemPlural}.`);
     return;
   }
 
-  await executeRemoval(options, config, files, dirs);
+  await executeRemoval(options, config, files, dirs, removedNames);
 }

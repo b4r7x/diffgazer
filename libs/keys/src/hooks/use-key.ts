@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useEffectEvent } from "react";
 import type { RefObject } from "react";
 import type { HandlerOptions } from "../providers/keyboard-provider.js";
 import { useOptionalKeyboardContext } from "../context/keyboard-context.js";
@@ -49,14 +49,12 @@ export function useKey(
   const requireFocusWithin = options?.requireFocusWithin;
   const preventDefault = options?.preventDefault;
 
-  const handlerMapRef = useRef(handlerMap);
-  handlerMapRef.current = handlerMap;
+  const dispatch = useEffectEvent((key: string, event: KeyboardEvent) => {
+    handlerMap[key]?.(event);
+  });
 
-  const stableDispatch = useCallback((key: string, event: KeyboardEvent) => {
-    handlerMapRef.current[key]?.(event);
-  }, []);
-
-  const keysKey = Object.keys(handlerMap).sort().join(",");
+  const registrationKeys = Object.keys(handlerMap).sort();
+  const registrationVersion = registrationKeys.map((key) => `${key.length}:${key}`).join("|");
 
   const handlerOptions: HandlerOptions | undefined = options
     ? {
@@ -71,12 +69,11 @@ export function useKey(
     if (enabled === false) return;
     if (!register || !activeScope) return;
 
-    const keys = keysKey.split(",");
-    const cleanups = keys.map((key) =>
+    const cleanups = registrationKeys.map((key) =>
       register(
         activeScope,
         key,
-        (event: KeyboardEvent) => stableDispatch(key, event),
+        (event: KeyboardEvent) => dispatch(key, event),
         handlerOptions,
       ),
     );
@@ -85,12 +82,11 @@ export function useKey(
   }, [
     activeScope,
     register,
-    keysKey,
+    registrationVersion,
     enabled,
     allowInInput,
     targetRef,
     requireFocusWithin,
     preventDefault,
-    stableDispatch,
   ]);
 }

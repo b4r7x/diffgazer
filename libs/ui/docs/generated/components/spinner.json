@@ -14,10 +14,35 @@
   "props": {},
   "source": {
     "registry/ui/spinner/index.ts": {
-      "raw": "export { Spinner, type SpinnerProps, type SpinnerVariant, type SpinnerSize, type SpinnerLabelPosition, type SpinnerGap } from \"./spinner\";\n",
+      "raw": "\"use client\";\n\nexport { Spinner, type SpinnerProps, type SpinnerVariant, type SpinnerSize, type SpinnerLabelPosition, type SpinnerGap } from \"./spinner\";\n",
       "highlighted": [
         {
           "number": 1,
+          "content": [
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "use client",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
           "content": [
             {
               "text": "export",
@@ -150,13 +175,13 @@
           ]
         },
         {
-          "number": 2,
+          "number": 4,
           "content": []
         }
       ]
     },
     "registry/ui/spinner/spinner.tsx": {
-      "raw": "\"use client\";\n\nimport type { ReactNode, HTMLAttributes } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { useSpinnerAnimation } from \"./use-spinner-animation\";\nimport { SnakeGrid, SNAKE_FRAME_COUNT } from \"./spinner-snake-grid\";\n\nexport type SpinnerSize = \"sm\" | \"md\" | \"lg\";\nexport type SpinnerVariant = \"snake\" | \"braille\" | \"dots\" | \"pulse\";\nexport type SpinnerLabelPosition = \"right\" | \"left\" | \"top\" | \"bottom\";\nexport type SpinnerGap = \"none\" | \"sm\" | \"md\" | \"lg\";\n\nconst BRAILLE_FRAMES = [\"⠋\", \"⠙\", \"⠹\", \"⠸\", \"⠼\", \"⠴\", \"⠦\", \"⠧\", \"⠇\", \"⠏\"] as const;\nconst DOTS_FRAMES = [\".  \", \".. \", \"...\"] as const;\nconst PULSE_FRAMES = [\"░\", \"▒\", \"▓\", \"█\", \"▓\", \"▒\", \"░\"] as const;\n\n// Fixed width prevents layout shift during dot animation (\".\" → \"..\" → \"...\")\nconst DOTS_FIXED_WIDTH = \"w-7\";\n\nconst VARIANT_CONFIG: Record<SpinnerVariant, { frames: number; speed: number }> = {\n  snake: { frames: SNAKE_FRAME_COUNT, speed: 100 },\n  braille: { frames: BRAILLE_FRAMES.length, speed: 80 },\n  dots: { frames: DOTS_FRAMES.length, speed: 300 },\n  pulse: { frames: PULSE_FRAMES.length, speed: 80 },\n};\n\nconst spinnerVariants = cva(\"inline-flex items-center font-mono\", {\n  variants: {\n    size: {\n      sm: \"text-xs\",\n      md: \"text-sm\",\n      lg: \"text-base\",\n    },\n    labelPosition: {\n      right: \"flex-row\",\n      left: \"flex-row-reverse\",\n      bottom: \"flex-col\",\n      top: \"flex-col-reverse\",\n    },\n    gap: {\n      none: \"gap-0\",\n      sm: \"gap-1\",\n      md: \"gap-2\",\n      lg: \"gap-3\",\n    },\n  },\n  defaultVariants: { size: \"md\", labelPosition: \"right\", gap: \"md\" },\n});\n\nexport interface SpinnerProps\n  extends HTMLAttributes<HTMLSpanElement>,\n    VariantProps<typeof spinnerVariants> {\n  variant?: SpinnerVariant;\n  size?: SpinnerSize;\n  labelPosition?: SpinnerLabelPosition;\n  gap?: SpinnerGap;\n  speed?: number;\n  children?: ReactNode;\n}\n\nfunction SpinnerAnimation({ variant, frame, size }: { variant: SpinnerVariant; frame: number; size: SpinnerSize }) {\n  const safeFrame = frame % VARIANT_CONFIG[variant].frames;\n  if (variant === \"snake\") return <SnakeGrid frame={safeFrame} size={size} />;\n  if (variant === \"braille\") return <>{BRAILLE_FRAMES[safeFrame]}</>;\n  if (variant === \"dots\") {\n    return <span className={cn(\"inline-block whitespace-pre\", DOTS_FIXED_WIDTH)}>{DOTS_FRAMES[safeFrame]}</span>;\n  }\n  return <>{PULSE_FRAMES[safeFrame]}</>;\n}\n\nexport function Spinner({\n  variant = \"snake\",\n  size,\n  labelPosition,\n  gap,\n  speed,\n  className,\n  children,\n  ...props\n}: SpinnerProps) {\n  const { frames: totalFrames, speed: defaultSpeed } = VARIANT_CONFIG[variant];\n  const frame = useSpinnerAnimation({ totalFrames, speed: speed ?? defaultSpeed });\n  const resolvedSize = size ?? \"md\";\n\n  return (\n    <span\n      role=\"status\"\n      aria-live=\"polite\"\n      aria-label={children ? undefined : \"Loading\"}\n      className={cn(\n        spinnerVariants({ size: resolvedSize, labelPosition, gap }),\n        className,\n      )}\n      {...props}\n    >\n      <span aria-hidden=\"true\" className=\"inline-flex items-center\">\n        <SpinnerAnimation variant={variant} frame={frame} size={resolvedSize} />\n      </span>\n      {children}\n    </span>\n  );\n}\n",
+      "raw": "\"use client\";\n\nimport type { ReactNode, HTMLAttributes, Ref } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { useSpinnerAnimation } from \"./use-spinner-animation\";\nimport { SnakeGrid, SNAKE_FRAME_COUNT } from \"./spinner-snake-grid\";\n\nexport type SpinnerSize = \"sm\" | \"md\" | \"lg\";\nexport type SpinnerVariant = \"snake\" | \"braille\" | \"dots\" | \"pulse\";\nexport type SpinnerLabelPosition = \"right\" | \"left\" | \"top\" | \"bottom\";\nexport type SpinnerGap = \"none\" | \"sm\" | \"md\" | \"lg\";\n\nconst BRAILLE_FRAMES = [\"⠋\", \"⠙\", \"⠹\", \"⠸\", \"⠼\", \"⠴\", \"⠦\", \"⠧\", \"⠇\", \"⠏\"] as const;\nconst DOTS_FRAMES = [\".  \", \".. \", \"...\"] as const;\nconst PULSE_FRAMES = [\"░\", \"▒\", \"▓\", \"█\", \"▓\", \"▒\", \"░\"] as const;\n\n// Fixed width prevents layout shift during dot animation (\".\" → \"..\" → \"...\")\nconst DOTS_FIXED_WIDTH = \"w-7\";\n\nconst VARIANT_CONFIG: Record<SpinnerVariant, { frames: number; speed: number }> = {\n  snake: { frames: SNAKE_FRAME_COUNT, speed: 100 },\n  braille: { frames: BRAILLE_FRAMES.length, speed: 80 },\n  dots: { frames: DOTS_FRAMES.length, speed: 300 },\n  pulse: { frames: PULSE_FRAMES.length, speed: 80 },\n};\n\nconst spinnerVariants = cva(\"inline-flex items-center font-mono\", {\n  variants: {\n    size: {\n      sm: \"text-xs\",\n      md: \"text-sm\",\n      lg: \"text-base\",\n    },\n    labelPosition: {\n      right: \"flex-row\",\n      left: \"flex-row-reverse\",\n      bottom: \"flex-col\",\n      top: \"flex-col-reverse\",\n    },\n    gap: {\n      none: \"gap-0\",\n      sm: \"gap-1\",\n      md: \"gap-2\",\n      lg: \"gap-3\",\n    },\n  },\n  defaultVariants: { size: \"md\", labelPosition: \"right\", gap: \"md\" },\n});\n\nexport interface SpinnerProps\n  extends HTMLAttributes<HTMLSpanElement>,\n    VariantProps<typeof spinnerVariants> {\n  variant?: SpinnerVariant;\n  size?: SpinnerSize;\n  labelPosition?: SpinnerLabelPosition;\n  gap?: SpinnerGap;\n  speed?: number;\n  children?: ReactNode;\n  ref?: Ref<HTMLSpanElement>;\n}\n\nfunction SpinnerAnimation({ variant, frame, size }: { variant: SpinnerVariant; frame: number; size: SpinnerSize }) {\n  const safeFrame = frame % VARIANT_CONFIG[variant].frames;\n  if (variant === \"snake\") return <SnakeGrid frame={safeFrame} size={size} />;\n  if (variant === \"braille\") return <>{BRAILLE_FRAMES[safeFrame]}</>;\n  if (variant === \"dots\") {\n    return <span className={cn(\"inline-block whitespace-pre\", DOTS_FIXED_WIDTH)}>{DOTS_FRAMES[safeFrame]}</span>;\n  }\n  return <>{PULSE_FRAMES[safeFrame]}</>;\n}\n\nexport function Spinner({\n  variant = \"snake\",\n  size,\n  labelPosition,\n  gap,\n  speed: requestedSpeed,\n  className,\n  children,\n  ref,\n  ...props\n}: SpinnerProps) {\n  const { frames: totalFrames, speed: defaultSpeed } = VARIANT_CONFIG[variant];\n  const resolvedSpeed =\n    typeof requestedSpeed === \"number\" && Number.isFinite(requestedSpeed) && requestedSpeed > 0\n      ? requestedSpeed\n      : defaultSpeed;\n  const frame = useSpinnerAnimation({ totalFrames, speed: resolvedSpeed });\n  const resolvedSize = size ?? \"md\";\n\n  return (\n    <span\n      ref={ref}\n      role=\"status\"\n      aria-live=\"polite\"\n      aria-label={children ? undefined : \"Loading\"}\n      className={cn(\n        spinnerVariants({ size: resolvedSize, labelPosition, gap }),\n        className,\n      )}\n      {...props}\n    >\n      <span aria-hidden=\"true\" className=\"inline-flex items-center\">\n        <SpinnerAnimation variant={variant} frame={frame} size={resolvedSize} />\n      </span>\n      {children}\n    </span>\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -215,7 +240,15 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": " HTMLAttributes ",
+              "text": " HTMLAttributes",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " Ref ",
               "color": "var(--code-variable)"
             },
             {
@@ -2902,17 +2935,50 @@
           "number": 60,
           "content": [
             {
-              "text": "}",
+              "text": "  ref",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "?:",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Ref",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "HTMLSpanElement",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ">;",
               "color": "var(--code-operator)"
             }
           ]
         },
         {
           "number": 61,
-          "content": []
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
         },
         {
           "number": 62,
+          "content": []
+        },
+        {
+          "number": 63,
           "content": [
             {
               "text": "function",
@@ -3037,7 +3103,7 @@
           ]
         },
         {
-          "number": 63,
+          "number": 64,
           "content": [
             {
               "text": "  ",
@@ -3098,7 +3164,7 @@
           ]
         },
         {
-          "number": 64,
+          "number": 65,
           "content": [
             {
               "text": "  ",
@@ -3203,7 +3269,7 @@
           ]
         },
         {
-          "number": 65,
+          "number": 66,
           "content": [
             {
               "text": "  ",
@@ -3268,7 +3334,7 @@
           ]
         },
         {
-          "number": 66,
+          "number": 67,
           "content": [
             {
               "text": "  ",
@@ -3313,7 +3379,7 @@
           ]
         },
         {
-          "number": 67,
+          "number": 68,
           "content": [
             {
               "text": "    ",
@@ -3410,7 +3476,7 @@
           ]
         },
         {
-          "number": 68,
+          "number": 69,
           "content": [
             {
               "text": "  ",
@@ -3423,7 +3489,7 @@
           ]
         },
         {
-          "number": 69,
+          "number": 70,
           "content": [
             {
               "text": "  ",
@@ -3456,7 +3522,7 @@
           ]
         },
         {
-          "number": 70,
+          "number": 71,
           "content": [
             {
               "text": "}",
@@ -3465,11 +3531,11 @@
           ]
         },
         {
-          "number": 71,
+          "number": 72,
           "content": []
         },
         {
-          "number": 72,
+          "number": 73,
           "content": [
             {
               "text": "export",
@@ -3498,7 +3564,7 @@
           ]
         },
         {
-          "number": 73,
+          "number": 74,
           "content": [
             {
               "text": "  variant ",
@@ -3531,7 +3597,7 @@
           ]
         },
         {
-          "number": 74,
+          "number": 75,
           "content": [
             {
               "text": "  size",
@@ -3544,7 +3610,7 @@
           ]
         },
         {
-          "number": 75,
+          "number": 76,
           "content": [
             {
               "text": "  labelPosition",
@@ -3557,7 +3623,7 @@
           ]
         },
         {
-          "number": 76,
+          "number": 77,
           "content": [
             {
               "text": "  gap",
@@ -3570,23 +3636,18 @@
           ]
         },
         {
-          "number": 77,
+          "number": 78,
           "content": [
             {
               "text": "  speed",
               "color": "var(--code-variable)"
             },
             {
-              "text": ",",
+              "text": ":",
               "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 78,
-          "content": [
+            },
             {
-              "text": "  className",
+              "text": " requestedSpeed",
               "color": "var(--code-variable)"
             },
             {
@@ -3599,7 +3660,7 @@
           "number": 79,
           "content": [
             {
-              "text": "  children",
+              "text": "  className",
               "color": "var(--code-variable)"
             },
             {
@@ -3610,6 +3671,32 @@
         },
         {
           "number": 80,
+          "content": [
+            {
+              "text": "  children",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 81,
+          "content": [
+            {
+              "text": "  ref",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 82,
           "content": [
             {
               "text": "  ",
@@ -3626,7 +3713,7 @@
           ]
         },
         {
-          "number": 81,
+          "number": 83,
           "content": [
             {
               "text": "}:",
@@ -3655,7 +3742,7 @@
           ]
         },
         {
-          "number": 82,
+          "number": 84,
           "content": [
             {
               "text": "  ",
@@ -3744,7 +3831,159 @@
           ]
         },
         {
-          "number": 83,
+          "number": 85,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "resolvedSpeed",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 86,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "typeof",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " requestedSpeed ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "number",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Number",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "isFinite",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(requestedSpeed) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " requestedSpeed ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "0",
+              "color": "var(--code-number)"
+            }
+          ]
+        },
+        {
+          "number": 87,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "?",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " requestedSpeed",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 88,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " defaultSpeed",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 89,
           "content": [
             {
               "text": "  ",
@@ -3803,15 +4042,7 @@
               "color": "var(--code-keyword)"
             },
             {
-              "text": " speed ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "??",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " defaultSpeed ",
+              "text": " resolvedSpeed ",
               "color": "var(--code-variable)"
             },
             {
@@ -3829,7 +4060,7 @@
           ]
         },
         {
-          "number": 84,
+          "number": 90,
           "content": [
             {
               "text": "  ",
@@ -3886,11 +4117,11 @@
           ]
         },
         {
-          "number": 85,
+          "number": 91,
           "content": []
         },
         {
-          "number": 86,
+          "number": 92,
           "content": [
             {
               "text": "  ",
@@ -3907,7 +4138,7 @@
           ]
         },
         {
-          "number": 87,
+          "number": 93,
           "content": [
             {
               "text": "    ",
@@ -3924,7 +4155,32 @@
           ]
         },
         {
-          "number": 88,
+          "number": 94,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 95,
           "content": [
             {
               "text": "      ",
@@ -3953,7 +4209,7 @@
           ]
         },
         {
-          "number": 89,
+          "number": 96,
           "content": [
             {
               "text": "      ",
@@ -3982,7 +4238,7 @@
           ]
         },
         {
-          "number": 90,
+          "number": 97,
           "content": [
             {
               "text": "      ",
@@ -4043,7 +4299,7 @@
           ]
         },
         {
-          "number": 91,
+          "number": 98,
           "content": [
             {
               "text": "      ",
@@ -4068,7 +4324,7 @@
           ]
         },
         {
-          "number": 92,
+          "number": 99,
           "content": [
             {
               "text": "        ",
@@ -4129,7 +4385,7 @@
           ]
         },
         {
-          "number": 93,
+          "number": 100,
           "content": [
             {
               "text": "        className",
@@ -4142,7 +4398,7 @@
           ]
         },
         {
-          "number": 94,
+          "number": 101,
           "content": [
             {
               "text": "      )",
@@ -4155,7 +4411,7 @@
           ]
         },
         {
-          "number": 95,
+          "number": 102,
           "content": [
             {
               "text": "      ",
@@ -4176,7 +4432,7 @@
           ]
         },
         {
-          "number": 96,
+          "number": 103,
           "content": [
             {
               "text": "    ",
@@ -4189,7 +4445,7 @@
           ]
         },
         {
-          "number": 97,
+          "number": 104,
           "content": [
             {
               "text": "      ",
@@ -4258,7 +4514,7 @@
           ]
         },
         {
-          "number": 98,
+          "number": 105,
           "content": [
             {
               "text": "        ",
@@ -4343,7 +4599,7 @@
           ]
         },
         {
-          "number": 99,
+          "number": 106,
           "content": [
             {
               "text": "      ",
@@ -4364,7 +4620,7 @@
           ]
         },
         {
-          "number": 100,
+          "number": 107,
           "content": [
             {
               "text": "      ",
@@ -4385,7 +4641,7 @@
           ]
         },
         {
-          "number": 101,
+          "number": 108,
           "content": [
             {
               "text": "    ",
@@ -4406,7 +4662,7 @@
           ]
         },
         {
-          "number": 102,
+          "number": 109,
           "content": [
             {
               "text": "  )",
@@ -4419,7 +4675,7 @@
           ]
         },
         {
-          "number": 103,
+          "number": 110,
           "content": [
             {
               "text": "}",
@@ -4428,13 +4684,13 @@
           ]
         },
         {
-          "number": 104,
+          "number": 111,
           "content": []
         }
       ]
     },
     "registry/ui/spinner/use-spinner-animation.ts": {
-      "raw": "\"use client\";\n\nimport { useState, useEffect } from \"react\";\n\ninterface UseSpinnerAnimationOptions {\n  totalFrames: number;\n  speed: number;\n}\n\nexport function useSpinnerAnimation({ totalFrames, speed }: UseSpinnerAnimationOptions): number {\n  const [frame, setFrame] = useState(0);\n\n  useEffect(() => {\n    const mql = window.matchMedia(\"(prefers-reduced-motion: reduce)\");\n\n    let intervalId: ReturnType<typeof setInterval> | undefined;\n\n    function sync() {\n      if (intervalId !== undefined) {\n        clearInterval(intervalId);\n        intervalId = undefined;\n      }\n      if (mql.matches) {\n        setFrame(0);\n      } else {\n        intervalId = setInterval(() => setFrame(f => (f + 1) % totalFrames), speed);\n      }\n    }\n\n    sync();\n    mql.addEventListener(\"change\", sync);\n\n    return () => {\n      mql.removeEventListener(\"change\", sync);\n      if (intervalId !== undefined) clearInterval(intervalId);\n    };\n  }, [speed, totalFrames]);\n\n  return frame;\n}\n",
+      "raw": "\"use client\";\n\nimport { useState, useEffect } from \"react\";\n\ninterface UseSpinnerAnimationOptions {\n  totalFrames: number;\n  speed: number;\n}\n\nexport function useSpinnerAnimation({ totalFrames, speed }: UseSpinnerAnimationOptions): number {\n  const [frame, setFrame] = useState(0);\n\n  useEffect(() => {\n    if (!Number.isFinite(totalFrames) || totalFrames <= 0 || !Number.isFinite(speed) || speed <= 0) {\n      setFrame(0);\n      return;\n    }\n\n    let intervalId: ReturnType<typeof setInterval> | undefined;\n    const mql = typeof window !== \"undefined\" && typeof window.matchMedia === \"function\"\n      ? window.matchMedia(\"(prefers-reduced-motion: reduce)\")\n      : null;\n\n    function sync() {\n      if (intervalId !== undefined) {\n        clearInterval(intervalId);\n        intervalId = undefined;\n      }\n      if (mql?.matches) {\n        setFrame(0);\n      } else {\n        intervalId = setInterval(() => setFrame(f => (f + 1) % totalFrames), speed);\n      }\n    }\n\n    sync();\n    mql?.addEventListener(\"change\", sync);\n\n    return () => {\n      mql?.removeEventListener(\"change\", sync);\n      if (intervalId !== undefined) clearInterval(intervalId);\n    };\n  }, [speed, totalFrames]);\n\n  return frame;\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -4809,31 +5065,19 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "const",
+              "text": "if",
               "color": "var(--code-keyword)"
             },
             {
-              "text": " ",
+              "text": " (",
               "color": "var(--code-variable)"
             },
             {
-              "text": "mql",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "=",
+              "text": "!",
               "color": "var(--code-operator)"
             },
             {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "window",
+              "text": "Number",
               "color": "var(--code-number)"
             },
             {
@@ -4841,7 +5085,104 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "matchMedia",
+              "text": "isFinite",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(totalFrames) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "||",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " totalFrames ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "0",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "||",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "!",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "Number",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "isFinite",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(speed) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "||",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " speed ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "0",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 15,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "setFrame",
               "color": "var(--code-function)"
             },
             {
@@ -4849,16 +5190,8 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "(prefers-reduced-motion: reduce)",
-              "color": "var(--code-tag)"
-            },
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
+              "text": "0",
+              "color": "var(--code-number)"
             },
             {
               "text": ")",
@@ -4871,11 +5204,41 @@
           ]
         },
         {
-          "number": 15,
+          "number": 16,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 17,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 18,
           "content": []
         },
         {
-          "number": 16,
+          "number": 19,
           "content": [
             {
               "text": "    ",
@@ -4936,11 +5299,198 @@
           ]
         },
         {
-          "number": 17,
+          "number": 20,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "mql",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "typeof",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " window ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "!==",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "undefined",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "typeof",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "window",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "matchMedia ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "function",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 21,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "?",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "window",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "matchMedia",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "(prefers-reduced-motion: reduce)",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 22,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 23,
           "content": []
         },
         {
-          "number": 18,
+          "number": 24,
           "content": [
             {
               "text": "    ",
@@ -4973,7 +5523,7 @@
           ]
         },
         {
-          "number": 19,
+          "number": 25,
           "content": [
             {
               "text": "      ",
@@ -5010,7 +5560,7 @@
           ]
         },
         {
-          "number": 20,
+          "number": 26,
           "content": [
             {
               "text": "        ",
@@ -5031,7 +5581,7 @@
           ]
         },
         {
-          "number": 21,
+          "number": 27,
           "content": [
             {
               "text": "        intervalId ",
@@ -5056,7 +5606,7 @@
           ]
         },
         {
-          "number": 22,
+          "number": 28,
           "content": [
             {
               "text": "      ",
@@ -5069,7 +5619,7 @@
           ]
         },
         {
-          "number": 23,
+          "number": 29,
           "content": [
             {
               "text": "      ",
@@ -5088,7 +5638,7 @@
               "color": "var(--code-number)"
             },
             {
-              "text": ".",
+              "text": "?.",
               "color": "var(--code-operator)"
             },
             {
@@ -5102,7 +5652,7 @@
           ]
         },
         {
-          "number": 24,
+          "number": 30,
           "content": [
             {
               "text": "        ",
@@ -5131,7 +5681,7 @@
           ]
         },
         {
-          "number": 25,
+          "number": 31,
           "content": [
             {
               "text": "      ",
@@ -5160,7 +5710,7 @@
           ]
         },
         {
-          "number": 26,
+          "number": 32,
           "content": [
             {
               "text": "        intervalId ",
@@ -5253,7 +5803,7 @@
           ]
         },
         {
-          "number": 27,
+          "number": 33,
           "content": [
             {
               "text": "      ",
@@ -5266,7 +5816,7 @@
           ]
         },
         {
-          "number": 28,
+          "number": 34,
           "content": [
             {
               "text": "    ",
@@ -5279,11 +5829,11 @@
           ]
         },
         {
-          "number": 29,
+          "number": 35,
           "content": []
         },
         {
-          "number": 30,
+          "number": 36,
           "content": [
             {
               "text": "    ",
@@ -5304,7 +5854,7 @@
           ]
         },
         {
-          "number": 31,
+          "number": 37,
           "content": [
             {
               "text": "    ",
@@ -5315,7 +5865,7 @@
               "color": "var(--code-number)"
             },
             {
-              "text": ".",
+              "text": "?.",
               "color": "var(--code-operator)"
             },
             {
@@ -5353,11 +5903,11 @@
           ]
         },
         {
-          "number": 32,
+          "number": 38,
           "content": []
         },
         {
-          "number": 33,
+          "number": 39,
           "content": [
             {
               "text": "    ",
@@ -5394,7 +5944,7 @@
           ]
         },
         {
-          "number": 34,
+          "number": 40,
           "content": [
             {
               "text": "      ",
@@ -5405,7 +5955,7 @@
               "color": "var(--code-number)"
             },
             {
-              "text": ".",
+              "text": "?.",
               "color": "var(--code-operator)"
             },
             {
@@ -5443,7 +5993,7 @@
           ]
         },
         {
-          "number": 35,
+          "number": 41,
           "content": [
             {
               "text": "      ",
@@ -5488,7 +6038,7 @@
           ]
         },
         {
-          "number": 36,
+          "number": 42,
           "content": [
             {
               "text": "    ",
@@ -5501,7 +6051,7 @@
           ]
         },
         {
-          "number": 37,
+          "number": 43,
           "content": [
             {
               "text": "  ",
@@ -5530,11 +6080,11 @@
           ]
         },
         {
-          "number": 38,
+          "number": 44,
           "content": []
         },
         {
-          "number": 39,
+          "number": 45,
           "content": [
             {
               "text": "  ",
@@ -5555,7 +6105,7 @@
           ]
         },
         {
-          "number": 40,
+          "number": 46,
           "content": [
             {
               "text": "}",
@@ -5564,7 +6114,7 @@
           ]
         },
         {
-          "number": 41,
+          "number": 47,
           "content": []
         }
       ]
@@ -7728,10 +8278,35 @@
       ]
     }
   },
-  "mergedSource": "export { Spinner, type SpinnerProps, type SpinnerVariant, type SpinnerSize, type SpinnerLabelPosition, type SpinnerGap } from \"./spinner\";\n\n\n\"use client\";\n\nimport type { ReactNode, HTMLAttributes } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { useSpinnerAnimation } from \"./use-spinner-animation\";\nimport { SnakeGrid, SNAKE_FRAME_COUNT } from \"./spinner-snake-grid\";\n\nexport type SpinnerSize = \"sm\" | \"md\" | \"lg\";\nexport type SpinnerVariant = \"snake\" | \"braille\" | \"dots\" | \"pulse\";\nexport type SpinnerLabelPosition = \"right\" | \"left\" | \"top\" | \"bottom\";\nexport type SpinnerGap = \"none\" | \"sm\" | \"md\" | \"lg\";\n\nconst BRAILLE_FRAMES = [\"⠋\", \"⠙\", \"⠹\", \"⠸\", \"⠼\", \"⠴\", \"⠦\", \"⠧\", \"⠇\", \"⠏\"] as const;\nconst DOTS_FRAMES = [\".  \", \".. \", \"...\"] as const;\nconst PULSE_FRAMES = [\"░\", \"▒\", \"▓\", \"█\", \"▓\", \"▒\", \"░\"] as const;\n\n// Fixed width prevents layout shift during dot animation (\".\" → \"..\" → \"...\")\nconst DOTS_FIXED_WIDTH = \"w-7\";\n\nconst VARIANT_CONFIG: Record<SpinnerVariant, { frames: number; speed: number }> = {\n  snake: { frames: SNAKE_FRAME_COUNT, speed: 100 },\n  braille: { frames: BRAILLE_FRAMES.length, speed: 80 },\n  dots: { frames: DOTS_FRAMES.length, speed: 300 },\n  pulse: { frames: PULSE_FRAMES.length, speed: 80 },\n};\n\nconst spinnerVariants = cva(\"inline-flex items-center font-mono\", {\n  variants: {\n    size: {\n      sm: \"text-xs\",\n      md: \"text-sm\",\n      lg: \"text-base\",\n    },\n    labelPosition: {\n      right: \"flex-row\",\n      left: \"flex-row-reverse\",\n      bottom: \"flex-col\",\n      top: \"flex-col-reverse\",\n    },\n    gap: {\n      none: \"gap-0\",\n      sm: \"gap-1\",\n      md: \"gap-2\",\n      lg: \"gap-3\",\n    },\n  },\n  defaultVariants: { size: \"md\", labelPosition: \"right\", gap: \"md\" },\n});\n\nexport interface SpinnerProps\n  extends HTMLAttributes<HTMLSpanElement>,\n    VariantProps<typeof spinnerVariants> {\n  variant?: SpinnerVariant;\n  size?: SpinnerSize;\n  labelPosition?: SpinnerLabelPosition;\n  gap?: SpinnerGap;\n  speed?: number;\n  children?: ReactNode;\n}\n\nfunction SpinnerAnimation({ variant, frame, size }: { variant: SpinnerVariant; frame: number; size: SpinnerSize }) {\n  const safeFrame = frame % VARIANT_CONFIG[variant].frames;\n  if (variant === \"snake\") return <SnakeGrid frame={safeFrame} size={size} />;\n  if (variant === \"braille\") return <>{BRAILLE_FRAMES[safeFrame]}</>;\n  if (variant === \"dots\") {\n    return <span className={cn(\"inline-block whitespace-pre\", DOTS_FIXED_WIDTH)}>{DOTS_FRAMES[safeFrame]}</span>;\n  }\n  return <>{PULSE_FRAMES[safeFrame]}</>;\n}\n\nexport function Spinner({\n  variant = \"snake\",\n  size,\n  labelPosition,\n  gap,\n  speed,\n  className,\n  children,\n  ...props\n}: SpinnerProps) {\n  const { frames: totalFrames, speed: defaultSpeed } = VARIANT_CONFIG[variant];\n  const frame = useSpinnerAnimation({ totalFrames, speed: speed ?? defaultSpeed });\n  const resolvedSize = size ?? \"md\";\n\n  return (\n    <span\n      role=\"status\"\n      aria-live=\"polite\"\n      aria-label={children ? undefined : \"Loading\"}\n      className={cn(\n        spinnerVariants({ size: resolvedSize, labelPosition, gap }),\n        className,\n      )}\n      {...props}\n    >\n      <span aria-hidden=\"true\" className=\"inline-flex items-center\">\n        <SpinnerAnimation variant={variant} frame={frame} size={resolvedSize} />\n      </span>\n      {children}\n    </span>\n  );\n}\n\n\n\"use client\";\n\nimport { useState, useEffect } from \"react\";\n\ninterface UseSpinnerAnimationOptions {\n  totalFrames: number;\n  speed: number;\n}\n\nexport function useSpinnerAnimation({ totalFrames, speed }: UseSpinnerAnimationOptions): number {\n  const [frame, setFrame] = useState(0);\n\n  useEffect(() => {\n    const mql = window.matchMedia(\"(prefers-reduced-motion: reduce)\");\n\n    let intervalId: ReturnType<typeof setInterval> | undefined;\n\n    function sync() {\n      if (intervalId !== undefined) {\n        clearInterval(intervalId);\n        intervalId = undefined;\n      }\n      if (mql.matches) {\n        setFrame(0);\n      } else {\n        intervalId = setInterval(() => setFrame(f => (f + 1) % totalFrames), speed);\n      }\n    }\n\n    sync();\n    mql.addEventListener(\"change\", sync);\n\n    return () => {\n      mql.removeEventListener(\"change\", sync);\n      if (intervalId !== undefined) clearInterval(intervalId);\n    };\n  }, [speed, totalFrames]);\n\n  return frame;\n}\n\n\n\"use client\";\n\nimport { cn } from \"@/lib/utils\";\nimport type { SpinnerSize } from \"./spinner\";\n\n// 3×3 grid positions (0–8, left-to-right top-to-bottom).\n// Perimeter traversal order for clockwise snake movement:\n//   0 1 2\n//   3 · 5   ← center (4) is always invisible\n//   6 7 8\nconst SNAKE_PERIMETER = [0, 1, 2, 5, 8, 7, 6, 3] as const;\nconst SNAKE_TAIL_LENGTH = 3;\n\nexport const SNAKE_FRAME_COUNT = SNAKE_PERIMETER.length;\n\nconst PERIMETER_POSITION = new Map<number, number>(SNAKE_PERIMETER.map((cell, i) => [cell, i]));\nconst TRAIL_OPACITIES = [1, 0.6, 0.3] as const;\nconst INACTIVE_OPACITY = 0.15;\n\nconst DOT_SIZES: Record<SpinnerSize, { dot: string; gap: string }> = {\n  sm: { dot: \"h-1 w-1\", gap: \"gap-[3px]\" },\n  md: { dot: \"h-1.5 w-1.5\", gap: \"gap-[3px]\" },\n  lg: { dot: \"h-2 w-2\", gap: \"gap-1\" },\n};\n\nconst CELL_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 8] as const;\n\nfunction getCellOpacity(frame: number, cellIndex: number): number {\n  const positionInPerimeter = PERIMETER_POSITION.get(cellIndex);\n  if (positionInPerimeter === undefined) return 0;\n  const distanceBehindHead = (frame - positionInPerimeter + SNAKE_PERIMETER.length) % SNAKE_PERIMETER.length;\n  return distanceBehindHead < SNAKE_TAIL_LENGTH ? TRAIL_OPACITIES[distanceBehindHead] : INACTIVE_OPACITY;\n}\n\ninterface SnakeGridProps {\n  frame: number;\n  size: SpinnerSize;\n}\n\nexport function SnakeGrid({ frame, size }: SnakeGridProps) {\n  const { dot, gap } = DOT_SIZES[size];\n  const dotClassName = cn(\"rounded-sm bg-current\", dot);\n\n  return (\n    <span className={cn(\"grid grid-cols-3\", gap)}>\n      {CELL_INDICES.map(cellIndex => (\n        <span\n          key={cellIndex}\n          className={dotClassName}\n          style={{ opacity: getCellOpacity(frame, cellIndex) }}\n        />\n      ))}\n    </span>\n  );\n}\n",
+  "mergedSource": "\"use client\";\n\nexport { Spinner, type SpinnerProps, type SpinnerVariant, type SpinnerSize, type SpinnerLabelPosition, type SpinnerGap } from \"./spinner\";\n\n\n\"use client\";\n\nimport type { ReactNode, HTMLAttributes, Ref } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { useSpinnerAnimation } from \"./use-spinner-animation\";\nimport { SnakeGrid, SNAKE_FRAME_COUNT } from \"./spinner-snake-grid\";\n\nexport type SpinnerSize = \"sm\" | \"md\" | \"lg\";\nexport type SpinnerVariant = \"snake\" | \"braille\" | \"dots\" | \"pulse\";\nexport type SpinnerLabelPosition = \"right\" | \"left\" | \"top\" | \"bottom\";\nexport type SpinnerGap = \"none\" | \"sm\" | \"md\" | \"lg\";\n\nconst BRAILLE_FRAMES = [\"⠋\", \"⠙\", \"⠹\", \"⠸\", \"⠼\", \"⠴\", \"⠦\", \"⠧\", \"⠇\", \"⠏\"] as const;\nconst DOTS_FRAMES = [\".  \", \".. \", \"...\"] as const;\nconst PULSE_FRAMES = [\"░\", \"▒\", \"▓\", \"█\", \"▓\", \"▒\", \"░\"] as const;\n\n// Fixed width prevents layout shift during dot animation (\".\" → \"..\" → \"...\")\nconst DOTS_FIXED_WIDTH = \"w-7\";\n\nconst VARIANT_CONFIG: Record<SpinnerVariant, { frames: number; speed: number }> = {\n  snake: { frames: SNAKE_FRAME_COUNT, speed: 100 },\n  braille: { frames: BRAILLE_FRAMES.length, speed: 80 },\n  dots: { frames: DOTS_FRAMES.length, speed: 300 },\n  pulse: { frames: PULSE_FRAMES.length, speed: 80 },\n};\n\nconst spinnerVariants = cva(\"inline-flex items-center font-mono\", {\n  variants: {\n    size: {\n      sm: \"text-xs\",\n      md: \"text-sm\",\n      lg: \"text-base\",\n    },\n    labelPosition: {\n      right: \"flex-row\",\n      left: \"flex-row-reverse\",\n      bottom: \"flex-col\",\n      top: \"flex-col-reverse\",\n    },\n    gap: {\n      none: \"gap-0\",\n      sm: \"gap-1\",\n      md: \"gap-2\",\n      lg: \"gap-3\",\n    },\n  },\n  defaultVariants: { size: \"md\", labelPosition: \"right\", gap: \"md\" },\n});\n\nexport interface SpinnerProps\n  extends HTMLAttributes<HTMLSpanElement>,\n    VariantProps<typeof spinnerVariants> {\n  variant?: SpinnerVariant;\n  size?: SpinnerSize;\n  labelPosition?: SpinnerLabelPosition;\n  gap?: SpinnerGap;\n  speed?: number;\n  children?: ReactNode;\n  ref?: Ref<HTMLSpanElement>;\n}\n\nfunction SpinnerAnimation({ variant, frame, size }: { variant: SpinnerVariant; frame: number; size: SpinnerSize }) {\n  const safeFrame = frame % VARIANT_CONFIG[variant].frames;\n  if (variant === \"snake\") return <SnakeGrid frame={safeFrame} size={size} />;\n  if (variant === \"braille\") return <>{BRAILLE_FRAMES[safeFrame]}</>;\n  if (variant === \"dots\") {\n    return <span className={cn(\"inline-block whitespace-pre\", DOTS_FIXED_WIDTH)}>{DOTS_FRAMES[safeFrame]}</span>;\n  }\n  return <>{PULSE_FRAMES[safeFrame]}</>;\n}\n\nexport function Spinner({\n  variant = \"snake\",\n  size,\n  labelPosition,\n  gap,\n  speed: requestedSpeed,\n  className,\n  children,\n  ref,\n  ...props\n}: SpinnerProps) {\n  const { frames: totalFrames, speed: defaultSpeed } = VARIANT_CONFIG[variant];\n  const resolvedSpeed =\n    typeof requestedSpeed === \"number\" && Number.isFinite(requestedSpeed) && requestedSpeed > 0\n      ? requestedSpeed\n      : defaultSpeed;\n  const frame = useSpinnerAnimation({ totalFrames, speed: resolvedSpeed });\n  const resolvedSize = size ?? \"md\";\n\n  return (\n    <span\n      ref={ref}\n      role=\"status\"\n      aria-live=\"polite\"\n      aria-label={children ? undefined : \"Loading\"}\n      className={cn(\n        spinnerVariants({ size: resolvedSize, labelPosition, gap }),\n        className,\n      )}\n      {...props}\n    >\n      <span aria-hidden=\"true\" className=\"inline-flex items-center\">\n        <SpinnerAnimation variant={variant} frame={frame} size={resolvedSize} />\n      </span>\n      {children}\n    </span>\n  );\n}\n\n\n\"use client\";\n\nimport { useState, useEffect } from \"react\";\n\ninterface UseSpinnerAnimationOptions {\n  totalFrames: number;\n  speed: number;\n}\n\nexport function useSpinnerAnimation({ totalFrames, speed }: UseSpinnerAnimationOptions): number {\n  const [frame, setFrame] = useState(0);\n\n  useEffect(() => {\n    if (!Number.isFinite(totalFrames) || totalFrames <= 0 || !Number.isFinite(speed) || speed <= 0) {\n      setFrame(0);\n      return;\n    }\n\n    let intervalId: ReturnType<typeof setInterval> | undefined;\n    const mql = typeof window !== \"undefined\" && typeof window.matchMedia === \"function\"\n      ? window.matchMedia(\"(prefers-reduced-motion: reduce)\")\n      : null;\n\n    function sync() {\n      if (intervalId !== undefined) {\n        clearInterval(intervalId);\n        intervalId = undefined;\n      }\n      if (mql?.matches) {\n        setFrame(0);\n      } else {\n        intervalId = setInterval(() => setFrame(f => (f + 1) % totalFrames), speed);\n      }\n    }\n\n    sync();\n    mql?.addEventListener(\"change\", sync);\n\n    return () => {\n      mql?.removeEventListener(\"change\", sync);\n      if (intervalId !== undefined) clearInterval(intervalId);\n    };\n  }, [speed, totalFrames]);\n\n  return frame;\n}\n\n\n\"use client\";\n\nimport { cn } from \"@/lib/utils\";\nimport type { SpinnerSize } from \"./spinner\";\n\n// 3×3 grid positions (0–8, left-to-right top-to-bottom).\n// Perimeter traversal order for clockwise snake movement:\n//   0 1 2\n//   3 · 5   ← center (4) is always invisible\n//   6 7 8\nconst SNAKE_PERIMETER = [0, 1, 2, 5, 8, 7, 6, 3] as const;\nconst SNAKE_TAIL_LENGTH = 3;\n\nexport const SNAKE_FRAME_COUNT = SNAKE_PERIMETER.length;\n\nconst PERIMETER_POSITION = new Map<number, number>(SNAKE_PERIMETER.map((cell, i) => [cell, i]));\nconst TRAIL_OPACITIES = [1, 0.6, 0.3] as const;\nconst INACTIVE_OPACITY = 0.15;\n\nconst DOT_SIZES: Record<SpinnerSize, { dot: string; gap: string }> = {\n  sm: { dot: \"h-1 w-1\", gap: \"gap-[3px]\" },\n  md: { dot: \"h-1.5 w-1.5\", gap: \"gap-[3px]\" },\n  lg: { dot: \"h-2 w-2\", gap: \"gap-1\" },\n};\n\nconst CELL_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 8] as const;\n\nfunction getCellOpacity(frame: number, cellIndex: number): number {\n  const positionInPerimeter = PERIMETER_POSITION.get(cellIndex);\n  if (positionInPerimeter === undefined) return 0;\n  const distanceBehindHead = (frame - positionInPerimeter + SNAKE_PERIMETER.length) % SNAKE_PERIMETER.length;\n  return distanceBehindHead < SNAKE_TAIL_LENGTH ? TRAIL_OPACITIES[distanceBehindHead] : INACTIVE_OPACITY;\n}\n\ninterface SnakeGridProps {\n  frame: number;\n  size: SpinnerSize;\n}\n\nexport function SnakeGrid({ frame, size }: SnakeGridProps) {\n  const { dot, gap } = DOT_SIZES[size];\n  const dotClassName = cn(\"rounded-sm bg-current\", dot);\n\n  return (\n    <span className={cn(\"grid grid-cols-3\", gap)}>\n      {CELL_INDICES.map(cellIndex => (\n        <span\n          key={cellIndex}\n          className={dotClassName}\n          style={{ opacity: getCellOpacity(frame, cellIndex) }}\n        />\n      ))}\n    </span>\n  );\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
+      "content": [
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "use client",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "content": []
+    },
+    {
+      "number": 3,
       "content": [
         {
           "text": "export",
@@ -7864,15 +8439,15 @@
       ]
     },
     {
-      "number": 2,
-      "content": []
-    },
-    {
-      "number": 3,
-      "content": []
-    },
-    {
       "number": 4,
+      "content": []
+    },
+    {
+      "number": 5,
+      "content": []
+    },
+    {
+      "number": 6,
       "content": [
         {
           "text": "\"",
@@ -7893,11 +8468,11 @@
       ]
     },
     {
-      "number": 5,
+      "number": 7,
       "content": []
     },
     {
-      "number": 6,
+      "number": 8,
       "content": [
         {
           "text": "import",
@@ -7928,7 +8503,15 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": " HTMLAttributes ",
+          "text": " HTMLAttributes",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " Ref ",
           "color": "var(--code-variable)"
         },
         {
@@ -7966,7 +8549,7 @@
       ]
     },
     {
-      "number": 7,
+      "number": 9,
       "content": [
         {
           "text": "import",
@@ -8035,7 +8618,7 @@
       ]
     },
     {
-      "number": 8,
+      "number": 10,
       "content": [
         {
           "text": "import",
@@ -8088,7 +8671,7 @@
       ]
     },
     {
-      "number": 9,
+      "number": 11,
       "content": [
         {
           "text": "import",
@@ -8141,7 +8724,7 @@
       ]
     },
     {
-      "number": 10,
+      "number": 12,
       "content": [
         {
           "text": "import",
@@ -8202,11 +8785,11 @@
       ]
     },
     {
-      "number": 11,
+      "number": 13,
       "content": []
     },
     {
-      "number": 12,
+      "number": 14,
       "content": [
         {
           "text": "export",
@@ -8307,7 +8890,7 @@
       ]
     },
     {
-      "number": 13,
+      "number": 15,
       "content": [
         {
           "text": "export",
@@ -8432,7 +9015,7 @@
       ]
     },
     {
-      "number": 14,
+      "number": 16,
       "content": [
         {
           "text": "export",
@@ -8557,7 +9140,7 @@
       ]
     },
     {
-      "number": 15,
+      "number": 17,
       "content": [
         {
           "text": "export",
@@ -8682,11 +9265,11 @@
       ]
     },
     {
-      "number": 16,
+      "number": 18,
       "content": []
     },
     {
-      "number": 17,
+      "number": 19,
       "content": [
         {
           "text": "const",
@@ -8927,7 +9510,7 @@
       ]
     },
     {
-      "number": 18,
+      "number": 20,
       "content": [
         {
           "text": "const",
@@ -9028,7 +9611,7 @@
       ]
     },
     {
-      "number": 19,
+      "number": 21,
       "content": [
         {
           "text": "const",
@@ -9209,11 +9792,11 @@
       ]
     },
     {
-      "number": 20,
+      "number": 22,
       "content": []
     },
     {
-      "number": 21,
+      "number": 23,
       "content": [
         {
           "text": "//",
@@ -9226,7 +9809,7 @@
       ]
     },
     {
-      "number": 22,
+      "number": 24,
       "content": [
         {
           "text": "const",
@@ -9271,11 +9854,11 @@
       ]
     },
     {
-      "number": 23,
+      "number": 25,
       "content": []
     },
     {
-      "number": 24,
+      "number": 26,
       "content": [
         {
           "text": "const",
@@ -9384,7 +9967,7 @@
       ]
     },
     {
-      "number": 25,
+      "number": 27,
       "content": [
         {
           "text": "  snake",
@@ -9449,7 +10032,7 @@
       ]
     },
     {
-      "number": 26,
+      "number": 28,
       "content": [
         {
           "text": "  braille",
@@ -9522,7 +10105,7 @@
       ]
     },
     {
-      "number": 27,
+      "number": 29,
       "content": [
         {
           "text": "  dots",
@@ -9595,7 +10178,7 @@
       ]
     },
     {
-      "number": 28,
+      "number": 30,
       "content": [
         {
           "text": "  pulse",
@@ -9668,7 +10251,7 @@
       ]
     },
     {
-      "number": 29,
+      "number": 31,
       "content": [
         {
           "text": "};",
@@ -9677,11 +10260,11 @@
       ]
     },
     {
-      "number": 30,
+      "number": 32,
       "content": []
     },
     {
-      "number": 31,
+      "number": 33,
       "content": [
         {
           "text": "const",
@@ -9742,7 +10325,7 @@
       ]
     },
     {
-      "number": 32,
+      "number": 34,
       "content": [
         {
           "text": "  variants",
@@ -9763,7 +10346,7 @@
       ]
     },
     {
-      "number": 33,
+      "number": 35,
       "content": [
         {
           "text": "    size",
@@ -9784,7 +10367,7 @@
       ]
     },
     {
-      "number": 34,
+      "number": 36,
       "content": [
         {
           "text": "      sm",
@@ -9817,7 +10400,7 @@
       ]
     },
     {
-      "number": 35,
+      "number": 37,
       "content": [
         {
           "text": "      md",
@@ -9850,7 +10433,7 @@
       ]
     },
     {
-      "number": 36,
+      "number": 38,
       "content": [
         {
           "text": "      lg",
@@ -9883,7 +10466,7 @@
       ]
     },
     {
-      "number": 37,
+      "number": 39,
       "content": [
         {
           "text": "    ",
@@ -9896,7 +10479,7 @@
       ]
     },
     {
-      "number": 38,
+      "number": 40,
       "content": [
         {
           "text": "    labelPosition",
@@ -9917,7 +10500,7 @@
       ]
     },
     {
-      "number": 39,
+      "number": 41,
       "content": [
         {
           "text": "      right",
@@ -9950,7 +10533,7 @@
       ]
     },
     {
-      "number": 40,
+      "number": 42,
       "content": [
         {
           "text": "      left",
@@ -9983,7 +10566,7 @@
       ]
     },
     {
-      "number": 41,
+      "number": 43,
       "content": [
         {
           "text": "      bottom",
@@ -10016,7 +10599,7 @@
       ]
     },
     {
-      "number": 42,
+      "number": 44,
       "content": [
         {
           "text": "      top",
@@ -10049,7 +10632,7 @@
       ]
     },
     {
-      "number": 43,
+      "number": 45,
       "content": [
         {
           "text": "    ",
@@ -10062,7 +10645,7 @@
       ]
     },
     {
-      "number": 44,
+      "number": 46,
       "content": [
         {
           "text": "    gap",
@@ -10083,7 +10666,7 @@
       ]
     },
     {
-      "number": 45,
+      "number": 47,
       "content": [
         {
           "text": "      none",
@@ -10116,7 +10699,7 @@
       ]
     },
     {
-      "number": 46,
+      "number": 48,
       "content": [
         {
           "text": "      sm",
@@ -10149,7 +10732,7 @@
       ]
     },
     {
-      "number": 47,
+      "number": 49,
       "content": [
         {
           "text": "      md",
@@ -10182,7 +10765,7 @@
       ]
     },
     {
-      "number": 48,
+      "number": 50,
       "content": [
         {
           "text": "      lg",
@@ -10215,7 +10798,7 @@
       ]
     },
     {
-      "number": 49,
+      "number": 51,
       "content": [
         {
           "text": "    ",
@@ -10228,7 +10811,7 @@
       ]
     },
     {
-      "number": 50,
+      "number": 52,
       "content": [
         {
           "text": "  ",
@@ -10241,7 +10824,7 @@
       ]
     },
     {
-      "number": 51,
+      "number": 53,
       "content": [
         {
           "text": "  defaultVariants",
@@ -10350,7 +10933,7 @@
       ]
     },
     {
-      "number": 52,
+      "number": 54,
       "content": [
         {
           "text": "}",
@@ -10367,11 +10950,11 @@
       ]
     },
     {
-      "number": 53,
+      "number": 55,
       "content": []
     },
     {
-      "number": 54,
+      "number": 56,
       "content": [
         {
           "text": "export",
@@ -10396,7 +10979,7 @@
       ]
     },
     {
-      "number": 55,
+      "number": 57,
       "content": [
         {
           "text": "  ",
@@ -10429,7 +11012,7 @@
       ]
     },
     {
-      "number": 56,
+      "number": 58,
       "content": [
         {
           "text": "    ",
@@ -10462,7 +11045,7 @@
       ]
     },
     {
-      "number": 57,
+      "number": 59,
       "content": [
         {
           "text": "  variant",
@@ -10487,7 +11070,7 @@
       ]
     },
     {
-      "number": 58,
+      "number": 60,
       "content": [
         {
           "text": "  size",
@@ -10512,7 +11095,7 @@
       ]
     },
     {
-      "number": 59,
+      "number": 61,
       "content": [
         {
           "text": "  labelPosition",
@@ -10537,7 +11120,7 @@
       ]
     },
     {
-      "number": 60,
+      "number": 62,
       "content": [
         {
           "text": "  gap",
@@ -10562,7 +11145,7 @@
       ]
     },
     {
-      "number": 61,
+      "number": 63,
       "content": [
         {
           "text": "  speed",
@@ -10587,7 +11170,7 @@
       ]
     },
     {
-      "number": 62,
+      "number": 64,
       "content": [
         {
           "text": "  children",
@@ -10612,7 +11195,40 @@
       ]
     },
     {
-      "number": 63,
+      "number": 65,
+      "content": [
+        {
+          "text": "  ref",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "?:",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "Ref",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "HTMLSpanElement",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": ">;",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 66,
       "content": [
         {
           "text": "}",
@@ -10621,11 +11237,11 @@
       ]
     },
     {
-      "number": 64,
+      "number": 67,
       "content": []
     },
     {
-      "number": 65,
+      "number": 68,
       "content": [
         {
           "text": "function",
@@ -10750,7 +11366,7 @@
       ]
     },
     {
-      "number": 66,
+      "number": 69,
       "content": [
         {
           "text": "  ",
@@ -10811,7 +11427,7 @@
       ]
     },
     {
-      "number": 67,
+      "number": 70,
       "content": [
         {
           "text": "  ",
@@ -10916,7 +11532,7 @@
       ]
     },
     {
-      "number": 68,
+      "number": 71,
       "content": [
         {
           "text": "  ",
@@ -10981,7 +11597,7 @@
       ]
     },
     {
-      "number": 69,
+      "number": 72,
       "content": [
         {
           "text": "  ",
@@ -11026,7 +11642,7 @@
       ]
     },
     {
-      "number": 70,
+      "number": 73,
       "content": [
         {
           "text": "    ",
@@ -11123,7 +11739,7 @@
       ]
     },
     {
-      "number": 71,
+      "number": 74,
       "content": [
         {
           "text": "  ",
@@ -11136,7 +11752,7 @@
       ]
     },
     {
-      "number": 72,
+      "number": 75,
       "content": [
         {
           "text": "  ",
@@ -11169,7 +11785,7 @@
       ]
     },
     {
-      "number": 73,
+      "number": 76,
       "content": [
         {
           "text": "}",
@@ -11178,11 +11794,11 @@
       ]
     },
     {
-      "number": 74,
+      "number": 77,
       "content": []
     },
     {
-      "number": 75,
+      "number": 78,
       "content": [
         {
           "text": "export",
@@ -11211,7 +11827,7 @@
       ]
     },
     {
-      "number": 76,
+      "number": 79,
       "content": [
         {
           "text": "  variant ",
@@ -11244,7 +11860,7 @@
       ]
     },
     {
-      "number": 77,
+      "number": 80,
       "content": [
         {
           "text": "  size",
@@ -11257,7 +11873,7 @@
       ]
     },
     {
-      "number": 78,
+      "number": 81,
       "content": [
         {
           "text": "  labelPosition",
@@ -11270,7 +11886,7 @@
       ]
     },
     {
-      "number": 79,
+      "number": 82,
       "content": [
         {
           "text": "  gap",
@@ -11283,10 +11899,18 @@
       ]
     },
     {
-      "number": 80,
+      "number": 83,
       "content": [
         {
           "text": "  speed",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " requestedSpeed",
           "color": "var(--code-variable)"
         },
         {
@@ -11296,7 +11920,7 @@
       ]
     },
     {
-      "number": 81,
+      "number": 84,
       "content": [
         {
           "text": "  className",
@@ -11309,7 +11933,7 @@
       ]
     },
     {
-      "number": 82,
+      "number": 85,
       "content": [
         {
           "text": "  children",
@@ -11322,7 +11946,20 @@
       ]
     },
     {
-      "number": 83,
+      "number": 86,
+      "content": [
+        {
+          "text": "  ref",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 87,
       "content": [
         {
           "text": "  ",
@@ -11339,7 +11976,7 @@
       ]
     },
     {
-      "number": 84,
+      "number": 88,
       "content": [
         {
           "text": "}:",
@@ -11368,7 +12005,7 @@
       ]
     },
     {
-      "number": 85,
+      "number": 89,
       "content": [
         {
           "text": "  ",
@@ -11457,7 +12094,159 @@
       ]
     },
     {
-      "number": 86,
+      "number": 90,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "resolvedSpeed",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 91,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "typeof",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " requestedSpeed ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "number",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&&",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "Number",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "isFinite",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(requestedSpeed) ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&&",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " requestedSpeed ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ">",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "0",
+          "color": "var(--code-number)"
+        }
+      ]
+    },
+    {
+      "number": 92,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "?",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " requestedSpeed",
+          "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 93,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " defaultSpeed",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 94,
       "content": [
         {
           "text": "  ",
@@ -11516,15 +12305,7 @@
           "color": "var(--code-keyword)"
         },
         {
-          "text": " speed ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "??",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " defaultSpeed ",
+          "text": " resolvedSpeed ",
           "color": "var(--code-variable)"
         },
         {
@@ -11542,7 +12323,7 @@
       ]
     },
     {
-      "number": 87,
+      "number": 95,
       "content": [
         {
           "text": "  ",
@@ -11599,11 +12380,11 @@
       ]
     },
     {
-      "number": 88,
+      "number": 96,
       "content": []
     },
     {
-      "number": 89,
+      "number": 97,
       "content": [
         {
           "text": "  ",
@@ -11620,7 +12401,7 @@
       ]
     },
     {
-      "number": 90,
+      "number": 98,
       "content": [
         {
           "text": "    ",
@@ -11637,7 +12418,32 @@
       ]
     },
     {
-      "number": 91,
+      "number": 99,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 100,
       "content": [
         {
           "text": "      ",
@@ -11666,7 +12472,7 @@
       ]
     },
     {
-      "number": 92,
+      "number": 101,
       "content": [
         {
           "text": "      ",
@@ -11695,7 +12501,7 @@
       ]
     },
     {
-      "number": 93,
+      "number": 102,
       "content": [
         {
           "text": "      ",
@@ -11756,7 +12562,7 @@
       ]
     },
     {
-      "number": 94,
+      "number": 103,
       "content": [
         {
           "text": "      ",
@@ -11781,7 +12587,7 @@
       ]
     },
     {
-      "number": 95,
+      "number": 104,
       "content": [
         {
           "text": "        ",
@@ -11842,7 +12648,7 @@
       ]
     },
     {
-      "number": 96,
+      "number": 105,
       "content": [
         {
           "text": "        className",
@@ -11855,7 +12661,7 @@
       ]
     },
     {
-      "number": 97,
+      "number": 106,
       "content": [
         {
           "text": "      )",
@@ -11868,7 +12674,7 @@
       ]
     },
     {
-      "number": 98,
+      "number": 107,
       "content": [
         {
           "text": "      ",
@@ -11889,7 +12695,7 @@
       ]
     },
     {
-      "number": 99,
+      "number": 108,
       "content": [
         {
           "text": "    ",
@@ -11902,7 +12708,7 @@
       ]
     },
     {
-      "number": 100,
+      "number": 109,
       "content": [
         {
           "text": "      ",
@@ -11971,7 +12777,7 @@
       ]
     },
     {
-      "number": 101,
+      "number": 110,
       "content": [
         {
           "text": "        ",
@@ -12056,7 +12862,7 @@
       ]
     },
     {
-      "number": 102,
+      "number": 111,
       "content": [
         {
           "text": "      ",
@@ -12077,7 +12883,7 @@
       ]
     },
     {
-      "number": 103,
+      "number": 112,
       "content": [
         {
           "text": "      ",
@@ -12098,7 +12904,7 @@
       ]
     },
     {
-      "number": 104,
+      "number": 113,
       "content": [
         {
           "text": "    ",
@@ -12119,7 +12925,7 @@
       ]
     },
     {
-      "number": 105,
+      "number": 114,
       "content": [
         {
           "text": "  )",
@@ -12132,7 +12938,7 @@
       ]
     },
     {
-      "number": 106,
+      "number": 115,
       "content": [
         {
           "text": "}",
@@ -12141,15 +12947,15 @@
       ]
     },
     {
-      "number": 107,
+      "number": 116,
       "content": []
     },
     {
-      "number": 108,
+      "number": 117,
       "content": []
     },
     {
-      "number": 109,
+      "number": 118,
       "content": [
         {
           "text": "\"",
@@ -12170,11 +12976,11 @@
       ]
     },
     {
-      "number": 110,
+      "number": 119,
       "content": []
     },
     {
-      "number": 111,
+      "number": 120,
       "content": [
         {
           "text": "import",
@@ -12235,11 +13041,11 @@
       ]
     },
     {
-      "number": 112,
+      "number": 121,
       "content": []
     },
     {
-      "number": 113,
+      "number": 122,
       "content": [
         {
           "text": "interface",
@@ -12264,7 +13070,7 @@
       ]
     },
     {
-      "number": 114,
+      "number": 123,
       "content": [
         {
           "text": "  totalFrames",
@@ -12289,7 +13095,7 @@
       ]
     },
     {
-      "number": 115,
+      "number": 124,
       "content": [
         {
           "text": "  speed",
@@ -12314,7 +13120,7 @@
       ]
     },
     {
-      "number": 116,
+      "number": 125,
       "content": [
         {
           "text": "}",
@@ -12323,11 +13129,11 @@
       ]
     },
     {
-      "number": 117,
+      "number": 126,
       "content": []
     },
     {
-      "number": 118,
+      "number": 127,
       "content": [
         {
           "text": "export",
@@ -12400,7 +13206,7 @@
       ]
     },
     {
-      "number": 119,
+      "number": 128,
       "content": [
         {
           "text": "  ",
@@ -12473,11 +13279,11 @@
       ]
     },
     {
-      "number": 120,
+      "number": 129,
       "content": []
     },
     {
-      "number": 121,
+      "number": 130,
       "content": [
         {
           "text": "  ",
@@ -12514,38 +13320,26 @@
       ]
     },
     {
-      "number": 122,
+      "number": 131,
       "content": [
         {
           "text": "    ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "const",
+          "text": "if",
           "color": "var(--code-keyword)"
         },
         {
-          "text": " ",
+          "text": " (",
           "color": "var(--code-variable)"
         },
         {
-          "text": "mql",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "=",
+          "text": "!",
           "color": "var(--code-operator)"
         },
         {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "window",
+          "text": "Number",
           "color": "var(--code-number)"
         },
         {
@@ -12553,7 +13347,104 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "matchMedia",
+          "text": "isFinite",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(totalFrames) ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "||",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " totalFrames ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "<=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "0",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "||",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "!",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "Number",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "isFinite",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(speed) ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "||",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " speed ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "<=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "0",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ") ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 132,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "setFrame",
           "color": "var(--code-function)"
         },
         {
@@ -12561,16 +13452,8 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "(prefers-reduced-motion: reduce)",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
+          "text": "0",
+          "color": "var(--code-number)"
         },
         {
           "text": ")",
@@ -12583,11 +13466,41 @@
       ]
     },
     {
-      "number": 123,
+      "number": 133,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 134,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 135,
       "content": []
     },
     {
-      "number": 124,
+      "number": 136,
       "content": [
         {
           "text": "    ",
@@ -12648,11 +13561,198 @@
       ]
     },
     {
-      "number": 125,
+      "number": 137,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "mql",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "typeof",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " window ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "!==",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "undefined",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&&",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "typeof",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "window",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "matchMedia ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "function",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 138,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "?",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "window",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "matchMedia",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "(prefers-reduced-motion: reduce)",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ")",
+          "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 139,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "null",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 140,
       "content": []
     },
     {
-      "number": 126,
+      "number": 141,
       "content": [
         {
           "text": "    ",
@@ -12685,7 +13785,7 @@
       ]
     },
     {
-      "number": 127,
+      "number": 142,
       "content": [
         {
           "text": "      ",
@@ -12722,7 +13822,7 @@
       ]
     },
     {
-      "number": 128,
+      "number": 143,
       "content": [
         {
           "text": "        ",
@@ -12743,7 +13843,7 @@
       ]
     },
     {
-      "number": 129,
+      "number": 144,
       "content": [
         {
           "text": "        intervalId ",
@@ -12768,7 +13868,7 @@
       ]
     },
     {
-      "number": 130,
+      "number": 145,
       "content": [
         {
           "text": "      ",
@@ -12781,7 +13881,7 @@
       ]
     },
     {
-      "number": 131,
+      "number": 146,
       "content": [
         {
           "text": "      ",
@@ -12800,7 +13900,7 @@
           "color": "var(--code-number)"
         },
         {
-          "text": ".",
+          "text": "?.",
           "color": "var(--code-operator)"
         },
         {
@@ -12814,7 +13914,7 @@
       ]
     },
     {
-      "number": 132,
+      "number": 147,
       "content": [
         {
           "text": "        ",
@@ -12843,7 +13943,7 @@
       ]
     },
     {
-      "number": 133,
+      "number": 148,
       "content": [
         {
           "text": "      ",
@@ -12872,7 +13972,7 @@
       ]
     },
     {
-      "number": 134,
+      "number": 149,
       "content": [
         {
           "text": "        intervalId ",
@@ -12965,7 +14065,7 @@
       ]
     },
     {
-      "number": 135,
+      "number": 150,
       "content": [
         {
           "text": "      ",
@@ -12978,7 +14078,7 @@
       ]
     },
     {
-      "number": 136,
+      "number": 151,
       "content": [
         {
           "text": "    ",
@@ -12991,11 +14091,11 @@
       ]
     },
     {
-      "number": 137,
+      "number": 152,
       "content": []
     },
     {
-      "number": 138,
+      "number": 153,
       "content": [
         {
           "text": "    ",
@@ -13016,7 +14116,7 @@
       ]
     },
     {
-      "number": 139,
+      "number": 154,
       "content": [
         {
           "text": "    ",
@@ -13027,7 +14127,7 @@
           "color": "var(--code-number)"
         },
         {
-          "text": ".",
+          "text": "?.",
           "color": "var(--code-operator)"
         },
         {
@@ -13065,11 +14165,11 @@
       ]
     },
     {
-      "number": 140,
+      "number": 155,
       "content": []
     },
     {
-      "number": 141,
+      "number": 156,
       "content": [
         {
           "text": "    ",
@@ -13106,7 +14206,7 @@
       ]
     },
     {
-      "number": 142,
+      "number": 157,
       "content": [
         {
           "text": "      ",
@@ -13117,7 +14217,7 @@
           "color": "var(--code-number)"
         },
         {
-          "text": ".",
+          "text": "?.",
           "color": "var(--code-operator)"
         },
         {
@@ -13155,7 +14255,7 @@
       ]
     },
     {
-      "number": 143,
+      "number": 158,
       "content": [
         {
           "text": "      ",
@@ -13200,7 +14300,7 @@
       ]
     },
     {
-      "number": 144,
+      "number": 159,
       "content": [
         {
           "text": "    ",
@@ -13213,7 +14313,7 @@
       ]
     },
     {
-      "number": 145,
+      "number": 160,
       "content": [
         {
           "text": "  ",
@@ -13242,11 +14342,11 @@
       ]
     },
     {
-      "number": 146,
+      "number": 161,
       "content": []
     },
     {
-      "number": 147,
+      "number": 162,
       "content": [
         {
           "text": "  ",
@@ -13267,7 +14367,7 @@
       ]
     },
     {
-      "number": 148,
+      "number": 163,
       "content": [
         {
           "text": "}",
@@ -13276,15 +14376,15 @@
       ]
     },
     {
-      "number": 149,
+      "number": 164,
       "content": []
     },
     {
-      "number": 150,
+      "number": 165,
       "content": []
     },
     {
-      "number": 151,
+      "number": 166,
       "content": [
         {
           "text": "\"",
@@ -13305,11 +14405,11 @@
       ]
     },
     {
-      "number": 152,
+      "number": 167,
       "content": []
     },
     {
-      "number": 153,
+      "number": 168,
       "content": [
         {
           "text": "import",
@@ -13362,7 +14462,7 @@
       ]
     },
     {
-      "number": 154,
+      "number": 169,
       "content": [
         {
           "text": "import",
@@ -13423,11 +14523,11 @@
       ]
     },
     {
-      "number": 155,
+      "number": 170,
       "content": []
     },
     {
-      "number": 156,
+      "number": 171,
       "content": [
         {
           "text": "//",
@@ -13440,7 +14540,7 @@
       ]
     },
     {
-      "number": 157,
+      "number": 172,
       "content": [
         {
           "text": "//",
@@ -13453,7 +14553,7 @@
       ]
     },
     {
-      "number": 158,
+      "number": 173,
       "content": [
         {
           "text": "//",
@@ -13466,7 +14566,7 @@
       ]
     },
     {
-      "number": 159,
+      "number": 174,
       "content": [
         {
           "text": "//",
@@ -13479,7 +14579,7 @@
       ]
     },
     {
-      "number": 160,
+      "number": 175,
       "content": [
         {
           "text": "//",
@@ -13492,7 +14592,7 @@
       ]
     },
     {
-      "number": 161,
+      "number": 176,
       "content": [
         {
           "text": "const",
@@ -13629,7 +14729,7 @@
       ]
     },
     {
-      "number": 162,
+      "number": 177,
       "content": [
         {
           "text": "const",
@@ -13666,11 +14766,11 @@
       ]
     },
     {
-      "number": 163,
+      "number": 178,
       "content": []
     },
     {
-      "number": 164,
+      "number": 179,
       "content": [
         {
           "text": "export",
@@ -13723,11 +14823,11 @@
       ]
     },
     {
-      "number": 165,
+      "number": 180,
       "content": []
     },
     {
-      "number": 166,
+      "number": 181,
       "content": [
         {
           "text": "const",
@@ -13856,7 +14956,7 @@
       ]
     },
     {
-      "number": 167,
+      "number": 182,
       "content": [
         {
           "text": "const",
@@ -13933,7 +15033,7 @@
       ]
     },
     {
-      "number": 168,
+      "number": 183,
       "content": [
         {
           "text": "const",
@@ -13970,11 +15070,11 @@
       ]
     },
     {
-      "number": 169,
+      "number": 184,
       "content": []
     },
     {
-      "number": 170,
+      "number": 185,
       "content": [
         {
           "text": "const",
@@ -14083,7 +15183,7 @@
       ]
     },
     {
-      "number": 171,
+      "number": 186,
       "content": [
         {
           "text": "  sm",
@@ -14164,7 +15264,7 @@
       ]
     },
     {
-      "number": 172,
+      "number": 187,
       "content": [
         {
           "text": "  md",
@@ -14245,7 +15345,7 @@
       ]
     },
     {
-      "number": 173,
+      "number": 188,
       "content": [
         {
           "text": "  lg",
@@ -14326,7 +15426,7 @@
       ]
     },
     {
-      "number": 174,
+      "number": 189,
       "content": [
         {
           "text": "};",
@@ -14335,11 +15435,11 @@
       ]
     },
     {
-      "number": 175,
+      "number": 190,
       "content": []
     },
     {
-      "number": 176,
+      "number": 191,
       "content": [
         {
           "text": "const",
@@ -14488,11 +15588,11 @@
       ]
     },
     {
-      "number": 177,
+      "number": 192,
       "content": []
     },
     {
-      "number": 178,
+      "number": 193,
       "content": [
         {
           "text": "function",
@@ -14569,7 +15669,7 @@
       ]
     },
     {
-      "number": 179,
+      "number": 194,
       "content": [
         {
           "text": "  ",
@@ -14622,7 +15722,7 @@
       ]
     },
     {
-      "number": 180,
+      "number": 195,
       "content": [
         {
           "text": "  ",
@@ -14671,7 +15771,7 @@
       ]
     },
     {
-      "number": 181,
+      "number": 196,
       "content": [
         {
           "text": "  ",
@@ -14760,7 +15860,7 @@
       ]
     },
     {
-      "number": 182,
+      "number": 197,
       "content": [
         {
           "text": "  ",
@@ -14825,7 +15925,7 @@
       ]
     },
     {
-      "number": 183,
+      "number": 198,
       "content": [
         {
           "text": "}",
@@ -14834,11 +15934,11 @@
       ]
     },
     {
-      "number": 184,
+      "number": 199,
       "content": []
     },
     {
-      "number": 185,
+      "number": 200,
       "content": [
         {
           "text": "interface",
@@ -14863,7 +15963,7 @@
       ]
     },
     {
-      "number": 186,
+      "number": 201,
       "content": [
         {
           "text": "  frame",
@@ -14888,7 +15988,7 @@
       ]
     },
     {
-      "number": 187,
+      "number": 202,
       "content": [
         {
           "text": "  size",
@@ -14913,7 +16013,7 @@
       ]
     },
     {
-      "number": 188,
+      "number": 203,
       "content": [
         {
           "text": "}",
@@ -14922,11 +16022,11 @@
       ]
     },
     {
-      "number": 189,
+      "number": 204,
       "content": []
     },
     {
-      "number": 190,
+      "number": 205,
       "content": [
         {
           "text": "export",
@@ -14991,7 +16091,7 @@
       ]
     },
     {
-      "number": 191,
+      "number": 206,
       "content": [
         {
           "text": "  ",
@@ -15064,7 +16164,7 @@
       ]
     },
     {
-      "number": 192,
+      "number": 207,
       "content": [
         {
           "text": "  ",
@@ -15129,11 +16229,11 @@
       ]
     },
     {
-      "number": 193,
+      "number": 208,
       "content": []
     },
     {
-      "number": 194,
+      "number": 209,
       "content": [
         {
           "text": "  ",
@@ -15150,7 +16250,7 @@
       ]
     },
     {
-      "number": 195,
+      "number": 210,
       "content": [
         {
           "text": "    ",
@@ -15211,7 +16311,7 @@
       ]
     },
     {
-      "number": 196,
+      "number": 211,
       "content": [
         {
           "text": "      ",
@@ -15248,7 +16348,7 @@
       ]
     },
     {
-      "number": 197,
+      "number": 212,
       "content": [
         {
           "text": "        ",
@@ -15265,7 +16365,7 @@
       ]
     },
     {
-      "number": 198,
+      "number": 213,
       "content": [
         {
           "text": "          ",
@@ -15290,7 +16390,7 @@
       ]
     },
     {
-      "number": 199,
+      "number": 214,
       "content": [
         {
           "text": "          ",
@@ -15315,7 +16415,7 @@
       ]
     },
     {
-      "number": 200,
+      "number": 215,
       "content": [
         {
           "text": "          ",
@@ -15364,7 +16464,7 @@
       ]
     },
     {
-      "number": 201,
+      "number": 216,
       "content": [
         {
           "text": "        ",
@@ -15377,7 +16477,7 @@
       ]
     },
     {
-      "number": 202,
+      "number": 217,
       "content": [
         {
           "text": "      ))",
@@ -15390,7 +16490,7 @@
       ]
     },
     {
-      "number": 203,
+      "number": 218,
       "content": [
         {
           "text": "    ",
@@ -15411,7 +16511,7 @@
       ]
     },
     {
-      "number": 204,
+      "number": 219,
       "content": [
         {
           "text": "  )",
@@ -15424,7 +16524,7 @@
       ]
     },
     {
-      "number": 205,
+      "number": 220,
       "content": [
         {
           "text": "}",
@@ -15433,7 +16533,7 @@
       ]
     },
     {
-      "number": 206,
+      "number": 221,
       "content": []
     }
   ],

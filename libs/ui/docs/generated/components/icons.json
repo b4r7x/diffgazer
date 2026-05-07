@@ -90,35 +90,10 @@
       ]
     },
     "registry/ui/icons/chevron.tsx": {
-      "raw": "\"use client\";\n\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport type { Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nconst chevronVariants = cva(\n  \"shrink-0 transition-transform duration-200\",\n  {\n    variants: {\n      size: {\n        sm: \"size-3\",\n        md: \"size-4\",\n        lg: \"size-5\",\n      },\n    },\n    defaultVariants: {\n      size: \"sm\",\n    },\n  }\n);\n\ntype ChevronDirection = \"down\" | \"up\" | \"left\" | \"right\";\n\nconst baseDeg: Record<ChevronDirection, number> = {\n  right: 0,\n  down: 90,\n  left: 180,\n  up: 270,\n};\n\nexport interface ChevronProps extends VariantProps<typeof chevronVariants> {\n  direction?: ChevronDirection;\n  /** When true, rotates 90° clockwise from base direction (expand/collapse toggle). */\n  open?: boolean;\n  className?: string;\n  ref?: Ref<SVGSVGElement>;\n}\n\nexport function Chevron({\n  direction = \"right\",\n  open,\n  size,\n  className,\n  ref,\n}: ChevronProps) {\n  const deg = baseDeg[direction] + (open ? 90 : 0);\n\n  return (\n    <svg\n      ref={ref}\n      xmlns=\"http://www.w3.org/2000/svg\"\n      viewBox=\"0 0 16 16\"\n      fill=\"none\"\n      stroke=\"currentColor\"\n      strokeWidth=\"2\"\n      strokeLinecap=\"round\"\n      strokeLinejoin=\"round\"\n      aria-hidden=\"true\"\n      className={cn(chevronVariants({ size }), className)}\n      style={{ transform: `rotate(${deg}deg)` }}\n    >\n      <polyline points=\"6 3 11 8 6 13\" />\n    </svg>\n  );\n}\n",
+      "raw": "import { cva, type VariantProps } from \"class-variance-authority\";\nimport type { CSSProperties, Ref, SVGProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nconst chevronVariants = cva(\n  \"shrink-0 motion-safe:transition-transform motion-safe:duration-200\",\n  {\n    variants: {\n      size: {\n        sm: \"size-3\",\n        md: \"size-4\",\n        lg: \"size-5\",\n      },\n    },\n    defaultVariants: {\n      size: \"sm\",\n    },\n  }\n);\n\ntype ChevronDirection = \"down\" | \"up\" | \"left\" | \"right\";\n\nconst baseDeg: Record<ChevronDirection, number> = {\n  right: 0,\n  down: 90,\n  left: 180,\n  up: 270,\n};\n\nexport interface ChevronProps\n  extends Omit<SVGProps<SVGSVGElement>, \"ref\">,\n    VariantProps<typeof chevronVariants> {\n  direction?: ChevronDirection;\n  /** When true, rotates 90° clockwise from base direction (expand/collapse toggle). */\n  open?: boolean;\n  ref?: Ref<SVGSVGElement>;\n}\n\nexport function Chevron({\n  direction = \"right\",\n  open,\n  size,\n  className,\n  ref,\n  style,\n  \"aria-hidden\": ariaHidden,\n  ...props\n}: ChevronProps) {\n  const deg = baseDeg[direction] + (open ? 90 : 0);\n  const transformStyle: CSSProperties = { ...style, transform: `rotate(${deg}deg)` };\n\n  return (\n    <svg\n      ref={ref}\n      xmlns=\"http://www.w3.org/2000/svg\"\n      viewBox=\"0 0 16 16\"\n      fill=\"none\"\n      stroke=\"currentColor\"\n      strokeWidth=\"2\"\n      strokeLinecap=\"round\"\n      strokeLinejoin=\"round\"\n      aria-hidden={ariaHidden ?? true}\n      className={cn(chevronVariants({ size }), className)}\n      style={transformStyle}\n      {...props}\n    >\n      <polyline points=\"6 3 11 8 6 13\" />\n    </svg>\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
-          "content": [
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "use client",
-              "color": "var(--code-tag)"
-            },
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": ";",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 2,
-          "content": []
-        },
-        {
-          "number": 3,
           "content": [
             {
               "text": "import",
@@ -187,7 +162,7 @@
           ]
         },
         {
-          "number": 4,
+          "number": 2,
           "content": [
             {
               "text": "import",
@@ -210,7 +185,23 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": " Ref ",
+              "text": " CSSProperties",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " Ref",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " SVGProps ",
               "color": "var(--code-variable)"
             },
             {
@@ -248,7 +239,7 @@
           ]
         },
         {
-          "number": 5,
+          "number": 3,
           "content": [
             {
               "text": "import",
@@ -301,11 +292,11 @@
           ]
         },
         {
-          "number": 6,
+          "number": 4,
           "content": []
         },
         {
-          "number": 7,
+          "number": 5,
           "content": [
             {
               "text": "const",
@@ -342,7 +333,7 @@
           ]
         },
         {
-          "number": 8,
+          "number": 6,
           "content": [
             {
               "text": "  ",
@@ -353,7 +344,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "shrink-0 transition-transform duration-200",
+              "text": "shrink-0 motion-safe:transition-transform motion-safe:duration-200",
               "color": "var(--code-tag)"
             },
             {
@@ -367,7 +358,7 @@
           ]
         },
         {
-          "number": 9,
+          "number": 7,
           "content": [
             {
               "text": "  ",
@@ -380,7 +371,7 @@
           ]
         },
         {
-          "number": 10,
+          "number": 8,
           "content": [
             {
               "text": "    variants",
@@ -401,7 +392,7 @@
           ]
         },
         {
-          "number": 11,
+          "number": 9,
           "content": [
             {
               "text": "      size",
@@ -422,7 +413,7 @@
           ]
         },
         {
-          "number": 12,
+          "number": 10,
           "content": [
             {
               "text": "        sm",
@@ -455,7 +446,7 @@
           ]
         },
         {
-          "number": 13,
+          "number": 11,
           "content": [
             {
               "text": "        md",
@@ -488,7 +479,7 @@
           ]
         },
         {
-          "number": 14,
+          "number": 12,
           "content": [
             {
               "text": "        lg",
@@ -521,7 +512,7 @@
           ]
         },
         {
-          "number": 15,
+          "number": 13,
           "content": [
             {
               "text": "      ",
@@ -534,7 +525,7 @@
           ]
         },
         {
-          "number": 16,
+          "number": 14,
           "content": [
             {
               "text": "    ",
@@ -547,7 +538,7 @@
           ]
         },
         {
-          "number": 17,
+          "number": 15,
           "content": [
             {
               "text": "    defaultVariants",
@@ -568,7 +559,7 @@
           ]
         },
         {
-          "number": 18,
+          "number": 16,
           "content": [
             {
               "text": "      size",
@@ -601,7 +592,7 @@
           ]
         },
         {
-          "number": 19,
+          "number": 17,
           "content": [
             {
               "text": "    ",
@@ -614,7 +605,7 @@
           ]
         },
         {
-          "number": 20,
+          "number": 18,
           "content": [
             {
               "text": "  ",
@@ -627,7 +618,7 @@
           ]
         },
         {
-          "number": 21,
+          "number": 19,
           "content": [
             {
               "text": ")",
@@ -640,11 +631,11 @@
           ]
         },
         {
-          "number": 22,
+          "number": 20,
           "content": []
         },
         {
-          "number": 23,
+          "number": 21,
           "content": [
             {
               "text": "type",
@@ -761,11 +752,11 @@
           ]
         },
         {
-          "number": 24,
+          "number": 22,
           "content": []
         },
         {
-          "number": 25,
+          "number": 23,
           "content": [
             {
               "text": "const",
@@ -834,7 +825,7 @@
           ]
         },
         {
-          "number": 26,
+          "number": 24,
           "content": [
             {
               "text": "  right",
@@ -859,7 +850,7 @@
           ]
         },
         {
-          "number": 27,
+          "number": 25,
           "content": [
             {
               "text": "  down",
@@ -884,7 +875,7 @@
           ]
         },
         {
-          "number": 28,
+          "number": 26,
           "content": [
             {
               "text": "  left",
@@ -909,7 +900,7 @@
           ]
         },
         {
-          "number": 29,
+          "number": 27,
           "content": [
             {
               "text": "  up",
@@ -934,7 +925,7 @@
           ]
         },
         {
-          "number": 30,
+          "number": 28,
           "content": [
             {
               "text": "};",
@@ -943,11 +934,11 @@
           ]
         },
         {
-          "number": 31,
+          "number": 29,
           "content": []
         },
         {
-          "number": 32,
+          "number": 30,
           "content": [
             {
               "text": "export",
@@ -968,9 +959,14 @@
             {
               "text": "ChevronProps",
               "color": "var(--code-function)"
-            },
+            }
+          ]
+        },
+        {
+          "number": 31,
+          "content": [
             {
-              "text": " ",
+              "text": "  ",
               "color": "var(--code-variable)"
             },
             {
@@ -979,6 +975,59 @@
             },
             {
               "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Omit",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "SVGProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "SVGSVGElement",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ">,",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">,",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 32,
+          "content": [
+            {
+              "text": "    ",
               "color": "var(--code-variable)"
             },
             {
@@ -1082,31 +1131,6 @@
           "number": 36,
           "content": [
             {
-              "text": "  className",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "?:",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "string",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": ";",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 37,
-          "content": [
-            {
               "text": "  ref",
               "color": "var(--code-variable)"
             },
@@ -1137,7 +1161,7 @@
           ]
         },
         {
-          "number": 38,
+          "number": 37,
           "content": [
             {
               "text": "}",
@@ -1146,11 +1170,11 @@
           ]
         },
         {
-          "number": 39,
+          "number": 38,
           "content": []
         },
         {
-          "number": 40,
+          "number": 39,
           "content": [
             {
               "text": "export",
@@ -1179,7 +1203,7 @@
           ]
         },
         {
-          "number": 41,
+          "number": 40,
           "content": [
             {
               "text": "  direction ",
@@ -1212,7 +1236,7 @@
           ]
         },
         {
-          "number": 42,
+          "number": 41,
           "content": [
             {
               "text": "  open",
@@ -1225,7 +1249,7 @@
           ]
         },
         {
-          "number": 43,
+          "number": 42,
           "content": [
             {
               "text": "  size",
@@ -1238,7 +1262,7 @@
           ]
         },
         {
-          "number": 44,
+          "number": 43,
           "content": [
             {
               "text": "  className",
@@ -1251,7 +1275,7 @@
           ]
         },
         {
-          "number": 45,
+          "number": 44,
           "content": [
             {
               "text": "  ref",
@@ -1264,7 +1288,70 @@
           ]
         },
         {
+          "number": 45,
+          "content": [
+            {
+              "text": "  style",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
           "number": 46,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "aria-hidden",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ariaHidden",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 47,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "props",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 48,
           "content": [
             {
               "text": "}:",
@@ -1293,7 +1380,7 @@
           ]
         },
         {
-          "number": 47,
+          "number": 49,
           "content": [
             {
               "text": "  ",
@@ -1370,11 +1457,124 @@
           ]
         },
         {
-          "number": 48,
+          "number": 50,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "transformStyle",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "CSSProperties",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "style",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " transform",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "`",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "rotate(",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "${",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": "deg",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": "deg)",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "`",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "};",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 51,
           "content": []
         },
         {
-          "number": 49,
+          "number": 52,
           "content": [
             {
               "text": "  ",
@@ -1391,7 +1591,7 @@
           ]
         },
         {
-          "number": 50,
+          "number": 53,
           "content": [
             {
               "text": "    ",
@@ -1408,7 +1608,7 @@
           ]
         },
         {
-          "number": 51,
+          "number": 54,
           "content": [
             {
               "text": "      ",
@@ -1433,7 +1633,7 @@
           ]
         },
         {
-          "number": 52,
+          "number": 55,
           "content": [
             {
               "text": "      ",
@@ -1462,7 +1662,7 @@
           ]
         },
         {
-          "number": 53,
+          "number": 56,
           "content": [
             {
               "text": "      ",
@@ -1491,7 +1691,7 @@
           ]
         },
         {
-          "number": 54,
+          "number": 57,
           "content": [
             {
               "text": "      ",
@@ -1520,7 +1720,7 @@
           ]
         },
         {
-          "number": 55,
+          "number": 58,
           "content": [
             {
               "text": "      ",
@@ -1549,7 +1749,7 @@
           ]
         },
         {
-          "number": 56,
+          "number": 59,
           "content": [
             {
               "text": "      ",
@@ -1578,7 +1778,7 @@
           ]
         },
         {
-          "number": 57,
+          "number": 60,
           "content": [
             {
               "text": "      ",
@@ -1607,7 +1807,7 @@
           ]
         },
         {
-          "number": 58,
+          "number": 61,
           "content": [
             {
               "text": "      ",
@@ -1636,7 +1836,7 @@
           ]
         },
         {
-          "number": 59,
+          "number": 62,
           "content": [
             {
               "text": "      ",
@@ -1647,25 +1847,33 @@
               "color": "var(--code-function)"
             },
             {
-              "text": "=",
+              "text": "={",
               "color": "var(--code-operator)"
             },
             {
-              "text": "\"",
+              "text": "ariaHidden ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "??",
               "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
             },
             {
               "text": "true",
-              "color": "var(--code-tag)"
+              "color": "var(--code-number)"
             },
             {
-              "text": "\"",
+              "text": "}",
               "color": "var(--code-operator)"
             }
           ]
         },
         {
-          "number": 60,
+          "number": 63,
           "content": [
             {
               "text": "      ",
@@ -1726,7 +1934,7 @@
           ]
         },
         {
-          "number": 61,
+          "number": 64,
           "content": [
             {
               "text": "      ",
@@ -1737,61 +1945,42 @@
               "color": "var(--code-function)"
             },
             {
-              "text": "={{",
+              "text": "={",
               "color": "var(--code-operator)"
             },
             {
-              "text": " transform",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ":",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "`",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "rotate(",
-              "color": "var(--code-tag)"
-            },
-            {
-              "text": "${",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": "deg",
+              "text": "transformStyle",
               "color": "var(--code-variable)"
             },
             {
               "text": "}",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": "deg)",
-              "color": "var(--code-tag)"
-            },
-            {
-              "text": "`",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "}}",
               "color": "var(--code-operator)"
             }
           ]
         },
         {
-          "number": 62,
+          "number": 65,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "props",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 66,
           "content": [
             {
               "text": "    ",
@@ -1804,7 +1993,7 @@
           ]
         },
         {
-          "number": 63,
+          "number": 67,
           "content": [
             {
               "text": "      ",
@@ -1853,7 +2042,7 @@
           ]
         },
         {
-          "number": 64,
+          "number": 68,
           "content": [
             {
               "text": "    ",
@@ -1874,7 +2063,7 @@
           ]
         },
         {
-          "number": 65,
+          "number": 69,
           "content": [
             {
               "text": "  )",
@@ -1887,7 +2076,7 @@
           ]
         },
         {
-          "number": 66,
+          "number": 70,
           "content": [
             {
               "text": "}",
@@ -1896,13 +2085,13 @@
           ]
         },
         {
-          "number": 67,
+          "number": 71,
           "content": []
         }
       ]
     }
   },
-  "mergedSource": "export { Chevron, type ChevronProps } from \"./chevron\";\n\n\n\"use client\";\n\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport type { Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nconst chevronVariants = cva(\n  \"shrink-0 transition-transform duration-200\",\n  {\n    variants: {\n      size: {\n        sm: \"size-3\",\n        md: \"size-4\",\n        lg: \"size-5\",\n      },\n    },\n    defaultVariants: {\n      size: \"sm\",\n    },\n  }\n);\n\ntype ChevronDirection = \"down\" | \"up\" | \"left\" | \"right\";\n\nconst baseDeg: Record<ChevronDirection, number> = {\n  right: 0,\n  down: 90,\n  left: 180,\n  up: 270,\n};\n\nexport interface ChevronProps extends VariantProps<typeof chevronVariants> {\n  direction?: ChevronDirection;\n  /** When true, rotates 90° clockwise from base direction (expand/collapse toggle). */\n  open?: boolean;\n  className?: string;\n  ref?: Ref<SVGSVGElement>;\n}\n\nexport function Chevron({\n  direction = \"right\",\n  open,\n  size,\n  className,\n  ref,\n}: ChevronProps) {\n  const deg = baseDeg[direction] + (open ? 90 : 0);\n\n  return (\n    <svg\n      ref={ref}\n      xmlns=\"http://www.w3.org/2000/svg\"\n      viewBox=\"0 0 16 16\"\n      fill=\"none\"\n      stroke=\"currentColor\"\n      strokeWidth=\"2\"\n      strokeLinecap=\"round\"\n      strokeLinejoin=\"round\"\n      aria-hidden=\"true\"\n      className={cn(chevronVariants({ size }), className)}\n      style={{ transform: `rotate(${deg}deg)` }}\n    >\n      <polyline points=\"6 3 11 8 6 13\" />\n    </svg>\n  );\n}\n",
+  "mergedSource": "export { Chevron, type ChevronProps } from \"./chevron\";\n\n\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport type { CSSProperties, Ref, SVGProps } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nconst chevronVariants = cva(\n  \"shrink-0 motion-safe:transition-transform motion-safe:duration-200\",\n  {\n    variants: {\n      size: {\n        sm: \"size-3\",\n        md: \"size-4\",\n        lg: \"size-5\",\n      },\n    },\n    defaultVariants: {\n      size: \"sm\",\n    },\n  }\n);\n\ntype ChevronDirection = \"down\" | \"up\" | \"left\" | \"right\";\n\nconst baseDeg: Record<ChevronDirection, number> = {\n  right: 0,\n  down: 90,\n  left: 180,\n  up: 270,\n};\n\nexport interface ChevronProps\n  extends Omit<SVGProps<SVGSVGElement>, \"ref\">,\n    VariantProps<typeof chevronVariants> {\n  direction?: ChevronDirection;\n  /** When true, rotates 90° clockwise from base direction (expand/collapse toggle). */\n  open?: boolean;\n  ref?: Ref<SVGSVGElement>;\n}\n\nexport function Chevron({\n  direction = \"right\",\n  open,\n  size,\n  className,\n  ref,\n  style,\n  \"aria-hidden\": ariaHidden,\n  ...props\n}: ChevronProps) {\n  const deg = baseDeg[direction] + (open ? 90 : 0);\n  const transformStyle: CSSProperties = { ...style, transform: `rotate(${deg}deg)` };\n\n  return (\n    <svg\n      ref={ref}\n      xmlns=\"http://www.w3.org/2000/svg\"\n      viewBox=\"0 0 16 16\"\n      fill=\"none\"\n      stroke=\"currentColor\"\n      strokeWidth=\"2\"\n      strokeLinecap=\"round\"\n      strokeLinejoin=\"round\"\n      aria-hidden={ariaHidden ?? true}\n      className={cn(chevronVariants({ size }), className)}\n      style={transformStyle}\n      {...props}\n    >\n      <polyline points=\"6 3 11 8 6 13\" />\n    </svg>\n  );\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
@@ -1985,31 +2174,6 @@
       "number": 4,
       "content": [
         {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "use client",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": ";",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 5,
-      "content": []
-    },
-    {
-      "number": 6,
-      "content": [
-        {
           "text": "import",
           "color": "var(--code-keyword)"
         },
@@ -2076,7 +2240,7 @@
       ]
     },
     {
-      "number": 7,
+      "number": 5,
       "content": [
         {
           "text": "import",
@@ -2099,7 +2263,23 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": " Ref ",
+          "text": " CSSProperties",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " Ref",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " SVGProps ",
           "color": "var(--code-variable)"
         },
         {
@@ -2137,7 +2317,7 @@
       ]
     },
     {
-      "number": 8,
+      "number": 6,
       "content": [
         {
           "text": "import",
@@ -2190,11 +2370,11 @@
       ]
     },
     {
-      "number": 9,
+      "number": 7,
       "content": []
     },
     {
-      "number": 10,
+      "number": 8,
       "content": [
         {
           "text": "const",
@@ -2231,7 +2411,7 @@
       ]
     },
     {
-      "number": 11,
+      "number": 9,
       "content": [
         {
           "text": "  ",
@@ -2242,7 +2422,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "shrink-0 transition-transform duration-200",
+          "text": "shrink-0 motion-safe:transition-transform motion-safe:duration-200",
           "color": "var(--code-tag)"
         },
         {
@@ -2256,7 +2436,7 @@
       ]
     },
     {
-      "number": 12,
+      "number": 10,
       "content": [
         {
           "text": "  ",
@@ -2269,7 +2449,7 @@
       ]
     },
     {
-      "number": 13,
+      "number": 11,
       "content": [
         {
           "text": "    variants",
@@ -2290,7 +2470,7 @@
       ]
     },
     {
-      "number": 14,
+      "number": 12,
       "content": [
         {
           "text": "      size",
@@ -2311,7 +2491,7 @@
       ]
     },
     {
-      "number": 15,
+      "number": 13,
       "content": [
         {
           "text": "        sm",
@@ -2344,7 +2524,7 @@
       ]
     },
     {
-      "number": 16,
+      "number": 14,
       "content": [
         {
           "text": "        md",
@@ -2377,7 +2557,7 @@
       ]
     },
     {
-      "number": 17,
+      "number": 15,
       "content": [
         {
           "text": "        lg",
@@ -2410,7 +2590,7 @@
       ]
     },
     {
-      "number": 18,
+      "number": 16,
       "content": [
         {
           "text": "      ",
@@ -2423,7 +2603,7 @@
       ]
     },
     {
-      "number": 19,
+      "number": 17,
       "content": [
         {
           "text": "    ",
@@ -2436,7 +2616,7 @@
       ]
     },
     {
-      "number": 20,
+      "number": 18,
       "content": [
         {
           "text": "    defaultVariants",
@@ -2457,7 +2637,7 @@
       ]
     },
     {
-      "number": 21,
+      "number": 19,
       "content": [
         {
           "text": "      size",
@@ -2490,7 +2670,7 @@
       ]
     },
     {
-      "number": 22,
+      "number": 20,
       "content": [
         {
           "text": "    ",
@@ -2503,7 +2683,7 @@
       ]
     },
     {
-      "number": 23,
+      "number": 21,
       "content": [
         {
           "text": "  ",
@@ -2516,7 +2696,7 @@
       ]
     },
     {
-      "number": 24,
+      "number": 22,
       "content": [
         {
           "text": ")",
@@ -2529,11 +2709,11 @@
       ]
     },
     {
-      "number": 25,
+      "number": 23,
       "content": []
     },
     {
-      "number": 26,
+      "number": 24,
       "content": [
         {
           "text": "type",
@@ -2650,11 +2830,11 @@
       ]
     },
     {
-      "number": 27,
+      "number": 25,
       "content": []
     },
     {
-      "number": 28,
+      "number": 26,
       "content": [
         {
           "text": "const",
@@ -2723,7 +2903,7 @@
       ]
     },
     {
-      "number": 29,
+      "number": 27,
       "content": [
         {
           "text": "  right",
@@ -2748,7 +2928,7 @@
       ]
     },
     {
-      "number": 30,
+      "number": 28,
       "content": [
         {
           "text": "  down",
@@ -2773,7 +2953,7 @@
       ]
     },
     {
-      "number": 31,
+      "number": 29,
       "content": [
         {
           "text": "  left",
@@ -2798,7 +2978,7 @@
       ]
     },
     {
-      "number": 32,
+      "number": 30,
       "content": [
         {
           "text": "  up",
@@ -2823,7 +3003,7 @@
       ]
     },
     {
-      "number": 33,
+      "number": 31,
       "content": [
         {
           "text": "};",
@@ -2832,11 +3012,11 @@
       ]
     },
     {
-      "number": 34,
+      "number": 32,
       "content": []
     },
     {
-      "number": 35,
+      "number": 33,
       "content": [
         {
           "text": "export",
@@ -2857,9 +3037,14 @@
         {
           "text": "ChevronProps",
           "color": "var(--code-function)"
-        },
+        }
+      ]
+    },
+    {
+      "number": 34,
+      "content": [
         {
-          "text": " ",
+          "text": "  ",
           "color": "var(--code-variable)"
         },
         {
@@ -2868,6 +3053,59 @@
         },
         {
           "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "Omit",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "SVGProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "SVGSVGElement",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": ">,",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ">,",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 35,
+      "content": [
+        {
+          "text": "    ",
           "color": "var(--code-variable)"
         },
         {
@@ -2971,31 +3209,6 @@
       "number": 39,
       "content": [
         {
-          "text": "  className",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "?:",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "string",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ";",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 40,
-      "content": [
-        {
           "text": "  ref",
           "color": "var(--code-variable)"
         },
@@ -3026,7 +3239,7 @@
       ]
     },
     {
-      "number": 41,
+      "number": 40,
       "content": [
         {
           "text": "}",
@@ -3035,11 +3248,11 @@
       ]
     },
     {
-      "number": 42,
+      "number": 41,
       "content": []
     },
     {
-      "number": 43,
+      "number": 42,
       "content": [
         {
           "text": "export",
@@ -3068,7 +3281,7 @@
       ]
     },
     {
-      "number": 44,
+      "number": 43,
       "content": [
         {
           "text": "  direction ",
@@ -3101,7 +3314,7 @@
       ]
     },
     {
-      "number": 45,
+      "number": 44,
       "content": [
         {
           "text": "  open",
@@ -3114,7 +3327,7 @@
       ]
     },
     {
-      "number": 46,
+      "number": 45,
       "content": [
         {
           "text": "  size",
@@ -3127,7 +3340,7 @@
       ]
     },
     {
-      "number": 47,
+      "number": 46,
       "content": [
         {
           "text": "  className",
@@ -3140,7 +3353,7 @@
       ]
     },
     {
-      "number": 48,
+      "number": 47,
       "content": [
         {
           "text": "  ref",
@@ -3153,7 +3366,70 @@
       ]
     },
     {
+      "number": 48,
+      "content": [
+        {
+          "text": "  style",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
       "number": 49,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "aria-hidden",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ariaHidden",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 50,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "props",
+          "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 51,
       "content": [
         {
           "text": "}:",
@@ -3182,7 +3458,7 @@
       ]
     },
     {
-      "number": 50,
+      "number": 52,
       "content": [
         {
           "text": "  ",
@@ -3259,11 +3535,124 @@
       ]
     },
     {
-      "number": 51,
+      "number": 53,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "transformStyle",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "CSSProperties",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "style",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " transform",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "`",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "rotate(",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "${",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": "deg",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": "deg)",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "`",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "};",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 54,
       "content": []
     },
     {
-      "number": 52,
+      "number": 55,
       "content": [
         {
           "text": "  ",
@@ -3280,7 +3669,7 @@
       ]
     },
     {
-      "number": 53,
+      "number": 56,
       "content": [
         {
           "text": "    ",
@@ -3297,7 +3686,7 @@
       ]
     },
     {
-      "number": 54,
+      "number": 57,
       "content": [
         {
           "text": "      ",
@@ -3322,7 +3711,7 @@
       ]
     },
     {
-      "number": 55,
+      "number": 58,
       "content": [
         {
           "text": "      ",
@@ -3351,7 +3740,7 @@
       ]
     },
     {
-      "number": 56,
+      "number": 59,
       "content": [
         {
           "text": "      ",
@@ -3380,7 +3769,7 @@
       ]
     },
     {
-      "number": 57,
+      "number": 60,
       "content": [
         {
           "text": "      ",
@@ -3409,7 +3798,7 @@
       ]
     },
     {
-      "number": 58,
+      "number": 61,
       "content": [
         {
           "text": "      ",
@@ -3438,7 +3827,7 @@
       ]
     },
     {
-      "number": 59,
+      "number": 62,
       "content": [
         {
           "text": "      ",
@@ -3467,7 +3856,7 @@
       ]
     },
     {
-      "number": 60,
+      "number": 63,
       "content": [
         {
           "text": "      ",
@@ -3496,7 +3885,7 @@
       ]
     },
     {
-      "number": 61,
+      "number": 64,
       "content": [
         {
           "text": "      ",
@@ -3525,7 +3914,7 @@
       ]
     },
     {
-      "number": 62,
+      "number": 65,
       "content": [
         {
           "text": "      ",
@@ -3536,25 +3925,33 @@
           "color": "var(--code-function)"
         },
         {
-          "text": "=",
+          "text": "={",
           "color": "var(--code-operator)"
         },
         {
-          "text": "\"",
+          "text": "ariaHidden ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "??",
           "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
         },
         {
           "text": "true",
-          "color": "var(--code-tag)"
+          "color": "var(--code-number)"
         },
         {
-          "text": "\"",
+          "text": "}",
           "color": "var(--code-operator)"
         }
       ]
     },
     {
-      "number": 63,
+      "number": 66,
       "content": [
         {
           "text": "      ",
@@ -3615,7 +4012,7 @@
       ]
     },
     {
-      "number": 64,
+      "number": 67,
       "content": [
         {
           "text": "      ",
@@ -3626,61 +4023,42 @@
           "color": "var(--code-function)"
         },
         {
-          "text": "={{",
+          "text": "={",
           "color": "var(--code-operator)"
         },
         {
-          "text": " transform",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ":",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "`",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "rotate(",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "${",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": "deg",
+          "text": "transformStyle",
           "color": "var(--code-variable)"
         },
         {
           "text": "}",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": "deg)",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "`",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}}",
           "color": "var(--code-operator)"
         }
       ]
     },
     {
-      "number": 65,
+      "number": 68,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "props",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 69,
       "content": [
         {
           "text": "    ",
@@ -3693,7 +4071,7 @@
       ]
     },
     {
-      "number": 66,
+      "number": 70,
       "content": [
         {
           "text": "      ",
@@ -3742,7 +4120,7 @@
       ]
     },
     {
-      "number": 67,
+      "number": 71,
       "content": [
         {
           "text": "    ",
@@ -3763,7 +4141,7 @@
       ]
     },
     {
-      "number": 68,
+      "number": 72,
       "content": [
         {
           "text": "  )",
@@ -3776,7 +4154,7 @@
       ]
     },
     {
-      "number": 69,
+      "number": 73,
       "content": [
         {
           "text": "}",
@@ -3785,7 +4163,7 @@
       ]
     },
     {
-      "number": 70,
+      "number": 74,
       "content": []
     }
   ],

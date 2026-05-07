@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { useId, useMemo, type ReactNode } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { SidebarContext } from "./sidebar-context";
 
@@ -17,6 +17,7 @@ export function SidebarProvider({
   defaultCollapsed = false,
   children,
 }: SidebarProviderProps) {
+  const sidebarId = useId();
   const [isCollapsed, setIsCollapsed] = useControllableState({
     value: controlledCollapsed,
     defaultValue: defaultCollapsed,
@@ -26,10 +27,11 @@ export function SidebarProvider({
   const contextValue = useMemo(
     () => ({
       collapsed: isCollapsed,
+      contentId: `${sidebarId}-content`,
       onCollapsedChange: setIsCollapsed,
       toggleSidebar: () => setIsCollapsed(prev => !prev),
     }),
-    [isCollapsed, setIsCollapsed],
+    [isCollapsed, setIsCollapsed, sidebarId],
   );
 
   return (

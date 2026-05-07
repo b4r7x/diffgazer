@@ -27,6 +27,7 @@ export interface StepperStepContextValue {
   status: StepStatus;
   triggerId: string;
   contentId: string;
+  hasContent: boolean;
 }
 
 export const StepperStepContext = createContext<StepperStepContextValue | undefined>(undefined);

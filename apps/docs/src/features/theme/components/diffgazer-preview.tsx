@@ -9,6 +9,7 @@ const REVIEW_LENSES = [
 ]
 
 const QUICK_START = [
+  "# after npm view diffgazer version succeeds",
   "npm install -g diffgazer",
   "cd your-project",
   "diffgazer",

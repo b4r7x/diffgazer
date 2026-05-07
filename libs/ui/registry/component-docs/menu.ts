@@ -9,8 +9,12 @@ export const menuDoc: ComponentDoc = {
   ],
   notes: [
     {
+      title: "Composition Contract",
+      content: "Use Menu.Item and Menu.Divider as explicit children in the Menu JSX tree. Custom item UI belongs inside Menu.Item. Components that create items internally from an opaque wrapper are not part of the current public contract.",
+    },
+    {
       title: "Built-in Keyboard Navigation",
-      content: "Menu includes keyboard navigation via useListbox (Arrow keys, Home/End, Enter/Space). For custom key bindings or cross-component navigation, use the highlighted, onHighlightChange, and onKeyDown props to add external handlers alongside the built-in behavior.",
+      content: "Menu includes keyboard navigation via useListbox (Arrow keys, Home/End, Enter/Space). For custom key bindings or cross-component navigation, use the highlightedId, onHighlightChange, and onKeyDown props to add external handlers alongside the built-in behavior.",
     },
   ],
   usage: { example: "menu-default" },

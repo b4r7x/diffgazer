@@ -1,2 +1,2 @@
-@import "tailwindcss";
+/* Canonical style seed. Package builds and dgadd init append registry component CSS to this entry. */
 @import "./theme.css";

@@ -1,4 +1,4 @@
-import { dirname, resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import {
@@ -14,6 +14,7 @@ import {
   readPackageVersion,
   resolveAliasedPaths,
 } from "@diffgazer/registry/cli";
+import { toPosixPath, resolveProjectPath } from "./utils/paths.js";
 
 export const VERSION = readPackageVersion(import.meta.url, "../package.json");
 
@@ -94,11 +95,18 @@ const DEFAULT_ALIASES = {
 
 export function resolveConfig(raw: DiffgazerAddConfig, cwd?: string): ResolvedConfig {
   const aliases = { ...DEFAULT_ALIASES, ...raw.aliases };
-  const resolved = resolveAliasedPaths(
+  const rawResolved = resolveAliasedPaths(
     { components: raw.componentsFsPath, lib: raw.libFsPath, hooks: raw.hooksFsPath },
     { components: aliases.components, lib: aliases.lib, hooks: aliases.hooks },
     cwd,
   );
+  const resolved = cwd
+    ? {
+        components: toPosixPath(relative(resolve(cwd), resolveProjectPath(cwd, rawResolved.components))),
+        lib: toPosixPath(relative(resolve(cwd), resolveProjectPath(cwd, rawResolved.lib))),
+        hooks: toPosixPath(relative(resolve(cwd), resolveProjectPath(cwd, rawResolved.hooks))),
+      }
+    : rawResolved;
 
   return {
     aliases,

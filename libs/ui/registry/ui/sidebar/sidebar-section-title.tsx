@@ -17,8 +17,8 @@ export function SidebarSectionTitle({ ref, children, className, onClick, handle,
 
   const handleClick = isInteractive
     ? (e: MouseEvent<HTMLElement>) => {
-        if (collapsible) onToggle();
         onClick?.(e);
+        if (collapsible && !e.defaultPrevented) onToggle();
       }
     : undefined;
 

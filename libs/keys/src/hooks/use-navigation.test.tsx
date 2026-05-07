@@ -28,6 +28,7 @@ function TestList({
         <div key={item} role="option" data-value={item} data-testid={`item-${item}`} />
       ))}
       <span data-testid="focused">{result.highlighted ?? ""}</span>
+      <span data-testid="is-empty">{String(result.isHighlighted(""))}</span>
       <span data-testid="is-a">{String(result.isHighlighted("a"))}</span>
       <span data-testid="is-b">{String(result.isHighlighted("b"))}</span>
       <button data-testid="highlight-b" onClick={() => result.highlight("b")} />
@@ -99,6 +100,14 @@ describe("useNavigation", () => {
     expect(getFocused()).toBe("a");
   });
 
+  it("starts at the first item when moving without an initial highlight", () => {
+    render(<TestList />);
+    const container = screen.getByTestId("list");
+
+    act(() => fireKeyOnElement(container, "ArrowDown"));
+    expect(getFocused()).toBe("a");
+  });
+
   it("navigates data-marked items without requiring role attributes", () => {
     function DataMarkedList() {
       const ref = useRef<HTMLDivElement>(null);
@@ -154,6 +163,15 @@ describe("useNavigation", () => {
     expect(getFocused()).toBe("b");
   });
 
+  it("supports menuitemradio navigation roles", () => {
+    render(<TestList role="menuitemradio" initialValue="a" />);
+    const container = screen.getByTestId("list");
+
+    act(() => fireKeyOnElement(container, "ArrowDown"));
+
+    expect(getFocused()).toBe("b");
+  });
+
   it("Space calls onSelect, Enter calls onEnter or falls back to onSelect", () => {
     const onSelect = vi.fn();
     const onEnter = vi.fn();
@@ -175,6 +193,23 @@ describe("useNavigation", () => {
     const container2 = screen.getByTestId("list");
     act(() => fireKeyOnElement(container2, "Enter"));
     expect(onSelectOnly).toHaveBeenCalledWith("b", expect.any(KeyboardEvent));
+  });
+
+  it("supports empty string item values for highlight and selection", () => {
+    const onSelect = vi.fn();
+    render(<TestList items={["", "b"]} initialValue="" onSelect={onSelect} />);
+    const container = screen.getByTestId("list");
+
+    expect(screen.getByTestId("is-empty").textContent).toBe("true");
+
+    act(() => fireKeyOnElement(container, "Enter"));
+    expect(onSelect).toHaveBeenCalledWith("", expect.any(KeyboardEvent));
+
+    act(() => fireKeyOnElement(container, "ArrowDown"));
+    expect(getFocused()).toBe("b");
+
+    act(() => fireKeyOnElement(container, "ArrowUp"));
+    expect(screen.getByTestId("is-empty").textContent).toBe("true");
   });
 
   it("enabled: false disables all handlers", () => {

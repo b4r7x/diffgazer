@@ -3,7 +3,7 @@
   "title": "Outside Click",
   "description": "Detect clicks outside a referenced element. Useful for closing dropdowns, popovers, and modals when the user clicks elsewhere.",
   "source": {
-    "raw": "\"use client\";\n\nimport { useEffect, useRef, type RefObject } from \"react\";\n\ntype OutsideClickEntry = {\n  id: symbol;\n  ref: RefObject<HTMLElement | null>;\n  handlerRef: { current: () => void };\n  excludeRefs?: ReadonlyArray<RefObject<HTMLElement | null>>;\n  priority: number;\n};\n\ntype EscapeKeyEntry = {\n  id: symbol;\n  handlerRef: { current: (event: KeyboardEvent) => void };\n  ref?: RefObject<HTMLElement | null>;\n  excludeRefs?: ReadonlyArray<RefObject<HTMLElement | null>>;\n  priority: number;\n};\n\nexport interface OverlayStackOptions {\n  priority?: number;\n  ref?: RefObject<HTMLElement | null>;\n  excludeRefs?: ReadonlyArray<RefObject<HTMLElement | null>>;\n}\n\nconst DEFAULT_OVERLAY_PRIORITY = 1;\nconst outsideClickEntries: OutsideClickEntry[] = [];\nconst escapeKeyEntries: EscapeKeyEntry[] = [];\n\nfunction getComposedPath(event: Event): EventTarget[] {\n  return typeof event.composedPath === \"function\" ? event.composedPath() : [];\n}\n\nfunction pathContains(path: EventTarget[], element: HTMLElement | null): boolean {\n  if (!element) return false;\n  if (path.length > 0) return path.includes(element);\n  return false;\n}\n\nfunction isTargetInside(target: Node, element: HTMLElement | null): boolean {\n  return element?.contains(target) ?? false;\n}\n\nfunction isInEntry(event: MouseEvent, target: Node, entry: OutsideClickEntry): boolean {\n  const path = getComposedPath(event);\n  if (pathContains(path, entry.ref.current) || isTargetInside(target, entry.ref.current)) return true;\n  return entry.excludeRefs?.some((r) => pathContains(path, r.current) || isTargetInside(target, r.current)) ?? false;\n}\n\nfunction getEntryElements(entry: OutsideClickEntry): HTMLElement[] {\n  const elements = [entry.ref.current, ...(entry.excludeRefs?.map((ref) => ref.current) ?? [])];\n  return elements.filter((element): element is HTMLElement => element != null);\n}\n\nfunction isNestedAbove(entry: OutsideClickEntry, below: OutsideClickEntry): boolean {\n  const belowElements = getEntryElements(below);\n  return getEntryElements(entry).some((element) =>\n    belowElements.some((belowElement) => belowElement !== element && belowElement.contains(element)),\n  );\n}\n\nfunction getTopOutsideClickEntry(): OutsideClickEntry | undefined {\n  return outsideClickEntries.reduce<OutsideClickEntry | undefined>((top, entry) => {\n    if (!top) return entry;\n    if (entry.priority > top.priority) return entry;\n    if (entry.priority < top.priority) return top;\n    if (isNestedAbove(entry, top)) return entry;\n    if (isNestedAbove(top, entry)) return top;\n    return entry;\n  }, undefined);\n}\n\nfunction getEscapeEntryElements(entry: EscapeKeyEntry): HTMLElement[] {\n  const elements = [entry.ref?.current, ...(entry.excludeRefs?.map((ref) => ref.current) ?? [])];\n  return elements.filter((element): element is HTMLElement => element != null);\n}\n\nfunction isEscapeNestedAbove(entry: EscapeKeyEntry, below: EscapeKeyEntry): boolean {\n  const belowElements = getEscapeEntryElements(below);\n  return getEscapeEntryElements(entry).some((element) =>\n    belowElements.some((belowElement) => belowElement !== element && belowElement.contains(element)),\n  );\n}\n\nfunction getTopEscapeKeyEntry(): EscapeKeyEntry | undefined {\n  return escapeKeyEntries.reduce<EscapeKeyEntry | undefined>((top, entry) => {\n    if (!top) return entry;\n    if (entry.priority > top.priority) return entry;\n    if (entry.priority < top.priority) return top;\n    if (isEscapeNestedAbove(entry, top)) return entry;\n    if (isEscapeNestedAbove(top, entry)) return top;\n    return entry;\n  }, undefined);\n}\n\nfunction handleDocumentMouseDown(event: MouseEvent) {\n  if (!(event.target instanceof Node)) return;\n  const entry = getTopOutsideClickEntry();\n  if (!entry) return;\n  if (isInEntry(event, event.target, entry)) return;\n  entry.handlerRef.current();\n}\n\nfunction handleDocumentKeyDown(event: KeyboardEvent) {\n  if (event.defaultPrevented || event.key !== \"Escape\") return;\n  const entry = getTopEscapeKeyEntry();\n  if (!entry) return;\n  entry.handlerRef.current(event);\n}\n\nfunction removeEntry<Entry extends { id: symbol }>(entries: Entry[], id: symbol) {\n  const index = entries.findIndex((entry) => entry.id === id);\n  if (index >= 0) entries.splice(index, 1);\n}\n\nexport function useOutsideClick(\n  ref: RefObject<HTMLElement | null>,\n  handler: () => void,\n  enabled: boolean = true,\n  excludeRefs?: ReadonlyArray<RefObject<HTMLElement | null>>,\n  options?: OverlayStackOptions,\n): void {\n  const handlerRef = useRef(handler);\n  handlerRef.current = handler;\n\n  useEffect(() => {\n    if (!enabled) return;\n    const id = Symbol(\"outside-click-layer\");\n    outsideClickEntries.push({\n      id,\n      ref,\n      handlerRef,\n      excludeRefs,\n      priority: options?.priority ?? DEFAULT_OVERLAY_PRIORITY,\n    });\n    if (outsideClickEntries.length === 1) {\n      document.addEventListener(\"mousedown\", handleDocumentMouseDown);\n    }\n\n    return () => {\n      removeEntry(outsideClickEntries, id);\n      if (outsideClickEntries.length === 0) {\n        document.removeEventListener(\"mousedown\", handleDocumentMouseDown);\n      }\n    };\n  }, [enabled, excludeRefs, options?.priority, ref]);\n}\n\nexport function useEscapeKey(\n  handler: (event: KeyboardEvent) => void,\n  enabled: boolean = true,\n  options?: OverlayStackOptions,\n): void {\n  const handlerRef = useRef(handler);\n  handlerRef.current = handler;\n\n  useEffect(() => {\n    if (!enabled) return;\n    const id = Symbol(\"escape-key-layer\");\n    escapeKeyEntries.push({\n      id,\n      handlerRef,\n      ref: options?.ref,\n      excludeRefs: options?.excludeRefs,\n      priority: options?.priority ?? DEFAULT_OVERLAY_PRIORITY,\n    });\n    if (escapeKeyEntries.length === 1) {\n      document.addEventListener(\"keydown\", handleDocumentKeyDown);\n    }\n\n    return () => {\n      removeEntry(escapeKeyEntries, id);\n      if (escapeKeyEntries.length === 0) {\n        document.removeEventListener(\"keydown\", handleDocumentKeyDown);\n      }\n    };\n  }, [enabled, options?.excludeRefs, options?.priority, options?.ref]);\n}\n",
+    "raw": "\"use client\";\n\nimport { useEffect, useEffectEvent, type RefObject } from \"react\";\n\ntype OutsideClickEntry = {\n  id: symbol;\n  ref: RefObject<HTMLElement | null>;\n  handler: () => void;\n  excludeRefs?: ReadonlyArray<RefObject<HTMLElement | null>>;\n  priority: number;\n};\n\ntype EscapeKeyEntry = {\n  id: symbol;\n  handler: (event: KeyboardEvent) => void;\n  ref?: RefObject<HTMLElement | null>;\n  excludeRefs?: ReadonlyArray<RefObject<HTMLElement | null>>;\n  priority: number;\n};\n\nexport interface OverlayStackOptions {\n  priority?: number;\n  ref?: RefObject<HTMLElement | null>;\n  excludeRefs?: ReadonlyArray<RefObject<HTMLElement | null>>;\n}\n\nconst DEFAULT_OVERLAY_PRIORITY = 1;\nconst DOCUMENT_POINTER_LISTENER_OPTIONS: AddEventListenerOptions = { capture: true };\nconst outsideClickEntries: OutsideClickEntry[] = [];\nconst escapeKeyEntries: EscapeKeyEntry[] = [];\n\nfunction getComposedPath(event: Event): EventTarget[] {\n  return typeof event.composedPath === \"function\" ? event.composedPath() : [];\n}\n\nfunction pathContains(path: EventTarget[], element: HTMLElement | null): boolean {\n  if (!element) return false;\n  if (path.length > 0) return path.includes(element);\n  return false;\n}\n\nfunction isTargetInside(target: Node, element: HTMLElement | null): boolean {\n  return element?.contains(target) ?? false;\n}\n\nfunction isInEntry(event: Event, target: Node, entry: OutsideClickEntry): boolean {\n  const path = getComposedPath(event);\n  if (pathContains(path, entry.ref.current) || isTargetInside(target, entry.ref.current)) return true;\n  return entry.excludeRefs?.some((r) => pathContains(path, r.current) || isTargetInside(target, r.current)) ?? false;\n}\n\nfunction getEntryElements(entry: OutsideClickEntry): HTMLElement[] {\n  const elements = [entry.ref.current, ...(entry.excludeRefs?.map((ref) => ref.current) ?? [])];\n  return elements.filter((element): element is HTMLElement => element != null);\n}\n\nfunction isNestedAbove(entry: OutsideClickEntry, below: OutsideClickEntry): boolean {\n  const belowElements = getEntryElements(below);\n  return getEntryElements(entry).some((element) =>\n    belowElements.some((belowElement) => belowElement !== element && belowElement.contains(element)),\n  );\n}\n\nfunction getTopOutsideClickEntry(): OutsideClickEntry | undefined {\n  return outsideClickEntries.reduce<OutsideClickEntry | undefined>((top, entry) => {\n    if (!top) return entry;\n    if (entry.priority > top.priority) return entry;\n    if (entry.priority < top.priority) return top;\n    if (isNestedAbove(entry, top)) return entry;\n    if (isNestedAbove(top, entry)) return top;\n    return entry;\n  }, undefined);\n}\n\nfunction getEscapeEntryElements(entry: EscapeKeyEntry): HTMLElement[] {\n  const elements = [entry.ref?.current, ...(entry.excludeRefs?.map((ref) => ref.current) ?? [])];\n  return elements.filter((element): element is HTMLElement => element != null);\n}\n\nfunction isEscapeNestedAbove(entry: EscapeKeyEntry, below: EscapeKeyEntry): boolean {\n  const belowElements = getEscapeEntryElements(below);\n  return getEscapeEntryElements(entry).some((element) =>\n    belowElements.some((belowElement) => belowElement !== element && belowElement.contains(element)),\n  );\n}\n\nfunction getTopEscapeKeyEntry(): EscapeKeyEntry | undefined {\n  return escapeKeyEntries.reduce<EscapeKeyEntry | undefined>((top, entry) => {\n    if (!top) return entry;\n    if (entry.priority > top.priority) return entry;\n    if (entry.priority < top.priority) return top;\n    if (isEscapeNestedAbove(entry, top)) return entry;\n    if (isEscapeNestedAbove(top, entry)) return top;\n    return entry;\n  }, undefined);\n}\n\nlet lastTouchTarget: EventTarget | null = null;\nlet lastTouchTime = 0;\n\nfunction supportsPointerEvents(): boolean {\n  return typeof window !== \"undefined\" && typeof window.PointerEvent !== \"undefined\";\n}\n\nfunction isDuplicateTouchFallback(event: Event): boolean {\n  if (event.type === \"touchstart\") {\n    lastTouchTarget = event.target;\n    lastTouchTime = Date.now();\n    return false;\n  }\n\n  const isDuplicate = event.type === \"mousedown\" && lastTouchTarget === event.target && Date.now() - lastTouchTime < 750;\n  if (isDuplicate) lastTouchTarget = null;\n  return isDuplicate;\n}\n\nfunction handleDocumentOutsidePointer(event: Event) {\n  if (isDuplicateTouchFallback(event)) return;\n  if (!(event.target instanceof Node)) return;\n  const entry = getTopOutsideClickEntry();\n  if (!entry) return;\n  if (isInEntry(event, event.target, entry)) return;\n  entry.handler();\n}\n\nfunction handleDocumentKeyDown(event: KeyboardEvent) {\n  if (event.defaultPrevented || event.key !== \"Escape\") return;\n  const entry = getTopEscapeKeyEntry();\n  if (!entry) return;\n  entry.handler(event);\n}\n\nfunction removeEntry<Entry extends { id: symbol }>(entries: Entry[], id: symbol) {\n  const index = entries.findIndex((entry) => entry.id === id);\n  if (index >= 0) entries.splice(index, 1);\n}\n\nexport function useOutsideClick(\n  ref: RefObject<HTMLElement | null>,\n  handler: () => void,\n  enabled: boolean = true,\n  excludeRefs?: ReadonlyArray<RefObject<HTMLElement | null>>,\n  options?: OverlayStackOptions,\n): void {\n  const handleOutsideClick = useEffectEvent(handler);\n\n  useEffect(() => {\n    if (!enabled) return;\n    const id = Symbol(\"outside-click-layer\");\n    const usePointerEvents = supportsPointerEvents();\n    outsideClickEntries.push({\n      id,\n      ref,\n      handler: handleOutsideClick,\n      excludeRefs,\n      priority: options?.priority ?? DEFAULT_OVERLAY_PRIORITY,\n    });\n    if (outsideClickEntries.length === 1) {\n      if (usePointerEvents) {\n        document.addEventListener(\"pointerdown\", handleDocumentOutsidePointer, DOCUMENT_POINTER_LISTENER_OPTIONS);\n      } else {\n        document.addEventListener(\"touchstart\", handleDocumentOutsidePointer, DOCUMENT_POINTER_LISTENER_OPTIONS);\n        document.addEventListener(\"mousedown\", handleDocumentOutsidePointer, DOCUMENT_POINTER_LISTENER_OPTIONS);\n      }\n    }\n\n    return () => {\n      removeEntry(outsideClickEntries, id);\n      if (outsideClickEntries.length === 0) {\n        if (usePointerEvents) {\n          document.removeEventListener(\"pointerdown\", handleDocumentOutsidePointer, DOCUMENT_POINTER_LISTENER_OPTIONS);\n        } else {\n          document.removeEventListener(\"touchstart\", handleDocumentOutsidePointer, DOCUMENT_POINTER_LISTENER_OPTIONS);\n          document.removeEventListener(\"mousedown\", handleDocumentOutsidePointer, DOCUMENT_POINTER_LISTENER_OPTIONS);\n        }\n      }\n    };\n  }, [enabled, excludeRefs, options?.priority, ref]);\n}\n\nexport function useEscapeKey(\n  handler: (event: KeyboardEvent) => void,\n  enabled: boolean = true,\n  options?: OverlayStackOptions,\n): void {\n  const handleEscape = useEffectEvent(handler);\n\n  useEffect(() => {\n    if (!enabled) return;\n    const id = Symbol(\"escape-key-layer\");\n    escapeKeyEntries.push({\n      id,\n      handler: handleEscape,\n      ref: options?.ref,\n      excludeRefs: options?.excludeRefs,\n      priority: options?.priority ?? DEFAULT_OVERLAY_PRIORITY,\n    });\n    if (escapeKeyEntries.length === 1) {\n      document.addEventListener(\"keydown\", handleDocumentKeyDown);\n    }\n\n    return () => {\n      removeEntry(escapeKeyEntries, id);\n      if (escapeKeyEntries.length === 0) {\n        document.removeEventListener(\"keydown\", handleDocumentKeyDown);\n      }\n    };\n  }, [enabled, options?.excludeRefs, options?.priority, options?.ref]);\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -54,7 +54,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " useRef",
+            "text": " useEffectEvent",
             "color": "var(--code-variable)"
           },
           {
@@ -222,27 +222,11 @@
         "number": 8,
         "content": [
           {
-            "text": "  handlerRef",
+            "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "current",
+            "text": "handler",
             "color": "var(--code-function)"
           },
           {
@@ -274,11 +258,7 @@
             "color": "var(--code-number)"
           },
           {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "};",
+            "text": ";",
             "color": "var(--code-operator)"
           }
         ]
@@ -440,27 +420,11 @@
         "number": 15,
         "content": [
           {
-            "text": "  handlerRef",
+            "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "current",
+            "text": "handler",
             "color": "var(--code-function)"
           },
           {
@@ -512,11 +476,7 @@
             "color": "var(--code-number)"
           },
           {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "};",
+            "text": ";",
             "color": "var(--code-operator)"
           }
         ]
@@ -891,6 +851,75 @@
             "color": "var(--code-variable)"
           },
           {
+            "text": "DOCUMENT_POINTER_LISTENER_OPTIONS",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "AddEventListenerOptions",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " capture",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "true",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "};",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 29,
+        "content": [
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
             "text": "outsideClickEntries",
             "color": "var(--code-number)"
           },
@@ -925,7 +954,7 @@
         ]
       },
       {
-        "number": 29,
+        "number": 30,
         "content": [
           {
             "text": "const",
@@ -970,11 +999,11 @@
         ]
       },
       {
-        "number": 30,
+        "number": 31,
         "content": []
       },
       {
-        "number": 31,
+        "number": 32,
         "content": [
           {
             "text": "function",
@@ -1031,7 +1060,7 @@
         ]
       },
       {
-        "number": 32,
+        "number": 33,
         "content": [
           {
             "text": "  ",
@@ -1128,7 +1157,7 @@
         ]
       },
       {
-        "number": 33,
+        "number": 34,
         "content": [
           {
             "text": "}",
@@ -1137,11 +1166,11 @@
         ]
       },
       {
-        "number": 34,
+        "number": 35,
         "content": []
       },
       {
-        "number": 35,
+        "number": 36,
         "content": [
           {
             "text": "function",
@@ -1238,7 +1267,7 @@
         ]
       },
       {
-        "number": 36,
+        "number": 37,
         "content": [
           {
             "text": "  ",
@@ -1279,7 +1308,7 @@
         ]
       },
       {
-        "number": 37,
+        "number": 38,
         "content": [
           {
             "text": "  ",
@@ -1356,7 +1385,7 @@
         ]
       },
       {
-        "number": 38,
+        "number": 39,
         "content": [
           {
             "text": "  ",
@@ -1381,7 +1410,7 @@
         ]
       },
       {
-        "number": 39,
+        "number": 40,
         "content": [
           {
             "text": "}",
@@ -1390,11 +1419,11 @@
         ]
       },
       {
-        "number": 40,
+        "number": 41,
         "content": []
       },
       {
-        "number": 41,
+        "number": 42,
         "content": [
           {
             "text": "function",
@@ -1487,7 +1516,7 @@
         ]
       },
       {
-        "number": 42,
+        "number": 43,
         "content": [
           {
             "text": "  ",
@@ -1536,7 +1565,7 @@
         ]
       },
       {
-        "number": 43,
+        "number": 44,
         "content": [
           {
             "text": "}",
@@ -1545,11 +1574,11 @@
         ]
       },
       {
-        "number": 44,
+        "number": 45,
         "content": []
       },
       {
-        "number": 45,
+        "number": 46,
         "content": [
           {
             "text": "function",
@@ -1580,7 +1609,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "MouseEvent",
+            "text": "Event",
             "color": "var(--code-function)"
           },
           {
@@ -1646,7 +1675,7 @@
         ]
       },
       {
-        "number": 46,
+        "number": 47,
         "content": [
           {
             "text": "  ",
@@ -1691,7 +1720,7 @@
         ]
       },
       {
-        "number": 47,
+        "number": 48,
         "content": [
           {
             "text": "  ",
@@ -1804,7 +1833,7 @@
         ]
       },
       {
-        "number": 48,
+        "number": 49,
         "content": [
           {
             "text": "  ",
@@ -1949,7 +1978,7 @@
         ]
       },
       {
-        "number": 49,
+        "number": 50,
         "content": [
           {
             "text": "}",
@@ -1958,11 +1987,11 @@
         ]
       },
       {
-        "number": 50,
+        "number": 51,
         "content": []
       },
       {
-        "number": 51,
+        "number": 52,
         "content": [
           {
             "text": "function",
@@ -2019,7 +2048,7 @@
         ]
       },
       {
-        "number": 52,
+        "number": 53,
         "content": [
           {
             "text": "  ",
@@ -2160,7 +2189,7 @@
         ]
       },
       {
-        "number": 53,
+        "number": 54,
         "content": [
           {
             "text": "  ",
@@ -2253,7 +2282,7 @@
         ]
       },
       {
-        "number": 54,
+        "number": 55,
         "content": [
           {
             "text": "}",
@@ -2262,11 +2291,11 @@
         ]
       },
       {
-        "number": 55,
+        "number": 56,
         "content": []
       },
       {
-        "number": 56,
+        "number": 57,
         "content": [
           {
             "text": "function",
@@ -2343,7 +2372,7 @@
         ]
       },
       {
-        "number": 57,
+        "number": 58,
         "content": [
           {
             "text": "  ",
@@ -2388,7 +2417,7 @@
         ]
       },
       {
-        "number": 58,
+        "number": 59,
         "content": [
           {
             "text": "  ",
@@ -2445,7 +2474,7 @@
         ]
       },
       {
-        "number": 59,
+        "number": 60,
         "content": [
           {
             "text": "    ",
@@ -2530,7 +2559,7 @@
         ]
       },
       {
-        "number": 60,
+        "number": 61,
         "content": [
           {
             "text": "  )",
@@ -2543,7 +2572,7 @@
         ]
       },
       {
-        "number": 61,
+        "number": 62,
         "content": [
           {
             "text": "}",
@@ -2552,11 +2581,11 @@
         ]
       },
       {
-        "number": 62,
+        "number": 63,
         "content": []
       },
       {
-        "number": 63,
+        "number": 64,
         "content": [
           {
             "text": "function",
@@ -2609,7 +2638,7 @@
         ]
       },
       {
-        "number": 64,
+        "number": 65,
         "content": [
           {
             "text": "  ",
@@ -2706,7 +2735,7 @@
         ]
       },
       {
-        "number": 65,
+        "number": 66,
         "content": [
           {
             "text": "    ",
@@ -2743,7 +2772,7 @@
         ]
       },
       {
-        "number": 66,
+        "number": 67,
         "content": [
           {
             "text": "    ",
@@ -2804,7 +2833,7 @@
         ]
       },
       {
-        "number": 67,
+        "number": 68,
         "content": [
           {
             "text": "    ",
@@ -2865,7 +2894,7 @@
         ]
       },
       {
-        "number": 68,
+        "number": 69,
         "content": [
           {
             "text": "    ",
@@ -2910,7 +2939,7 @@
         ]
       },
       {
-        "number": 69,
+        "number": 70,
         "content": [
           {
             "text": "    ",
@@ -2955,7 +2984,7 @@
         ]
       },
       {
-        "number": 70,
+        "number": 71,
         "content": [
           {
             "text": "    ",
@@ -2976,7 +3005,7 @@
         ]
       },
       {
-        "number": 71,
+        "number": 72,
         "content": [
           {
             "text": "  ",
@@ -3005,7 +3034,7 @@
         ]
       },
       {
-        "number": 72,
+        "number": 73,
         "content": [
           {
             "text": "}",
@@ -3014,11 +3043,11 @@
         ]
       },
       {
-        "number": 73,
+        "number": 74,
         "content": []
       },
       {
-        "number": 74,
+        "number": 75,
         "content": [
           {
             "text": "function",
@@ -3075,7 +3104,7 @@
         ]
       },
       {
-        "number": 75,
+        "number": 76,
         "content": [
           {
             "text": "  ",
@@ -3216,7 +3245,7 @@
         ]
       },
       {
-        "number": 76,
+        "number": 77,
         "content": [
           {
             "text": "  ",
@@ -3309,7 +3338,7 @@
         ]
       },
       {
-        "number": 77,
+        "number": 78,
         "content": [
           {
             "text": "}",
@@ -3318,11 +3347,11 @@
         ]
       },
       {
-        "number": 78,
+        "number": 79,
         "content": []
       },
       {
-        "number": 79,
+        "number": 80,
         "content": [
           {
             "text": "function",
@@ -3399,7 +3428,7 @@
         ]
       },
       {
-        "number": 80,
+        "number": 81,
         "content": [
           {
             "text": "  ",
@@ -3444,7 +3473,7 @@
         ]
       },
       {
-        "number": 81,
+        "number": 82,
         "content": [
           {
             "text": "  ",
@@ -3501,7 +3530,7 @@
         ]
       },
       {
-        "number": 82,
+        "number": 83,
         "content": [
           {
             "text": "    ",
@@ -3586,7 +3615,7 @@
         ]
       },
       {
-        "number": 83,
+        "number": 84,
         "content": [
           {
             "text": "  )",
@@ -3599,7 +3628,7 @@
         ]
       },
       {
-        "number": 84,
+        "number": 85,
         "content": [
           {
             "text": "}",
@@ -3608,11 +3637,11 @@
         ]
       },
       {
-        "number": 85,
+        "number": 86,
         "content": []
       },
       {
-        "number": 86,
+        "number": 87,
         "content": [
           {
             "text": "function",
@@ -3665,7 +3694,7 @@
         ]
       },
       {
-        "number": 87,
+        "number": 88,
         "content": [
           {
             "text": "  ",
@@ -3762,7 +3791,7 @@
         ]
       },
       {
-        "number": 88,
+        "number": 89,
         "content": [
           {
             "text": "    ",
@@ -3799,7 +3828,7 @@
         ]
       },
       {
-        "number": 89,
+        "number": 90,
         "content": [
           {
             "text": "    ",
@@ -3860,7 +3889,7 @@
         ]
       },
       {
-        "number": 90,
+        "number": 91,
         "content": [
           {
             "text": "    ",
@@ -3921,7 +3950,7 @@
         ]
       },
       {
-        "number": 91,
+        "number": 92,
         "content": [
           {
             "text": "    ",
@@ -3966,7 +3995,7 @@
         ]
       },
       {
-        "number": 92,
+        "number": 93,
         "content": [
           {
             "text": "    ",
@@ -4011,7 +4040,7 @@
         ]
       },
       {
-        "number": 93,
+        "number": 94,
         "content": [
           {
             "text": "    ",
@@ -4032,7 +4061,7 @@
         ]
       },
       {
-        "number": 94,
+        "number": 95,
         "content": [
           {
             "text": "  ",
@@ -4061,7 +4090,7 @@
         ]
       },
       {
-        "number": 95,
+        "number": 96,
         "content": [
           {
             "text": "}",
@@ -4070,11 +4099,105 @@
         ]
       },
       {
-        "number": 96,
+        "number": 97,
         "content": []
       },
       {
-        "number": 97,
+        "number": 98,
+        "content": [
+          {
+            "text": "let",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " lastTouchTarget",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "EventTarget",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "|",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 99,
+        "content": [
+          {
+            "text": "let",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " lastTouchTime ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 100,
+        "content": []
+      },
+      {
+        "number": 101,
         "content": [
           {
             "text": "function",
@@ -4085,7 +4208,158 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "handleDocumentMouseDown",
+            "text": "supportsPointerEvents",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "():",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "boolean",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 102,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "typeof",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " window ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "!==",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "undefined",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "&&",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "typeof",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "window",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "PointerEvent ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "!==",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "undefined",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 103,
+        "content": [
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 104,
+        "content": []
+      },
+      {
+        "number": 105,
+        "content": [
+          {
+            "text": "function",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "isDuplicateTouchFallback",
             "color": "var(--code-function)"
           },
           {
@@ -4105,7 +4379,445 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "MouseEvent",
+            "text": "Event",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "):",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "boolean",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 106,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "event",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "type ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "===",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "touchstart",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ") ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 107,
+        "content": [
+          {
+            "text": "    lastTouchTarget ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "event",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "target",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 108,
+        "content": [
+          {
+            "text": "    lastTouchTime ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "Date",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "now",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 109,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "false",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 110,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 111,
+        "content": []
+      },
+      {
+        "number": 112,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "isDuplicate",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "event",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "type ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "===",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "mousedown",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "&&",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " lastTouchTarget ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "===",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "event",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "target ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "&&",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "Date",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "now",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "() ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "-",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " lastTouchTime ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "<",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "750",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 113,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (isDuplicate) lastTouchTarget ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 114,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " isDuplicate",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 115,
+        "content": [
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 116,
+        "content": []
+      },
+      {
+        "number": 117,
+        "content": [
+          {
+            "text": "function",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "handleDocumentOutsidePointer",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "event",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "Event",
             "color": "var(--code-function)"
           },
           {
@@ -4123,7 +4835,40 @@
         ]
       },
       {
-        "number": 98,
+        "number": 118,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "isDuplicateTouchFallback",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(event)) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 119,
         "content": [
           {
             "text": "  ",
@@ -4184,7 +4929,7 @@
         ]
       },
       {
-        "number": 99,
+        "number": 120,
         "content": [
           {
             "text": "  ",
@@ -4229,7 +4974,7 @@
         ]
       },
       {
-        "number": 100,
+        "number": 121,
         "content": [
           {
             "text": "  ",
@@ -4262,7 +5007,7 @@
         ]
       },
       {
-        "number": 101,
+        "number": 122,
         "content": [
           {
             "text": "  ",
@@ -4323,7 +5068,7 @@
         ]
       },
       {
-        "number": 102,
+        "number": 123,
         "content": [
           {
             "text": "  ",
@@ -4338,15 +5083,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "handlerRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current",
+            "text": "handler",
             "color": "var(--code-function)"
           },
           {
@@ -4360,7 +5097,7 @@
         ]
       },
       {
-        "number": 103,
+        "number": 124,
         "content": [
           {
             "text": "}",
@@ -4369,11 +5106,11 @@
         ]
       },
       {
-        "number": 104,
+        "number": 125,
         "content": []
       },
       {
-        "number": 105,
+        "number": 126,
         "content": [
           {
             "text": "function",
@@ -4422,7 +5159,7 @@
         ]
       },
       {
-        "number": 106,
+        "number": 127,
         "content": [
           {
             "text": "  ",
@@ -4503,7 +5240,7 @@
         ]
       },
       {
-        "number": 107,
+        "number": 128,
         "content": [
           {
             "text": "  ",
@@ -4548,7 +5285,7 @@
         ]
       },
       {
-        "number": 108,
+        "number": 129,
         "content": [
           {
             "text": "  ",
@@ -4581,7 +5318,7 @@
         ]
       },
       {
-        "number": 109,
+        "number": 130,
         "content": [
           {
             "text": "  ",
@@ -4596,15 +5333,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "handlerRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current",
+            "text": "handler",
             "color": "var(--code-function)"
           },
           {
@@ -4618,7 +5347,7 @@
         ]
       },
       {
-        "number": 110,
+        "number": 131,
         "content": [
           {
             "text": "}",
@@ -4627,11 +5356,11 @@
         ]
       },
       {
-        "number": 111,
+        "number": 132,
         "content": []
       },
       {
-        "number": 112,
+        "number": 133,
         "content": [
           {
             "text": "function",
@@ -4748,7 +5477,7 @@
         ]
       },
       {
-        "number": 113,
+        "number": 134,
         "content": [
           {
             "text": "  ",
@@ -4845,7 +5574,7 @@
         ]
       },
       {
-        "number": 114,
+        "number": 135,
         "content": [
           {
             "text": "  ",
@@ -4914,7 +5643,7 @@
         ]
       },
       {
-        "number": 115,
+        "number": 136,
         "content": [
           {
             "text": "}",
@@ -4923,11 +5652,11 @@
         ]
       },
       {
-        "number": 116,
+        "number": 137,
         "content": []
       },
       {
-        "number": 117,
+        "number": 138,
         "content": [
           {
             "text": "export",
@@ -4956,7 +5685,7 @@
         ]
       },
       {
-        "number": 118,
+        "number": 139,
         "content": [
           {
             "text": "  ref",
@@ -5005,7 +5734,7 @@
         ]
       },
       {
-        "number": 119,
+        "number": 140,
         "content": [
           {
             "text": "  ",
@@ -5050,7 +5779,7 @@
         ]
       },
       {
-        "number": 120,
+        "number": 141,
         "content": [
           {
             "text": "  enabled",
@@ -5091,7 +5820,7 @@
         ]
       },
       {
-        "number": 121,
+        "number": 142,
         "content": [
           {
             "text": "  excludeRefs",
@@ -5148,7 +5877,7 @@
         ]
       },
       {
-        "number": 122,
+        "number": 143,
         "content": [
           {
             "text": "  options",
@@ -5173,7 +5902,7 @@
         ]
       },
       {
-        "number": 123,
+        "number": 144,
         "content": [
           {
             "text": "):",
@@ -5198,7 +5927,7 @@
         ]
       },
       {
-        "number": 124,
+        "number": 145,
         "content": [
           {
             "text": "  ",
@@ -5213,7 +5942,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "handlerRef",
+            "text": "handleOutsideClick",
             "color": "var(--code-number)"
           },
           {
@@ -5229,7 +5958,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "useRef",
+            "text": "useEffectEvent",
             "color": "var(--code-function)"
           },
           {
@@ -5243,44 +5972,11 @@
         ]
       },
       {
-        "number": 125,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "handlerRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " handler",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 126,
+        "number": 146,
         "content": []
       },
       {
-        "number": 127,
+        "number": 147,
         "content": [
           {
             "text": "  ",
@@ -5317,7 +6013,7 @@
         ]
       },
       {
-        "number": 128,
+        "number": 148,
         "content": [
           {
             "text": "    ",
@@ -5350,7 +6046,7 @@
         ]
       },
       {
-        "number": 129,
+        "number": 149,
         "content": [
           {
             "text": "    ",
@@ -5411,7 +6107,52 @@
         ]
       },
       {
-        "number": 130,
+        "number": 150,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "usePointerEvents",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "supportsPointerEvents",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 151,
         "content": [
           {
             "text": "    ",
@@ -5440,7 +6181,7 @@
         ]
       },
       {
-        "number": 131,
+        "number": 152,
         "content": [
           {
             "text": "      id",
@@ -5453,7 +6194,7 @@
         ]
       },
       {
-        "number": 132,
+        "number": 153,
         "content": [
           {
             "text": "      ref",
@@ -5466,10 +6207,18 @@
         ]
       },
       {
-        "number": 133,
+        "number": 154,
         "content": [
           {
-            "text": "      handlerRef",
+            "text": "      handler",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " handleOutsideClick",
             "color": "var(--code-variable)"
           },
           {
@@ -5479,7 +6228,7 @@
         ]
       },
       {
-        "number": 134,
+        "number": 155,
         "content": [
           {
             "text": "      excludeRefs",
@@ -5492,7 +6241,7 @@
         ]
       },
       {
-        "number": 135,
+        "number": 156,
         "content": [
           {
             "text": "      priority",
@@ -5537,7 +6286,7 @@
         ]
       },
       {
-        "number": 136,
+        "number": 157,
         "content": [
           {
             "text": "    ",
@@ -5558,7 +6307,7 @@
         ]
       },
       {
-        "number": 137,
+        "number": 158,
         "content": [
           {
             "text": "    ",
@@ -5611,10 +6360,190 @@
         ]
       },
       {
-        "number": 138,
+        "number": 159,
         "content": [
           {
             "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (usePointerEvents) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 160,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "document",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "addEventListener",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "pointerdown",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " handleDocumentOutsidePointer",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "DOCUMENT_POINTER_LISTENER_OPTIONS",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 161,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "else",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 162,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "document",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "addEventListener",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "touchstart",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " handleDocumentOutsidePointer",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "DOCUMENT_POINTER_LISTENER_OPTIONS",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 163,
+        "content": [
+          {
+            "text": "        ",
             "color": "var(--code-variable)"
           },
           {
@@ -5650,7 +6579,23 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " handleDocumentMouseDown)",
+            "text": " handleDocumentOutsidePointer",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "DOCUMENT_POINTER_LISTENER_OPTIONS",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ")",
             "color": "var(--code-variable)"
           },
           {
@@ -5660,7 +6605,20 @@
         ]
       },
       {
-        "number": 139,
+        "number": 164,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 165,
         "content": [
           {
             "text": "    ",
@@ -5673,11 +6631,11 @@
         ]
       },
       {
-        "number": 140,
+        "number": 166,
         "content": []
       },
       {
-        "number": 141,
+        "number": 167,
         "content": [
           {
             "text": "    ",
@@ -5714,7 +6672,7 @@
         ]
       },
       {
-        "number": 142,
+        "number": 168,
         "content": [
           {
             "text": "      ",
@@ -5743,7 +6701,7 @@
         ]
       },
       {
-        "number": 143,
+        "number": 169,
         "content": [
           {
             "text": "      ",
@@ -5796,10 +6754,190 @@
         ]
       },
       {
-        "number": 144,
+        "number": 170,
         "content": [
           {
             "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (usePointerEvents) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 171,
+        "content": [
+          {
+            "text": "          ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "document",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "removeEventListener",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "pointerdown",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " handleDocumentOutsidePointer",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "DOCUMENT_POINTER_LISTENER_OPTIONS",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 172,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "else",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 173,
+        "content": [
+          {
+            "text": "          ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "document",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "removeEventListener",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "touchstart",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " handleDocumentOutsidePointer",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "DOCUMENT_POINTER_LISTENER_OPTIONS",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 174,
+        "content": [
+          {
+            "text": "          ",
             "color": "var(--code-variable)"
           },
           {
@@ -5835,7 +6973,23 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " handleDocumentMouseDown)",
+            "text": " handleDocumentOutsidePointer",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "DOCUMENT_POINTER_LISTENER_OPTIONS",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ")",
             "color": "var(--code-variable)"
           },
           {
@@ -5845,7 +6999,20 @@
         ]
       },
       {
-        "number": 145,
+        "number": 175,
+        "content": [
+          {
+            "text": "        ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 176,
         "content": [
           {
             "text": "      ",
@@ -5858,7 +7025,7 @@
         ]
       },
       {
-        "number": 146,
+        "number": 177,
         "content": [
           {
             "text": "    ",
@@ -5871,7 +7038,7 @@
         ]
       },
       {
-        "number": 147,
+        "number": 178,
         "content": [
           {
             "text": "  ",
@@ -5928,7 +7095,7 @@
         ]
       },
       {
-        "number": 148,
+        "number": 179,
         "content": [
           {
             "text": "}",
@@ -5937,11 +7104,11 @@
         ]
       },
       {
-        "number": 149,
+        "number": 180,
         "content": []
       },
       {
-        "number": 150,
+        "number": 181,
         "content": [
           {
             "text": "export",
@@ -5970,7 +7137,7 @@
         ]
       },
       {
-        "number": 151,
+        "number": 182,
         "content": [
           {
             "text": "  ",
@@ -6035,7 +7202,7 @@
         ]
       },
       {
-        "number": 152,
+        "number": 183,
         "content": [
           {
             "text": "  enabled",
@@ -6076,7 +7243,7 @@
         ]
       },
       {
-        "number": 153,
+        "number": 184,
         "content": [
           {
             "text": "  options",
@@ -6101,7 +7268,7 @@
         ]
       },
       {
-        "number": 154,
+        "number": 185,
         "content": [
           {
             "text": "):",
@@ -6126,7 +7293,7 @@
         ]
       },
       {
-        "number": 155,
+        "number": 186,
         "content": [
           {
             "text": "  ",
@@ -6141,7 +7308,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "handlerRef",
+            "text": "handleEscape",
             "color": "var(--code-number)"
           },
           {
@@ -6157,7 +7324,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "useRef",
+            "text": "useEffectEvent",
             "color": "var(--code-function)"
           },
           {
@@ -6171,44 +7338,11 @@
         ]
       },
       {
-        "number": 156,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "handlerRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " handler",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 157,
+        "number": 187,
         "content": []
       },
       {
-        "number": 158,
+        "number": 188,
         "content": [
           {
             "text": "  ",
@@ -6245,7 +7379,7 @@
         ]
       },
       {
-        "number": 159,
+        "number": 189,
         "content": [
           {
             "text": "    ",
@@ -6278,7 +7412,7 @@
         ]
       },
       {
-        "number": 160,
+        "number": 190,
         "content": [
           {
             "text": "    ",
@@ -6339,7 +7473,7 @@
         ]
       },
       {
-        "number": 161,
+        "number": 191,
         "content": [
           {
             "text": "    ",
@@ -6368,7 +7502,7 @@
         ]
       },
       {
-        "number": 162,
+        "number": 192,
         "content": [
           {
             "text": "      id",
@@ -6381,10 +7515,18 @@
         ]
       },
       {
-        "number": 163,
+        "number": 193,
         "content": [
           {
-            "text": "      handlerRef",
+            "text": "      handler",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " handleEscape",
             "color": "var(--code-variable)"
           },
           {
@@ -6394,7 +7536,7 @@
         ]
       },
       {
-        "number": 164,
+        "number": 194,
         "content": [
           {
             "text": "      ref",
@@ -6427,7 +7569,7 @@
         ]
       },
       {
-        "number": 165,
+        "number": 195,
         "content": [
           {
             "text": "      excludeRefs",
@@ -6460,7 +7602,7 @@
         ]
       },
       {
-        "number": 166,
+        "number": 196,
         "content": [
           {
             "text": "      priority",
@@ -6505,7 +7647,7 @@
         ]
       },
       {
-        "number": 167,
+        "number": 197,
         "content": [
           {
             "text": "    ",
@@ -6526,7 +7668,7 @@
         ]
       },
       {
-        "number": 168,
+        "number": 198,
         "content": [
           {
             "text": "    ",
@@ -6579,7 +7721,7 @@
         ]
       },
       {
-        "number": 169,
+        "number": 199,
         "content": [
           {
             "text": "      ",
@@ -6628,7 +7770,7 @@
         ]
       },
       {
-        "number": 170,
+        "number": 200,
         "content": [
           {
             "text": "    ",
@@ -6641,11 +7783,11 @@
         ]
       },
       {
-        "number": 171,
+        "number": 201,
         "content": []
       },
       {
-        "number": 172,
+        "number": 202,
         "content": [
           {
             "text": "    ",
@@ -6682,7 +7824,7 @@
         ]
       },
       {
-        "number": 173,
+        "number": 203,
         "content": [
           {
             "text": "      ",
@@ -6711,7 +7853,7 @@
         ]
       },
       {
-        "number": 174,
+        "number": 204,
         "content": [
           {
             "text": "      ",
@@ -6764,7 +7906,7 @@
         ]
       },
       {
-        "number": 175,
+        "number": 205,
         "content": [
           {
             "text": "        ",
@@ -6813,7 +7955,7 @@
         ]
       },
       {
-        "number": 176,
+        "number": 206,
         "content": [
           {
             "text": "      ",
@@ -6826,7 +7968,7 @@
         ]
       },
       {
-        "number": 177,
+        "number": 207,
         "content": [
           {
             "text": "    ",
@@ -6839,7 +7981,7 @@
         ]
       },
       {
-        "number": 178,
+        "number": 208,
         "content": [
           {
             "text": "  ",
@@ -6920,7 +8062,7 @@
         ]
       },
       {
-        "number": 179,
+        "number": 209,
         "content": [
           {
             "text": "}",
@@ -6929,7 +8071,7 @@
         ]
       },
       {
-        "number": 180,
+        "number": 210,
         "content": []
       }
     ]

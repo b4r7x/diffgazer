@@ -18,10 +18,35 @@
   "props": {},
   "source": {
     "registry/ui/stepper/index.ts": {
-      "raw": "import { Stepper as StepperRoot, type StepperProps } from \"./stepper\";\nimport { StepperStep, type StepperStepProps } from \"./stepper-step\";\nimport type { StepStatus, SubstepStatus } from \"./stepper-context\";\nimport { StepperTrigger, type StepperTriggerProps } from \"./stepper-trigger\";\nimport { StepperContent, type StepperContentProps } from \"./stepper-content\";\nimport { StepperSubstep, type StepperSubstepProps, type SubstepData } from \"./stepper-substep\";\n\nconst Stepper = Object.assign(StepperRoot, {\n  Step: StepperStep,\n  Trigger: StepperTrigger,\n  Content: StepperContent,\n  Substep: StepperSubstep,\n});\n\nexport { Stepper, type StepperProps };\nexport { StepperStep, type StepperStepProps, type StepStatus };\nexport { StepperTrigger, type StepperTriggerProps };\nexport { StepperContent, type StepperContentProps };\nexport { StepperSubstep, type StepperSubstepProps, type SubstepData, type SubstepStatus };\n",
+      "raw": "\"use client\";\n\nimport { Stepper as StepperRoot, type StepperProps } from \"./stepper\";\nimport { StepperStep, type StepperStepProps } from \"./stepper-step\";\nimport type { StepStatus, SubstepStatus } from \"./stepper-context\";\nimport { StepperTrigger, type StepperTriggerProps } from \"./stepper-trigger\";\nimport { StepperContent, type StepperContentProps } from \"./stepper-content\";\nimport { StepperSubstep, type StepperSubstepProps, type SubstepData } from \"./stepper-substep\";\n\nconst Stepper = Object.assign(StepperRoot, {\n  Step: StepperStep,\n  Trigger: StepperTrigger,\n  Content: StepperContent,\n  Substep: StepperSubstep,\n});\n\nexport { Stepper, type StepperProps };\nexport { StepperStep, type StepperStepProps, type StepStatus };\nexport { StepperTrigger, type StepperTriggerProps };\nexport { StepperContent, type StepperContentProps };\nexport { StepperSubstep, type StepperSubstepProps, type SubstepData, type SubstepStatus };\n",
       "highlighted": [
         {
           "number": 1,
+          "content": [
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "use client",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
           "content": [
             {
               "text": "import",
@@ -98,7 +123,7 @@
           ]
         },
         {
-          "number": 2,
+          "number": 4,
           "content": [
             {
               "text": "import",
@@ -167,7 +192,7 @@
           ]
         },
         {
-          "number": 3,
+          "number": 5,
           "content": [
             {
               "text": "import",
@@ -236,7 +261,7 @@
           ]
         },
         {
-          "number": 4,
+          "number": 6,
           "content": [
             {
               "text": "import",
@@ -305,7 +330,7 @@
           ]
         },
         {
-          "number": 5,
+          "number": 7,
           "content": [
             {
               "text": "import",
@@ -374,7 +399,7 @@
           ]
         },
         {
-          "number": 6,
+          "number": 8,
           "content": [
             {
               "text": "import",
@@ -459,11 +484,11 @@
           ]
         },
         {
-          "number": 7,
+          "number": 9,
           "content": []
         },
         {
-          "number": 8,
+          "number": 10,
           "content": [
             {
               "text": "const",
@@ -520,7 +545,7 @@
           ]
         },
         {
-          "number": 9,
+          "number": 11,
           "content": [
             {
               "text": "  Step",
@@ -541,7 +566,7 @@
           ]
         },
         {
-          "number": 10,
+          "number": 12,
           "content": [
             {
               "text": "  Trigger",
@@ -562,7 +587,7 @@
           ]
         },
         {
-          "number": 11,
+          "number": 13,
           "content": [
             {
               "text": "  Content",
@@ -583,7 +608,7 @@
           ]
         },
         {
-          "number": 12,
+          "number": 14,
           "content": [
             {
               "text": "  Substep",
@@ -604,7 +629,7 @@
           ]
         },
         {
-          "number": 13,
+          "number": 15,
           "content": [
             {
               "text": "}",
@@ -621,11 +646,11 @@
           ]
         },
         {
-          "number": 14,
+          "number": 16,
           "content": []
         },
         {
-          "number": 15,
+          "number": 17,
           "content": [
             {
               "text": "export",
@@ -666,7 +691,7 @@
           ]
         },
         {
-          "number": 16,
+          "number": 18,
           "content": [
             {
               "text": "export",
@@ -723,7 +748,7 @@
           ]
         },
         {
-          "number": 17,
+          "number": 19,
           "content": [
             {
               "text": "export",
@@ -764,7 +789,7 @@
           ]
         },
         {
-          "number": 18,
+          "number": 20,
           "content": [
             {
               "text": "export",
@@ -805,7 +830,7 @@
           ]
         },
         {
-          "number": 19,
+          "number": 21,
           "content": [
             {
               "text": "export",
@@ -878,7 +903,7 @@
           ]
         },
         {
-          "number": 20,
+          "number": 22,
           "content": []
         }
       ]
@@ -2103,7 +2128,7 @@
       ]
     },
     "registry/ui/stepper/stepper-context.tsx": {
-      "raw": "\"use client\";\n\nimport { createContext, useContext } from \"react\";\nimport type { StepStatus } from \"@/lib/step-status\";\n\nexport type { StepStatus };\nexport type SubstepStatus = \"pending\" | \"active\" | \"completed\" | \"error\";\n\nexport interface StepperContextValue {\n  expandedIds: string[];\n  onToggle: (id: string) => void;\n}\n\nexport const StepperContext = createContext<StepperContextValue | undefined>(undefined);\n\nexport function useStepperContext() {\n  const context = useContext(StepperContext);\n  if (!context) {\n    throw new Error(\"Stepper parts must be used within a Stepper\");\n  }\n  return context;\n}\n\nexport interface StepperStepContextValue {\n  stepId: string;\n  isExpanded: boolean;\n  status: StepStatus;\n  triggerId: string;\n  contentId: string;\n}\n\nexport const StepperStepContext = createContext<StepperStepContextValue | undefined>(undefined);\n\nexport function useStepperStepContext() {\n  const context = useContext(StepperStepContext);\n  if (!context) {\n    throw new Error(\"StepperTrigger/StepperContent must be used within StepperStep\");\n  }\n  return context;\n}\n",
+      "raw": "\"use client\";\n\nimport { createContext, useContext } from \"react\";\nimport type { StepStatus } from \"@/lib/step-status\";\n\nexport type { StepStatus };\nexport type SubstepStatus = \"pending\" | \"active\" | \"completed\" | \"error\";\n\nexport interface StepperContextValue {\n  expandedIds: string[];\n  onToggle: (id: string) => void;\n}\n\nexport const StepperContext = createContext<StepperContextValue | undefined>(undefined);\n\nexport function useStepperContext() {\n  const context = useContext(StepperContext);\n  if (!context) {\n    throw new Error(\"Stepper parts must be used within a Stepper\");\n  }\n  return context;\n}\n\nexport interface StepperStepContextValue {\n  stepId: string;\n  isExpanded: boolean;\n  status: StepStatus;\n  triggerId: string;\n  contentId: string;\n  hasContent: boolean;\n}\n\nexport const StepperStepContext = createContext<StepperStepContextValue | undefined>(undefined);\n\nexport function useStepperStepContext() {\n  const context = useContext(StepperStepContext);\n  if (!context) {\n    throw new Error(\"StepperTrigger/StepperContent must be used within StepperStep\");\n  }\n  return context;\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -3020,17 +3045,42 @@
           "number": 30,
           "content": [
             {
-              "text": "}",
+              "text": "  hasContent",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "boolean",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ";",
               "color": "var(--code-operator)"
             }
           ]
         },
         {
           "number": 31,
-          "content": []
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
         },
         {
           "number": 32,
+          "content": []
+        },
+        {
+          "number": 33,
           "content": [
             {
               "text": "export",
@@ -3115,11 +3165,11 @@
           ]
         },
         {
-          "number": 33,
+          "number": 34,
           "content": []
         },
         {
-          "number": 34,
+          "number": 35,
           "content": [
             {
               "text": "export",
@@ -3156,7 +3206,7 @@
           ]
         },
         {
-          "number": 35,
+          "number": 36,
           "content": [
             {
               "text": "  ",
@@ -3201,7 +3251,7 @@
           ]
         },
         {
-          "number": 36,
+          "number": 37,
           "content": [
             {
               "text": "  ",
@@ -3230,7 +3280,7 @@
           ]
         },
         {
-          "number": 37,
+          "number": 38,
           "content": [
             {
               "text": "    ",
@@ -3283,7 +3333,7 @@
           ]
         },
         {
-          "number": 38,
+          "number": 39,
           "content": [
             {
               "text": "  ",
@@ -3296,7 +3346,7 @@
           ]
         },
         {
-          "number": 39,
+          "number": 40,
           "content": [
             {
               "text": "  ",
@@ -3317,7 +3367,7 @@
           ]
         },
         {
-          "number": 40,
+          "number": 41,
           "content": [
             {
               "text": "}",
@@ -3326,7 +3376,7 @@
           ]
         },
         {
-          "number": 41,
+          "number": 42,
           "content": []
         }
       ]
@@ -4242,7 +4292,7 @@
       ]
     },
     "registry/ui/stepper/stepper-step.tsx": {
-      "raw": "\"use client\";\n\nimport { type ComponentProps, type ReactNode, useId, useMemo } from \"react\";\nimport { useStepperContext, StepperStepContext, type StepStatus } from \"./stepper-context\";\n\nexport interface StepperStepProps\n  extends Omit<ComponentProps<\"li\">, \"children\"> {\n  stepId: string;\n  status: StepStatus;\n  children: ReactNode;\n}\n\nexport function StepperStep({\n  stepId,\n  status,\n  children,\n  className,\n  ...props\n}: StepperStepProps) {\n  const { expandedIds } = useStepperContext();\n  const isExpanded = expandedIds.includes(stepId);\n\n  const base = useId();\n  const triggerId = `${base}-trigger`;\n  const contentId = `${base}-content`;\n\n  const ctx = useMemo(() => ({ stepId, isExpanded, status, triggerId, contentId }), [stepId, isExpanded, status, triggerId, contentId]);\n\n  return (\n    <StepperStepContext value={ctx}>\n      <li {...props} className={className} data-state={isExpanded ? \"open\" : \"closed\"}>{children}</li>\n    </StepperStepContext>\n  );\n}\n",
+      "raw": "\"use client\";\n\nimport { Children, isValidElement, type ComponentProps, type ReactNode, useId, useMemo } from \"react\";\nimport { useStepperContext, StepperStepContext, type StepStatus } from \"./stepper-context\";\nimport { StepperContent } from \"./stepper-content\";\n\nexport interface StepperStepProps\n  extends Omit<ComponentProps<\"li\">, \"children\"> {\n  stepId: string;\n  status: StepStatus;\n  children: ReactNode;\n}\n\nfunction hasStepperContent(children: ReactNode): boolean {\n  return Children.toArray(children).some((child) => (\n    isValidElement(child) && child.type === StepperContent\n  ));\n}\n\nexport function StepperStep({\n  stepId,\n  status,\n  children,\n  className,\n  ...props\n}: StepperStepProps) {\n  const { expandedIds } = useStepperContext();\n  const isExpanded = expandedIds.includes(stepId);\n\n  const base = useId();\n  const triggerId = `${base}-trigger`;\n  const contentId = `${base}-content`;\n  const hasContent = hasStepperContent(children);\n\n  const ctx = useMemo(\n    () => ({ stepId, isExpanded, status, triggerId, contentId, hasContent }),\n    [stepId, isExpanded, status, triggerId, contentId, hasContent],\n  );\n\n  return (\n    <StepperStepContext value={ctx}>\n      <li {...props} className={className} data-state={isExpanded ? \"open\" : \"closed\"}>{children}</li>\n    </StepperStepContext>\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -4282,6 +4332,22 @@
             },
             {
               "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " Children",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " isValidElement",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
               "color": "var(--code-operator)"
             },
             {
@@ -4441,10 +4507,63 @@
         },
         {
           "number": 5,
-          "content": []
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " StepperContent ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "./stepper-content",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
         },
         {
           "number": 6,
+          "content": []
+        },
+        {
+          "number": 7,
           "content": [
             {
               "text": "export",
@@ -4469,7 +4588,7 @@
           ]
         },
         {
-          "number": 7,
+          "number": 8,
           "content": [
             {
               "text": "  ",
@@ -4546,7 +4665,7 @@
           ]
         },
         {
-          "number": 8,
+          "number": 9,
           "content": [
             {
               "text": "  stepId",
@@ -4571,7 +4690,7 @@
           ]
         },
         {
-          "number": 9,
+          "number": 10,
           "content": [
             {
               "text": "  status",
@@ -4596,7 +4715,7 @@
           ]
         },
         {
-          "number": 10,
+          "number": 11,
           "content": [
             {
               "text": "  children",
@@ -4621,7 +4740,7 @@
           ]
         },
         {
-          "number": 11,
+          "number": 12,
           "content": [
             {
               "text": "}",
@@ -4630,11 +4749,208 @@
           ]
         },
         {
-          "number": 12,
+          "number": 13,
           "content": []
         },
         {
-          "number": 13,
+          "number": 14,
+          "content": [
+            {
+              "text": "function",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "hasStepperContent",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "children",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ReactNode",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "):",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "boolean",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 15,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Children",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "toArray",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(children)",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "some",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "child",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 16,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "isValidElement",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(child) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "child",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "type ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " StepperContent",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 17,
+          "content": [
+            {
+              "text": "  ))",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 18,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 19,
+          "content": []
+        },
+        {
+          "number": 20,
           "content": [
             {
               "text": "export",
@@ -4663,7 +4979,7 @@
           ]
         },
         {
-          "number": 14,
+          "number": 21,
           "content": [
             {
               "text": "  stepId",
@@ -4676,7 +4992,7 @@
           ]
         },
         {
-          "number": 15,
+          "number": 22,
           "content": [
             {
               "text": "  status",
@@ -4689,7 +5005,7 @@
           ]
         },
         {
-          "number": 16,
+          "number": 23,
           "content": [
             {
               "text": "  children",
@@ -4702,7 +5018,7 @@
           ]
         },
         {
-          "number": 17,
+          "number": 24,
           "content": [
             {
               "text": "  className",
@@ -4715,7 +5031,7 @@
           ]
         },
         {
-          "number": 18,
+          "number": 25,
           "content": [
             {
               "text": "  ",
@@ -4732,7 +5048,7 @@
           ]
         },
         {
-          "number": 19,
+          "number": 26,
           "content": [
             {
               "text": "}:",
@@ -4761,7 +5077,7 @@
           ]
         },
         {
-          "number": 20,
+          "number": 27,
           "content": [
             {
               "text": "  ",
@@ -4822,7 +5138,7 @@
           ]
         },
         {
-          "number": 21,
+          "number": 28,
           "content": [
             {
               "text": "  ",
@@ -4875,11 +5191,11 @@
           ]
         },
         {
-          "number": 22,
+          "number": 29,
           "content": []
         },
         {
-          "number": 23,
+          "number": 30,
           "content": [
             {
               "text": "  ",
@@ -4924,7 +5240,7 @@
           ]
         },
         {
-          "number": 24,
+          "number": 31,
           "content": [
             {
               "text": "  ",
@@ -4985,7 +5301,7 @@
           ]
         },
         {
-          "number": 25,
+          "number": 32,
           "content": [
             {
               "text": "  ",
@@ -5046,11 +5362,56 @@
           ]
         },
         {
-          "number": 26,
+          "number": 33,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "hasContent",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "hasStepperContent",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(children)",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 34,
           "content": []
         },
         {
-          "number": 27,
+          "number": 35,
           "content": [
             {
               "text": "  ",
@@ -5086,6 +5447,15 @@
             },
             {
               "text": "(",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 36,
+          "content": [
+            {
+              "text": "    ",
               "color": "var(--code-variable)"
             },
             {
@@ -5141,7 +5511,15 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": " contentId ",
+              "text": " contentId",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " hasContent ",
               "color": "var(--code-variable)"
             },
             {
@@ -5155,9 +5533,14 @@
             {
               "text": ",",
               "color": "var(--code-operator)"
-            },
+            }
+          ]
+        },
+        {
+          "number": 37,
+          "content": [
             {
-              "text": " [stepId",
+              "text": "    [stepId",
               "color": "var(--code-variable)"
             },
             {
@@ -5189,7 +5572,28 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": " contentId])",
+              "text": " contentId",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " hasContent]",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 38,
+          "content": [
+            {
+              "text": "  )",
               "color": "var(--code-variable)"
             },
             {
@@ -5199,11 +5603,11 @@
           ]
         },
         {
-          "number": 28,
+          "number": 39,
           "content": []
         },
         {
-          "number": 29,
+          "number": 40,
           "content": [
             {
               "text": "  ",
@@ -5220,7 +5624,7 @@
           ]
         },
         {
-          "number": 30,
+          "number": 41,
           "content": [
             {
               "text": "    ",
@@ -5257,7 +5661,7 @@
           ]
         },
         {
-          "number": 31,
+          "number": 42,
           "content": [
             {
               "text": "      ",
@@ -5390,7 +5794,7 @@
           ]
         },
         {
-          "number": 32,
+          "number": 43,
           "content": [
             {
               "text": "    ",
@@ -5411,7 +5815,7 @@
           ]
         },
         {
-          "number": 33,
+          "number": 44,
           "content": [
             {
               "text": "  )",
@@ -5424,7 +5828,7 @@
           ]
         },
         {
-          "number": 34,
+          "number": 45,
           "content": [
             {
               "text": "}",
@@ -5433,13 +5837,13 @@
           ]
         },
         {
-          "number": 35,
+          "number": 46,
           "content": []
         }
       ]
     },
     "registry/ui/stepper/stepper-trigger.tsx": {
-      "raw": "\"use client\";\n\nimport type { ComponentProps, ReactNode } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { Badge } from \"../badge/badge\";\nimport { useStepperContext, useStepperStepContext, type StepStatus } from \"./stepper-context\";\n\nconst stepVariants = cva(\n  \"flex items-start gap-3 appearance-none bg-transparent border-0 p-0 text-left w-full font-[inherit] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50\",\n  {\n  variants: {\n    status: {\n      completed: \"\",\n      active: \"bg-secondary py-2 -mx-3 px-3 rounded border-l-2 border-foreground\",\n      pending: \"\",\n      error: \"bg-destructive/10 py-2 -mx-3 px-3 rounded border-l-2 border-destructive\",\n    },\n  },\n  defaultVariants: {\n    status: \"pending\",\n  },\n});\n\nconst labelVariants = cva(\"text-sm\", {\n  variants: {\n    status: {\n      completed: \"text-foreground\",\n      active: \"font-bold text-foreground\",\n      pending: \"text-muted-foreground\",\n      error: \"font-medium text-destructive\",\n    },\n  },\n  defaultVariants: {\n    status: \"pending\",\n  },\n});\n\nconst STEP_STATUS_CONFIG: Record<StepStatus, {\n  badgeLabel: string;\n  badgeVariant: \"success\" | \"info\" | \"neutral\" | \"error\";\n}> = {\n  completed: { badgeLabel: \"DONE\", badgeVariant: \"success\" },\n  active:    { badgeLabel: \"RUN\",  badgeVariant: \"info\" },\n  pending:   { badgeLabel: \"WAIT\", badgeVariant: \"neutral\" },\n  error:     { badgeLabel: \"FAIL\", badgeVariant: \"error\" },\n};\n\nexport interface StepperTriggerProps\n  extends Omit<ComponentProps<\"button\">, \"children\" | \"type\"> {\n  children: ReactNode;\n}\n\nexport function StepperTrigger({ children, className, ...props }: StepperTriggerProps) {\n  const { onToggle } = useStepperContext();\n  const { stepId, isExpanded, status, triggerId, contentId } = useStepperStepContext();\n\n  return (\n    <button\n      type=\"button\"\n      {...props}\n      className={cn(stepVariants({ status }), className)}\n      onClick={() => onToggle(stepId)}\n      aria-expanded={isExpanded}\n      aria-controls={contentId}\n      id={triggerId}\n      aria-current={status === \"active\" ? \"step\" : undefined}\n    >\n      <span className=\"shrink-0\">\n        <Badge variant={STEP_STATUS_CONFIG[status].badgeVariant} size=\"sm\" className=\"min-w-[48px] justify-center\">\n          {STEP_STATUS_CONFIG[status].badgeLabel}\n        </Badge>\n      </span>\n      <span className={labelVariants({ status })}>{children}</span>\n    </button>\n  );\n}\n",
+      "raw": "\"use client\";\n\nimport type { ComponentProps, ReactNode } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { Badge } from \"../badge/badge\";\nimport { useStepperContext, useStepperStepContext, type StepStatus } from \"./stepper-context\";\n\nconst stepVariants = cva(\n  \"flex items-start gap-3 appearance-none bg-transparent border-0 p-0 text-left w-full font-[inherit] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50\",\n  {\n  variants: {\n    status: {\n      completed: \"\",\n      active: \"bg-secondary py-2 -mx-3 px-3 rounded border-l-2 border-foreground\",\n      pending: \"\",\n      error: \"bg-destructive/10 py-2 -mx-3 px-3 rounded border-l-2 border-destructive\",\n    },\n  },\n  defaultVariants: {\n    status: \"pending\",\n  },\n});\n\nconst labelVariants = cva(\"text-sm\", {\n  variants: {\n    status: {\n      completed: \"text-foreground\",\n      active: \"font-bold text-foreground\",\n      pending: \"text-muted-foreground\",\n      error: \"font-medium text-destructive\",\n    },\n  },\n  defaultVariants: {\n    status: \"pending\",\n  },\n});\n\nconst STEP_STATUS_CONFIG: Record<StepStatus, {\n  badgeLabel: string;\n  badgeVariant: \"success\" | \"info\" | \"neutral\" | \"error\";\n}> = {\n  completed: { badgeLabel: \"DONE\", badgeVariant: \"success\" },\n  active:    { badgeLabel: \"RUN\",  badgeVariant: \"info\" },\n  pending:   { badgeLabel: \"WAIT\", badgeVariant: \"neutral\" },\n  error:     { badgeLabel: \"FAIL\", badgeVariant: \"error\" },\n};\n\nexport interface StepperTriggerProps\n  extends Omit<ComponentProps<\"button\">, \"children\" | \"type\"> {\n  children: ReactNode;\n}\n\nexport function StepperTrigger({ children, className, onClick, ...props }: StepperTriggerProps) {\n  const { onToggle } = useStepperContext();\n  const { stepId, isExpanded, status, triggerId, contentId, hasContent } = useStepperStepContext();\n\n  return (\n    <button\n      type=\"button\"\n      {...props}\n      className={cn(stepVariants({ status }), className)}\n      onClick={(event) => {\n        onClick?.(event);\n        if (!event.defaultPrevented && hasContent) onToggle(stepId);\n      }}\n      aria-expanded={hasContent ? isExpanded : undefined}\n      aria-controls={hasContent ? contentId : undefined}\n      id={triggerId}\n      aria-current={status === \"active\" ? \"step\" : undefined}\n    >\n      <span className=\"shrink-0\">\n        <Badge variant={STEP_STATUS_CONFIG[status].badgeVariant} size=\"sm\" className=\"min-w-[48px] justify-center\">\n          {STEP_STATUS_CONFIG[status].badgeLabel}\n        </Badge>\n      </span>\n      <span className={labelVariants({ status })}>{children}</span>\n    </button>\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -7220,6 +7624,14 @@
               "color": "var(--code-operator)"
             },
             {
+              "text": " onClick",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
               "text": " ",
               "color": "var(--code-variable)"
             },
@@ -7391,6 +7803,18 @@
             },
             {
               "text": "contentId",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "hasContent",
               "color": "var(--code-number)"
             },
             {
@@ -7588,7 +8012,15 @@
               "color": "var(--code-function)"
             },
             {
-              "text": "={()",
+              "text": "={(",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "event",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ")",
               "color": "var(--code-operator)"
             },
             {
@@ -7604,6 +8036,76 @@
               "color": "var(--code-variable)"
             },
             {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 64,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onClick",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "?.",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "(event)",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 65,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "!",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "event",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "defaultPrevented ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " hasContent) ",
+              "color": "var(--code-variable)"
+            },
+            {
               "text": "onToggle",
               "color": "var(--code-function)"
             },
@@ -7612,13 +8114,26 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "}",
+              "text": ";",
               "color": "var(--code-operator)"
             }
           ]
         },
         {
-          "number": 64,
+          "number": 66,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 67,
           "content": [
             {
               "text": "      ",
@@ -7633,8 +8148,28 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "isExpanded",
+              "text": "hasContent ",
               "color": "var(--code-variable)"
+            },
+            {
+              "text": "?",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " isExpanded ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "undefined",
+              "color": "var(--code-number)"
             },
             {
               "text": "}",
@@ -7643,7 +8178,7 @@
           ]
         },
         {
-          "number": 65,
+          "number": 68,
           "content": [
             {
               "text": "      ",
@@ -7658,8 +8193,28 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "contentId",
+              "text": "hasContent ",
               "color": "var(--code-variable)"
+            },
+            {
+              "text": "?",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " contentId ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "undefined",
+              "color": "var(--code-number)"
             },
             {
               "text": "}",
@@ -7668,7 +8223,7 @@
           ]
         },
         {
-          "number": 66,
+          "number": 69,
           "content": [
             {
               "text": "      ",
@@ -7693,7 +8248,7 @@
           ]
         },
         {
-          "number": 67,
+          "number": 70,
           "content": [
             {
               "text": "      ",
@@ -7778,7 +8333,7 @@
           ]
         },
         {
-          "number": 68,
+          "number": 71,
           "content": [
             {
               "text": "    ",
@@ -7791,7 +8346,7 @@
           ]
         },
         {
-          "number": 69,
+          "number": 72,
           "content": [
             {
               "text": "      ",
@@ -7836,7 +8391,7 @@
           ]
         },
         {
-          "number": 70,
+          "number": 73,
           "content": [
             {
               "text": "        ",
@@ -7937,7 +8492,7 @@
           ]
         },
         {
-          "number": 71,
+          "number": 74,
           "content": [
             {
               "text": "          ",
@@ -7970,7 +8525,7 @@
           ]
         },
         {
-          "number": 72,
+          "number": 75,
           "content": [
             {
               "text": "        ",
@@ -7991,7 +8546,7 @@
           ]
         },
         {
-          "number": 73,
+          "number": 76,
           "content": [
             {
               "text": "      ",
@@ -8012,7 +8567,7 @@
           ]
         },
         {
-          "number": 74,
+          "number": 77,
           "content": [
             {
               "text": "      ",
@@ -8085,7 +8640,7 @@
           ]
         },
         {
-          "number": 75,
+          "number": 78,
           "content": [
             {
               "text": "    ",
@@ -8106,7 +8661,7 @@
           ]
         },
         {
-          "number": 76,
+          "number": 79,
           "content": [
             {
               "text": "  )",
@@ -8119,7 +8674,7 @@
           ]
         },
         {
-          "number": 77,
+          "number": 80,
           "content": [
             {
               "text": "}",
@@ -8128,7 +8683,7 @@
           ]
         },
         {
-          "number": 78,
+          "number": 81,
           "content": []
         }
       ]
@@ -11609,10 +12164,35 @@
       ]
     }
   },
-  "mergedSource": "import { Stepper as StepperRoot, type StepperProps } from \"./stepper\";\nimport { StepperStep, type StepperStepProps } from \"./stepper-step\";\nimport type { StepStatus, SubstepStatus } from \"./stepper-context\";\nimport { StepperTrigger, type StepperTriggerProps } from \"./stepper-trigger\";\nimport { StepperContent, type StepperContentProps } from \"./stepper-content\";\nimport { StepperSubstep, type StepperSubstepProps, type SubstepData } from \"./stepper-substep\";\n\nconst Stepper = Object.assign(StepperRoot, {\n  Step: StepperStep,\n  Trigger: StepperTrigger,\n  Content: StepperContent,\n  Substep: StepperSubstep,\n});\n\nexport { Stepper, type StepperProps };\nexport { StepperStep, type StepperStepProps, type StepStatus };\nexport { StepperTrigger, type StepperTriggerProps };\nexport { StepperContent, type StepperContentProps };\nexport { StepperSubstep, type StepperSubstepProps, type SubstepData, type SubstepStatus };\n\n\n\"use client\";\n\nimport { useMemo, type ComponentProps, type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { StepperContext } from \"./stepper-context\";\nimport { useStepperState } from \"./use-stepper-state\";\n\nexport interface StepperProps\n  extends Omit<ComponentProps<\"ol\">, \"children\"> {\n  expandedIds?: string[];\n  defaultExpandedIds?: string[];\n  onExpandedChange?: (ids: string[]) => void;\n  children: ReactNode;\n}\n\nexport function Stepper({\n  expandedIds,\n  defaultExpandedIds,\n  onExpandedChange,\n  className,\n  children,\n  ...props\n}: StepperProps) {\n  const { expandedIds: expanded, toggle } = useStepperState({\n    expandedIds,\n    defaultExpandedIds,\n    onExpandedChange,\n  });\n\n  const ctx = useMemo(() => ({ expandedIds: expanded, onToggle: toggle }), [expanded, toggle]);\n\n  return (\n    <StepperContext value={ctx}>\n      <ol role=\"list\" aria-label=\"Progress steps\" {...props} className={cn(\"space-y-4 list-none m-0 p-0\", className)}>\n        {children}\n      </ol>\n    </StepperContext>\n  );\n}\n\n\n\"use client\";\n\nimport { createContext, useContext } from \"react\";\nimport type { StepStatus } from \"@/lib/step-status\";\n\nexport type { StepStatus };\nexport type SubstepStatus = \"pending\" | \"active\" | \"completed\" | \"error\";\n\nexport interface StepperContextValue {\n  expandedIds: string[];\n  onToggle: (id: string) => void;\n}\n\nexport const StepperContext = createContext<StepperContextValue | undefined>(undefined);\n\nexport function useStepperContext() {\n  const context = useContext(StepperContext);\n  if (!context) {\n    throw new Error(\"Stepper parts must be used within a Stepper\");\n  }\n  return context;\n}\n\nexport interface StepperStepContextValue {\n  stepId: string;\n  isExpanded: boolean;\n  status: StepStatus;\n  triggerId: string;\n  contentId: string;\n}\n\nexport const StepperStepContext = createContext<StepperStepContextValue | undefined>(undefined);\n\nexport function useStepperStepContext() {\n  const context = useContext(StepperStepContext);\n  if (!context) {\n    throw new Error(\"StepperTrigger/StepperContent must be used within StepperStep\");\n  }\n  return context;\n}\n\n\n\"use client\";\n\nimport { useCallback } from \"react\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\n\nexport interface StepperStateProps {\n  expandedIds?: string[];\n  defaultExpandedIds?: string[];\n  onExpandedChange?: (ids: string[]) => void;\n}\n\nexport function useStepperState({\n  expandedIds,\n  defaultExpandedIds,\n  onExpandedChange,\n}: StepperStateProps) {\n  const [expanded, setExpanded] = useControllableState<string[]>({\n    value: expandedIds,\n    defaultValue: defaultExpandedIds ?? [],\n    onChange: onExpandedChange,\n  });\n\n  const toggle = useCallback((id: string) => {\n    setExpanded((prev) =>\n      prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id],\n    );\n  }, [setExpanded]);\n\n  return { expandedIds: expanded, toggle };\n}\n\n\n\"use client\";\n\nimport { type ComponentProps, type ReactNode, useId, useMemo } from \"react\";\nimport { useStepperContext, StepperStepContext, type StepStatus } from \"./stepper-context\";\n\nexport interface StepperStepProps\n  extends Omit<ComponentProps<\"li\">, \"children\"> {\n  stepId: string;\n  status: StepStatus;\n  children: ReactNode;\n}\n\nexport function StepperStep({\n  stepId,\n  status,\n  children,\n  className,\n  ...props\n}: StepperStepProps) {\n  const { expandedIds } = useStepperContext();\n  const isExpanded = expandedIds.includes(stepId);\n\n  const base = useId();\n  const triggerId = `${base}-trigger`;\n  const contentId = `${base}-content`;\n\n  const ctx = useMemo(() => ({ stepId, isExpanded, status, triggerId, contentId }), [stepId, isExpanded, status, triggerId, contentId]);\n\n  return (\n    <StepperStepContext value={ctx}>\n      <li {...props} className={className} data-state={isExpanded ? \"open\" : \"closed\"}>{children}</li>\n    </StepperStepContext>\n  );\n}\n\n\n\"use client\";\n\nimport type { ComponentProps, ReactNode } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { Badge } from \"../badge/badge\";\nimport { useStepperContext, useStepperStepContext, type StepStatus } from \"./stepper-context\";\n\nconst stepVariants = cva(\n  \"flex items-start gap-3 appearance-none bg-transparent border-0 p-0 text-left w-full font-[inherit] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50\",\n  {\n  variants: {\n    status: {\n      completed: \"\",\n      active: \"bg-secondary py-2 -mx-3 px-3 rounded border-l-2 border-foreground\",\n      pending: \"\",\n      error: \"bg-destructive/10 py-2 -mx-3 px-3 rounded border-l-2 border-destructive\",\n    },\n  },\n  defaultVariants: {\n    status: \"pending\",\n  },\n});\n\nconst labelVariants = cva(\"text-sm\", {\n  variants: {\n    status: {\n      completed: \"text-foreground\",\n      active: \"font-bold text-foreground\",\n      pending: \"text-muted-foreground\",\n      error: \"font-medium text-destructive\",\n    },\n  },\n  defaultVariants: {\n    status: \"pending\",\n  },\n});\n\nconst STEP_STATUS_CONFIG: Record<StepStatus, {\n  badgeLabel: string;\n  badgeVariant: \"success\" | \"info\" | \"neutral\" | \"error\";\n}> = {\n  completed: { badgeLabel: \"DONE\", badgeVariant: \"success\" },\n  active:    { badgeLabel: \"RUN\",  badgeVariant: \"info\" },\n  pending:   { badgeLabel: \"WAIT\", badgeVariant: \"neutral\" },\n  error:     { badgeLabel: \"FAIL\", badgeVariant: \"error\" },\n};\n\nexport interface StepperTriggerProps\n  extends Omit<ComponentProps<\"button\">, \"children\" | \"type\"> {\n  children: ReactNode;\n}\n\nexport function StepperTrigger({ children, className, ...props }: StepperTriggerProps) {\n  const { onToggle } = useStepperContext();\n  const { stepId, isExpanded, status, triggerId, contentId } = useStepperStepContext();\n\n  return (\n    <button\n      type=\"button\"\n      {...props}\n      className={cn(stepVariants({ status }), className)}\n      onClick={() => onToggle(stepId)}\n      aria-expanded={isExpanded}\n      aria-controls={contentId}\n      id={triggerId}\n      aria-current={status === \"active\" ? \"step\" : undefined}\n    >\n      <span className=\"shrink-0\">\n        <Badge variant={STEP_STATUS_CONFIG[status].badgeVariant} size=\"sm\" className=\"min-w-[48px] justify-center\">\n          {STEP_STATUS_CONFIG[status].badgeLabel}\n        </Badge>\n      </span>\n      <span className={labelVariants({ status })}>{children}</span>\n    </button>\n  );\n}\n\n\n\"use client\";\n\nimport type { ComponentProps, ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useStepperStepContext } from \"./stepper-context\";\n\nexport interface StepperContentProps\n  extends Omit<ComponentProps<\"div\">, \"children\"> {\n  children: ReactNode;\n}\n\nexport function StepperContent({ children, className, ...props }: StepperContentProps) {\n  const { isExpanded, triggerId, contentId } = useStepperStepContext();\n\n  return (\n    <div\n      {...props}\n      className={cn(\n        \"grid transition-[grid-template-rows] duration-200 ease-out\",\n        isExpanded ? \"grid-rows-[1fr]\" : \"grid-rows-[0fr]\",\n        className,\n      )}\n      role=\"region\"\n      id={contentId}\n      aria-labelledby={triggerId}\n      aria-hidden={isExpanded ? undefined : true}\n      inert={isExpanded ? undefined : true}\n    >\n      <div className=\"overflow-hidden min-h-0\">\n        <div className=\"pt-2 pl-7\" hidden={!isExpanded}>\n          {children}\n        </div>\n      </div>\n    </div>\n  );\n}\n\n\n\"use client\";\n\nimport type { ComponentProps } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { Badge } from \"../badge/badge\";\nimport type { SubstepStatus } from \"./stepper-context\";\n\nexport interface SubstepData {\n  id: string;\n  tag: string;\n  label: string;\n  status: SubstepStatus;\n  detail?: string;\n}\n\nconst substepVariants = cva(\"flex items-center gap-2 py-1 text-sm\", {\n  variants: {\n    status: {\n      pending: \"text-muted-foreground\",\n      active: \"text-foreground font-medium animate-pulse\",\n      completed: \"text-foreground\",\n      error: \"text-destructive font-medium\",\n    },\n  },\n  defaultVariants: { status: \"pending\" },\n});\n\nexport interface StepperSubstepProps\n  extends Omit<ComponentProps<\"div\">, \"children\">,\n    Omit<SubstepData, \"id\"> {}\n\nconst SUBSTEP_STATUS_CONFIG: Record<SubstepStatus, {\n  badgeVariant: \"success\" | \"info\" | \"error\" | \"neutral\";\n  defaultLabel?: string;\n  labelColor?: string;\n}> = {\n  pending:   { badgeVariant: \"neutral\" },\n  active:    { badgeVariant: \"info\",    defaultLabel: \"analyzing...\", labelColor: \"text-muted-foreground\" },\n  completed: { badgeVariant: \"success\", defaultLabel: \"done\",        labelColor: \"text-success\" },\n  error:     { badgeVariant: \"error\",   defaultLabel: \"failed\",      labelColor: \"text-destructive\" },\n};\n\nexport function StepperSubstep({\n  tag,\n  label,\n  status,\n  detail,\n  className,\n  ...props\n}: StepperSubstepProps) {\n  const config = SUBSTEP_STATUS_CONFIG[status];\n  const statusText = detail ?? config.defaultLabel;\n\n  return (\n    <div {...props} className={cn(substepVariants({ status }), className)}>\n      <Badge variant={config.badgeVariant} size=\"sm\" className=\"min-w-[40px] justify-center\">\n        {tag}\n      </Badge>\n      <span>{label}</span>\n      {statusText && (\n        <span className={cn(\"ml-auto text-xs\", detail ? \"text-muted-foreground\" : config.labelColor)}>\n          {statusText}\n        </span>\n      )}\n    </div>\n  );\n}\n",
+  "mergedSource": "\"use client\";\n\nimport { Stepper as StepperRoot, type StepperProps } from \"./stepper\";\nimport { StepperStep, type StepperStepProps } from \"./stepper-step\";\nimport type { StepStatus, SubstepStatus } from \"./stepper-context\";\nimport { StepperTrigger, type StepperTriggerProps } from \"./stepper-trigger\";\nimport { StepperContent, type StepperContentProps } from \"./stepper-content\";\nimport { StepperSubstep, type StepperSubstepProps, type SubstepData } from \"./stepper-substep\";\n\nconst Stepper = Object.assign(StepperRoot, {\n  Step: StepperStep,\n  Trigger: StepperTrigger,\n  Content: StepperContent,\n  Substep: StepperSubstep,\n});\n\nexport { Stepper, type StepperProps };\nexport { StepperStep, type StepperStepProps, type StepStatus };\nexport { StepperTrigger, type StepperTriggerProps };\nexport { StepperContent, type StepperContentProps };\nexport { StepperSubstep, type StepperSubstepProps, type SubstepData, type SubstepStatus };\n\n\n\"use client\";\n\nimport { useMemo, type ComponentProps, type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { StepperContext } from \"./stepper-context\";\nimport { useStepperState } from \"./use-stepper-state\";\n\nexport interface StepperProps\n  extends Omit<ComponentProps<\"ol\">, \"children\"> {\n  expandedIds?: string[];\n  defaultExpandedIds?: string[];\n  onExpandedChange?: (ids: string[]) => void;\n  children: ReactNode;\n}\n\nexport function Stepper({\n  expandedIds,\n  defaultExpandedIds,\n  onExpandedChange,\n  className,\n  children,\n  ...props\n}: StepperProps) {\n  const { expandedIds: expanded, toggle } = useStepperState({\n    expandedIds,\n    defaultExpandedIds,\n    onExpandedChange,\n  });\n\n  const ctx = useMemo(() => ({ expandedIds: expanded, onToggle: toggle }), [expanded, toggle]);\n\n  return (\n    <StepperContext value={ctx}>\n      <ol role=\"list\" aria-label=\"Progress steps\" {...props} className={cn(\"space-y-4 list-none m-0 p-0\", className)}>\n        {children}\n      </ol>\n    </StepperContext>\n  );\n}\n\n\n\"use client\";\n\nimport { createContext, useContext } from \"react\";\nimport type { StepStatus } from \"@/lib/step-status\";\n\nexport type { StepStatus };\nexport type SubstepStatus = \"pending\" | \"active\" | \"completed\" | \"error\";\n\nexport interface StepperContextValue {\n  expandedIds: string[];\n  onToggle: (id: string) => void;\n}\n\nexport const StepperContext = createContext<StepperContextValue | undefined>(undefined);\n\nexport function useStepperContext() {\n  const context = useContext(StepperContext);\n  if (!context) {\n    throw new Error(\"Stepper parts must be used within a Stepper\");\n  }\n  return context;\n}\n\nexport interface StepperStepContextValue {\n  stepId: string;\n  isExpanded: boolean;\n  status: StepStatus;\n  triggerId: string;\n  contentId: string;\n  hasContent: boolean;\n}\n\nexport const StepperStepContext = createContext<StepperStepContextValue | undefined>(undefined);\n\nexport function useStepperStepContext() {\n  const context = useContext(StepperStepContext);\n  if (!context) {\n    throw new Error(\"StepperTrigger/StepperContent must be used within StepperStep\");\n  }\n  return context;\n}\n\n\n\"use client\";\n\nimport { useCallback } from \"react\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\n\nexport interface StepperStateProps {\n  expandedIds?: string[];\n  defaultExpandedIds?: string[];\n  onExpandedChange?: (ids: string[]) => void;\n}\n\nexport function useStepperState({\n  expandedIds,\n  defaultExpandedIds,\n  onExpandedChange,\n}: StepperStateProps) {\n  const [expanded, setExpanded] = useControllableState<string[]>({\n    value: expandedIds,\n    defaultValue: defaultExpandedIds ?? [],\n    onChange: onExpandedChange,\n  });\n\n  const toggle = useCallback((id: string) => {\n    setExpanded((prev) =>\n      prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id],\n    );\n  }, [setExpanded]);\n\n  return { expandedIds: expanded, toggle };\n}\n\n\n\"use client\";\n\nimport { Children, isValidElement, type ComponentProps, type ReactNode, useId, useMemo } from \"react\";\nimport { useStepperContext, StepperStepContext, type StepStatus } from \"./stepper-context\";\nimport { StepperContent } from \"./stepper-content\";\n\nexport interface StepperStepProps\n  extends Omit<ComponentProps<\"li\">, \"children\"> {\n  stepId: string;\n  status: StepStatus;\n  children: ReactNode;\n}\n\nfunction hasStepperContent(children: ReactNode): boolean {\n  return Children.toArray(children).some((child) => (\n    isValidElement(child) && child.type === StepperContent\n  ));\n}\n\nexport function StepperStep({\n  stepId,\n  status,\n  children,\n  className,\n  ...props\n}: StepperStepProps) {\n  const { expandedIds } = useStepperContext();\n  const isExpanded = expandedIds.includes(stepId);\n\n  const base = useId();\n  const triggerId = `${base}-trigger`;\n  const contentId = `${base}-content`;\n  const hasContent = hasStepperContent(children);\n\n  const ctx = useMemo(\n    () => ({ stepId, isExpanded, status, triggerId, contentId, hasContent }),\n    [stepId, isExpanded, status, triggerId, contentId, hasContent],\n  );\n\n  return (\n    <StepperStepContext value={ctx}>\n      <li {...props} className={className} data-state={isExpanded ? \"open\" : \"closed\"}>{children}</li>\n    </StepperStepContext>\n  );\n}\n\n\n\"use client\";\n\nimport type { ComponentProps, ReactNode } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { Badge } from \"../badge/badge\";\nimport { useStepperContext, useStepperStepContext, type StepStatus } from \"./stepper-context\";\n\nconst stepVariants = cva(\n  \"flex items-start gap-3 appearance-none bg-transparent border-0 p-0 text-left w-full font-[inherit] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50\",\n  {\n  variants: {\n    status: {\n      completed: \"\",\n      active: \"bg-secondary py-2 -mx-3 px-3 rounded border-l-2 border-foreground\",\n      pending: \"\",\n      error: \"bg-destructive/10 py-2 -mx-3 px-3 rounded border-l-2 border-destructive\",\n    },\n  },\n  defaultVariants: {\n    status: \"pending\",\n  },\n});\n\nconst labelVariants = cva(\"text-sm\", {\n  variants: {\n    status: {\n      completed: \"text-foreground\",\n      active: \"font-bold text-foreground\",\n      pending: \"text-muted-foreground\",\n      error: \"font-medium text-destructive\",\n    },\n  },\n  defaultVariants: {\n    status: \"pending\",\n  },\n});\n\nconst STEP_STATUS_CONFIG: Record<StepStatus, {\n  badgeLabel: string;\n  badgeVariant: \"success\" | \"info\" | \"neutral\" | \"error\";\n}> = {\n  completed: { badgeLabel: \"DONE\", badgeVariant: \"success\" },\n  active:    { badgeLabel: \"RUN\",  badgeVariant: \"info\" },\n  pending:   { badgeLabel: \"WAIT\", badgeVariant: \"neutral\" },\n  error:     { badgeLabel: \"FAIL\", badgeVariant: \"error\" },\n};\n\nexport interface StepperTriggerProps\n  extends Omit<ComponentProps<\"button\">, \"children\" | \"type\"> {\n  children: ReactNode;\n}\n\nexport function StepperTrigger({ children, className, onClick, ...props }: StepperTriggerProps) {\n  const { onToggle } = useStepperContext();\n  const { stepId, isExpanded, status, triggerId, contentId, hasContent } = useStepperStepContext();\n\n  return (\n    <button\n      type=\"button\"\n      {...props}\n      className={cn(stepVariants({ status }), className)}\n      onClick={(event) => {\n        onClick?.(event);\n        if (!event.defaultPrevented && hasContent) onToggle(stepId);\n      }}\n      aria-expanded={hasContent ? isExpanded : undefined}\n      aria-controls={hasContent ? contentId : undefined}\n      id={triggerId}\n      aria-current={status === \"active\" ? \"step\" : undefined}\n    >\n      <span className=\"shrink-0\">\n        <Badge variant={STEP_STATUS_CONFIG[status].badgeVariant} size=\"sm\" className=\"min-w-[48px] justify-center\">\n          {STEP_STATUS_CONFIG[status].badgeLabel}\n        </Badge>\n      </span>\n      <span className={labelVariants({ status })}>{children}</span>\n    </button>\n  );\n}\n\n\n\"use client\";\n\nimport type { ComponentProps, ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useStepperStepContext } from \"./stepper-context\";\n\nexport interface StepperContentProps\n  extends Omit<ComponentProps<\"div\">, \"children\"> {\n  children: ReactNode;\n}\n\nexport function StepperContent({ children, className, ...props }: StepperContentProps) {\n  const { isExpanded, triggerId, contentId } = useStepperStepContext();\n\n  return (\n    <div\n      {...props}\n      className={cn(\n        \"grid transition-[grid-template-rows] duration-200 ease-out\",\n        isExpanded ? \"grid-rows-[1fr]\" : \"grid-rows-[0fr]\",\n        className,\n      )}\n      role=\"region\"\n      id={contentId}\n      aria-labelledby={triggerId}\n      aria-hidden={isExpanded ? undefined : true}\n      inert={isExpanded ? undefined : true}\n    >\n      <div className=\"overflow-hidden min-h-0\">\n        <div className=\"pt-2 pl-7\" hidden={!isExpanded}>\n          {children}\n        </div>\n      </div>\n    </div>\n  );\n}\n\n\n\"use client\";\n\nimport type { ComponentProps } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { Badge } from \"../badge/badge\";\nimport type { SubstepStatus } from \"./stepper-context\";\n\nexport interface SubstepData {\n  id: string;\n  tag: string;\n  label: string;\n  status: SubstepStatus;\n  detail?: string;\n}\n\nconst substepVariants = cva(\"flex items-center gap-2 py-1 text-sm\", {\n  variants: {\n    status: {\n      pending: \"text-muted-foreground\",\n      active: \"text-foreground font-medium animate-pulse\",\n      completed: \"text-foreground\",\n      error: \"text-destructive font-medium\",\n    },\n  },\n  defaultVariants: { status: \"pending\" },\n});\n\nexport interface StepperSubstepProps\n  extends Omit<ComponentProps<\"div\">, \"children\">,\n    Omit<SubstepData, \"id\"> {}\n\nconst SUBSTEP_STATUS_CONFIG: Record<SubstepStatus, {\n  badgeVariant: \"success\" | \"info\" | \"error\" | \"neutral\";\n  defaultLabel?: string;\n  labelColor?: string;\n}> = {\n  pending:   { badgeVariant: \"neutral\" },\n  active:    { badgeVariant: \"info\",    defaultLabel: \"analyzing...\", labelColor: \"text-muted-foreground\" },\n  completed: { badgeVariant: \"success\", defaultLabel: \"done\",        labelColor: \"text-success\" },\n  error:     { badgeVariant: \"error\",   defaultLabel: \"failed\",      labelColor: \"text-destructive\" },\n};\n\nexport function StepperSubstep({\n  tag,\n  label,\n  status,\n  detail,\n  className,\n  ...props\n}: StepperSubstepProps) {\n  const config = SUBSTEP_STATUS_CONFIG[status];\n  const statusText = detail ?? config.defaultLabel;\n\n  return (\n    <div {...props} className={cn(substepVariants({ status }), className)}>\n      <Badge variant={config.badgeVariant} size=\"sm\" className=\"min-w-[40px] justify-center\">\n        {tag}\n      </Badge>\n      <span>{label}</span>\n      {statusText && (\n        <span className={cn(\"ml-auto text-xs\", detail ? \"text-muted-foreground\" : config.labelColor)}>\n          {statusText}\n        </span>\n      )}\n    </div>\n  );\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
+      "content": [
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "use client",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "content": []
+    },
+    {
+      "number": 3,
       "content": [
         {
           "text": "import",
@@ -11689,7 +12269,7 @@
       ]
     },
     {
-      "number": 2,
+      "number": 4,
       "content": [
         {
           "text": "import",
@@ -11758,7 +12338,7 @@
       ]
     },
     {
-      "number": 3,
+      "number": 5,
       "content": [
         {
           "text": "import",
@@ -11827,7 +12407,7 @@
       ]
     },
     {
-      "number": 4,
+      "number": 6,
       "content": [
         {
           "text": "import",
@@ -11896,7 +12476,7 @@
       ]
     },
     {
-      "number": 5,
+      "number": 7,
       "content": [
         {
           "text": "import",
@@ -11965,7 +12545,7 @@
       ]
     },
     {
-      "number": 6,
+      "number": 8,
       "content": [
         {
           "text": "import",
@@ -12050,11 +12630,11 @@
       ]
     },
     {
-      "number": 7,
+      "number": 9,
       "content": []
     },
     {
-      "number": 8,
+      "number": 10,
       "content": [
         {
           "text": "const",
@@ -12111,7 +12691,7 @@
       ]
     },
     {
-      "number": 9,
+      "number": 11,
       "content": [
         {
           "text": "  Step",
@@ -12132,7 +12712,7 @@
       ]
     },
     {
-      "number": 10,
+      "number": 12,
       "content": [
         {
           "text": "  Trigger",
@@ -12153,7 +12733,7 @@
       ]
     },
     {
-      "number": 11,
+      "number": 13,
       "content": [
         {
           "text": "  Content",
@@ -12174,7 +12754,7 @@
       ]
     },
     {
-      "number": 12,
+      "number": 14,
       "content": [
         {
           "text": "  Substep",
@@ -12195,7 +12775,7 @@
       ]
     },
     {
-      "number": 13,
+      "number": 15,
       "content": [
         {
           "text": "}",
@@ -12212,11 +12792,11 @@
       ]
     },
     {
-      "number": 14,
+      "number": 16,
       "content": []
     },
     {
-      "number": 15,
+      "number": 17,
       "content": [
         {
           "text": "export",
@@ -12257,7 +12837,7 @@
       ]
     },
     {
-      "number": 16,
+      "number": 18,
       "content": [
         {
           "text": "export",
@@ -12314,7 +12894,7 @@
       ]
     },
     {
-      "number": 17,
+      "number": 19,
       "content": [
         {
           "text": "export",
@@ -12355,7 +12935,7 @@
       ]
     },
     {
-      "number": 18,
+      "number": 20,
       "content": [
         {
           "text": "export",
@@ -12396,7 +12976,7 @@
       ]
     },
     {
-      "number": 19,
+      "number": 21,
       "content": [
         {
           "text": "export",
@@ -12469,15 +13049,15 @@
       ]
     },
     {
-      "number": 20,
-      "content": []
-    },
-    {
-      "number": 21,
-      "content": []
-    },
-    {
       "number": 22,
+      "content": []
+    },
+    {
+      "number": 23,
+      "content": []
+    },
+    {
+      "number": 24,
       "content": [
         {
           "text": "\"",
@@ -12498,11 +13078,11 @@
       ]
     },
     {
-      "number": 23,
+      "number": 25,
       "content": []
     },
     {
-      "number": 24,
+      "number": 26,
       "content": [
         {
           "text": "import",
@@ -12587,7 +13167,7 @@
       ]
     },
     {
-      "number": 25,
+      "number": 27,
       "content": [
         {
           "text": "import",
@@ -12640,7 +13220,7 @@
       ]
     },
     {
-      "number": 26,
+      "number": 28,
       "content": [
         {
           "text": "import",
@@ -12693,7 +13273,7 @@
       ]
     },
     {
-      "number": 27,
+      "number": 29,
       "content": [
         {
           "text": "import",
@@ -12746,11 +13326,11 @@
       ]
     },
     {
-      "number": 28,
+      "number": 30,
       "content": []
     },
     {
-      "number": 29,
+      "number": 31,
       "content": [
         {
           "text": "export",
@@ -12775,7 +13355,7 @@
       ]
     },
     {
-      "number": 30,
+      "number": 32,
       "content": [
         {
           "text": "  ",
@@ -12852,7 +13432,7 @@
       ]
     },
     {
-      "number": 31,
+      "number": 33,
       "content": [
         {
           "text": "  expandedIds",
@@ -12881,7 +13461,7 @@
       ]
     },
     {
-      "number": 32,
+      "number": 34,
       "content": [
         {
           "text": "  defaultExpandedIds",
@@ -12910,7 +13490,7 @@
       ]
     },
     {
-      "number": 33,
+      "number": 35,
       "content": [
         {
           "text": "  ",
@@ -12979,7 +13559,7 @@
       ]
     },
     {
-      "number": 34,
+      "number": 36,
       "content": [
         {
           "text": "  children",
@@ -13004,7 +13584,7 @@
       ]
     },
     {
-      "number": 35,
+      "number": 37,
       "content": [
         {
           "text": "}",
@@ -13013,11 +13593,11 @@
       ]
     },
     {
-      "number": 36,
+      "number": 38,
       "content": []
     },
     {
-      "number": 37,
+      "number": 39,
       "content": [
         {
           "text": "export",
@@ -13046,7 +13626,7 @@
       ]
     },
     {
-      "number": 38,
+      "number": 40,
       "content": [
         {
           "text": "  expandedIds",
@@ -13059,7 +13639,7 @@
       ]
     },
     {
-      "number": 39,
+      "number": 41,
       "content": [
         {
           "text": "  defaultExpandedIds",
@@ -13072,7 +13652,7 @@
       ]
     },
     {
-      "number": 40,
+      "number": 42,
       "content": [
         {
           "text": "  onExpandedChange",
@@ -13085,7 +13665,7 @@
       ]
     },
     {
-      "number": 41,
+      "number": 43,
       "content": [
         {
           "text": "  className",
@@ -13098,7 +13678,7 @@
       ]
     },
     {
-      "number": 42,
+      "number": 44,
       "content": [
         {
           "text": "  children",
@@ -13111,7 +13691,7 @@
       ]
     },
     {
-      "number": 43,
+      "number": 45,
       "content": [
         {
           "text": "  ",
@@ -13128,7 +13708,7 @@
       ]
     },
     {
-      "number": 44,
+      "number": 46,
       "content": [
         {
           "text": "}:",
@@ -13157,7 +13737,7 @@
       ]
     },
     {
-      "number": 45,
+      "number": 47,
       "content": [
         {
           "text": "  ",
@@ -13238,7 +13818,7 @@
       ]
     },
     {
-      "number": 46,
+      "number": 48,
       "content": [
         {
           "text": "    expandedIds",
@@ -13251,7 +13831,7 @@
       ]
     },
     {
-      "number": 47,
+      "number": 49,
       "content": [
         {
           "text": "    defaultExpandedIds",
@@ -13264,7 +13844,7 @@
       ]
     },
     {
-      "number": 48,
+      "number": 50,
       "content": [
         {
           "text": "    onExpandedChange",
@@ -13277,7 +13857,7 @@
       ]
     },
     {
-      "number": 49,
+      "number": 51,
       "content": [
         {
           "text": "  ",
@@ -13298,11 +13878,11 @@
       ]
     },
     {
-      "number": 50,
+      "number": 52,
       "content": []
     },
     {
-      "number": 51,
+      "number": 53,
       "content": [
         {
           "text": "  ",
@@ -13419,11 +13999,11 @@
       ]
     },
     {
-      "number": 52,
+      "number": 54,
       "content": []
     },
     {
-      "number": 53,
+      "number": 55,
       "content": [
         {
           "text": "  ",
@@ -13440,7 +14020,7 @@
       ]
     },
     {
-      "number": 54,
+      "number": 56,
       "content": [
         {
           "text": "    ",
@@ -13477,7 +14057,7 @@
       ]
     },
     {
-      "number": 55,
+      "number": 57,
       "content": [
         {
           "text": "      ",
@@ -13602,7 +14182,7 @@
       ]
     },
     {
-      "number": 56,
+      "number": 58,
       "content": [
         {
           "text": "        ",
@@ -13623,7 +14203,7 @@
       ]
     },
     {
-      "number": 57,
+      "number": 59,
       "content": [
         {
           "text": "      ",
@@ -13644,7 +14224,7 @@
       ]
     },
     {
-      "number": 58,
+      "number": 60,
       "content": [
         {
           "text": "    ",
@@ -13665,7 +14245,7 @@
       ]
     },
     {
-      "number": 59,
+      "number": 61,
       "content": [
         {
           "text": "  )",
@@ -13678,7 +14258,7 @@
       ]
     },
     {
-      "number": 60,
+      "number": 62,
       "content": [
         {
           "text": "}",
@@ -13687,15 +14267,15 @@
       ]
     },
     {
-      "number": 61,
-      "content": []
-    },
-    {
-      "number": 62,
-      "content": []
-    },
-    {
       "number": 63,
+      "content": []
+    },
+    {
+      "number": 64,
+      "content": []
+    },
+    {
+      "number": 65,
       "content": [
         {
           "text": "\"",
@@ -13716,11 +14296,11 @@
       ]
     },
     {
-      "number": 64,
+      "number": 66,
       "content": []
     },
     {
-      "number": 65,
+      "number": 67,
       "content": [
         {
           "text": "import",
@@ -13781,7 +14361,7 @@
       ]
     },
     {
-      "number": 66,
+      "number": 68,
       "content": [
         {
           "text": "import",
@@ -13842,11 +14422,11 @@
       ]
     },
     {
-      "number": 67,
+      "number": 69,
       "content": []
     },
     {
-      "number": 68,
+      "number": 70,
       "content": [
         {
           "text": "export",
@@ -13879,7 +14459,7 @@
       ]
     },
     {
-      "number": 69,
+      "number": 71,
       "content": [
         {
           "text": "export",
@@ -14004,11 +14584,11 @@
       ]
     },
     {
-      "number": 70,
+      "number": 72,
       "content": []
     },
     {
-      "number": 71,
+      "number": 73,
       "content": [
         {
           "text": "export",
@@ -14041,7 +14621,7 @@
       ]
     },
     {
-      "number": 72,
+      "number": 74,
       "content": [
         {
           "text": "  expandedIds",
@@ -14070,7 +14650,7 @@
       ]
     },
     {
-      "number": 73,
+      "number": 75,
       "content": [
         {
           "text": "  ",
@@ -14135,7 +14715,7 @@
       ]
     },
     {
-      "number": 74,
+      "number": 76,
       "content": [
         {
           "text": "}",
@@ -14144,11 +14724,11 @@
       ]
     },
     {
-      "number": 75,
+      "number": 77,
       "content": []
     },
     {
-      "number": 76,
+      "number": 78,
       "content": [
         {
           "text": "export",
@@ -14233,11 +14813,11 @@
       ]
     },
     {
-      "number": 77,
+      "number": 79,
       "content": []
     },
     {
-      "number": 78,
+      "number": 80,
       "content": [
         {
           "text": "export",
@@ -14274,7 +14854,7 @@
       ]
     },
     {
-      "number": 79,
+      "number": 81,
       "content": [
         {
           "text": "  ",
@@ -14319,7 +14899,7 @@
       ]
     },
     {
-      "number": 80,
+      "number": 82,
       "content": [
         {
           "text": "  ",
@@ -14348,7 +14928,7 @@
       ]
     },
     {
-      "number": 81,
+      "number": 83,
       "content": [
         {
           "text": "    ",
@@ -14401,7 +14981,7 @@
       ]
     },
     {
-      "number": 82,
+      "number": 84,
       "content": [
         {
           "text": "  ",
@@ -14414,7 +14994,7 @@
       ]
     },
     {
-      "number": 83,
+      "number": 85,
       "content": [
         {
           "text": "  ",
@@ -14435,7 +15015,7 @@
       ]
     },
     {
-      "number": 84,
+      "number": 86,
       "content": [
         {
           "text": "}",
@@ -14444,11 +15024,11 @@
       ]
     },
     {
-      "number": 85,
+      "number": 87,
       "content": []
     },
     {
-      "number": 86,
+      "number": 88,
       "content": [
         {
           "text": "export",
@@ -14481,7 +15061,7 @@
       ]
     },
     {
-      "number": 87,
+      "number": 89,
       "content": [
         {
           "text": "  stepId",
@@ -14506,7 +15086,7 @@
       ]
     },
     {
-      "number": 88,
+      "number": 90,
       "content": [
         {
           "text": "  isExpanded",
@@ -14531,7 +15111,7 @@
       ]
     },
     {
-      "number": 89,
+      "number": 91,
       "content": [
         {
           "text": "  status",
@@ -14556,7 +15136,7 @@
       ]
     },
     {
-      "number": 90,
+      "number": 92,
       "content": [
         {
           "text": "  triggerId",
@@ -14581,7 +15161,7 @@
       ]
     },
     {
-      "number": 91,
+      "number": 93,
       "content": [
         {
           "text": "  contentId",
@@ -14606,7 +15186,32 @@
       ]
     },
     {
-      "number": 92,
+      "number": 94,
+      "content": [
+        {
+          "text": "  hasContent",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "boolean",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 95,
       "content": [
         {
           "text": "}",
@@ -14615,11 +15220,11 @@
       ]
     },
     {
-      "number": 93,
+      "number": 96,
       "content": []
     },
     {
-      "number": 94,
+      "number": 97,
       "content": [
         {
           "text": "export",
@@ -14704,11 +15309,11 @@
       ]
     },
     {
-      "number": 95,
+      "number": 98,
       "content": []
     },
     {
-      "number": 96,
+      "number": 99,
       "content": [
         {
           "text": "export",
@@ -14745,7 +15350,7 @@
       ]
     },
     {
-      "number": 97,
+      "number": 100,
       "content": [
         {
           "text": "  ",
@@ -14790,7 +15395,7 @@
       ]
     },
     {
-      "number": 98,
+      "number": 101,
       "content": [
         {
           "text": "  ",
@@ -14819,7 +15424,7 @@
       ]
     },
     {
-      "number": 99,
+      "number": 102,
       "content": [
         {
           "text": "    ",
@@ -14872,7 +15477,7 @@
       ]
     },
     {
-      "number": 100,
+      "number": 103,
       "content": [
         {
           "text": "  ",
@@ -14885,7 +15490,7 @@
       ]
     },
     {
-      "number": 101,
+      "number": 104,
       "content": [
         {
           "text": "  ",
@@ -14906,7 +15511,7 @@
       ]
     },
     {
-      "number": 102,
+      "number": 105,
       "content": [
         {
           "text": "}",
@@ -14915,15 +15520,15 @@
       ]
     },
     {
-      "number": 103,
+      "number": 106,
       "content": []
     },
     {
-      "number": 104,
+      "number": 107,
       "content": []
     },
     {
-      "number": 105,
+      "number": 108,
       "content": [
         {
           "text": "\"",
@@ -14944,11 +15549,11 @@
       ]
     },
     {
-      "number": 106,
+      "number": 109,
       "content": []
     },
     {
-      "number": 107,
+      "number": 110,
       "content": [
         {
           "text": "import",
@@ -15001,7 +15606,7 @@
       ]
     },
     {
-      "number": 108,
+      "number": 111,
       "content": [
         {
           "text": "import",
@@ -15054,11 +15659,11 @@
       ]
     },
     {
-      "number": 109,
+      "number": 112,
       "content": []
     },
     {
-      "number": 110,
+      "number": 113,
       "content": [
         {
           "text": "export",
@@ -15091,7 +15696,7 @@
       ]
     },
     {
-      "number": 111,
+      "number": 114,
       "content": [
         {
           "text": "  expandedIds",
@@ -15120,7 +15725,7 @@
       ]
     },
     {
-      "number": 112,
+      "number": 115,
       "content": [
         {
           "text": "  defaultExpandedIds",
@@ -15149,7 +15754,7 @@
       ]
     },
     {
-      "number": 113,
+      "number": 116,
       "content": [
         {
           "text": "  ",
@@ -15218,7 +15823,7 @@
       ]
     },
     {
-      "number": 114,
+      "number": 117,
       "content": [
         {
           "text": "}",
@@ -15227,11 +15832,11 @@
       ]
     },
     {
-      "number": 115,
+      "number": 118,
       "content": []
     },
     {
-      "number": 116,
+      "number": 119,
       "content": [
         {
           "text": "export",
@@ -15260,7 +15865,7 @@
       ]
     },
     {
-      "number": 117,
+      "number": 120,
       "content": [
         {
           "text": "  expandedIds",
@@ -15273,7 +15878,7 @@
       ]
     },
     {
-      "number": 118,
+      "number": 121,
       "content": [
         {
           "text": "  defaultExpandedIds",
@@ -15286,7 +15891,7 @@
       ]
     },
     {
-      "number": 119,
+      "number": 122,
       "content": [
         {
           "text": "  onExpandedChange",
@@ -15299,7 +15904,7 @@
       ]
     },
     {
-      "number": 120,
+      "number": 123,
       "content": [
         {
           "text": "}:",
@@ -15328,7 +15933,7 @@
       ]
     },
     {
-      "number": 121,
+      "number": 124,
       "content": [
         {
           "text": "  ",
@@ -15409,7 +16014,7 @@
       ]
     },
     {
-      "number": 122,
+      "number": 125,
       "content": [
         {
           "text": "    value",
@@ -15430,7 +16035,7 @@
       ]
     },
     {
-      "number": 123,
+      "number": 126,
       "content": [
         {
           "text": "    defaultValue",
@@ -15459,7 +16064,7 @@
       ]
     },
     {
-      "number": 124,
+      "number": 127,
       "content": [
         {
           "text": "    onChange",
@@ -15480,7 +16085,7 @@
       ]
     },
     {
-      "number": 125,
+      "number": 128,
       "content": [
         {
           "text": "  ",
@@ -15501,11 +16106,11 @@
       ]
     },
     {
-      "number": 126,
+      "number": 129,
       "content": []
     },
     {
-      "number": 127,
+      "number": 130,
       "content": [
         {
           "text": "  ",
@@ -15586,7 +16191,7 @@
       ]
     },
     {
-      "number": 128,
+      "number": 131,
       "content": [
         {
           "text": "    ",
@@ -15623,7 +16228,7 @@
       ]
     },
     {
-      "number": 129,
+      "number": 132,
       "content": [
         {
           "text": "      ",
@@ -15732,7 +16337,7 @@
       ]
     },
     {
-      "number": 130,
+      "number": 133,
       "content": [
         {
           "text": "    )",
@@ -15745,7 +16350,7 @@
       ]
     },
     {
-      "number": 131,
+      "number": 134,
       "content": [
         {
           "text": "  ",
@@ -15766,11 +16371,11 @@
       ]
     },
     {
-      "number": 132,
+      "number": 135,
       "content": []
     },
     {
-      "number": 133,
+      "number": 136,
       "content": [
         {
           "text": "  ",
@@ -15815,7 +16420,7 @@
       ]
     },
     {
-      "number": 134,
+      "number": 137,
       "content": [
         {
           "text": "}",
@@ -15824,15 +16429,15 @@
       ]
     },
     {
-      "number": 135,
+      "number": 138,
       "content": []
     },
     {
-      "number": 136,
+      "number": 139,
       "content": []
     },
     {
-      "number": 137,
+      "number": 140,
       "content": [
         {
           "text": "\"",
@@ -15853,11 +16458,11 @@
       ]
     },
     {
-      "number": 138,
+      "number": 141,
       "content": []
     },
     {
-      "number": 139,
+      "number": 142,
       "content": [
         {
           "text": "import",
@@ -15869,6 +16474,22 @@
         },
         {
           "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " Children",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " isValidElement",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
           "color": "var(--code-operator)"
         },
         {
@@ -15950,7 +16571,7 @@
       ]
     },
     {
-      "number": 140,
+      "number": 143,
       "content": [
         {
           "text": "import",
@@ -16027,11 +16648,64 @@
       ]
     },
     {
-      "number": 141,
+      "number": 144,
+      "content": [
+        {
+          "text": "import",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " StepperContent ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "from",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "./stepper-content",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 145,
       "content": []
     },
     {
-      "number": 142,
+      "number": 146,
       "content": [
         {
           "text": "export",
@@ -16056,7 +16730,7 @@
       ]
     },
     {
-      "number": 143,
+      "number": 147,
       "content": [
         {
           "text": "  ",
@@ -16133,7 +16807,7 @@
       ]
     },
     {
-      "number": 144,
+      "number": 148,
       "content": [
         {
           "text": "  stepId",
@@ -16158,7 +16832,7 @@
       ]
     },
     {
-      "number": 145,
+      "number": 149,
       "content": [
         {
           "text": "  status",
@@ -16183,7 +16857,7 @@
       ]
     },
     {
-      "number": 146,
+      "number": 150,
       "content": [
         {
           "text": "  children",
@@ -16208,7 +16882,7 @@
       ]
     },
     {
-      "number": 147,
+      "number": 151,
       "content": [
         {
           "text": "}",
@@ -16217,11 +16891,208 @@
       ]
     },
     {
-      "number": 148,
+      "number": 152,
       "content": []
     },
     {
-      "number": 149,
+      "number": 153,
+      "content": [
+        {
+          "text": "function",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "hasStepperContent",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "children",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ReactNode",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "):",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "boolean",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 154,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "Children",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "toArray",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(children)",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "some",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "child",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ")",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=>",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 155,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "isValidElement",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(child) ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&&",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "child",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "type ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " StepperContent",
+          "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 156,
+      "content": [
+        {
+          "text": "  ))",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 157,
+      "content": [
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 158,
+      "content": []
+    },
+    {
+      "number": 159,
       "content": [
         {
           "text": "export",
@@ -16250,7 +17121,7 @@
       ]
     },
     {
-      "number": 150,
+      "number": 160,
       "content": [
         {
           "text": "  stepId",
@@ -16263,7 +17134,7 @@
       ]
     },
     {
-      "number": 151,
+      "number": 161,
       "content": [
         {
           "text": "  status",
@@ -16276,7 +17147,7 @@
       ]
     },
     {
-      "number": 152,
+      "number": 162,
       "content": [
         {
           "text": "  children",
@@ -16289,7 +17160,7 @@
       ]
     },
     {
-      "number": 153,
+      "number": 163,
       "content": [
         {
           "text": "  className",
@@ -16302,7 +17173,7 @@
       ]
     },
     {
-      "number": 154,
+      "number": 164,
       "content": [
         {
           "text": "  ",
@@ -16319,7 +17190,7 @@
       ]
     },
     {
-      "number": 155,
+      "number": 165,
       "content": [
         {
           "text": "}:",
@@ -16348,7 +17219,7 @@
       ]
     },
     {
-      "number": 156,
+      "number": 166,
       "content": [
         {
           "text": "  ",
@@ -16409,7 +17280,7 @@
       ]
     },
     {
-      "number": 157,
+      "number": 167,
       "content": [
         {
           "text": "  ",
@@ -16462,11 +17333,11 @@
       ]
     },
     {
-      "number": 158,
+      "number": 168,
       "content": []
     },
     {
-      "number": 159,
+      "number": 169,
       "content": [
         {
           "text": "  ",
@@ -16511,7 +17382,7 @@
       ]
     },
     {
-      "number": 160,
+      "number": 170,
       "content": [
         {
           "text": "  ",
@@ -16572,7 +17443,7 @@
       ]
     },
     {
-      "number": 161,
+      "number": 171,
       "content": [
         {
           "text": "  ",
@@ -16633,11 +17504,56 @@
       ]
     },
     {
-      "number": 162,
+      "number": 172,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "hasContent",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "hasStepperContent",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(children)",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 173,
       "content": []
     },
     {
-      "number": 163,
+      "number": 174,
       "content": [
         {
           "text": "  ",
@@ -16673,6 +17589,15 @@
         },
         {
           "text": "(",
+          "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 175,
+      "content": [
+        {
+          "text": "    ",
           "color": "var(--code-variable)"
         },
         {
@@ -16728,7 +17653,15 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": " contentId ",
+          "text": " contentId",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " hasContent ",
           "color": "var(--code-variable)"
         },
         {
@@ -16742,9 +17675,14 @@
         {
           "text": ",",
           "color": "var(--code-operator)"
-        },
+        }
+      ]
+    },
+    {
+      "number": 176,
+      "content": [
         {
-          "text": " [stepId",
+          "text": "    [stepId",
           "color": "var(--code-variable)"
         },
         {
@@ -16776,7 +17714,28 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": " contentId])",
+          "text": " contentId",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " hasContent]",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 177,
+      "content": [
+        {
+          "text": "  )",
           "color": "var(--code-variable)"
         },
         {
@@ -16786,11 +17745,11 @@
       ]
     },
     {
-      "number": 164,
+      "number": 178,
       "content": []
     },
     {
-      "number": 165,
+      "number": 179,
       "content": [
         {
           "text": "  ",
@@ -16807,7 +17766,7 @@
       ]
     },
     {
-      "number": 166,
+      "number": 180,
       "content": [
         {
           "text": "    ",
@@ -16844,7 +17803,7 @@
       ]
     },
     {
-      "number": 167,
+      "number": 181,
       "content": [
         {
           "text": "      ",
@@ -16977,7 +17936,7 @@
       ]
     },
     {
-      "number": 168,
+      "number": 182,
       "content": [
         {
           "text": "    ",
@@ -16998,7 +17957,7 @@
       ]
     },
     {
-      "number": 169,
+      "number": 183,
       "content": [
         {
           "text": "  )",
@@ -17011,7 +17970,7 @@
       ]
     },
     {
-      "number": 170,
+      "number": 184,
       "content": [
         {
           "text": "}",
@@ -17020,15 +17979,15 @@
       ]
     },
     {
-      "number": 171,
+      "number": 185,
       "content": []
     },
     {
-      "number": 172,
+      "number": 186,
       "content": []
     },
     {
-      "number": 173,
+      "number": 187,
       "content": [
         {
           "text": "\"",
@@ -17049,11 +18008,11 @@
       ]
     },
     {
-      "number": 174,
+      "number": 188,
       "content": []
     },
     {
-      "number": 175,
+      "number": 189,
       "content": [
         {
           "text": "import",
@@ -17122,7 +18081,7 @@
       ]
     },
     {
-      "number": 176,
+      "number": 190,
       "content": [
         {
           "text": "import",
@@ -17175,7 +18134,7 @@
       ]
     },
     {
-      "number": 177,
+      "number": 191,
       "content": [
         {
           "text": "import",
@@ -17228,7 +18187,7 @@
       ]
     },
     {
-      "number": 178,
+      "number": 192,
       "content": [
         {
           "text": "import",
@@ -17281,7 +18240,7 @@
       ]
     },
     {
-      "number": 179,
+      "number": 193,
       "content": [
         {
           "text": "import",
@@ -17358,11 +18317,11 @@
       ]
     },
     {
-      "number": 180,
+      "number": 194,
       "content": []
     },
     {
-      "number": 181,
+      "number": 195,
       "content": [
         {
           "text": "const",
@@ -17399,7 +18358,7 @@
       ]
     },
     {
-      "number": 182,
+      "number": 196,
       "content": [
         {
           "text": "  ",
@@ -17424,343 +18383,10 @@
       ]
     },
     {
-      "number": 183,
-      "content": [
-        {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "{",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 184,
-      "content": [
-        {
-          "text": "  variants",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ":",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "{",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 185,
-      "content": [
-        {
-          "text": "    status",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ":",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "{",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 186,
-      "content": [
-        {
-          "text": "      completed",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ":",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "\"\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 187,
-      "content": [
-        {
-          "text": "      active",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ":",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "bg-secondary py-2 -mx-3 px-3 rounded border-l-2 border-foreground",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 188,
-      "content": [
-        {
-          "text": "      pending",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ":",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "\"\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 189,
-      "content": [
-        {
-          "text": "      error",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ":",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "bg-destructive/10 py-2 -mx-3 px-3 rounded border-l-2 border-destructive",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 190,
-      "content": [
-        {
-          "text": "    ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "},",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 191,
-      "content": [
-        {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "},",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 192,
-      "content": [
-        {
-          "text": "  defaultVariants",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ":",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "{",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 193,
-      "content": [
-        {
-          "text": "    status",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ":",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "pending",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 194,
-      "content": [
-        {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "},",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 195,
-      "content": [
-        {
-          "text": "}",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": ")",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ";",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 196,
-      "content": []
-    },
-    {
       "number": 197,
       "content": [
         {
-          "text": "const",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "labelVariants",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "=",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "cva",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "(",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "text-sm",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
+          "text": "  ",
           "color": "var(--code-variable)"
         },
         {
@@ -17827,15 +18453,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "text-foreground",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
+          "text": "\"\"",
           "color": "var(--code-operator)"
         },
         {
@@ -17864,7 +18482,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "font-bold text-foreground",
+          "text": "bg-secondary py-2 -mx-3 px-3 rounded border-l-2 border-foreground",
           "color": "var(--code-tag)"
         },
         {
@@ -17893,15 +18511,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "text-muted-foreground",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
+          "text": "\"\"",
           "color": "var(--code-operator)"
         },
         {
@@ -17930,7 +18540,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "font-medium text-destructive",
+          "text": "bg-destructive/10 py-2 -mx-3 px-3 rounded border-l-2 border-destructive",
           "color": "var(--code-tag)"
         },
         {
@@ -18069,6 +18679,355 @@
           "color": "var(--code-variable)"
         },
         {
+          "text": "labelVariants",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "cva",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "text-sm",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 212,
+      "content": [
+        {
+          "text": "  variants",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 213,
+      "content": [
+        {
+          "text": "    status",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 214,
+      "content": [
+        {
+          "text": "      completed",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "text-foreground",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 215,
+      "content": [
+        {
+          "text": "      active",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "font-bold text-foreground",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 216,
+      "content": [
+        {
+          "text": "      pending",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "text-muted-foreground",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 217,
+      "content": [
+        {
+          "text": "      error",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "font-medium text-destructive",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 218,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "},",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 219,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "},",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 220,
+      "content": [
+        {
+          "text": "  defaultVariants",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 221,
+      "content": [
+        {
+          "text": "    status",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "pending",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 222,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "},",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 223,
+      "content": [
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ")",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 224,
+      "content": []
+    },
+    {
+      "number": 225,
+      "content": [
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
           "text": "STEP_STATUS_CONFIG",
           "color": "var(--code-number)"
         },
@@ -18107,7 +19066,7 @@
       ]
     },
     {
-      "number": 212,
+      "number": 226,
       "content": [
         {
           "text": "  badgeLabel",
@@ -18132,7 +19091,7 @@
       ]
     },
     {
-      "number": 213,
+      "number": 227,
       "content": [
         {
           "text": "  badgeVariant",
@@ -18237,7 +19196,7 @@
       ]
     },
     {
-      "number": 214,
+      "number": 228,
       "content": [
         {
           "text": "}>",
@@ -18262,7 +19221,7 @@
       ]
     },
     {
-      "number": 215,
+      "number": 229,
       "content": [
         {
           "text": "  completed",
@@ -18343,7 +19302,7 @@
       ]
     },
     {
-      "number": 216,
+      "number": 230,
       "content": [
         {
           "text": "  active",
@@ -18424,7 +19383,7 @@
       ]
     },
     {
-      "number": 217,
+      "number": 231,
       "content": [
         {
           "text": "  pending",
@@ -18505,7 +19464,7 @@
       ]
     },
     {
-      "number": 218,
+      "number": 232,
       "content": [
         {
           "text": "  error",
@@ -18586,7 +19545,7 @@
       ]
     },
     {
-      "number": 219,
+      "number": 233,
       "content": [
         {
           "text": "};",
@@ -18595,11 +19554,11 @@
       ]
     },
     {
-      "number": 220,
+      "number": 234,
       "content": []
     },
     {
-      "number": 221,
+      "number": 235,
       "content": [
         {
           "text": "export",
@@ -18624,7 +19583,7 @@
       ]
     },
     {
-      "number": 222,
+      "number": 236,
       "content": [
         {
           "text": "  ",
@@ -18725,7 +19684,7 @@
       ]
     },
     {
-      "number": 223,
+      "number": 237,
       "content": [
         {
           "text": "  children",
@@ -18750,7 +19709,7 @@
       ]
     },
     {
-      "number": 224,
+      "number": 238,
       "content": [
         {
           "text": "}",
@@ -18759,11 +19718,11 @@
       ]
     },
     {
-      "number": 225,
+      "number": 239,
       "content": []
     },
     {
-      "number": 226,
+      "number": 240,
       "content": [
         {
           "text": "export",
@@ -18799,6 +19758,14 @@
         },
         {
           "text": " className",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " onClick",
           "color": "var(--code-variable)"
         },
         {
@@ -18844,7 +19811,7 @@
       ]
     },
     {
-      "number": 227,
+      "number": 241,
       "content": [
         {
           "text": "  ",
@@ -18905,7 +19872,7 @@
       ]
     },
     {
-      "number": 228,
+      "number": 242,
       "content": [
         {
           "text": "  ",
@@ -18980,6 +19947,18 @@
           "color": "var(--code-number)"
         },
         {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "hasContent",
+          "color": "var(--code-number)"
+        },
+        {
           "text": " ",
           "color": "var(--code-variable)"
         },
@@ -19014,11 +19993,11 @@
       ]
     },
     {
-      "number": 229,
+      "number": 243,
       "content": []
     },
     {
-      "number": 230,
+      "number": 244,
       "content": [
         {
           "text": "  ",
@@ -19035,7 +20014,7 @@
       ]
     },
     {
-      "number": 231,
+      "number": 245,
       "content": [
         {
           "text": "    ",
@@ -19052,7 +20031,7 @@
       ]
     },
     {
-      "number": 232,
+      "number": 246,
       "content": [
         {
           "text": "      ",
@@ -19081,7 +20060,7 @@
       ]
     },
     {
-      "number": 233,
+      "number": 247,
       "content": [
         {
           "text": "      ",
@@ -19102,7 +20081,7 @@
       ]
     },
     {
-      "number": 234,
+      "number": 248,
       "content": [
         {
           "text": "      ",
@@ -19163,7 +20142,7 @@
       ]
     },
     {
-      "number": 235,
+      "number": 249,
       "content": [
         {
           "text": "      ",
@@ -19174,7 +20153,15 @@
           "color": "var(--code-function)"
         },
         {
-          "text": "={()",
+          "text": "={(",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "event",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ")",
           "color": "var(--code-operator)"
         },
         {
@@ -19190,6 +20177,76 @@
           "color": "var(--code-variable)"
         },
         {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 250,
+      "content": [
+        {
+          "text": "        ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "onClick",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "?.",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "(event)",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 251,
+      "content": [
+        {
+          "text": "        ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "!",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "event",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "defaultPrevented ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&&",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " hasContent) ",
+          "color": "var(--code-variable)"
+        },
+        {
           "text": "onToggle",
           "color": "var(--code-function)"
         },
@@ -19198,13 +20255,26 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "}",
+          "text": ";",
           "color": "var(--code-operator)"
         }
       ]
     },
     {
-      "number": 236,
+      "number": 252,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 253,
       "content": [
         {
           "text": "      ",
@@ -19219,8 +20289,28 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "isExpanded",
+          "text": "hasContent ",
           "color": "var(--code-variable)"
+        },
+        {
+          "text": "?",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " isExpanded ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "undefined",
+          "color": "var(--code-number)"
         },
         {
           "text": "}",
@@ -19229,7 +20319,7 @@
       ]
     },
     {
-      "number": 237,
+      "number": 254,
       "content": [
         {
           "text": "      ",
@@ -19244,8 +20334,28 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "contentId",
+          "text": "hasContent ",
           "color": "var(--code-variable)"
+        },
+        {
+          "text": "?",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " contentId ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "undefined",
+          "color": "var(--code-number)"
         },
         {
           "text": "}",
@@ -19254,7 +20364,7 @@
       ]
     },
     {
-      "number": 238,
+      "number": 255,
       "content": [
         {
           "text": "      ",
@@ -19279,7 +20389,7 @@
       ]
     },
     {
-      "number": 239,
+      "number": 256,
       "content": [
         {
           "text": "      ",
@@ -19364,7 +20474,7 @@
       ]
     },
     {
-      "number": 240,
+      "number": 257,
       "content": [
         {
           "text": "    ",
@@ -19377,7 +20487,7 @@
       ]
     },
     {
-      "number": 241,
+      "number": 258,
       "content": [
         {
           "text": "      ",
@@ -19422,7 +20532,7 @@
       ]
     },
     {
-      "number": 242,
+      "number": 259,
       "content": [
         {
           "text": "        ",
@@ -19523,7 +20633,7 @@
       ]
     },
     {
-      "number": 243,
+      "number": 260,
       "content": [
         {
           "text": "          ",
@@ -19556,7 +20666,7 @@
       ]
     },
     {
-      "number": 244,
+      "number": 261,
       "content": [
         {
           "text": "        ",
@@ -19577,7 +20687,7 @@
       ]
     },
     {
-      "number": 245,
+      "number": 262,
       "content": [
         {
           "text": "      ",
@@ -19598,7 +20708,7 @@
       ]
     },
     {
-      "number": 246,
+      "number": 263,
       "content": [
         {
           "text": "      ",
@@ -19671,7 +20781,7 @@
       ]
     },
     {
-      "number": 247,
+      "number": 264,
       "content": [
         {
           "text": "    ",
@@ -19692,7 +20802,7 @@
       ]
     },
     {
-      "number": 248,
+      "number": 265,
       "content": [
         {
           "text": "  )",
@@ -19705,7 +20815,7 @@
       ]
     },
     {
-      "number": 249,
+      "number": 266,
       "content": [
         {
           "text": "}",
@@ -19714,15 +20824,15 @@
       ]
     },
     {
-      "number": 250,
+      "number": 267,
       "content": []
     },
     {
-      "number": 251,
+      "number": 268,
       "content": []
     },
     {
-      "number": 252,
+      "number": 269,
       "content": [
         {
           "text": "\"",
@@ -19743,11 +20853,11 @@
       ]
     },
     {
-      "number": 253,
+      "number": 270,
       "content": []
     },
     {
-      "number": 254,
+      "number": 271,
       "content": [
         {
           "text": "import",
@@ -19816,7 +20926,7 @@
       ]
     },
     {
-      "number": 255,
+      "number": 272,
       "content": [
         {
           "text": "import",
@@ -19869,7 +20979,7 @@
       ]
     },
     {
-      "number": 256,
+      "number": 273,
       "content": [
         {
           "text": "import",
@@ -19922,11 +21032,11 @@
       ]
     },
     {
-      "number": 257,
+      "number": 274,
       "content": []
     },
     {
-      "number": 258,
+      "number": 275,
       "content": [
         {
           "text": "export",
@@ -19951,7 +21061,7 @@
       ]
     },
     {
-      "number": 259,
+      "number": 276,
       "content": [
         {
           "text": "  ",
@@ -20028,7 +21138,7 @@
       ]
     },
     {
-      "number": 260,
+      "number": 277,
       "content": [
         {
           "text": "  children",
@@ -20053,7 +21163,7 @@
       ]
     },
     {
-      "number": 261,
+      "number": 278,
       "content": [
         {
           "text": "}",
@@ -20062,11 +21172,11 @@
       ]
     },
     {
-      "number": 262,
+      "number": 279,
       "content": []
     },
     {
-      "number": 263,
+      "number": 280,
       "content": [
         {
           "text": "export",
@@ -20147,7 +21257,7 @@
       ]
     },
     {
-      "number": 264,
+      "number": 281,
       "content": [
         {
           "text": "  ",
@@ -20232,11 +21342,11 @@
       ]
     },
     {
-      "number": 265,
+      "number": 282,
       "content": []
     },
     {
-      "number": 266,
+      "number": 283,
       "content": [
         {
           "text": "  ",
@@ -20253,7 +21363,7 @@
       ]
     },
     {
-      "number": 267,
+      "number": 284,
       "content": [
         {
           "text": "    ",
@@ -20270,7 +21380,7 @@
       ]
     },
     {
-      "number": 268,
+      "number": 285,
       "content": [
         {
           "text": "      ",
@@ -20291,7 +21401,7 @@
       ]
     },
     {
-      "number": 269,
+      "number": 286,
       "content": [
         {
           "text": "      ",
@@ -20316,7 +21426,7 @@
       ]
     },
     {
-      "number": 270,
+      "number": 287,
       "content": [
         {
           "text": "        ",
@@ -20341,7 +21451,7 @@
       ]
     },
     {
-      "number": 271,
+      "number": 288,
       "content": [
         {
           "text": "        isExpanded ",
@@ -20398,7 +21508,7 @@
       ]
     },
     {
-      "number": 272,
+      "number": 289,
       "content": [
         {
           "text": "        className",
@@ -20411,7 +21521,7 @@
       ]
     },
     {
-      "number": 273,
+      "number": 290,
       "content": [
         {
           "text": "      )",
@@ -20424,7 +21534,7 @@
       ]
     },
     {
-      "number": 274,
+      "number": 291,
       "content": [
         {
           "text": "      ",
@@ -20453,7 +21563,7 @@
       ]
     },
     {
-      "number": 275,
+      "number": 292,
       "content": [
         {
           "text": "      ",
@@ -20478,7 +21588,7 @@
       ]
     },
     {
-      "number": 276,
+      "number": 293,
       "content": [
         {
           "text": "      ",
@@ -20503,7 +21613,7 @@
       ]
     },
     {
-      "number": 277,
+      "number": 294,
       "content": [
         {
           "text": "      ",
@@ -20556,7 +21666,7 @@
       ]
     },
     {
-      "number": 278,
+      "number": 295,
       "content": [
         {
           "text": "      ",
@@ -20609,7 +21719,7 @@
       ]
     },
     {
-      "number": 279,
+      "number": 296,
       "content": [
         {
           "text": "    ",
@@ -20622,7 +21732,7 @@
       ]
     },
     {
-      "number": 280,
+      "number": 297,
       "content": [
         {
           "text": "      ",
@@ -20667,7 +21777,7 @@
       ]
     },
     {
-      "number": 281,
+      "number": 298,
       "content": [
         {
           "text": "        ",
@@ -20728,7 +21838,7 @@
       ]
     },
     {
-      "number": 282,
+      "number": 299,
       "content": [
         {
           "text": "          ",
@@ -20749,7 +21859,7 @@
       ]
     },
     {
-      "number": 283,
+      "number": 300,
       "content": [
         {
           "text": "        ",
@@ -20770,7 +21880,7 @@
       ]
     },
     {
-      "number": 284,
+      "number": 301,
       "content": [
         {
           "text": "      ",
@@ -20791,7 +21901,7 @@
       ]
     },
     {
-      "number": 285,
+      "number": 302,
       "content": [
         {
           "text": "    ",
@@ -20812,7 +21922,7 @@
       ]
     },
     {
-      "number": 286,
+      "number": 303,
       "content": [
         {
           "text": "  )",
@@ -20825,7 +21935,7 @@
       ]
     },
     {
-      "number": 287,
+      "number": 304,
       "content": [
         {
           "text": "}",
@@ -20834,15 +21944,15 @@
       ]
     },
     {
-      "number": 288,
+      "number": 305,
       "content": []
     },
     {
-      "number": 289,
+      "number": 306,
       "content": []
     },
     {
-      "number": 290,
+      "number": 307,
       "content": [
         {
           "text": "\"",
@@ -20863,11 +21973,11 @@
       ]
     },
     {
-      "number": 291,
+      "number": 308,
       "content": []
     },
     {
-      "number": 292,
+      "number": 309,
       "content": [
         {
           "text": "import",
@@ -20928,7 +22038,7 @@
       ]
     },
     {
-      "number": 293,
+      "number": 310,
       "content": [
         {
           "text": "import",
@@ -20981,7 +22091,7 @@
       ]
     },
     {
-      "number": 294,
+      "number": 311,
       "content": [
         {
           "text": "import",
@@ -21034,7 +22144,7 @@
       ]
     },
     {
-      "number": 295,
+      "number": 312,
       "content": [
         {
           "text": "import",
@@ -21087,7 +22197,7 @@
       ]
     },
     {
-      "number": 296,
+      "number": 313,
       "content": [
         {
           "text": "import",
@@ -21148,11 +22258,11 @@
       ]
     },
     {
-      "number": 297,
+      "number": 314,
       "content": []
     },
     {
-      "number": 298,
+      "number": 315,
       "content": [
         {
           "text": "export",
@@ -21185,7 +22295,7 @@
       ]
     },
     {
-      "number": 299,
+      "number": 316,
       "content": [
         {
           "text": "  id",
@@ -21210,7 +22320,7 @@
       ]
     },
     {
-      "number": 300,
+      "number": 317,
       "content": [
         {
           "text": "  tag",
@@ -21235,7 +22345,7 @@
       ]
     },
     {
-      "number": 301,
+      "number": 318,
       "content": [
         {
           "text": "  label",
@@ -21260,7 +22370,7 @@
       ]
     },
     {
-      "number": 302,
+      "number": 319,
       "content": [
         {
           "text": "  status",
@@ -21285,7 +22395,7 @@
       ]
     },
     {
-      "number": 303,
+      "number": 320,
       "content": [
         {
           "text": "  detail",
@@ -21310,7 +22420,7 @@
       ]
     },
     {
-      "number": 304,
+      "number": 321,
       "content": [
         {
           "text": "}",
@@ -21319,11 +22429,11 @@
       ]
     },
     {
-      "number": 305,
+      "number": 322,
       "content": []
     },
     {
-      "number": 306,
+      "number": 323,
       "content": [
         {
           "text": "const",
@@ -21384,7 +22494,7 @@
       ]
     },
     {
-      "number": 307,
+      "number": 324,
       "content": [
         {
           "text": "  variants",
@@ -21405,7 +22515,7 @@
       ]
     },
     {
-      "number": 308,
+      "number": 325,
       "content": [
         {
           "text": "    status",
@@ -21426,7 +22536,7 @@
       ]
     },
     {
-      "number": 309,
+      "number": 326,
       "content": [
         {
           "text": "      pending",
@@ -21459,7 +22569,7 @@
       ]
     },
     {
-      "number": 310,
+      "number": 327,
       "content": [
         {
           "text": "      active",
@@ -21492,7 +22602,7 @@
       ]
     },
     {
-      "number": 311,
+      "number": 328,
       "content": [
         {
           "text": "      completed",
@@ -21525,7 +22635,7 @@
       ]
     },
     {
-      "number": 312,
+      "number": 329,
       "content": [
         {
           "text": "      error",
@@ -21558,7 +22668,7 @@
       ]
     },
     {
-      "number": 313,
+      "number": 330,
       "content": [
         {
           "text": "    ",
@@ -21571,7 +22681,7 @@
       ]
     },
     {
-      "number": 314,
+      "number": 331,
       "content": [
         {
           "text": "  ",
@@ -21584,7 +22694,7 @@
       ]
     },
     {
-      "number": 315,
+      "number": 332,
       "content": [
         {
           "text": "  defaultVariants",
@@ -21637,7 +22747,7 @@
       ]
     },
     {
-      "number": 316,
+      "number": 333,
       "content": [
         {
           "text": "}",
@@ -21654,11 +22764,11 @@
       ]
     },
     {
-      "number": 317,
+      "number": 334,
       "content": []
     },
     {
-      "number": 318,
+      "number": 335,
       "content": [
         {
           "text": "export",
@@ -21683,7 +22793,7 @@
       ]
     },
     {
-      "number": 319,
+      "number": 336,
       "content": [
         {
           "text": "  ",
@@ -21752,7 +22862,7 @@
       ]
     },
     {
-      "number": 320,
+      "number": 337,
       "content": [
         {
           "text": "    ",
@@ -21805,11 +22915,11 @@
       ]
     },
     {
-      "number": 321,
+      "number": 338,
       "content": []
     },
     {
-      "number": 322,
+      "number": 339,
       "content": [
         {
           "text": "const",
@@ -21858,7 +22968,7 @@
       ]
     },
     {
-      "number": 323,
+      "number": 340,
       "content": [
         {
           "text": "  badgeVariant",
@@ -21963,7 +23073,7 @@
       ]
     },
     {
-      "number": 324,
+      "number": 341,
       "content": [
         {
           "text": "  defaultLabel",
@@ -21988,7 +23098,7 @@
       ]
     },
     {
-      "number": 325,
+      "number": 342,
       "content": [
         {
           "text": "  labelColor",
@@ -22013,7 +23123,7 @@
       ]
     },
     {
-      "number": 326,
+      "number": 343,
       "content": [
         {
           "text": "}>",
@@ -22038,7 +23148,7 @@
       ]
     },
     {
-      "number": 327,
+      "number": 344,
       "content": [
         {
           "text": "  pending",
@@ -22091,7 +23201,7 @@
       ]
     },
     {
-      "number": 328,
+      "number": 345,
       "content": [
         {
           "text": "  active",
@@ -22200,7 +23310,7 @@
       ]
     },
     {
-      "number": 329,
+      "number": 346,
       "content": [
         {
           "text": "  completed",
@@ -22309,7 +23419,7 @@
       ]
     },
     {
-      "number": 330,
+      "number": 347,
       "content": [
         {
           "text": "  error",
@@ -22418,7 +23528,7 @@
       ]
     },
     {
-      "number": 331,
+      "number": 348,
       "content": [
         {
           "text": "};",
@@ -22427,11 +23537,11 @@
       ]
     },
     {
-      "number": 332,
+      "number": 349,
       "content": []
     },
     {
-      "number": 333,
+      "number": 350,
       "content": [
         {
           "text": "export",
@@ -22460,7 +23570,7 @@
       ]
     },
     {
-      "number": 334,
+      "number": 351,
       "content": [
         {
           "text": "  tag",
@@ -22473,7 +23583,7 @@
       ]
     },
     {
-      "number": 335,
+      "number": 352,
       "content": [
         {
           "text": "  label",
@@ -22486,7 +23596,7 @@
       ]
     },
     {
-      "number": 336,
+      "number": 353,
       "content": [
         {
           "text": "  status",
@@ -22499,7 +23609,7 @@
       ]
     },
     {
-      "number": 337,
+      "number": 354,
       "content": [
         {
           "text": "  detail",
@@ -22512,7 +23622,7 @@
       ]
     },
     {
-      "number": 338,
+      "number": 355,
       "content": [
         {
           "text": "  className",
@@ -22525,7 +23635,7 @@
       ]
     },
     {
-      "number": 339,
+      "number": 356,
       "content": [
         {
           "text": "  ",
@@ -22542,7 +23652,7 @@
       ]
     },
     {
-      "number": 340,
+      "number": 357,
       "content": [
         {
           "text": "}:",
@@ -22571,7 +23681,7 @@
       ]
     },
     {
-      "number": 341,
+      "number": 358,
       "content": [
         {
           "text": "  ",
@@ -22616,7 +23726,7 @@
       ]
     },
     {
-      "number": 342,
+      "number": 359,
       "content": [
         {
           "text": "  ",
@@ -22673,11 +23783,11 @@
       ]
     },
     {
-      "number": 343,
+      "number": 360,
       "content": []
     },
     {
-      "number": 344,
+      "number": 361,
       "content": [
         {
           "text": "  ",
@@ -22694,7 +23804,7 @@
       ]
     },
     {
-      "number": 345,
+      "number": 362,
       "content": [
         {
           "text": "    ",
@@ -22783,7 +23893,7 @@
       ]
     },
     {
-      "number": 346,
+      "number": 363,
       "content": [
         {
           "text": "      ",
@@ -22880,7 +23990,7 @@
       ]
     },
     {
-      "number": 347,
+      "number": 364,
       "content": [
         {
           "text": "        ",
@@ -22901,7 +24011,7 @@
       ]
     },
     {
-      "number": 348,
+      "number": 365,
       "content": [
         {
           "text": "      ",
@@ -22922,7 +24032,7 @@
       ]
     },
     {
-      "number": 349,
+      "number": 366,
       "content": [
         {
           "text": "      ",
@@ -22959,7 +24069,7 @@
       ]
     },
     {
-      "number": 350,
+      "number": 367,
       "content": [
         {
           "text": "      ",
@@ -22984,7 +24094,7 @@
       ]
     },
     {
-      "number": 351,
+      "number": 368,
       "content": [
         {
           "text": "        ",
@@ -23089,7 +24199,7 @@
       ]
     },
     {
-      "number": 352,
+      "number": 369,
       "content": [
         {
           "text": "          ",
@@ -23110,7 +24220,7 @@
       ]
     },
     {
-      "number": 353,
+      "number": 370,
       "content": [
         {
           "text": "        ",
@@ -23131,7 +24241,7 @@
       ]
     },
     {
-      "number": 354,
+      "number": 371,
       "content": [
         {
           "text": "      )",
@@ -23144,7 +24254,7 @@
       ]
     },
     {
-      "number": 355,
+      "number": 372,
       "content": [
         {
           "text": "    ",
@@ -23165,7 +24275,7 @@
       ]
     },
     {
-      "number": 356,
+      "number": 373,
       "content": [
         {
           "text": "  )",
@@ -23178,7 +24288,7 @@
       ]
     },
     {
-      "number": 357,
+      "number": 374,
       "content": [
         {
           "text": "}",
@@ -23187,7 +24297,7 @@
       ]
     },
     {
-      "number": 358,
+      "number": 375,
       "content": []
     }
   ],
@@ -30752,6 +31862,10 @@
       {
         "title": "Expansion Modes",
         "content": "Supports controlled (expandedIds + onExpandedChange) and uncontrolled (defaultExpandedIds) expansion. Multiple steps can be expanded simultaneously."
+      },
+      {
+        "title": "Composition Contract",
+        "content": "Keep StepperTrigger and StepperContent as explicit children of StepperStep. StepperStep only links aria-controls when it can see a direct StepperContent child; opaque wrappers that create content internally are not part of the current public contract."
       }
     ],
     "usage": {
@@ -30780,7 +31894,7 @@
       }
     ],
     "keyboard": {
-      "description": "All steps render as focusable buttons. Press Enter or Space to toggle the expanded content. Steps without a Content child still toggle expansion state but have no visible content panel.",
+      "description": "All step triggers render as focusable buttons. Press Enter or Space to toggle direct StepperContent. Steps without a direct StepperContent child have no visible content panel and do not expose aria-controls.",
       "examples": [
         {
           "name": "stepper-interactive",

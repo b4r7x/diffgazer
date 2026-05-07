@@ -36,11 +36,16 @@ describe("Button", () => {
     expect(screen.getByRole("button")).toBeDisabled()
   })
 
-  it("prevents click on disabled anchor", async () => {
+  it("preserves consumer clicks while preventing disabled anchor navigation", () => {
     const spy = vi.fn()
     render(<Button as="a" href="/test" disabled onClick={spy}>Link</Button>)
-    await userEvent.click(screen.getByRole("link"))
-    expect(spy).not.toHaveBeenCalled()
+    const link = screen.getByRole("link")
+    const event = new MouseEvent("click", { bubbles: true, cancelable: true })
+
+    link.dispatchEvent(event)
+
+    expect(spy).toHaveBeenCalled()
+    expect(event.defaultPrevented).toBe(true)
   })
 
   it("renders bracket decoration when bracket is true", () => {

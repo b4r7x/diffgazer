@@ -14,10 +14,35 @@
   "props": {},
   "source": {
     "registry/ui/breadcrumbs/index.ts": {
-      "raw": "import { Breadcrumbs as BreadcrumbsRoot, type BreadcrumbsProps } from \"./breadcrumbs\"\nimport { BreadcrumbsEllipsis, type BreadcrumbsEllipsisProps } from \"./breadcrumbs-ellipsis\"\nimport { BreadcrumbsItem, type BreadcrumbsItemProps } from \"./breadcrumbs-item\"\nimport { BreadcrumbsLink, type BreadcrumbsLinkProps, type BreadcrumbsLinkRenderProps } from \"./breadcrumbs-link\"\n\nconst Breadcrumbs = Object.assign(BreadcrumbsRoot, {\n  Item: BreadcrumbsItem,\n  Link: BreadcrumbsLink,\n  Ellipsis: BreadcrumbsEllipsis,\n})\n\nexport { Breadcrumbs, type BreadcrumbsProps }\nexport { BreadcrumbsEllipsis, type BreadcrumbsEllipsisProps }\nexport { BreadcrumbsItem, type BreadcrumbsItemProps }\nexport { BreadcrumbsLink, type BreadcrumbsLinkProps, type BreadcrumbsLinkRenderProps }\n",
+      "raw": "\"use client\";\n\nimport { Breadcrumbs as BreadcrumbsRoot, type BreadcrumbsProps } from \"./breadcrumbs\"\nimport { BreadcrumbsEllipsis, type BreadcrumbsEllipsisProps } from \"./breadcrumbs-ellipsis\"\nimport { BreadcrumbsItem, type BreadcrumbsItemProps } from \"./breadcrumbs-item\"\nimport { BreadcrumbsLink, type BreadcrumbsLinkProps, type BreadcrumbsLinkRenderProps } from \"./breadcrumbs-link\"\n\nconst Breadcrumbs = Object.assign(BreadcrumbsRoot, {\n  Item: BreadcrumbsItem,\n  Link: BreadcrumbsLink,\n  Ellipsis: BreadcrumbsEllipsis,\n})\n\nexport { Breadcrumbs, type BreadcrumbsProps }\nexport { BreadcrumbsEllipsis, type BreadcrumbsEllipsisProps }\nexport { BreadcrumbsItem, type BreadcrumbsItemProps }\nexport { BreadcrumbsLink, type BreadcrumbsLinkProps, type BreadcrumbsLinkRenderProps }\n",
       "highlighted": [
         {
           "number": 1,
+          "content": [
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "use client",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
           "content": [
             {
               "text": "import",
@@ -90,7 +115,7 @@
           ]
         },
         {
-          "number": 2,
+          "number": 4,
           "content": [
             {
               "text": "import",
@@ -155,7 +180,7 @@
           ]
         },
         {
-          "number": 3,
+          "number": 5,
           "content": [
             {
               "text": "import",
@@ -220,7 +245,7 @@
           ]
         },
         {
-          "number": 4,
+          "number": 6,
           "content": [
             {
               "text": "import",
@@ -301,11 +326,11 @@
           ]
         },
         {
-          "number": 5,
+          "number": 7,
           "content": []
         },
         {
-          "number": 6,
+          "number": 8,
           "content": [
             {
               "text": "const",
@@ -362,7 +387,7 @@
           ]
         },
         {
-          "number": 7,
+          "number": 9,
           "content": [
             {
               "text": "  Item",
@@ -383,7 +408,7 @@
           ]
         },
         {
-          "number": 8,
+          "number": 10,
           "content": [
             {
               "text": "  Link",
@@ -404,7 +429,7 @@
           ]
         },
         {
-          "number": 9,
+          "number": 11,
           "content": [
             {
               "text": "  Ellipsis",
@@ -425,7 +450,7 @@
           ]
         },
         {
-          "number": 10,
+          "number": 12,
           "content": [
             {
               "text": "}",
@@ -438,11 +463,11 @@
           ]
         },
         {
-          "number": 11,
+          "number": 13,
           "content": []
         },
         {
-          "number": 12,
+          "number": 14,
           "content": [
             {
               "text": "export",
@@ -483,7 +508,7 @@
           ]
         },
         {
-          "number": 13,
+          "number": 15,
           "content": [
             {
               "text": "export",
@@ -524,7 +549,7 @@
           ]
         },
         {
-          "number": 14,
+          "number": 16,
           "content": [
             {
               "text": "export",
@@ -565,7 +590,7 @@
           ]
         },
         {
-          "number": 15,
+          "number": 17,
           "content": [
             {
               "text": "export",
@@ -622,7 +647,7 @@
           ]
         },
         {
-          "number": 16,
+          "number": 18,
           "content": []
         }
       ]
@@ -2397,7 +2422,7 @@
       ]
     },
     "registry/ui/breadcrumbs/breadcrumbs-context.tsx": {
-      "raw": "\"use client\";\n\nimport { createContext, useContext, type ReactNode } from \"react\"\n\ninterface BreadcrumbsContextValue {\n  separator: ReactNode\n}\n\nconst BreadcrumbsContext = createContext<BreadcrumbsContextValue | undefined>(undefined)\n\nexport function useBreadcrumbsContext(): BreadcrumbsContextValue {\n  const ctx = useContext(BreadcrumbsContext)\n  if (ctx === undefined) throw new Error(\"Breadcrumbs parts must be used within a Breadcrumbs\")\n  return ctx\n}\n\nexport { BreadcrumbsContext }\n",
+      "raw": "\"use client\";\n\nimport { createContext, useContext, type ReactNode } from \"react\"\n\ninterface BreadcrumbsContextValue {\n  separator: ReactNode\n  current?: boolean\n}\n\nconst BreadcrumbsContext = createContext<BreadcrumbsContextValue | undefined>(undefined)\n\nexport function useBreadcrumbsContext(): BreadcrumbsContextValue {\n  const ctx = useContext(BreadcrumbsContext)\n  if (ctx === undefined) throw new Error(\"Breadcrumbs parts must be used within a Breadcrumbs\")\n  return ctx\n}\n\nexport { BreadcrumbsContext }\n",
       "highlighted": [
         {
           "number": 1,
@@ -2551,17 +2576,38 @@
           "number": 7,
           "content": [
             {
+              "text": "  current",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "?:",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "boolean",
+              "color": "var(--code-number)"
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "content": [
+            {
               "text": "}",
               "color": "var(--code-operator)"
             }
           ]
         },
         {
-          "number": 8,
+          "number": 9,
           "content": []
         },
         {
-          "number": 9,
+          "number": 10,
           "content": [
             {
               "text": "const",
@@ -2634,11 +2680,11 @@
           ]
         },
         {
-          "number": 10,
+          "number": 11,
           "content": []
         },
         {
-          "number": 11,
+          "number": 12,
           "content": [
             {
               "text": "export",
@@ -2683,7 +2729,7 @@
           ]
         },
         {
-          "number": 12,
+          "number": 13,
           "content": [
             {
               "text": "  ",
@@ -2724,7 +2770,7 @@
           ]
         },
         {
-          "number": 13,
+          "number": 14,
           "content": [
             {
               "text": "  ",
@@ -2797,7 +2843,7 @@
           ]
         },
         {
-          "number": 14,
+          "number": 15,
           "content": [
             {
               "text": "  ",
@@ -2814,7 +2860,7 @@
           ]
         },
         {
-          "number": 15,
+          "number": 16,
           "content": [
             {
               "text": "}",
@@ -2823,11 +2869,11 @@
           ]
         },
         {
-          "number": 16,
+          "number": 17,
           "content": []
         },
         {
-          "number": 17,
+          "number": 18,
           "content": [
             {
               "text": "export",
@@ -2852,13 +2898,13 @@
           ]
         },
         {
-          "number": 18,
+          "number": 19,
           "content": []
         }
       ]
     },
     "registry/ui/breadcrumbs/breadcrumbs-item.tsx": {
-      "raw": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\"\nimport { cn } from \"@/lib/utils\"\nimport { useBreadcrumbsContext } from \"./breadcrumbs-context\"\n\nexport interface BreadcrumbsItemProps extends ComponentPropsWithRef<\"li\"> {\n  current?: boolean\n}\n\nexport function BreadcrumbsItem({ current, className, children, ref, ...props }: BreadcrumbsItemProps) {\n  const { separator } = useBreadcrumbsContext()\n\n  return (\n    <>\n      {separator != null && (\n        <li role=\"presentation\" aria-hidden=\"true\" className=\"[&>svg]:size-3.5 text-muted-foreground/40 first:hidden\">\n          {separator}\n        </li>\n      )}\n      <li\n        ref={ref}\n        aria-current={current ? \"page\" : undefined}\n        className={cn(\"inline-flex items-center gap-1.5\", current && \"font-bold text-foreground\", className)}\n        {...props}\n      >\n        {children}\n      </li>\n    </>\n  )\n}\n",
+      "raw": "\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\"\nimport { cn } from \"@/lib/utils\"\nimport { BreadcrumbsContext, useBreadcrumbsContext } from \"./breadcrumbs-context\"\n\nexport interface BreadcrumbsItemProps extends ComponentPropsWithRef<\"li\"> {\n  current?: boolean\n}\n\nexport function BreadcrumbsItem({ current, className, children, ref, ...props }: BreadcrumbsItemProps) {\n  const { separator } = useBreadcrumbsContext()\n  const itemContext = { separator, current }\n\n  return (\n    <>\n      {separator != null && (\n        <li role=\"presentation\" aria-hidden=\"true\" className=\"[&>svg]:size-3.5 text-muted-foreground/40 first:hidden\">\n          {separator}\n        </li>\n      )}\n      <BreadcrumbsContext value={itemContext}>\n        <li\n          ref={ref}\n          className={cn(\"inline-flex items-center gap-1.5\", current && \"font-bold text-foreground\", className)}\n          {...props}\n        >\n          {current && (typeof children === \"string\" || typeof children === \"number\") ? (\n            <span aria-current=\"page\">{children}</span>\n          ) : children}\n        </li>\n      </BreadcrumbsContext>\n    </>\n  )\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -3004,6 +3050,14 @@
             },
             {
               "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " BreadcrumbsContext",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
               "color": "var(--code-operator)"
             },
             {
@@ -3303,10 +3357,63 @@
         },
         {
           "number": 13,
-          "content": []
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "itemContext",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " separator",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " current ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
         },
         {
           "number": 14,
+          "content": []
+        },
+        {
+          "number": 15,
           "content": [
             {
               "text": "  ",
@@ -3323,7 +3430,7 @@
           ]
         },
         {
-          "number": 15,
+          "number": 16,
           "content": [
             {
               "text": "    ",
@@ -3336,7 +3443,7 @@
           ]
         },
         {
-          "number": 16,
+          "number": 17,
           "content": [
             {
               "text": "      ",
@@ -3377,7 +3484,7 @@
           ]
         },
         {
-          "number": 17,
+          "number": 18,
           "content": [
             {
               "text": "        ",
@@ -3470,7 +3577,7 @@
           ]
         },
         {
-          "number": 18,
+          "number": 19,
           "content": [
             {
               "text": "          ",
@@ -3491,7 +3598,7 @@
           ]
         },
         {
-          "number": 19,
+          "number": 20,
           "content": [
             {
               "text": "        ",
@@ -3512,7 +3619,7 @@
           ]
         },
         {
-          "number": 20,
+          "number": 21,
           "content": [
             {
               "text": "      )",
@@ -3525,10 +3632,47 @@
           ]
         },
         {
-          "number": 21,
+          "number": 22,
           "content": [
             {
               "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "BreadcrumbsContext",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "value",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "itemContext",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}>",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 23,
+          "content": [
+            {
+              "text": "        ",
               "color": "var(--code-variable)"
             },
             {
@@ -3542,96 +3686,35 @@
           ]
         },
         {
-          "number": 22,
-          "content": [
-            {
-              "text": "        ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "ref",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "={",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "ref",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "}",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 23,
-          "content": [
-            {
-              "text": "        ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "aria-current",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "={",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "current ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "?",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "page",
-              "color": "var(--code-tag)"
-            },
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ":",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "undefined",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": "}",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
           "number": 24,
           "content": [
             {
-              "text": "        ",
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 25,
+          "content": [
+            {
+              "text": "          ",
               "color": "var(--code-variable)"
             },
             {
@@ -3705,10 +3788,10 @@
           ]
         },
         {
-          "number": 25,
+          "number": 26,
           "content": [
             {
-              "text": "        ",
+              "text": "          ",
               "color": "var(--code-variable)"
             },
             {
@@ -3726,10 +3809,10 @@
           ]
         },
         {
-          "number": 26,
+          "number": 27,
           "content": [
             {
-              "text": "      ",
+              "text": "        ",
               "color": "var(--code-variable)"
             },
             {
@@ -3739,10 +3822,10 @@
           ]
         },
         {
-          "number": 27,
+          "number": 28,
           "content": [
             {
-              "text": "        ",
+              "text": "          ",
               "color": "var(--code-variable)"
             },
             {
@@ -3750,7 +3833,173 @@
               "color": "var(--code-operator)"
             },
             {
+              "text": "current ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "typeof",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " children ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "string",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "||",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "typeof",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " children ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "number",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "?",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 29,
+          "content": [
+            {
+              "text": "            ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "span",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "aria-current",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "page",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">{",
+              "color": "var(--code-operator)"
+            },
+            {
               "text": "children",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "span",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 30,
+          "content": [
+            {
+              "text": "          ) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " children",
               "color": "var(--code-variable)"
             },
             {
@@ -3760,10 +4009,10 @@
           ]
         },
         {
-          "number": 28,
+          "number": 31,
           "content": [
             {
-              "text": "      ",
+              "text": "        ",
               "color": "var(--code-variable)"
             },
             {
@@ -3781,7 +4030,28 @@
           ]
         },
         {
-          "number": 29,
+          "number": 32,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "</",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "BreadcrumbsContext",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 33,
           "content": [
             {
               "text": "    ",
@@ -3794,7 +4064,7 @@
           ]
         },
         {
-          "number": 30,
+          "number": 34,
           "content": [
             {
               "text": "  )",
@@ -3803,7 +4073,7 @@
           ]
         },
         {
-          "number": 31,
+          "number": 35,
           "content": [
             {
               "text": "}",
@@ -3812,13 +4082,13 @@
           ]
         },
         {
-          "number": 32,
+          "number": 36,
           "content": []
         }
       ]
     },
     "registry/ui/breadcrumbs/breadcrumbs-link.tsx": {
-      "raw": "\"use client\";\n\nimport type { AnchorHTMLAttributes, ReactNode, Ref } from \"react\"\nimport { cn } from \"@/lib/utils\"\n\nexport type BreadcrumbsLinkRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {\n  ref: Ref<HTMLAnchorElement>\n  className: string\n}\n\nexport interface BreadcrumbsLinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, \"children\"> {\n  children: ReactNode | ((props: BreadcrumbsLinkRenderProps) => ReactNode)\n  ref?: Ref<HTMLAnchorElement>\n}\n\nexport function BreadcrumbsLink({ children, className, ref, ...props }: BreadcrumbsLinkProps) {\n  const renderProps: BreadcrumbsLinkRenderProps = {\n    ref: ref ?? null,\n    className: cn(\"transition-colors hover:text-foreground hover:underline hover:underline-offset-2\", className),\n    ...props,\n  }\n\n  if (typeof children === \"function\") return <>{children(renderProps)}</>\n\n  return (\n    <a {...renderProps}>\n      {children}\n    </a>\n  )\n}\n",
+      "raw": "\"use client\";\n\nimport type { AnchorHTMLAttributes, ReactNode, Ref } from \"react\"\nimport { cn } from \"@/lib/utils\"\nimport { useBreadcrumbsContext } from \"./breadcrumbs-context\"\n\nexport type BreadcrumbsLinkRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {\n  ref: Ref<HTMLAnchorElement>\n  className: string\n}\n\nexport interface BreadcrumbsLinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, \"children\"> {\n  children: ReactNode | ((props: BreadcrumbsLinkRenderProps) => ReactNode)\n  ref?: Ref<HTMLAnchorElement>\n}\n\nexport function BreadcrumbsLink({ children, className, ref, ...props }: BreadcrumbsLinkProps) {\n  const { current } = useBreadcrumbsContext()\n  const renderProps: BreadcrumbsLinkRenderProps = {\n    ref: ref ?? null,\n    className: cn(\"transition-colors hover:text-foreground hover:underline hover:underline-offset-2\", className),\n    \"aria-current\": current ? \"page\" : undefined,\n    ...props,\n  }\n\n  if (typeof children === \"function\") return <>{children(renderProps)}</>\n\n  return (\n    <a {...renderProps}>\n      {children}\n    </a>\n  )\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -3969,10 +4239,59 @@
         },
         {
           "number": 5,
-          "content": []
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " useBreadcrumbsContext ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "./breadcrumbs-context",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            }
+          ]
         },
         {
           "number": 6,
+          "content": []
+        },
+        {
+          "number": 7,
           "content": [
             {
               "text": "export",
@@ -4041,7 +4360,7 @@
           ]
         },
         {
-          "number": 7,
+          "number": 8,
           "content": [
             {
               "text": "  ref",
@@ -4074,7 +4393,7 @@
           ]
         },
         {
-          "number": 8,
+          "number": 9,
           "content": [
             {
               "text": "  className",
@@ -4095,7 +4414,7 @@
           ]
         },
         {
-          "number": 9,
+          "number": 10,
           "content": [
             {
               "text": "}",
@@ -4104,11 +4423,11 @@
           ]
         },
         {
-          "number": 10,
+          "number": 11,
           "content": []
         },
         {
-          "number": 11,
+          "number": 12,
           "content": [
             {
               "text": "export",
@@ -4197,7 +4516,7 @@
           ]
         },
         {
-          "number": 12,
+          "number": 13,
           "content": [
             {
               "text": "  children",
@@ -4274,7 +4593,7 @@
           ]
         },
         {
-          "number": 13,
+          "number": 14,
           "content": [
             {
               "text": "  ref",
@@ -4307,7 +4626,7 @@
           ]
         },
         {
-          "number": 14,
+          "number": 15,
           "content": [
             {
               "text": "}",
@@ -4316,11 +4635,11 @@
           ]
         },
         {
-          "number": 15,
+          "number": 16,
           "content": []
         },
         {
-          "number": 16,
+          "number": 17,
           "content": [
             {
               "text": "export",
@@ -4409,7 +4728,64 @@
           ]
         },
         {
-          "number": 17,
+          "number": 18,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "current",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useBreadcrumbsContext",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 19,
           "content": [
             {
               "text": "  ",
@@ -4458,7 +4834,7 @@
           ]
         },
         {
-          "number": 18,
+          "number": 20,
           "content": [
             {
               "text": "    ref",
@@ -4491,7 +4867,7 @@
           ]
         },
         {
-          "number": 19,
+          "number": 21,
           "content": [
             {
               "text": "    className",
@@ -4540,7 +4916,76 @@
           ]
         },
         {
-          "number": 20,
+          "number": 22,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "aria-current",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " current ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "?",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "page",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "undefined",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 23,
           "content": [
             {
               "text": "    ",
@@ -4561,7 +5006,7 @@
           ]
         },
         {
-          "number": 21,
+          "number": 24,
           "content": [
             {
               "text": "  ",
@@ -4574,11 +5019,11 @@
           ]
         },
         {
-          "number": 22,
+          "number": 25,
           "content": []
         },
         {
-          "number": 23,
+          "number": 26,
           "content": [
             {
               "text": "  ",
@@ -4651,11 +5096,11 @@
           ]
         },
         {
-          "number": 24,
+          "number": 27,
           "content": []
         },
         {
-          "number": 25,
+          "number": 28,
           "content": [
             {
               "text": "  ",
@@ -4672,7 +5117,7 @@
           ]
         },
         {
-          "number": 26,
+          "number": 29,
           "content": [
             {
               "text": "    ",
@@ -4705,7 +5150,7 @@
           ]
         },
         {
-          "number": 27,
+          "number": 30,
           "content": [
             {
               "text": "      ",
@@ -4726,7 +5171,7 @@
           ]
         },
         {
-          "number": 28,
+          "number": 31,
           "content": [
             {
               "text": "    ",
@@ -4747,7 +5192,7 @@
           ]
         },
         {
-          "number": 29,
+          "number": 32,
           "content": [
             {
               "text": "  )",
@@ -4756,7 +5201,7 @@
           ]
         },
         {
-          "number": 30,
+          "number": 33,
           "content": [
             {
               "text": "}",
@@ -4765,7 +5210,7 @@
           ]
         },
         {
-          "number": 31,
+          "number": 34,
           "content": []
         }
       ]
@@ -5382,10 +5827,35 @@
       ]
     }
   },
-  "mergedSource": "import { Breadcrumbs as BreadcrumbsRoot, type BreadcrumbsProps } from \"./breadcrumbs\"\nimport { BreadcrumbsEllipsis, type BreadcrumbsEllipsisProps } from \"./breadcrumbs-ellipsis\"\nimport { BreadcrumbsItem, type BreadcrumbsItemProps } from \"./breadcrumbs-item\"\nimport { BreadcrumbsLink, type BreadcrumbsLinkProps, type BreadcrumbsLinkRenderProps } from \"./breadcrumbs-link\"\n\nconst Breadcrumbs = Object.assign(BreadcrumbsRoot, {\n  Item: BreadcrumbsItem,\n  Link: BreadcrumbsLink,\n  Ellipsis: BreadcrumbsEllipsis,\n})\n\nexport { Breadcrumbs, type BreadcrumbsProps }\nexport { BreadcrumbsEllipsis, type BreadcrumbsEllipsisProps }\nexport { BreadcrumbsItem, type BreadcrumbsItemProps }\nexport { BreadcrumbsLink, type BreadcrumbsLinkProps, type BreadcrumbsLinkRenderProps }\n\n\n\"use client\";\n\nimport {\n  Children,\n  cloneElement,\n  isValidElement,\n  useMemo,\n  type ComponentPropsWithRef,\n  type ReactElement,\n  type ReactNode,\n} from \"react\"\nimport { cn } from \"@/lib/utils\"\nimport { BreadcrumbsContext } from \"./breadcrumbs-context\"\nimport { BreadcrumbsItem, type BreadcrumbsItemProps } from \"./breadcrumbs-item\"\n\nexport interface BreadcrumbsProps extends ComponentPropsWithRef<\"nav\"> {\n  separator?: ReactNode\n}\n\nfunction isBreadcrumbsItemElement(child: ReactNode): child is ReactElement<BreadcrumbsItemProps> {\n  return isValidElement<BreadcrumbsItemProps>(child) && child.type === BreadcrumbsItem\n}\n\nfunction resolveCurrentItem(children: ReactNode): ReactNode {\n  const childArray = Children.toArray(children)\n  const hasCurrentItem = childArray.some((child) => isBreadcrumbsItemElement(child) && child.props.current)\n  const lastItemIndex = hasCurrentItem ? -1 : childArray.findLastIndex(isBreadcrumbsItemElement)\n\n  if (lastItemIndex < 0) return children\n\n  return childArray.map((child, index) => (\n    index === lastItemIndex && isBreadcrumbsItemElement(child)\n      ? cloneElement(child, { current: true })\n      : child\n  ))\n}\n\nexport function Breadcrumbs({ separator = \"/\", className, children, ref, ...props }: BreadcrumbsProps) {\n  const contextValue = useMemo(() => ({ separator }), [separator]);\n  const resolvedChildren = resolveCurrentItem(children)\n\n  return (\n    <BreadcrumbsContext value={contextValue}>\n      <nav\n        ref={ref}\n        aria-label=\"Breadcrumb\"\n        className={cn(\"text-xs text-muted-foreground\", className)}\n        {...props}\n      >\n        <ol className=\"m-0 flex list-none flex-wrap items-center gap-1.5 p-0\">\n          {resolvedChildren}\n        </ol>\n      </nav>\n    </BreadcrumbsContext>\n  )\n}\n\n\n\"use client\";\n\nimport { createContext, useContext, type ReactNode } from \"react\"\n\ninterface BreadcrumbsContextValue {\n  separator: ReactNode\n}\n\nconst BreadcrumbsContext = createContext<BreadcrumbsContextValue | undefined>(undefined)\n\nexport function useBreadcrumbsContext(): BreadcrumbsContextValue {\n  const ctx = useContext(BreadcrumbsContext)\n  if (ctx === undefined) throw new Error(\"Breadcrumbs parts must be used within a Breadcrumbs\")\n  return ctx\n}\n\nexport { BreadcrumbsContext }\n\n\n\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\"\nimport { cn } from \"@/lib/utils\"\nimport { useBreadcrumbsContext } from \"./breadcrumbs-context\"\n\nexport interface BreadcrumbsItemProps extends ComponentPropsWithRef<\"li\"> {\n  current?: boolean\n}\n\nexport function BreadcrumbsItem({ current, className, children, ref, ...props }: BreadcrumbsItemProps) {\n  const { separator } = useBreadcrumbsContext()\n\n  return (\n    <>\n      {separator != null && (\n        <li role=\"presentation\" aria-hidden=\"true\" className=\"[&>svg]:size-3.5 text-muted-foreground/40 first:hidden\">\n          {separator}\n        </li>\n      )}\n      <li\n        ref={ref}\n        aria-current={current ? \"page\" : undefined}\n        className={cn(\"inline-flex items-center gap-1.5\", current && \"font-bold text-foreground\", className)}\n        {...props}\n      >\n        {children}\n      </li>\n    </>\n  )\n}\n\n\n\"use client\";\n\nimport type { AnchorHTMLAttributes, ReactNode, Ref } from \"react\"\nimport { cn } from \"@/lib/utils\"\n\nexport type BreadcrumbsLinkRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {\n  ref: Ref<HTMLAnchorElement>\n  className: string\n}\n\nexport interface BreadcrumbsLinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, \"children\"> {\n  children: ReactNode | ((props: BreadcrumbsLinkRenderProps) => ReactNode)\n  ref?: Ref<HTMLAnchorElement>\n}\n\nexport function BreadcrumbsLink({ children, className, ref, ...props }: BreadcrumbsLinkProps) {\n  const renderProps: BreadcrumbsLinkRenderProps = {\n    ref: ref ?? null,\n    className: cn(\"transition-colors hover:text-foreground hover:underline hover:underline-offset-2\", className),\n    ...props,\n  }\n\n  if (typeof children === \"function\") return <>{children(renderProps)}</>\n\n  return (\n    <a {...renderProps}>\n      {children}\n    </a>\n  )\n}\n\n\n\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\"\nimport { cn } from \"@/lib/utils\"\n\nexport interface BreadcrumbsEllipsisProps extends ComponentPropsWithRef<\"span\"> {}\n\nexport function BreadcrumbsEllipsis({\n  children = \"...\",\n  className,\n  ref,\n  ...props\n}: BreadcrumbsEllipsisProps) {\n  return (\n    <span\n      ref={ref}\n      role=\"presentation\"\n      aria-hidden=\"true\"\n      className={cn(\"flex size-5 items-center justify-center\", className)}\n      {...props}\n    >\n      {children}\n    </span>\n  )\n}\n",
+  "mergedSource": "\"use client\";\n\nimport { Breadcrumbs as BreadcrumbsRoot, type BreadcrumbsProps } from \"./breadcrumbs\"\nimport { BreadcrumbsEllipsis, type BreadcrumbsEllipsisProps } from \"./breadcrumbs-ellipsis\"\nimport { BreadcrumbsItem, type BreadcrumbsItemProps } from \"./breadcrumbs-item\"\nimport { BreadcrumbsLink, type BreadcrumbsLinkProps, type BreadcrumbsLinkRenderProps } from \"./breadcrumbs-link\"\n\nconst Breadcrumbs = Object.assign(BreadcrumbsRoot, {\n  Item: BreadcrumbsItem,\n  Link: BreadcrumbsLink,\n  Ellipsis: BreadcrumbsEllipsis,\n})\n\nexport { Breadcrumbs, type BreadcrumbsProps }\nexport { BreadcrumbsEllipsis, type BreadcrumbsEllipsisProps }\nexport { BreadcrumbsItem, type BreadcrumbsItemProps }\nexport { BreadcrumbsLink, type BreadcrumbsLinkProps, type BreadcrumbsLinkRenderProps }\n\n\n\"use client\";\n\nimport {\n  Children,\n  cloneElement,\n  isValidElement,\n  useMemo,\n  type ComponentPropsWithRef,\n  type ReactElement,\n  type ReactNode,\n} from \"react\"\nimport { cn } from \"@/lib/utils\"\nimport { BreadcrumbsContext } from \"./breadcrumbs-context\"\nimport { BreadcrumbsItem, type BreadcrumbsItemProps } from \"./breadcrumbs-item\"\n\nexport interface BreadcrumbsProps extends ComponentPropsWithRef<\"nav\"> {\n  separator?: ReactNode\n}\n\nfunction isBreadcrumbsItemElement(child: ReactNode): child is ReactElement<BreadcrumbsItemProps> {\n  return isValidElement<BreadcrumbsItemProps>(child) && child.type === BreadcrumbsItem\n}\n\nfunction resolveCurrentItem(children: ReactNode): ReactNode {\n  const childArray = Children.toArray(children)\n  const hasCurrentItem = childArray.some((child) => isBreadcrumbsItemElement(child) && child.props.current)\n  const lastItemIndex = hasCurrentItem ? -1 : childArray.findLastIndex(isBreadcrumbsItemElement)\n\n  if (lastItemIndex < 0) return children\n\n  return childArray.map((child, index) => (\n    index === lastItemIndex && isBreadcrumbsItemElement(child)\n      ? cloneElement(child, { current: true })\n      : child\n  ))\n}\n\nexport function Breadcrumbs({ separator = \"/\", className, children, ref, ...props }: BreadcrumbsProps) {\n  const contextValue = useMemo(() => ({ separator }), [separator]);\n  const resolvedChildren = resolveCurrentItem(children)\n\n  return (\n    <BreadcrumbsContext value={contextValue}>\n      <nav\n        ref={ref}\n        aria-label=\"Breadcrumb\"\n        className={cn(\"text-xs text-muted-foreground\", className)}\n        {...props}\n      >\n        <ol className=\"m-0 flex list-none flex-wrap items-center gap-1.5 p-0\">\n          {resolvedChildren}\n        </ol>\n      </nav>\n    </BreadcrumbsContext>\n  )\n}\n\n\n\"use client\";\n\nimport { createContext, useContext, type ReactNode } from \"react\"\n\ninterface BreadcrumbsContextValue {\n  separator: ReactNode\n  current?: boolean\n}\n\nconst BreadcrumbsContext = createContext<BreadcrumbsContextValue | undefined>(undefined)\n\nexport function useBreadcrumbsContext(): BreadcrumbsContextValue {\n  const ctx = useContext(BreadcrumbsContext)\n  if (ctx === undefined) throw new Error(\"Breadcrumbs parts must be used within a Breadcrumbs\")\n  return ctx\n}\n\nexport { BreadcrumbsContext }\n\n\n\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\"\nimport { cn } from \"@/lib/utils\"\nimport { BreadcrumbsContext, useBreadcrumbsContext } from \"./breadcrumbs-context\"\n\nexport interface BreadcrumbsItemProps extends ComponentPropsWithRef<\"li\"> {\n  current?: boolean\n}\n\nexport function BreadcrumbsItem({ current, className, children, ref, ...props }: BreadcrumbsItemProps) {\n  const { separator } = useBreadcrumbsContext()\n  const itemContext = { separator, current }\n\n  return (\n    <>\n      {separator != null && (\n        <li role=\"presentation\" aria-hidden=\"true\" className=\"[&>svg]:size-3.5 text-muted-foreground/40 first:hidden\">\n          {separator}\n        </li>\n      )}\n      <BreadcrumbsContext value={itemContext}>\n        <li\n          ref={ref}\n          className={cn(\"inline-flex items-center gap-1.5\", current && \"font-bold text-foreground\", className)}\n          {...props}\n        >\n          {current && (typeof children === \"string\" || typeof children === \"number\") ? (\n            <span aria-current=\"page\">{children}</span>\n          ) : children}\n        </li>\n      </BreadcrumbsContext>\n    </>\n  )\n}\n\n\n\"use client\";\n\nimport type { AnchorHTMLAttributes, ReactNode, Ref } from \"react\"\nimport { cn } from \"@/lib/utils\"\nimport { useBreadcrumbsContext } from \"./breadcrumbs-context\"\n\nexport type BreadcrumbsLinkRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {\n  ref: Ref<HTMLAnchorElement>\n  className: string\n}\n\nexport interface BreadcrumbsLinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, \"children\"> {\n  children: ReactNode | ((props: BreadcrumbsLinkRenderProps) => ReactNode)\n  ref?: Ref<HTMLAnchorElement>\n}\n\nexport function BreadcrumbsLink({ children, className, ref, ...props }: BreadcrumbsLinkProps) {\n  const { current } = useBreadcrumbsContext()\n  const renderProps: BreadcrumbsLinkRenderProps = {\n    ref: ref ?? null,\n    className: cn(\"transition-colors hover:text-foreground hover:underline hover:underline-offset-2\", className),\n    \"aria-current\": current ? \"page\" : undefined,\n    ...props,\n  }\n\n  if (typeof children === \"function\") return <>{children(renderProps)}</>\n\n  return (\n    <a {...renderProps}>\n      {children}\n    </a>\n  )\n}\n\n\n\"use client\";\n\nimport type { ComponentPropsWithRef } from \"react\"\nimport { cn } from \"@/lib/utils\"\n\nexport interface BreadcrumbsEllipsisProps extends ComponentPropsWithRef<\"span\"> {}\n\nexport function BreadcrumbsEllipsis({\n  children = \"...\",\n  className,\n  ref,\n  ...props\n}: BreadcrumbsEllipsisProps) {\n  return (\n    <span\n      ref={ref}\n      role=\"presentation\"\n      aria-hidden=\"true\"\n      className={cn(\"flex size-5 items-center justify-center\", className)}\n      {...props}\n    >\n      {children}\n    </span>\n  )\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
+      "content": [
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "use client",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "content": []
+    },
+    {
+      "number": 3,
       "content": [
         {
           "text": "import",
@@ -5458,7 +5928,7 @@
       ]
     },
     {
-      "number": 2,
+      "number": 4,
       "content": [
         {
           "text": "import",
@@ -5523,7 +5993,7 @@
       ]
     },
     {
-      "number": 3,
+      "number": 5,
       "content": [
         {
           "text": "import",
@@ -5588,7 +6058,7 @@
       ]
     },
     {
-      "number": 4,
+      "number": 6,
       "content": [
         {
           "text": "import",
@@ -5669,11 +6139,11 @@
       ]
     },
     {
-      "number": 5,
+      "number": 7,
       "content": []
     },
     {
-      "number": 6,
+      "number": 8,
       "content": [
         {
           "text": "const",
@@ -5730,7 +6200,7 @@
       ]
     },
     {
-      "number": 7,
+      "number": 9,
       "content": [
         {
           "text": "  Item",
@@ -5751,7 +6221,7 @@
       ]
     },
     {
-      "number": 8,
+      "number": 10,
       "content": [
         {
           "text": "  Link",
@@ -5772,7 +6242,7 @@
       ]
     },
     {
-      "number": 9,
+      "number": 11,
       "content": [
         {
           "text": "  Ellipsis",
@@ -5793,7 +6263,7 @@
       ]
     },
     {
-      "number": 10,
+      "number": 12,
       "content": [
         {
           "text": "}",
@@ -5806,11 +6276,11 @@
       ]
     },
     {
-      "number": 11,
+      "number": 13,
       "content": []
     },
     {
-      "number": 12,
+      "number": 14,
       "content": [
         {
           "text": "export",
@@ -5851,7 +6321,7 @@
       ]
     },
     {
-      "number": 13,
+      "number": 15,
       "content": [
         {
           "text": "export",
@@ -5892,7 +6362,7 @@
       ]
     },
     {
-      "number": 14,
+      "number": 16,
       "content": [
         {
           "text": "export",
@@ -5933,7 +6403,7 @@
       ]
     },
     {
-      "number": 15,
+      "number": 17,
       "content": [
         {
           "text": "export",
@@ -5990,15 +6460,15 @@
       ]
     },
     {
-      "number": 16,
-      "content": []
-    },
-    {
-      "number": 17,
-      "content": []
-    },
-    {
       "number": 18,
+      "content": []
+    },
+    {
+      "number": 19,
+      "content": []
+    },
+    {
+      "number": 20,
       "content": [
         {
           "text": "\"",
@@ -6019,11 +6489,11 @@
       ]
     },
     {
-      "number": 19,
+      "number": 21,
       "content": []
     },
     {
-      "number": 20,
+      "number": 22,
       "content": [
         {
           "text": "import",
@@ -6040,7 +6510,7 @@
       ]
     },
     {
-      "number": 21,
+      "number": 23,
       "content": [
         {
           "text": "  Children",
@@ -6053,7 +6523,7 @@
       ]
     },
     {
-      "number": 22,
+      "number": 24,
       "content": [
         {
           "text": "  cloneElement",
@@ -6066,7 +6536,7 @@
       ]
     },
     {
-      "number": 23,
+      "number": 25,
       "content": [
         {
           "text": "  isValidElement",
@@ -6079,52 +6549,10 @@
       ]
     },
     {
-      "number": 24,
-      "content": [
-        {
-          "text": "  useMemo",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 25,
-      "content": [
-        {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "type",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ComponentPropsWithRef",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
       "number": 26,
       "content": [
         {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "type",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ReactElement",
+          "text": "  useMemo",
           "color": "var(--code-variable)"
         },
         {
@@ -6145,7 +6573,7 @@
           "color": "var(--code-keyword)"
         },
         {
-          "text": " ReactNode",
+          "text": " ComponentPropsWithRef",
           "color": "var(--code-variable)"
         },
         {
@@ -6156,6 +6584,48 @@
     },
     {
       "number": 28,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "type",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ReactElement",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 29,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "type",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ReactNode",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 30,
       "content": [
         {
           "text": "}",
@@ -6188,7 +6658,7 @@
       ]
     },
     {
-      "number": 29,
+      "number": 31,
       "content": [
         {
           "text": "import",
@@ -6237,7 +6707,7 @@
       ]
     },
     {
-      "number": 30,
+      "number": 32,
       "content": [
         {
           "text": "import",
@@ -6286,7 +6756,7 @@
       ]
     },
     {
-      "number": 31,
+      "number": 33,
       "content": [
         {
           "text": "import",
@@ -6351,11 +6821,11 @@
       ]
     },
     {
-      "number": 32,
+      "number": 34,
       "content": []
     },
     {
-      "number": 33,
+      "number": 35,
       "content": [
         {
           "text": "export",
@@ -6424,7 +6894,7 @@
       ]
     },
     {
-      "number": 34,
+      "number": 36,
       "content": [
         {
           "text": "  separator",
@@ -6445,7 +6915,7 @@
       ]
     },
     {
-      "number": 35,
+      "number": 37,
       "content": [
         {
           "text": "}",
@@ -6454,11 +6924,11 @@
       ]
     },
     {
-      "number": 36,
+      "number": 38,
       "content": []
     },
     {
-      "number": 37,
+      "number": 39,
       "content": [
         {
           "text": "function",
@@ -6535,7 +7005,7 @@
       ]
     },
     {
-      "number": 38,
+      "number": 40,
       "content": [
         {
           "text": "  ",
@@ -6600,7 +7070,7 @@
       ]
     },
     {
-      "number": 39,
+      "number": 41,
       "content": [
         {
           "text": "}",
@@ -6609,11 +7079,11 @@
       ]
     },
     {
-      "number": 40,
+      "number": 42,
       "content": []
     },
     {
-      "number": 41,
+      "number": 43,
       "content": [
         {
           "text": "function",
@@ -6670,7 +7140,7 @@
       ]
     },
     {
-      "number": 42,
+      "number": 44,
       "content": [
         {
           "text": "  ",
@@ -6719,7 +7189,7 @@
       ]
     },
     {
-      "number": 43,
+      "number": 45,
       "content": [
         {
           "text": "  ",
@@ -6828,7 +7298,7 @@
       ]
     },
     {
-      "number": 44,
+      "number": 46,
       "content": [
         {
           "text": "  ",
@@ -6905,11 +7375,11 @@
       ]
     },
     {
-      "number": 45,
+      "number": 47,
       "content": []
     },
     {
-      "number": 46,
+      "number": 48,
       "content": [
         {
           "text": "  ",
@@ -6950,11 +7420,11 @@
       ]
     },
     {
-      "number": 47,
+      "number": 49,
       "content": []
     },
     {
-      "number": 48,
+      "number": 50,
       "content": [
         {
           "text": "  ",
@@ -7019,7 +7489,7 @@
       ]
     },
     {
-      "number": 49,
+      "number": 51,
       "content": [
         {
           "text": "    index ",
@@ -7052,7 +7522,7 @@
       ]
     },
     {
-      "number": 50,
+      "number": 52,
       "content": [
         {
           "text": "      ",
@@ -7117,7 +7587,7 @@
       ]
     },
     {
-      "number": 51,
+      "number": 53,
       "content": [
         {
           "text": "      ",
@@ -7134,7 +7604,7 @@
       ]
     },
     {
-      "number": 52,
+      "number": 54,
       "content": [
         {
           "text": "  ))",
@@ -7143,7 +7613,7 @@
       ]
     },
     {
-      "number": 53,
+      "number": 55,
       "content": [
         {
           "text": "}",
@@ -7152,11 +7622,11 @@
       ]
     },
     {
-      "number": 54,
+      "number": 56,
       "content": []
     },
     {
-      "number": 55,
+      "number": 57,
       "content": [
         {
           "text": "export",
@@ -7273,7 +7743,7 @@
       ]
     },
     {
-      "number": 56,
+      "number": 58,
       "content": [
         {
           "text": "  ",
@@ -7358,7 +7828,7 @@
       ]
     },
     {
-      "number": 57,
+      "number": 59,
       "content": [
         {
           "text": "  ",
@@ -7399,11 +7869,11 @@
       ]
     },
     {
-      "number": 58,
+      "number": 60,
       "content": []
     },
     {
-      "number": 59,
+      "number": 61,
       "content": [
         {
           "text": "  ",
@@ -7420,7 +7890,7 @@
       ]
     },
     {
-      "number": 60,
+      "number": 62,
       "content": [
         {
           "text": "    ",
@@ -7457,7 +7927,7 @@
       ]
     },
     {
-      "number": 61,
+      "number": 63,
       "content": [
         {
           "text": "      ",
@@ -7474,7 +7944,7 @@
       ]
     },
     {
-      "number": 62,
+      "number": 64,
       "content": [
         {
           "text": "        ",
@@ -7499,7 +7969,7 @@
       ]
     },
     {
-      "number": 63,
+      "number": 65,
       "content": [
         {
           "text": "        ",
@@ -7528,7 +7998,7 @@
       ]
     },
     {
-      "number": 64,
+      "number": 66,
       "content": [
         {
           "text": "        ",
@@ -7577,7 +8047,7 @@
       ]
     },
     {
-      "number": 65,
+      "number": 67,
       "content": [
         {
           "text": "        ",
@@ -7598,7 +8068,7 @@
       ]
     },
     {
-      "number": 66,
+      "number": 68,
       "content": [
         {
           "text": "      ",
@@ -7611,7 +8081,7 @@
       ]
     },
     {
-      "number": 67,
+      "number": 69,
       "content": [
         {
           "text": "        ",
@@ -7656,7 +8126,7 @@
       ]
     },
     {
-      "number": 68,
+      "number": 70,
       "content": [
         {
           "text": "          ",
@@ -7677,7 +8147,7 @@
       ]
     },
     {
-      "number": 69,
+      "number": 71,
       "content": [
         {
           "text": "        ",
@@ -7698,7 +8168,7 @@
       ]
     },
     {
-      "number": 70,
+      "number": 72,
       "content": [
         {
           "text": "      ",
@@ -7719,7 +8189,7 @@
       ]
     },
     {
-      "number": 71,
+      "number": 73,
       "content": [
         {
           "text": "    ",
@@ -7740,7 +8210,7 @@
       ]
     },
     {
-      "number": 72,
+      "number": 74,
       "content": [
         {
           "text": "  )",
@@ -7749,7 +8219,7 @@
       ]
     },
     {
-      "number": 73,
+      "number": 75,
       "content": [
         {
           "text": "}",
@@ -7758,15 +8228,15 @@
       ]
     },
     {
-      "number": 74,
-      "content": []
-    },
-    {
-      "number": 75,
-      "content": []
-    },
-    {
       "number": 76,
+      "content": []
+    },
+    {
+      "number": 77,
+      "content": []
+    },
+    {
+      "number": 78,
       "content": [
         {
           "text": "\"",
@@ -7787,11 +8257,11 @@
       ]
     },
     {
-      "number": 77,
+      "number": 79,
       "content": []
     },
     {
-      "number": 78,
+      "number": 80,
       "content": [
         {
           "text": "import",
@@ -7864,11 +8334,11 @@
       ]
     },
     {
-      "number": 79,
+      "number": 81,
       "content": []
     },
     {
-      "number": 80,
+      "number": 82,
       "content": [
         {
           "text": "interface",
@@ -7893,7 +8363,7 @@
       ]
     },
     {
-      "number": 81,
+      "number": 83,
       "content": [
         {
           "text": "  separator",
@@ -7914,7 +8384,28 @@
       ]
     },
     {
-      "number": 82,
+      "number": 84,
+      "content": [
+        {
+          "text": "  current",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "?:",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "boolean",
+          "color": "var(--code-number)"
+        }
+      ]
+    },
+    {
+      "number": 85,
       "content": [
         {
           "text": "}",
@@ -7923,11 +8414,11 @@
       ]
     },
     {
-      "number": 83,
+      "number": 86,
       "content": []
     },
     {
-      "number": 84,
+      "number": 87,
       "content": [
         {
           "text": "const",
@@ -8000,11 +8491,11 @@
       ]
     },
     {
-      "number": 85,
+      "number": 88,
       "content": []
     },
     {
-      "number": 86,
+      "number": 89,
       "content": [
         {
           "text": "export",
@@ -8049,7 +8540,7 @@
       ]
     },
     {
-      "number": 87,
+      "number": 90,
       "content": [
         {
           "text": "  ",
@@ -8090,7 +8581,7 @@
       ]
     },
     {
-      "number": 88,
+      "number": 91,
       "content": [
         {
           "text": "  ",
@@ -8163,7 +8654,7 @@
       ]
     },
     {
-      "number": 89,
+      "number": 92,
       "content": [
         {
           "text": "  ",
@@ -8180,7 +8671,7 @@
       ]
     },
     {
-      "number": 90,
+      "number": 93,
       "content": [
         {
           "text": "}",
@@ -8189,11 +8680,11 @@
       ]
     },
     {
-      "number": 91,
+      "number": 94,
       "content": []
     },
     {
-      "number": 92,
+      "number": 95,
       "content": [
         {
           "text": "export",
@@ -8218,15 +8709,15 @@
       ]
     },
     {
-      "number": 93,
+      "number": 96,
       "content": []
     },
     {
-      "number": 94,
+      "number": 97,
       "content": []
     },
     {
-      "number": 95,
+      "number": 98,
       "content": [
         {
           "text": "\"",
@@ -8247,11 +8738,11 @@
       ]
     },
     {
-      "number": 96,
+      "number": 99,
       "content": []
     },
     {
-      "number": 97,
+      "number": 100,
       "content": [
         {
           "text": "import",
@@ -8308,7 +8799,7 @@
       ]
     },
     {
-      "number": 98,
+      "number": 101,
       "content": [
         {
           "text": "import",
@@ -8357,7 +8848,7 @@
       ]
     },
     {
-      "number": 99,
+      "number": 102,
       "content": [
         {
           "text": "import",
@@ -8369,6 +8860,14 @@
         },
         {
           "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " BreadcrumbsContext",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
           "color": "var(--code-operator)"
         },
         {
@@ -8406,11 +8905,11 @@
       ]
     },
     {
-      "number": 100,
+      "number": 103,
       "content": []
     },
     {
-      "number": 101,
+      "number": 104,
       "content": [
         {
           "text": "export",
@@ -8479,7 +8978,7 @@
       ]
     },
     {
-      "number": 102,
+      "number": 105,
       "content": [
         {
           "text": "  current",
@@ -8500,7 +8999,7 @@
       ]
     },
     {
-      "number": 103,
+      "number": 106,
       "content": [
         {
           "text": "}",
@@ -8509,11 +9008,11 @@
       ]
     },
     {
-      "number": 104,
+      "number": 107,
       "content": []
     },
     {
-      "number": 105,
+      "number": 108,
       "content": [
         {
           "text": "export",
@@ -8610,7 +9109,7 @@
       ]
     },
     {
-      "number": 106,
+      "number": 109,
       "content": [
         {
           "text": "  ",
@@ -8667,11 +9166,64 @@
       ]
     },
     {
-      "number": 107,
+      "number": 110,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "itemContext",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " separator",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " current ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 111,
       "content": []
     },
     {
-      "number": 108,
+      "number": 112,
       "content": [
         {
           "text": "  ",
@@ -8688,7 +9240,7 @@
       ]
     },
     {
-      "number": 109,
+      "number": 113,
       "content": [
         {
           "text": "    ",
@@ -8701,7 +9253,7 @@
       ]
     },
     {
-      "number": 110,
+      "number": 114,
       "content": [
         {
           "text": "      ",
@@ -8742,7 +9294,7 @@
       ]
     },
     {
-      "number": 111,
+      "number": 115,
       "content": [
         {
           "text": "        ",
@@ -8835,7 +9387,7 @@
       ]
     },
     {
-      "number": 112,
+      "number": 116,
       "content": [
         {
           "text": "          ",
@@ -8856,7 +9408,7 @@
       ]
     },
     {
-      "number": 113,
+      "number": 117,
       "content": [
         {
           "text": "        ",
@@ -8877,7 +9429,7 @@
       ]
     },
     {
-      "number": 114,
+      "number": 118,
       "content": [
         {
           "text": "      )",
@@ -8890,10 +9442,47 @@
       ]
     },
     {
-      "number": 115,
+      "number": 119,
       "content": [
         {
           "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "BreadcrumbsContext",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "value",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "itemContext",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}>",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 120,
+      "content": [
+        {
+          "text": "        ",
           "color": "var(--code-variable)"
         },
         {
@@ -8907,10 +9496,10 @@
       ]
     },
     {
-      "number": 116,
+      "number": 121,
       "content": [
         {
-          "text": "        ",
+          "text": "          ",
           "color": "var(--code-variable)"
         },
         {
@@ -8932,71 +9521,10 @@
       ]
     },
     {
-      "number": 117,
+      "number": 122,
       "content": [
         {
-          "text": "        ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "aria-current",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "={",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "current ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "?",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "page",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ":",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "undefined",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": "}",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 118,
-      "content": [
-        {
-          "text": "        ",
+          "text": "          ",
           "color": "var(--code-variable)"
         },
         {
@@ -9070,10 +9598,10 @@
       ]
     },
     {
-      "number": 119,
+      "number": 123,
       "content": [
         {
-          "text": "        ",
+          "text": "          ",
           "color": "var(--code-variable)"
         },
         {
@@ -9091,10 +9619,10 @@
       ]
     },
     {
-      "number": 120,
+      "number": 124,
       "content": [
         {
-          "text": "      ",
+          "text": "        ",
           "color": "var(--code-variable)"
         },
         {
@@ -9104,10 +9632,10 @@
       ]
     },
     {
-      "number": 121,
+      "number": 125,
       "content": [
         {
-          "text": "        ",
+          "text": "          ",
           "color": "var(--code-variable)"
         },
         {
@@ -9115,7 +9643,173 @@
           "color": "var(--code-operator)"
         },
         {
+          "text": "current ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&&",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "typeof",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " children ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "string",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "||",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "typeof",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " children ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "number",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ") ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "?",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 126,
+      "content": [
+        {
+          "text": "            ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "span",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "aria-current",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "page",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ">{",
+          "color": "var(--code-operator)"
+        },
+        {
           "text": "children",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}</",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "span",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": ">",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 127,
+      "content": [
+        {
+          "text": "          ) ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " children",
           "color": "var(--code-variable)"
         },
         {
@@ -9125,10 +9819,10 @@
       ]
     },
     {
-      "number": 122,
+      "number": 128,
       "content": [
         {
-          "text": "      ",
+          "text": "        ",
           "color": "var(--code-variable)"
         },
         {
@@ -9146,7 +9840,28 @@
       ]
     },
     {
-      "number": 123,
+      "number": 129,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "</",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "BreadcrumbsContext",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ">",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 130,
       "content": [
         {
           "text": "    ",
@@ -9159,7 +9874,7 @@
       ]
     },
     {
-      "number": 124,
+      "number": 131,
       "content": [
         {
           "text": "  )",
@@ -9168,7 +9883,7 @@
       ]
     },
     {
-      "number": 125,
+      "number": 132,
       "content": [
         {
           "text": "}",
@@ -9177,15 +9892,15 @@
       ]
     },
     {
-      "number": 126,
+      "number": 133,
       "content": []
     },
     {
-      "number": 127,
+      "number": 134,
       "content": []
     },
     {
-      "number": 128,
+      "number": 135,
       "content": [
         {
           "text": "\"",
@@ -9206,11 +9921,11 @@
       ]
     },
     {
-      "number": 129,
+      "number": 136,
       "content": []
     },
     {
-      "number": 130,
+      "number": 137,
       "content": [
         {
           "text": "import",
@@ -9283,7 +9998,7 @@
       ]
     },
     {
-      "number": 131,
+      "number": 138,
       "content": [
         {
           "text": "import",
@@ -9332,11 +10047,60 @@
       ]
     },
     {
-      "number": 132,
+      "number": 139,
+      "content": [
+        {
+          "text": "import",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " useBreadcrumbsContext ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "from",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "./breadcrumbs-context",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 140,
       "content": []
     },
     {
-      "number": 133,
+      "number": 141,
       "content": [
         {
           "text": "export",
@@ -9405,7 +10169,7 @@
       ]
     },
     {
-      "number": 134,
+      "number": 142,
       "content": [
         {
           "text": "  ref",
@@ -9438,7 +10202,7 @@
       ]
     },
     {
-      "number": 135,
+      "number": 143,
       "content": [
         {
           "text": "  className",
@@ -9459,7 +10223,7 @@
       ]
     },
     {
-      "number": 136,
+      "number": 144,
       "content": [
         {
           "text": "}",
@@ -9468,11 +10232,11 @@
       ]
     },
     {
-      "number": 137,
+      "number": 145,
       "content": []
     },
     {
-      "number": 138,
+      "number": 146,
       "content": [
         {
           "text": "export",
@@ -9561,7 +10325,7 @@
       ]
     },
     {
-      "number": 139,
+      "number": 147,
       "content": [
         {
           "text": "  children",
@@ -9638,7 +10402,7 @@
       ]
     },
     {
-      "number": 140,
+      "number": 148,
       "content": [
         {
           "text": "  ref",
@@ -9671,7 +10435,7 @@
       ]
     },
     {
-      "number": 141,
+      "number": 149,
       "content": [
         {
           "text": "}",
@@ -9680,11 +10444,11 @@
       ]
     },
     {
-      "number": 142,
+      "number": 150,
       "content": []
     },
     {
-      "number": 143,
+      "number": 151,
       "content": [
         {
           "text": "export",
@@ -9773,7 +10537,64 @@
       ]
     },
     {
-      "number": 144,
+      "number": 152,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "current",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "useBreadcrumbsContext",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "()",
+          "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 153,
       "content": [
         {
           "text": "  ",
@@ -9822,7 +10643,7 @@
       ]
     },
     {
-      "number": 145,
+      "number": 154,
       "content": [
         {
           "text": "    ref",
@@ -9855,7 +10676,7 @@
       ]
     },
     {
-      "number": 146,
+      "number": 155,
       "content": [
         {
           "text": "    className",
@@ -9904,7 +10725,76 @@
       ]
     },
     {
-      "number": 147,
+      "number": 156,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "aria-current",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " current ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "?",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "page",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "undefined",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 157,
       "content": [
         {
           "text": "    ",
@@ -9925,7 +10815,7 @@
       ]
     },
     {
-      "number": 148,
+      "number": 158,
       "content": [
         {
           "text": "  ",
@@ -9938,11 +10828,11 @@
       ]
     },
     {
-      "number": 149,
+      "number": 159,
       "content": []
     },
     {
-      "number": 150,
+      "number": 160,
       "content": [
         {
           "text": "  ",
@@ -10015,11 +10905,11 @@
       ]
     },
     {
-      "number": 151,
+      "number": 161,
       "content": []
     },
     {
-      "number": 152,
+      "number": 162,
       "content": [
         {
           "text": "  ",
@@ -10036,7 +10926,7 @@
       ]
     },
     {
-      "number": 153,
+      "number": 163,
       "content": [
         {
           "text": "    ",
@@ -10069,7 +10959,7 @@
       ]
     },
     {
-      "number": 154,
+      "number": 164,
       "content": [
         {
           "text": "      ",
@@ -10090,7 +10980,7 @@
       ]
     },
     {
-      "number": 155,
+      "number": 165,
       "content": [
         {
           "text": "    ",
@@ -10111,7 +11001,7 @@
       ]
     },
     {
-      "number": 156,
+      "number": 166,
       "content": [
         {
           "text": "  )",
@@ -10120,7 +11010,7 @@
       ]
     },
     {
-      "number": 157,
+      "number": 167,
       "content": [
         {
           "text": "}",
@@ -10129,15 +11019,15 @@
       ]
     },
     {
-      "number": 158,
+      "number": 168,
       "content": []
     },
     {
-      "number": 159,
+      "number": 169,
       "content": []
     },
     {
-      "number": 160,
+      "number": 170,
       "content": [
         {
           "text": "\"",
@@ -10158,11 +11048,11 @@
       ]
     },
     {
-      "number": 161,
+      "number": 171,
       "content": []
     },
     {
-      "number": 162,
+      "number": 172,
       "content": [
         {
           "text": "import",
@@ -10219,7 +11109,7 @@
       ]
     },
     {
-      "number": 163,
+      "number": 173,
       "content": [
         {
           "text": "import",
@@ -10268,11 +11158,11 @@
       ]
     },
     {
-      "number": 164,
+      "number": 174,
       "content": []
     },
     {
-      "number": 165,
+      "number": 175,
       "content": [
         {
           "text": "export",
@@ -10341,11 +11231,11 @@
       ]
     },
     {
-      "number": 166,
+      "number": 176,
       "content": []
     },
     {
-      "number": 167,
+      "number": 177,
       "content": [
         {
           "text": "export",
@@ -10374,7 +11264,7 @@
       ]
     },
     {
-      "number": 168,
+      "number": 178,
       "content": [
         {
           "text": "  children ",
@@ -10407,7 +11297,7 @@
       ]
     },
     {
-      "number": 169,
+      "number": 179,
       "content": [
         {
           "text": "  className",
@@ -10420,7 +11310,7 @@
       ]
     },
     {
-      "number": 170,
+      "number": 180,
       "content": [
         {
           "text": "  ref",
@@ -10433,7 +11323,7 @@
       ]
     },
     {
-      "number": 171,
+      "number": 181,
       "content": [
         {
           "text": "  ",
@@ -10450,7 +11340,7 @@
       ]
     },
     {
-      "number": 172,
+      "number": 182,
       "content": [
         {
           "text": "}:",
@@ -10479,7 +11369,7 @@
       ]
     },
     {
-      "number": 173,
+      "number": 183,
       "content": [
         {
           "text": "  ",
@@ -10496,7 +11386,7 @@
       ]
     },
     {
-      "number": 174,
+      "number": 184,
       "content": [
         {
           "text": "    ",
@@ -10513,7 +11403,7 @@
       ]
     },
     {
-      "number": 175,
+      "number": 185,
       "content": [
         {
           "text": "      ",
@@ -10538,7 +11428,7 @@
       ]
     },
     {
-      "number": 176,
+      "number": 186,
       "content": [
         {
           "text": "      ",
@@ -10567,7 +11457,7 @@
       ]
     },
     {
-      "number": 177,
+      "number": 187,
       "content": [
         {
           "text": "      ",
@@ -10596,7 +11486,7 @@
       ]
     },
     {
-      "number": 178,
+      "number": 188,
       "content": [
         {
           "text": "      ",
@@ -10645,7 +11535,7 @@
       ]
     },
     {
-      "number": 179,
+      "number": 189,
       "content": [
         {
           "text": "      ",
@@ -10666,7 +11556,7 @@
       ]
     },
     {
-      "number": 180,
+      "number": 190,
       "content": [
         {
           "text": "    ",
@@ -10679,7 +11569,7 @@
       ]
     },
     {
-      "number": 181,
+      "number": 191,
       "content": [
         {
           "text": "      ",
@@ -10700,7 +11590,7 @@
       ]
     },
     {
-      "number": 182,
+      "number": 192,
       "content": [
         {
           "text": "    ",
@@ -10721,7 +11611,7 @@
       ]
     },
     {
-      "number": 183,
+      "number": 193,
       "content": [
         {
           "text": "  )",
@@ -10730,7 +11620,7 @@
       ]
     },
     {
-      "number": 184,
+      "number": 194,
       "content": [
         {
           "text": "}",
@@ -10739,7 +11629,7 @@
       ]
     },
     {
-      "number": 185,
+      "number": 195,
       "content": []
     }
   ],

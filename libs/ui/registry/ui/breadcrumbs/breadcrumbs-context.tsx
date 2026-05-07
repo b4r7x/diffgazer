@@ -4,6 +4,7 @@ import { createContext, useContext, type ReactNode } from "react"
 
 interface BreadcrumbsContextValue {
   separator: ReactNode
+  current?: boolean
 }
 
 const BreadcrumbsContext = createContext<BreadcrumbsContextValue | undefined>(undefined)

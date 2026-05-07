@@ -1,6 +1,6 @@
-import { resolve } from "node:path";
-import { createDiffCommand, ensureWithinDir } from "@diffgazer/registry/cli";
-import { ctx } from "../context.js";
+import { createDiffCommand } from "@diffgazer/registry/cli";
+import { ctx, type DiffgazerAddConfig } from "../context.js";
+import { rewriteLocalImportsForKeysPackage } from "../utils/transform.js";
 import {
   prepareFileContent,
   getInstallBaseForFilePath,
@@ -13,6 +13,17 @@ import {
   publicInstallNames,
   validateInstallNames,
 } from "../utils/namespaces.js";
+import { resolveInstallPath } from "../utils/paths.js";
+
+type InstalledComponents = NonNullable<DiffgazerAddConfig["installedComponents"]>;
+type IntegrationMode = NonNullable<InstalledComponents[string]>["integrationMode"];
+
+function resolveIntegrationMode(cwd: string, itemName: string, manifestPath: string): IntegrationMode {
+  const manifest = ctx.config.getManifestItems(cwd) as InstalledComponents | undefined;
+  const entry = manifest?.[itemName];
+  const fileEntry = entry?.files?.find((file) => file.path === manifestPath);
+  return fileEntry?.integrationMode ?? entry?.integrationMode;
+}
 
 export const diffCommand = createDiffCommand({
   itemPlural: "items",
@@ -27,27 +38,22 @@ export const diffCommand = createDiffCommand({
   resolveFilesForName: ({ name, cwd, config }) => {
     const parsed = parseInstallName(name);
     const item = getNamespacedItem(name);
-    const componentsDir = resolve(cwd, config.componentsFsPath);
-    const hooksDir = resolve(cwd, config.hooksFsPath);
-    const libDir = resolve(cwd, config.libFsPath);
-
     return item.files.map((file) => {
       const relativePath = ctx.registry.relativePath(file);
       const installBase = getInstallBaseForFilePath(file.path);
       const installDir = getInstallDirForBase(installBase, config);
-      const localPath = resolve(cwd, installDir, relativePath);
-      const targetRoot = installBase === "components"
-        ? componentsDir
-        : installBase === "hooks"
-          ? hooksDir
-          : libDir;
-      ensureWithinDir(localPath, targetRoot);
+      const localPath = resolveInstallPath(cwd, installDir, relativePath);
+      const itemName = `${parsed.namespace}/${parsed.name}`;
+      const manifestPath = `${installDir}/${relativePath}`.replace(/\\/g, "/");
+      const rawContent = resolveIntegrationMode(cwd, itemName, manifestPath) === "@diffgazer/keys"
+        ? rewriteLocalImportsForKeysPackage(file.content)
+        : file.content;
 
       return {
-        itemName: `${parsed.namespace}/${parsed.name}`,
+        itemName,
         relativePath,
         localPath,
-        registryContent: prepareFileContent(file, item, config),
+        registryContent: prepareFileContent({ ...file, content: rawContent }, item, config),
       };
     });
   },

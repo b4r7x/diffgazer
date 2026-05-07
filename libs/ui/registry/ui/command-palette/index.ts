@@ -1,3 +1,5 @@
+"use client";
+
 import { CommandPalette as CommandPaletteRoot, type CommandPaletteProps } from "./command-palette";
 import { CommandPaletteContent, type CommandPaletteContentProps } from "./command-palette-content";
 import { CommandPaletteInput, type CommandPaletteInputProps } from "./command-palette-input";

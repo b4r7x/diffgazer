@@ -1,15 +1,19 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { Children, isValidElement, useMemo, type AriaAttributes, type ComponentPropsWithoutRef, type ReactNode, type Ref } from "react";
+import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
-import { SelectContext } from "./select-context";
+import { SelectContext, type SelectOptionMetadata } from "./select-context";
+import { SelectItem, type SelectItemProps } from "./select-item";
 import { useSelectState } from "./use-select-state";
 
-interface SelectBaseProps {
+interface SelectBaseProps extends Omit<ComponentPropsWithoutRef<"div">, "defaultValue" | "onChange"> {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   defaultOpen?: boolean;
   highlighted?: string | null;
+  onHighlightChange?: (value: string | null) => void;
+  /** @deprecated Use `onHighlightChange` for controlled highlight updates. */
   onHighlight?: (value: string | null) => void;
   disabled?: boolean;
   variant?: "default" | "card";
@@ -18,14 +22,16 @@ interface SelectBaseProps {
   /** Name attribute for the hidden form input */
   name?: string;
   required?: boolean;
-  "aria-invalid"?: boolean;
+  "aria-invalid"?: AriaAttributes["aria-invalid"];
   children: ReactNode;
-  className?: string;
+  ref?: Ref<HTMLDivElement>;
 }
 
 interface SelectSingleProps extends SelectBaseProps {
   multiple?: false;
   value?: string;
+  onValueChange?: (value: string) => void;
+  /** @deprecated Use `onValueChange` for controlled value updates. */
   onChange?: (value: string) => void;
   defaultValue?: string;
 }
@@ -33,6 +39,8 @@ interface SelectSingleProps extends SelectBaseProps {
 interface SelectMultipleProps extends SelectBaseProps {
   multiple: true;
   value?: string[];
+  onValueChange?: (value: string[]) => void;
+  /** @deprecated Use `onValueChange` for controlled value updates. */
   onChange?: (value: string[]) => void;
   defaultValue?: string[];
 }
@@ -52,9 +60,11 @@ export function Select(props: SelectProps) {
     onOpenChange,
     defaultOpen,
     value,
+    onValueChange,
     onChange,
     defaultValue,
     highlighted,
+    onHighlightChange,
     onHighlight,
     multiple,
     disabled = false,
@@ -65,28 +75,65 @@ export function Select(props: SelectProps) {
     "aria-invalid": ariaInvalid,
     children,
     className,
+    ref,
+    ...rootProps
   } = props;
+  const openControlled = "open" in props;
+  const valueControlled = "value" in props;
+  const highlightedControlled = "highlighted" in props;
+  const options = useMemo(() => collectSelectOptions(children), [children]);
 
-  const { contextValue, wrapperRef } = useSelectState({
-    open,
-    onOpenChange,
-    defaultOpen,
-    value,
-    onChange,
-    defaultValue,
-    highlighted,
-    onHighlight,
-    multiple,
-    disabled,
-    variant,
-    ariaInvalid,
-    required,
-  });
+  const stateOptions = props.multiple
+    ? {
+        open,
+        openControlled,
+        onOpenChange,
+        defaultOpen,
+        value: props.value,
+        valueControlled,
+        onValueChange: props.onValueChange,
+        onChange: props.onChange,
+        defaultValue: props.defaultValue,
+        highlighted,
+        highlightedControlled,
+        onHighlightChange,
+        onHighlight,
+        multiple: true as const,
+        disabled,
+        variant,
+        ariaInvalid,
+        required,
+        options,
+      }
+    : {
+        open,
+        openControlled,
+        onOpenChange,
+        defaultOpen,
+        value: props.value,
+        valueControlled,
+        onValueChange: props.onValueChange,
+        onChange: props.onChange,
+        defaultValue: props.defaultValue,
+        highlighted,
+        highlightedControlled,
+        onHighlightChange,
+        onHighlight,
+        multiple: false as const,
+        disabled,
+        variant,
+        ariaInvalid,
+        required,
+        options,
+      };
+
+  const { contextValue, wrapperRef } = useSelectState(stateOptions);
 
   return (
     <SelectContext value={contextValue}>
       <div
-        ref={wrapperRef}
+        {...rootProps}
+        ref={composeRefs(wrapperRef, ref)}
         className={cn(
           "relative",
           width && widthClasses[width],
@@ -95,7 +142,7 @@ export function Select(props: SelectProps) {
         )}
       >
         {children}
-        {name && (
+        {(name || required) && (
           Array.isArray(contextValue.value)
             ? (
                 <>
@@ -103,11 +150,17 @@ export function Select(props: SelectProps) {
                     name={name}
                     multiple
                     value={contextValue.value}
+                    required={required}
                     disabled={disabled}
                     tabIndex={-1}
-                    aria-hidden="true"
+                    aria-hidden={true}
+                    aria-label={typeof name === "string" ? name : undefined}
                     className="sr-only"
                     onChange={() => {}}
+                    onInvalid={(event) => {
+                      event.preventDefault();
+                      contextValue.onNativeInvalid();
+                    }}
                   >
                     {contextValue.value.map((v) => (
                       <option key={v} value={v}>{v}</option>
@@ -120,9 +173,14 @@ export function Select(props: SelectProps) {
                       checked={contextValue.value.length > 0}
                       disabled={disabled}
                       tabIndex={-1}
-                      aria-hidden="true"
+                      aria-hidden={true}
+                      aria-label={typeof name === "string" ? `${name} required` : undefined}
                       readOnly
                       className="sr-only"
+                      onInvalid={(event) => {
+                        event.preventDefault();
+                        contextValue.onNativeInvalid();
+                      }}
                     />
                   )}
                 </>
@@ -130,20 +188,57 @@ export function Select(props: SelectProps) {
             : (
                 <select
                   name={name}
-                  value={contextValue.value}
+                  value={contextValue.value ?? ""}
                   required={required}
                   disabled={disabled}
                   tabIndex={-1}
-                  aria-hidden="true"
+                  aria-hidden={true}
+                  aria-label={typeof name === "string" ? name : undefined}
                   className="sr-only"
                   onChange={() => {}}
+                  onInvalid={(event) => {
+                    event.preventDefault();
+                    contextValue.onNativeInvalid();
+                  }}
                 >
                   <option value="" />
-                  {contextValue.value && <option value={contextValue.value}>{contextValue.value}</option>}
+                  {contextValue.value !== null && <option value={contextValue.value}>{contextValue.value}</option>}
                 </select>
               )
         )}
       </div>
     </SelectContext>
   );
+}
+
+function collectSelectOptions(children: ReactNode): ReadonlyMap<string, SelectOptionMetadata> {
+  const options = new Map<string, SelectOptionMetadata>();
+
+  Children.forEach(children, (child) => {
+    if (!isValidElement<{ children?: ReactNode }>(child)) return;
+
+    if (child.type === SelectItem) {
+      const props = child.props as SelectItemProps;
+      options.set(props.value, {
+        label: props.textValue ?? getNodeText(props.children) ?? props.value,
+        disabled: props.disabled ?? false,
+      });
+      return;
+    }
+
+    const nested = collectSelectOptions(child.props.children);
+    for (const [value, metadata] of nested) options.set(value, metadata);
+  });
+
+  return options;
+}
+
+function getNodeText(node: ReactNode): string | undefined {
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) {
+    const text = node.map(getNodeText).filter(Boolean).join("");
+    return text || undefined;
+  }
+  if (isValidElement<{ children?: ReactNode }>(node)) return getNodeText(node.props.children);
+  return undefined;
 }

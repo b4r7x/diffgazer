@@ -1,8 +1,14 @@
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
-import { describe, it, expect, vi } from "vitest"
+import { afterEach, describe, it, expect, vi } from "vitest"
 import { CommandPalette } from "./index.js"
+import { StrictMode, createRef } from "react"
+import { Popover } from "../popover/index.js"
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 interface RenderOptions {
   open?: boolean
@@ -11,13 +17,18 @@ interface RenderOptions {
   onSearchChange?: (value: string) => void
   selectedId?: string | null
   onSelectedIdChange?: (id: string | null) => void
+  highlightedId?: string | null
+  onHighlightChange?: (id: string | null) => void
   onActivate?: (id: string) => void
   shouldFilter?: boolean
   filter?: (value: string, search: string) => boolean
 }
 
 function getOption(id: string) {
-  return document.getElementById(id) as HTMLElement
+  const option = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]'))
+    .find((element) => element.dataset.value === id)
+  if (!option) throw new Error(`Option not found: ${id}`)
+  return option
 }
 
 function renderPalette(props: RenderOptions = {}) {
@@ -38,9 +49,66 @@ function renderPalette(props: RenderOptions = {}) {
 }
 
 describe("CommandPalette", () => {
+  it("supports direct namespaced parts inside groups", async () => {
+    const onActivate = vi.fn()
+    render(
+      <CommandPalette open onActivate={onActivate}>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Group heading="Actions">
+              <CommandPalette.Item id="copy">Copy</CommandPalette.Item>
+              <CommandPalette.Item id="paste">Paste</CommandPalette.Item>
+            </CommandPalette.Group>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    )
+
+    await userEvent.type(screen.getByRole("combobox"), "{ArrowDown}{Enter}")
+
+    expect(onActivate).toHaveBeenCalledWith("paste")
+  })
+
+  it("documents that opaque wrapper-generated items are not keyboard metadata", async () => {
+    const onActivate = vi.fn()
+    function WrappedCommandItem() {
+      return <CommandPalette.Item id="wrapped">Wrapped</CommandPalette.Item>
+    }
+
+    render(
+      <CommandPalette open onActivate={onActivate}>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="direct">Direct</CommandPalette.Item>
+            <WrappedCommandItem />
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    )
+
+    expect(screen.getByRole("option", { name: /wrapped/i })).toBeInTheDocument()
+
+    await userEvent.type(screen.getByRole("combobox"), "wrapped{Enter}")
+
+    expect(onActivate).not.toHaveBeenCalled()
+    expect(screen.getByRole("option", { name: /wrapped/i })).toHaveAttribute("aria-selected", "false")
+  })
+
   it("does not render content when closed", () => {
     renderPalette({ open: false })
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument()
+  })
+
+  it("exposes modal dialog semantics", () => {
+    renderPalette()
+    expect(screen.getByRole("dialog", { name: "Command palette" })).toHaveAttribute("aria-modal", "true")
+  })
+
+  it("focuses the combobox immediately when opened", () => {
+    renderPalette()
+    expect(screen.getByRole("combobox")).toHaveFocus()
   })
 
   it("filters items based on search input and shows empty state", async () => {
@@ -48,8 +116,8 @@ describe("CommandPalette", () => {
     const input = screen.getByRole("combobox")
     await userEvent.type(input, "cop")
     expect(getOption("copy")).toBeInTheDocument()
-    expect(document.getElementById("paste")).not.toBeInTheDocument()
-    expect(document.getElementById("delete")).not.toBeInTheDocument()
+    expect(screen.queryByRole("option", { name: "Paste" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("option", { name: "Delete" })).not.toBeInTheDocument()
 
     await userEvent.clear(input)
     await userEvent.type(input, "zzzzz")
@@ -111,6 +179,26 @@ describe("CommandPalette", () => {
     expect(getOption("delete")).toHaveAttribute("aria-selected", "true")
   })
 
+  it("keeps item registration current under StrictMode filtering", async () => {
+    const onActivate = vi.fn()
+    render(
+      <StrictMode>
+        <CommandPalette open onActivate={onActivate}>
+          <CommandPalette.Content>
+            <CommandPalette.Input />
+            <CommandPalette.List>
+              <CommandPalette.Item id="copy">Copy</CommandPalette.Item>
+              <CommandPalette.Item id="delete">Delete</CommandPalette.Item>
+            </CommandPalette.List>
+          </CommandPalette.Content>
+        </CommandPalette>
+      </StrictMode>,
+    )
+
+    await userEvent.type(screen.getByRole("combobox"), "del{Enter}")
+    expect(onActivate).toHaveBeenCalledWith("delete")
+  })
+
   it("controlled search calls onSearchChange without updating internally", async () => {
     const onSearchChange = vi.fn()
     renderPalette({ search: "", onSearchChange })
@@ -126,6 +214,112 @@ describe("CommandPalette", () => {
     const input = screen.getByRole("combobox")
     await userEvent.type(input, "{ArrowDown}")
     expect(onSelectedIdChange).toHaveBeenCalled()
+  })
+
+  it("controlled highlightedId calls onHighlightChange on navigation", async () => {
+    const onHighlightChange = vi.fn()
+    renderPalette({ highlightedId: "copy", onHighlightChange })
+    const input = screen.getByRole("combobox")
+    await userEvent.type(input, "{ArrowDown}")
+    expect(onHighlightChange).toHaveBeenCalledWith("paste")
+  })
+
+  it("lets highlightedId null override deprecated selectedId", () => {
+    renderPalette({ highlightedId: null, selectedId: "copy" })
+    expect(screen.getByRole("combobox")).not.toHaveAttribute("aria-activedescendant")
+    expect(getOption("copy")).toHaveAttribute("aria-selected", "false")
+  })
+
+  it("keeps public item ids separate from DOM-safe active descendant ids", () => {
+    render(
+      <CommandPalette open highlightedId="a b/slash">
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="">Empty</CommandPalette.Item>
+            <CommandPalette.Item id="a b/slash">Special</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    )
+
+    const input = screen.getByRole("combobox")
+    const special = getOption("a b/slash")
+    const empty = getOption("")
+
+    expect(special.id).toBeTruthy()
+    expect(empty.id).toBeTruthy()
+    expect(special.id).not.toBe("a b/slash")
+    expect(empty.id).not.toBe("")
+    expect(special.id).not.toBe(empty.id)
+    expect(input).toHaveAttribute("aria-activedescendant", special.id)
+    expect(document.getElementById(special.id)).toBe(special)
+  })
+
+  it("omits stale controlled active descendants for disabled, filtered, and missing items", () => {
+    const { rerender } = render(
+      <CommandPalette open highlightedId="delete">
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="copy">Copy</CommandPalette.Item>
+            <CommandPalette.Item id="delete" disabled>Delete</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    )
+
+    expect(screen.getByRole("combobox")).not.toHaveAttribute("aria-activedescendant")
+
+    rerender(
+      <CommandPalette open highlightedId="delete" search="copy">
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="copy">Copy</CommandPalette.Item>
+            <CommandPalette.Item id="delete">Delete</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    )
+    expect(screen.getByRole("combobox")).not.toHaveAttribute("aria-activedescendant")
+
+    rerender(
+      <CommandPalette open highlightedId="missing">
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="copy">Copy</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    )
+    expect(screen.getByRole("combobox")).not.toHaveAttribute("aria-activedescendant")
+  })
+
+  it("forwards item props and refs while honoring preventDefault", async () => {
+    const ref = createRef<HTMLDivElement>()
+    const onActivate = vi.fn()
+    const onClick = vi.fn((event) => event.preventDefault())
+
+    render(
+      <CommandPalette open onActivate={onActivate}>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="copy" ref={ref} data-testid="command-item" onClick={onClick}>
+              Copy
+            </CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    )
+
+    const item = screen.getByTestId("command-item")
+    expect(ref.current).toBe(item)
+    await userEvent.click(item)
+    expect(onClick).toHaveBeenCalledOnce()
+    expect(onActivate).not.toHaveBeenCalled()
   })
 
   it("has no a11y violations when open or closed", async () => {
@@ -165,6 +359,28 @@ describe("CommandPalette", () => {
     expect(getOption("copy")).toHaveAttribute("aria-selected", "true")
   })
 
+  it("lets input key handlers prevent Arrow and Enter navigation", async () => {
+    const onActivate = vi.fn()
+    render(
+      <CommandPalette open onActivate={onActivate}>
+        <CommandPalette.Content>
+          <CommandPalette.Input onKeyDown={(event) => event.preventDefault()} />
+          <CommandPalette.List>
+            <CommandPalette.Item id="copy">Copy</CommandPalette.Item>
+            <CommandPalette.Item id="paste">Paste</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>,
+    )
+    const input = screen.getByRole("combobox")
+
+    await userEvent.type(input, "{ArrowDown}{Enter}")
+
+    expect(getOption("copy")).toHaveAttribute("aria-selected", "true")
+    expect(getOption("paste")).toHaveAttribute("aria-selected", "false")
+    expect(onActivate).not.toHaveBeenCalled()
+  })
+
   it("activates the selected item on Enter", async () => {
     const onActivate = vi.fn()
     renderPalette({ onActivate })
@@ -190,6 +406,18 @@ describe("CommandPalette", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
+  it("clears search on Escape keydown without moving focus or closing", async () => {
+    const onOpenChange = vi.fn()
+    renderPalette({ onOpenChange })
+    const input = screen.getByRole("combobox")
+
+    await userEvent.type(input, "cop{Escape}")
+
+    expect(input).toHaveValue("")
+    expect(input).toHaveFocus()
+    expect(onOpenChange).not.toHaveBeenCalled()
+  })
+
   it("Space types in the search input without activating items", async () => {
     const onActivate = vi.fn()
     render(
@@ -209,7 +437,7 @@ describe("CommandPalette", () => {
     expect(onActivate).not.toHaveBeenCalled()
   })
 
-  it("restores focus to previously-focused element after close", () => {
+  it("restores focus to previously-focused element after close", async () => {
     const trigger = document.createElement("button")
     trigger.textContent = "External"
     document.body.appendChild(trigger)
@@ -238,10 +466,88 @@ describe("CommandPalette", () => {
     )
 
     const dialog = document.querySelector("dialog")
+    await waitFor(() => expect(dialog).toHaveAttribute("data-state", "closed"))
     if (dialog) fireEvent.animationEnd(dialog)
 
-    expect(trigger).toHaveFocus()
+    await waitFor(() => expect(trigger).toHaveFocus())
 
     document.body.removeChild(trigger)
+  })
+
+  it("restores focus after the native dialog closes", async () => {
+    const events: string[] = []
+    const trigger = document.createElement("button")
+    trigger.textContent = "External"
+    document.body.appendChild(trigger)
+    trigger.focus()
+
+    vi.spyOn(trigger, "focus").mockImplementation(() => {
+      events.push("focus")
+    })
+    vi.spyOn(HTMLDialogElement.prototype, "close").mockImplementation(function close(this: HTMLDialogElement) {
+      events.push("close")
+      this.removeAttribute("open")
+    })
+
+    const { rerender } = render(
+      <CommandPalette open>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="one">One</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>
+    )
+
+    rerender(
+      <CommandPalette open={false}>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <CommandPalette.List>
+            <CommandPalette.Item id="one">One</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>
+    )
+
+    const dialog = document.querySelector("dialog")
+    await waitFor(() => expect(dialog).toHaveAttribute("data-state", "closed"))
+    if (dialog) fireEvent.animationEnd(dialog)
+
+    await waitFor(() => expect(events).toEqual(["close", "focus"]))
+
+    document.body.removeChild(trigger)
+  })
+
+  it("keeps nested portals inside the command palette dialog", async () => {
+    render(
+      <CommandPalette open>
+        <CommandPalette.Content>
+          <CommandPalette.Input />
+          <Popover triggerMode="click" defaultOpen>
+            <Popover.Trigger>Nested popover trigger</Popover.Trigger>
+            <Popover.Content aria-label="Command nested popover">
+              <button>Nested action</button>
+            </Popover.Content>
+          </Popover>
+          <CommandPalette.List>
+            <CommandPalette.Item id="copy">Copy</CommandPalette.Item>
+          </CommandPalette.List>
+        </CommandPalette.Content>
+      </CommandPalette>
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "Command palette" })
+    const popoverTrigger = screen.getByRole("button", { name: "Nested popover trigger" })
+    const popoverId = popoverTrigger.getAttribute("aria-controls")
+    if (!popoverId) throw new Error("Expected nested popover trigger to control mounted content")
+
+    await waitFor(() => {
+      const popover = document.getElementById(popoverId)
+      expect(popover).not.toBeNull()
+      expect(dialog.contains(popover)).toBe(true)
+      expect(popover?.parentElement).not.toBe(document.body)
+    })
   })
 })

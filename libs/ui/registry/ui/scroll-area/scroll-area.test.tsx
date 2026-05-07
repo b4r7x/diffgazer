@@ -57,6 +57,26 @@ describe("ScrollArea", () => {
     expect(el.scrollTop).toBe(0)
   })
 
+  it("uses the horizontal axis for Page, Home, and End in horizontal mode", () => {
+    const el = renderScrollArea({ orientation: "horizontal" })
+    Object.defineProperty(el, "clientWidth", { value: 200, configurable: true })
+    Object.defineProperty(el, "scrollWidth", { value: 1000, configurable: true })
+
+    fireEvent.keyDown(el, { key: "PageDown" })
+    expect(el.scrollLeft).toBe(160)
+    expect(el.scrollTop).toBe(0)
+
+    fireEvent.keyDown(el, { key: "PageUp" })
+    expect(el.scrollLeft).toBe(0)
+
+    fireEvent.keyDown(el, { key: "End" })
+    expect(el.scrollLeft).toBe(1000)
+    expect(el.scrollTop).toBe(0)
+
+    fireEvent.keyDown(el, { key: "Home" })
+    expect(el.scrollLeft).toBe(0)
+  })
+
   it("does not handle keyboard scrolling when keyboardScrollable is false", () => {
     const el = renderScrollArea({ keyboardScrollable: false })
     fireEvent.keyDown(el, { key: "ArrowDown" })

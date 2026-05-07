@@ -10,5 +10,8 @@
       "content": "export type StepStatus = \"completed\" | \"active\" | \"pending\" | \"error\";\n",
       "type": "registry:lib"
     }
-  ]
+  ],
+  "meta": {
+    "client": false
+  }
 }

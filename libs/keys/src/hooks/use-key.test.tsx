@@ -1,12 +1,20 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { renderHook, cleanup, fireEvent } from "@testing-library/react";
-import { type ReactNode } from "react";
+import { StrictMode, type ReactNode } from "react";
 import { KeyboardProvider } from "../providers/keyboard-provider";
 import { useKey } from "./use-key";
 import { fireKey } from "../testing/test-utils";
 
 function wrapper({ children }: { children: ReactNode }) {
   return <KeyboardProvider>{children}</KeyboardProvider>;
+}
+
+function strictWrapper({ children }: { children: ReactNode }) {
+  return (
+    <StrictMode>
+      <KeyboardProvider>{children}</KeyboardProvider>
+    </StrictMode>
+  );
 }
 
 describe("useKey", () => {
@@ -55,6 +63,17 @@ describe("useKey", () => {
       fireKey(" ");
       expect(handler).toHaveBeenCalled();
     });
+
+    it("preserves punctuation keys when tracking registrations", () => {
+      const handler = vi.fn();
+      renderHook(() => useKey([",", "Enter"], handler), { wrapper });
+
+      fireKey(",");
+      expect(handler).toHaveBeenCalledTimes(1);
+
+      fireKey("Enter");
+      expect(handler).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe("overload 3: key map", () => {
@@ -99,6 +118,26 @@ describe("useKey", () => {
       fireKey("ArrowDown");
       expect(handler).toHaveBeenCalled();
     });
+
+    it("cleans up old keys and enables new keys when the key map changes", () => {
+      const handler = vi.fn();
+      let key = "ArrowUp";
+      const { rerender } = renderHook(
+        () => useKey({ [key]: handler }),
+        { wrapper },
+      );
+
+      fireKey("ArrowUp");
+      expect(handler).toHaveBeenCalledTimes(1);
+
+      key = "ArrowDown";
+      rerender();
+      fireKey("ArrowUp");
+      expect(handler).toHaveBeenCalledTimes(1);
+
+      fireKey("ArrowDown");
+      expect(handler).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe("handler stability", () => {
@@ -133,6 +172,27 @@ describe("useKey", () => {
       fireEvent.keyDown(document, { key: "a" });
       expect(handler).not.toHaveBeenCalled();
       unmount();
+    });
+  });
+
+  describe("StrictMode cleanup", () => {
+    it("does not leave duplicate registrations after StrictMode effect replay or unmount", () => {
+      const handler = vi.fn();
+      const { rerender, unmount } = renderHook(
+        () => useKey("Escape", handler),
+        { wrapper: strictWrapper },
+      );
+
+      fireKey("Escape");
+      expect(handler).toHaveBeenCalledTimes(1);
+
+      rerender();
+      fireKey("Escape");
+      expect(handler).toHaveBeenCalledTimes(2);
+
+      unmount();
+      fireKey("Escape");
+      expect(handler).toHaveBeenCalledTimes(2);
     });
   });
 

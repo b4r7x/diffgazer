@@ -1,11 +1,9 @@
-"use client";
-
 import { cva, type VariantProps } from "class-variance-authority";
-import type { Ref } from "react";
+import type { CSSProperties, Ref, SVGProps } from "react";
 import { cn } from "@/lib/utils";
 
 const chevronVariants = cva(
-  "shrink-0 transition-transform duration-200",
+  "shrink-0 motion-safe:transition-transform motion-safe:duration-200",
   {
     variants: {
       size: {
@@ -29,11 +27,12 @@ const baseDeg: Record<ChevronDirection, number> = {
   up: 270,
 };
 
-export interface ChevronProps extends VariantProps<typeof chevronVariants> {
+export interface ChevronProps
+  extends Omit<SVGProps<SVGSVGElement>, "ref">,
+    VariantProps<typeof chevronVariants> {
   direction?: ChevronDirection;
   /** When true, rotates 90° clockwise from base direction (expand/collapse toggle). */
   open?: boolean;
-  className?: string;
   ref?: Ref<SVGSVGElement>;
 }
 
@@ -43,8 +42,12 @@ export function Chevron({
   size,
   className,
   ref,
+  style,
+  "aria-hidden": ariaHidden,
+  ...props
 }: ChevronProps) {
   const deg = baseDeg[direction] + (open ? 90 : 0);
+  const transformStyle: CSSProperties = { ...style, transform: `rotate(${deg}deg)` };
 
   return (
     <svg
@@ -56,9 +59,10 @@ export function Chevron({
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      aria-hidden="true"
+      aria-hidden={ariaHidden ?? true}
       className={cn(chevronVariants({ size }), className)}
-      style={{ transform: `rotate(${deg}deg)` }}
+      style={transformStyle}
+      {...props}
     >
       <polyline points="6 3 11 8 6 13" />
     </svg>

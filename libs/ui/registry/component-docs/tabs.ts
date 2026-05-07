@@ -10,6 +10,11 @@ export const tabsDoc: ComponentDoc = {
   ],
   notes: [
     {
+      title: "Composition Contract",
+      content:
+        "Use Tabs.List, Tabs.Trigger, and Tabs.Content as explicit children in the Tabs JSX tree. Custom tab visuals belong inside Tabs.Trigger. Components that create triggers internally from an opaque wrapper are not part of the current public contract.",
+    },
+    {
       title: "Orientation Support",
       content:
         "Tabs default to horizontal orientation. Set orientation='vertical' to stack triggers vertically. Keyboard arrow directions automatically align with the orientation.",

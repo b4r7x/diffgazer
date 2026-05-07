@@ -212,6 +212,8 @@ function buildInitAction<TConfig>(config: InitCommandConfig<TConfig>) {
       cwd,
       yes: opts.yes ?? false,
       force: opts.force ?? false,
+      dryRun: opts.dryRun ?? false,
+      skipInstall: opts.skipInstall ?? false,
       configFileName: config.configFileName,
       loadConfig: config.loadConfig,
       detectProject: (cwd) => config.detectProject(cwd, opts),
@@ -230,7 +232,9 @@ export function createInitCommand<TConfig>(
     .description("Initialize project configuration")
     .option("--cwd <path>", "Working directory", ".")
     .option("-y, --yes", "Skip confirmation prompts", false)
-    .option("--force", "Overwrite existing configuration", false);
+    .option("--force", "Overwrite existing configuration", false)
+    .option("--dry-run", "Preview initialization without writing files", false)
+    .option("--skip-install", "Write files without installing npm dependencies", false);
 
   addExtraOptions(cmd, config.extraOptions);
   cmd.action(buildInitAction(config));

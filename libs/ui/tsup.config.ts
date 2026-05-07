@@ -49,6 +49,7 @@ for (const item of registry.items) {
 
 // Add utils (cn function)
 entry["lib/utils"] = resolve(registryRoot, "lib/utils.ts");
+entry["components/logo/figlet"] = resolve(registryRoot, "ui/logo/get-figlet-text.ts");
 
 /**
  * Esbuild plugin that rewrites @/ alias imports and drops .css imports.
@@ -162,9 +163,9 @@ export default defineConfig({
     }
     console.log(`Injected "use client" into ${injected} entry points`);
 
-    // Warn about UI items missing meta.client
+    // Validate that every UI item makes an explicit client/server decision.
     const uiWithoutClient = registry.items.filter(
-      (i) => i.type === "registry:ui" && !i.meta?.client
+      (i) => i.type === "registry:ui" && i.meta?.client == null
     );
     if (uiWithoutClient.length) {
       throw new Error(`UI items missing meta.client: ${uiWithoutClient.map((i) => i.name).join(", ")}`);

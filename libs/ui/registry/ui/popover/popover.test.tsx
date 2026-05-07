@@ -13,20 +13,95 @@ function renderClickPopover(props: Record<string, unknown> = {}) {
   )
 }
 
+let restorePointerEventSupport = () => {}
+
+function setPointerEventSupport(enabled: boolean) {
+  const descriptor = Object.getOwnPropertyDescriptor(window, "PointerEvent")
+
+  Object.defineProperty(window, "PointerEvent", {
+    configurable: true,
+    writable: true,
+    value: enabled ? class TestPointerEvent extends MouseEvent {} : undefined,
+  })
+
+  return () => {
+    if (descriptor) {
+      Object.defineProperty(window, "PointerEvent", descriptor)
+    } else {
+      Reflect.deleteProperty(window, "PointerEvent")
+    }
+  }
+}
+
+beforeEach(() => {
+  restorePointerEventSupport = setPointerEventSupport(false)
+})
+
+afterEach(() => {
+  restorePointerEventSupport()
+})
+
 describe("Popover", () => {
   it("opens on click and closes on second click", async () => {
     renderClickPopover()
     const trigger = screen.getByRole("button", { name: "Open" })
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
-    expect(trigger).toHaveAttribute("aria-haspopup", "dialog")
+    expect(trigger).not.toHaveAttribute("aria-haspopup")
 
     await userEvent.click(trigger)
-    expect(screen.getByRole("dialog")).toBeInTheDocument()
+    expect(screen.getByText("Popover body")).toBeInTheDocument()
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     expect(trigger).toHaveAttribute("aria-expanded", "true")
 
     await userEvent.click(trigger)
     expect(trigger).toHaveAttribute("aria-expanded", "false")
+  })
+
+  it.each(["menu", "listbox", "grid", "tree", "dialog"] as const)(
+    "sets aria-haspopup for click popovers with %s content",
+    (role) => {
+      render(
+        <Popover triggerMode="click" defaultOpen>
+          <Popover.Trigger>Open</Popover.Trigger>
+          <Popover.Content role={role} aria-label={`${role} popup`}>
+            Popover body
+          </Popover.Content>
+        </Popover>
+      )
+
+      const trigger = screen.getByRole("button", { name: "Open" })
+      const content = screen.getByRole(role, { name: `${role} popup` })
+      expect(trigger).toHaveAttribute("aria-haspopup", role)
+      expect(trigger).toHaveAttribute("aria-controls", content.id)
+    },
+  )
+
+  it("derives aria-haspopup from content role before the popup opens", () => {
+    render(
+      <Popover triggerMode="click">
+        <Popover.Trigger>Open</Popover.Trigger>
+        <Popover.Content role="menu" aria-label="Actions">
+          Popover body
+        </Popover.Content>
+      </Popover>
+    )
+
+    expect(screen.getByRole("button", { name: "Open" })).toHaveAttribute("aria-haspopup", "menu")
+    expect(screen.queryByRole("menu", { name: "Actions" })).not.toBeInTheDocument()
+  })
+
+  it("can declare click popup role on the root before content effects run", () => {
+    render(
+      <Popover triggerMode="click" popupRole="menu">
+        <Popover.Trigger>Open</Popover.Trigger>
+        <Popover.Content role="menu" aria-label="Actions">
+          Popover body
+        </Popover.Content>
+      </Popover>
+    )
+
+    expect(screen.getByRole("button", { name: "Open" })).toHaveAttribute("aria-haspopup", "menu")
   })
 
   it("calls onOpenChange when toggled via click", async () => {
@@ -52,7 +127,7 @@ describe("Popover", () => {
           <Popover.Content>Tooltip body</Popover.Content>
         </Popover>
       )
-      const trigger = screen.getByRole("button", { name: "Hover me" })
+      const trigger = screen.getByText("Hover me")
 
       fireEvent.mouseEnter(trigger)
 
@@ -75,7 +150,7 @@ describe("Popover", () => {
           <Popover.Content>Tooltip body</Popover.Content>
         </Popover>
       )
-      const trigger = screen.getByRole("button", { name: "Hover me" })
+      const trigger = screen.getByText("Hover me")
 
       fireEvent.mouseEnter(trigger)
       act(() => {
@@ -98,7 +173,7 @@ describe("Popover", () => {
           <Popover.Content>Tooltip body</Popover.Content>
         </Popover>
       )
-      const trigger = screen.getByRole("button", { name: "Hover me" })
+      const trigger = screen.getByText("Hover me")
 
       fireEvent.mouseEnter(trigger)
       act(() => {
@@ -122,10 +197,10 @@ describe("Popover", () => {
       </Popover>
     )
 
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    expect(screen.queryByText("Popover body")).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByRole("button", { name: "Open" }))
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    expect(screen.queryByText("Popover body")).not.toBeInTheDocument()
     expect(onOpenChange).toHaveBeenCalled()
 
     rerender(
@@ -134,7 +209,7 @@ describe("Popover", () => {
         <Popover.Content aria-label="Popover menu">Popover body</Popover.Content>
       </Popover>
     )
-    expect(screen.getByRole("dialog")).toBeInTheDocument()
+    expect(screen.getByText("Popover body")).toBeInTheDocument()
   })
 
   it("has no a11y violations when closed", async () => {
@@ -162,7 +237,7 @@ describe("Popover", () => {
     expect(await axe(container)).toHaveNoViolations()
 
     await userEvent.click(trigger)
-    expect(screen.getByRole("dialog")).toBeInTheDocument()
+    expect(screen.getByText("Popover body")).toBeInTheDocument()
     expect(trigger).toHaveAttribute("aria-expanded", "true")
   })
 
@@ -179,7 +254,7 @@ describe("Popover", () => {
   it("does not open when enabled is false", async () => {
     renderClickPopover({ enabled: false })
     await userEvent.click(screen.getByRole("button", { name: "Open" }))
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    expect(screen.queryByText("Popover body")).not.toBeInTheDocument()
   })
 
   it("closes when enabled changes to false while open", () => {
@@ -189,7 +264,7 @@ describe("Popover", () => {
         <Popover.Content aria-label="Popover menu">Popover body</Popover.Content>
       </Popover>
     )
-    expect(screen.getByRole("dialog")).toBeInTheDocument()
+    expect(screen.getByText("Popover body")).toBeInTheDocument()
 
     rerender(
       <Popover defaultOpen enabled={false}>
@@ -197,7 +272,7 @@ describe("Popover", () => {
         <Popover.Content aria-label="Popover menu">Popover body</Popover.Content>
       </Popover>
     )
-    expect(screen.getByRole("dialog")).toHaveAttribute("data-state", "closed")
+    expect(screen.getByText("Popover body")).toHaveAttribute("data-state", "closed")
   })
 
   it("closes only the top nested popover on outside click and Escape", async () => {
@@ -206,10 +281,10 @@ describe("Popover", () => {
         <button>Outside</button>
         <Popover defaultOpen>
           <Popover.Trigger>Outer</Popover.Trigger>
-          <Popover.Content aria-label="Outer popover">
+          <Popover.Content role="dialog" aria-label="Outer popover">
             <Popover defaultOpen>
               <Popover.Trigger>Inner</Popover.Trigger>
-              <Popover.Content aria-label="Inner popover">Inner body</Popover.Content>
+              <Popover.Content role="dialog" aria-label="Inner popover">Inner body</Popover.Content>
             </Popover>
           </Popover.Content>
         </Popover>
@@ -228,13 +303,91 @@ describe("Popover", () => {
     await userEvent.keyboard("{Escape}")
     expect(screen.getByRole("dialog", { name: "Outer popover" })).toHaveAttribute("data-state", "closed")
   })
+
+  it("closes on pointer and touch outside interactions", () => {
+    restorePointerEventSupport()
+    restorePointerEventSupport = setPointerEventSupport(true)
+    const { rerender } = render(
+      <div>
+        <button>Outside</button>
+        <Popover defaultOpen key="pointer">
+          <Popover.Trigger>Open</Popover.Trigger>
+          <Popover.Content>Popover body</Popover.Content>
+        </Popover>
+      </div>,
+    )
+    const outside = screen.getByRole("button", { name: "Outside" })
+
+    fireEvent.pointerDown(outside)
+    expect(screen.getByText("Popover body")).toHaveAttribute("data-state", "closed")
+
+    restorePointerEventSupport()
+    restorePointerEventSupport = setPointerEventSupport(false)
+
+    rerender(
+      <div>
+        <button>Outside</button>
+        <Popover defaultOpen key="touch">
+          <Popover.Trigger>Open</Popover.Trigger>
+          <Popover.Content>Popover body</Popover.Content>
+        </Popover>
+      </div>,
+    )
+
+    fireEvent.touchStart(screen.getByRole("button", { name: "Outside" }))
+    expect(screen.getByText("Popover body")).toHaveAttribute("data-state", "closed")
+  })
+
+  it("requires an accessible name for dialog popovers", () => {
+    expect(() => render(
+      <Popover defaultOpen>
+        <Popover.Trigger>Open</Popover.Trigger>
+        <Popover.Content role="dialog">Popover body</Popover.Content>
+      </Popover>,
+    )).toThrow(/requires aria-label or aria-labelledby/)
+  })
+
+  it("composes content handlers and lets prevented Escape keep the popover open", () => {
+    const onMouseEnter = vi.fn()
+    const onMouseLeave = vi.fn()
+    const onKeyDown = vi.fn((event) => {
+      if (event.key === "Escape") event.preventDefault()
+    })
+
+    render(
+      <Popover triggerMode="click" defaultOpen>
+        <Popover.Trigger>Open</Popover.Trigger>
+        <Popover.Content
+          role="dialog"
+          aria-label="Actions"
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+          onKeyDown={onKeyDown}
+        >
+          Popover body
+        </Popover.Content>
+      </Popover>,
+    )
+
+    const content = screen.getByRole("dialog", { name: "Actions" })
+    fireEvent.mouseEnter(content)
+    fireEvent.mouseLeave(content)
+    fireEvent.keyDown(content, { key: "Escape" })
+
+    expect(onMouseEnter).toHaveBeenCalledOnce()
+    expect(onMouseLeave).toHaveBeenCalledOnce()
+    expect(onKeyDown).toHaveBeenCalledOnce()
+    expect(content).toHaveAttribute("data-state", "open")
+  })
 })
 
 describe("Popover hover-mode trigger click toggle", () => {
-  it("clicking a hover-mode trigger toggles popover open and closed", async () => {
+  it("clicking an interactive hover-mode trigger toggles popover open and closed", async () => {
     render(
       <Popover triggerMode="hover">
-        <Popover.Trigger>Hover me</Popover.Trigger>
+        <Popover.Trigger>
+          <button type="button">Hover me</button>
+        </Popover.Trigger>
         <Popover.Content>
           <p>Tooltip content</p>
         </Popover.Content>
@@ -257,7 +410,7 @@ function renderClickPopoverWithFocusables() {
   return render(
     <Popover triggerMode="click" defaultOpen>
       <Popover.Trigger>Open</Popover.Trigger>
-      <Popover.Content aria-label="Actions">
+      <Popover.Content role="dialog" aria-label="Actions">
         <button>First</button>
         <button>Second</button>
         <button>Third</button>
@@ -266,7 +419,7 @@ function renderClickPopoverWithFocusables() {
   )
 }
 
-describe("Popover keyboard focus trap", () => {
+describe("Popover dialog focus", () => {
   beforeEach(() => {
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
       cb(0)
@@ -278,7 +431,7 @@ describe("Popover keyboard focus trap", () => {
     vi.restoreAllMocks()
   })
 
-  it("Tab cycles within click-mode popover content", async () => {
+  it("does not trap Tab within click-mode dialog content", async () => {
     renderClickPopoverWithFocusables()
     const first = screen.getByRole("button", { name: "First" })
     const second = screen.getByRole("button", { name: "Second" })
@@ -293,17 +446,67 @@ describe("Popover keyboard focus trap", () => {
     expect(third).toHaveFocus()
 
     await userEvent.tab()
-    expect(first).toHaveFocus()
+    expect(first).not.toHaveFocus()
   })
 
-  it("Shift+Tab wraps from first to last element", async () => {
+  it("Shift+Tab can leave from the first element", async () => {
     renderClickPopoverWithFocusables()
     const first = screen.getByRole("button", { name: "First" })
-    const third = screen.getByRole("button", { name: "Third" })
 
     expect(first).toHaveFocus()
 
     await userEvent.tab({ shift: true })
-    expect(third).toHaveFocus()
+    expect(first).not.toHaveFocus()
+  })
+})
+
+describe("Popover non-modal focus", () => {
+  it("does not trap Tab in default click-mode content", async () => {
+    render(
+      <Popover triggerMode="click" defaultOpen>
+        <Popover.Trigger>Open</Popover.Trigger>
+        <Popover.Content>
+          <button>First</button>
+          <button>Second</button>
+        </Popover.Content>
+      </Popover>,
+    )
+    const first = screen.getByRole("button", { name: "First" })
+    const second = screen.getByRole("button", { name: "Second" })
+    first.focus()
+
+    await userEvent.tab()
+    expect(second).toHaveFocus()
+
+    await userEvent.tab()
+    expect(first).not.toHaveFocus()
+  })
+})
+
+describe("Popover hover timer cleanup", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("clears pending hover timers on unmount", () => {
+    const onOpenChange = vi.fn()
+    const { unmount } = render(
+      <Popover triggerMode="hover" delayMs={200} onOpenChange={onOpenChange}>
+        <Popover.Trigger>Hover me</Popover.Trigger>
+        <Popover.Content>Tooltip body</Popover.Content>
+      </Popover>,
+    )
+
+    fireEvent.mouseEnter(screen.getByText("Hover me"))
+    unmount()
+    act(() => {
+      vi.advanceTimersByTime(200)
+    })
+
+    expect(onOpenChange).not.toHaveBeenCalled()
   })
 })

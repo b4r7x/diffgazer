@@ -1,3 +1,5 @@
+"use client";
+
 import { Callout as CalloutRoot, calloutVariants, type CalloutProps } from "./callout";
 import { CalloutIcon, type CalloutIconProps } from "./callout-icon";
 import { CalloutTitle, type CalloutTitleProps } from "./callout-title";

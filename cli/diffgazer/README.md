@@ -4,10 +4,12 @@ CLI tool that starts the Diffgazer environment.
 
 Source: https://github.com/b4r7x/diffgazer/tree/main/cli/diffgazer
 
+Requires Node.js >= 20.
+
 ## What it does
 
 - Dev: spawns API server and web frontend (HMR)
-- Prod (npm): runs embedded server and serves static files
+- Prod package: runs embedded server and serves static files after the npm package is published
 
 ## Development
 
@@ -23,6 +25,8 @@ pnpm --filter diffgazer start
 ```
 
 ## Global Install (npm)
+
+The public `diffgazer` npm package is external publish-gated as of May 6, 2026. Use this global install command only after `npm view diffgazer version` succeeds. Before publication, use the workspace development and production commands above.
 
 ```bash
 npm install -g diffgazer

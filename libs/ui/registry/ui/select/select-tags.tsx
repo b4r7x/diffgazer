@@ -10,7 +10,7 @@ export interface SelectTagsProps {
 }
 
 export function SelectTags({ placeholder = "Select...", className }: SelectTagsProps) {
-  const { value, multiple, labelsRef, variant } = useSelectContext("SelectTags");
+  const { value, multiple, options, variant } = useSelectContext("SelectTags");
 
   if (!multiple) return null;
 
@@ -23,7 +23,7 @@ export function SelectTags({ placeholder = "Select...", className }: SelectTagsP
   return (
     <span className={cn("flex flex-wrap gap-1 flex-1 min-w-0", className)}>
       {selected.map((v) => {
-        const label = labelsRef.current.get(v)?.label ?? v;
+        const label = options.get(v)?.label ?? v;
         return (
           <span
             key={v}

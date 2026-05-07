@@ -1,3 +1,5 @@
+"use client";
+
 import { HorizontalStepperRoot, type HorizontalStepperProps } from "./horizontal-stepper";
 import { HorizontalStepperStep, type HorizontalStepperStepProps } from "./horizontal-stepper-step";
 

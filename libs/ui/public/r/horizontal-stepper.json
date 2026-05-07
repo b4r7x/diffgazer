@@ -13,7 +13,7 @@
   "files": [
     {
       "path": "registry/ui/horizontal-stepper/index.ts",
-      "content": "import { HorizontalStepperRoot, type HorizontalStepperProps } from \"./horizontal-stepper\";\nimport { HorizontalStepperStep, type HorizontalStepperStepProps } from \"./horizontal-stepper-step\";\n\nconst HorizontalStepper = Object.assign(HorizontalStepperRoot, {\n  Step: HorizontalStepperStep,\n});\n\nexport { HorizontalStepper, type HorizontalStepperProps };\nexport { HorizontalStepperStep, type HorizontalStepperStepProps };\nexport { stepVariants } from \"./horizontal-stepper-step\";\nexport { useStepInfo, type StepStatus } from \"./horizontal-stepper-context\";\n",
+      "content": "\"use client\";\n\nimport { HorizontalStepperRoot, type HorizontalStepperProps } from \"./horizontal-stepper\";\nimport { HorizontalStepperStep, type HorizontalStepperStepProps } from \"./horizontal-stepper-step\";\n\nconst HorizontalStepper = Object.assign(HorizontalStepperRoot, {\n  Step: HorizontalStepperStep,\n});\n\nexport { HorizontalStepper, type HorizontalStepperProps };\nexport { HorizontalStepperStep, type HorizontalStepperStepProps };\nexport { stepVariants } from \"./horizontal-stepper-step\";\nexport { useStepInfo, type StepStatus } from \"./horizontal-stepper-context\";\n",
       "type": "registry:ui"
     },
     {

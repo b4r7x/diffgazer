@@ -7,7 +7,7 @@ import {
 } from "./use-navigation.js";
 import { useKey } from "./use-key.js";
 import { keys } from "../utils/keys.js";
-import { resolveDirectionKeys, dispatchNavigationKey } from "../internal/navigation-dispatch.js";
+import { resolveDirectionKeys, dispatchNavigationKey } from "./internal/navigation-dispatch.js";
 
 export interface UseScopedNavigationOptions extends UseNavigationOptions {
   requireFocusWithin?: boolean;
@@ -28,6 +28,7 @@ export function useScopedNavigation(options: UseScopedNavigationOptions): UseSco
     upKeys,
     downKeys,
     containerRef,
+    moveFocus,
   } = options;
 
   const { resolvedUpKeys, resolvedDownKeys } = resolveDirectionKeys(orientation, upKeys, downKeys);
@@ -41,22 +42,27 @@ export function useScopedNavigation(options: UseScopedNavigationOptions): UseSco
       resolvedDownKeys,
       move,
       focusIndex,
-      handleSelect: (e) => handleSelect(e),
-      handleEnter: (e) => handleEnter(e),
+      handleSelect: moveFocus ? undefined : (e) => handleSelect(e),
+      handleEnter: moveFocus ? undefined : (e) => handleEnter(e),
       total: getElements().length,
       nativeEvent,
     });
-  }, [focusIndex, getElements, handleEnter, handleSelect, move, resolvedDownKeys, resolvedUpKeys]);
+  }, [focusIndex, getElements, handleEnter, handleSelect, move, moveFocus, resolvedDownKeys, resolvedUpKeys]);
+
+  const handlers: Record<string, (event: globalThis.KeyboardEvent) => void> = {
+    ...keys(resolvedUpKeys, (e) => dispatch(e.key, e)),
+    ...keys(resolvedDownKeys, (e) => dispatch(e.key, e)),
+    Home: (e) => dispatch("Home", e),
+    End: (e) => dispatch("End", e),
+  };
+
+  if (!moveFocus) {
+    handlers.Enter = (e) => dispatch("Enter", e);
+    handlers[" "] = (e) => dispatch(" ", e);
+  }
 
   useKey(
-    {
-      ...keys(resolvedUpKeys, (e) => dispatch(e.key, e)),
-      ...keys(resolvedDownKeys, (e) => dispatch(e.key, e)),
-      Home: (e) => dispatch("Home", e),
-      End: (e) => dispatch("End", e),
-      Enter: (e) => dispatch("Enter", e),
-      " ": (e) => dispatch(" ", e),
-    },
+    handlers,
     {
       enabled,
       preventDefault,

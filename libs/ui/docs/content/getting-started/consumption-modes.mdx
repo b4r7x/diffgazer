@@ -10,8 +10,8 @@ description: Choose copy-first source install or runtime package imports.
 Use copy-first mode when the consuming app should own and customize component source.
 
 ```bash
-npx @diffgazer/add init
-npx @diffgazer/add add ui/button
+pnpm exec dgadd init
+pnpm exec dgadd add ui/button
 ```
 
 Before publication, validate this path with a locally packed `@diffgazer/add` tarball and `pnpm exec dgadd`.
@@ -19,38 +19,40 @@ Before publication, validate this path with a locally packed `@diffgazer/add` ta
 This mode copies component files, shared utilities, theme CSS, and optional standalone keyboard hooks into the app. The app owns future edits and reviews updates through:
 
 ```bash
-npx @diffgazer/add diff ui/button
-npx @diffgazer/add add ui/button --overwrite
+pnpm exec dgadd diff ui/button
+pnpm exec dgadd add ui/button --overwrite
 ```
 
 Copy-first prerequisites:
 
-- React 19.
+- React `>=19.2.0`.
 - Tailwind CSS v4.
-- `@/*` TypeScript and bundler/framework alias configured before `dgadd init`.
+- TypeScript and bundler/framework source alias such as `@/*` or `~/*` configured before `dgadd init`.
 - Copied `src/styles/styles.css` imported from the app CSS entrypoint.
+
+`src/styles/styles.css` is generated from the shared style seed plus registry component CSS. It is the copied-source equivalent of package-mode `@diffgazer/ui/styles.css`.
 
 ## Runtime Package Mode
 
 Use runtime package mode when you want versioned imports and do not need source customization.
 
+Before publication, validate this path with locally packed `@diffgazer/ui` and `@diffgazer/keys` tarballs. After publication, install the public packages:
+
 ```bash
 npm install @diffgazer/ui @diffgazer/keys
 ```
 
-Before publication, validate this path with locally packed `@diffgazer/ui` and `@diffgazer/keys` tarballs.
-
 Runtime package prerequisites:
 
-- React 19.
+- React `>=19.2.0`.
 - Tailwind CSS v4.
 - `@diffgazer/keys` installed as a required peer.
 - Tailwind scans package output from the CSS file that imports Tailwind:
 
 ```css
 @import "tailwindcss";
-@source "../node_modules/@diffgazer/ui/dist";
 @import "@diffgazer/ui/styles.css";
+@source "../node_modules/@diffgazer/ui/dist";
 ```
 
 Adjust the `@source` path so it is relative to that CSS file.

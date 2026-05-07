@@ -33,7 +33,7 @@ export const Route = createRootRoute({
 			{
 				name: "description",
 				content:
-					"Unified documentation and registry host for diffgazer libraries.",
+					"Unified documentation and generated registry artifacts for diffgazer libraries.",
 			},
 		],
 		links: [

@@ -13,6 +13,10 @@ export const navigationListDoc: ComponentDoc = {
   ],
   notes: [
     {
+      title: "Composition Contract",
+      content: "Use NavigationList.Item and its static parts as explicit children in the NavigationList JSX tree. Custom item UI belongs inside NavigationList.Item. Components that create items internally from an opaque wrapper are not part of the current public contract.",
+    },
+    {
       title: "Density",
       content: "density prop controls spacing — compact, default, or comfortable.",
     },
@@ -21,8 +25,8 @@ export const navigationListDoc: ComponentDoc = {
       content: "NavigationList.Item supports compound parts: NavigationList.Title, NavigationList.Meta, NavigationList.Badge, NavigationList.Subtitle, and NavigationList.Status.",
     },
     {
-      title: "Headless Keyboard API",
-      content: "NavigationList exposes highlighted, onHighlightChange, and onKeyDown so keyboard behavior can be composed in the app layer (including @diffgazer/keys adapters).",
+      title: "Built-in Keyboard API",
+      content: "NavigationList includes arrow-key navigation and exposes highlightedId, onHighlightChange, focused, and onKeyDown for controlled highlight state or extra app-level shortcuts.",
     },
   ],
   usage: { example: "navigation-list-default" },

@@ -72,6 +72,7 @@ function writeLibraryFixture(root: string) {
     },
   }));
   writeFile(root, "dist/artifacts/fingerprint.sha256", `${fingerprint}\n`);
+  writeFile(root, "dist/artifacts/docs/index.mdx", "# Intro\n");
   writeFile(root, "dist/artifacts/registry/registry.json", "{\"items\":[]}\n");
   writeFile(root, "dist/artifacts/generated/component-list.json", "[]\n");
 }
@@ -101,6 +102,16 @@ describe("artifact validation", () => {
 
     expect(validateLibraryArtifacts({ rootDir: root, label: "fixture" })).toContain(
       "fixture public/r: artifact differs from source for registry.json",
+    );
+  });
+
+  it("fails when manifest-declared docs artifacts are stale or tampered", () => {
+    const root = makeTempDir();
+    writeLibraryFixture(root);
+    writeFile(root, "dist/artifacts/docs/index.mdx", "# Stale\n");
+
+    expect(validateLibraryArtifacts({ rootDir: root, label: "fixture" })).toContain(
+      "fixture docs content: artifact differs from source for index.mdx",
     );
   });
 

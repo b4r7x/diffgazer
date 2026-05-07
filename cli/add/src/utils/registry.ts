@@ -1,10 +1,11 @@
 import { metaField } from "@diffgazer/registry/cli";
 import type { ResolvedConfig, RegistryFile, RegistryItem } from "../context.js";
-import { handleRscDirective, transformImports } from "./transform.js";
+import { handleRscDirective, rewriteRelativeJsExtensionsForCopy, transformImports } from "./transform.js";
 
 const REGISTRY_UI_PREFIX = "registry/ui/";
 const REGISTRY_HOOKS_PREFIX = "registry/hooks/";
 const REGISTRY_LIB_PREFIX = "registry/lib/";
+const CSS_SIDE_EFFECT_IMPORT_RE = /^\s*import\s+["'][^"']+\.css["'];?\s*$/gm;
 
 export type RegistryInstallBase = "components" | "hooks" | "lib";
 
@@ -33,7 +34,9 @@ export function prepareFileContent(
   item: RegistryItem,
   config: { aliases: ResolvedConfig["aliases"]; rsc: boolean },
 ): string {
-  let content = transformImports(file.content, config.aliases);
+  let content = file.content.replace(CSS_SIDE_EFFECT_IMPORT_RE, "").replace(/\n{3,}/g, "\n\n");
+  content = rewriteRelativeJsExtensionsForCopy(content);
+  content = transformImports(content, config.aliases);
   content = handleRscDirective(content, metaField(item, "client", true), config.rsc);
   return content;
 }

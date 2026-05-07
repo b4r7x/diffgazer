@@ -2,7 +2,6 @@ import figlet from "figlet"
 import bigFont from "figlet/importable-fonts/Big.js"
 import smallFont from "figlet/importable-fonts/Small.js"
 
-/** Supported figlet font names. @see diffgazer/packages/core/src/get-figlet.ts for the canonical copy. */
 export type FigletFont = "Big" | "Small"
 
 const loadedFonts = new Set<FigletFont>()

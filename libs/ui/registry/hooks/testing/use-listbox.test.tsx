@@ -2,24 +2,39 @@ import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
-import { useListbox, type UseListboxOptions } from "../use-listbox.js"
+import { getEncodedListboxItemId, useListbox, type UseListboxOptions } from "../use-listbox.js"
 
-function Listbox(props: Partial<UseListboxOptions> & { items: { id: string; label: string; disabled?: boolean }[] }) {
-  const { items, ...opts } = props
+type ListboxItem = { id: string; label: string; disabled?: boolean }
+
+function Listbox(
+  props: Omit<Partial<UseListboxOptions>, "items"> & {
+    items: ListboxItem[]
+    provideItemsMetadata?: boolean
+  },
+) {
+  const { items, provideItemsMetadata = true, ...opts } = props
+  const hookItems = provideItemsMetadata
+    ? items.map((item) => ({ id: item.id, disabled: item.disabled }))
+    : undefined
   const {
     selectedId,
     highlightedId,
     handleItemHighlight,
     handleItemActivate,
     getContainerProps,
-  } = useListbox({ idPrefix: "lb", ...opts })
+  } = useListbox({
+    idPrefix: "lb",
+    ...(hookItems === undefined ? {} : { items: hookItems }),
+    ...opts,
+  })
+  const getDomItemId = opts.getItemId ?? getEncodedListboxItemId
 
   return (
     <div {...getContainerProps()} data-testid="listbox" aria-label="Test listbox">
       {items.map((item) => (
         <div
           key={item.id}
-          id={`lb-${item.id}`}
+          id={getDomItemId("lb", item.id)}
           role={opts.itemRole ?? "option"}
           data-value={item.id}
           aria-selected={selectedId === item.id}
@@ -62,7 +77,7 @@ describe("useListbox", () => {
     listbox.focus()
     await user.keyboard("{ArrowDown}")
 
-    expect(listbox).toHaveAttribute("aria-activedescendant", "lb-a")
+    expect(listbox).toHaveAttribute("aria-activedescendant", getEncodedListboxItemId("lb", "a"))
     expect(onHighlight).toHaveBeenCalledWith("a")
   })
 
@@ -100,16 +115,87 @@ describe("useListbox", () => {
   it("supports controlled selectedId", () => {
     render(<Listbox items={defaultItems} selectedId="b" />)
     const listbox = screen.getByRole("listbox")
-    expect(listbox).toHaveAttribute("aria-activedescendant", "lb-b")
+    expect(listbox).toHaveAttribute("aria-activedescendant", getEncodedListboxItemId("lb", "b"))
+  })
+
+  it("uses the selected item as the keyboard navigation anchor", async () => {
+    const user = userEvent.setup()
+    render(<Listbox items={defaultItems} defaultSelectedId="b" />)
+
+    const listbox = screen.getByRole("listbox")
+    listbox.focus()
+    await user.keyboard("{ArrowDown}")
+
+    expect(listbox).toHaveAttribute("aria-activedescendant", getEncodedListboxItemId("lb", "c"))
   })
 
   it("removes aria-activedescendant when the active item is removed", async () => {
     const { rerender } = render(<Listbox items={defaultItems} selectedId="b" />)
     const listbox = screen.getByRole("listbox")
-    expect(listbox).toHaveAttribute("aria-activedescendant", "lb-b")
+    expect(listbox).toHaveAttribute("aria-activedescendant", getEncodedListboxItemId("lb", "b"))
 
     rerender(<Listbox items={defaultItems.filter((item) => item.id !== "b")} selectedId="b" />)
     await waitFor(() => expect(listbox).not.toHaveAttribute("aria-activedescendant"))
+  })
+
+  it("removes aria-activedescendant when the active item is removed without item metadata", async () => {
+    const { rerender } = render(<Listbox items={defaultItems} selectedId="b" provideItemsMetadata={false} />)
+    const listbox = screen.getByRole("listbox")
+    await waitFor(() => expect(listbox).toHaveAttribute("aria-activedescendant", getEncodedListboxItemId("lb", "b")))
+
+    rerender(
+      <Listbox
+        items={defaultItems.filter((item) => item.id !== "b")}
+        selectedId="b"
+        provideItemsMetadata={false}
+      />,
+    )
+    await waitFor(() => expect(listbox).not.toHaveAttribute("aria-activedescendant"))
+  })
+
+  it("keeps one fallback observer registration across highlight changes", async () => {
+    const observe = vi.fn()
+    const disconnect = vi.fn()
+    const OriginalMutationObserver = window.MutationObserver
+    class TrackingMutationObserver implements MutationObserver {
+      readonly takeRecords = vi.fn<MutationRecord[], []>(() => [])
+      readonly observe = observe
+      readonly disconnect = disconnect
+    }
+    window.MutationObserver = TrackingMutationObserver
+
+    try {
+      const user = userEvent.setup()
+      const { unmount } = render(<Listbox items={defaultItems} provideItemsMetadata={false} />)
+      const listbox = screen.getByRole("listbox")
+      await waitFor(() => expect(observe).toHaveBeenCalled())
+      const observeCount = observe.mock.calls.length
+      const disconnectCount = disconnect.mock.calls.length
+
+      listbox.focus()
+      await user.keyboard("{ArrowDown}{ArrowDown}")
+
+      expect(listbox).toHaveAttribute("aria-activedescendant", getEncodedListboxItemId("lb", "b"))
+      expect(observe).toHaveBeenCalledTimes(observeCount)
+      expect(disconnect).toHaveBeenCalledTimes(disconnectCount)
+
+      unmount()
+      expect(disconnect).toHaveBeenCalledTimes(disconnectCount + 1)
+    } finally {
+      window.MutationObserver = OriginalMutationObserver
+    }
+  })
+
+  it("does not activate a removed highlighted item", async () => {
+    const onSelect = vi.fn()
+    const user = userEvent.setup()
+    const { rerender } = render(<Listbox items={defaultItems} highlightedId="b" onSelect={onSelect} />)
+
+    rerender(<Listbox items={defaultItems.filter((item) => item.id !== "b")} highlightedId="b" onSelect={onSelect} />)
+    screen.getByRole("listbox").focus()
+    await user.keyboard("{Enter}")
+
+    expect(onSelect).not.toHaveBeenCalled()
   })
 
   it("forwards custom onKeyDown handler with the keyboard event", async () => {
@@ -166,5 +252,47 @@ describe("useListbox", () => {
 
     const lastCall = onHighlight.mock.calls[onHighlight.mock.calls.length - 1]
     expect(lastCall?.[0]).toBe("a")
+  })
+
+  it("treats empty string as a valid selected and highlighted item id", async () => {
+    const onSelect = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <Listbox
+        items={[
+          { id: "", label: "None" },
+          { id: "a b/slash", label: "Special" },
+        ]}
+        defaultHighlightedId=""
+        onSelect={onSelect}
+      />,
+    )
+
+    const listbox = screen.getByRole("listbox")
+    expect(listbox).toHaveAttribute("aria-activedescendant", getEncodedListboxItemId("lb", ""))
+    expect(document.getElementById(getEncodedListboxItemId("lb", ""))).toHaveTextContent("None")
+
+    listbox.focus()
+    await user.keyboard("{Enter}")
+
+    expect(onSelect).toHaveBeenCalledWith("")
+  })
+
+  it("uses DOM-safe generated ids for special public values", () => {
+    render(
+      <Listbox
+        items={[
+          { id: "a b/slash", label: "Special" },
+        ]}
+        selectedId="a b/slash"
+      />,
+    )
+
+    const listbox = screen.getByRole("listbox")
+    const activeDescendant = listbox.getAttribute("aria-activedescendant")
+    expect(activeDescendant).toBe(getEncodedListboxItemId("lb", "a b/slash"))
+    expect(activeDescendant).not.toContain(" ")
+    expect(activeDescendant).not.toContain("/")
+    expect(document.getElementById(activeDescendant!)).toHaveTextContent("Special")
   })
 })

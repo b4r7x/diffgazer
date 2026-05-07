@@ -8,8 +8,8 @@ Public package targets:
 
 - `diffgazer` - product CLI, binary `diffgazer`, Node >= 20.
 - `@diffgazer/add` - registry installer CLI, binary `dgadd`, Node >= 18.
-- `@diffgazer/ui` - React 19 component package.
-- `@diffgazer/keys` - React 19 keyboard hooks package.
+- `@diffgazer/ui` - React `>=19.2.0` component package.
+- `@diffgazer/keys` - React `>=19.2.0` keyboard hooks package.
 
 As of May 6, 2026, `npm view @diffgazer/add`, `npm view @diffgazer/ui`, and `npm view @diffgazer/keys` are treated as external publish-gate checks. Treat these as publish targets until registry availability is verified.
 
@@ -23,6 +23,7 @@ Artifact handoff:
 - `@diffgazer/ui` builds docs and registry artifacts into its own `dist/artifacts`; there is no `@diffgazer/ui-artifacts` package.
 - `@diffgazer/keys` builds artifacts into `dist/artifacts`; there is no public `@diffgazer/keys-artifacts` package.
 - `@diffgazer/docs prepare:generated` syncs artifacts from packages when resolvable and falls back to workspace artifacts outside CI.
+- Artifact validation is non-mutating and must fail on fingerprint drift, missing manifest inputs, stale/tampered copied artifact directories, stale docs-host sync outputs, and copied artifact mirror drift.
 
 ## Versioning
 
@@ -45,9 +46,9 @@ pnpm run release
 
 `pnpm run verify` runs monorepo invariants, type checks, tests, and smoke checks. `pnpm run smoke:packages` packs local workspace packages into temporary projects and verifies public imports/bins; it does not install from the public npm registry.
 
-`smoke:packages` currently covers local tarball installs, all exported `@diffgazer/ui` subpaths, CSS export resolution, React SSR rendering, and strict NodeNext type checking. Public handoff also requires clean consumer checks in Vite and Next apps with npm, pnpm, yarn, and bun after the packages are actually published.
+`smoke:packages` currently covers local tarball installs, all exported `@diffgazer/ui` subpaths, CSS export resolution, React SSR rendering, strict NodeNext type checking, and the shared React `>=19.2.0` floor. Public handoff also requires clean consumer checks in Vite and Next apps with npm, pnpm, yarn, and bun after the packages are actually published.
 
-A checked-in release-readiness workflow should wire to the root scripts above and block public handoff when install, build, verify, changeset, smoke, or pack checks fail.
+A checked-in release-readiness workflow should wire to the root scripts above and block public handoff when install, build, generated-file cleanliness, verify, changeset, smoke, or pack checks fail.
 
 ## Release Process
 
@@ -84,6 +85,7 @@ A checked-in release-readiness workflow should wire to the root scripts above an
    pnpm --filter @diffgazer/add pack --dry-run
    pnpm --filter @diffgazer/ui pack --dry-run
    pnpm --filter @diffgazer/keys pack --dry-run
+   pnpm --filter diffgazer pack --dry-run
    ```
 
 6. After publishing, verify npm registry installs:
@@ -115,18 +117,33 @@ The current `smoke:packages` script validates packed local packages, not freshly
 
 Package lifecycle guards currently in the repo:
 
-- `diffgazer`: `prepack` runs the package build.
+- `diffgazer`: `prepack` runs the package build; `build` first runs the required workspace dependency builds for `@diffgazer/core`, `@diffgazer/server`, `@diffgazer/keys`, `@diffgazer/ui`, and `@diffgazer/web`.
 - `@diffgazer/add`: `prepublishOnly` builds and checks generated registry/key bundles.
 - `@diffgazer/ui`: `prepublishOnly` builds and checks `dist`.
 - `@diffgazer/keys`: `prepublishOnly` builds and checks `dist/artifacts/artifact-manifest.json`.
+
+The release-readiness workflow must also run pack dry-runs for all public packages: `diffgazer`, `@diffgazer/add`, `@diffgazer/ui`, and `@diffgazer/keys`.
+
+## Publish Metadata
+
+Public packages are published through the root `pnpm run release` script, which runs `changeset publish --provenance`. Public package manifests also set `publishConfig.provenance` so one-off `npm publish` calls use the same provenance policy. Scoped public packages set `publishConfig.access` to `public`.
+
+`@diffgazer/keys-artifacts` is private and exists only as a workspace mirror for docs artifact handoff; it is not a public package target.
 
 ## Dependency Management
 
 - Internal workspace dependencies use `workspace:*`.
 - The root `pnpm-lock.yaml` is the resolved dependency source of truth.
 - Package manifests may use semver ranges; the lockfile pins the concrete versions used by this repo.
-- `@diffgazer/ui` has required React and `@diffgazer/keys` peers. Icon primitives ship from the package; there is no `lucide-react` peer or runtime dependency.
+- `@diffgazer/ui` and `@diffgazer/keys` share one React floor: React `>=19.2.0`. The docs app and package smoke fixtures install compatible React ranges so package and docs behavior stay aligned.
+- `@diffgazer/ui` has required React, React DOM, and `@diffgazer/keys` peers. Icon primitives ship from the package; there is no `lucide-react` peer or runtime dependency.
+- `figlet` is a direct `@diffgazer/ui` runtime dependency because the explicit `@diffgazer/ui/components/logo/figlet` deep import renders figlet text. The default `@diffgazer/ui/components/logo` entry must not import `figlet`; it accepts precomputed `asciiText` instead.
 - `@diffgazer/add` bundles registry data at build time so installed copied components are not linked to workspace source at runtime.
+- `@diffgazer/add` is CLI-only. It exposes the `dgadd` binary and intentionally does not expose an import entry until a typed library API is designed and emitted.
+
+## Security and Support Packaging
+
+All public package tarballs include package-local `SECURITY.md` and `SUPPORT.md` files in addition to README and license files. The root `SECURITY.md` and `SUPPORT.md` remain the canonical repository policy copies; package-local files carry the same reporting URLs with package-specific triage language.
 
 ## Consumption Contracts
 

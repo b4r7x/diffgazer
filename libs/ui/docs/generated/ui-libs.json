@@ -4,7 +4,7 @@
     "title": "Diff Utilities",
     "description": "Pure functions for parsing unified diffs, computing diffs from text, and word-level diff highlighting. No React dependency.",
     "source": {
-      "raw": "export { parseDiff } from \"./parse.js\";\nexport { computeDiff } from \"./compute.js\";\nexport { resolveDiffInput } from \"./resolve.js\";\nexport { computeWordSegments, annotateWordDiff } from \"./word.js\";\nexport { toSplitRows } from \"./split.js\";\nexport type { ParsedDiff, DiffHunk, DiffChange, ChangeType, DiffInput, DiffInputPatch, DiffInputCompare, DiffInputParsed } from \"./parse.js\";\nexport type { WordSegment, AnnotatedChange } from \"./word.js\";\nexport type { SplitCell, SplitRow } from \"./split.js\";\n",
+      "raw": "export { parseDiff } from \"./parse.js\";\nexport { computeDiff } from \"./compute.js\";\nexport { resolveDiffInput } from \"./resolve.js\";\nexport { computeWordSegments, annotateWordDiff, createWordDiffBudget } from \"./word.js\";\nexport { toSplitRows } from \"./split.js\";\nexport type { ParsedDiff, DiffHunk, DiffChange, ChangeType, DiffInput, DiffInputPatch, DiffInputCompare, DiffInputParsed } from \"./parse.js\";\nexport type { WordSegment, AnnotatedChange, WordDiffBudget } from \"./word.js\";\nexport type { SplitCell, SplitRow } from \"./split.js\";\n",
       "highlighted": [
         {
           "number": 1,
@@ -189,7 +189,15 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": " annotateWordDiff ",
+              "text": " annotateWordDiff",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " createWordDiffBudget ",
               "color": "var(--code-variable)"
             },
             {
@@ -428,7 +436,15 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": " AnnotatedChange ",
+              "text": " AnnotatedChange",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " WordDiffBudget ",
               "color": "var(--code-variable)"
             },
             {

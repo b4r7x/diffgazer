@@ -81,7 +81,7 @@ function resolveAlias(alias: string): string | null {
 }
 
 function hasKnownExtension(specifier: string): boolean {
-  return /\.[cm]?[jt]sx?$|\.json$/.test(specifier);
+  return /\.[cm]?[jt]sx?$|\.json$|\.css$/.test(specifier);
 }
 
 function rewriteDeclarationImports(filePath: string): void {
@@ -184,6 +184,10 @@ try {
   writePublicDeclaration(
     "lib/utils",
     resolve(declarationRoot, "registry/lib/utils.d.ts"),
+  );
+  writePublicDeclaration(
+    "components/logo/figlet",
+    resolve(declarationRoot, "registry/ui/logo/get-figlet-text.d.ts"),
   );
 } finally {
   rmSync(tempDir, { recursive: true, force: true });

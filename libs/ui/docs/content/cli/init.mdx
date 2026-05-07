@@ -6,10 +6,10 @@ description: Initialize installer configuration for @diffgazer/ui and @diffgazer
 ## Usage
 
 ```bash
-npx @diffgazer/add init
+pnpm exec dgadd init
 ```
 
-Use this `npx` form only after `@diffgazer/add` is published. Before publication, install a locally packed tarball and run `pnpm exec dgadd init`.
+Use `npx @diffgazer/add init` only after `npm view @diffgazer/add version` succeeds. Before publication, install a locally packed tarball and run `pnpm exec dgadd init`.
 
 ## What It Does
 
@@ -30,7 +30,7 @@ Use this `npx` form only after `@diffgazer/add` is published. Before publication
 
 5. Copies `src/styles/theme.css` and `src/styles/styles.css`.
 
-It does not edit `tsconfig.json`, Vite, Next, or your app CSS entrypoint. Configure `@/*` in the app before running `init`, or pass `--allow-missing-alias` only when your tooling already resolves that alias.
+It does not edit `tsconfig.json`, Vite, Next, or your app CSS entrypoint. Configure a TypeScript or Vite source alias such as `@/*` or `~/*` in the app before running `init`, or pass `--allow-missing-alias` only when your tooling already resolves source aliases.
 
 ## Options
 
@@ -38,13 +38,16 @@ It does not edit `tsconfig.json`, Vite, Next, or your app CSS entrypoint. Config
 |------|-------------|---------|
 | `--cwd <path>` | Working directory | `.` |
 | `--components-dir <path>` | Component install directory | `src/components/ui` |
-| `--allow-missing-alias` | Continue when no `@/*` alias is detected | `false` |
+| `--allow-missing-alias` | Continue when no source alias is detected | `false` |
+| `--force` | Overwrite existing configuration | `false` |
+| `--dry-run` | Preview initialization without writing files | `false` |
+| `--skip-install` | Write files without installing npm dependencies | `false` |
 | `--yes` | Skip confirmation prompts | `false` |
 
 ## Example
 
 ```bash
-$ npx @diffgazer/add init
+$ pnpm exec dgadd init
 
   Creating diffgazer.json
   Creating src/components/ui/
@@ -53,5 +56,5 @@ $ npx @diffgazer/add init
   Copying src/styles/theme.css
   Copying src/styles/styles.css
 
-  Done. Add components with: npx @diffgazer/add add ui/button
+  Done. Add components with: pnpm exec dgadd add ui/button
 ```

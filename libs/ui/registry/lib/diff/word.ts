@@ -11,16 +11,43 @@ export interface AnnotatedChange extends DiffChange {
   wordSegments?: WordSegment[];
 }
 
-export function computeWordSegments(oldContent: string, newContent: string): { old: WordSegment[]; new: WordSegment[] } {
+export interface WordDiffBudget {
+  remainingCells: number;
+}
+
+export const DEFAULT_WORD_DIFF_CELL_BUDGET = 50_000;
+
+export function createWordDiffBudget(maxCells = DEFAULT_WORD_DIFF_CELL_BUDGET): WordDiffBudget {
+  return { remainingCells: maxCells };
+}
+
+function changedLineSegments(oldContent: string, newContent: string): { old: WordSegment[]; new: WordSegment[] } {
+  return {
+    old: [{ text: oldContent, changed: true }],
+    new: [{ text: newContent, changed: true }],
+  };
+}
+
+export function computeWordSegments(
+  oldContent: string,
+  newContent: string,
+  budget?: WordDiffBudget,
+): { old: WordSegment[]; new: WordSegment[] } {
   const oldWords = oldContent.split(/(\s+)/);
   const newWords = newContent.split(/(\s+)/);
+  const cellCost = oldWords.length * newWords.length;
+
+  if (budget) {
+    if (cellCost > budget.remainingCells) {
+      return changedLineSegments(oldContent, newContent);
+    }
+    budget.remainingCells -= cellCost;
+  }
+
   const dp = buildLcsTable(oldWords, newWords);
 
   if (!dp) {
-    return {
-      old: [{ text: oldContent, changed: true }],
-      new: [{ text: newContent, changed: true }],
-    };
+    return changedLineSegments(oldContent, newContent);
   }
 
   const m = oldWords.length;
@@ -64,7 +91,10 @@ function mergeSegments(segments: WordSegment[]): WordSegment[] {
   return result;
 }
 
-export function annotateWordDiff(changes: DiffChange[]): AnnotatedChange[] {
+export function annotateWordDiff(
+  changes: DiffChange[],
+  budget = createWordDiffBudget(),
+): AnnotatedChange[] {
   const result: AnnotatedChange[] = [];
 
   for (const item of collectEditPairs(changes)) {
@@ -78,7 +108,7 @@ export function annotateWordDiff(changes: DiffChange[]): AnnotatedChange[] {
 
     const segmentPairs = [];
     for (let j = 0; j < pairs; j++) {
-      segmentPairs.push(computeWordSegments(removes[j].content, adds[j].content));
+      segmentPairs.push(computeWordSegments(removes[j].content, adds[j].content, budget));
     }
 
     for (let j = 0; j < pairs; j++) {

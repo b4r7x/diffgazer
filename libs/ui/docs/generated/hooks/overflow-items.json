@@ -3,7 +3,7 @@
   "title": "Overflow Items",
   "description": "Measures how many items fit in a container and tracks the overflow count. Uses ResizeObserver for automatic recalculation. Single ref — no hidden measurement rows needed.",
   "source": {
-    "raw": "\"use client\";\n\nimport { useCallback, useLayoutEffect, useRef, useState, type RefObject } from \"react\";\n\nexport interface UseOverflowItemsOptions {\n  itemCount: number;\n  onVisibleCountChange?: (count: number) => void;\n}\n\nexport interface UseOverflowItemsReturn {\n  ref: RefObject<HTMLDivElement | null>;\n  visibleCount: number;\n  overflowCount: number;\n}\n\nexport function computeVisibleCount(\n  itemWidths: number[],\n  containerWidth: number,\n  gap: number,\n  indicatorWidth: number,\n): number {\n  const safeContainerWidth = Number.isFinite(containerWidth)\n    ? Math.max(0, containerWidth)\n    : 0;\n  const safeGap = Number.isFinite(gap) ? Math.max(0, gap) : 0;\n  const safeIndicatorWidth = Number.isFinite(indicatorWidth)\n    ? Math.max(0, indicatorWidth)\n    : 0;\n  const widths = itemWidths.map((width) =>\n    Number.isFinite(width) ? Math.max(0, width) : 0,\n  );\n\n  let usedWidth = 0;\n  for (let i = 0; i < widths.length; i++) {\n    const nextWidth = usedWidth + widths[i]! + (i > 0 ? safeGap : 0);\n    const remaining = widths.length - (i + 1);\n    const reserve = remaining > 0 ? safeIndicatorWidth + safeGap : 0;\n    if (nextWidth + reserve > safeContainerWidth && i > 0) return i;\n    usedWidth = nextWidth;\n  }\n  return widths.length;\n}\n\nfunction clampCount(count: number, itemCount: number): number {\n  const safeItemCount = Number.isFinite(itemCount)\n    ? Math.max(0, Math.floor(itemCount))\n    : 0;\n  if (!Number.isFinite(count)) return 0;\n  return Math.min(Math.max(0, Math.floor(count)), safeItemCount);\n}\n\nexport function useOverflowItems({\n  itemCount,\n  onVisibleCountChange,\n}: UseOverflowItemsOptions): UseOverflowItemsReturn {\n  const ref = useRef<HTMLDivElement>(null);\n  const frameRef = useRef<number | null>(null);\n  const onVisibleCountChangeRef = useRef(onVisibleCountChange);\n  const [visibleCount, setVisibleCount] = useState(() => clampCount(itemCount, itemCount));\n\n  onVisibleCountChangeRef.current = onVisibleCountChange;\n  const safeItemCount = clampCount(itemCount, itemCount);\n\n  const onRecalculate = useCallback(() => {\n    const container = ref.current;\n    if (!container) {\n      setVisibleCount((current) => clampCount(current, safeItemCount));\n      return;\n    }\n\n    const children = Array.from(container.children) as HTMLElement[];\n    if (safeItemCount === 0 || children.length === 0) {\n      setVisibleCount((current) => {\n        if (current === 0) return current;\n        onVisibleCountChangeRef.current?.(0);\n        return 0;\n      });\n      return;\n    }\n\n    const containerWidth = container.offsetWidth;\n    const gap = parseFloat(getComputedStyle(container).gap) || 0;\n\n    const items = children.slice(0, safeItemCount);\n    const indicator = children[safeItemCount];\n\n    const itemWidths = items.map(el => el.offsetWidth);\n    const indicatorWidth = indicator ? indicator.offsetWidth : 0;\n\n    const count = clampCount(\n      computeVisibleCount(itemWidths, containerWidth, gap, indicatorWidth),\n      safeItemCount,\n    );\n\n    setVisibleCount((current) => {\n      if (current === count) return current;\n      onVisibleCountChangeRef.current?.(count);\n      return count;\n    });\n  }, [safeItemCount]);\n\n  const scheduleRecalculate = useCallback(() => {\n    if (frameRef.current != null) return;\n    frameRef.current = requestAnimationFrame(() => {\n      frameRef.current = null;\n      onRecalculate();\n    });\n  }, [onRecalculate]);\n\n  useLayoutEffect(() => {\n    const container = ref.current;\n    if (!container) return;\n\n    const resizeObserver = new ResizeObserver(scheduleRecalculate);\n    const observeChildren = () => {\n      resizeObserver.disconnect();\n      resizeObserver.observe(container);\n      for (const child of Array.from(container.children)) {\n        resizeObserver.observe(child);\n      }\n    };\n    const mutationObserver = new MutationObserver(() => {\n      observeChildren();\n      scheduleRecalculate();\n    });\n\n    observeChildren();\n    mutationObserver.observe(container, {\n      childList: true,\n      characterData: true,\n      subtree: true,\n    });\n\n    return () => {\n      resizeObserver.disconnect();\n      mutationObserver.disconnect();\n      if (frameRef.current != null) {\n        cancelAnimationFrame(frameRef.current);\n        frameRef.current = null;\n      }\n    };\n  }, [scheduleRecalculate]);\n\n  useLayoutEffect(() => {\n    onRecalculate();\n  }, [onRecalculate]);\n\n  return {\n    ref,\n    visibleCount: clampCount(visibleCount, safeItemCount),\n    overflowCount: Math.max(0, safeItemCount - clampCount(visibleCount, safeItemCount)),\n  };\n}\n",
+    "raw": "\"use client\";\n\nimport { useCallback, useEffectEvent, useLayoutEffect, useRef, useState, type RefObject } from \"react\";\n\nexport interface UseOverflowItemsOptions {\n  itemCount: number;\n  onVisibleCountChange?: (count: number) => void;\n}\n\nexport interface UseOverflowItemsReturn {\n  ref: RefObject<HTMLDivElement | null>;\n  visibleCount: number;\n  overflowCount: number;\n}\n\nexport function computeVisibleCount(\n  itemWidths: number[],\n  containerWidth: number,\n  gap: number,\n  indicatorWidth: number,\n): number {\n  const safeContainerWidth = Number.isFinite(containerWidth)\n    ? Math.max(0, containerWidth)\n    : 0;\n  const safeGap = Number.isFinite(gap) ? Math.max(0, gap) : 0;\n  const safeIndicatorWidth = Number.isFinite(indicatorWidth)\n    ? Math.max(0, indicatorWidth)\n    : 0;\n  const widths = itemWidths.map((width) =>\n    Number.isFinite(width) ? Math.max(0, width) : 0,\n  );\n\n  let usedWidth = 0;\n  for (let i = 0; i < widths.length; i++) {\n    const nextWidth = usedWidth + widths[i]! + (i > 0 ? safeGap : 0);\n    const remaining = widths.length - (i + 1);\n    const reserve = remaining > 0 ? safeIndicatorWidth + safeGap : 0;\n    if (nextWidth + reserve > safeContainerWidth && i > 0) return i;\n    usedWidth = nextWidth;\n  }\n  return widths.length;\n}\n\nfunction clampCount(count: number, itemCount: number): number {\n  const safeItemCount = Number.isFinite(itemCount)\n    ? Math.max(0, Math.floor(itemCount))\n    : 0;\n  if (!Number.isFinite(count)) return 0;\n  return Math.min(Math.max(0, Math.floor(count)), safeItemCount);\n}\n\nexport function useOverflowItems({\n  itemCount,\n  onVisibleCountChange,\n}: UseOverflowItemsOptions): UseOverflowItemsReturn {\n  const ref = useRef<HTMLDivElement>(null);\n  const frameRef = useRef<number | null>(null);\n  const [visibleCount, setVisibleCount] = useState(() => clampCount(itemCount, itemCount));\n  const lastNotifiedCountRef = useRef(visibleCount);\n  const notifyVisibleCountChange = useEffectEvent((count: number) => {\n    onVisibleCountChange?.(count);\n  });\n\n  const safeItemCount = clampCount(itemCount, itemCount);\n\n  const onRecalculate = useCallback(() => {\n    const container = ref.current;\n    if (!container) {\n      setVisibleCount((current) => clampCount(current, safeItemCount));\n      return;\n    }\n\n    const children = Array.from(container.children) as HTMLElement[];\n    if (safeItemCount === 0 || children.length === 0) {\n      setVisibleCount(0);\n      return;\n    }\n\n    const containerWidth = container.offsetWidth;\n    const gap = parseFloat(getComputedStyle(container).gap) || 0;\n\n    const items = children.slice(0, safeItemCount);\n    const indicator = children[safeItemCount];\n\n    const itemWidths = items.map(el => el.offsetWidth);\n    const indicatorWidth = indicator ? indicator.offsetWidth : 0;\n\n    const count = clampCount(\n      computeVisibleCount(itemWidths, containerWidth, gap, indicatorWidth),\n      safeItemCount,\n    );\n\n    setVisibleCount(count);\n  }, [safeItemCount]);\n\n  const scheduleRecalculate = useCallback(() => {\n    if (frameRef.current != null) return;\n    frameRef.current = requestAnimationFrame(() => {\n      frameRef.current = null;\n      onRecalculate();\n    });\n  }, [onRecalculate]);\n\n  useLayoutEffect(() => {\n    const container = ref.current;\n    if (!container) return;\n\n    const resizeObserver = new ResizeObserver(scheduleRecalculate);\n    const observeChildren = () => {\n      resizeObserver.disconnect();\n      resizeObserver.observe(container);\n      for (const child of Array.from(container.children)) {\n        resizeObserver.observe(child);\n      }\n    };\n    const mutationObserver = new MutationObserver(() => {\n      observeChildren();\n      scheduleRecalculate();\n    });\n\n    observeChildren();\n    mutationObserver.observe(container, {\n      childList: true,\n      characterData: true,\n      subtree: true,\n    });\n\n    return () => {\n      resizeObserver.disconnect();\n      mutationObserver.disconnect();\n      if (frameRef.current != null) {\n        cancelAnimationFrame(frameRef.current);\n        frameRef.current = null;\n      }\n    };\n  }, [scheduleRecalculate]);\n\n  useLayoutEffect(() => {\n    onRecalculate();\n  }, [onRecalculate]);\n\n  useLayoutEffect(() => {\n    if (visibleCount === lastNotifiedCountRef.current) return;\n    lastNotifiedCountRef.current = visibleCount;\n    notifyVisibleCountChange(visibleCount);\n  }, [visibleCount]);\n\n  return {\n    ref,\n    visibleCount: clampCount(visibleCount, safeItemCount),\n    overflowCount: Math.max(0, safeItemCount - clampCount(visibleCount, safeItemCount)),\n  };\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -47,6 +47,14 @@
           },
           {
             "text": " useCallback",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " useEffectEvent",
             "color": "var(--code-variable)"
           },
           {
@@ -2215,51 +2223,6 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "onVisibleCountChangeRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useRef",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(onVisibleCountChange)",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 59,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
             "text": "[",
             "color": "var(--code-operator)"
           },
@@ -2342,26 +2305,26 @@
         ]
       },
       {
-        "number": 60,
-        "content": []
-      },
-      {
-        "number": 61,
+        "number": 59,
         "content": [
           {
             "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "onVisibleCountChangeRef",
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "lastNotifiedCountRef",
             "color": "var(--code-number)"
           },
           {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current ",
+            "text": " ",
             "color": "var(--code-variable)"
           },
           {
@@ -2369,7 +2332,121 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " onVisibleCountChange",
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useRef",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(visibleCount)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 60,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "notifyVisibleCountChange",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useEffectEvent",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "count",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "number",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 61,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "onVisibleCountChange",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "(count)",
             "color": "var(--code-variable)"
           },
           {
@@ -2380,6 +2457,31 @@
       },
       {
         "number": 62,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 63,
+        "content": []
+      },
+      {
+        "number": 64,
         "content": [
           {
             "text": "  ",
@@ -2432,11 +2534,11 @@
         ]
       },
       {
-        "number": 63,
+        "number": 65,
         "content": []
       },
       {
-        "number": 64,
+        "number": 66,
         "content": [
           {
             "text": "  ",
@@ -2497,7 +2599,7 @@
         ]
       },
       {
-        "number": 65,
+        "number": 67,
         "content": [
           {
             "text": "    ",
@@ -2546,7 +2648,7 @@
         ]
       },
       {
-        "number": 66,
+        "number": 68,
         "content": [
           {
             "text": "    ",
@@ -2575,7 +2677,7 @@
         ]
       },
       {
-        "number": 67,
+        "number": 69,
         "content": [
           {
             "text": "      ",
@@ -2636,7 +2738,7 @@
         ]
       },
       {
-        "number": 68,
+        "number": 70,
         "content": [
           {
             "text": "      ",
@@ -2653,7 +2755,7 @@
         ]
       },
       {
-        "number": 69,
+        "number": 71,
         "content": [
           {
             "text": "    ",
@@ -2666,11 +2768,11 @@
         ]
       },
       {
-        "number": 70,
+        "number": 72,
         "content": []
       },
       {
-        "number": 71,
+        "number": 73,
         "content": [
           {
             "text": "    ",
@@ -2751,7 +2853,7 @@
         ]
       },
       {
-        "number": 72,
+        "number": 74,
         "content": [
           {
             "text": "    ",
@@ -2828,7 +2930,7 @@
         ]
       },
       {
-        "number": 73,
+        "number": 75,
         "content": [
           {
             "text": "      ",
@@ -2837,108 +2939,6 @@
           {
             "text": "setVisibleCount",
             "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 74,
-        "content": [
-          {
-            "text": "        ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "if",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " (current ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "===",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "0",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ") ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "return",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " current",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 75,
-        "content": [
-          {
-            "text": "        ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "onVisibleCountChangeRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "?.",
-            "color": "var(--code-operator)"
           },
           {
             "text": "(",
@@ -2962,20 +2962,12 @@
         "number": 76,
         "content": [
           {
-            "text": "        ",
+            "text": "      ",
             "color": "var(--code-variable)"
           },
           {
             "text": "return",
             "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "0",
-            "color": "var(--code-number)"
           },
           {
             "text": ";",
@@ -2985,44 +2977,6 @@
       },
       {
         "number": 77,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 78,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "return",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 79,
         "content": [
           {
             "text": "    ",
@@ -3035,11 +2989,11 @@
         ]
       },
       {
-        "number": 80,
+        "number": 78,
         "content": []
       },
       {
-        "number": 81,
+        "number": 79,
         "content": [
           {
             "text": "    ",
@@ -3088,7 +3042,7 @@
         ]
       },
       {
-        "number": 82,
+        "number": 80,
         "content": [
           {
             "text": "    ",
@@ -3161,11 +3115,11 @@
         ]
       },
       {
-        "number": 83,
+        "number": 81,
         "content": []
       },
       {
-        "number": 84,
+        "number": 82,
         "content": [
           {
             "text": "    ",
@@ -3230,7 +3184,7 @@
         ]
       },
       {
-        "number": 85,
+        "number": 83,
         "content": [
           {
             "text": "    ",
@@ -3267,11 +3221,11 @@
         ]
       },
       {
-        "number": 86,
+        "number": 84,
         "content": []
       },
       {
-        "number": 87,
+        "number": 85,
         "content": [
           {
             "text": "    ",
@@ -3344,7 +3298,7 @@
         ]
       },
       {
-        "number": 88,
+        "number": 86,
         "content": [
           {
             "text": "    ",
@@ -3413,11 +3367,11 @@
         ]
       },
       {
-        "number": 89,
+        "number": 87,
         "content": []
       },
       {
-        "number": 90,
+        "number": 88,
         "content": [
           {
             "text": "    ",
@@ -3458,7 +3412,7 @@
         ]
       },
       {
-        "number": 91,
+        "number": 89,
         "content": [
           {
             "text": "      ",
@@ -3503,7 +3457,7 @@
         ]
       },
       {
-        "number": 92,
+        "number": 90,
         "content": [
           {
             "text": "      safeItemCount",
@@ -3516,7 +3470,7 @@
         ]
       },
       {
-        "number": 93,
+        "number": 91,
         "content": [
           {
             "text": "    )",
@@ -3529,11 +3483,11 @@
         ]
       },
       {
-        "number": 94,
+        "number": 92,
         "content": []
       },
       {
-        "number": 95,
+        "number": 93,
         "content": [
           {
             "text": "    ",
@@ -3542,100 +3496,6 @@
           {
             "text": "setVisibleCount",
             "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 96,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "if",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " (current ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "===",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " count) ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "return",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " current",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 97,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "onVisibleCountChangeRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "?.",
-            "color": "var(--code-operator)"
           },
           {
             "text": "(count)",
@@ -3648,49 +3508,7 @@
         ]
       },
       {
-        "number": 98,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "return",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " count",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 99,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 100,
+        "number": 94,
         "content": [
           {
             "text": "  ",
@@ -3711,11 +3529,11 @@
         ]
       },
       {
-        "number": 101,
+        "number": 95,
         "content": []
       },
       {
-        "number": 102,
+        "number": 96,
         "content": [
           {
             "text": "  ",
@@ -3776,7 +3594,7 @@
         ]
       },
       {
-        "number": 103,
+        "number": 97,
         "content": [
           {
             "text": "    ",
@@ -3829,7 +3647,7 @@
         ]
       },
       {
-        "number": 104,
+        "number": 98,
         "content": [
           {
             "text": "    ",
@@ -3886,7 +3704,7 @@
         ]
       },
       {
-        "number": 105,
+        "number": 99,
         "content": [
           {
             "text": "      ",
@@ -3923,7 +3741,7 @@
         ]
       },
       {
-        "number": 106,
+        "number": 100,
         "content": [
           {
             "text": "      ",
@@ -3944,7 +3762,7 @@
         ]
       },
       {
-        "number": 107,
+        "number": 101,
         "content": [
           {
             "text": "    ",
@@ -3965,7 +3783,7 @@
         ]
       },
       {
-        "number": 108,
+        "number": 102,
         "content": [
           {
             "text": "  ",
@@ -3986,11 +3804,11 @@
         ]
       },
       {
-        "number": 109,
+        "number": 103,
         "content": []
       },
       {
-        "number": 110,
+        "number": 104,
         "content": [
           {
             "text": "  ",
@@ -4027,7 +3845,7 @@
         ]
       },
       {
-        "number": 111,
+        "number": 105,
         "content": [
           {
             "text": "    ",
@@ -4076,7 +3894,7 @@
         ]
       },
       {
-        "number": 112,
+        "number": 106,
         "content": [
           {
             "text": "    ",
@@ -4109,11 +3927,11 @@
         ]
       },
       {
-        "number": 113,
+        "number": 107,
         "content": []
       },
       {
-        "number": 114,
+        "number": 108,
         "content": [
           {
             "text": "    ",
@@ -4166,7 +3984,7 @@
         ]
       },
       {
-        "number": 115,
+        "number": 109,
         "content": [
           {
             "text": "    ",
@@ -4219,7 +4037,7 @@
         ]
       },
       {
-        "number": 116,
+        "number": 110,
         "content": [
           {
             "text": "      ",
@@ -4248,7 +4066,7 @@
         ]
       },
       {
-        "number": 117,
+        "number": 111,
         "content": [
           {
             "text": "      ",
@@ -4277,7 +4095,7 @@
         ]
       },
       {
-        "number": 118,
+        "number": 112,
         "content": [
           {
             "text": "      ",
@@ -4350,7 +4168,7 @@
         ]
       },
       {
-        "number": 119,
+        "number": 113,
         "content": [
           {
             "text": "        ",
@@ -4379,7 +4197,7 @@
         ]
       },
       {
-        "number": 120,
+        "number": 114,
         "content": [
           {
             "text": "      ",
@@ -4392,7 +4210,7 @@
         ]
       },
       {
-        "number": 121,
+        "number": 115,
         "content": [
           {
             "text": "    ",
@@ -4405,7 +4223,7 @@
         ]
       },
       {
-        "number": 122,
+        "number": 116,
         "content": [
           {
             "text": "    ",
@@ -4474,7 +4292,7 @@
         ]
       },
       {
-        "number": 123,
+        "number": 117,
         "content": [
           {
             "text": "      ",
@@ -4495,7 +4313,7 @@
         ]
       },
       {
-        "number": 124,
+        "number": 118,
         "content": [
           {
             "text": "      ",
@@ -4516,7 +4334,7 @@
         ]
       },
       {
-        "number": 125,
+        "number": 119,
         "content": [
           {
             "text": "    ",
@@ -4537,11 +4355,11 @@
         ]
       },
       {
-        "number": 126,
+        "number": 120,
         "content": []
       },
       {
-        "number": 127,
+        "number": 121,
         "content": [
           {
             "text": "    ",
@@ -4562,7 +4380,7 @@
         ]
       },
       {
-        "number": 128,
+        "number": 122,
         "content": [
           {
             "text": "    ",
@@ -4599,7 +4417,7 @@
         ]
       },
       {
-        "number": 129,
+        "number": 123,
         "content": [
           {
             "text": "      childList",
@@ -4624,7 +4442,7 @@
         ]
       },
       {
-        "number": 130,
+        "number": 124,
         "content": [
           {
             "text": "      characterData",
@@ -4649,7 +4467,7 @@
         ]
       },
       {
-        "number": 131,
+        "number": 125,
         "content": [
           {
             "text": "      subtree",
@@ -4674,7 +4492,7 @@
         ]
       },
       {
-        "number": 132,
+        "number": 126,
         "content": [
           {
             "text": "    ",
@@ -4695,11 +4513,11 @@
         ]
       },
       {
-        "number": 133,
+        "number": 127,
         "content": []
       },
       {
-        "number": 134,
+        "number": 128,
         "content": [
           {
             "text": "    ",
@@ -4736,7 +4554,7 @@
         ]
       },
       {
-        "number": 135,
+        "number": 129,
         "content": [
           {
             "text": "      ",
@@ -4765,7 +4583,7 @@
         ]
       },
       {
-        "number": 136,
+        "number": 130,
         "content": [
           {
             "text": "      ",
@@ -4794,7 +4612,7 @@
         ]
       },
       {
-        "number": 137,
+        "number": 131,
         "content": [
           {
             "text": "      ",
@@ -4843,7 +4661,7 @@
         ]
       },
       {
-        "number": 138,
+        "number": 132,
         "content": [
           {
             "text": "        ",
@@ -4876,7 +4694,7 @@
         ]
       },
       {
-        "number": 139,
+        "number": 133,
         "content": [
           {
             "text": "        ",
@@ -4913,7 +4731,7 @@
         ]
       },
       {
-        "number": 140,
+        "number": 134,
         "content": [
           {
             "text": "      ",
@@ -4926,7 +4744,7 @@
         ]
       },
       {
-        "number": 141,
+        "number": 135,
         "content": [
           {
             "text": "    ",
@@ -4939,7 +4757,7 @@
         ]
       },
       {
-        "number": 142,
+        "number": 136,
         "content": [
           {
             "text": "  ",
@@ -4960,11 +4778,11 @@
         ]
       },
       {
-        "number": 143,
+        "number": 137,
         "content": []
       },
       {
-        "number": 144,
+        "number": 138,
         "content": [
           {
             "text": "  ",
@@ -5001,7 +4819,7 @@
         ]
       },
       {
-        "number": 145,
+        "number": 139,
         "content": [
           {
             "text": "    ",
@@ -5022,7 +4840,7 @@
         ]
       },
       {
-        "number": 146,
+        "number": 140,
         "content": [
           {
             "text": "  ",
@@ -5034,6 +4852,167 @@
           },
           {
             "text": " [onRecalculate])",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 141,
+        "content": []
+      },
+      {
+        "number": 142,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useLayoutEffect",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 143,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (visibleCount ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "===",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "lastNotifiedCountRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 144,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "lastNotifiedCountRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "current ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " visibleCount",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 145,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "notifyVisibleCountChange",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(visibleCount)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 146,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "},",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " [visibleCount])",
             "color": "var(--code-variable)"
           },
           {

@@ -9,7 +9,7 @@ Diffgazer is a single pnpm monorepo for the CLI, docs app, shared registry tooli
 - `libs/ui` - public `@diffgazer/ui` package
 - `libs/keys` - public `@diffgazer/keys` package
 - `libs/registry` - private `@diffgazer/registry` workspace library
-- `apps/docs` - documentation and registry host
+- `apps/docs` - documentation app and generated registry artifacts
 
 ## Quick Start
 

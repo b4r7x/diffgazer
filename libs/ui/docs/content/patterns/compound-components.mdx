@@ -125,7 +125,7 @@ function DialogTrigger({ children }: DialogTriggerProps) {
 }
 ```
 
-This is the same pattern used by Tabs, Menu, NavigationList, and Toast. The root provides, the children consume.
+This is the same pattern used by Tabs, Menu, NavigationList, and Stepper. The root provides, the children consume.
 
 ## Controlled vs Uncontrolled
 
@@ -218,38 +218,34 @@ function ConfirmDialog({ title, onConfirm, children }) {
 }
 ```
 
-Because each sub-component consumes context independently, they work no matter how deep they're nested inside the root.
+Context-only parts such as Dialog body, footer, and close controls can live inside custom wrapper components because those parts read the root context at render time. Metadata-scanned components have a narrower contract: item-defining parts for Tabs, Select, CommandPalette, Menu, NavigationList, RadioGroup, and ToggleGroup must appear as explicit children in that component's JSX tree. Put custom item UI inside the item part instead of using an opaque wrapper that creates items internally.
 
-## Toast: Dual Context Pattern
+## Toast: Store and Toaster
 
-Toast uses a unique variation -- it splits context into two separate providers:
-
-```tsx
-// Data context (read-only state)
-interface ToastDataContextValue {
-  toasts: Toast[]
-  dismissingIds: Set<string>
-}
-
-// Actions context (mutations)
-interface ToastActionsContextValue {
-  showToast: (options: Omit<Toast, "id">) => void
-  dismissToast: (id: string) => void
-  removeToast: (id: string) => void
-}
-```
-
-This separation means components that only call `showToast` won't re-render when the toast list changes, and components that only display toasts won't re-render when action callbacks are recreated.
-
-A composite hook combines both contexts for convenience:
+Toast is not a compound component in the current API. It exposes an imperative `toast()` store and a `Toaster` renderer:
 
 ```tsx
-function useToast() {
-  const data = useContext(ToastDataContext)
-  const actions = useContext(ToastActionsContext)
-  return { ...data, ...actions }
-}
+import { Toaster, toast } from "@/components/ui/toast"
+
+toast.success({ title: "Saved" })
+
+<Toaster position="bottom-right" />
 ```
+
+Place one `Toaster` near the app root. Calls to `toast()`, `toast.success()`, `toast.error()`, `toast.warning()`, `toast.info()`, `toast.loading()`, and `toast.promise()` update the shared store. Error toasts persist until dismissed; loading toasts stay open until updated or dismissed.
+
+## Stepper: Direct Content Detection
+
+Stepper uses context for expansion state, but `StepperStep` only detects `StepperContent` when it is a direct child of that step:
+
+```tsx
+<StepperStep stepId="build" status="active">
+  <StepperTrigger>Build</StepperTrigger>
+  <StepperContent>Build output</StepperContent>
+</StepperStep>
+```
+
+Keep `StepperContent` directly inside `StepperStep` when the trigger should expose `aria-controls`. A wrapper that creates `StepperContent` internally is not part of the current public contract.
 
 ## Summary
 
@@ -257,9 +253,9 @@ function useToast() {
 |-----------|------|---------------|--------------|
 | Dialog | `Dialog` | `DialogTrigger`, `DialogContent`, `DialogHeader`, `DialogTitle`, `DialogDescription`, `DialogBody`, `DialogFooter`, `DialogClose` | `open`, `onOpenChange`, `titleId`, `descriptionId` |
 | Tabs | `Tabs` | `TabsList`, `TabsTrigger`, `TabsContent` | `value`, `onValueChange`, `orientation` |
-| Menu | `Menu` | `MenuItem`, `MenuDivider` | `selectedId`, `highlighted`, `onSelect`, `variant` |
-| NavigationList | `NavigationList` | `NavigationListItem`, `NavigationListItemTitle`, `NavigationListItemStatus`, `NavigationListItemMeta`, `NavigationListBadge`, `NavigationListSubtitle` | `selectedId`, `highlighted`, `onSelect`, `isFocused` |
-| Toast | `ToastProvider` | `ToastContainer`, `Toast` | `toasts`, `dismissingIds`, `showToast`, `dismissToast`, `removeToast` |
-| Stepper | `Stepper` | `StepperStep`, `StepperSubstep` | Props-based (no context) |
+| Menu | `Menu` | `MenuItem`, `MenuDivider` | `selectedId`, `highlightedId`, `onHighlightChange`, `onSelect`, `variant` |
+| NavigationList | `NavigationList` | `NavigationListItem`, `NavigationListItemTitle`, `NavigationListItemStatus`, `NavigationListItemMeta`, `NavigationListBadge`, `NavigationListSubtitle` | `selectedId`, `highlightedId`, `onHighlightChange`, `onSelect`, `focused` |
+| Toast | `Toaster` | none | Shared toast store through `toast()` helpers |
+| Stepper | `Stepper` | `StepperStep`, `StepperTrigger`, `StepperContent`, `StepperSubstep` | `expandedIds`, `onExpandedChange` |
 
 > **Note**: `MenuItem` uses `children` for its label: `<MenuItem id="copy">Copy</MenuItem>`, not a `label` prop.

@@ -95,12 +95,12 @@ describe("UI keyboard navigation integration", () => {
 
     const group = screen.getByRole("group");
     const options = screen.getAllByRole("checkbox");
-    expect(options[1]?.getAttribute("aria-checked")).toBe("false");
+    expect(options[0]?.getAttribute("aria-checked")).toBe("false");
 
     fireEvent.keyDown(group, { key: "ArrowDown" });
     fireEvent.keyDown(group, { key: " " });
 
-    expect(options[1]?.getAttribute("aria-checked")).toBe("true");
+    expect(options[0]?.getAttribute("aria-checked")).toBe("true");
   });
 
   it("moves focus with ArrowDown and selects focused radio with Enter", () => {
@@ -130,8 +130,8 @@ describe("UI keyboard navigation integration", () => {
     fireEvent.keyDown(listbox, { key: "ArrowDown" });
     fireEvent.keyDown(listbox, { key: "Enter" });
 
-    expect(activated).toEqual(["beta"]);
-    expect(screen.getByText("Beta").closest('[role="menuitemradio"]')?.getAttribute("data-active")).toBe("true");
-    expect(screen.getByText("Beta").closest('[role="menuitemradio"]')?.getAttribute("aria-checked")).toBe("true");
+    expect(activated).toEqual(["alpha"]);
+    expect(screen.getByText("Alpha").closest('[role="menuitemradio"]')?.getAttribute("data-active")).toBe("true");
+    expect(screen.getByText("Alpha").closest('[role="menuitemradio"]')?.getAttribute("aria-checked")).toBe("true");
   });
 });

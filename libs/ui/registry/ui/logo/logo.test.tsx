@@ -5,7 +5,7 @@ import { Logo } from "./index.js"
 
 describe("Logo", () => {
   it("renders plain static text without requiring figlet output", () => {
-    render(<Logo text="DIFFGAZER" font="Big" />)
+    render(<Logo text="DIFFGAZER" />)
 
     expect(screen.getByText("DIFFGAZER")).toBeInTheDocument()
     expect(screen.queryByRole("img")).not.toBeInTheDocument()

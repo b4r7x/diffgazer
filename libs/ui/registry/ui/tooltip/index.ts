@@ -1,3 +1,5 @@
+"use client";
+
 import { TooltipRoot, type TooltipProps } from "./tooltip";
 import {
   PopoverTrigger as TooltipTrigger,

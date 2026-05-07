@@ -9,6 +9,9 @@
     "directory": "cli/diffgazer"
   },
   "homepage": "https://github.com/b4r7x/diffgazer/tree/main/cli/diffgazer",
+  "publishConfig": {
+    "provenance": true
+  },
   "bugs": {
     "url": "https://github.com/b4r7x/diffgazer/issues"
   },
@@ -20,15 +23,17 @@
     "dist",
     "bin/diffgazer.js",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "SECURITY.md",
+    "SUPPORT.md"
   ],
   "engines": {
     "node": ">=20.0.0"
   },
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
-    "build": "pnpm run clean && pnpm build:deps && pnpm build:web && pnpm build:bundle",
-    "build:deps": "pnpm --filter @diffgazer/registry build && pnpm --filter @diffgazer/core build && pnpm --filter @diffgazer/server build && pnpm --filter @diffgazer/keys build && pnpm --filter @diffgazer/ui build",
+    "build": "pnpm run build:deps && pnpm run clean && pnpm build:web && pnpm build:bundle",
+    "build:deps": "pnpm --dir=../.. turbo run build --filter=@diffgazer/core --filter=@diffgazer/server --filter=@diffgazer/keys --filter=@diffgazer/ui --filter=@diffgazer/web",
     "build:web": "pnpm --filter @diffgazer/web exec tsc -b && pnpm --filter @diffgazer/web exec vite build --outDir ../../cli/diffgazer/dist/web",
     "build:bundle": "tsup",
     "prepack": "pnpm run build",

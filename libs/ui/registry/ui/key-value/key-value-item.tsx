@@ -5,7 +5,7 @@ import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useKeyValueContext, type KeyValueLayout, type KeyValueVariant } from "./key-value-context";
 
-export interface KeyValueItemProps extends ComponentPropsWithRef<"div"> {
+export interface KeyValueItemProps extends Omit<ComponentPropsWithRef<"dt">, "children"> {
   label: ReactNode;
   value: ReactNode;
   variant?: KeyValueVariant;
@@ -13,15 +13,15 @@ export interface KeyValueItemProps extends ComponentPropsWithRef<"div"> {
   bordered?: boolean;
 }
 
-const keyValueItemVariants = cva("", {
+const labelVariants = cva("text-muted-foreground", {
   variants: {
     layout: {
-      horizontal: "flex justify-between items-center",
-      vertical: "flex flex-col gap-1",
+      horizontal: "",
+      vertical: "",
     },
     bordered: {
-      true: "py-4 border-b border-border last:border-b-0",
-      false: "",
+      true: "pt-4 border-t border-border first:border-t-0 text-xs",
+      false: "text-sm",
     },
   },
   defaultVariants: { layout: "horizontal", bordered: false },
@@ -37,8 +37,15 @@ const valueVariants = cva("", {
       error: "font-bold text-destructive",
     },
     bordered: { true: "text-xs", false: "" },
+    layout: {
+      horizontal: "text-right",
+      vertical: "pb-3",
+    },
   },
-  defaultVariants: { variant: "default", bordered: false },
+  compoundVariants: [
+    { layout: "horizontal", bordered: true, class: "pt-4 border-t border-border [&:nth-child(2)]:border-t-0" },
+  ],
+  defaultVariants: { variant: "default", bordered: false, layout: "horizontal" },
 });
 
 export function KeyValueItem({
@@ -56,13 +63,15 @@ export function KeyValueItem({
   const bordered = borderedProp ?? ctx.bordered;
 
   return (
-    <div
-      ref={ref}
-      className={cn(keyValueItemVariants({ layout, bordered }), className)}
-      {...rest}
-    >
-      <dt className={cn("text-muted-foreground", bordered ? "text-xs" : "text-sm")}>{label}</dt>
-      <dd className={valueVariants({ variant, bordered })}>{value}</dd>
-    </div>
+    <>
+      <dt
+        ref={ref}
+        className={cn(labelVariants({ layout, bordered }), className)}
+        {...rest}
+      >
+        {label}
+      </dt>
+      <dd className={valueVariants({ variant, bordered, layout })}>{value}</dd>
+    </>
   );
 }

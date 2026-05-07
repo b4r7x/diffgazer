@@ -1,8 +1,14 @@
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
-import { describe, it, expect, vi } from "vitest"
+import { afterEach, describe, it, expect, vi } from "vitest"
+import { useState } from "react"
 import { Dialog } from "./index.js"
+import { Popover } from "../popover/index.js"
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 function renderDialog(props: { open?: boolean; defaultOpen?: boolean; onOpenChange?: (open: boolean) => void } = {}) {
   return render(
@@ -61,8 +67,81 @@ describe("Dialog", () => {
         </Dialog.Content>
       </Dialog>
     )
-    fireEvent.click(screen.getByRole("dialog"))
+    const dialog = screen.getByRole("dialog")
+    vi.spyOn(dialog, "getBoundingClientRect").mockReturnValue({
+      x: 100,
+      y: 100,
+      width: 320,
+      height: 240,
+      top: 100,
+      right: 420,
+      bottom: 340,
+      left: 100,
+      toJSON() {},
+    })
+
+    fireEvent.click(dialog, { clientX: 80, clientY: 120 })
     expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it("does not close when a dialog-target click lands inside the dialog bounds", () => {
+    const onOpenChange = vi.fn()
+    render(
+      <Dialog defaultOpen onOpenChange={onOpenChange}>
+        <Dialog.Trigger>Open Dialog</Dialog.Trigger>
+        <Dialog.Content>
+          <Dialog.Title>Bounded dialog</Dialog.Title>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "Bounded dialog" })
+    vi.spyOn(dialog, "getBoundingClientRect").mockReturnValue({
+      x: 100,
+      y: 100,
+      width: 320,
+      height: 240,
+      top: 100,
+      right: 420,
+      bottom: 340,
+      left: 100,
+      toJSON() {},
+    })
+
+    fireEvent.click(dialog, { clientX: 200, clientY: 200 })
+
+    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(dialog).toHaveAttribute("data-state", "open")
+  })
+
+  it("keeps closeOnBackdropClick=false semantics for outside backdrop clicks", () => {
+    const onOpenChange = vi.fn()
+    render(
+      <Dialog defaultOpen onOpenChange={onOpenChange}>
+        <Dialog.Trigger>Open Dialog</Dialog.Trigger>
+        <Dialog.Content closeOnBackdropClick={false}>
+          <Dialog.Title>Static dialog</Dialog.Title>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "Static dialog" })
+    vi.spyOn(dialog, "getBoundingClientRect").mockReturnValue({
+      x: 100,
+      y: 100,
+      width: 320,
+      height: 240,
+      top: 100,
+      right: 420,
+      bottom: 340,
+      left: 100,
+      toJSON() {},
+    })
+
+    fireEvent.click(dialog, { clientX: 80, clientY: 120 })
+
+    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(dialog).toHaveAttribute("data-state", "open")
   })
 
   it("returns focus to trigger after dialog closes", () => {
@@ -88,6 +167,63 @@ describe("Dialog", () => {
     expect(trigger).toHaveFocus()
   })
 
+  it("does not call showModal while a closing dialog is still present", () => {
+    const showModal = vi.spyOn(HTMLDialogElement.prototype, "showModal")
+    const { rerender } = renderDialog({ defaultOpen: true })
+    const dialog = screen.getByRole("dialog")
+
+    dialog.close()
+    showModal.mockClear()
+
+    rerender(
+      <Dialog open={false}>
+        <Dialog.Trigger>Open</Dialog.Trigger>
+        <Dialog.Content>
+          <Dialog.Title>Closing dialog</Dialog.Title>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    expect(showModal).not.toHaveBeenCalled()
+  })
+
+  it("keeps nested portals inside a dialog opened after an initial closed render", async () => {
+    function ClosedFirstDialog() {
+      const [open, setOpen] = useState(false)
+
+      return (
+        <Dialog open={open} onOpenChange={setOpen}>
+          <Dialog.Trigger>Open delayed dialog</Dialog.Trigger>
+          <Dialog.Content>
+            <Dialog.Title>Delayed dialog</Dialog.Title>
+            <Popover triggerMode="click" defaultOpen>
+              <Popover.Trigger>Nested popover trigger</Popover.Trigger>
+              <Popover.Content aria-label="Delayed nested popover">
+                <button>Nested action</button>
+              </Popover.Content>
+            </Popover>
+          </Dialog.Content>
+        </Dialog>
+      )
+    }
+
+    render(<ClosedFirstDialog />)
+
+    await userEvent.click(screen.getByRole("button", { name: "Open delayed dialog" }))
+
+    const dialog = screen.getByRole("dialog", { name: "Delayed dialog" })
+    const popoverTrigger = screen.getByRole("button", { name: "Nested popover trigger" })
+    const popoverId = popoverTrigger.getAttribute("aria-controls")
+    if (!popoverId) throw new Error("Expected nested popover trigger to control mounted content")
+
+    await waitFor(() => {
+      const popover = document.getElementById(popoverId)
+      expect(popover).not.toBeNull()
+      expect(dialog.contains(popover)).toBe(true)
+      expect(popover?.parentElement).not.toBe(document.body)
+    })
+  })
+
   // --- ARIA ---
 
   it("trigger has aria-expanded reflecting open state", async () => {
@@ -108,9 +244,49 @@ describe("Dialog", () => {
 
   it("sets aria-labelledby pointing to the title", () => {
     renderDialog({ defaultOpen: true })
-    const dialog = screen.getByRole("dialog")
+    const dialog = screen.getByRole("dialog", { name: "Test Title" })
     const title = screen.getByRole("heading", { name: "Test Title" })
     expect(dialog).toHaveAttribute("aria-labelledby", title.id)
+  })
+
+  it("exposes modal dialog semantics", () => {
+    renderDialog({ defaultOpen: true })
+    expect(screen.getByRole("dialog")).toHaveAttribute("aria-modal", "true")
+  })
+
+  it("warns when content has no Dialog.Title or explicit aria name", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <Dialog.Body>Body content</Dialog.Body>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    expect(warn).toHaveBeenCalledWith("Dialog.Content requires Dialog.Title, aria-label, or aria-labelledby.")
+    expect(screen.getByRole("dialog")).not.toHaveAttribute("aria-labelledby")
+  })
+
+  it("accepts a Dialog.Title wrapped in another component", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    function WrappedTitle() {
+      return <Dialog.Title>Wrapped title</Dialog.Title>
+    }
+
+    render(
+      <Dialog defaultOpen>
+        <Dialog.Content>
+          <WrappedTitle />
+          <Dialog.Body>Body content</Dialog.Body>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    expect(screen.getByRole("dialog", { name: "Wrapped title" })).toBeInTheDocument()
+    expect(warn).not.toHaveBeenCalled()
   })
 
   it("uses an explicit aria-label without pointing to a missing title", () => {
@@ -124,6 +300,22 @@ describe("Dialog", () => {
 
     const dialog = screen.getByRole("dialog", { name: "Named without title" })
     expect(dialog).not.toHaveAttribute("aria-labelledby")
+  })
+
+  it("uses an explicit aria-labelledby without a Dialog.Title", () => {
+    render(
+      <>
+        <h2 id="external-dialog-name">External dialog name</h2>
+        <Dialog defaultOpen>
+          <Dialog.Content aria-labelledby="external-dialog-name">
+            <Dialog.Body>Body content</Dialog.Body>
+          </Dialog.Content>
+        </Dialog>
+      </>
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "External dialog name" })
+    expect(dialog).toHaveAttribute("aria-labelledby", "external-dialog-name")
   })
 
   it("sets aria-describedby when description is present", () => {
@@ -232,5 +424,40 @@ describe("Dialog", () => {
     const closeButtons = screen.getAllByRole("button", { name: "Close dialog" })
     await userEvent.click(closeButtons[closeButtons.length - 1])
     expect(onOpenChange2).toHaveBeenCalledWith(false)
+  })
+
+  it("composes consumer dialog events without replacing backdrop or presence behavior", () => {
+    const onOpenChange = vi.fn()
+    const onClick = vi.fn((event) => event.preventDefault())
+    const onCancel = vi.fn()
+
+    render(
+      <Dialog defaultOpen onOpenChange={onOpenChange}>
+        <Dialog.Trigger>Open Dialog</Dialog.Trigger>
+        <Dialog.Content onClick={onClick} onCancel={onCancel}>
+          <Dialog.Title>Composed dialog</Dialog.Title>
+        </Dialog.Content>
+      </Dialog>
+    )
+
+    const dialog = screen.getByRole("dialog", { name: "Composed dialog" })
+    vi.spyOn(dialog, "getBoundingClientRect").mockReturnValue({
+      x: 100,
+      y: 100,
+      width: 320,
+      height: 240,
+      top: 100,
+      right: 420,
+      bottom: 340,
+      left: 100,
+      toJSON() {},
+    })
+
+    fireEvent.click(dialog, { clientX: 80, clientY: 120 })
+    fireEvent(dialog, new Event("cancel", { bubbles: false }))
+
+    expect(onClick).toHaveBeenCalled()
+    expect(onCancel).toHaveBeenCalled()
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 })

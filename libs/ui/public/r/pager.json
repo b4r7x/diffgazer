@@ -9,7 +9,7 @@
   "files": [
     {
       "path": "registry/ui/pager/index.ts",
-      "content": "import { Pager as PagerRoot, type PagerProps } from \"./pager\";\nimport { PagerLink, type PagerLinkProps, type PagerLinkRenderProps } from \"./pager-link\";\n\nconst Pager = Object.assign(PagerRoot, {\n  Link: PagerLink,\n});\n\nexport { Pager, type PagerProps };\nexport { PagerLink, type PagerLinkProps, type PagerLinkRenderProps };\n",
+      "content": "\"use client\";\n\nimport { Pager as PagerRoot, type PagerProps } from \"./pager\";\nimport { PagerLink, type PagerLinkProps, type PagerLinkRenderProps } from \"./pager-link\";\n\nconst Pager = Object.assign(PagerRoot, {\n  Link: PagerLink,\n});\n\nexport { Pager, type PagerProps };\nexport { PagerLink, type PagerLinkProps, type PagerLinkRenderProps };\n",
       "type": "registry:ui"
     },
     {

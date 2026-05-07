@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode, HTMLAttributes } from "react";
+import type { ReactNode, HTMLAttributes, Ref } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useSpinnerAnimation } from "./use-spinner-animation";
@@ -57,6 +57,7 @@ export interface SpinnerProps
   gap?: SpinnerGap;
   speed?: number;
   children?: ReactNode;
+  ref?: Ref<HTMLSpanElement>;
 }
 
 function SpinnerAnimation({ variant, frame, size }: { variant: SpinnerVariant; frame: number; size: SpinnerSize }) {
@@ -74,17 +75,23 @@ export function Spinner({
   size,
   labelPosition,
   gap,
-  speed,
+  speed: requestedSpeed,
   className,
   children,
+  ref,
   ...props
 }: SpinnerProps) {
   const { frames: totalFrames, speed: defaultSpeed } = VARIANT_CONFIG[variant];
-  const frame = useSpinnerAnimation({ totalFrames, speed: speed ?? defaultSpeed });
+  const resolvedSpeed =
+    typeof requestedSpeed === "number" && Number.isFinite(requestedSpeed) && requestedSpeed > 0
+      ? requestedSpeed
+      : defaultSpeed;
+  const frame = useSpinnerAnimation({ totalFrames, speed: resolvedSpeed });
   const resolvedSize = size ?? "md";
 
   return (
     <span
+      ref={ref}
       role="status"
       aria-live="polite"
       aria-label={children ? undefined : "Loading"}

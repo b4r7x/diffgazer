@@ -1,3 +1,4 @@
+import type React from "react"
 import { SectionHeader } from "@/components/ui/section-header/section-header"
 import { CodeBlock, CodeBlockContent, CodeBlockLine } from "@/components/ui/code-block"
 import {
@@ -6,9 +7,9 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from "@/components/ui/accordion"
+import { LOCAL_DGADD_PREREQUISITE } from "@/lib/docs-library"
 import type { SourceFile } from "@/types/docs-data"
 import { CopyButton } from "./copy-button"
-import type React from "react"
 
 interface SourceViewerProps {
   files: (SourceFile & { path: string })[]
@@ -37,6 +38,8 @@ export function SourceViewer({ files, mergedSource, installCommand, integrationN
           {installCommand && (
             <>
               Install via CLI: <code className="text-[0.7rem] bg-muted px-1 py-0.5 rounded">{installCommand}</code>.
+              {" "}
+              {LOCAL_DGADD_PREREQUISITE}
             </>
           )}
           {installCommand && integrationNote && " "}

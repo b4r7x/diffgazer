@@ -1,5 +1,5 @@
 import type { DiffHunk, ChangeType } from "./parse.js";
-import { computeWordSegments, type WordSegment } from "./word.js";
+import { computeWordSegments, createWordDiffBudget, type WordSegment } from "./word.js";
 import { collectEditPairs } from "./pairs.js";
 
 export interface SplitCell {
@@ -15,6 +15,7 @@ export type SplitRow =
 
 export function toSplitRows(hunks: DiffHunk[], wordDiff: boolean): SplitRow[] {
   const rows: SplitRow[] = [];
+  const wordDiffBudget = createWordDiffBudget();
 
   for (const hunk of hunks) {
     rows.push({
@@ -44,7 +45,7 @@ export function toSplitRows(hunks: DiffHunk[], wordDiff: boolean): SplitRow[] {
         let rightSegs: WordSegment[] | undefined;
 
         if (wordDiff && j < removes.length && j < adds.length) {
-          const { old: oSegs, new: nSegs } = computeWordSegments(removes[j].content, adds[j].content);
+          const { old: oSegs, new: nSegs } = computeWordSegments(removes[j].content, adds[j].content, wordDiffBudget);
           leftSegs = oSegs;
           rightSegs = nSegs;
         }

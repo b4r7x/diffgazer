@@ -33,9 +33,23 @@ describe("Callout", () => {
     expect(screen.getByRole("alert")).toBeInTheDocument()
   })
 
-  it("uses role=status for warning variant", () => {
+  it("does not announce non-error variants by default", () => {
     render(<Callout variant="warning">Warning</Callout>)
-    expect(screen.getByRole("status")).toBeInTheDocument()
+    expect(screen.queryByRole("status")).not.toBeInTheDocument()
+    expect(screen.getByText("Warning")).toBeInTheDocument()
+  })
+
+  it.each(["info", "warning", "success"] as const)(
+    "uses role=status for %s variant when live announcements are requested",
+    (variant) => {
+      render(<Callout variant={variant} live>{variant}</Callout>)
+      expect(screen.getByRole("status")).toHaveTextContent(variant)
+    },
+  )
+
+  it("keeps role=alert for error variant when live announcements are requested", () => {
+    render(<Callout variant="error" live>Error</Callout>)
+    expect(screen.getByRole("alert")).toHaveTextContent("Error")
   })
 })
 

@@ -7,7 +7,7 @@ description: Configure TypeScript path aliases and compiler options for @diffgaz
 
 ## Path Aliases
 
-Components import from `@/lib/utils`, `@/components/ui/*`, and `@/hooks/*`. Configure these in your `tsconfig.json`:
+Components import through the source alias recorded by `dgadd init`. Configure a root source alias such as `@/*` or `~/*` in your `tsconfig.json`:
 
 ```json
 {
@@ -24,6 +24,7 @@ And in `vite.config.ts`:
 
 ```ts
 import { resolve } from "node:path"
+import { defineConfig } from "vite"
 
 export default defineConfig({
   resolve: {
@@ -34,7 +35,9 @@ export default defineConfig({
 })
 ```
 
-`dgadd init` writes the aliases it will use into `diffgazer.json`, but it does not mutate `tsconfig.json`, `jsconfig.json`, Vite, Next.js, or other bundler config. Add the app-level alias yourself before building copied components.
+`dgadd init` writes the aliases it will use into `diffgazer.json`, but it does not mutate `tsconfig.json`, `jsconfig.json`, Vite, Next.js, or other bundler config. Add the app-level source alias yourself before building copied components.
+
+For Next App Router, configure the same source alias path in `tsconfig.json` or `jsconfig.json`. Keep global CSS imports in `app/layout.tsx` through your app CSS entrypoint; copied component files must not import global CSS directly.
 
 ## Strict Mode
 
@@ -52,17 +55,17 @@ export default defineConfig({
 }
 ```
 
-## React 19
+## React
 
-@diffgazer/ui targets React 19. Ensure your project uses React 19+:
+@diffgazer/ui targets React `>=19.2.0`. Ensure your project uses React `>=19.2.0`:
 
 ```json
 {
   "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   }
 }
 ```
 
-@diffgazer/ui follows React 19 hook semantics and uses memoization hooks only where stable callback identity is part of the component contract.
+@diffgazer/ui follows React `>=19.2.0` hook semantics and uses memoization hooks only where stable callback identity is part of the component contract.

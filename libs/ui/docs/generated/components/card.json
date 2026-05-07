@@ -1177,7 +1177,7 @@
       ]
     },
     "registry/ui/card/card.tsx": {
-      "raw": "import type { HTMLAttributes, Ref } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const cardVariants = cva(\"w-full relative border border-border bg-background\", {\n  variants: {\n    variant: {\n      default: \"\",\n      panel: \"shadow-2xl\",\n    },\n    size: {\n      default: \"\",\n      sm: \"max-w-sm\",\n      md: \"max-w-md\",\n      lg: \"max-w-lg\",\n    },\n  },\n  defaultVariants: { variant: \"default\", size: \"default\" },\n});\n\nexport type CardProps = HTMLAttributes<HTMLElement> &\n  VariantProps<typeof cardVariants> & {\n    as?: \"div\" | \"article\" | \"section\" | \"aside\";\n    ref?: Ref<HTMLElement>;\n  };\n\nexport function Card({ className, variant, size, as: Tag = \"div\", ref, ...props }: CardProps) {\n  return <Tag data-slot=\"card\" ref={ref as Ref<never>} className={cn(cardVariants({ variant, size }), className)} {...props} />;\n}\n",
+      "raw": "import type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const cardVariants = cva(\"w-full relative border border-border bg-background\", {\n  variants: {\n    variant: {\n      default: \"\",\n      panel: \"shadow-2xl\",\n    },\n    size: {\n      default: \"\",\n      sm: \"max-w-sm\",\n      md: \"max-w-md\",\n      lg: \"max-w-lg\",\n    },\n  },\n  defaultVariants: { variant: \"default\", size: \"default\" },\n});\n\ntype CardOwnProps = VariantProps<typeof cardVariants>;\ntype CardElement = \"div\" | \"article\" | \"section\" | \"aside\";\ntype CardElementProps<T extends CardElement> = Omit<\n  ComponentPropsWithRef<T>,\n  keyof CardOwnProps | \"as\"\n> &\n  CardOwnProps & {\n    as: T;\n  };\n\nexport type CardProps =\n  | (Omit<CardElementProps<\"div\">, \"as\"> & { as?: \"div\" })\n  | CardElementProps<\"article\">\n  | CardElementProps<\"section\">\n  | CardElementProps<\"aside\">;\n\nexport function Card(props: CardProps) {\n  const { className, variant, size } = props;\n  const resolvedClassName = cn(cardVariants({ variant, size }), className);\n\n  if (props.as === \"article\") {\n    const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, ...articleProps } = props;\n    return <article data-slot=\"card\" ref={ref} className={resolvedClassName} {...articleProps} />;\n  }\n  if (props.as === \"section\") {\n    const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, ...sectionProps } = props;\n    return <section data-slot=\"card\" ref={ref} className={resolvedClassName} {...sectionProps} />;\n  }\n  if (props.as === \"aside\") {\n    const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, ...asideProps } = props;\n    return <aside data-slot=\"card\" ref={ref} className={resolvedClassName} {...asideProps} />;\n  }\n\n  const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, ...divProps } = props;\n  return <div data-slot=\"card\" ref={ref} className={resolvedClassName} {...divProps} />;\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -1203,15 +1203,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": " HTMLAttributes",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " Ref ",
+              "text": " ComponentPropsWithRef ",
               "color": "var(--code-variable)"
             },
             {
@@ -1833,14 +1825,6 @@
           "number": 21,
           "content": [
             {
-              "text": "export",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
               "text": "type",
               "color": "var(--code-keyword)"
             },
@@ -1849,7 +1833,7 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "CardProps",
+              "text": "CardOwnProps",
               "color": "var(--code-function)"
             },
             {
@@ -1865,39 +1849,6 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "HTMLAttributes",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "<",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "HTMLElement",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": ">",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "&",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 22,
-          "content": [
-            {
-              "text": "  ",
-              "color": "var(--code-variable)"
-            },
-            {
               "text": "VariantProps",
               "color": "var(--code-function)"
             },
@@ -1910,36 +1861,32 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": ">",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "&",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "{",
+              "text": ">;",
               "color": "var(--code-operator)"
             }
           ]
         },
         {
-          "number": 23,
+          "number": 22,
           "content": [
             {
-              "text": "    as",
+              "text": "type",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "?:",
+              "text": "CardElement",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
               "color": "var(--code-operator)"
             },
             {
@@ -2037,22 +1984,18 @@
           ]
         },
         {
-          "number": 24,
+          "number": 23,
           "content": [
             {
-              "text": "    ref",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "?:",
-              "color": "var(--code-operator)"
+              "text": "type",
+              "color": "var(--code-keyword)"
             },
             {
               "text": " ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "Ref",
+              "text": "CardElementProps",
               "color": "var(--code-function)"
             },
             {
@@ -2060,11 +2003,72 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "HTMLElement",
+              "text": "T",
               "color": "var(--code-function)"
             },
             {
-              "text": ">;",
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "extends",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "CardElement",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Omit",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 24,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ComponentPropsWithRef",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "T",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ">,",
               "color": "var(--code-operator)"
             }
           ]
@@ -2077,17 +2081,414 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "};",
+              "text": "keyof",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "CardOwnProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
               "color": "var(--code-operator)"
             }
           ]
         },
         {
           "number": 26,
-          "content": []
+          "content": [
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&",
+              "color": "var(--code-operator)"
+            }
+          ]
         },
         {
           "number": 27,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "CardOwnProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 28,
+          "content": [
+            {
+              "text": "    as",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "T",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 29,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "};",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 30,
+          "content": []
+        },
+        {
+          "number": 31,
+          "content": [
+            {
+              "text": "export",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "CardProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 32,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Omit",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "CardElementProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">,",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " as",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "?:",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 33,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "CardElementProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "article",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 34,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "CardElementProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "section",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 35,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "CardElementProps",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "aside",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ">;",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 36,
+          "content": []
+        },
+        {
+          "number": 37,
           "content": [
             {
               "text": "export",
@@ -2110,91 +2511,15 @@
               "color": "var(--code-function)"
             },
             {
-              "text": "({",
+              "text": "(",
               "color": "var(--code-operator)"
             },
             {
-              "text": " className",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " variant",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " size",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " as",
+              "text": "props",
               "color": "var(--code-variable)"
             },
             {
               "text": ":",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " Tag ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "=",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "div",
-              "color": "var(--code-tag)"
-            },
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ref",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "...",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "props ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "}:",
               "color": "var(--code-operator)"
             },
             {
@@ -2220,14 +2545,14 @@
           ]
         },
         {
-          "number": 28,
+          "number": 38,
           "content": [
             {
               "text": "  ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "return",
+              "text": "const",
               "color": "var(--code-keyword)"
             },
             {
@@ -2235,75 +2560,7 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "<",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "Tag",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "data-slot",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "=",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "card",
-              "color": "var(--code-tag)"
-            },
-            {
-              "text": "\"",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "ref",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "={",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "ref ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "as",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "Ref",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "<",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "never",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": ">}",
+              "text": "{",
               "color": "var(--code-operator)"
             },
             {
@@ -2312,11 +2569,88 @@
             },
             {
               "text": "className",
-              "color": "var(--code-function)"
+              "color": "var(--code-number)"
             },
             {
-              "text": "={",
+              "text": ",",
               "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "variant",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "size",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " props",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 39,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "resolvedClassName",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
             },
             {
               "text": "cn",
@@ -2367,6 +2701,297 @@
               "color": "var(--code-variable)"
             },
             {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 40,
+          "content": []
+        },
+        {
+          "number": 41,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "props",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "as ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "article",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 42,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " className",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedClassName",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " variant",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedVariant",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " size",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedSize",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "articleProps",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " props",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 43,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "article",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "data-slot",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "card",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "resolvedClassName",
+              "color": "var(--code-variable)"
+            },
+            {
               "text": "}",
               "color": "var(--code-operator)"
             },
@@ -2379,7 +3004,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "props",
+              "text": "articleProps",
               "color": "var(--code-variable)"
             },
             {
@@ -2397,7 +3022,926 @@
           ]
         },
         {
-          "number": 29,
+          "number": 44,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 45,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "props",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "as ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "section",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 46,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " className",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedClassName",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " variant",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedVariant",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " size",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedSize",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "sectionProps",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " props",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 47,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "section",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "data-slot",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "card",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "resolvedClassName",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "sectionProps",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "/>;",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 48,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 49,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "props",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "as ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "aside",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 50,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " className",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedClassName",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " variant",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedVariant",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " size",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedSize",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "asideProps",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " props",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 51,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "aside",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "data-slot",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "card",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "resolvedClassName",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "asideProps",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "/>;",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 52,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 53,
+          "content": []
+        },
+        {
+          "number": 54,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " className",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedClassName",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " variant",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedVariant",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " size",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "omittedSize",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "divProps",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " props",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 55,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "div",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "data-slot",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "card",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "ref",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "className",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "resolvedClassName",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{...",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "divProps",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "/>;",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 56,
           "content": [
             {
               "text": "}",
@@ -2406,7 +3950,7 @@
           ]
         },
         {
-          "number": 30,
+          "number": 57,
           "content": []
         }
       ]
@@ -5857,7 +7401,7 @@
       ]
     }
   },
-  "mergedSource": "import { Card as CardRoot, cardVariants, type CardProps } from \"./card\";\nimport { CardAction, type CardActionProps } from \"./card-action\";\nimport { CardContent, type CardContentProps } from \"./card-content\";\nimport { CardDescription, type CardDescriptionProps } from \"./card-description\";\nimport { CardFooter, type CardFooterProps } from \"./card-footer\";\nimport { CardHeader, type CardHeaderProps } from \"./card-header\";\nimport { CardLabel, cardLabelVariants, type CardLabelProps } from \"./card-label\";\nimport { CardTitle, type CardTitleProps } from \"./card-title\";\n\nconst Card = Object.assign(CardRoot, {\n  Action: CardAction,\n  Header: CardHeader,\n  Label: CardLabel,\n  Title: CardTitle,\n  Description: CardDescription,\n  Content: CardContent,\n  Footer: CardFooter,\n});\n\nexport { Card, cardVariants, type CardProps };\nexport { CardAction, type CardActionProps };\nexport { CardHeader, type CardHeaderProps };\nexport { CardLabel, cardLabelVariants, type CardLabelProps };\nexport { CardTitle, type CardTitleProps };\nexport { CardDescription, type CardDescriptionProps };\nexport { CardContent, type CardContentProps };\nexport { CardFooter, type CardFooterProps };\n\n\nimport type { HTMLAttributes, Ref } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const cardVariants = cva(\"w-full relative border border-border bg-background\", {\n  variants: {\n    variant: {\n      default: \"\",\n      panel: \"shadow-2xl\",\n    },\n    size: {\n      default: \"\",\n      sm: \"max-w-sm\",\n      md: \"max-w-md\",\n      lg: \"max-w-lg\",\n    },\n  },\n  defaultVariants: { variant: \"default\", size: \"default\" },\n});\n\nexport type CardProps = HTMLAttributes<HTMLElement> &\n  VariantProps<typeof cardVariants> & {\n    as?: \"div\" | \"article\" | \"section\" | \"aside\";\n    ref?: Ref<HTMLElement>;\n  };\n\nexport function Card({ className, variant, size, as: Tag = \"div\", ref, ...props }: CardProps) {\n  return <Tag data-slot=\"card\" ref={ref as Ref<never>} className={cn(cardVariants({ variant, size }), className)} {...props} />;\n}\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CardActionProps = ComponentPropsWithRef<\"div\">;\n\nexport function CardAction({ className, ...props }: CardActionProps) {\n  return (\n    <div\n      data-slot=\"card-action\"\n      className={cn(\"col-start-2 row-span-2 row-start-1 self-start justify-self-end\", className)}\n      {...props}\n    />\n  );\n}\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CardHeaderProps = ComponentPropsWithRef<\"div\">;\n\nexport function CardHeader({ className, ...props }: CardHeaderProps) {\n  return (\n    <div\n      data-slot=\"card-header\"\n      className={cn(\n        \"grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 border-b border-border px-4 py-3 text-sm text-foreground has-data-[slot=card-action]:grid-cols-[1fr_auto]\",\n        className,\n      )}\n      {...props}\n    />\n  );\n}\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CardTitleProps = ComponentPropsWithRef<\"h3\"> & {\n  as?: \"h2\" | \"h3\" | \"h4\" | \"h5\";\n};\n\nexport function CardTitle({ as: Tag = \"h3\", className, ...props }: CardTitleProps) {\n  return <Tag data-slot=\"card-title\" className={cn(\"text-xl font-bold text-foreground tracking-wide\", className)} {...props} />;\n}\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CardDescriptionProps = ComponentPropsWithRef<\"p\">;\n\nexport function CardDescription({ className, ...props }: CardDescriptionProps) {\n  return <p data-slot=\"card-description\" className={cn(\"text-sm text-muted-foreground\", className)} {...props} />;\n}\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CardContentProps = ComponentPropsWithRef<\"div\">;\n\nexport function CardContent({ className, ...props }: CardContentProps) {\n  return <div data-slot=\"card-content\" className={cn(\"p-6\", className)} {...props} />;\n}\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const cardLabelVariants = cva(\n  \"absolute -top-3 left-4 z-10 bg-background px-2 text-xs font-bold uppercase tracking-wider text-muted-foreground\",\n  {\n    variants: {\n      variant: {\n        border: \"border border-border\",\n        gap: \"\",\n      },\n    },\n    defaultVariants: { variant: \"border\" },\n  },\n);\n\nexport type CardLabelProps = ComponentPropsWithRef<\"div\"> & VariantProps<typeof cardLabelVariants>;\n\nexport function CardLabel({ className, variant, ...props }: CardLabelProps) {\n  return <div data-slot=\"card-label\" className={cn(cardLabelVariants({ variant }), className)} {...props} />;\n}\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CardFooterProps = ComponentPropsWithRef<\"div\">;\n\nexport function CardFooter({ className, ...props }: CardFooterProps) {\n  return (\n    <div data-slot=\"card-footer\" className={cn(\"flex justify-end gap-3 border-t border-border bg-background/50 px-6 py-4\", className)} {...props} />\n  );\n}\n",
+  "mergedSource": "import { Card as CardRoot, cardVariants, type CardProps } from \"./card\";\nimport { CardAction, type CardActionProps } from \"./card-action\";\nimport { CardContent, type CardContentProps } from \"./card-content\";\nimport { CardDescription, type CardDescriptionProps } from \"./card-description\";\nimport { CardFooter, type CardFooterProps } from \"./card-footer\";\nimport { CardHeader, type CardHeaderProps } from \"./card-header\";\nimport { CardLabel, cardLabelVariants, type CardLabelProps } from \"./card-label\";\nimport { CardTitle, type CardTitleProps } from \"./card-title\";\n\nconst Card = Object.assign(CardRoot, {\n  Action: CardAction,\n  Header: CardHeader,\n  Label: CardLabel,\n  Title: CardTitle,\n  Description: CardDescription,\n  Content: CardContent,\n  Footer: CardFooter,\n});\n\nexport { Card, cardVariants, type CardProps };\nexport { CardAction, type CardActionProps };\nexport { CardHeader, type CardHeaderProps };\nexport { CardLabel, cardLabelVariants, type CardLabelProps };\nexport { CardTitle, type CardTitleProps };\nexport { CardDescription, type CardDescriptionProps };\nexport { CardContent, type CardContentProps };\nexport { CardFooter, type CardFooterProps };\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const cardVariants = cva(\"w-full relative border border-border bg-background\", {\n  variants: {\n    variant: {\n      default: \"\",\n      panel: \"shadow-2xl\",\n    },\n    size: {\n      default: \"\",\n      sm: \"max-w-sm\",\n      md: \"max-w-md\",\n      lg: \"max-w-lg\",\n    },\n  },\n  defaultVariants: { variant: \"default\", size: \"default\" },\n});\n\ntype CardOwnProps = VariantProps<typeof cardVariants>;\ntype CardElement = \"div\" | \"article\" | \"section\" | \"aside\";\ntype CardElementProps<T extends CardElement> = Omit<\n  ComponentPropsWithRef<T>,\n  keyof CardOwnProps | \"as\"\n> &\n  CardOwnProps & {\n    as: T;\n  };\n\nexport type CardProps =\n  | (Omit<CardElementProps<\"div\">, \"as\"> & { as?: \"div\" })\n  | CardElementProps<\"article\">\n  | CardElementProps<\"section\">\n  | CardElementProps<\"aside\">;\n\nexport function Card(props: CardProps) {\n  const { className, variant, size } = props;\n  const resolvedClassName = cn(cardVariants({ variant, size }), className);\n\n  if (props.as === \"article\") {\n    const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, ...articleProps } = props;\n    return <article data-slot=\"card\" ref={ref} className={resolvedClassName} {...articleProps} />;\n  }\n  if (props.as === \"section\") {\n    const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, ...sectionProps } = props;\n    return <section data-slot=\"card\" ref={ref} className={resolvedClassName} {...sectionProps} />;\n  }\n  if (props.as === \"aside\") {\n    const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, ...asideProps } = props;\n    return <aside data-slot=\"card\" ref={ref} className={resolvedClassName} {...asideProps} />;\n  }\n\n  const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, ...divProps } = props;\n  return <div data-slot=\"card\" ref={ref} className={resolvedClassName} {...divProps} />;\n}\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CardActionProps = ComponentPropsWithRef<\"div\">;\n\nexport function CardAction({ className, ...props }: CardActionProps) {\n  return (\n    <div\n      data-slot=\"card-action\"\n      className={cn(\"col-start-2 row-span-2 row-start-1 self-start justify-self-end\", className)}\n      {...props}\n    />\n  );\n}\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CardHeaderProps = ComponentPropsWithRef<\"div\">;\n\nexport function CardHeader({ className, ...props }: CardHeaderProps) {\n  return (\n    <div\n      data-slot=\"card-header\"\n      className={cn(\n        \"grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 border-b border-border px-4 py-3 text-sm text-foreground has-data-[slot=card-action]:grid-cols-[1fr_auto]\",\n        className,\n      )}\n      {...props}\n    />\n  );\n}\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CardTitleProps = ComponentPropsWithRef<\"h3\"> & {\n  as?: \"h2\" | \"h3\" | \"h4\" | \"h5\";\n};\n\nexport function CardTitle({ as: Tag = \"h3\", className, ...props }: CardTitleProps) {\n  return <Tag data-slot=\"card-title\" className={cn(\"text-xl font-bold text-foreground tracking-wide\", className)} {...props} />;\n}\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CardDescriptionProps = ComponentPropsWithRef<\"p\">;\n\nexport function CardDescription({ className, ...props }: CardDescriptionProps) {\n  return <p data-slot=\"card-description\" className={cn(\"text-sm text-muted-foreground\", className)} {...props} />;\n}\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CardContentProps = ComponentPropsWithRef<\"div\">;\n\nexport function CardContent({ className, ...props }: CardContentProps) {\n  return <div data-slot=\"card-content\" className={cn(\"p-6\", className)} {...props} />;\n}\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport const cardLabelVariants = cva(\n  \"absolute -top-3 left-4 z-10 bg-background px-2 text-xs font-bold uppercase tracking-wider text-muted-foreground\",\n  {\n    variants: {\n      variant: {\n        border: \"border border-border\",\n        gap: \"\",\n      },\n    },\n    defaultVariants: { variant: \"border\" },\n  },\n);\n\nexport type CardLabelProps = ComponentPropsWithRef<\"div\"> & VariantProps<typeof cardLabelVariants>;\n\nexport function CardLabel({ className, variant, ...props }: CardLabelProps) {\n  return <div data-slot=\"card-label\" className={cn(cardLabelVariants({ variant }), className)} {...props} />;\n}\n\n\nimport type { ComponentPropsWithRef } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport type CardFooterProps = ComponentPropsWithRef<\"div\">;\n\nexport function CardFooter({ className, ...props }: CardFooterProps) {\n  return (\n    <div data-slot=\"card-footer\" className={cn(\"flex justify-end gap-3 border-t border-border bg-background/50 px-6 py-4\", className)} {...props} />\n  );\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
@@ -7040,15 +8584,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": " HTMLAttributes",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " Ref ",
+          "text": " ComponentPropsWithRef ",
           "color": "var(--code-variable)"
         },
         {
@@ -7670,14 +9206,6 @@
       "number": 50,
       "content": [
         {
-          "text": "export",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
           "text": "type",
           "color": "var(--code-keyword)"
         },
@@ -7686,7 +9214,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "CardProps",
+          "text": "CardOwnProps",
           "color": "var(--code-function)"
         },
         {
@@ -7702,39 +9230,6 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "HTMLAttributes",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "<",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "HTMLElement",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": ">",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "&",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 51,
-      "content": [
-        {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
           "text": "VariantProps",
           "color": "var(--code-function)"
         },
@@ -7747,36 +9242,32 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": ">",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "&",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "{",
+          "text": ">;",
           "color": "var(--code-operator)"
         }
       ]
     },
     {
-      "number": 52,
+      "number": 51,
       "content": [
         {
-          "text": "    as",
+          "text": "type",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "?:",
+          "text": "CardElement",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
           "color": "var(--code-operator)"
         },
         {
@@ -7874,22 +9365,18 @@
       ]
     },
     {
-      "number": 53,
+      "number": 52,
       "content": [
         {
-          "text": "    ref",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "?:",
-          "color": "var(--code-operator)"
+          "text": "type",
+          "color": "var(--code-keyword)"
         },
         {
           "text": " ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "Ref",
+          "text": "CardElementProps",
           "color": "var(--code-function)"
         },
         {
@@ -7897,11 +9384,72 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "HTMLElement",
+          "text": "T",
           "color": "var(--code-function)"
         },
         {
-          "text": ">;",
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "extends",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "CardElement",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": ">",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "Omit",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 53,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ComponentPropsWithRef",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "T",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": ">,",
           "color": "var(--code-operator)"
         }
       ]
@@ -7914,17 +9462,414 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "};",
+          "text": "keyof",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "CardOwnProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "as",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
           "color": "var(--code-operator)"
         }
       ]
     },
     {
       "number": 55,
-      "content": []
+      "content": [
+        {
+          "text": ">",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&",
+          "color": "var(--code-operator)"
+        }
+      ]
     },
     {
       "number": 56,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "CardOwnProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 57,
+      "content": [
+        {
+          "text": "    as",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "T",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 58,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "};",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 59,
+      "content": []
+    },
+    {
+      "number": 60,
+      "content": [
+        {
+          "text": "export",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "type",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "CardProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 61,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "Omit",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "CardElementProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "div",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ">,",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "as",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ">",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " as",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "?:",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "div",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ")",
+          "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 62,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "CardElementProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "article",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ">",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 63,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "CardElementProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "section",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ">",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 64,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "CardElementProps",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "aside",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ">;",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 65,
+      "content": []
+    },
+    {
+      "number": 66,
       "content": [
         {
           "text": "export",
@@ -7947,91 +9892,15 @@
           "color": "var(--code-function)"
         },
         {
-          "text": "({",
+          "text": "(",
           "color": "var(--code-operator)"
         },
         {
-          "text": " className",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " variant",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " size",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " as",
+          "text": "props",
           "color": "var(--code-variable)"
         },
         {
           "text": ":",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " Tag ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "=",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "div",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ref",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "...",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "props ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}:",
           "color": "var(--code-operator)"
         },
         {
@@ -8057,14 +9926,14 @@
       ]
     },
     {
-      "number": 57,
+      "number": 67,
       "content": [
         {
           "text": "  ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "return",
+          "text": "const",
           "color": "var(--code-keyword)"
         },
         {
@@ -8072,75 +9941,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "<",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "Tag",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "data-slot",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "=",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "card",
-          "color": "var(--code-tag)"
-        },
-        {
-          "text": "\"",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "ref",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "={",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "ref ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "as",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "Ref",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "<",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "never",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ">}",
+          "text": "{",
           "color": "var(--code-operator)"
         },
         {
@@ -8149,11 +9950,88 @@
         },
         {
           "text": "className",
-          "color": "var(--code-function)"
+          "color": "var(--code-number)"
         },
         {
-          "text": "={",
+          "text": ",",
           "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "variant",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "size",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " props",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 68,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "resolvedClassName",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
         },
         {
           "text": "cn",
@@ -8204,6 +10082,297 @@
           "color": "var(--code-variable)"
         },
         {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 69,
+      "content": []
+    },
+    {
+      "number": 70,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "props",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "as ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "article",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ") ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 71,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "as",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " className",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedClassName",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " variant",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedVariant",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " size",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedSize",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "articleProps",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " props",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 72,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "article",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "data-slot",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "card",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "className",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "resolvedClassName",
+          "color": "var(--code-variable)"
+        },
+        {
           "text": "}",
           "color": "var(--code-operator)"
         },
@@ -8216,7 +10385,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "props",
+          "text": "articleProps",
           "color": "var(--code-variable)"
         },
         {
@@ -8234,7 +10403,926 @@
       ]
     },
     {
-      "number": 58,
+      "number": 73,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 74,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "props",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "as ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "section",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ") ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 75,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "as",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " className",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedClassName",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " variant",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedVariant",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " size",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedSize",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "sectionProps",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " props",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 76,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "section",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "data-slot",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "card",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "className",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "resolvedClassName",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "sectionProps",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "/>;",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 77,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 78,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "props",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "as ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "aside",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ") ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 79,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "as",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " className",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedClassName",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " variant",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedVariant",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " size",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedSize",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "asideProps",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " props",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 80,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "aside",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "data-slot",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "card",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "className",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "resolvedClassName",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "asideProps",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "/>;",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 81,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 82,
+      "content": []
+    },
+    {
+      "number": 83,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "as",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " className",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedClassName",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " variant",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedVariant",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " size",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "omittedSize",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "divProps",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " props",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 84,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "div",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "data-slot",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "card",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "className",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "resolvedClassName",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{...",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "divProps",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "/>;",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 85,
       "content": [
         {
           "text": "}",
@@ -8243,15 +11331,15 @@
       ]
     },
     {
-      "number": 59,
+      "number": 86,
       "content": []
     },
     {
-      "number": 60,
+      "number": 87,
       "content": []
     },
     {
-      "number": 61,
+      "number": 88,
       "content": [
         {
           "text": "import",
@@ -8312,7 +11400,7 @@
       ]
     },
     {
-      "number": 62,
+      "number": 89,
       "content": [
         {
           "text": "import",
@@ -8365,11 +11453,11 @@
       ]
     },
     {
-      "number": 63,
+      "number": 90,
       "content": []
     },
     {
-      "number": 64,
+      "number": 91,
       "content": [
         {
           "text": "export",
@@ -8430,11 +11518,11 @@
       ]
     },
     {
-      "number": 65,
+      "number": 92,
       "content": []
     },
     {
-      "number": 66,
+      "number": 93,
       "content": [
         {
           "text": "export",
@@ -8507,7 +11595,7 @@
       ]
     },
     {
-      "number": 67,
+      "number": 94,
       "content": [
         {
           "text": "  ",
@@ -8524,7 +11612,7 @@
       ]
     },
     {
-      "number": 68,
+      "number": 95,
       "content": [
         {
           "text": "    ",
@@ -8541,7 +11629,7 @@
       ]
     },
     {
-      "number": 69,
+      "number": 96,
       "content": [
         {
           "text": "      ",
@@ -8570,7 +11658,7 @@
       ]
     },
     {
-      "number": 70,
+      "number": 97,
       "content": [
         {
           "text": "      ",
@@ -8619,7 +11707,7 @@
       ]
     },
     {
-      "number": 71,
+      "number": 98,
       "content": [
         {
           "text": "      ",
@@ -8640,7 +11728,7 @@
       ]
     },
     {
-      "number": 72,
+      "number": 99,
       "content": [
         {
           "text": "    ",
@@ -8653,7 +11741,7 @@
       ]
     },
     {
-      "number": 73,
+      "number": 100,
       "content": [
         {
           "text": "  )",
@@ -8666,7 +11754,7 @@
       ]
     },
     {
-      "number": 74,
+      "number": 101,
       "content": [
         {
           "text": "}",
@@ -8675,15 +11763,15 @@
       ]
     },
     {
-      "number": 75,
+      "number": 102,
       "content": []
     },
     {
-      "number": 76,
+      "number": 103,
       "content": []
     },
     {
-      "number": 77,
+      "number": 104,
       "content": [
         {
           "text": "import",
@@ -8744,7 +11832,7 @@
       ]
     },
     {
-      "number": 78,
+      "number": 105,
       "content": [
         {
           "text": "import",
@@ -8797,11 +11885,11 @@
       ]
     },
     {
-      "number": 79,
+      "number": 106,
       "content": []
     },
     {
-      "number": 80,
+      "number": 107,
       "content": [
         {
           "text": "export",
@@ -8862,11 +11950,11 @@
       ]
     },
     {
-      "number": 81,
+      "number": 108,
       "content": []
     },
     {
-      "number": 82,
+      "number": 109,
       "content": [
         {
           "text": "export",
@@ -8939,7 +12027,7 @@
       ]
     },
     {
-      "number": 83,
+      "number": 110,
       "content": [
         {
           "text": "  ",
@@ -8956,7 +12044,7 @@
       ]
     },
     {
-      "number": 84,
+      "number": 111,
       "content": [
         {
           "text": "    ",
@@ -8973,7 +12061,7 @@
       ]
     },
     {
-      "number": 85,
+      "number": 112,
       "content": [
         {
           "text": "      ",
@@ -9002,7 +12090,7 @@
       ]
     },
     {
-      "number": 86,
+      "number": 113,
       "content": [
         {
           "text": "      ",
@@ -9027,7 +12115,7 @@
       ]
     },
     {
-      "number": 87,
+      "number": 114,
       "content": [
         {
           "text": "        ",
@@ -9052,7 +12140,7 @@
       ]
     },
     {
-      "number": 88,
+      "number": 115,
       "content": [
         {
           "text": "        className",
@@ -9065,7 +12153,7 @@
       ]
     },
     {
-      "number": 89,
+      "number": 116,
       "content": [
         {
           "text": "      )",
@@ -9078,7 +12166,7 @@
       ]
     },
     {
-      "number": 90,
+      "number": 117,
       "content": [
         {
           "text": "      ",
@@ -9099,7 +12187,7 @@
       ]
     },
     {
-      "number": 91,
+      "number": 118,
       "content": [
         {
           "text": "    ",
@@ -9112,7 +12200,7 @@
       ]
     },
     {
-      "number": 92,
+      "number": 119,
       "content": [
         {
           "text": "  )",
@@ -9125,7 +12213,7 @@
       ]
     },
     {
-      "number": 93,
+      "number": 120,
       "content": [
         {
           "text": "}",
@@ -9134,15 +12222,15 @@
       ]
     },
     {
-      "number": 94,
+      "number": 121,
       "content": []
     },
     {
-      "number": 95,
+      "number": 122,
       "content": []
     },
     {
-      "number": 96,
+      "number": 123,
       "content": [
         {
           "text": "import",
@@ -9203,7 +12291,7 @@
       ]
     },
     {
-      "number": 97,
+      "number": 124,
       "content": [
         {
           "text": "import",
@@ -9256,11 +12344,11 @@
       ]
     },
     {
-      "number": 98,
+      "number": 125,
       "content": []
     },
     {
-      "number": 99,
+      "number": 126,
       "content": [
         {
           "text": "export",
@@ -9337,7 +12425,7 @@
       ]
     },
     {
-      "number": 100,
+      "number": 127,
       "content": [
         {
           "text": "  as",
@@ -9442,7 +12530,7 @@
       ]
     },
     {
-      "number": 101,
+      "number": 128,
       "content": [
         {
           "text": "};",
@@ -9451,11 +12539,11 @@
       ]
     },
     {
-      "number": 102,
+      "number": 129,
       "content": []
     },
     {
-      "number": 103,
+      "number": 130,
       "content": [
         {
           "text": "export",
@@ -9564,7 +12652,7 @@
       ]
     },
     {
-      "number": 104,
+      "number": 131,
       "content": [
         {
           "text": "  ",
@@ -9681,7 +12769,7 @@
       ]
     },
     {
-      "number": 105,
+      "number": 132,
       "content": [
         {
           "text": "}",
@@ -9690,15 +12778,15 @@
       ]
     },
     {
-      "number": 106,
+      "number": 133,
       "content": []
     },
     {
-      "number": 107,
+      "number": 134,
       "content": []
     },
     {
-      "number": 108,
+      "number": 135,
       "content": [
         {
           "text": "import",
@@ -9759,7 +12847,7 @@
       ]
     },
     {
-      "number": 109,
+      "number": 136,
       "content": [
         {
           "text": "import",
@@ -9812,11 +12900,11 @@
       ]
     },
     {
-      "number": 110,
+      "number": 137,
       "content": []
     },
     {
-      "number": 111,
+      "number": 138,
       "content": [
         {
           "text": "export",
@@ -9877,11 +12965,11 @@
       ]
     },
     {
-      "number": 112,
+      "number": 139,
       "content": []
     },
     {
-      "number": 113,
+      "number": 140,
       "content": [
         {
           "text": "export",
@@ -9954,7 +13042,7 @@
       ]
     },
     {
-      "number": 114,
+      "number": 141,
       "content": [
         {
           "text": "  ",
@@ -10071,7 +13159,7 @@
       ]
     },
     {
-      "number": 115,
+      "number": 142,
       "content": [
         {
           "text": "}",
@@ -10080,15 +13168,15 @@
       ]
     },
     {
-      "number": 116,
+      "number": 143,
       "content": []
     },
     {
-      "number": 117,
+      "number": 144,
       "content": []
     },
     {
-      "number": 118,
+      "number": 145,
       "content": [
         {
           "text": "import",
@@ -10149,7 +13237,7 @@
       ]
     },
     {
-      "number": 119,
+      "number": 146,
       "content": [
         {
           "text": "import",
@@ -10202,11 +13290,11 @@
       ]
     },
     {
-      "number": 120,
+      "number": 147,
       "content": []
     },
     {
-      "number": 121,
+      "number": 148,
       "content": [
         {
           "text": "export",
@@ -10267,11 +13355,11 @@
       ]
     },
     {
-      "number": 122,
+      "number": 149,
       "content": []
     },
     {
-      "number": 123,
+      "number": 150,
       "content": [
         {
           "text": "export",
@@ -10344,7 +13432,7 @@
       ]
     },
     {
-      "number": 124,
+      "number": 151,
       "content": [
         {
           "text": "  ",
@@ -10461,7 +13549,7 @@
       ]
     },
     {
-      "number": 125,
+      "number": 152,
       "content": [
         {
           "text": "}",
@@ -10470,15 +13558,15 @@
       ]
     },
     {
-      "number": 126,
+      "number": 153,
       "content": []
     },
     {
-      "number": 127,
+      "number": 154,
       "content": []
     },
     {
-      "number": 128,
+      "number": 155,
       "content": [
         {
           "text": "import",
@@ -10539,7 +13627,7 @@
       ]
     },
     {
-      "number": 129,
+      "number": 156,
       "content": [
         {
           "text": "import",
@@ -10608,7 +13696,7 @@
       ]
     },
     {
-      "number": 130,
+      "number": 157,
       "content": [
         {
           "text": "import",
@@ -10661,11 +13749,11 @@
       ]
     },
     {
-      "number": 131,
+      "number": 158,
       "content": []
     },
     {
-      "number": 132,
+      "number": 159,
       "content": [
         {
           "text": "export",
@@ -10710,7 +13798,7 @@
       ]
     },
     {
-      "number": 133,
+      "number": 160,
       "content": [
         {
           "text": "  ",
@@ -10735,7 +13823,7 @@
       ]
     },
     {
-      "number": 134,
+      "number": 161,
       "content": [
         {
           "text": "  ",
@@ -10748,7 +13836,7 @@
       ]
     },
     {
-      "number": 135,
+      "number": 162,
       "content": [
         {
           "text": "    variants",
@@ -10769,7 +13857,7 @@
       ]
     },
     {
-      "number": 136,
+      "number": 163,
       "content": [
         {
           "text": "      variant",
@@ -10790,7 +13878,7 @@
       ]
     },
     {
-      "number": 137,
+      "number": 164,
       "content": [
         {
           "text": "        border",
@@ -10823,7 +13911,7 @@
       ]
     },
     {
-      "number": 138,
+      "number": 165,
       "content": [
         {
           "text": "        gap",
@@ -10848,7 +13936,7 @@
       ]
     },
     {
-      "number": 139,
+      "number": 166,
       "content": [
         {
           "text": "      ",
@@ -10861,7 +13949,7 @@
       ]
     },
     {
-      "number": 140,
+      "number": 167,
       "content": [
         {
           "text": "    ",
@@ -10874,7 +13962,7 @@
       ]
     },
     {
-      "number": 141,
+      "number": 168,
       "content": [
         {
           "text": "    defaultVariants",
@@ -10927,7 +14015,7 @@
       ]
     },
     {
-      "number": 142,
+      "number": 169,
       "content": [
         {
           "text": "  ",
@@ -10940,7 +14028,7 @@
       ]
     },
     {
-      "number": 143,
+      "number": 170,
       "content": [
         {
           "text": ")",
@@ -10953,11 +14041,11 @@
       ]
     },
     {
-      "number": 144,
+      "number": 171,
       "content": []
     },
     {
-      "number": 145,
+      "number": 172,
       "content": [
         {
           "text": "export",
@@ -11046,11 +14134,11 @@
       ]
     },
     {
-      "number": 146,
+      "number": 173,
       "content": []
     },
     {
-      "number": 147,
+      "number": 174,
       "content": [
         {
           "text": "export",
@@ -11131,7 +14219,7 @@
       ]
     },
     {
-      "number": 148,
+      "number": 175,
       "content": [
         {
           "text": "  ",
@@ -11260,7 +14348,7 @@
       ]
     },
     {
-      "number": 149,
+      "number": 176,
       "content": [
         {
           "text": "}",
@@ -11269,15 +14357,15 @@
       ]
     },
     {
-      "number": 150,
+      "number": 177,
       "content": []
     },
     {
-      "number": 151,
+      "number": 178,
       "content": []
     },
     {
-      "number": 152,
+      "number": 179,
       "content": [
         {
           "text": "import",
@@ -11338,7 +14426,7 @@
       ]
     },
     {
-      "number": 153,
+      "number": 180,
       "content": [
         {
           "text": "import",
@@ -11391,11 +14479,11 @@
       ]
     },
     {
-      "number": 154,
+      "number": 181,
       "content": []
     },
     {
-      "number": 155,
+      "number": 182,
       "content": [
         {
           "text": "export",
@@ -11456,11 +14544,11 @@
       ]
     },
     {
-      "number": 156,
+      "number": 183,
       "content": []
     },
     {
-      "number": 157,
+      "number": 184,
       "content": [
         {
           "text": "export",
@@ -11533,7 +14621,7 @@
       ]
     },
     {
-      "number": 158,
+      "number": 185,
       "content": [
         {
           "text": "  ",
@@ -11550,7 +14638,7 @@
       ]
     },
     {
-      "number": 159,
+      "number": 186,
       "content": [
         {
           "text": "    ",
@@ -11659,7 +14747,7 @@
       ]
     },
     {
-      "number": 160,
+      "number": 187,
       "content": [
         {
           "text": "  )",
@@ -11672,7 +14760,7 @@
       ]
     },
     {
-      "number": 161,
+      "number": 188,
       "content": [
         {
           "text": "}",
@@ -11681,7 +14769,7 @@
       ]
     },
     {
-      "number": 162,
+      "number": 189,
       "content": []
     }
   ],

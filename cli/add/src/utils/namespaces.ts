@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
-import { resolve } from "node:path";
 import { ctx, type RegistryItem, type ResolvedConfig } from "../context.js";
+import { resolveInstallPath } from "./paths.js";
 import {
   getKeysHookNames,
   resolveKeysCopyHookFiles,
@@ -32,6 +32,22 @@ export function publicInstallNames(): string[] {
   return [
     ...uiItems.map((item) => `ui/${item.name}`),
     ...uiItems.map((item) => item.name),
+    ...[...getKeysHookNames()].map((name) => `keys/${name}`),
+  ];
+}
+
+export function publicListNames(): string[] {
+  const uiItems = ctx.registry.getPublicItems().filter((item) => CLI_INSTALLABLE_TYPES.has(item.type));
+  return [
+    ...uiItems.map((item) => `ui/${item.name}`),
+    ...[...getKeysHookNames()].map((name) => `keys/${name}`),
+  ];
+}
+
+export function allListNames(): string[] {
+  const uiItems = ctx.registry.getAllItems().filter((item) => CLI_INSTALLABLE_TYPES.has(item.type));
+  return [
+    ...uiItems.map((item) => `ui/${item.name}`),
     ...[...getKeysHookNames()].map((name) => `keys/${name}`),
   ];
 }
@@ -108,10 +124,14 @@ export function getNamespacedItem(name: string): RegistryItem {
 
 export function isNamespacedInstalled(cwd: string, config: ResolvedConfig, name: string): boolean {
   const parsed = parseInstallName(name);
+  const manifest = ctx.config.getManifestItems(cwd);
+  if (manifest?.[parsed.publicName]) return true;
+  if (parsed.namespace === "ui" && manifest?.[parsed.name]) return true;
+
   if (parsed.namespace === "ui") {
     return ctx.createChecker(cwd, config.componentsFsPath)(parsed.name);
   }
 
   const { files } = resolveKeysCopyHookFiles([parsed.name]);
-  return files.some((file) => existsSync(resolve(cwd, config.hooksFsPath, file.relativePath)));
+  return files.some((file) => existsSync(resolveInstallPath(cwd, config.hooksFsPath, file.relativePath)));
 }

@@ -1,3 +1,4 @@
+import { createRef } from "react"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
@@ -60,7 +61,10 @@ describe("Accordion", () => {
     renderAccordion({ defaultValue: "one", collapsible: false })
     const trigger = screen.getByRole("button", { name: "Section One" })
     expect(trigger).toHaveAttribute("aria-expanded", "true")
-    expect(trigger).toBeDisabled()
+    expect(trigger).not.toBeDisabled()
+    expect(trigger).toHaveAttribute("aria-disabled", "true")
+    trigger.focus()
+    expect(trigger).toHaveFocus()
     await userEvent.click(trigger)
     expect(trigger).toHaveAttribute("aria-expanded", "true")
   })
@@ -109,11 +113,42 @@ describe("Accordion", () => {
     expect(onChange).toHaveBeenCalledWith("two")
   })
 
+  it("controlled single mode calls onValueChange with new value", async () => {
+    const onValueChange = vi.fn()
+    renderAccordion({ value: "one", onValueChange })
+    await userEvent.click(screen.getByRole("button", { name: "Section Two" }))
+    expect(onValueChange).toHaveBeenCalledWith("two")
+  })
+
   it("controlled multiple mode calls onChange with updated array", async () => {
     const onChange = vi.fn()
     renderAccordion({ type: "multiple", value: ["one"], onChange })
     await userEvent.click(screen.getByRole("button", { name: "Section Two" }))
     expect(onChange).toHaveBeenCalledWith(["one", "two"])
+  })
+
+  it("forwards trigger props and honors preventDefault in consumer click handlers", async () => {
+    const ref = createRef<HTMLButtonElement>()
+    const onClick = vi.fn((event) => event.preventDefault())
+
+    render(
+      <Accordion>
+        <Accordion.Item value="one">
+          <Accordion.Header>
+            <Accordion.Trigger ref={ref} data-testid="trigger" onClick={onClick}>
+              Section One
+            </Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content>Content One</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>,
+    )
+
+    const trigger = screen.getByTestId("trigger")
+    expect(ref.current).toBe(trigger)
+    await userEvent.click(trigger)
+    expect(onClick).toHaveBeenCalledOnce()
+    expect(trigger).toHaveAttribute("aria-expanded", "false")
   })
 
   it("has no a11y violations", async () => {
@@ -137,6 +172,34 @@ describe("Accordion", () => {
     expect(triggerOne).toHaveFocus()
   })
 
+  it("does not handle arrow navigation when focus is inside panel content", async () => {
+    render(
+      <Accordion defaultValue="one">
+        <Accordion.Item value="one">
+          <Accordion.Header>
+            <Accordion.Trigger>Section One</Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content>
+            <input aria-label="Panel field" />
+          </Accordion.Content>
+        </Accordion.Item>
+        <Accordion.Item value="two">
+          <Accordion.Header>
+            <Accordion.Trigger>Section Two</Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content>Content Two</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>,
+    )
+    const input = screen.getByRole("textbox", { name: "Panel field" })
+    input.focus()
+
+    await userEvent.keyboard("{ArrowDown}")
+
+    expect(input).toHaveFocus()
+    expect(screen.getByRole("button", { name: "Section Two" })).not.toHaveFocus()
+  })
+
   it("ArrowDown/ArrowUp wraps around at boundaries", async () => {
     renderAccordion()
     const triggerOne = screen.getByRole("button", { name: "Section One" })
@@ -148,6 +211,41 @@ describe("Accordion", () => {
     await userEvent.keyboard("{ArrowDown}")
     expect(triggerOne).toHaveFocus()
     await userEvent.keyboard("{ArrowUp}")
+    expect(triggerThree).toHaveFocus()
+  })
+
+  it("keeps aria-disabled non-collapsible triggers in roving order and skips disabled items", async () => {
+    render(
+      <Accordion defaultValue="one" collapsible={false}>
+        <Accordion.Item value="one">
+          <Accordion.Header>
+            <Accordion.Trigger>Section One</Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content>Content One</Accordion.Content>
+        </Accordion.Item>
+        <Accordion.Item value="two" disabled>
+          <Accordion.Header>
+            <Accordion.Trigger>Section Two</Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content>Content Two</Accordion.Content>
+        </Accordion.Item>
+        <Accordion.Item value="three">
+          <Accordion.Header>
+            <Accordion.Trigger>Section Three</Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content>Content Three</Accordion.Content>
+        </Accordion.Item>
+      </Accordion>,
+    )
+    const triggerOne = screen.getByRole("button", { name: "Section One" })
+    const triggerThree = screen.getByRole("button", { name: "Section Three" })
+    expect(triggerOne).toHaveAttribute("aria-disabled", "true")
+
+    triggerThree.focus()
+    await userEvent.keyboard("{ArrowDown}")
+    expect(triggerOne).toHaveFocus()
+
+    await userEvent.keyboard("{ArrowDown}")
     expect(triggerThree).toHaveFocus()
   })
 })
@@ -175,10 +273,14 @@ describe("Accordion inert on collapsed content", () => {
       </Accordion>
     )
 
-    const expandedContent = screen.getByText("Button One").closest("[role='region']")!.parentElement!
+    const expandedRegion = screen.getByText("Button One").closest("[role='region']")
+    if (!expandedRegion?.parentElement) throw new Error("Expected expanded accordion region wrapper")
+    const expandedContent = expandedRegion.parentElement
     expect(expandedContent).not.toHaveAttribute("inert")
 
-    const collapsedContent = screen.getByText("Button Two").closest("[role='region']")!.parentElement!
+    const collapsedRegion = screen.getByText("Button Two").closest("[role='region']")
+    if (!collapsedRegion?.parentElement) throw new Error("Expected collapsed accordion region wrapper")
+    const collapsedContent = collapsedRegion.parentElement
     expect(collapsedContent).toHaveAttribute("inert")
   })
 })

@@ -22,7 +22,9 @@ export function Examples({ skipFirst }: { skipFirst?: boolean }) {
     <div className="space-y-6">
       {examples.map((ex) => {
         const src = d.exampleSource?.[ex.name]
-        if (!src) return null
+        if (!src) {
+          throw new Error(`Missing ${library} docs example source: ${ex.name}`)
+        }
         const demo = demos[ex.name] ?? null
         if (demo) {
           return (

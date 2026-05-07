@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 
 interface RegistryFile {
   path: string;
@@ -29,10 +29,14 @@ interface PackageJson {
   peerDependenciesMeta?: Record<string, { optional?: boolean }>;
 }
 
-const ROOT = resolve(import.meta.dirname, "..");
+const ROOT = process.env.DIFFGAZER_UI_REGISTRY_ROOT
+  ? resolve(process.env.DIFFGAZER_UI_REGISTRY_ROOT)
+  : resolve(import.meta.dirname, "..");
 const REGISTRY_SCHEMA = "https://ui.shadcn.com/schema/registry.json";
 const KEYBOARD_NAVIGATION_INTEGRATION = "keyboard-navigation";
 const KEYS_REGISTRY_PREFIXES = ["@diffgazer-keys/", "@diffgazer/keys/"] as const;
+const SOURCE_EXTENSIONS = ["", ".ts", ".tsx", ".js", ".jsx"] as const;
+const INDEX_FILES = ["index.ts", "index.tsx", "index.js", "index.jsx"] as const;
 
 function readJson<T>(relativePath: string): T {
   return JSON.parse(readFileSync(resolve(ROOT, relativePath), "utf-8")) as T;
@@ -44,10 +48,46 @@ function readSourceFile(relativePath: string): string {
 
 function itemExportPath(item: RegistryItem): string | null {
   if (item.meta?.hidden) return null;
+  return publicItemExportPath(item);
+}
+
+function publicItemExportPath(item: RegistryItem): string | null {
   if (item.type === "registry:ui") return `./components/${item.name}`;
   if (item.type === "registry:hook") return `./hooks/${item.name}`;
   if (item.type === "registry:lib") return `./lib/${item.name}`;
   return null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function validatePublicExportShape(
+  exportsMap: Record<string, unknown>,
+  exportPath: string,
+): string[] {
+  const errors: string[] = [];
+  const exportValue = exportsMap[exportPath];
+
+  if (!isRecord(exportValue)) {
+    return [`package export ${exportPath} must be an object with top-level "types" and "import" conditions`];
+  }
+
+  if (isRecord(exportValue.import)) {
+    errors.push(
+      `package export ${exportPath} nests "types" under "import"; TypeScript bundler resolution requires top-level "types"`
+    );
+  }
+
+  if (typeof exportValue.types !== "string") {
+    errors.push(`package export ${exportPath} is missing top-level "types" condition`);
+  }
+
+  if (typeof exportValue.import !== "string") {
+    errors.push(`package export ${exportPath} is missing top-level "import" condition`);
+  }
+
+  return errors;
 }
 
 function hasClientDirective(item: RegistryItem): boolean {
@@ -57,6 +97,17 @@ function hasClientDirective(item: RegistryItem): boolean {
     const source = readFileSync(path, "utf-8").trimStart();
     return source.startsWith('"use client"') || source.startsWith("'use client'");
   });
+}
+
+function clientEntryBarrelHasDirective(item: RegistryItem): boolean {
+  const entry = (item.files ?? []).find((file) => file.path.endsWith("/index.ts"));
+  if (!entry) return true;
+
+  const path = resolve(ROOT, entry.path);
+  if (!existsSync(path)) return false;
+
+  const source = readFileSync(path, "utf-8").trimStart();
+  return source.startsWith('"use client"') || source.startsWith("'use client'");
 }
 
 function itemSourceContains(item: RegistryItem, needle: string): boolean {
@@ -70,6 +121,132 @@ function hasKeysRegistryDependency(item: RegistryItem): boolean {
   return (item.registryDependencies ?? []).some((dep) =>
     KEYS_REGISTRY_PREFIXES.some((prefix) => dep.startsWith(prefix))
   );
+}
+
+function extractLocalImports(source: string): string[] {
+  const imports = new Set<string>();
+  const patterns = [
+    /\bimport\s+(?:type\s+)?[\s\S]*?\s+from\s+["']([^"']+)["']/g,
+    /\bexport\s+(?:type\s+)?[\s\S]*?\s+from\s+["']([^"']+)["']/g,
+    /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g,
+    /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g,
+    /\bimport\s+["']([^"']+)["']/g,
+  ];
+
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(source)) !== null) {
+      const specifier = match[1];
+      if (
+        specifier &&
+        (specifier.startsWith("@/hooks/") ||
+          specifier.startsWith("@/lib/") ||
+          specifier.startsWith("@/components/ui/") ||
+          specifier.startsWith("."))
+      ) {
+        imports.add(specifier);
+      }
+    }
+  }
+
+  return [...imports];
+}
+
+function normalizeRegistryPath(path: string): string {
+  return path.replace(/\\/g, "/");
+}
+
+function existingRegistryPath(modulePath: string): string | null {
+  for (const extension of SOURCE_EXTENSIONS) {
+    const path = `${modulePath}${extension}`;
+    if (existsSync(resolve(ROOT, path))) return normalizeRegistryPath(path);
+  }
+
+  for (const indexFile of INDEX_FILES) {
+    const path = `${modulePath}/${indexFile}`;
+    if (existsSync(resolve(ROOT, path))) return normalizeRegistryPath(path);
+  }
+
+  return null;
+}
+
+function aliasImportBase(specifier: string): string | null {
+  if (specifier.startsWith("@/hooks/")) return `registry/hooks/${specifier.slice("@/hooks/".length)}`;
+  if (specifier.startsWith("@/lib/")) return `registry/lib/${specifier.slice("@/lib/".length)}`;
+  if (specifier.startsWith("@/components/ui/")) return `registry/ui/${specifier.slice("@/components/ui/".length)}`;
+  return null;
+}
+
+function resolveImportToRegistryPath(fromFile: string, specifier: string): string | null {
+  const aliasBase = aliasImportBase(specifier);
+  if (aliasBase) return existingRegistryPath(aliasBase);
+
+  if (!specifier.startsWith(".")) return null;
+
+  const absolutePath = resolve(ROOT, dirname(fromFile), specifier);
+  const registryPath = normalizeRegistryPath(relative(ROOT, absolutePath));
+  return existingRegistryPath(registryPath);
+}
+
+function itemNamesByFile(items: RegistryItem[]): Map<string, string> {
+  const namesByFile = new Map<string, string>();
+
+  for (const item of items) {
+    for (const file of item.files ?? []) {
+      namesByFile.set(normalizeRegistryPath(file.path), item.name);
+    }
+  }
+
+  return namesByFile;
+}
+
+function resolveRegistryDependencyClosure(item: RegistryItem, itemsByName: Map<string, RegistryItem>): Set<string> {
+  const closure = new Set<string>([item.name]);
+  const pending = [...(item.registryDependencies ?? [])];
+
+  while (pending.length > 0) {
+    const dependencyName = pending.pop();
+    if (!dependencyName || closure.has(dependencyName)) continue;
+
+    const dependency = itemsByName.get(dependencyName);
+    if (!dependency) continue;
+
+    closure.add(dependencyName);
+    pending.push(...(dependency.registryDependencies ?? []));
+  }
+
+  return closure;
+}
+
+function validateRegistryImportClosure(items: RegistryItem[]): string[] {
+  const errors: string[] = [];
+  const itemsByName = new Map(items.map((item) => [item.name, item]));
+  const namesByFile = itemNamesByFile(items);
+
+  for (const item of items) {
+    const closure = resolveRegistryDependencyClosure(item, itemsByName);
+
+    for (const file of item.files ?? []) {
+      const filePath = resolve(ROOT, file.path);
+      if (!existsSync(filePath) || file.path.endsWith(".css")) continue;
+
+      for (const specifier of extractLocalImports(readSourceFile(file.path))) {
+        const importedPath = resolveImportToRegistryPath(file.path, specifier);
+        if (!importedPath) continue;
+
+        const importedItemName = namesByFile.get(importedPath);
+        if (!importedItemName || importedItemName === item.name) continue;
+
+        if (!closure.has(importedItemName)) {
+          errors.push(
+            `${item.name} imports ${specifier} from ${file.path}, which resolves to registry item ${importedItemName} but is missing from registryDependencies closure`
+          );
+        }
+      }
+    }
+  }
+
+  return errors;
 }
 
 function validate(): string[] {
@@ -98,6 +275,10 @@ function validate(): string[] {
     if (exportPath.includes("*")) {
       errors.push(`package export "${exportPath}" uses a wildcard and can expose internals`);
     }
+
+    if (!exportPath.endsWith(".css")) {
+      errors.push(...validatePublicExportShape(exportsMap, exportPath));
+    }
   }
 
   for (const item of items) {
@@ -121,6 +302,10 @@ function validate(): string[] {
       errors.push(`${item.name} contains a client file but omits meta.client`);
     }
 
+    if (item.meta?.client === true && !clientEntryBarrelHasDirective(item)) {
+      errors.push(`${item.name} is client metadata but its source entry barrel omits "use client"`);
+    }
+
     if (
       hasKeysRegistryDependency(item)
       && !item.meta?.optionalIntegrations?.includes(KEYBOARD_NAVIGATION_INTEGRATION)
@@ -132,7 +317,14 @@ function validate(): string[] {
     if (exportPath && !Object.hasOwn(exportsMap, exportPath)) {
       errors.push(`${item.name} is public but package.json is missing export ${exportPath}`);
     }
+
+    const hiddenExportPath = item.meta?.hidden ? publicItemExportPath(item) : null;
+    if (hiddenExportPath && Object.hasOwn(exportsMap, hiddenExportPath)) {
+      errors.push(`${item.name} is hidden but package.json exposes ${hiddenExportPath}`);
+    }
   }
+
+  errors.push(...validateRegistryImportClosure(items));
 
   if (!Object.hasOwn(exportsMap, "./lib/utils")) {
     errors.push("package.json is missing export ./lib/utils");

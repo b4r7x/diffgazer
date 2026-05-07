@@ -99,7 +99,7 @@ return (
     },
     {
       name: "itemRole",
-      type: '"option" | "menuitem"',
+      type: '"option" | "menuitem" | "menuitemradio"',
       required: false,
       defaultValue: '"option"',
       description: "ARIA role for each item element.",
@@ -168,6 +168,8 @@ return (
         "Built into menu and navigation-list components. Provides the shared listbox interaction pattern so each component only needs to handle its own rendering.",
     },
   ],
-  examples: [],
+  examples: [
+    { name: "listbox-basic", title: "Basic Listbox" },
+  ],
   tags: ["hook", "listbox", "navigation", "selection", "keyboard", "aria"],
 }

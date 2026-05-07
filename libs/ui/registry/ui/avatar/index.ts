@@ -1,3 +1,5 @@
+"use client";
+
 import { Avatar as AvatarRoot, type AvatarProps, type AvatarStatus } from "./avatar";
 import { AvatarImage, type AvatarImageProps } from "./avatar-image";
 import { AvatarFallback, type AvatarFallbackProps } from "./avatar-fallback";

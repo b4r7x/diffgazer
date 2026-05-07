@@ -12,7 +12,7 @@ export function DialogDescription({ className, ...props }: DialogDescriptionProp
   useEffect(() => {
     onDescriptionMount();
     return onDescriptionUnmount;
-  }, []);
+  }, [onDescriptionMount, onDescriptionUnmount]);
 
   return (
     <p

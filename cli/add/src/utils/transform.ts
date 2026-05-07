@@ -143,8 +143,17 @@ export function handleRscDirective(
   isClient: boolean,
   rsc: boolean
 ): string {
-  const stripped = content.replace(/^\uFEFF?\s*["']use client["'];?\s*(\r?\n)*/, "");
-  return rsc && isClient ? `"use client";\n\n${stripped}` : stripped;
+  const directive = /^\uFEFF?\s*["']use client["'];?\s*(\r?\n)*/;
+  const hasDirective = directive.test(content);
+  if (hasDirective) return content;
+  return rsc && isClient ? `"use client";\n\n${content}` : content;
+}
+
+export function rewriteRelativeJsExtensionsForCopy(content: string): string {
+  return content.replace(
+    new RegExp(`${IMPORT_PREFIX}(\\.{1,2}/[^"']+)\\.js\\2`, "g"),
+    (_: string, prefix: string, quote: string, specifier: string) => `${prefix}${quote}${specifier}${quote}`,
+  );
 }
 
 let _keysHookFiles: Set<string> | null = null;

@@ -1,3 +1,5 @@
+"use client";
+
 import { Radio, type RadioProps } from "./radio";
 import { RadioGroup as RadioGroupRoot, type RadioGroupProps } from "./radio-group";
 import { RadioGroupItem, type RadioGroupItemProps } from "./radio-group-item";

@@ -48,7 +48,8 @@ describe("Breadcrumbs", () => {
       </Breadcrumbs>
     )
     const items = screen.getAllByRole("listitem")
-    expect(items[1]).toHaveAttribute("aria-current", "page")
+    expect(items[1]).not.toHaveAttribute("aria-current")
+    expect(screen.getByText("About")).toHaveAttribute("aria-current", "page")
   })
 
   it("uses the explicit current item when provided", () => {
@@ -66,8 +67,25 @@ describe("Breadcrumbs", () => {
       </Breadcrumbs>
     )
     const items = screen.getAllByRole("listitem")
-    expect(items[1]).toHaveAttribute("aria-current", "page")
+    expect(items[1]).not.toHaveAttribute("aria-current")
+    expect(screen.getByText("About")).toHaveAttribute("aria-current", "page")
     expect(items[2]).not.toHaveAttribute("aria-current")
+  })
+
+  it("marks the current breadcrumb link instead of the list item", () => {
+    render(
+      <Breadcrumbs>
+        <Breadcrumbs.Item>
+          <Breadcrumbs.Link href="/">Home</Breadcrumbs.Link>
+        </Breadcrumbs.Item>
+        <Breadcrumbs.Item current>
+          <Breadcrumbs.Link href="/about">About</Breadcrumbs.Link>
+        </Breadcrumbs.Item>
+      </Breadcrumbs>
+    )
+
+    expect(screen.getByRole("link", { name: "About" })).toHaveAttribute("aria-current", "page")
+    expect(screen.getAllByRole("listitem")[1]).not.toHaveAttribute("aria-current")
   })
 
   it("uses custom separator", () => {

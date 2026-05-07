@@ -5,18 +5,20 @@ description: Configure shadcn registry aliases for @diffgazer/ui and @diffgazer/
 
 The shadcn CLI can install registry items by namespace after `components.json` maps each namespace to a registry URL.
 
+Public Diffgazer registry hosts are future, non-blocking release work until deployment and endpoint smoke tests verify them. Until those hosts are live, use a local preview server or an environment-specific URL that serves the generated `public/r/{name}.json` files.
+
 Configure both namespaces because some `@diffgazer/ui` items depend on `@diffgazer/keys` hooks:
 
 ```json
 {
   "registries": {
-    "@ui": "https://ui.diffgazer.com/r/{name}.json",
-    "@diffgazer-keys": "https://keys.diffgazer.com/r/{name}.json"
+    "@ui": "https://<ui-registry-host>/r/{name}.json",
+    "@diffgazer-keys": "https://<keys-registry-host>/r/{name}.json"
   }
 }
 ```
 
-Use the actual registry host for the environment you are testing. For local docs or preview deployments, replace the host names with the matching local/public registry URLs.
+For local validation, serve `libs/ui/public/r` and `libs/keys/public/r` from stable localhost ports and use those URLs in the namespace mapping. Do not publish concrete production hosts until deployment and endpoint smoke tests are complete.
 
 Then install namespaced items:
 
@@ -27,6 +29,17 @@ npx shadcn@latest add "@ui/compose-refs"
 ```
 
 When an item references `@diffgazer-keys/navigation`, shadcn resolves it through the second namespace mapping.
+
+## CSS Wiring
+
+Namespaced shadcn installs copy component source and dependencies, but they do not make a CSS-dependent component complete by themselves. Import the canonical aggregated component CSS in the target app CSS entrypoint:
+
+```css
+@import "tailwindcss";
+@import "./styles/styles.css";
+```
+
+That `styles.css` entry must be materialized from the shared theme seed plus registry component CSS such as dialog backdrop and body-lock rules. If you install directly from a served shadcn registry, verify the app receives the same aggregated CSS entry before treating components such as Dialog, CommandPalette, Select, Popover, or Tooltip as fully wired.
 
 ## Validation
 

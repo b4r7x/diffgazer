@@ -1,3 +1,5 @@
+"use client";
+
 import { Select as SelectRoot, type SelectProps } from "./select";
 import { SelectTrigger, type SelectTriggerProps } from "./select-trigger";
 import { SelectContent, type SelectContentProps } from "./select-content";

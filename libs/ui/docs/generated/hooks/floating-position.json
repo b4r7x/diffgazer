@@ -3,7 +3,7 @@
   "title": "Floating Position",
   "description": "Position floating content relative to a trigger element. Handles collision detection, auto-flipping to opposite sides, and viewport boundary shifting.",
   "source": {
-    "raw": "\"use client\";\n\nimport { useCallback, useLayoutEffect, useRef, useState, type RefObject } from \"react\";\n\nexport type FloatingSide = \"top\" | \"bottom\" | \"left\" | \"right\";\nexport type FloatingAlign = \"start\" | \"center\" | \"end\";\nexport type FloatingPlacement = `${FloatingSide}` | `${FloatingSide}-${FloatingAlign}`;\n\nexport interface UseFloatingPositionOptions {\n  triggerRef: RefObject<HTMLElement | null>;\n  open: boolean;\n  side?: FloatingSide;\n  align?: FloatingAlign;\n  sideOffset?: number;\n  alignOffset?: number;\n  collisionPadding?: number;\n  avoidCollisions?: boolean;\n}\n\nexport interface FloatingPosition {\n  x: number;\n  y: number;\n  side: FloatingSide;\n  align: FloatingAlign;\n}\n\nexport interface UseFloatingPositionReturn {\n  position: FloatingPosition | null;\n  contentRef: RefObject<HTMLDivElement | null>;\n}\n\nconst OPPOSITE_SIDE: Record<FloatingSide, FloatingSide> = {\n  top: \"bottom\",\n  bottom: \"top\",\n  left: \"right\",\n  right: \"left\",\n};\n\nconst CROSS_AXIS_SIDES: Record<FloatingSide, [FloatingSide, FloatingSide]> = {\n  top: [\"left\", \"right\"],\n  bottom: [\"left\", \"right\"],\n  left: [\"top\", \"bottom\"],\n  right: [\"top\", \"bottom\"],\n};\n\ninterface Viewport { width: number; height: number }\n\nexport function computePosition(\n  triggerRect: DOMRect,\n  contentRect: DOMRect,\n  side: FloatingSide,\n  align: FloatingAlign,\n  sideOffset: number,\n  alignOffset: number,\n): { x: number; y: number } {\n  let x = 0;\n  let y = 0;\n\n  switch (side) {\n    case \"top\":\n      y = triggerRect.top - contentRect.height - sideOffset;\n      break;\n    case \"bottom\":\n      y = triggerRect.bottom + sideOffset;\n      break;\n    case \"left\":\n      x = triggerRect.left - contentRect.width - sideOffset;\n      break;\n    case \"right\":\n      x = triggerRect.right + sideOffset;\n      break;\n  }\n\n  const isVertical = side === \"top\" || side === \"bottom\";\n\n  if (isVertical) {\n    switch (align) {\n      case \"start\":\n        x = triggerRect.left + alignOffset;\n        break;\n      case \"center\":\n        x = triggerRect.left + triggerRect.width / 2 - contentRect.width / 2 + alignOffset;\n        break;\n      case \"end\":\n        x = triggerRect.right - contentRect.width - alignOffset;\n        break;\n    }\n  } else {\n    switch (align) {\n      case \"start\":\n        y = triggerRect.top + alignOffset;\n        break;\n      case \"center\":\n        y = triggerRect.top + triggerRect.height / 2 - contentRect.height / 2 + alignOffset;\n        break;\n      case \"end\":\n        y = triggerRect.bottom - contentRect.height - alignOffset;\n        break;\n    }\n  }\n\n  return { x, y };\n}\n\nexport function wouldOverflow(\n  x: number,\n  y: number,\n  contentRect: DOMRect,\n  padding: number,\n  vp: Viewport,\n): boolean {\n  return (\n    x < padding ||\n    y < padding ||\n    x + contentRect.width > vp.width - padding ||\n    y + contentRect.height > vp.height - padding\n  );\n}\n\nexport function shift(\n  x: number,\n  y: number,\n  contentRect: DOMRect,\n  padding: number,\n  vp: Viewport,\n): { x: number; y: number } {\n  return {\n    x: Math.max(padding, Math.min(x, vp.width - contentRect.width - padding)),\n    y: Math.max(padding, Math.min(y, vp.height - contentRect.height - padding)),\n  };\n}\n\nexport function resolveCollisionPosition(\n  triggerRect: DOMRect,\n  contentRect: DOMRect,\n  preferredSide: FloatingSide,\n  preferredAlign: FloatingAlign,\n  sideOffset: number,\n  alignOffset: number,\n  collisionPadding: number,\n  vp: Viewport,\n): { x: number; y: number; side: FloatingSide } {\n  const candidates: FloatingSide[] = [\n    preferredSide,\n    OPPOSITE_SIDE[preferredSide],\n    ...CROSS_AXIS_SIDES[preferredSide],\n  ];\n\n  for (const side of candidates) {\n    const pos = computePosition(triggerRect, contentRect, side, preferredAlign, sideOffset, alignOffset);\n    if (!wouldOverflow(pos.x, pos.y, contentRect, collisionPadding, vp)) {\n      return { ...pos, side };\n    }\n  }\n\n  const fallback = computePosition(triggerRect, contentRect, preferredSide, preferredAlign, sideOffset, alignOffset);\n  return { ...fallback, side: preferredSide };\n}\n\nexport function useFloatingPosition({\n  triggerRef,\n  open,\n  side: preferredSide = \"top\",\n  align: preferredAlign = \"center\",\n  sideOffset = 6,\n  alignOffset = 0,\n  collisionPadding = 8,\n  avoidCollisions = true,\n}: UseFloatingPositionOptions): UseFloatingPositionReturn {\n  const [position, setPosition] = useState<FloatingPosition | null>(null);\n  const contentRef = useRef<HTMLDivElement | null>(null);\n\n  const update = useCallback(() => {\n    const trigger = triggerRef.current;\n    const content = contentRef.current;\n    if (!trigger || !content) return;\n\n    const triggerRect = trigger.getBoundingClientRect();\n    const contentRect = content.getBoundingClientRect();\n    const vp: Viewport = { width: window.innerWidth, height: window.innerHeight };\n\n    const { x: resolvedX, y: resolvedY, side: finalSide } = avoidCollisions\n      ? resolveCollisionPosition(triggerRect, contentRect, preferredSide, preferredAlign, sideOffset, alignOffset, collisionPadding, vp)\n      : { ...computePosition(triggerRect, contentRect, preferredSide, preferredAlign, sideOffset, alignOffset), side: preferredSide };\n\n    const pos = avoidCollisions\n      ? shift(resolvedX, resolvedY, contentRect, collisionPadding, vp)\n      : { x: resolvedX, y: resolvedY };\n\n    setPosition({ x: pos.x, y: pos.y, side: finalSide, align: preferredAlign });\n  }, [alignOffset, avoidCollisions, collisionPadding, preferredAlign, preferredSide, sideOffset, triggerRef]);\n\n  useLayoutEffect(() => {\n    if (!open) {\n      setPosition(null);\n      return;\n    }\n\n    update();\n\n    const trigger = triggerRef.current;\n    const content = contentRef.current;\n    if (!trigger || !content) return;\n\n    const observer = new ResizeObserver(update);\n    observer.observe(trigger);\n    observer.observe(content);\n\n    const scrollParents: Element[] = [];\n    let el: Element | null = trigger;\n    while (el) {\n      if (el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth) {\n        scrollParents.push(el);\n      }\n      el = el.parentElement;\n    }\n\n    for (const parent of scrollParents) {\n      parent.addEventListener(\"scroll\", update, { passive: true });\n    }\n    window.addEventListener(\"scroll\", update, { passive: true });\n    window.addEventListener(\"resize\", update);\n\n    return () => {\n      observer.disconnect();\n      for (const parent of scrollParents) {\n        parent.removeEventListener(\"scroll\", update);\n      }\n      window.removeEventListener(\"scroll\", update);\n      window.removeEventListener(\"resize\", update);\n    };\n  }, [open, triggerRef, update]);\n\n  return { position, contentRef };\n}\n",
+    "raw": "\"use client\";\n\nimport { useCallback, useLayoutEffect, useRef, useState, type RefObject } from \"react\";\n\nexport type FloatingSide = \"top\" | \"bottom\" | \"left\" | \"right\";\nexport type FloatingAlign = \"start\" | \"center\" | \"end\";\nexport type FloatingPlacement = `${FloatingSide}` | `${FloatingSide}-${FloatingAlign}`;\n\nexport interface UseFloatingPositionOptions {\n  triggerRef: RefObject<HTMLElement | null>;\n  open: boolean;\n  side?: FloatingSide;\n  align?: FloatingAlign;\n  sideOffset?: number;\n  alignOffset?: number;\n  collisionPadding?: number;\n  avoidCollisions?: boolean;\n}\n\nexport interface FloatingPosition {\n  x: number;\n  y: number;\n  side: FloatingSide;\n  align: FloatingAlign;\n}\n\nexport interface UseFloatingPositionReturn {\n  position: FloatingPosition | null;\n  contentRef: RefObject<HTMLDivElement | null>;\n}\n\nconst OPPOSITE_SIDE: Record<FloatingSide, FloatingSide> = {\n  top: \"bottom\",\n  bottom: \"top\",\n  left: \"right\",\n  right: \"left\",\n};\n\nconst CROSS_AXIS_SIDES: Record<FloatingSide, [FloatingSide, FloatingSide]> = {\n  top: [\"left\", \"right\"],\n  bottom: [\"left\", \"right\"],\n  left: [\"top\", \"bottom\"],\n  right: [\"top\", \"bottom\"],\n};\n\ninterface Viewport { width: number; height: number }\n\nexport function computePosition(\n  triggerRect: DOMRect,\n  contentRect: DOMRect,\n  side: FloatingSide,\n  align: FloatingAlign,\n  sideOffset: number,\n  alignOffset: number,\n): { x: number; y: number } {\n  let x = 0;\n  let y = 0;\n\n  switch (side) {\n    case \"top\":\n      y = triggerRect.top - contentRect.height - sideOffset;\n      break;\n    case \"bottom\":\n      y = triggerRect.bottom + sideOffset;\n      break;\n    case \"left\":\n      x = triggerRect.left - contentRect.width - sideOffset;\n      break;\n    case \"right\":\n      x = triggerRect.right + sideOffset;\n      break;\n  }\n\n  const isVertical = side === \"top\" || side === \"bottom\";\n\n  if (isVertical) {\n    switch (align) {\n      case \"start\":\n        x = triggerRect.left + alignOffset;\n        break;\n      case \"center\":\n        x = triggerRect.left + triggerRect.width / 2 - contentRect.width / 2 + alignOffset;\n        break;\n      case \"end\":\n        x = triggerRect.right - contentRect.width - alignOffset;\n        break;\n    }\n  } else {\n    switch (align) {\n      case \"start\":\n        y = triggerRect.top + alignOffset;\n        break;\n      case \"center\":\n        y = triggerRect.top + triggerRect.height / 2 - contentRect.height / 2 + alignOffset;\n        break;\n      case \"end\":\n        y = triggerRect.bottom - contentRect.height - alignOffset;\n        break;\n    }\n  }\n\n  return { x, y };\n}\n\nexport function wouldOverflow(\n  x: number,\n  y: number,\n  contentRect: DOMRect,\n  padding: number,\n  vp: Viewport,\n): boolean {\n  return (\n    x < padding ||\n    y < padding ||\n    x + contentRect.width > vp.width - padding ||\n    y + contentRect.height > vp.height - padding\n  );\n}\n\nexport function shift(\n  x: number,\n  y: number,\n  contentRect: DOMRect,\n  padding: number,\n  vp: Viewport,\n): { x: number; y: number } {\n  return {\n    x: Math.max(padding, Math.min(x, vp.width - contentRect.width - padding)),\n    y: Math.max(padding, Math.min(y, vp.height - contentRect.height - padding)),\n  };\n}\n\nexport function resolveCollisionPosition(\n  triggerRect: DOMRect,\n  contentRect: DOMRect,\n  preferredSide: FloatingSide,\n  preferredAlign: FloatingAlign,\n  sideOffset: number,\n  alignOffset: number,\n  collisionPadding: number,\n  vp: Viewport,\n): { x: number; y: number; side: FloatingSide } {\n  const candidates: FloatingSide[] = [\n    preferredSide,\n    OPPOSITE_SIDE[preferredSide],\n    ...CROSS_AXIS_SIDES[preferredSide],\n  ];\n\n  for (const side of candidates) {\n    const pos = computePosition(triggerRect, contentRect, side, preferredAlign, sideOffset, alignOffset);\n    if (!wouldOverflow(pos.x, pos.y, contentRect, collisionPadding, vp)) {\n      return { ...pos, side };\n    }\n  }\n\n  const fallback = computePosition(triggerRect, contentRect, preferredSide, preferredAlign, sideOffset, alignOffset);\n  return { ...fallback, side: preferredSide };\n}\n\nexport function useFloatingPosition({\n  triggerRef,\n  open,\n  side: preferredSide = \"top\",\n  align: preferredAlign = \"center\",\n  sideOffset = 6,\n  alignOffset = 0,\n  collisionPadding = 8,\n  avoidCollisions = true,\n}: UseFloatingPositionOptions): UseFloatingPositionReturn {\n  const [position, setPosition] = useState<FloatingPosition | null>(null);\n  const contentRef = useRef<HTMLDivElement | null>(null);\n\n  const update = useCallback(() => {\n    const trigger = triggerRef.current;\n    const content = contentRef.current;\n    if (!trigger || !content) return;\n\n    const triggerRect = trigger.getBoundingClientRect();\n    const contentRect = content.getBoundingClientRect();\n    const vp: Viewport = { width: window.innerWidth, height: window.innerHeight };\n\n    const { x: resolvedX, y: resolvedY, side: finalSide } = avoidCollisions\n      ? resolveCollisionPosition(triggerRect, contentRect, preferredSide, preferredAlign, sideOffset, alignOffset, collisionPadding, vp)\n      : { ...computePosition(triggerRect, contentRect, preferredSide, preferredAlign, sideOffset, alignOffset), side: preferredSide };\n\n    const pos = avoidCollisions\n      ? shift(resolvedX, resolvedY, contentRect, collisionPadding, vp)\n      : { x: resolvedX, y: resolvedY };\n\n    setPosition({ x: pos.x, y: pos.y, side: finalSide, align: preferredAlign });\n  }, [alignOffset, avoidCollisions, collisionPadding, preferredAlign, preferredSide, sideOffset, triggerRef]);\n\n  useLayoutEffect(() => {\n    if (!open) {\n      setPosition(null);\n      return;\n    }\n\n    update();\n\n    const trigger = triggerRef.current;\n    const content = contentRef.current;\n    if (!trigger || !content) return;\n\n    const ResizeObserverCtor = globalThis.ResizeObserver;\n    const observer = typeof ResizeObserverCtor === \"function\" ? new ResizeObserverCtor(update) : null;\n    observer?.observe(trigger);\n    observer?.observe(content);\n\n    const scrollParents: Element[] = [];\n    let el: Element | null = trigger;\n    while (el) {\n      if (el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth) {\n        scrollParents.push(el);\n      }\n      el = el.parentElement;\n    }\n\n    for (const parent of scrollParents) {\n      parent.addEventListener(\"scroll\", update, { passive: true });\n    }\n    window.addEventListener(\"scroll\", update, { passive: true });\n    window.addEventListener(\"resize\", update);\n\n    return () => {\n      observer?.disconnect();\n      for (const parent of scrollParents) {\n        parent.removeEventListener(\"scroll\", update);\n      }\n      window.removeEventListener(\"scroll\", update);\n      window.removeEventListener(\"resize\", update);\n    };\n  }, [open, triggerRef, update]);\n\n  return { position, contentRef };\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -6977,7 +6977,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "observer",
+            "text": "ResizeObserverCtor",
             "color": "var(--code-number)"
           },
           {
@@ -6993,19 +6993,15 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "new",
+            "text": "globalThis",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
             "color": "var(--code-operator)"
           },
           {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
             "text": "ResizeObserver",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(update)",
             "color": "var(--code-variable)"
           },
           {
@@ -7022,20 +7018,96 @@
             "color": "var(--code-variable)"
           },
           {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
             "text": "observer",
             "color": "var(--code-number)"
           },
           {
-            "text": ".",
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
             "color": "var(--code-operator)"
           },
           {
-            "text": "observe",
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "typeof",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ResizeObserverCtor ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "===",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "function",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "?",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "new",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "ResizeObserverCtor",
             "color": "var(--code-function)"
           },
           {
-            "text": "(trigger)",
+            "text": "(update) ",
             "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
           },
           {
             "text": ";",
@@ -7055,7 +7127,36 @@
             "color": "var(--code-number)"
           },
           {
-            "text": ".",
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "observe",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(trigger)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 208,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "observer",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "?.",
             "color": "var(--code-operator)"
           },
           {
@@ -7073,11 +7174,11 @@
         ]
       },
       {
-        "number": 208,
+        "number": 209,
         "content": []
       },
       {
-        "number": 209,
+        "number": 210,
         "content": [
           {
             "text": "    ",
@@ -7126,7 +7227,7 @@
         ]
       },
       {
-        "number": 210,
+        "number": 211,
         "content": [
           {
             "text": "    ",
@@ -7187,7 +7288,7 @@
         ]
       },
       {
-        "number": 211,
+        "number": 212,
         "content": [
           {
             "text": "    ",
@@ -7208,7 +7309,7 @@
         ]
       },
       {
-        "number": 212,
+        "number": 213,
         "content": [
           {
             "text": "      ",
@@ -7301,7 +7402,7 @@
         ]
       },
       {
-        "number": 213,
+        "number": 214,
         "content": [
           {
             "text": "        ",
@@ -7330,7 +7431,7 @@
         ]
       },
       {
-        "number": 214,
+        "number": 215,
         "content": [
           {
             "text": "      ",
@@ -7343,7 +7444,7 @@
         ]
       },
       {
-        "number": 215,
+        "number": 216,
         "content": [
           {
             "text": "      el ",
@@ -7376,7 +7477,7 @@
         ]
       },
       {
-        "number": 216,
+        "number": 217,
         "content": [
           {
             "text": "    ",
@@ -7389,11 +7490,11 @@
         ]
       },
       {
-        "number": 217,
+        "number": 218,
         "content": []
       },
       {
-        "number": 218,
+        "number": 219,
         "content": [
           {
             "text": "    ",
@@ -7438,7 +7539,7 @@
         ]
       },
       {
-        "number": 219,
+        "number": 220,
         "content": [
           {
             "text": "      ",
@@ -7527,7 +7628,7 @@
         ]
       },
       {
-        "number": 220,
+        "number": 221,
         "content": [
           {
             "text": "    ",
@@ -7540,7 +7641,7 @@
         ]
       },
       {
-        "number": 221,
+        "number": 222,
         "content": [
           {
             "text": "    ",
@@ -7629,7 +7730,7 @@
         ]
       },
       {
-        "number": 222,
+        "number": 223,
         "content": [
           {
             "text": "    ",
@@ -7678,11 +7779,11 @@
         ]
       },
       {
-        "number": 223,
+        "number": 224,
         "content": []
       },
       {
-        "number": 224,
+        "number": 225,
         "content": [
           {
             "text": "    ",
@@ -7719,7 +7820,7 @@
         ]
       },
       {
-        "number": 225,
+        "number": 226,
         "content": [
           {
             "text": "      ",
@@ -7730,7 +7831,7 @@
             "color": "var(--code-number)"
           },
           {
-            "text": ".",
+            "text": "?.",
             "color": "var(--code-operator)"
           },
           {
@@ -7748,7 +7849,7 @@
         ]
       },
       {
-        "number": 226,
+        "number": 227,
         "content": [
           {
             "text": "      ",
@@ -7793,7 +7894,7 @@
         ]
       },
       {
-        "number": 227,
+        "number": 228,
         "content": [
           {
             "text": "        ",
@@ -7842,7 +7943,7 @@
         ]
       },
       {
-        "number": 228,
+        "number": 229,
         "content": [
           {
             "text": "      ",
@@ -7855,7 +7956,7 @@
         ]
       },
       {
-        "number": 229,
+        "number": 230,
         "content": [
           {
             "text": "      ",
@@ -7904,7 +8005,7 @@
         ]
       },
       {
-        "number": 230,
+        "number": 231,
         "content": [
           {
             "text": "      ",
@@ -7953,7 +8054,7 @@
         ]
       },
       {
-        "number": 231,
+        "number": 232,
         "content": [
           {
             "text": "    ",
@@ -7966,7 +8067,7 @@
         ]
       },
       {
-        "number": 232,
+        "number": 233,
         "content": [
           {
             "text": "  ",
@@ -8003,11 +8104,11 @@
         ]
       },
       {
-        "number": 233,
+        "number": 234,
         "content": []
       },
       {
-        "number": 234,
+        "number": 235,
         "content": [
           {
             "text": "  ",
@@ -8044,7 +8145,7 @@
         ]
       },
       {
-        "number": 235,
+        "number": 236,
         "content": [
           {
             "text": "}",
@@ -8053,7 +8154,7 @@
         ]
       },
       {
-        "number": 236,
+        "number": 237,
         "content": []
       }
     ]

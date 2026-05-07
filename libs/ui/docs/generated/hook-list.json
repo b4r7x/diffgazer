@@ -12,6 +12,10 @@
     "title": "Floating Position"
   },
   {
+    "name": "form-reset",
+    "title": "Form Reset"
+  },
+  {
     "name": "listbox",
     "title": "useListbox"
   },

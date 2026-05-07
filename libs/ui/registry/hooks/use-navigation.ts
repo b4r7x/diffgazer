@@ -2,7 +2,6 @@
 
 import {
   useCallback,
-  useRef,
   useState,
   type KeyboardEvent,
   type RefObject,
@@ -138,11 +137,16 @@ function buildNavigationSelectors(role: NavigationRole, skipDisabled: boolean): 
     `[${attribute}=""][data-value]${disabled}`,
     `[${attribute}][data-value]${disabled}`,
   ]);
+  const nativeRoleSelectors: Partial<Record<NavigationRole, string[]>> = {
+    button: [`button[data-value]${disabled}`],
+    checkbox: [`input[type="checkbox"][data-value]${disabled}`],
+    radio: [`input[type="radio"][data-value]${disabled}`],
+  };
 
   return [
     dataContractSelectors.join(","),
     `[role="${role}"][data-value]${disabled}`,
-    `[data-value]${disabled}`,
+    ...(nativeRoleSelectors[role] ?? []),
     `[role="${role}"]${disabled}`,
   ];
 }
@@ -203,7 +207,7 @@ export function useNavigationCore({
     const elements = getElements();
     if (elements.length === 0) return -1;
 
-    if (highlighted) {
+    if (highlighted !== null) {
       const index = elements.findIndex((el) => el.dataset.value === highlighted);
       if (index >= 0) return index;
     }
@@ -211,23 +215,19 @@ export function useNavigationCore({
     return elements.findIndex(containsActiveElement);
   }, [getElements, highlighted]);
 
-  const focusIndexRef = useRef<((index: number) => void) | undefined>(undefined);
-  focusIndexRef.current = (index: number) => {
+  const focusIndex = useCallback((index: number) => {
     const elements = getElements();
     const el = elements[index];
-    if (!el?.dataset.value) return;
+    if (!el) return;
+    const nextValue = el.dataset.value;
+    if (nextValue === undefined) return;
 
     el.scrollIntoView?.({ block: "nearest" });
     if (moveFocus) el.focus();
-    setFocusedValue(el.dataset.value);
-  };
+    setFocusedValue(nextValue);
+  }, [getElements, moveFocus, setFocusedValue]);
 
-  const focusIndex = useCallback((index: number) => {
-    focusIndexRef.current?.(index);
-  }, []);
-
-  const moveRef = useRef<((delta: 1 | -1) => void) | undefined>(undefined);
-  moveRef.current = (delta: 1 | -1) => {
+  const move = useCallback((delta: 1 | -1) => {
     const elements = getElements();
     if (elements.length === 0) return;
 
@@ -238,19 +238,15 @@ export function useNavigationCore({
       return;
     }
 
-    focusIndexRef.current?.(next);
-  };
-
-  const move = useCallback((delta: 1 | -1) => {
-    moveRef.current?.(delta);
-  }, []);
+    focusIndex(next);
+  }, [focusIndex, getElements, getFocusedIndex, onBoundaryReached, wrap]);
 
   const handleSelect = useCallback((event: globalThis.KeyboardEvent) => {
-    if (highlighted) onSelect?.(highlighted, event);
+    if (highlighted !== null) onSelect?.(highlighted, event);
   }, [highlighted, onSelect]);
 
   const handleEnter = useCallback((event: globalThis.KeyboardEvent) => {
-    if (!highlighted) return;
+    if (highlighted === null) return;
     if (onEnter) onEnter(highlighted, event);
     else onSelect?.(highlighted, event);
   }, [highlighted, onEnter, onSelect]);

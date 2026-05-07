@@ -1,3 +1,5 @@
+"use client";
+
 import { Checkbox as CheckboxRoot, type CheckboxProps, type CheckboxVariant } from "./checkbox";
 import { CheckboxGroup, type CheckboxGroupProps } from "./checkbox-group";
 import { CheckboxItem, type CheckboxItemProps } from "./checkbox-item";

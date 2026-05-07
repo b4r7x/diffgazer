@@ -1,5 +1,7 @@
+import { createRef } from "react"
 import { act, render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { Overflow } from "./index.js"
 import { OverflowText } from "./overflow-text.js"
 
 let resizeCallbacks: Array<() => void> = []
@@ -58,5 +60,46 @@ describe("OverflowText", () => {
     act(flushObservers)
 
     expect(screen.getByRole("button")).toHaveTextContent("Long label")
+  })
+})
+
+describe("Overflow", () => {
+  it("defaults to text mode", () => {
+    const ref = createRef<HTMLDivElement>()
+
+    render(<Overflow ref={ref} id="overflow-root" data-testid="overflow" style={{ maxWidth: 120 }}>Default text</Overflow>)
+
+    const root = screen.getByTestId("overflow")
+    expect(root).toHaveTextContent("Default text")
+    expect(root).toHaveClass("truncate")
+    expect(root).toHaveAttribute("id", "overflow-root")
+    expect(root).toHaveStyle({ maxWidth: "120px" })
+    expect(ref.current).toBe(root)
+  })
+
+  it("renders explicit text mode", () => {
+    render(<Overflow mode="text" lines={2} data-testid="overflow">Explicit text</Overflow>)
+
+    expect(screen.getByTestId("overflow")).toHaveTextContent("Explicit text")
+    expect(screen.getByTestId("overflow")).toHaveStyle({ overflow: "hidden" })
+  })
+
+  it("renders explicit items mode", () => {
+    const ref = createRef<HTMLDivElement>()
+
+    render(
+      <Overflow mode="items" ref={ref} data-testid="overflow" data-state="items" gap="gap-2">
+        <span>One</span>
+        <span>Two</span>
+      </Overflow>,
+    )
+
+    const root = screen.getByTestId("overflow")
+    expect(root).toHaveClass("flex")
+    expect(root).toHaveClass("gap-2")
+    expect(root).toHaveAttribute("data-state", "items")
+    expect(root).toHaveTextContent("One")
+    expect(root).toHaveTextContent("Two")
+    expect(ref.current).toBe(root)
   })
 })

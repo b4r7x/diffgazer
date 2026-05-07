@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, type RefObject } from "react";
+import { createContext, useContext, type AriaAttributes, type RefObject } from "react";
 
 export interface SelectOptionMetadata {
   label: string;
@@ -11,24 +11,23 @@ export interface SelectContextValue {
   open: boolean;
   disabled: boolean;
   onOpenChange: (open: boolean) => void;
-  value: string | string[];
+  value: string | null | string[];
   multiple: boolean;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   highlighted: string | null;
   onHighlight: (value: string | null) => void;
   selectItem: (value: string) => void;
-  labelsRef: RefObject<Map<string, SelectOptionMetadata>>;
-  registerOption: (value: string, metadata: SelectOptionMetadata) => () => void;
-  isOptionDisabled: (value: string) => boolean;
+  options: ReadonlyMap<string, SelectOptionMetadata>;
   triggerRef: RefObject<HTMLButtonElement | null>;
+  contentRef: RefObject<HTMLDivElement | null>;
   searchInputRef: RefObject<HTMLInputElement | null>;
-  hasSearch: boolean;
-  setHasSearch: (hasSearch: boolean) => void;
   variant: "default" | "card";
   listboxId: string;
   triggerId: string;
-  ariaInvalid: boolean | undefined;
+  ariaInvalid: AriaAttributes["aria-invalid"] | undefined;
+  required: boolean | undefined;
+  onNativeInvalid: () => void;
 }
 
 export const SelectContext = createContext<SelectContextValue | undefined>(

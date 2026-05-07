@@ -6,9 +6,11 @@ description: Install @diffgazer/keys hooks into your project.
 ## Copy Standalone Hooks
 
 ```bash
-npx @diffgazer/add add keys/navigation
-npx @diffgazer/add add keys/focus-trap keys/scroll-lock
+pnpm exec dgadd add keys/navigation
+pnpm exec dgadd add keys/focus-trap keys/scroll-lock
 ```
+
+Before publication, install a locally packed `@diffgazer/add` tarball into the target app and run `pnpm exec dgadd`. Use `npx @diffgazer/add add ...` only after `npm view @diffgazer/add version` succeeds.
 
 Standalone hooks are copied into your project as source files and have no runtime dependency on `@diffgazer/keys`.
 
@@ -29,5 +31,5 @@ import { KeyboardProvider, useKey } from "@diffgazer/keys"
 UI components can also be installed in package integration mode:
 
 ```bash
-npx @diffgazer/add add ui/menu --integration keys
+pnpm exec dgadd add ui/menu --integration keys
 ```

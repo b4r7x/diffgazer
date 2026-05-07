@@ -21,7 +21,7 @@
     },
     {
       "path": "styles/styles.css",
-      "content": "@import \"tailwindcss\";\n@import \"./theme.css\";\n",
+      "content": "/* Canonical style seed. Package builds and dgadd init append registry component CSS to this entry. */\n@import \"./theme.css\";\n",
       "type": "registry:style",
       "target": "~/styles/styles.css"
     }

@@ -1,9 +1,19 @@
 "use client";
 
-import { type HTMLAttributes, type Ref, useCallback, useEffect, useId, useMemo, useState } from "react";
+import {
+  Children,
+  isValidElement,
+  type HTMLAttributes,
+  type ReactNode,
+  type Ref,
+  useId,
+  useMemo,
+} from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { cn } from "@/lib/utils";
 import { TabsContext } from "./tabs-context";
+import { TabsContent } from "./tabs-content";
+import { TabsTrigger } from "./tabs-trigger";
 
 export interface TabsProps extends HTMLAttributes<HTMLDivElement> {
   value?: string;
@@ -13,6 +23,48 @@ export interface TabsProps extends HTMLAttributes<HTMLDivElement> {
   variant?: "default" | "underline";
   activationMode?: "automatic" | "manual";
   ref?: Ref<HTMLDivElement>;
+}
+
+interface TabTriggerElementProps {
+  value?: string;
+  disabled?: boolean;
+  children?: ReactNode;
+}
+
+interface TabMetadata {
+  enabledValues: string[];
+  panelValues: string[];
+  triggerValues: string[];
+}
+
+function collectTabMetadata(children: ReactNode): TabMetadata {
+  const metadata: TabMetadata = {
+    enabledValues: [],
+    panelValues: [],
+    triggerValues: [],
+  };
+
+  Children.forEach(children, (child) => {
+    if (!isValidElement<TabTriggerElementProps>(child)) return;
+    if (child.type === TabsRoot) return;
+
+    if (child.type === TabsTrigger && typeof child.props.value === "string") {
+      metadata.triggerValues.push(child.props.value);
+      if (!child.props.disabled) metadata.enabledValues.push(child.props.value);
+      return;
+    }
+
+    if (child.type === TabsContent && typeof child.props.value === "string") {
+      metadata.panelValues.push(child.props.value);
+    }
+
+    const childMetadata = collectTabMetadata(child.props.children);
+    metadata.enabledValues.push(...childMetadata.enabledValues);
+    metadata.panelValues.push(...childMetadata.panelValues);
+    metadata.triggerValues.push(...childMetadata.triggerValues);
+  });
+
+  return metadata;
 }
 
 function TabsRoot({
@@ -28,42 +80,27 @@ function TabsRoot({
   ...rest
 }: TabsProps) {
   const tabsId = useId();
-  const [registeredTabs, setRegisteredTabs] = useState<string[]>([]);
+  const { enabledValues, panelValues, triggerValues } = useMemo(() => collectTabMetadata(children), [children]);
   const [value, setValue] = useControllableState<string>({
     value: controlledValue,
     defaultValue: defaultValue ?? "",
     onChange: onValueChange,
   });
-  const firstEnabledTab = registeredTabs[0] ?? "";
-  const resolvedValue = registeredTabs.includes(value) ? value : firstEnabledTab;
-
-  const registerTab = useCallback((nextValue: string) => {
-    setRegisteredTabs((current) => (
-      current.includes(nextValue) ? current : [...current, nextValue]
-    ));
-
-    return () => {
-      setRegisteredTabs((current) => current.filter((item) => item !== nextValue));
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!firstEnabledTab) return;
-    if (value && registeredTabs.includes(value)) return;
-    setValue(firstEnabledTab);
-  }, [firstEnabledTab, registeredTabs, setValue, value]);
+  const firstEnabledTab = enabledValues[0] ?? "";
+  const resolvedValue = enabledValues.includes(value) ? value : firstEnabledTab;
 
   const contextValue = useMemo(
     () => ({
       tabsId,
       value: resolvedValue,
       onValueChange: setValue,
-      registerTab,
+      panelValues,
+      triggerValues,
       orientation,
       variant,
       activationMode,
     }),
-    [tabsId, resolvedValue, setValue, registerTab, orientation, variant, activationMode],
+    [tabsId, resolvedValue, setValue, panelValues, triggerValues, orientation, variant, activationMode],
   );
 
   return (

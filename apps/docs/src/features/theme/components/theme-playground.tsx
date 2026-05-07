@@ -8,14 +8,17 @@ import { CssOutput } from "./css-output"
 const DEFAULT_PRIMITIVES: Record<string, string> = {
   "--tui-bg": "#0a0a0a",
   "--tui-fg": "#e5e5e5",
+  "--tui-dim": "#9c9c9c",
   "--tui-blue": "#ccccff",
-  "--tui-violet": "#666666",
+  "--tui-violet": "#787878",
   "--tui-green": "#e5e5e5",
   "--tui-red": "#ff7b72",
   "--tui-yellow": "#d29922",
-  "--tui-border": "#333333",
+  "--tui-border": "#606060",
+  "--tui-highlight": "#ffffff",
+  "--tui-highlight-fg": "#000000",
   "--tui-selection": "#333333",
-  "--tui-muted": "#666666",
+  "--tui-muted": "#787878",
   "--tui-input-bg": "#0a0a0a",
 }
 

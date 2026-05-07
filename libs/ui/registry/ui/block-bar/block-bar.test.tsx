@@ -39,6 +39,67 @@ describe("BlockBar", () => {
     const meter = screen.getByRole("meter", { name: "Segments" })
     expect(meter).toHaveAttribute("aria-valuenow", "4")
   })
+
+  it("keeps the accessible label when custom segment children are provided", () => {
+    render(
+      <BlockBar label="Custom usage" max={10} barWidth={5}>
+        <BlockBar.Segment value={20} char="x" />
+      </BlockBar>,
+    )
+
+    const meter = screen.getByRole("meter", { name: "Custom usage" })
+    expect(meter).toHaveAttribute("aria-valuenow", "10")
+    expect(meter).toHaveAttribute("aria-valuetext", "10 of 10")
+  })
+
+  it("requires an explicit value when custom children are not segments", () => {
+    expect(() => render(
+      <BlockBar label="Custom usage" max={10} barWidth={5}>
+        <span>custom</span>
+      </BlockBar>,
+    )).toThrow("BlockBar requires `value`")
+  })
+
+  it("clips drawn segments to the configured character width", () => {
+    render(<BlockBar label="Clipped" max={10} value={25} barWidth={5} filledChar="x" emptyChar="_" />)
+
+    const meter = screen.getByRole("meter", { name: "Clipped" })
+    const track = meter.querySelector(".tracking-widest")
+    expect(track).toHaveClass("overflow-hidden")
+    expect(track).toHaveStyle({ width: "5ch" })
+    expect(screen.getByText("xxxxx")).toBeInTheDocument()
+  })
+
+  it("lets segments define rendering and value when segments and children are mixed", () => {
+    render(
+      <BlockBar
+        label="Mixed"
+        max={10}
+        barWidth={5}
+        filledChar="x"
+        emptyChar="_"
+        segments={[{ value: 6 }]}
+      >
+        <BlockBar.Segment value={2} char="z" />
+      </BlockBar>,
+    )
+
+    const meter = screen.getByRole("meter", { name: "Mixed" })
+
+    expect(meter).toHaveAttribute("aria-valuenow", "6")
+    expect(screen.getByText("xxx")).toBeInTheDocument()
+    expect(screen.queryByText("z")).not.toBeInTheDocument()
+  })
+
+  it("clamps excessive bar widths before drawing", () => {
+    render(<BlockBar label="Wide" max={1000} value={1000} barWidth={10000} filledChar="x" emptyChar="_" />)
+
+    const meter = screen.getByRole("meter", { name: "Wide" })
+    const track = meter.querySelector(".tracking-widest")
+
+    expect(track).toHaveStyle({ width: "200ch" })
+    expect(screen.getByText("x".repeat(200))).toBeInTheDocument()
+  })
 })
 
 describe("computeFilledCount", () => {

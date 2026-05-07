@@ -2,7 +2,7 @@ import type { ComponentDoc } from "./types"
 
 export const checkboxDoc: ComponentDoc = {
   description:
-    "Terminal-styled checkbox with [x] and bullet variants. Standalone or CheckboxGroup with headless focus and keyboard hooks.",
+    "Terminal-styled checkbox with [x] and bullet variants. Standalone or CheckboxGroup with built-in arrow navigation.",
   anatomy: [
     {
       name: "Checkbox",
@@ -27,9 +27,9 @@ export const checkboxDoc: ComponentDoc = {
         "Checkbox supports a third state: checked='indeterminate' renders [-] (x variant) or [ - ] (bullet variant). This is useful for parent checkboxes representing partially-selected groups.",
     },
     {
-      title: "External Navigation",
+      title: "Built-in Navigation",
       content:
-        "CheckboxGroup is headless for keyboard behavior. Wire arrow-key focus from your app layer using highlighted, onHighlightChange, and onKeyDown (see checkbox-group example for @diffgazer/keys integration). Space toggling is handled by each CheckboxItem.",
+        "CheckboxGroup handles arrow-key focus with wrapping through useNavigation. Use highlighted, onHighlightChange, and onKeyDown only when coordinating highlight state or composing extra shortcuts. Space toggling is handled by each CheckboxItem.",
     },
     {
       title: "Strikethrough (Checklist Mode)",
@@ -46,9 +46,9 @@ export const checkboxDoc: ComponentDoc = {
   ],
   keyboard: {
     description:
-      "CheckboxGroup exposes headless keyboard hooks. Integrate @diffgazer/keys (or your own handler) by controlling highlighted and handling onKeyDown at the group level. Standalone Checkbox responds to Space when focused (per WAI-ARIA APG checkbox pattern).",
+      "CheckboxGroup includes arrow-key navigation with wrapping. Control highlighted/onHighlightChange when external state coordination is needed, and use onKeyDown for additional shortcuts. Standalone Checkbox responds to Space when focused.",
     examples: [
-      { name: "checkbox-group", title: "Group with @diffgazer/keys navigation" },
+      { name: "checkbox-group", title: "Group with built-in keyboard navigation" },
     ],
   },
 }

@@ -1,8 +1,15 @@
+import { createRef } from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
-import { Select } from "./index.js"
+import { Select, type SelectProps } from "./index.js"
+
+function getSelectTrigger() {
+  const trigger = screen.getAllByRole("combobox").find((element) => element.tagName === "BUTTON")
+  if (!trigger) throw new Error("Select trigger not found")
+  return trigger
+}
 
 function renderSelect({
   multiple,
@@ -15,6 +22,7 @@ function renderSelect({
   disabled,
   items = ["Apple", "Banana", "Cherry"],
   withSearch = false,
+  variant = "card",
 }: {
   multiple?: boolean
   defaultValue?: string | string[]
@@ -26,16 +34,31 @@ function renderSelect({
   disabled?: boolean
   items?: string[]
   withSearch?: boolean
+  variant?: "default" | "card"
 } = {}) {
-  const props: any = { variant: "card", children: null }
-  if (multiple) props.multiple = true
-  if (defaultValue !== undefined) props.defaultValue = defaultValue
-  if (value !== undefined) props.value = value
-  if (onChange) props.onChange = onChange
-  if (open !== undefined) props.open = open
-  if (onOpenChange) props.onOpenChange = onOpenChange
-  if (defaultOpen !== undefined) props.defaultOpen = defaultOpen
-  if (disabled) props.disabled = true
+  const commonProps = {
+    variant,
+    children: null,
+    ...(open !== undefined ? { open } : {}),
+    ...(onOpenChange ? { onOpenChange } : {}),
+    ...(defaultOpen !== undefined ? { defaultOpen } : {}),
+    ...(disabled ? { disabled: true } : {}),
+  }
+  const props: SelectProps = multiple
+    ? {
+        ...commonProps,
+        multiple: true,
+        ...(Array.isArray(defaultValue) ? { defaultValue } : {}),
+        ...(Array.isArray(value) ? { value } : {}),
+        ...(onChange ? { onChange: onChange as (v: string[]) => void } : {}),
+      }
+    : {
+        ...commonProps,
+        multiple: false,
+        ...(typeof defaultValue === "string" ? { defaultValue } : {}),
+        ...(typeof value === "string" ? { value } : {}),
+        ...(onChange ? { onChange: onChange as (v: string) => void } : {}),
+      }
 
   return render(
     <Select {...props}>
@@ -60,38 +83,122 @@ function renderSelect({
 }
 
 describe("Select", () => {
+  it("supports direct namespaced parts with custom option UI inside Select.Item", async () => {
+    const onValueChange = vi.fn()
+    render(
+      <Select variant="card" defaultOpen onValueChange={onValueChange}>
+        <Select.Trigger>
+          <Select.Value placeholder="Pick a fruit" />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Search />
+          <Select.Item value="banana" textValue="Banana">
+            <span>Banana</span>
+            <span aria-hidden="true">ripe</span>
+          </Select.Item>
+        </Select.Content>
+      </Select>,
+    )
+
+    await userEvent.type(screen.getByRole("searchbox", { name: /search options/i }), "ban")
+    await userEvent.click(screen.getByRole("option", { name: /banana/i }))
+
+    expect(onValueChange).toHaveBeenCalledWith("banana")
+  })
+
   it("toggles open/close on trigger click", async () => {
     renderSelect()
-    const trigger = screen.getByRole("button")
+    const trigger = getSelectTrigger()
     expect(trigger).toHaveAttribute("aria-expanded", "false")
+    expect(trigger).not.toHaveAttribute("aria-controls")
     await userEvent.click(trigger)
     expect(trigger).toHaveAttribute("aria-expanded", "true")
+    expect(trigger).toHaveAttribute("aria-controls", screen.getByRole("listbox").id)
     await userEvent.click(trigger)
     expect(trigger).toHaveAttribute("aria-expanded", "false")
+    expect(trigger).not.toHaveAttribute("aria-controls")
   })
 
   it("selects a single value on click", async () => {
     const onChange = vi.fn()
     renderSelect({ onChange })
-    await userEvent.click(screen.getByRole("button"))
+    await userEvent.click(getSelectTrigger())
     await userEvent.click(screen.getByText("Banana"))
     expect(onChange).toHaveBeenCalledWith("banana")
+  })
+
+  it("activates a default portalled option on mouse click before outside-click close", async () => {
+    const onChange = vi.fn()
+    renderSelect({ variant: "default", onChange })
+
+    await userEvent.click(getSelectTrigger())
+    await userEvent.click(screen.getByRole("option", { name: /banana/i }))
+
+    expect(onChange).toHaveBeenCalledWith("banana")
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false")
+  })
+
+  it("calls onValueChange as the preferred single-value callback", async () => {
+    const onValueChange = vi.fn()
+    render(
+      <Select variant="card" onValueChange={onValueChange}>
+        <Select.Trigger>
+          <Select.Value placeholder="Pick a fruit" />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="banana">Banana</Select.Item>
+        </Select.Content>
+      </Select>,
+    )
+
+    await userEvent.click(getSelectTrigger())
+    await userEvent.click(screen.getByText("Banana"))
+    expect(onValueChange).toHaveBeenCalledWith("banana")
   })
 
   it("selects multiple values on click", async () => {
     const onChange = vi.fn()
     renderSelect({ multiple: true, defaultValue: [], onChange })
-    await userEvent.click(screen.getByRole("button"))
+    await userEvent.click(getSelectTrigger())
     await userEvent.click(screen.getByText("Apple"))
     expect(onChange).toHaveBeenCalledWith(["apple"])
     await userEvent.click(screen.getByText("Cherry"))
     expect(onChange).toHaveBeenCalledWith(["apple", "cherry"])
   })
 
+  it("keeps a default portalled multi-select open while activating mouse options", async () => {
+    const onChange = vi.fn()
+    renderSelect({ variant: "default", multiple: true, defaultValue: [], onChange })
+
+    await userEvent.click(getSelectTrigger())
+    await userEvent.click(screen.getByRole("option", { name: /apple/i }))
+
+    expect(onChange).toHaveBeenCalledWith(["apple"])
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true")
+  })
+
+  it("calls onValueChange as the preferred multiple-value callback", async () => {
+    const onValueChange = vi.fn()
+    render(
+      <Select variant="card" multiple defaultValue={[]} onValueChange={onValueChange}>
+        <Select.Trigger>
+          <Select.Tags placeholder="Pick fruits" />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="apple">Apple</Select.Item>
+        </Select.Content>
+      </Select>,
+    )
+
+    await userEvent.click(getSelectTrigger())
+    await userEvent.click(screen.getByText("Apple"))
+    expect(onValueChange).toHaveBeenCalledWith(["apple"])
+  })
+
   it("deselects an already-selected value in multiple mode", async () => {
     const onChange = vi.fn()
     renderSelect({ multiple: true, defaultValue: ["apple", "banana"], onChange })
-    const trigger = screen.getByRole("button")
+    const trigger = getSelectTrigger()
     await userEvent.click(trigger)
     const appleOption = screen.getByRole("option", { name: /Apple/i })
     await userEvent.click(appleOption)
@@ -100,7 +207,7 @@ describe("Select", () => {
 
   it("stays open after selection in multiple mode", async () => {
     renderSelect({ multiple: true, defaultValue: [] })
-    const trigger = screen.getByRole("button")
+    const trigger = getSelectTrigger()
     await userEvent.click(trigger)
     await userEvent.click(screen.getByText("Apple"))
     expect(trigger).toHaveAttribute("aria-expanded", "true")
@@ -108,25 +215,37 @@ describe("Select", () => {
 
   it("filters items based on search query", async () => {
     renderSelect({ withSearch: true })
-    await userEvent.click(screen.getByRole("button"))
-    const searchInput = screen.getByRole("combobox")
+    await userEvent.click(getSelectTrigger())
+    const searchInput = screen.getByRole("searchbox", { name: /search options/i })
     await userEvent.type(searchInput, "ban")
     expect(screen.getByText("Banana")).toBeInTheDocument()
     expect(screen.queryByText("Apple")).not.toBeInTheDocument()
     expect(screen.queryByText("Cherry")).not.toBeInTheDocument()
   })
 
+  it("activates searchable default portalled options on mouse click", async () => {
+    const onChange = vi.fn()
+    renderSelect({ variant: "default", withSearch: true, onChange })
+
+    await userEvent.click(getSelectTrigger())
+    await userEvent.type(screen.getByRole("searchbox", { name: /search options/i }), "ban")
+    await userEvent.click(screen.getByRole("option", { name: /banana/i }))
+
+    expect(onChange).toHaveBeenCalledWith("banana")
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false")
+  })
+
   it("shows empty state when search has no matches", async () => {
     renderSelect({ withSearch: true })
-    await userEvent.click(screen.getByRole("button"))
-    await userEvent.type(screen.getByRole("combobox"), "zzz")
+    await userEvent.click(getSelectTrigger())
+    await userEvent.type(screen.getByRole("searchbox", { name: /search options/i }), "zzz")
     expect(screen.getByText("> no results.")).toBeInTheDocument()
   })
 
   it("does not open when disabled", async () => {
     renderSelect({ disabled: true })
-    await userEvent.click(screen.getByRole("button"))
-    expect(screen.getByRole("button")).toHaveAttribute("aria-expanded", "false")
+    await userEvent.click(getSelectTrigger())
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false")
   })
 
   it("does not highlight or select disabled options by click, arrows, typeahead, Enter, or Tab", async () => {
@@ -146,22 +265,23 @@ describe("Select", () => {
 
     const listbox = screen.getByRole("listbox")
     const disabledOption = screen.getByRole("option", { name: /banana/i })
+    const blueberryOption = screen.getByRole("option", { name: /blueberry/i })
     listbox.focus()
 
     await userEvent.click(disabledOption)
     expect(onChange).not.toHaveBeenCalled()
 
     await userEvent.keyboard("{ArrowDown}")
-    expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("blueberry"))
+    expect(listbox).toHaveAttribute("aria-activedescendant", blueberryOption.id)
 
     await userEvent.keyboard("b")
-    expect(listbox).toHaveAttribute("aria-activedescendant", expect.stringContaining("blueberry"))
+    expect(listbox).toHaveAttribute("aria-activedescendant", blueberryOption.id)
 
     await userEvent.keyboard("{Enter}")
     expect(onChange).toHaveBeenCalledWith("blueberry")
 
     onChange.mockClear()
-    await userEvent.click(screen.getByRole("button"))
+    await userEvent.click(getSelectTrigger())
     listbox.focus()
     await userEvent.click(disabledOption)
     await userEvent.tab()
@@ -171,7 +291,7 @@ describe("Select", () => {
   it("works in uncontrolled mode with defaultValue", async () => {
     renderSelect({ defaultValue: "banana" })
     expect(screen.getByText("Banana")).toBeInTheDocument()
-    await userEvent.click(screen.getByRole("button"))
+    await userEvent.click(getSelectTrigger())
     const bananaOption = screen.getByRole("option", { name: /banana/i })
     expect(bananaOption).toHaveAttribute("aria-selected", "true")
   })
@@ -179,20 +299,124 @@ describe("Select", () => {
   it("respects controlled open prop", async () => {
     const onOpenChange = vi.fn()
     renderSelect({ open: false, onOpenChange })
-    await userEvent.click(screen.getByRole("button"))
+    await userEvent.click(getSelectTrigger())
     expect(onOpenChange).toHaveBeenCalledWith(true)
-    expect(screen.getByRole("button")).toHaveAttribute("aria-expanded", "false")
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false")
+  })
+
+  it("calls onHighlightChange as the preferred highlight callback", async () => {
+    const onHighlightChange = vi.fn()
+    render(
+      <Select variant="card" defaultOpen onHighlightChange={onHighlightChange}>
+        <Select.Trigger>
+          <Select.Value placeholder="Pick a fruit" />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="apple">Apple</Select.Item>
+          <Select.Item value="banana">Banana</Select.Item>
+        </Select.Content>
+      </Select>,
+    )
+
+    await userEvent.hover(screen.getByRole("option", { name: /banana/i }))
+    expect(onHighlightChange).toHaveBeenCalledWith("banana")
   })
 
   it("respects controlled value prop", async () => {
     const onChange = vi.fn()
     renderSelect({ value: "apple", onChange })
-    await userEvent.click(screen.getByRole("button"))
+    await userEvent.click(getSelectTrigger())
     await userEvent.click(screen.getByText("Banana"))
     expect(onChange).toHaveBeenCalledWith("banana")
-    await userEvent.click(screen.getByRole("button"))
+    await userEvent.click(getSelectTrigger())
     const appleOption = screen.getByRole("option", { name: /apple/i })
     expect(appleOption).toHaveAttribute("aria-selected", "true")
+  })
+
+  it("treats explicit undefined value as a controlled empty value", async () => {
+    const onChange = vi.fn()
+    render(
+      <Select variant="card" value={undefined} onValueChange={onChange}>
+        <Select.Trigger>
+          <Select.Value placeholder="Pick a fruit" />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="apple">Apple</Select.Item>
+          <Select.Item value="banana">Banana</Select.Item>
+        </Select.Content>
+      </Select>,
+    )
+
+    expect(screen.getByText("Pick a fruit")).toBeInTheDocument()
+    await userEvent.click(getSelectTrigger())
+    await userEvent.click(screen.getByRole("option", { name: /banana/i }))
+    expect(onChange).toHaveBeenCalledWith("banana")
+    expect(screen.getByText("Pick a fruit")).toBeInTheDocument()
+  })
+
+  it("supports an empty string single-select option value", async () => {
+    const onChange = vi.fn()
+    render(
+      <Select variant="card" onChange={onChange}>
+        <Select.Trigger>
+          <Select.Value placeholder="Pick a fruit" />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="">None</Select.Item>
+          <Select.Item value="banana">Banana</Select.Item>
+        </Select.Content>
+      </Select>,
+    )
+
+    expect(screen.getByText("Pick a fruit")).toBeInTheDocument()
+
+    await userEvent.click(getSelectTrigger())
+    await userEvent.click(screen.getByRole("option", { name: "None" }))
+
+    expect(onChange).toHaveBeenCalledWith("")
+    expect(screen.getByText("None")).toBeInTheDocument()
+  })
+
+  it("supports empty string values in multiple-select state", async () => {
+    const onChange = vi.fn()
+    render(
+      <Select variant="card" multiple defaultValue={[""]} onChange={onChange}>
+        <Select.Trigger>
+          <Select.Tags placeholder="Pick fruits" />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="">None</Select.Item>
+          <Select.Item value="banana">Banana</Select.Item>
+        </Select.Content>
+      </Select>,
+    )
+
+    expect(screen.getByText("None")).toBeInTheDocument()
+
+    await userEvent.click(getSelectTrigger())
+    await userEvent.click(screen.getByRole("option", { name: /banana/i }))
+
+    expect(onChange).toHaveBeenCalledWith(["", "banana"])
+  })
+
+  it("selects an empty string option from keyboard navigation", async () => {
+    const onChange = vi.fn()
+    render(
+      <Select variant="card" defaultOpen highlighted="" onChange={onChange}>
+        <Select.Trigger>
+          <Select.Value placeholder="Pick a fruit" />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="">None</Select.Item>
+          <Select.Item value="banana">Banana</Select.Item>
+        </Select.Content>
+      </Select>,
+    )
+
+    screen.getByRole("listbox").focus()
+    await userEvent.keyboard("{Enter}")
+
+    expect(onChange).toHaveBeenCalledWith("")
   })
 
   it("has no a11y violations", async () => {
@@ -207,9 +431,9 @@ describe("Select", () => {
 
   it.each(["Enter", " ", "ArrowDown"])("opens with %s key on trigger", async (key) => {
     renderSelect()
-    screen.getByRole("button").focus()
+    getSelectTrigger().focus()
     await userEvent.keyboard(key === " " ? " " : `{${key}}`)
-    expect(screen.getByRole("button")).toHaveAttribute("aria-expanded", "true")
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true")
   })
 
   it("closes with Escape key", async () => {
@@ -217,7 +441,7 @@ describe("Select", () => {
     const listbox = screen.getByRole("listbox")
     listbox.focus()
     await userEvent.keyboard("{Escape}")
-    expect(screen.getByRole("button")).toHaveAttribute("aria-expanded", "false")
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false")
   })
 
   it("selects highlighted item with Enter key", async () => {
@@ -243,24 +467,153 @@ describe("Select", () => {
     expect(first).not.toBe(second)
   })
 
-  it("closes on outside click", async () => {
-    renderSelect({ defaultOpen: true })
-    expect(screen.getByRole("button")).toHaveAttribute("aria-expanded", "true")
-    await userEvent.click(document.body)
-    expect(screen.getByRole("button")).toHaveAttribute("aria-expanded", "false")
+  it("generates unique option ids for values that differ by whitespace and punctuation", async () => {
+    render(
+      <Select variant="card" defaultOpen>
+        <Select.Trigger>
+          <Select.Value placeholder="Pick a value" />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="a b">Spaced</Select.Item>
+          <Select.Item value="a_b">Underscore</Select.Item>
+        </Select.Content>
+      </Select>,
+    )
+
+    const spaced = screen.getByRole("option", { name: "Spaced" })
+    const underscore = screen.getByRole("option", { name: "Underscore" })
+    expect(spaced.id).toBeTruthy()
+    expect(underscore.id).toBeTruthy()
+    expect(spaced.id).not.toBe(underscore.id)
   })
 
-  it("renders combobox with proper ARIA attributes when search is present", async () => {
+  it("omits stale controlled active descendants for disabled, filtered, and missing options", async () => {
+    const { rerender } = render(
+      <Select variant="card" defaultOpen highlighted="banana">
+        <Select.Trigger>
+          <Select.Value placeholder="Pick a value" />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="apple">Apple</Select.Item>
+          <Select.Item value="banana" disabled>Banana</Select.Item>
+        </Select.Content>
+      </Select>,
+    )
+
+    expect(screen.getByRole("listbox")).not.toHaveAttribute("aria-activedescendant")
+
+    rerender(
+      <Select variant="card" defaultOpen highlighted="banana">
+        <Select.Trigger>
+          <Select.Value placeholder="Pick a value" />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Search />
+          <Select.Item value="apple">Apple</Select.Item>
+          <Select.Item value="banana">Banana</Select.Item>
+        </Select.Content>
+      </Select>,
+    )
+
+    await userEvent.type(screen.getByRole("searchbox", { name: /search options/i }), "apple")
+    expect(getSelectTrigger()).not.toHaveAttribute("aria-activedescendant")
+    expect(screen.getByRole("searchbox", { name: /search options/i })).not.toHaveAttribute("aria-activedescendant")
+
+    rerender(
+      <Select variant="card" defaultOpen highlighted="missing">
+        <Select.Trigger>
+          <Select.Value placeholder="Pick a value" />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="apple">Apple</Select.Item>
+        </Select.Content>
+      </Select>,
+    )
+    expect(screen.getByRole("listbox")).not.toHaveAttribute("aria-activedescendant")
+    expect(getSelectTrigger()).not.toHaveAttribute("aria-activedescendant")
+  })
+
+  it("closes on outside click", async () => {
+    renderSelect({ defaultOpen: true })
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "true")
+    await userEvent.click(document.body)
+    expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false")
+  })
+
+  it("keeps the trigger as the only combobox when search is present", async () => {
     renderSelect({ withSearch: true, defaultOpen: true })
-    const searchInput = screen.getByRole("combobox")
+    const trigger = getSelectTrigger()
+    const searchInput = screen.getByRole("searchbox", { name: /search options/i })
     const listbox = screen.getByRole("listbox")
-    expect(searchInput).toHaveAttribute("aria-expanded", "true")
-    expect(searchInput).toHaveAttribute("aria-autocomplete", "list")
-    expect(searchInput).toHaveAttribute("aria-controls")
+    expect(screen.getAllByRole("combobox")).toEqual([trigger])
+    expect(trigger).toHaveAttribute("aria-expanded", "true")
+    expect(trigger).toHaveAttribute("aria-controls", listbox.id)
     await waitFor(() => {
-      expect(searchInput).toHaveAttribute("aria-activedescendant")
+      expect(trigger).toHaveAttribute("aria-activedescendant")
       expect(listbox).not.toHaveAttribute("aria-activedescendant")
     })
+    expect(searchInput).not.toHaveAttribute("aria-controls")
+    expect(searchInput).not.toHaveAttribute("aria-activedescendant")
+  })
+
+  it("keeps searchable input outside listbox ownership", () => {
+    renderSelect({ withSearch: true, defaultOpen: true })
+    const searchInput = screen.getByRole("searchbox", { name: /search options/i })
+    const listbox = screen.getByRole("listbox")
+
+    expect(listbox).not.toContainElement(searchInput)
+  })
+
+  it("excludes decorative indicators from option names", () => {
+    renderSelect({ defaultOpen: true, defaultValue: "banana" })
+
+    expect(screen.getByRole("option", { name: "Banana" })).toBeInTheDocument()
+    expect(screen.queryByRole("option", { name: /✓/ })).not.toBeInTheDocument()
+  })
+
+  it("does not activate a filtered-out highlighted option", async () => {
+    const onChange = vi.fn()
+    renderSelect({ withSearch: true, defaultOpen: true, highlighted: "banana", onChange })
+
+    await userEvent.type(screen.getByRole("searchbox", { name: /search options/i }), "zzz")
+    await userEvent.keyboard("{Enter}")
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it("honors preventDefault in content key handlers", async () => {
+    const onChange = vi.fn()
+    render(
+      <Select variant="card" defaultOpen highlighted="banana" onChange={onChange}>
+        <Select.Trigger>
+          <Select.Value />
+        </Select.Trigger>
+        <Select.Content onKeyDown={(event) => event.preventDefault()}>
+          <Select.Item value="banana">Banana</Select.Item>
+        </Select.Content>
+      </Select>
+    )
+
+    screen.getByRole("listbox").focus()
+    await userEvent.keyboard("{Enter}")
+
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it("forwards root props and refs", () => {
+    const ref = createRef<HTMLDivElement>()
+    render(
+      <Select ref={ref} data-testid="select-root" variant="card">
+        <Select.Trigger>
+          <Select.Value />
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="banana">Banana</Select.Item>
+        </Select.Content>
+      </Select>
+    )
+
+    expect(screen.getByTestId("select-root")).toBe(ref.current)
   })
 
   it("renders selected tags without nested controls in multiple mode", async () => {
@@ -273,7 +626,7 @@ describe("Select", () => {
   it("removes a selected tag by selecting its option again", async () => {
     const onChange = vi.fn()
     renderSelect({ multiple: true, defaultValue: ["apple", "banana"], onChange })
-    await userEvent.click(screen.getByRole("button"))
+    await userEvent.click(getSelectTrigger())
     await userEvent.click(screen.getByRole("option", { name: /Apple/i }))
     expect(onChange).toHaveBeenCalledWith(["banana"])
   })
@@ -290,7 +643,7 @@ describe("Select form submission", () => {
     required,
     items = ["Apple", "Banana", "Cherry"],
   }: {
-    name: string
+    name?: string
     defaultValue?: string | string[]
     multiple?: boolean
     defaultOpen?: boolean
@@ -298,12 +651,25 @@ describe("Select form submission", () => {
     required?: boolean
     items?: string[]
   }) {
-    const props: any = { variant: "card", name, children: null }
-    if (multiple) props.multiple = true
-    if (defaultValue !== undefined) props.defaultValue = defaultValue
-    if (defaultOpen !== undefined) props.defaultOpen = defaultOpen
-    if (disabled) props.disabled = true
-    if (required) props.required = true
+    const commonProps = {
+      variant: "card" as const,
+      name,
+      children: null,
+      ...(defaultOpen !== undefined ? { defaultOpen } : {}),
+      ...(disabled ? { disabled: true } : {}),
+      ...(required ? { required: true } : {}),
+    }
+    const props: SelectProps = multiple
+      ? {
+          ...commonProps,
+          multiple: true,
+          ...(Array.isArray(defaultValue) ? { defaultValue } : {}),
+        }
+      : {
+          ...commonProps,
+          multiple: false,
+          ...(typeof defaultValue === "string" ? { defaultValue } : {}),
+        }
 
     return render(
       <form data-testid="form">
@@ -354,8 +720,13 @@ describe("Select form submission", () => {
     const form = screen.getByTestId("form") as HTMLFormElement
 
     expect(form.checkValidity()).toBe(false)
+    expect(form.reportValidity()).toBe(false)
+    expect(getSelectTrigger()).toHaveFocus()
+    expect(getSelectTrigger()).toHaveAttribute("aria-required", "true")
+    expect(screen.getAllByRole("combobox")).toHaveLength(1)
+    expect(form.querySelector("select[required]")).toHaveAttribute("aria-hidden", "true")
 
-    await userEvent.click(screen.getByRole("button"))
+    await userEvent.click(getSelectTrigger())
     await userEvent.click(screen.getByRole("option", { name: /banana/i }))
     expect(form.checkValidity()).toBe(true)
 
@@ -374,9 +745,51 @@ describe("Select form submission", () => {
       </form>
     )
     expect((screen.getByTestId("form") as HTMLFormElement).checkValidity()).toBe(false)
-    await userEvent.click(screen.getByRole("button"))
+    const multiSelect = screen.getByTestId("form").querySelector("select[multiple][required]")
+    expect(multiSelect).toHaveAttribute("aria-hidden", "true")
+    expect(screen.getByTestId("form").querySelector("input[type='checkbox'][required]")).toHaveAttribute("aria-hidden", "true")
+    await userEvent.click(getSelectTrigger())
     await userEvent.click(screen.getByRole("option", { name: /apple/i }))
     expect((screen.getByTestId("form") as HTMLFormElement).checkValidity()).toBe(true)
+  })
+
+  it("validates required unnamed selects without contributing FormData", async () => {
+    renderFormSelect({ required: true })
+    const form = screen.getByTestId("form") as HTMLFormElement
+
+    expect(form.reportValidity()).toBe(false)
+    expect(getSelectTrigger()).toHaveFocus()
+    await waitFor(() => expect(getSelectTrigger()).toHaveAttribute("aria-invalid", "true"))
+    expect(new FormData(form).entries().next().done).toBe(true)
+
+    await userEvent.click(getSelectTrigger())
+    expect(screen.getByRole("listbox")).toHaveAttribute("aria-required", "true")
+    expect(screen.getByRole("listbox")).toHaveAttribute("aria-invalid", "true")
+    await userEvent.click(screen.getByRole("option", { name: /banana/i }))
+    expect(form.checkValidity()).toBe(true)
+    expect(new FormData(form).entries().next().done).toBe(true)
+  })
+
+  it("propagates required and invalid semantics to searchable visible controls", () => {
+    render(
+      <form data-testid="form">
+        <Select variant="card" name="fruit" required aria-invalid defaultOpen>
+          <Select.Trigger>
+            <Select.Value placeholder="Pick" />
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Search />
+            <Select.Item value="apple">Apple</Select.Item>
+          </Select.Content>
+        </Select>
+      </form>
+    )
+
+    expect(getSelectTrigger()).toHaveAttribute("aria-required", "true")
+    expect(getSelectTrigger()).toHaveAttribute("aria-invalid", "true")
+    expect(screen.getByRole("searchbox", { name: /search options/i })).toHaveAttribute("aria-required", "true")
+    expect(screen.getByRole("searchbox", { name: /search options/i })).toHaveAttribute("aria-invalid", "true")
+    expect(screen.getByTestId("form").querySelector("select[required]")).toHaveAttribute("aria-hidden", "true")
   })
 
   it("updates hidden input when selection changes", async () => {
@@ -386,6 +799,38 @@ describe("Select form submission", () => {
     const form = screen.getByTestId("form") as HTMLFormElement
     const formData = new FormData(form)
     expect(formData.get("fruit")).toBe("banana")
+  })
+
+  it("resets uncontrolled single and multiple selects with native form reset", async () => {
+    renderFormSelect({ name: "fruit", defaultValue: "banana", defaultOpen: true })
+    await userEvent.click(screen.getByRole("option", { name: /cherry/i }))
+
+    let form = screen.getByTestId("form") as HTMLFormElement
+    expect(new FormData(form).get("fruit")).toBe("cherry")
+
+    form.reset()
+    await waitFor(() => expect(new FormData(form).get("fruit")).toBe("banana"))
+
+    render(
+      <form data-testid="multi-form">
+        <Select variant="card" name="fruits" multiple defaultValue={["apple"]} defaultOpen>
+          <Select.Trigger>
+            <Select.Tags placeholder="Pick" />
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="apple">Apple</Select.Item>
+            <Select.Item value="banana">Banana</Select.Item>
+          </Select.Content>
+        </Select>
+      </form>
+    )
+
+    await userEvent.click(screen.getByRole("option", { name: /banana/i }))
+    form = screen.getByTestId("multi-form") as HTMLFormElement
+    expect(new FormData(form).getAll("fruits")).toEqual(["apple", "banana"])
+
+    form.reset()
+    await waitFor(() => expect(new FormData(form).getAll("fruits")).toEqual(["apple"]))
   })
 
   it("does not render hidden input when name prop is omitted", () => {

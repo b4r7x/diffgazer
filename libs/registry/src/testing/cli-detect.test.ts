@@ -50,4 +50,33 @@ describe("detectSourceDir", () => {
       rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it("detects aliases from Vite tsconfig.app.json", () => {
+    const root = mkdtempSync(join(tmpdir(), "registry-source-"));
+    try {
+      writeFileSync(join(root, "tsconfig.app.json"), JSON.stringify({
+        compilerOptions: { paths: { "@/*": ["./src/*"] } },
+      }));
+
+      expect(detectSourceDir(root)).toBe("src");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("detects aliases through local extends", () => {
+    const root = mkdtempSync(join(tmpdir(), "registry-source-"));
+    try {
+      writeFileSync(join(root, "tsconfig.base.json"), JSON.stringify({
+        compilerOptions: { paths: { "@/*": ["./app/*"] } },
+      }));
+      writeFileSync(join(root, "tsconfig.json"), JSON.stringify({
+        extends: "./tsconfig.base.json",
+      }));
+
+      expect(detectSourceDir(root)).toBe("app");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });

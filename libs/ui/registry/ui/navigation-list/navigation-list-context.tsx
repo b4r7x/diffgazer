@@ -7,6 +7,7 @@ export interface NavigationListContextValue {
   highlightedId: string | null;
   activate: (id: string) => void;
   highlight: (id: string) => void;
+  focusContainer: () => void;
   focused: boolean;
   idPrefix: string;
 }

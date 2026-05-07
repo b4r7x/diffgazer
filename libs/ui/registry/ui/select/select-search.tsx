@@ -3,7 +3,6 @@
 import { useLayoutEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useSelectContext } from "./select-context";
-import { toOptionId } from "./select-utils";
 
 export interface SelectSearchProps {
   placeholder?: string;
@@ -24,12 +23,7 @@ export function SelectSearch({
   className,
   "aria-label": ariaLabel,
 }: SelectSearchProps) {
-  const { open, searchQuery, onSearchChange, variant, searchInputRef, highlighted, listboxId, setHasSearch } = useSelectContext("SelectSearch");
-
-  useLayoutEffect(() => {
-    setHasSearch(true);
-    return () => setHasSearch(false);
-  }, [setHasSearch]);
+  const { open, searchQuery, onSearchChange, variant, searchInputRef, ariaInvalid, required } = useSelectContext("SelectSearch");
 
   useLayoutEffect(() => {
     if (open) searchInputRef.current?.focus();
@@ -44,13 +38,10 @@ export function SelectSearch({
       </span>
       <input
         ref={searchInputRef}
-        type="text"
-        role="combobox"
+        type="search"
         aria-label={ariaLabel ?? "Search options"}
-        aria-expanded={open}
-        aria-controls={listboxId}
-        aria-activedescendant={highlighted ? toOptionId(listboxId, highlighted) : undefined}
-        aria-autocomplete="list"
+        aria-required={required}
+        aria-invalid={ariaInvalid}
         value={searchQuery}
         onChange={(e) => onSearchChange(e.target.value)}
         placeholder={placeholder}

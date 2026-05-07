@@ -1,4 +1,4 @@
-import type { HTMLAttributes, Ref } from "react";
+import type { ComponentPropsWithRef } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
@@ -18,12 +18,39 @@ export const cardVariants = cva("w-full relative border border-border bg-backgro
   defaultVariants: { variant: "default", size: "default" },
 });
 
-export type CardProps = HTMLAttributes<HTMLElement> &
-  VariantProps<typeof cardVariants> & {
-    as?: "div" | "article" | "section" | "aside";
-    ref?: Ref<HTMLElement>;
+type CardOwnProps = VariantProps<typeof cardVariants>;
+type CardElement = "div" | "article" | "section" | "aside";
+type CardElementProps<T extends CardElement> = Omit<
+  ComponentPropsWithRef<T>,
+  keyof CardOwnProps | "as"
+> &
+  CardOwnProps & {
+    as: T;
   };
 
-export function Card({ className, variant, size, as: Tag = "div", ref, ...props }: CardProps) {
-  return <Tag data-slot="card" ref={ref as Ref<never>} className={cn(cardVariants({ variant, size }), className)} {...props} />;
+export type CardProps =
+  | (Omit<CardElementProps<"div">, "as"> & { as?: "div" })
+  | CardElementProps<"article">
+  | CardElementProps<"section">
+  | CardElementProps<"aside">;
+
+export function Card(props: CardProps) {
+  const { className, variant, size } = props;
+  const resolvedClassName = cn(cardVariants({ variant, size }), className);
+
+  if (props.as === "article") {
+    const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, ...articleProps } = props;
+    return <article data-slot="card" ref={ref} className={resolvedClassName} {...articleProps} />;
+  }
+  if (props.as === "section") {
+    const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, ...sectionProps } = props;
+    return <section data-slot="card" ref={ref} className={resolvedClassName} {...sectionProps} />;
+  }
+  if (props.as === "aside") {
+    const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, ...asideProps } = props;
+    return <aside data-slot="card" ref={ref} className={resolvedClassName} {...asideProps} />;
+  }
+
+  const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, ...divProps } = props;
+  return <div data-slot="card" ref={ref} className={resolvedClassName} {...divProps} />;
 }

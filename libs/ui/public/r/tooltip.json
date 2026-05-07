@@ -11,7 +11,7 @@
   "files": [
     {
       "path": "registry/ui/tooltip/index.ts",
-      "content": "import { TooltipRoot, type TooltipProps } from \"./tooltip\";\nimport {\n  PopoverTrigger as TooltipTrigger,\n  type PopoverTriggerProps as TooltipTriggerProps,\n  type PopoverTriggerRenderProps as TooltipTriggerRenderProps,\n} from \"../popover/popover-trigger\";\nimport {\n  TooltipContent,\n  type TooltipContentProps,\n} from \"./tooltip-content\";\n\nconst Tooltip = Object.assign(TooltipRoot, {\n  Trigger: TooltipTrigger,\n  Content: TooltipContent,\n});\n\nexport { Tooltip, type TooltipProps };\nexport {\n  TooltipTrigger,\n  TooltipContent,\n  type TooltipTriggerProps,\n  type TooltipTriggerRenderProps,\n  type TooltipContentProps,\n};\n",
+      "content": "\"use client\";\n\nimport { TooltipRoot, type TooltipProps } from \"./tooltip\";\nimport {\n  PopoverTrigger as TooltipTrigger,\n  type PopoverTriggerProps as TooltipTriggerProps,\n  type PopoverTriggerRenderProps as TooltipTriggerRenderProps,\n} from \"../popover/popover-trigger\";\nimport {\n  TooltipContent,\n  type TooltipContentProps,\n} from \"./tooltip-content\";\n\nconst Tooltip = Object.assign(TooltipRoot, {\n  Trigger: TooltipTrigger,\n  Content: TooltipContent,\n});\n\nexport { Tooltip, type TooltipProps };\nexport {\n  TooltipTrigger,\n  TooltipContent,\n  type TooltipTriggerProps,\n  type TooltipTriggerRenderProps,\n  type TooltipContentProps,\n};\n",
       "type": "registry:ui"
     },
     {

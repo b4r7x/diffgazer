@@ -9,7 +9,7 @@
     "prebuild": "pnpm prepare:generated",
     "build": "DOCS_PRERENDER=0 vite build",
     "build:prerender": "DOCS_PRERENDER=1 vite build",
-    "preview": "npx serve .output/public",
+    "preview": "vite preview --outDir .output/public",
     "pretest": "pnpm prepare:generated",
     "test": "vitest run",
     "format": "biome format",

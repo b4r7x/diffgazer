@@ -1,7 +1,11 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { resolve } from "node:path";
+import { basename, relative, resolve } from "node:path";
 import { z } from "zod";
+import {
+  collectPathParityErrors,
+  collectTreeParityErrors,
+} from "./artifact-validation-lib.mjs";
 
 export const ArtifactSourceSchema = z.object({
   workspaceDir: z.string().min(1),
@@ -83,6 +87,179 @@ function directoryHasFiles(dirPath) {
   return false;
 }
 
+function toPosixPath(path) {
+  return path.split(/[\\/]+/).join("/");
+}
+
+function getGeneratedFiles(artifact) {
+  if (Array.isArray(artifact.generatedFiles)) return artifact.generatedFiles;
+  return Object.values(artifact.manifest.generated ?? {});
+}
+
+function readJson(path) {
+  return JSON.parse(readFileSync(path, "utf-8"));
+}
+
+function resolveRegistryFilePath(registryDir, registryFilePath) {
+  const relativePath = registryFilePath.replace(/^registry[\\/]/, "");
+  return resolve(registryDir, relativePath);
+}
+
+function getRegistryCssFilePaths(artifact) {
+  const registryDirRel = artifact.manifest.source?.registryDir;
+  if (!registryDirRel) return [];
+
+  const registryDir = resolve(artifact.artifactRoot, registryDirRel);
+  const registryIndex = resolve(registryDir, "registry.json");
+  if (!existsSync(registryIndex)) return [];
+
+  const registry = readJson(registryIndex);
+  const seen = new Set();
+  const cssFiles = [];
+
+  for (const item of registry.items ?? []) {
+    if (item.type === "registry:theme") continue;
+    for (const file of item.files ?? []) {
+      if (typeof file.path !== "string" || !file.path.endsWith(".css")) continue;
+      const cssPath = resolveRegistryFilePath(registryDir, file.path);
+      if (seen.has(cssPath)) continue;
+      seen.add(cssPath);
+      cssFiles.push(cssPath);
+    }
+  }
+
+  return cssFiles;
+}
+
+export function getMaterializedPrimaryStylesContent(artifact) {
+  const stylesDirRel = artifact.manifest.source?.stylesDir;
+  if (!stylesDirRel) return null;
+
+  const stylesPath = resolve(artifact.artifactRoot, stylesDirRel, "styles.css");
+  if (!existsSync(stylesPath)) return null;
+
+  const seed = readFileSync(stylesPath, "utf-8")
+    .replace(/^\/\* Canonical style seed\.[\s\S]*?\*\/\n?/, "/* Canonical materialized component CSS entry for the docs app. */\n")
+    .trimEnd();
+  const chunks = [seed];
+  for (const cssPath of getRegistryCssFilePaths(artifact)) {
+    if (existsSync(cssPath)) {
+      chunks.push(readFileSync(cssPath, "utf-8").trimEnd());
+    }
+  }
+
+  return `${chunks.filter(Boolean).join("\n\n")}\n`;
+}
+
+export function materializePrimaryStylesFromArtifact(docsRoot, artifact) {
+  const materialized = getMaterializedPrimaryStylesContent(artifact);
+  if (materialized == null) return;
+  writeFileSync(resolve(docsRoot, "styles/styles.css"), materialized);
+}
+
+function collectArtifactOutputParityErrors(params) {
+  const {
+    docsRoot,
+    primaryLibraryId,
+    artifacts = [],
+  } = params;
+  const errors = [];
+  const secondaryLibraryExamplePrefixes = artifacts
+    .filter((artifact) => artifact.id !== primaryLibraryId)
+    .map((artifact) => `examples/${artifact.id}/`);
+  const primaryRegistryOutputDir = resolve(docsRoot, "registry");
+  const primaryRegistryOutputFilter = (path) => {
+    const relPath = `${toPosixPath(relative(primaryRegistryOutputDir, path))}/`;
+    return !secondaryLibraryExamplePrefixes.some((prefix) => relPath.startsWith(prefix));
+  };
+
+  for (const artifact of artifacts) {
+    const libraryId = artifact.id;
+
+    errors.push(...collectTreeParityErrors(
+      resolve(artifact.artifactRoot, artifact.manifest.docs.contentDir),
+      resolve(docsRoot, "content/docs", libraryId),
+      `${libraryId} docs content sync`,
+    ));
+
+    errors.push(...collectTreeParityErrors(
+      resolve(artifact.artifactRoot, artifact.manifest.registry.publicDir),
+      resolve(docsRoot, "public/r", libraryId),
+      `${libraryId} public registry sync`,
+    ));
+
+    if (artifact.manifest.docs.assetsDir) {
+      const artifactAssetsDir = resolve(artifact.artifactRoot, artifact.manifest.docs.assetsDir);
+      const outputAssetsDir = resolve(docsRoot, "public/library-assets", libraryId);
+      if (existsSync(artifactAssetsDir)) {
+        errors.push(...collectTreeParityErrors(
+          artifactAssetsDir,
+          outputAssetsDir,
+          `${libraryId} assets sync`,
+        ));
+      } else if (existsSync(outputAssetsDir) && directoryHasFiles(outputAssetsDir)) {
+        errors.push(`${libraryId} assets sync: stale output directory ${outputAssetsDir}`);
+      }
+    }
+
+    if (libraryId === primaryLibraryId) {
+      if (artifact.manifest.docs.generatedDir) {
+        errors.push(...collectTreeParityErrors(
+          resolve(artifact.artifactRoot, artifact.manifest.docs.generatedDir),
+          resolve(docsRoot, "src/generated", libraryId),
+          `${libraryId} generated sync`,
+        ));
+      }
+
+      if (artifact.manifest.source?.registryDir) {
+        errors.push(...collectTreeParityErrors(
+          resolve(artifact.artifactRoot, artifact.manifest.source.registryDir),
+          resolve(docsRoot, "registry"),
+          `${libraryId} source registry sync`,
+          { artifactFilter: primaryRegistryOutputFilter },
+        ));
+      }
+
+      if (artifact.manifest.source?.stylesDir) {
+        const artifactStylesDir = resolve(artifact.artifactRoot, artifact.manifest.source.stylesDir);
+        const docsStylesDir = resolve(docsRoot, "styles");
+        errors.push(...collectTreeParityErrors(
+          artifactStylesDir,
+          docsStylesDir,
+          `${libraryId} styles sync`,
+          {
+            sourceFilter: (path) => basename(path) !== "styles.css",
+            artifactFilter: (path) => basename(path) !== "styles.css",
+          },
+        ));
+
+        const expectedStyles = getMaterializedPrimaryStylesContent(artifact);
+        if (expectedStyles != null) {
+          const actualStylesPath = resolve(docsStylesDir, "styles.css");
+          const actualStyles = existsSync(actualStylesPath)
+            ? readFileSync(actualStylesPath, "utf-8")
+            : null;
+          if (actualStyles !== expectedStyles) {
+            errors.push(`${libraryId} styles sync: materialized styles.css differs from artifact source styles plus registry CSS`);
+          }
+        }
+      }
+
+      continue;
+    }
+
+    for (const generatedFile of getGeneratedFiles(artifact)) {
+      errors.push(...collectPathParityErrors(
+        resolve(artifact.artifactRoot, generatedFile),
+        resolve(docsRoot, "src/generated", libraryId, basename(generatedFile)),
+        `${libraryId} generated sync ${generatedFile}`,
+      ));
+    }
+  }
+
+  return errors;
+}
+
 export function collectArtifactSyncValidationErrors(params) {
   const {
     docsRoot,
@@ -137,6 +314,8 @@ export function collectArtifactSyncValidationErrors(params) {
       errors.push(`Generated namespace is empty: ${generatedNamespaceRelPath}`);
     }
   }
+
+  errors.push(...collectArtifactOutputParityErrors(params));
 
   return errors;
 }

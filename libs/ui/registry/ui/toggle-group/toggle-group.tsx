@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, type ReactNode, type Ref, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { Children, isValidElement, useCallback, useMemo, useRef, type ReactNode, type Ref, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useNavigation } from "@/hooks/use-navigation";
 import { useControllableState } from "@/hooks/use-controllable-state";
+import { useFormReset } from "@/hooks/use-form-reset";
 import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
 import { ToggleGroupContext } from "./toggle-group-context";
@@ -10,6 +11,8 @@ import { ToggleGroupContext } from "./toggle-group-context";
 export interface ToggleGroupProps {
   value?: string | null;
   defaultValue?: string | null;
+  onValueChange?: (value: string | null) => void;
+  /** @deprecated Use `onValueChange` for controlled value updates. */
   onChange?: (value: string | null) => void;
   allowDeselect?: boolean;
   disabled?: boolean;
@@ -21,14 +24,37 @@ export interface ToggleGroupProps {
   onKeyDown?: (event: ReactKeyboardEvent) => void;
   label?: string;
   "aria-labelledby"?: string;
+  name?: string;
   className?: string;
   children: ReactNode;
   ref?: Ref<HTMLDivElement>;
 }
 
+interface ToggleGroupItemElementProps {
+  value?: string;
+  disabled?: boolean;
+  children?: ReactNode;
+}
+
+function collectToggleItems(children: ReactNode): Array<{ value: string; disabled: boolean }> {
+  const items: Array<{ value: string; disabled: boolean }> = [];
+
+  Children.forEach(children, (child) => {
+    if (!isValidElement<ToggleGroupItemElementProps>(child)) return;
+    if (typeof child.props.value === "string") {
+      items.push({ value: child.props.value, disabled: !!child.props.disabled });
+      return;
+    }
+    items.push(...collectToggleItems(child.props.children));
+  });
+
+  return items;
+}
+
 export function ToggleGroup({
   value: controlledValue,
   defaultValue,
+  onValueChange,
   onChange,
   allowDeselect = false,
   disabled = false,
@@ -40,18 +66,20 @@ export function ToggleGroup({
   onKeyDown,
   label,
   "aria-labelledby": ariaLabelledBy,
+  name,
   className,
   children,
   ref,
 }: ToggleGroupProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [items, setItems] = useState<Array<{ value: string; disabled: boolean }>>([]);
+  const items = useMemo(() => collectToggleItems(children), [children]);
 
-  const [value, setValue] = useControllableState<string | null>({
+  const [value, setValue, isControlled] = useControllableState<string | null>({
     value: controlledValue,
     defaultValue: defaultValue ?? null,
-    onChange,
+    onChange: onValueChange ?? onChange,
   });
+  useFormReset(containerRef, defaultValue ?? null, setValue, !isControlled);
 
   const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({
     value: controlledHighlighted,
@@ -63,19 +91,6 @@ export function ToggleGroup({
     setValue((prev) => (prev === newValue && allowDeselect) ? null : newValue);
   }, [allowDeselect, setValue]);
 
-  const registerItem = useCallback((itemValue: string, itemDisabled: boolean) => {
-    setItems((current) => {
-      const index = current.findIndex((item) => item.value === itemValue);
-      if (index === -1) return [...current, { value: itemValue, disabled: itemDisabled }];
-      const next = [...current];
-      next[index] = { value: itemValue, disabled: itemDisabled };
-      return next;
-    });
-    return () => {
-      setItems((current) => current.filter((item) => item.value !== itemValue));
-    };
-  }, []);
-
   const firstEnabledValue = items.find((item) => !item.disabled)?.value ?? null;
 
   const { onKeyDown: navKeyDown } = useNavigation({
@@ -84,32 +99,22 @@ export function ToggleGroup({
     orientation,
     wrap,
     moveFocus: true,
+    upKeys: ["ArrowUp", "ArrowLeft"],
+    downKeys: ["ArrowDown", "ArrowRight"],
     value: highlightedValue,
     enabled: !disabled,
-    onValueChange: handleValueChange,
+    onValueChange: allowDeselect ? setHighlightedValue : handleValueChange,
   });
 
   const handleKeyDown = (e: ReactKeyboardEvent) => {
-    // Support 4-directional arrow navigation regardless of orientation
-    const crossAxisMap: Record<string, string> = orientation === "horizontal"
-      ? { ArrowUp: "ArrowLeft", ArrowDown: "ArrowRight" }
-      : { ArrowLeft: "ArrowUp", ArrowRight: "ArrowDown" };
-
-    const mappedKey = crossAxisMap[e.key];
-    if (mappedKey) {
-      const syntheticEvent = Object.create(e, {
-        key: { value: mappedKey },
-      }) as ReactKeyboardEvent;
-      navKeyDown(syntheticEvent);
-    } else {
-      navKeyDown(e);
-    }
     onKeyDown?.(e);
+    if (e.defaultPrevented) return;
+    navKeyDown(e);
   };
 
   const contextValue = useMemo(() => ({
     value,
-    onChange: handleValueChange,
+    onValueChange: handleValueChange,
     onHighlightChange: setHighlightedValue,
     disabled,
     size,
@@ -117,8 +122,7 @@ export function ToggleGroup({
     containerRef,
     allowDeselect,
     firstEnabledValue,
-    registerItem,
-  }), [value, handleValueChange, setHighlightedValue, disabled, size, highlightedValue, allowDeselect, firstEnabledValue, registerItem]);
+  }), [value, handleValueChange, setHighlightedValue, disabled, size, highlightedValue, allowDeselect, firstEnabledValue]);
 
   return (
     <ToggleGroupContext value={contextValue}>
@@ -127,7 +131,7 @@ export function ToggleGroup({
         role={allowDeselect ? "group" : "radiogroup"}
         aria-label={label}
         aria-labelledby={ariaLabelledBy}
-        aria-orientation={orientation}
+        aria-orientation={allowDeselect ? undefined : orientation}
         aria-disabled={disabled || undefined}
         onKeyDown={handleKeyDown}
         className={cn(
@@ -137,6 +141,9 @@ export function ToggleGroup({
           className,
         )}
       >
+        {name && value != null && (
+          <input type="hidden" name={name} value={value} disabled={disabled} />
+        )}
         {children}
       </div>
     </ToggleGroupContext>

@@ -11,10 +11,35 @@
   "props": {},
   "source": {
     "registry/ui/tooltip/index.ts": {
-      "raw": "import { TooltipRoot, type TooltipProps } from \"./tooltip\";\nimport {\n  PopoverTrigger as TooltipTrigger,\n  type PopoverTriggerProps as TooltipTriggerProps,\n  type PopoverTriggerRenderProps as TooltipTriggerRenderProps,\n} from \"../popover/popover-trigger\";\nimport {\n  TooltipContent,\n  type TooltipContentProps,\n} from \"./tooltip-content\";\n\nconst Tooltip = Object.assign(TooltipRoot, {\n  Trigger: TooltipTrigger,\n  Content: TooltipContent,\n});\n\nexport { Tooltip, type TooltipProps };\nexport {\n  TooltipTrigger,\n  TooltipContent,\n  type TooltipTriggerProps,\n  type TooltipTriggerRenderProps,\n  type TooltipContentProps,\n};\n",
+      "raw": "\"use client\";\n\nimport { TooltipRoot, type TooltipProps } from \"./tooltip\";\nimport {\n  PopoverTrigger as TooltipTrigger,\n  type PopoverTriggerProps as TooltipTriggerProps,\n  type PopoverTriggerRenderProps as TooltipTriggerRenderProps,\n} from \"../popover/popover-trigger\";\nimport {\n  TooltipContent,\n  type TooltipContentProps,\n} from \"./tooltip-content\";\n\nconst Tooltip = Object.assign(TooltipRoot, {\n  Trigger: TooltipTrigger,\n  Content: TooltipContent,\n});\n\nexport { Tooltip, type TooltipProps };\nexport {\n  TooltipTrigger,\n  TooltipContent,\n  type TooltipTriggerProps,\n  type TooltipTriggerRenderProps,\n  type TooltipContentProps,\n};\n",
       "highlighted": [
         {
           "number": 1,
+          "content": [
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "use client",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
           "content": [
             {
               "text": "import",
@@ -83,7 +108,7 @@
           ]
         },
         {
-          "number": 2,
+          "number": 4,
           "content": [
             {
               "text": "import",
@@ -100,7 +125,7 @@
           ]
         },
         {
-          "number": 3,
+          "number": 5,
           "content": [
             {
               "text": "  PopoverTrigger ",
@@ -121,7 +146,7 @@
           ]
         },
         {
-          "number": 4,
+          "number": 6,
           "content": [
             {
               "text": "  ",
@@ -150,7 +175,7 @@
           ]
         },
         {
-          "number": 5,
+          "number": 7,
           "content": [
             {
               "text": "  ",
@@ -179,7 +204,7 @@
           ]
         },
         {
-          "number": 6,
+          "number": 8,
           "content": [
             {
               "text": "}",
@@ -216,7 +241,7 @@
           ]
         },
         {
-          "number": 7,
+          "number": 9,
           "content": [
             {
               "text": "import",
@@ -233,7 +258,7 @@
           ]
         },
         {
-          "number": 8,
+          "number": 10,
           "content": [
             {
               "text": "  TooltipContent",
@@ -246,7 +271,7 @@
           ]
         },
         {
-          "number": 9,
+          "number": 11,
           "content": [
             {
               "text": "  ",
@@ -267,7 +292,7 @@
           ]
         },
         {
-          "number": 10,
+          "number": 12,
           "content": [
             {
               "text": "}",
@@ -304,11 +329,11 @@
           ]
         },
         {
-          "number": 11,
+          "number": 13,
           "content": []
         },
         {
-          "number": 12,
+          "number": 14,
           "content": [
             {
               "text": "const",
@@ -365,7 +390,7 @@
           ]
         },
         {
-          "number": 13,
+          "number": 15,
           "content": [
             {
               "text": "  Trigger",
@@ -386,7 +411,7 @@
           ]
         },
         {
-          "number": 14,
+          "number": 16,
           "content": [
             {
               "text": "  Content",
@@ -407,7 +432,7 @@
           ]
         },
         {
-          "number": 15,
+          "number": 17,
           "content": [
             {
               "text": "}",
@@ -424,11 +449,11 @@
           ]
         },
         {
-          "number": 16,
+          "number": 18,
           "content": []
         },
         {
-          "number": 17,
+          "number": 19,
           "content": [
             {
               "text": "export",
@@ -469,7 +494,7 @@
           ]
         },
         {
-          "number": 18,
+          "number": 20,
           "content": [
             {
               "text": "export",
@@ -486,7 +511,7 @@
           ]
         },
         {
-          "number": 19,
+          "number": 21,
           "content": [
             {
               "text": "  TooltipTrigger",
@@ -499,52 +524,10 @@
           ]
         },
         {
-          "number": 20,
-          "content": [
-            {
-              "text": "  TooltipContent",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 21,
-          "content": [
-            {
-              "text": "  ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "type",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " TooltipTriggerProps",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
           "number": 22,
           "content": [
             {
-              "text": "  ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "type",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " TooltipTriggerRenderProps",
+              "text": "  TooltipContent",
               "color": "var(--code-variable)"
             },
             {
@@ -565,7 +548,7 @@
               "color": "var(--code-keyword)"
             },
             {
-              "text": " TooltipContentProps",
+              "text": " TooltipTriggerProps",
               "color": "var(--code-variable)"
             },
             {
@@ -578,13 +561,55 @@
           "number": 24,
           "content": [
             {
-              "text": "};",
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " TooltipTriggerRenderProps",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
               "color": "var(--code-operator)"
             }
           ]
         },
         {
           "number": 25,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " TooltipContentProps",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 26,
+          "content": [
+            {
+              "text": "};",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 27,
           "content": []
         }
       ]
@@ -2493,10 +2518,35 @@
       ]
     }
   },
-  "mergedSource": "import { TooltipRoot, type TooltipProps } from \"./tooltip\";\nimport {\n  PopoverTrigger as TooltipTrigger,\n  type PopoverTriggerProps as TooltipTriggerProps,\n  type PopoverTriggerRenderProps as TooltipTriggerRenderProps,\n} from \"../popover/popover-trigger\";\nimport {\n  TooltipContent,\n  type TooltipContentProps,\n} from \"./tooltip-content\";\n\nconst Tooltip = Object.assign(TooltipRoot, {\n  Trigger: TooltipTrigger,\n  Content: TooltipContent,\n});\n\nexport { Tooltip, type TooltipProps };\nexport {\n  TooltipTrigger,\n  TooltipContent,\n  type TooltipTriggerProps,\n  type TooltipTriggerRenderProps,\n  type TooltipContentProps,\n};\n\n\n\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { PopoverRoot } from \"../popover/popover\";\nimport { PopoverTrigger } from \"../popover/popover-trigger\";\nimport { TooltipContent } from \"./tooltip-content\";\n\nexport interface TooltipProps {\n  children: ReactNode;\n  content?: ReactNode;\n  enabled?: boolean;\n  delayMs?: number;\n  closeDelayMs?: number;\n  open?: boolean;\n  defaultOpen?: boolean;\n  onOpenChange?: (open: boolean) => void;\n}\n\nexport function TooltipRoot({\n  children,\n  content,\n  enabled = true,\n  delayMs = 500,\n  closeDelayMs,\n  open,\n  defaultOpen,\n  onOpenChange,\n}: TooltipProps) {\n  return (\n    <PopoverRoot\n      triggerMode=\"hover\"\n      enabled={enabled}\n      delayMs={delayMs}\n      closeDelayMs={closeDelayMs}\n      open={open}\n      defaultOpen={defaultOpen}\n      onOpenChange={onOpenChange}\n    >\n      {content != null ? (\n        <>\n          <PopoverTrigger>{children}</PopoverTrigger>\n          <TooltipContent>{content}</TooltipContent>\n        </>\n      ) : (\n        children\n      )}\n    </PopoverRoot>\n  );\n}\n\n\n\n\"use client\";\n\nimport { cn } from \"@/lib/utils\";\nimport { PopoverContent, type PopoverContentProps } from \"../popover/popover-content\";\n\nexport interface TooltipContentProps extends Omit<PopoverContentProps, \"autoFocus\"> {}\n\nexport function TooltipContent({\n  children,\n  side = \"top\",\n  align = \"center\",\n  sideOffset = 4,\n  className,\n  ...rest\n}: TooltipContentProps) {\n  return (\n    <PopoverContent\n      side={side}\n      align={align}\n      sideOffset={sideOffset}\n      className={cn(\n        \"max-w-xs border border-border bg-background px-2 py-1 font-mono text-xs text-foreground shadow-md\",\n        className,\n      )}\n      {...rest}\n    >\n      {children}\n    </PopoverContent>\n  );\n}\n",
+  "mergedSource": "\"use client\";\n\nimport { TooltipRoot, type TooltipProps } from \"./tooltip\";\nimport {\n  PopoverTrigger as TooltipTrigger,\n  type PopoverTriggerProps as TooltipTriggerProps,\n  type PopoverTriggerRenderProps as TooltipTriggerRenderProps,\n} from \"../popover/popover-trigger\";\nimport {\n  TooltipContent,\n  type TooltipContentProps,\n} from \"./tooltip-content\";\n\nconst Tooltip = Object.assign(TooltipRoot, {\n  Trigger: TooltipTrigger,\n  Content: TooltipContent,\n});\n\nexport { Tooltip, type TooltipProps };\nexport {\n  TooltipTrigger,\n  TooltipContent,\n  type TooltipTriggerProps,\n  type TooltipTriggerRenderProps,\n  type TooltipContentProps,\n};\n\n\n\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { PopoverRoot } from \"../popover/popover\";\nimport { PopoverTrigger } from \"../popover/popover-trigger\";\nimport { TooltipContent } from \"./tooltip-content\";\n\nexport interface TooltipProps {\n  children: ReactNode;\n  content?: ReactNode;\n  enabled?: boolean;\n  delayMs?: number;\n  closeDelayMs?: number;\n  open?: boolean;\n  defaultOpen?: boolean;\n  onOpenChange?: (open: boolean) => void;\n}\n\nexport function TooltipRoot({\n  children,\n  content,\n  enabled = true,\n  delayMs = 500,\n  closeDelayMs,\n  open,\n  defaultOpen,\n  onOpenChange,\n}: TooltipProps) {\n  return (\n    <PopoverRoot\n      triggerMode=\"hover\"\n      enabled={enabled}\n      delayMs={delayMs}\n      closeDelayMs={closeDelayMs}\n      open={open}\n      defaultOpen={defaultOpen}\n      onOpenChange={onOpenChange}\n    >\n      {content != null ? (\n        <>\n          <PopoverTrigger>{children}</PopoverTrigger>\n          <TooltipContent>{content}</TooltipContent>\n        </>\n      ) : (\n        children\n      )}\n    </PopoverRoot>\n  );\n}\n\n\n\n\"use client\";\n\nimport { cn } from \"@/lib/utils\";\nimport { PopoverContent, type PopoverContentProps } from \"../popover/popover-content\";\n\nexport interface TooltipContentProps extends Omit<PopoverContentProps, \"autoFocus\"> {}\n\nexport function TooltipContent({\n  children,\n  side = \"top\",\n  align = \"center\",\n  sideOffset = 4,\n  className,\n  ...rest\n}: TooltipContentProps) {\n  return (\n    <PopoverContent\n      side={side}\n      align={align}\n      sideOffset={sideOffset}\n      className={cn(\n        \"max-w-xs border border-border bg-background px-2 py-1 font-mono text-xs text-foreground shadow-md\",\n        className,\n      )}\n      {...rest}\n    >\n      {children}\n    </PopoverContent>\n  );\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
+      "content": [
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "use client",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "content": []
+    },
+    {
+      "number": 3,
       "content": [
         {
           "text": "import",
@@ -2565,7 +2615,7 @@
       ]
     },
     {
-      "number": 2,
+      "number": 4,
       "content": [
         {
           "text": "import",
@@ -2582,7 +2632,7 @@
       ]
     },
     {
-      "number": 3,
+      "number": 5,
       "content": [
         {
           "text": "  PopoverTrigger ",
@@ -2603,7 +2653,7 @@
       ]
     },
     {
-      "number": 4,
+      "number": 6,
       "content": [
         {
           "text": "  ",
@@ -2632,7 +2682,7 @@
       ]
     },
     {
-      "number": 5,
+      "number": 7,
       "content": [
         {
           "text": "  ",
@@ -2661,7 +2711,7 @@
       ]
     },
     {
-      "number": 6,
+      "number": 8,
       "content": [
         {
           "text": "}",
@@ -2698,7 +2748,7 @@
       ]
     },
     {
-      "number": 7,
+      "number": 9,
       "content": [
         {
           "text": "import",
@@ -2715,7 +2765,7 @@
       ]
     },
     {
-      "number": 8,
+      "number": 10,
       "content": [
         {
           "text": "  TooltipContent",
@@ -2728,7 +2778,7 @@
       ]
     },
     {
-      "number": 9,
+      "number": 11,
       "content": [
         {
           "text": "  ",
@@ -2749,7 +2799,7 @@
       ]
     },
     {
-      "number": 10,
+      "number": 12,
       "content": [
         {
           "text": "}",
@@ -2786,11 +2836,11 @@
       ]
     },
     {
-      "number": 11,
+      "number": 13,
       "content": []
     },
     {
-      "number": 12,
+      "number": 14,
       "content": [
         {
           "text": "const",
@@ -2847,7 +2897,7 @@
       ]
     },
     {
-      "number": 13,
+      "number": 15,
       "content": [
         {
           "text": "  Trigger",
@@ -2868,7 +2918,7 @@
       ]
     },
     {
-      "number": 14,
+      "number": 16,
       "content": [
         {
           "text": "  Content",
@@ -2889,7 +2939,7 @@
       ]
     },
     {
-      "number": 15,
+      "number": 17,
       "content": [
         {
           "text": "}",
@@ -2906,11 +2956,11 @@
       ]
     },
     {
-      "number": 16,
+      "number": 18,
       "content": []
     },
     {
-      "number": 17,
+      "number": 19,
       "content": [
         {
           "text": "export",
@@ -2951,7 +3001,7 @@
       ]
     },
     {
-      "number": 18,
+      "number": 20,
       "content": [
         {
           "text": "export",
@@ -2968,7 +3018,7 @@
       ]
     },
     {
-      "number": 19,
+      "number": 21,
       "content": [
         {
           "text": "  TooltipTrigger",
@@ -2981,52 +3031,10 @@
       ]
     },
     {
-      "number": 20,
-      "content": [
-        {
-          "text": "  TooltipContent",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 21,
-      "content": [
-        {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "type",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " TooltipTriggerProps",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
       "number": 22,
       "content": [
         {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "type",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " TooltipTriggerRenderProps",
+          "text": "  TooltipContent",
           "color": "var(--code-variable)"
         },
         {
@@ -3047,7 +3055,7 @@
           "color": "var(--code-keyword)"
         },
         {
-          "text": " TooltipContentProps",
+          "text": " TooltipTriggerProps",
           "color": "var(--code-variable)"
         },
         {
@@ -3060,21 +3068,63 @@
       "number": 24,
       "content": [
         {
-          "text": "};",
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "type",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " TooltipTriggerRenderProps",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
           "color": "var(--code-operator)"
         }
       ]
     },
     {
       "number": 25,
-      "content": []
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "type",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " TooltipContentProps",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
     },
     {
       "number": 26,
-      "content": []
+      "content": [
+        {
+          "text": "};",
+          "color": "var(--code-operator)"
+        }
+      ]
     },
     {
       "number": 27,
+      "content": []
+    },
+    {
+      "number": 28,
+      "content": []
+    },
+    {
+      "number": 29,
       "content": [
         {
           "text": "\"",
@@ -3095,11 +3145,11 @@
       ]
     },
     {
-      "number": 28,
+      "number": 30,
       "content": []
     },
     {
-      "number": 29,
+      "number": 31,
       "content": [
         {
           "text": "import",
@@ -3160,7 +3210,7 @@
       ]
     },
     {
-      "number": 30,
+      "number": 32,
       "content": [
         {
           "text": "import",
@@ -3213,7 +3263,7 @@
       ]
     },
     {
-      "number": 31,
+      "number": 33,
       "content": [
         {
           "text": "import",
@@ -3266,7 +3316,7 @@
       ]
     },
     {
-      "number": 32,
+      "number": 34,
       "content": [
         {
           "text": "import",
@@ -3319,11 +3369,11 @@
       ]
     },
     {
-      "number": 33,
+      "number": 35,
       "content": []
     },
     {
-      "number": 34,
+      "number": 36,
       "content": [
         {
           "text": "export",
@@ -3356,7 +3406,7 @@
       ]
     },
     {
-      "number": 35,
+      "number": 37,
       "content": [
         {
           "text": "  children",
@@ -3381,7 +3431,7 @@
       ]
     },
     {
-      "number": 36,
+      "number": 38,
       "content": [
         {
           "text": "  content",
@@ -3406,7 +3456,7 @@
       ]
     },
     {
-      "number": 37,
+      "number": 39,
       "content": [
         {
           "text": "  enabled",
@@ -3431,7 +3481,7 @@
       ]
     },
     {
-      "number": 38,
+      "number": 40,
       "content": [
         {
           "text": "  delayMs",
@@ -3456,7 +3506,7 @@
       ]
     },
     {
-      "number": 39,
+      "number": 41,
       "content": [
         {
           "text": "  closeDelayMs",
@@ -3481,7 +3531,7 @@
       ]
     },
     {
-      "number": 40,
+      "number": 42,
       "content": [
         {
           "text": "  open",
@@ -3506,7 +3556,7 @@
       ]
     },
     {
-      "number": 41,
+      "number": 43,
       "content": [
         {
           "text": "  defaultOpen",
@@ -3531,7 +3581,7 @@
       ]
     },
     {
-      "number": 42,
+      "number": 44,
       "content": [
         {
           "text": "  ",
@@ -3596,7 +3646,7 @@
       ]
     },
     {
-      "number": 43,
+      "number": 45,
       "content": [
         {
           "text": "}",
@@ -3605,11 +3655,11 @@
       ]
     },
     {
-      "number": 44,
+      "number": 46,
       "content": []
     },
     {
-      "number": 45,
+      "number": 47,
       "content": [
         {
           "text": "export",
@@ -3638,7 +3688,7 @@
       ]
     },
     {
-      "number": 46,
+      "number": 48,
       "content": [
         {
           "text": "  children",
@@ -3651,7 +3701,7 @@
       ]
     },
     {
-      "number": 47,
+      "number": 49,
       "content": [
         {
           "text": "  content",
@@ -3664,7 +3714,7 @@
       ]
     },
     {
-      "number": 48,
+      "number": 50,
       "content": [
         {
           "text": "  enabled ",
@@ -3689,7 +3739,7 @@
       ]
     },
     {
-      "number": 49,
+      "number": 51,
       "content": [
         {
           "text": "  delayMs ",
@@ -3714,7 +3764,7 @@
       ]
     },
     {
-      "number": 50,
+      "number": 52,
       "content": [
         {
           "text": "  closeDelayMs",
@@ -3727,7 +3777,7 @@
       ]
     },
     {
-      "number": 51,
+      "number": 53,
       "content": [
         {
           "text": "  open",
@@ -3740,7 +3790,7 @@
       ]
     },
     {
-      "number": 52,
+      "number": 54,
       "content": [
         {
           "text": "  defaultOpen",
@@ -3753,7 +3803,7 @@
       ]
     },
     {
-      "number": 53,
+      "number": 55,
       "content": [
         {
           "text": "  onOpenChange",
@@ -3766,7 +3816,7 @@
       ]
     },
     {
-      "number": 54,
+      "number": 56,
       "content": [
         {
           "text": "}:",
@@ -3795,7 +3845,7 @@
       ]
     },
     {
-      "number": 55,
+      "number": 57,
       "content": [
         {
           "text": "  ",
@@ -3812,7 +3862,7 @@
       ]
     },
     {
-      "number": 56,
+      "number": 58,
       "content": [
         {
           "text": "    ",
@@ -3829,7 +3879,7 @@
       ]
     },
     {
-      "number": 57,
+      "number": 59,
       "content": [
         {
           "text": "      ",
@@ -3858,56 +3908,6 @@
       ]
     },
     {
-      "number": 58,
-      "content": [
-        {
-          "text": "      ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "enabled",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "={",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "enabled",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 59,
-      "content": [
-        {
-          "text": "      ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "delayMs",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "={",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "delayMs",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
       "number": 60,
       "content": [
         {
@@ -3915,7 +3915,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "closeDelayMs",
+          "text": "enabled",
           "color": "var(--code-function)"
         },
         {
@@ -3923,7 +3923,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "closeDelayMs",
+          "text": "enabled",
           "color": "var(--code-variable)"
         },
         {
@@ -3940,7 +3940,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "open",
+          "text": "delayMs",
           "color": "var(--code-function)"
         },
         {
@@ -3948,7 +3948,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "open",
+          "text": "delayMs",
           "color": "var(--code-variable)"
         },
         {
@@ -3965,6 +3965,56 @@
           "color": "var(--code-variable)"
         },
         {
+          "text": "closeDelayMs",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "closeDelayMs",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 63,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "open",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "open",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 64,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
           "text": "defaultOpen",
           "color": "var(--code-function)"
         },
@@ -3983,7 +4033,7 @@
       ]
     },
     {
-      "number": 63,
+      "number": 65,
       "content": [
         {
           "text": "      ",
@@ -4008,7 +4058,7 @@
       ]
     },
     {
-      "number": 64,
+      "number": 66,
       "content": [
         {
           "text": "    ",
@@ -4021,7 +4071,7 @@
       ]
     },
     {
-      "number": 65,
+      "number": 67,
       "content": [
         {
           "text": "      ",
@@ -4062,7 +4112,7 @@
       ]
     },
     {
-      "number": 66,
+      "number": 68,
       "content": [
         {
           "text": "        ",
@@ -4075,7 +4125,7 @@
       ]
     },
     {
-      "number": 67,
+      "number": 69,
       "content": [
         {
           "text": "          ",
@@ -4112,7 +4162,7 @@
       ]
     },
     {
-      "number": 68,
+      "number": 70,
       "content": [
         {
           "text": "          ",
@@ -4149,7 +4199,7 @@
       ]
     },
     {
-      "number": 69,
+      "number": 71,
       "content": [
         {
           "text": "        ",
@@ -4162,7 +4212,7 @@
       ]
     },
     {
-      "number": 70,
+      "number": 72,
       "content": [
         {
           "text": "      ) ",
@@ -4179,7 +4229,7 @@
       ]
     },
     {
-      "number": 71,
+      "number": 73,
       "content": [
         {
           "text": "        children",
@@ -4188,7 +4238,7 @@
       ]
     },
     {
-      "number": 72,
+      "number": 74,
       "content": [
         {
           "text": "      )",
@@ -4201,7 +4251,7 @@
       ]
     },
     {
-      "number": 73,
+      "number": 75,
       "content": [
         {
           "text": "    ",
@@ -4222,7 +4272,7 @@
       ]
     },
     {
-      "number": 74,
+      "number": 76,
       "content": [
         {
           "text": "  )",
@@ -4235,7 +4285,7 @@
       ]
     },
     {
-      "number": 75,
+      "number": 77,
       "content": [
         {
           "text": "}",
@@ -4244,19 +4294,19 @@
       ]
     },
     {
-      "number": 76,
-      "content": []
-    },
-    {
-      "number": 77,
-      "content": []
-    },
-    {
       "number": 78,
       "content": []
     },
     {
       "number": 79,
+      "content": []
+    },
+    {
+      "number": 80,
+      "content": []
+    },
+    {
+      "number": 81,
       "content": [
         {
           "text": "\"",
@@ -4277,11 +4327,11 @@
       ]
     },
     {
-      "number": 80,
+      "number": 82,
       "content": []
     },
     {
-      "number": 81,
+      "number": 83,
       "content": [
         {
           "text": "import",
@@ -4334,7 +4384,7 @@
       ]
     },
     {
-      "number": 82,
+      "number": 84,
       "content": [
         {
           "text": "import",
@@ -4403,11 +4453,11 @@
       ]
     },
     {
-      "number": 83,
+      "number": 85,
       "content": []
     },
     {
-      "number": 84,
+      "number": 86,
       "content": [
         {
           "text": "export",
@@ -4488,11 +4538,11 @@
       ]
     },
     {
-      "number": 85,
+      "number": 87,
       "content": []
     },
     {
-      "number": 86,
+      "number": 88,
       "content": [
         {
           "text": "export",
@@ -4521,7 +4571,7 @@
       ]
     },
     {
-      "number": 87,
+      "number": 89,
       "content": [
         {
           "text": "  children",
@@ -4534,7 +4584,7 @@
       ]
     },
     {
-      "number": 88,
+      "number": 90,
       "content": [
         {
           "text": "  side ",
@@ -4567,7 +4617,7 @@
       ]
     },
     {
-      "number": 89,
+      "number": 91,
       "content": [
         {
           "text": "  align ",
@@ -4600,7 +4650,7 @@
       ]
     },
     {
-      "number": 90,
+      "number": 92,
       "content": [
         {
           "text": "  sideOffset ",
@@ -4625,7 +4675,7 @@
       ]
     },
     {
-      "number": 91,
+      "number": 93,
       "content": [
         {
           "text": "  className",
@@ -4638,7 +4688,7 @@
       ]
     },
     {
-      "number": 92,
+      "number": 94,
       "content": [
         {
           "text": "  ",
@@ -4655,7 +4705,7 @@
       ]
     },
     {
-      "number": 93,
+      "number": 95,
       "content": [
         {
           "text": "}:",
@@ -4684,7 +4734,7 @@
       ]
     },
     {
-      "number": 94,
+      "number": 96,
       "content": [
         {
           "text": "  ",
@@ -4701,7 +4751,7 @@
       ]
     },
     {
-      "number": 95,
+      "number": 97,
       "content": [
         {
           "text": "    ",
@@ -4718,56 +4768,6 @@
       ]
     },
     {
-      "number": 96,
-      "content": [
-        {
-          "text": "      ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "side",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "={",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "side",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 97,
-      "content": [
-        {
-          "text": "      ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "align",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "={",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "align",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
       "number": 98,
       "content": [
         {
@@ -4775,7 +4775,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "sideOffset",
+          "text": "side",
           "color": "var(--code-function)"
         },
         {
@@ -4783,7 +4783,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "sideOffset",
+          "text": "side",
           "color": "var(--code-variable)"
         },
         {
@@ -4794,6 +4794,56 @@
     },
     {
       "number": 99,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "align",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "align",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 100,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "sideOffset",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "sideOffset",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 101,
       "content": [
         {
           "text": "      ",
@@ -4818,7 +4868,7 @@
       ]
     },
     {
-      "number": 100,
+      "number": 102,
       "content": [
         {
           "text": "        ",
@@ -4843,7 +4893,7 @@
       ]
     },
     {
-      "number": 101,
+      "number": 103,
       "content": [
         {
           "text": "        className",
@@ -4856,7 +4906,7 @@
       ]
     },
     {
-      "number": 102,
+      "number": 104,
       "content": [
         {
           "text": "      )",
@@ -4869,7 +4919,7 @@
       ]
     },
     {
-      "number": 103,
+      "number": 105,
       "content": [
         {
           "text": "      ",
@@ -4890,7 +4940,7 @@
       ]
     },
     {
-      "number": 104,
+      "number": 106,
       "content": [
         {
           "text": "    ",
@@ -4903,7 +4953,7 @@
       ]
     },
     {
-      "number": 105,
+      "number": 107,
       "content": [
         {
           "text": "      ",
@@ -4924,7 +4974,7 @@
       ]
     },
     {
-      "number": 106,
+      "number": 108,
       "content": [
         {
           "text": "    ",
@@ -4945,7 +4995,7 @@
       ]
     },
     {
-      "number": 107,
+      "number": 109,
       "content": [
         {
           "text": "  )",
@@ -4958,7 +5008,7 @@
       ]
     },
     {
-      "number": 108,
+      "number": 110,
       "content": [
         {
           "text": "}",
@@ -4967,7 +5017,7 @@
       ]
     },
     {
-      "number": 109,
+      "number": 111,
       "content": []
     }
   ],

@@ -1,20 +1,32 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AvatarStatus } from "./avatar-context";
 
-export function useImageStatus(src: string | undefined) {
-  const [status, setStatus] = useState<AvatarStatus>(src ? "loading" : "idle");
+interface ImageStatusState {
+  src: string | undefined;
+  status: AvatarStatus;
+}
 
-  const [prevSrc, setPrevSrc] = useState(src);
-  if (src !== prevSrc) {
-    setPrevSrc(src);
-    setStatus(src ? "loading" : "idle");
-  }
+export function useImageStatus(src: string | undefined) {
+  const [state, setState] = useState<ImageStatusState>(() => ({
+    src,
+    status: src ? "loading" : "idle",
+  }));
+
+  const status = state.src === src ? state.status : (src ? "loading" : "idle");
+
+  useEffect(() => {
+    setState((current) => (
+      current.src === src
+        ? current
+        : { src, status: src ? "loading" : "idle" }
+    ));
+  }, [src]);
 
   return {
     status,
     showImage: !!src && status !== "error",
-    onLoad: () => setStatus("loaded"),
-    onError: () => setStatus("error"),
+    onLoad: () => setState({ src, status: "loaded" }),
+    onError: () => setState({ src, status: "error" }),
   };
 }

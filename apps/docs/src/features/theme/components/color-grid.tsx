@@ -8,23 +8,26 @@ interface ColorSwatch {
 }
 
 const PRIMITIVES: ColorSwatch[] = [
-  { variable: "--tui-bg", cssVar: "var(--tui-bg)", hex: "#0d1117" },
-  { variable: "--tui-fg", cssVar: "var(--tui-fg)", hex: "#c9d1d9" },
-  { variable: "--tui-blue", cssVar: "var(--tui-blue)", hex: "#58a6ff" },
-  { variable: "--tui-green", cssVar: "var(--tui-green)", hex: "#3fb950" },
+  { variable: "--tui-bg", cssVar: "var(--tui-bg)", hex: "#0a0a0a" },
+  { variable: "--tui-fg", cssVar: "var(--tui-fg)", hex: "#e5e5e5" },
+  { variable: "--tui-dim", cssVar: "var(--tui-dim)", hex: "#9c9c9c" },
+  { variable: "--tui-blue", cssVar: "var(--tui-blue)", hex: "#ccccff" },
+  { variable: "--tui-green", cssVar: "var(--tui-green)", hex: "#e5e5e5" },
   { variable: "--tui-red", cssVar: "var(--tui-red)", hex: "#ff7b72" },
   { variable: "--tui-yellow", cssVar: "var(--tui-yellow)", hex: "#d29922" },
-  { variable: "--tui-violet", cssVar: "var(--tui-violet)", hex: "#bc8cff" },
-  { variable: "--tui-border", cssVar: "var(--tui-border)", hex: "#30363d" },
-  { variable: "--tui-selection", cssVar: "var(--tui-selection)", hex: "#1f2428" },
-  { variable: "--tui-muted", cssVar: "var(--tui-muted)", hex: "#6e7681" },
-  { variable: "--tui-input-bg", cssVar: "var(--tui-input-bg)", hex: "#010409" },
+  { variable: "--tui-violet", cssVar: "var(--tui-violet)", hex: "#787878" },
+  { variable: "--tui-border", cssVar: "var(--tui-border)", hex: "#606060" },
+  { variable: "--tui-highlight", cssVar: "var(--tui-highlight)", hex: "#ffffff" },
+  { variable: "--tui-highlight-fg", cssVar: "var(--tui-highlight-fg)", hex: "#000000" },
+  { variable: "--tui-selection", cssVar: "var(--tui-selection)", hex: "#333333" },
+  { variable: "--tui-muted", cssVar: "var(--tui-muted)", hex: "#787878" },
+  { variable: "--tui-input-bg", cssVar: "var(--tui-input-bg)", hex: "#0a0a0a" },
 ]
 
 const SEMANTIC: ColorSwatch[] = [
-  { variable: "--primary", cssVar: "var(--primary)", hex: "tui-blue" },
+  { variable: "--primary", cssVar: "var(--primary)", hex: "tui-fg" },
   { variable: "--secondary", cssVar: "var(--secondary)", hex: "tui-selection" },
-  { variable: "--accent", cssVar: "var(--accent)", hex: "tui-blue" },
+  { variable: "--accent", cssVar: "var(--accent)", hex: "tui-highlight" },
   { variable: "--destructive", cssVar: "var(--destructive)", hex: "tui-red" },
   { variable: "--success", cssVar: "var(--success)", hex: "tui-green" },
   { variable: "--warning", cssVar: "var(--warning)", hex: "tui-yellow" },
@@ -37,7 +40,7 @@ const SEMANTIC: ColorSwatch[] = [
 ]
 
 const STATUS_VARIANTS: ColorSwatch[] = [
-  { variable: "--success-subtle", cssVar: "var(--success-subtle)", hex: "#3fb9501a" },
+  { variable: "--success-subtle", cssVar: "var(--success-subtle)", hex: "#e5e5e51a" },
   { variable: "--success-fg", cssVar: "var(--success-fg)", hex: "tui-green" },
   { variable: "--success-border", cssVar: "var(--success-border)", hex: "tui-green" },
   { variable: "--success-strong", cssVar: "var(--success-strong)", hex: "tui-green" },
@@ -49,11 +52,11 @@ const STATUS_VARIANTS: ColorSwatch[] = [
   { variable: "--error-fg", cssVar: "var(--error-fg)", hex: "tui-red" },
   { variable: "--error-border", cssVar: "var(--error-border)", hex: "tui-red" },
   { variable: "--error-strong", cssVar: "var(--error-strong)", hex: "tui-red" },
-  { variable: "--info-subtle", cssVar: "var(--info-subtle)", hex: "#58a6ff1a" },
+  { variable: "--info-subtle", cssVar: "var(--info-subtle)", hex: "#ccccff1a" },
   { variable: "--info-fg", cssVar: "var(--info-fg)", hex: "tui-blue" },
   { variable: "--info-border", cssVar: "var(--info-border)", hex: "tui-blue" },
   { variable: "--info-strong", cssVar: "var(--info-strong)", hex: "tui-blue" },
-  { variable: "--neutral-subtle", cssVar: "var(--neutral-subtle)", hex: "#6e76811a" },
+  { variable: "--neutral-subtle", cssVar: "var(--neutral-subtle)", hex: "#6666661a" },
   { variable: "--neutral-fg", cssVar: "var(--neutral-fg)", hex: "tui-muted" },
   { variable: "--neutral-border", cssVar: "var(--neutral-border)", hex: "tui-border" },
   { variable: "--neutral-strong", cssVar: "var(--neutral-strong)", hex: "tui-muted" },

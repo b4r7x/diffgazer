@@ -12,7 +12,6 @@
     "@diffgazer/registry",
     "@diffgazer/server",
     "@diffgazer/web",
-    "@diffgazer/docs",
-    "@diffgazer/keys-artifacts"
+    "@diffgazer/docs"
   ]
 }

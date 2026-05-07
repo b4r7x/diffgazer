@@ -1,3 +1,4 @@
+import { createRef } from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
@@ -15,6 +16,58 @@ function renderMenu(props: Record<string, unknown> = {}) {
 }
 
 describe("Menu", () => {
+  it("supports direct namespaced items with custom item UI", async () => {
+    const onSelect = vi.fn()
+    render(
+      <Menu aria-label="Test menu" onSelect={onSelect}>
+        <Menu.Item id="one">
+          <span>One</span>
+        </Menu.Item>
+        <Menu.Divider />
+        <Menu.Item id="two" value="ready">
+          <span>Two</span>
+        </Menu.Item>
+      </Menu>,
+    )
+
+    await userEvent.click(screen.getByText("Two"))
+
+    expect(onSelect).toHaveBeenCalledWith("two")
+    expect(screen.getByRole("separator")).toBeInTheDocument()
+  })
+
+  it("passes native root props and composes key handling with menu navigation", async () => {
+    const ref = createRef<HTMLDivElement>()
+    const onClick = vi.fn()
+    const onKeyDown = vi.fn()
+
+    renderMenu({
+      ref,
+      id: "menu-root",
+      "data-testid": "menu-root",
+      "data-state": "ready",
+      "aria-describedby": "menu-help",
+      style: { maxWidth: "12px" },
+      defaultHighlightedId: "one",
+      onClick,
+      onKeyDown,
+    })
+
+    const menu = screen.getByRole("menu")
+    await userEvent.click(menu)
+    await userEvent.keyboard("{ArrowDown}")
+
+    expect(menu).toHaveAttribute("id", "menu-root")
+    expect(menu).toHaveAttribute("data-state", "ready")
+    expect(menu).toHaveAttribute("aria-describedby", "menu-help")
+    expect(menu).toHaveStyle({ maxWidth: "12px" })
+    expect(menu).toHaveAttribute("tabindex", "0")
+    expect(onClick).toHaveBeenCalled()
+    expect(onKeyDown).toHaveBeenCalled()
+    expect(menu).toHaveAttribute("aria-activedescendant", expect.stringContaining("-two"))
+    expect(ref.current).toBe(menu)
+  })
+
   it("fires onSelect when an item is clicked", async () => {
     const onSelect = vi.fn()
     renderMenu({ onSelect })
@@ -123,12 +176,85 @@ describe("Menu", () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it("calls onClose on Tab without preventing default", async () => {
+    const onClose = vi.fn()
+    const onKeyDown = vi.fn()
+    renderMenu({ onClose, onKeyDown, defaultHighlightedId: "one" })
+    const menu = screen.getByRole("menu")
+    menu.focus()
+
+    await userEvent.keyboard("{Tab}")
+
+    expect(onClose).toHaveBeenCalled()
+    expect(onKeyDown).toHaveBeenCalled()
+    expect(onKeyDown.mock.calls[0][0].defaultPrevented).toBe(false)
+  })
+
   it("focuses the container on mount when autoFocus is true", async () => {
     renderMenu({ autoFocus: true, defaultHighlightedId: "one" })
     const menu = screen.getByRole("menu")
     await waitFor(() => {
       expect(menu).toHaveFocus()
     })
+  })
+
+  it("autoFocus initializes the first enabled item when no item is active", async () => {
+    render(
+      <Menu aria-label="Test menu" autoFocus>
+        <Menu.Item id="one" disabled>One</Menu.Item>
+        <Menu.Item id="two">Two</Menu.Item>
+      </Menu>
+    )
+    const menu = screen.getByRole("menu")
+    const twoItem = screen.getByText("Two").closest("[role='menuitem']")!
+
+    await waitFor(() => {
+      expect(menu).toHaveAttribute("aria-activedescendant", twoItem.id)
+    })
+  })
+
+  it("uses encoded item ids for active descendant references", () => {
+    const id = "release notes/v1.2?"
+    render(
+      <Menu aria-label="Test menu" defaultHighlightedId={id}>
+        <Menu.Item id={id}>Release</Menu.Item>
+        <Menu.Item id="other">Other</Menu.Item>
+      </Menu>,
+    )
+
+    const menu = screen.getByRole("menu")
+    const item = screen.getByText("Release").closest("[role='menuitem']")!
+
+    expect(item.id).toContain(encodeURIComponent(id))
+    expect(menu).toHaveAttribute("aria-activedescendant", item.id)
+    expect(document.getElementById(menu.getAttribute("aria-activedescendant")!)).toBe(item)
+  })
+
+  it("treats an empty string item id as a valid active descendant value", () => {
+    render(
+      <Menu aria-label="Test menu" defaultHighlightedId="">
+        <Menu.Item id="">Empty id</Menu.Item>
+        <Menu.Item id="other">Other</Menu.Item>
+      </Menu>,
+    )
+
+    const menu = screen.getByRole("menu")
+    const item = screen.getByText("Empty id").closest("[role='menuitem']")!
+
+    expect(menu).toHaveAttribute("aria-activedescendant", item.id)
+    expect(document.getElementById(item.id)).toBe(item)
+  })
+
+  it("renders falsy hub item values that are explicit React nodes", () => {
+    render(
+      <Menu aria-label="Test menu" variant="hub">
+        <Menu.Item id="zero" value={0}>Zero</Menu.Item>
+        <Menu.Item id="empty" value="">Empty</Menu.Item>
+      </Menu>,
+    )
+
+    expect(screen.getByText("0")).toBeInTheDocument()
+    expect(screen.getByText("Empty").closest("[role='menuitem']")).toHaveTextContent("Empty")
   })
 
   it("renders a divider as a separator", () => {
@@ -139,7 +265,7 @@ describe("Menu", () => {
         <Menu.Item id="two">Two</Menu.Item>
       </Menu>
     )
-    expect(screen.getByRole("separator")).toBeInTheDocument()
+    expect(screen.getByRole("separator")).toHaveAttribute("aria-orientation", "horizontal")
   })
 })
 

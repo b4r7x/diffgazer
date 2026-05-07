@@ -1,4 +1,4 @@
-import type { HTMLAttributes, Ref } from "react";
+import type { ComponentPropsWithRef } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
@@ -29,27 +29,36 @@ export const typographyVariants = cva("font-mono text-muted-foreground", {
   },
 });
 
-export interface TypographyProps
-  extends HTMLAttributes<HTMLElement>,
-    VariantProps<typeof typographyVariants> {
-  as?: "div" | "p" | "span";
-  ref?: Ref<HTMLElement>;
-}
+type TypographyOwnProps = VariantProps<typeof typographyVariants>;
+type TypographyElement = "div" | "p" | "span";
+type TypographyElementProps<T extends TypographyElement> = Omit<
+  ComponentPropsWithRef<T>,
+  keyof TypographyOwnProps | "as"
+> &
+  TypographyOwnProps & {
+    as: T;
+  };
 
-export function Typography({
-  className,
-  variant,
-  size,
-  lineClamp,
-  as: Tag = "div",
-  ref,
-  ...rest
-}: TypographyProps) {
+export type TypographyProps =
+  | (Omit<TypographyElementProps<"div">, "as"> & { as?: "div" })
+  | TypographyElementProps<"p">
+  | TypographyElementProps<"span">;
+
+export function Typography(props: TypographyProps) {
+  const { className, variant, size, lineClamp } = props;
+  const resolvedClassName = cn(typographyVariants({ variant, size, lineClamp }), className);
+
+  if (props.as === "p") {
+    const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, lineClamp: omittedLineClamp, ...pProps } = props;
+    return <p ref={ref} className={resolvedClassName} {...pProps} />;
+  }
+  if (props.as === "span") {
+    const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, lineClamp: omittedLineClamp, ...spanProps } = props;
+    return <span ref={ref} className={resolvedClassName} {...spanProps} />;
+  }
+
+  const { as, ref, className: omittedClassName, variant: omittedVariant, size: omittedSize, lineClamp: omittedLineClamp, ...divProps } = props;
   return (
-    <Tag
-      ref={ref as Ref<never>}
-      className={cn(typographyVariants({ variant, size, lineClamp }), className)}
-      {...rest}
-    />
+    <div ref={ref} className={resolvedClassName} {...divProps} />
   );
 }

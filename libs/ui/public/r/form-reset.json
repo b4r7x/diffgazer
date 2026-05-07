@@ -1,0 +1,19 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "form-reset",
+  "type": "registry:hook",
+  "title": "Form Reset",
+  "description": "Resets uncontrolled custom control state when a parent native form is reset.",
+  "dependencies": [],
+  "registryDependencies": [],
+  "files": [
+    {
+      "path": "registry/hooks/use-form-reset.ts",
+      "content": "\"use client\";\n\nimport { useEffect, useEffectEvent, useLayoutEffect, useRef, type RefObject } from \"react\";\n\nexport function useFormReset<T>(\n  ref: RefObject<HTMLElement | null>,\n  resetValue: T,\n  onReset: (value: T) => void,\n  enabled = true,\n) {\n  const formRef = useRef<HTMLFormElement | null>(null);\n  const listenerRef = useRef<(() => void) | null>(null);\n  const handleReset = useEffectEvent(() => {\n    onReset(resetValue);\n  });\n  listenerRef.current ??= () => handleReset();\n\n  useLayoutEffect(() => {\n    const nextForm = enabled ? ref.current?.closest(\"form\") ?? null : null;\n    if (formRef.current === nextForm) return;\n\n    const listener = listenerRef.current;\n    if (!listener) return;\n\n    formRef.current?.removeEventListener(\"reset\", listener);\n    nextForm?.addEventListener(\"reset\", listener);\n    formRef.current = nextForm;\n  });\n\n  useEffect(() => {\n    return () => {\n      const listener = listenerRef.current;\n      if (listener) formRef.current?.removeEventListener(\"reset\", listener);\n      formRef.current = null;\n    };\n  }, []);\n}\n",
+      "type": "registry:hook"
+    }
+  ],
+  "meta": {
+    "client": true
+  }
+}

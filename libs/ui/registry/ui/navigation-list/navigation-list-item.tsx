@@ -1,7 +1,8 @@
 "use client";
 
-import { Children, isValidElement, type ReactNode, type Ref, useMemo } from "react";
+import { Children, isValidElement, type MouseEvent, type ReactNode, type Ref, useMemo } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
 import { useNavigationListContext } from "./navigation-list-context";
 import { NavigationListItemContext } from "./navigation-list-item-context";
@@ -64,20 +65,27 @@ export function NavigationListItem({
   className,
   ref,
 }: NavigationListItemProps) {
-  const { selectedId, highlightedId, activate, highlight, focused, idPrefix } =
+  const { selectedId, highlightedId, activate, highlight, focusContainer, focused, idPrefix } =
     useNavigationListContext();
   const isSelected = selectedId === id;
   const isHighlighted = highlightedId === id;
   const isActive = (isSelected || isHighlighted) && focused;
-  const labelId = `${idPrefix}-${id}-label`;
-  const descId = `${idPrefix}-${id}-desc`;
+  const itemId = getEncodedListboxItemId(idPrefix, id);
+  const labelId = `${itemId}-label`;
+  const descId = `${itemId}-desc`;
   const describedBy = [
     hasDescriptionChild(children, NavigationListMeta) ? `${descId}-meta` : null,
     hasDescriptionChild(children, NavigationListSubtitle) ? `${descId}-sub` : null,
   ].filter(Boolean).join(" ") || undefined;
 
   const handleClick = () => {
-    if (!disabled) activate(id);
+    if (disabled) return;
+    activate(id);
+    focusContainer();
+  };
+
+  const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {
+    if (disabled) event.preventDefault();
   };
 
   const handleHighlight = () => {
@@ -93,7 +101,7 @@ export function NavigationListItem({
     <NavigationListItemContext value={itemContextValue}>
       <div
         ref={ref}
-        id={`${idPrefix}-${id}`}
+        id={itemId}
         role="option"
         aria-labelledby={labelId}
         aria-describedby={describedBy}
@@ -102,6 +110,7 @@ export function NavigationListItem({
         data-state={isSelected ? "selected" : "unselected"}
         aria-selected={isSelected}
         aria-disabled={disabled || undefined}
+        onMouseDown={handleMouseDown}
         onClick={handleClick}
         onMouseEnter={handleHighlight}
         onFocus={handleHighlight}

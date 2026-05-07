@@ -1,6 +1,8 @@
-import { describe, it, expect } from "vitest"
-import { renderHook } from "@testing-library/react"
+import { createElement, useLayoutEffect, useRef } from "react"
+import { describe, it, expect, vi } from "vitest"
+import { render, renderHook, waitFor } from "@testing-library/react"
 import {
+  type FloatingPosition,
   useFloatingPosition,
   computePosition,
   wouldOverflow,
@@ -143,5 +145,60 @@ describe("useFloatingPosition", () => {
       useFloatingPosition({ triggerRef, open: false }),
     )
     expect(result.current.position).toBeNull()
+  })
+
+  it("positions initially without ResizeObserver support", async () => {
+    const resizeObserverDescriptor = Object.getOwnPropertyDescriptor(globalThis, "ResizeObserver")
+    Reflect.deleteProperty(globalThis, "ResizeObserver")
+    const onPosition = vi.fn()
+
+    function FloatingHarness() {
+      const triggerRef = useRef<HTMLElement | null>(null)
+      const { position, contentRef } = useFloatingPosition({
+        triggerRef,
+        open: true,
+        side: "bottom",
+        align: "start",
+        avoidCollisions: false,
+      })
+
+      useLayoutEffect(() => {
+        onPosition(position)
+      }, [position])
+
+      return createElement(
+        "div",
+        null,
+        createElement("button", {
+          ref: (node: HTMLButtonElement | null) => {
+            triggerRef.current = node
+            if (node) node.getBoundingClientRect = () => makeDOMRect(100, 100, 80, 40)
+          },
+        }),
+        createElement("div", {
+          ref: (node: HTMLDivElement | null) => {
+            contentRef.current = node
+            if (node) node.getBoundingClientRect = () => makeDOMRect(0, 0, 120, 50)
+          },
+        }),
+      )
+    }
+
+    try {
+      render(createElement(FloatingHarness))
+
+      await waitFor(() => {
+        expect(onPosition).toHaveBeenCalledWith({
+          x: 100,
+          y: 146,
+          side: "bottom",
+          align: "start",
+        } satisfies FloatingPosition)
+      })
+    } finally {
+      if (resizeObserverDescriptor) {
+        Object.defineProperty(globalThis, "ResizeObserver", resizeObserverDescriptor)
+      }
+    }
   })
 })

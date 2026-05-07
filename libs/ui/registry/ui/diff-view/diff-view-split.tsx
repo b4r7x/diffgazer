@@ -11,11 +11,11 @@ function SplitCellView({ side, showLineNumbers, disableWordDiff }: {
   disableWordDiff: boolean;
 }) {
   if (side.type === "empty") {
-    return <div className="bg-muted/30 pl-2" aria-hidden="true">&nbsp;</div>;
+    return <span className="block bg-muted/30 pl-2" aria-hidden="true">&nbsp;</span>;
   }
 
   return (
-    <div className={cn("pl-2", LINE_STYLE[side.type])}>
+    <span className={cn("block pl-2", LINE_STYLE[side.type])}>
       {showLineNumbers && (
         <span className={LINE_NUMBER_CLASS} aria-hidden="true">
           {side.lineNumber}
@@ -23,7 +23,7 @@ function SplitCellView({ side, showLineNumbers, disableWordDiff }: {
       )}
       {SR_LABEL[side.type] && <span className="sr-only">{SR_LABEL[side.type]}</span>}
       <LineContent content={side.content} wordSegments={disableWordDiff ? undefined : side.wordSegments} type={side.type} />
-    </div>
+    </span>
   );
 }
 
@@ -44,7 +44,9 @@ export function SplitView({ parsed, showLineNumbers, disableWordDiff, activeHunk
 
   return (
     <div
-      ref={containerRef as RefObject<never>}
+      ref={(node) => {
+        containerRef.current = node;
+      }}
       aria-label="Split diff"
       aria-keyshortcuts="j k"
       className="overflow-x-auto focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -57,27 +59,27 @@ export function SplitView({ parsed, showLineNumbers, disableWordDiff, activeHunk
             if (row.kind === "separator") {
               hunkIndex++;
               return (
-                <div
+                <span
                   key={i}
                   data-hunk
                   data-diffgazer-navigation-item="button"
                   data-value={String(hunkIndex)}
-                  className={cn(LINE_STYLE.hunk, activeHunk === String(hunkIndex) && "ring-1 ring-ring")}
+                  className={cn("block", LINE_STYLE.hunk, activeHunk === String(hunkIndex) && "ring-1 ring-ring")}
                 >
                   {formatHunkHeader(row)}
-                </div>
+                </span>
               );
             }
 
             return (
-              <div key={i} className="grid grid-cols-2 divide-x divide-border">
-                <div role="group" aria-label="Old">
+              <span key={i} className="grid grid-cols-2 divide-x divide-border">
+                <span role="group" aria-label="Old">
                   <SplitCellView side={row.left} showLineNumbers={showLineNumbers} disableWordDiff={disableWordDiff} />
-                </div>
-                <div role="group" aria-label="New">
+                </span>
+                <span role="group" aria-label="New">
                   <SplitCellView side={row.right} showLineNumbers={showLineNumbers} disableWordDiff={disableWordDiff} />
-                </div>
-              </div>
+                </span>
+              </span>
             );
           })}
         </code>

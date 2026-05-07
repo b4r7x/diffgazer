@@ -366,10 +366,6 @@ importers:
         version: 5.9.3
 
   libs/keys:
-    dependencies:
-      zod:
-        specifier: ^4.3.6
-        version: 4.3.6
     devDependencies:
       '@diffgazer/registry':
         specifier: workspace:*
@@ -381,16 +377,16 @@ importers:
         specifier: ^25.2.3
         version: 25.2.3
       '@types/react':
-        specifier: ^19.0.0
+        specifier: ^19.2.0
         version: 19.2.14
       jsdom:
         specifier: ^28.0.0
         version: 28.1.0
       react:
-        specifier: ^19.0.0
+        specifier: ^19.2.0
         version: 19.2.4
       react-dom:
-        specifier: ^19.0.0
+        specifier: ^19.2.0
         version: 19.2.4(react@19.2.4)
       shadcn:
         specifier: ^2.10.0
@@ -500,10 +496,10 @@ importers:
         specifier: ^1.10.0
         version: 1.10.0
       react:
-        specifier: '>=19.0.0'
+        specifier: '>=19.2.0'
         version: 19.2.4
       react-dom:
-        specifier: '>=19.0.0'
+        specifier: '>=19.2.0'
         version: 19.2.4(react@19.2.4)
       tailwind-merge:
         specifier: ^3.4.0

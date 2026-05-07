@@ -1,3 +1,5 @@
+"use client";
+
 import { Accordion as AccordionRoot, type AccordionProps, type AccordionSingleProps, type AccordionMultipleProps } from "./accordion";
 import { AccordionHeader, type AccordionHeaderProps } from "./accordion-header";
 import { AccordionItem, type AccordionItemProps } from "./accordion-item";

@@ -1,0 +1,18 @@
+import { createRef } from "react";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { Card } from "./index.js";
+
+describe("Card", () => {
+  it("forwards refs to the selected element", () => {
+    const ref = createRef<HTMLElement>();
+
+    render(
+      <Card as="article" ref={ref} aria-label="Release">
+        Notes
+      </Card>,
+    );
+
+    expect(ref.current).toBe(screen.getByRole("article", { name: "Release" }));
+  });
+});

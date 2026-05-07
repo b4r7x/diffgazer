@@ -1,10 +1,11 @@
 "use client";
 
-import { type ReactNode, useRef, useLayoutEffect } from "react";
+import { type ReactNode, useCallback, useRef, useState } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useCommandPaletteContext } from "./command-palette-context";
 import { DialogShell } from "../shared/dialog-shell";
+import { PortalContainerProvider } from "../shared/portal-context";
 
 const contentVariants = cva(
   "border-2 border-border shadow-[0_0_40px_rgba(0,0,0,0.5)] bg-background relative flex flex-col max-h-[80vh] m-auto outline outline-1 outline-border/50 outline-offset-[1px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground",
@@ -29,34 +30,50 @@ export interface CommandPaletteContentProps extends VariantProps<typeof contentV
 }
 
 export function CommandPaletteContent({ children, className, size, label = "Command palette" }: CommandPaletteContentProps) {
-  const { open, onOpenChange, search, onSearchChange, itemCount } = useCommandPaletteContext();
-  const previousFocusRef = useRef<Element | null>(null);
+  const { open, onOpenChange, previousFocusRef, search, onSearchChange, itemCount } = useCommandPaletteContext();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [container, setContainer] = useState<Element | null>(null);
 
-  useLayoutEffect(() => {
-    if (open && !previousFocusRef.current) {
+  const setDialogRef = useCallback((node: HTMLDialogElement | null) => {
+    dialogRef.current = node;
+    setContainer(node);
+  }, []);
+
+  const captureFocusBeforeOpen = useCallback(() => {
+    if (!previousFocusRef.current && typeof document !== "undefined") {
       previousFocusRef.current = document.activeElement;
     }
-  }, [open]);
+  }, [previousFocusRef]);
 
-  const restoreFocus = () => {
+  const focusSearchInput = useCallback(() => {
+    dialogRef.current?.querySelector<HTMLElement>("[role='combobox']")?.focus();
+  }, []);
+
+  const restoreFocus = useCallback(() => {
     const el = previousFocusRef.current as HTMLElement | null;
     previousFocusRef.current = null;
     el?.focus?.();
-  };
+  }, [previousFocusRef]);
 
   return (
     <DialogShell
       open={open}
+      dialogRef={setDialogRef}
+      onBeforeShowModal={captureFocusBeforeOpen}
+      onAfterShowModal={focusSearchInput}
       onBackdropClick={() => onOpenChange(false)}
       onCancel={() => search ? onSearchChange("") : onOpenChange(false)}
       onClose={restoreFocus}
       className={cn(contentVariants({ size }), className)}
+      aria-modal="true"
       aria-label={label}
     >
-      {children}
-      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-        {getLiveText(search, itemCount)}
-      </div>
+      <PortalContainerProvider container={container}>
+        {children}
+        <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+          {getLiveText(search, itemCount)}
+        </div>
+      </PortalContainerProvider>
     </DialogShell>
   );
 }

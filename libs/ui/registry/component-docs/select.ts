@@ -2,7 +2,7 @@ import type { ComponentDoc } from "./types"
 
 export const selectDoc: ComponentDoc = {
   description:
-    "Dropdown select with search, multiple selection, card variant, and headless keyboard integration points. 8 composable parts.",
+    "Dropdown select with search, multiple selection, card variant, and controlled keyboard integration points. 8 composable parts.",
   anatomy: [
     {
       name: "Select",
@@ -47,6 +47,11 @@ export const selectDoc: ComponentDoc = {
   ],
   notes: [
     {
+      title: "Composition Contract",
+      content:
+        "Use Select.Trigger, Select.Content, Select.Item, and the other Select parts as explicit children in the Select JSX tree. Custom option UI belongs inside Select.Item, with textValue when the visible content is not plain text. Components that create items internally from an opaque wrapper are not part of the current public contract.",
+    },
+    {
       title: "Card Variant",
       content:
         "Set variant='card' on Select for an always-visible, inline selection list with checkbox-style indicators and a thick border treatment. Useful for settings panels.",
@@ -79,7 +84,7 @@ export const selectDoc: ComponentDoc = {
     {
       title: "Keyboard Navigation",
       content:
-        "SelectContent includes built-in keyboard navigation via useNavigation: ArrowUp/Down to move, Enter/Space to select, Home/End to jump, Escape to close. Highlighted state is exposed via highlighted/onHighlight props on Select for external integration.",
+        "SelectContent includes built-in keyboard navigation via useNavigation: ArrowUp/Down to move, Enter/Space to select, Home/End to jump, Escape to close. Highlight state is exposed via highlighted/onHighlightChange props on Select for external integration.",
     },
     {
       title: "Custom Trigger Content",

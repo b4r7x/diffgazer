@@ -1,6 +1,12 @@
 "use client";
 
-import { useLayoutEffect, type ReactNode, type Ref } from "react";
+import {
+  type ComponentPropsWithRef,
+  type FocusEvent,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import { cva } from "class-variance-authority";
 import { useToggleGroupContext } from "./toggle-group-context";
 import { cn } from "@/lib/utils";
@@ -18,13 +24,12 @@ const toggleItemVariants = cva(
   },
 );
 
-export interface ToggleGroupItemProps {
+export interface ToggleGroupItemProps
+  extends Omit<ComponentPropsWithRef<"button">, "children" | "disabled" | "value"> {
   value: string;
   count?: number;
   disabled?: boolean;
-  className?: string;
   children: ReactNode;
-  ref?: Ref<HTMLButtonElement>;
 }
 
 export function ToggleGroupItem({
@@ -34,21 +39,50 @@ export function ToggleGroupItem({
   className,
   children,
   ref,
+  onClick,
+  onKeyDown,
+  onMouseEnter,
+  onFocus,
+  ...props
 }: ToggleGroupItemProps) {
   const context = useToggleGroupContext();
-  const { registerItem } = context;
   const isActive = context.value === value;
   const isHighlighted = context.highlightedValue === value;
   const isDisabled = context.disabled || !!disabled;
   const hasSelection = context.value !== null;
   const isTabTarget = !isDisabled && (isActive || (!hasSelection && context.firstEnabledValue === value));
 
-  useLayoutEffect(() => {
-    return registerItem(value, isDisabled);
-  }, [isDisabled, registerItem, value]);
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    onClick?.(event);
+    if (!event.defaultPrevented && !isDisabled) context.onValueChange(value);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    onKeyDown?.(event);
+    if (
+      !event.defaultPrevented &&
+      context.allowDeselect &&
+      !isDisabled &&
+      (event.key === "Enter" || event.key === " ")
+    ) {
+      event.preventDefault();
+      context.onValueChange(value);
+    }
+  };
+
+  const handleMouseEnter = (event: MouseEvent<HTMLButtonElement>) => {
+    onMouseEnter?.(event);
+    if (!event.defaultPrevented && !isDisabled) context.onHighlightChange(value);
+  };
+
+  const handleFocus = (event: FocusEvent<HTMLButtonElement>) => {
+    onFocus?.(event);
+    if (!event.defaultPrevented && !isDisabled) context.onHighlightChange(value);
+  };
 
   return (
     <button
+      {...props}
       ref={ref}
       type="button"
       role={context.allowDeselect ? undefined : "radio"}
@@ -61,9 +95,10 @@ export function ToggleGroupItem({
       aria-disabled={isDisabled || undefined}
       disabled={isDisabled}
       tabIndex={isTabTarget ? 0 : -1}
-      onClick={() => { if (!isDisabled) context.onChange(value); }}
-      onMouseEnter={() => { if (!isDisabled) context.onHighlightChange(value); }}
-      onFocus={() => { if (!isDisabled) context.onHighlightChange(value); }}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      onMouseEnter={handleMouseEnter}
+      onFocus={handleFocus}
       className={cn(
         toggleItemVariants({ size: context.size }),
         isDisabled && "pointer-events-none opacity-50",

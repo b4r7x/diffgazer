@@ -12,7 +12,7 @@
   "props": {},
   "source": {
     "registry/ui/badge/index.ts": {
-      "raw": "export { Badge, badgeVariants, type BadgeProps, type BadgeVariant, type BadgeSize } from \"./badge\";",
+      "raw": "export { Badge, badgeVariants, type BadgeProps, type BadgeVariant, type BadgeSize } from \"./badge\";\n",
       "highlighted": [
         {
           "number": 1,
@@ -122,6 +122,10 @@
               "color": "var(--code-operator)"
             }
           ]
+        },
+        {
+          "number": 2,
+          "content": []
         }
       ]
     },
@@ -2186,7 +2190,7 @@
       ]
     }
   },
-  "mergedSource": "export { Badge, badgeVariants, type BadgeProps, type BadgeVariant, type BadgeSize } from \"./badge\";\n\nimport { type HTMLAttributes, type Ref } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport type BadgeVariant = \"success\" | \"warning\" | \"error\" | \"info\" | \"neutral\";\nexport type BadgeSize = \"sm\" | \"md\" | \"lg\";\n\nconst dotColorMap: Record<BadgeVariant, string> = {\n  success: \"bg-success-strong\",\n  warning: \"bg-warning-strong\",\n  error: \"bg-error-strong\",\n  info: \"bg-info-strong\",\n  neutral: \"bg-neutral-strong\",\n};\n\nexport const badgeVariants = cva(\n  \"inline-flex items-center font-bold tracking-wider rounded-sm border shrink-0 whitespace-nowrap\",\n  {\n    variants: {\n      variant: {\n        success: \"bg-success-subtle text-success-fg border-success-border\",\n        warning: \"bg-warning-subtle text-warning-fg border-warning-border\",\n        error: \"bg-error-subtle text-error-fg border-error-border\",\n        info: \"bg-info-subtle text-info-fg border-info-border\",\n        neutral: \"bg-neutral-subtle text-neutral-fg border-neutral-border\",\n      },\n      size: {\n        sm: \"px-2 py-0.5 text-xs\",\n        md: \"px-3 py-1 text-sm\",\n        lg: \"px-4 py-1.5 text-base\",\n      },\n    },\n    defaultVariants: { variant: \"neutral\", size: \"sm\" },\n  },\n);\n\nexport interface BadgeProps\n  extends HTMLAttributes<HTMLSpanElement>,\n    Omit<VariantProps<typeof badgeVariants>, \"variant\"> {\n  variant?: BadgeVariant;\n  dot?: boolean;\n  ref?: Ref<HTMLSpanElement>;\n}\n\nexport function Badge({\n  ref,\n  className,\n  variant = \"neutral\",\n  size,\n  dot,\n  children,\n  ...props\n}: BadgeProps) {\n  return (\n    <span\n      ref={ref}\n      className={cn(badgeVariants({ variant, size }), className)}\n      {...props}\n    >\n      {dot && (\n        <span\n          aria-hidden=\"true\"\n          className={cn(\n            \"mr-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full\",\n            dotColorMap[variant],\n          )}\n        />\n      )}\n      {children}\n    </span>\n  );\n}\n",
+  "mergedSource": "export { Badge, badgeVariants, type BadgeProps, type BadgeVariant, type BadgeSize } from \"./badge\";\n\n\nimport { type HTMLAttributes, type Ref } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\n\nexport type BadgeVariant = \"success\" | \"warning\" | \"error\" | \"info\" | \"neutral\";\nexport type BadgeSize = \"sm\" | \"md\" | \"lg\";\n\nconst dotColorMap: Record<BadgeVariant, string> = {\n  success: \"bg-success-strong\",\n  warning: \"bg-warning-strong\",\n  error: \"bg-error-strong\",\n  info: \"bg-info-strong\",\n  neutral: \"bg-neutral-strong\",\n};\n\nexport const badgeVariants = cva(\n  \"inline-flex items-center font-bold tracking-wider rounded-sm border shrink-0 whitespace-nowrap\",\n  {\n    variants: {\n      variant: {\n        success: \"bg-success-subtle text-success-fg border-success-border\",\n        warning: \"bg-warning-subtle text-warning-fg border-warning-border\",\n        error: \"bg-error-subtle text-error-fg border-error-border\",\n        info: \"bg-info-subtle text-info-fg border-info-border\",\n        neutral: \"bg-neutral-subtle text-neutral-fg border-neutral-border\",\n      },\n      size: {\n        sm: \"px-2 py-0.5 text-xs\",\n        md: \"px-3 py-1 text-sm\",\n        lg: \"px-4 py-1.5 text-base\",\n      },\n    },\n    defaultVariants: { variant: \"neutral\", size: \"sm\" },\n  },\n);\n\nexport interface BadgeProps\n  extends HTMLAttributes<HTMLSpanElement>,\n    Omit<VariantProps<typeof badgeVariants>, \"variant\"> {\n  variant?: BadgeVariant;\n  dot?: boolean;\n  ref?: Ref<HTMLSpanElement>;\n}\n\nexport function Badge({\n  ref,\n  className,\n  variant = \"neutral\",\n  size,\n  dot,\n  children,\n  ...props\n}: BadgeProps) {\n  return (\n    <span\n      ref={ref}\n      className={cn(badgeVariants({ variant, size }), className)}\n      {...props}\n    >\n      {dot && (\n        <span\n          aria-hidden=\"true\"\n          className={cn(\n            \"mr-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full\",\n            dotColorMap[variant],\n          )}\n        />\n      )}\n      {children}\n    </span>\n  );\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
@@ -2303,6 +2307,10 @@
     },
     {
       "number": 3,
+      "content": []
+    },
+    {
+      "number": 4,
       "content": [
         {
           "text": "import",
@@ -2379,7 +2387,7 @@
       ]
     },
     {
-      "number": 4,
+      "number": 5,
       "content": [
         {
           "text": "import",
@@ -2448,7 +2456,7 @@
       ]
     },
     {
-      "number": 5,
+      "number": 6,
       "content": [
         {
           "text": "import",
@@ -2501,11 +2509,11 @@
       ]
     },
     {
-      "number": 6,
+      "number": 7,
       "content": []
     },
     {
-      "number": 7,
+      "number": 8,
       "content": [
         {
           "text": "export",
@@ -2654,7 +2662,7 @@
       ]
     },
     {
-      "number": 8,
+      "number": 9,
       "content": [
         {
           "text": "export",
@@ -2755,11 +2763,11 @@
       ]
     },
     {
-      "number": 9,
+      "number": 10,
       "content": []
     },
     {
-      "number": 10,
+      "number": 11,
       "content": [
         {
           "text": "const",
@@ -2828,7 +2836,7 @@
       ]
     },
     {
-      "number": 11,
+      "number": 12,
       "content": [
         {
           "text": "  success",
@@ -2861,7 +2869,7 @@
       ]
     },
     {
-      "number": 12,
+      "number": 13,
       "content": [
         {
           "text": "  warning",
@@ -2894,7 +2902,7 @@
       ]
     },
     {
-      "number": 13,
+      "number": 14,
       "content": [
         {
           "text": "  error",
@@ -2927,7 +2935,7 @@
       ]
     },
     {
-      "number": 14,
+      "number": 15,
       "content": [
         {
           "text": "  info",
@@ -2960,7 +2968,7 @@
       ]
     },
     {
-      "number": 15,
+      "number": 16,
       "content": [
         {
           "text": "  neutral",
@@ -2993,7 +3001,7 @@
       ]
     },
     {
-      "number": 16,
+      "number": 17,
       "content": [
         {
           "text": "};",
@@ -3002,11 +3010,11 @@
       ]
     },
     {
-      "number": 17,
+      "number": 18,
       "content": []
     },
     {
-      "number": 18,
+      "number": 19,
       "content": [
         {
           "text": "export",
@@ -3051,7 +3059,7 @@
       ]
     },
     {
-      "number": 19,
+      "number": 20,
       "content": [
         {
           "text": "  ",
@@ -3076,7 +3084,7 @@
       ]
     },
     {
-      "number": 20,
+      "number": 21,
       "content": [
         {
           "text": "  ",
@@ -3089,7 +3097,7 @@
       ]
     },
     {
-      "number": 21,
+      "number": 22,
       "content": [
         {
           "text": "    variants",
@@ -3110,7 +3118,7 @@
       ]
     },
     {
-      "number": 22,
+      "number": 23,
       "content": [
         {
           "text": "      variant",
@@ -3131,7 +3139,7 @@
       ]
     },
     {
-      "number": 23,
+      "number": 24,
       "content": [
         {
           "text": "        success",
@@ -3164,7 +3172,7 @@
       ]
     },
     {
-      "number": 24,
+      "number": 25,
       "content": [
         {
           "text": "        warning",
@@ -3197,7 +3205,7 @@
       ]
     },
     {
-      "number": 25,
+      "number": 26,
       "content": [
         {
           "text": "        error",
@@ -3230,7 +3238,7 @@
       ]
     },
     {
-      "number": 26,
+      "number": 27,
       "content": [
         {
           "text": "        info",
@@ -3263,7 +3271,7 @@
       ]
     },
     {
-      "number": 27,
+      "number": 28,
       "content": [
         {
           "text": "        neutral",
@@ -3296,7 +3304,7 @@
       ]
     },
     {
-      "number": 28,
+      "number": 29,
       "content": [
         {
           "text": "      ",
@@ -3309,7 +3317,7 @@
       ]
     },
     {
-      "number": 29,
+      "number": 30,
       "content": [
         {
           "text": "      size",
@@ -3330,7 +3338,7 @@
       ]
     },
     {
-      "number": 30,
+      "number": 31,
       "content": [
         {
           "text": "        sm",
@@ -3363,7 +3371,7 @@
       ]
     },
     {
-      "number": 31,
+      "number": 32,
       "content": [
         {
           "text": "        md",
@@ -3396,7 +3404,7 @@
       ]
     },
     {
-      "number": 32,
+      "number": 33,
       "content": [
         {
           "text": "        lg",
@@ -3429,7 +3437,7 @@
       ]
     },
     {
-      "number": 33,
+      "number": 34,
       "content": [
         {
           "text": "      ",
@@ -3442,7 +3450,7 @@
       ]
     },
     {
-      "number": 34,
+      "number": 35,
       "content": [
         {
           "text": "    ",
@@ -3455,7 +3463,7 @@
       ]
     },
     {
-      "number": 35,
+      "number": 36,
       "content": [
         {
           "text": "    defaultVariants",
@@ -3536,7 +3544,7 @@
       ]
     },
     {
-      "number": 36,
+      "number": 37,
       "content": [
         {
           "text": "  ",
@@ -3549,7 +3557,7 @@
       ]
     },
     {
-      "number": 37,
+      "number": 38,
       "content": [
         {
           "text": ")",
@@ -3562,11 +3570,11 @@
       ]
     },
     {
-      "number": 38,
+      "number": 39,
       "content": []
     },
     {
-      "number": 39,
+      "number": 40,
       "content": [
         {
           "text": "export",
@@ -3591,7 +3599,7 @@
       ]
     },
     {
-      "number": 40,
+      "number": 41,
       "content": [
         {
           "text": "  ",
@@ -3624,7 +3632,7 @@
       ]
     },
     {
-      "number": 41,
+      "number": 42,
       "content": [
         {
           "text": "    ",
@@ -3685,7 +3693,7 @@
       ]
     },
     {
-      "number": 42,
+      "number": 43,
       "content": [
         {
           "text": "  variant",
@@ -3710,7 +3718,7 @@
       ]
     },
     {
-      "number": 43,
+      "number": 44,
       "content": [
         {
           "text": "  dot",
@@ -3735,7 +3743,7 @@
       ]
     },
     {
-      "number": 44,
+      "number": 45,
       "content": [
         {
           "text": "  ref",
@@ -3768,7 +3776,7 @@
       ]
     },
     {
-      "number": 45,
+      "number": 46,
       "content": [
         {
           "text": "}",
@@ -3777,11 +3785,11 @@
       ]
     },
     {
-      "number": 46,
+      "number": 47,
       "content": []
     },
     {
-      "number": 47,
+      "number": 48,
       "content": [
         {
           "text": "export",
@@ -3810,7 +3818,7 @@
       ]
     },
     {
-      "number": 48,
+      "number": 49,
       "content": [
         {
           "text": "  ref",
@@ -3823,7 +3831,7 @@
       ]
     },
     {
-      "number": 49,
+      "number": 50,
       "content": [
         {
           "text": "  className",
@@ -3836,7 +3844,7 @@
       ]
     },
     {
-      "number": 50,
+      "number": 51,
       "content": [
         {
           "text": "  variant ",
@@ -3869,7 +3877,7 @@
       ]
     },
     {
-      "number": 51,
+      "number": 52,
       "content": [
         {
           "text": "  size",
@@ -3882,7 +3890,7 @@
       ]
     },
     {
-      "number": 52,
+      "number": 53,
       "content": [
         {
           "text": "  dot",
@@ -3895,7 +3903,7 @@
       ]
     },
     {
-      "number": 53,
+      "number": 54,
       "content": [
         {
           "text": "  children",
@@ -3908,7 +3916,7 @@
       ]
     },
     {
-      "number": 54,
+      "number": 55,
       "content": [
         {
           "text": "  ",
@@ -3925,7 +3933,7 @@
       ]
     },
     {
-      "number": 55,
+      "number": 56,
       "content": [
         {
           "text": "}:",
@@ -3954,7 +3962,7 @@
       ]
     },
     {
-      "number": 56,
+      "number": 57,
       "content": [
         {
           "text": "  ",
@@ -3971,7 +3979,7 @@
       ]
     },
     {
-      "number": 57,
+      "number": 58,
       "content": [
         {
           "text": "    ",
@@ -3988,7 +3996,7 @@
       ]
     },
     {
-      "number": 58,
+      "number": 59,
       "content": [
         {
           "text": "      ",
@@ -4013,7 +4021,7 @@
       ]
     },
     {
-      "number": 59,
+      "number": 60,
       "content": [
         {
           "text": "      ",
@@ -4082,7 +4090,7 @@
       ]
     },
     {
-      "number": 60,
+      "number": 61,
       "content": [
         {
           "text": "      ",
@@ -4103,7 +4111,7 @@
       ]
     },
     {
-      "number": 61,
+      "number": 62,
       "content": [
         {
           "text": "    ",
@@ -4116,7 +4124,7 @@
       ]
     },
     {
-      "number": 62,
+      "number": 63,
       "content": [
         {
           "text": "      ",
@@ -4141,7 +4149,7 @@
       ]
     },
     {
-      "number": 63,
+      "number": 64,
       "content": [
         {
           "text": "        ",
@@ -4158,7 +4166,7 @@
       ]
     },
     {
-      "number": 64,
+      "number": 65,
       "content": [
         {
           "text": "          ",
@@ -4187,7 +4195,7 @@
       ]
     },
     {
-      "number": 65,
+      "number": 66,
       "content": [
         {
           "text": "          ",
@@ -4212,7 +4220,7 @@
       ]
     },
     {
-      "number": 66,
+      "number": 67,
       "content": [
         {
           "text": "            ",
@@ -4237,7 +4245,7 @@
       ]
     },
     {
-      "number": 67,
+      "number": 68,
       "content": [
         {
           "text": "            dotColorMap[variant]",
@@ -4250,7 +4258,7 @@
       ]
     },
     {
-      "number": 68,
+      "number": 69,
       "content": [
         {
           "text": "          )",
@@ -4263,7 +4271,7 @@
       ]
     },
     {
-      "number": 69,
+      "number": 70,
       "content": [
         {
           "text": "        ",
@@ -4276,7 +4284,7 @@
       ]
     },
     {
-      "number": 70,
+      "number": 71,
       "content": [
         {
           "text": "      )",
@@ -4289,7 +4297,7 @@
       ]
     },
     {
-      "number": 71,
+      "number": 72,
       "content": [
         {
           "text": "      ",
@@ -4310,7 +4318,7 @@
       ]
     },
     {
-      "number": 72,
+      "number": 73,
       "content": [
         {
           "text": "    ",
@@ -4331,7 +4339,7 @@
       ]
     },
     {
-      "number": 73,
+      "number": 74,
       "content": [
         {
           "text": "  )",
@@ -4344,7 +4352,7 @@
       ]
     },
     {
-      "number": 74,
+      "number": 75,
       "content": [
         {
           "text": "}",
@@ -4353,7 +4361,7 @@
       ]
     },
     {
-      "number": 75,
+      "number": 76,
       "content": []
     }
   ],

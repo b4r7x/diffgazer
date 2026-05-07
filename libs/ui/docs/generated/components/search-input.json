@@ -12,10 +12,35 @@
   "props": {},
   "source": {
     "registry/ui/search-input/index.ts": {
-      "raw": "export { SearchInput, type SearchInputProps } from \"./search-input\";\n",
+      "raw": "\"use client\";\n\nexport { SearchInput, type SearchInputProps } from \"./search-input\";\n",
       "highlighted": [
         {
           "number": 1,
+          "content": [
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "use client",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
           "content": [
             {
               "text": "export",
@@ -84,13 +109,13 @@
           ]
         },
         {
-          "number": 2,
+          "number": 4,
           "content": []
         }
       ]
     },
     "registry/ui/search-input/search-input.tsx": {
-      "raw": "\"use client\";\n\nimport type { InputHTMLAttributes, KeyboardEvent, ReactNode, Ref } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\n\nconst searchInputVariants = cva(\n  \"flex items-center gap-2 bg-background border-x border-b border-border font-mono shrink-0 transition-colors focus-within:border-foreground\",\n  {\n    variants: {\n      size: {\n        sm: \"p-2 text-xs\",\n        md: \"p-3 text-sm\",\n        lg: \"p-3 text-base\",\n      },\n      error: {\n        true: \"border-destructive\",\n      },\n      disabled: {\n        true: \"opacity-50 pointer-events-none\",\n      },\n    },\n    defaultVariants: { size: \"md\" },\n  },\n);\n\nconst defaultPrefix = <span className=\"text-foreground font-bold\" aria-hidden=\"true\">/</span>;\n\nexport interface SearchInputProps\n  extends Omit<\n    InputHTMLAttributes<HTMLInputElement>,\n    \"value\" | \"defaultValue\" | \"onChange\" | \"type\" | \"size\" | \"prefix\"\n  > {\n  value?: string;\n  defaultValue?: string;\n  onChange?: (value: string) => void;\n  onEscape?: () => void;\n  onEnter?: () => void;\n  prefix?: ReactNode;\n  size?: \"sm\" | \"md\" | \"lg\";\n  error?: boolean;\n  invalid?: boolean;\n  ref?: Ref<HTMLInputElement>;\n}\n\nexport function SearchInput({\n  value,\n  defaultValue,\n  onChange,\n  onEscape,\n  onEnter,\n  onKeyDown,\n  placeholder = \"Search...\",\n  prefix = defaultPrefix,\n  className,\n  ref,\n  size,\n  error,\n  invalid,\n  disabled,\n  \"aria-label\": ariaLabel,\n  \"aria-invalid\": ariaInvalid,\n  ...rest\n}: SearchInputProps) {\n  const isInvalid = invalid ?? error ?? ariaInvalid;\n  const [current, setValue] = useControllableState({\n    value,\n    defaultValue: defaultValue ?? \"\",\n    onChange,\n  });\n\n  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {\n    if (e.key === \"Escape\") {\n      e.preventDefault();\n      onEscape?.();\n    } else if (e.key === \"Enter\" && onEnter) {\n      e.preventDefault();\n      onEnter();\n    }\n    onKeyDown?.(e);\n  };\n\n  return (\n    <search\n      className={cn(\n        searchInputVariants({ size, error: !!isInvalid, disabled }),\n        className,\n      )}\n    >\n      {prefix}\n      <input\n        ref={ref}\n        type=\"search\"\n        value={current}\n        onChange={(e) => setValue(e.target.value)}\n        onKeyDown={handleKeyDown}\n        placeholder={placeholder}\n        aria-label={ariaLabel ?? placeholder}\n        aria-invalid={isInvalid || undefined}\n        disabled={disabled}\n        {...rest}\n        className=\"flex-1 bg-transparent font-mono text-foreground placeholder:text-foreground/50 focus:outline-none disabled:cursor-not-allowed [&::-webkit-search-cancel-button]:appearance-none\"\n      />\n    </search>\n  );\n}\n",
+      "raw": "\"use client\";\n\nimport { useRef, type InputHTMLAttributes, type KeyboardEvent, type ReactNode, type Ref } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\nimport { useFormReset } from \"@/hooks/use-form-reset\";\nimport { composeRefs } from \"@/lib/compose-refs\";\n\nconst searchInputVariants = cva(\n  \"flex items-center gap-2 bg-background border-x border-b border-border font-mono shrink-0 transition-colors focus-within:border-foreground\",\n  {\n    variants: {\n      size: {\n        sm: \"p-2 text-xs\",\n        md: \"p-3 text-sm\",\n        lg: \"p-3 text-base\",\n      },\n      error: {\n        true: \"border-destructive\",\n      },\n      disabled: {\n        true: \"opacity-50 pointer-events-none\",\n      },\n    },\n    defaultVariants: { size: \"md\" },\n  },\n);\n\nconst defaultPrefix = <span className=\"text-foreground font-bold\" aria-hidden=\"true\">/</span>;\n\nexport interface SearchInputProps\n  extends Omit<\n    InputHTMLAttributes<HTMLInputElement>,\n    \"value\" | \"defaultValue\" | \"onChange\" | \"type\" | \"size\" | \"prefix\"\n  > {\n  value?: string;\n  defaultValue?: string;\n  onChange?: (value: string) => void;\n  onEscape?: () => void;\n  onEnter?: () => void;\n  prefix?: ReactNode;\n  size?: \"sm\" | \"md\" | \"lg\";\n  error?: boolean;\n  invalid?: boolean;\n  ref?: Ref<HTMLInputElement>;\n}\n\nfunction resolveInvalidState(\n  invalid: boolean | undefined,\n  error: boolean | undefined,\n  ariaInvalid: InputHTMLAttributes<HTMLInputElement>[\"aria-invalid\"],\n) {\n  if (invalid || error) return { isInvalid: true, ariaInvalid: true };\n\n  if (ariaInvalid === true || ariaInvalid === \"true\" || ariaInvalid === \"grammar\" || ariaInvalid === \"spelling\") {\n    return { isInvalid: true, ariaInvalid };\n  }\n\n  if (ariaInvalid === false || ariaInvalid === \"false\") {\n    return { isInvalid: false, ariaInvalid };\n  }\n\n  return { isInvalid: false, ariaInvalid: undefined };\n}\n\nexport function SearchInput({\n  value,\n  defaultValue,\n  onChange,\n  onEscape,\n  onEnter,\n  onKeyDown,\n  placeholder = \"Search...\",\n  prefix = defaultPrefix,\n  className,\n  ref,\n  size,\n  error,\n  invalid,\n  disabled,\n  \"aria-label\": ariaLabel,\n  \"aria-invalid\": ariaInvalid,\n  ...rest\n}: SearchInputProps) {\n  const invalidState = resolveInvalidState(invalid, error, ariaInvalid);\n  const inputRef = useRef<HTMLInputElement>(null);\n  const [current, setValue] = useControllableState({\n    value,\n    defaultValue: defaultValue ?? \"\",\n    onChange,\n  });\n  useFormReset(inputRef, defaultValue ?? \"\", setValue, value === undefined);\n\n  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {\n    onKeyDown?.(e);\n    if (e.defaultPrevented) return;\n\n    if (e.key === \"Escape\") {\n      e.preventDefault();\n      onEscape?.();\n    } else if (e.key === \"Enter\" && onEnter) {\n      e.preventDefault();\n      onEnter();\n    }\n  };\n\n  return (\n    <search\n      className={cn(\n        searchInputVariants({ size, error: invalidState.isInvalid, disabled }),\n        className,\n      )}\n    >\n      {prefix}\n      <input\n        ref={composeRefs(inputRef, ref)}\n        type=\"search\"\n        value={current}\n        onChange={(e) => setValue(e.target.value)}\n        onKeyDown={handleKeyDown}\n        placeholder={placeholder}\n        aria-label={ariaLabel ?? placeholder}\n        aria-invalid={invalidState.ariaInvalid}\n        disabled={disabled}\n        {...rest}\n        className=\"flex-1 bg-transparent font-mono text-foreground placeholder:text-foreground/50 focus:outline-none disabled:cursor-not-allowed [&::-webkit-search-cancel-button]:appearance-none\"\n      />\n    </search>\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -129,16 +154,24 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "type",
-              "color": "var(--code-keyword)"
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " useRef",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
             },
             {
               "text": " ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "{",
-              "color": "var(--code-operator)"
+              "text": "type",
+              "color": "var(--code-keyword)"
             },
             {
               "text": " InputHTMLAttributes",
@@ -149,6 +182,14 @@
               "color": "var(--code-operator)"
             },
             {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
+            },
+            {
               "text": " KeyboardEvent",
               "color": "var(--code-variable)"
             },
@@ -157,12 +198,28 @@
               "color": "var(--code-operator)"
             },
             {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
+            },
+            {
               "text": " ReactNode",
               "color": "var(--code-variable)"
             },
             {
               "text": ",",
               "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
             },
             {
               "text": " Ref ",
@@ -363,10 +420,116 @@
         },
         {
           "number": 7,
-          "content": []
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " useFormReset ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "@/hooks/use-form-reset",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
         },
         {
           "number": 8,
+          "content": [
+            {
+              "text": "import",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " composeRefs ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "from",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "@/lib/compose-refs",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "content": []
+        },
+        {
+          "number": 10,
           "content": [
             {
               "text": "const",
@@ -403,7 +566,7 @@
           ]
         },
         {
-          "number": 9,
+          "number": 11,
           "content": [
             {
               "text": "  ",
@@ -428,7 +591,7 @@
           ]
         },
         {
-          "number": 10,
+          "number": 12,
           "content": [
             {
               "text": "  ",
@@ -441,7 +604,7 @@
           ]
         },
         {
-          "number": 11,
+          "number": 13,
           "content": [
             {
               "text": "    variants",
@@ -462,7 +625,7 @@
           ]
         },
         {
-          "number": 12,
+          "number": 14,
           "content": [
             {
               "text": "      size",
@@ -483,7 +646,7 @@
           ]
         },
         {
-          "number": 13,
+          "number": 15,
           "content": [
             {
               "text": "        sm",
@@ -516,7 +679,7 @@
           ]
         },
         {
-          "number": 14,
+          "number": 16,
           "content": [
             {
               "text": "        md",
@@ -549,7 +712,7 @@
           ]
         },
         {
-          "number": 15,
+          "number": 17,
           "content": [
             {
               "text": "        lg",
@@ -582,7 +745,7 @@
           ]
         },
         {
-          "number": 16,
+          "number": 18,
           "content": [
             {
               "text": "      ",
@@ -595,7 +758,7 @@
           ]
         },
         {
-          "number": 17,
+          "number": 19,
           "content": [
             {
               "text": "      error",
@@ -616,7 +779,7 @@
           ]
         },
         {
-          "number": 18,
+          "number": 20,
           "content": [
             {
               "text": "        true",
@@ -649,7 +812,7 @@
           ]
         },
         {
-          "number": 19,
+          "number": 21,
           "content": [
             {
               "text": "      ",
@@ -662,7 +825,7 @@
           ]
         },
         {
-          "number": 20,
+          "number": 22,
           "content": [
             {
               "text": "      disabled",
@@ -683,7 +846,7 @@
           ]
         },
         {
-          "number": 21,
+          "number": 23,
           "content": [
             {
               "text": "        true",
@@ -716,7 +879,7 @@
           ]
         },
         {
-          "number": 22,
+          "number": 24,
           "content": [
             {
               "text": "      ",
@@ -729,7 +892,7 @@
           ]
         },
         {
-          "number": 23,
+          "number": 25,
           "content": [
             {
               "text": "    ",
@@ -742,7 +905,7 @@
           ]
         },
         {
-          "number": 24,
+          "number": 26,
           "content": [
             {
               "text": "    defaultVariants",
@@ -795,7 +958,7 @@
           ]
         },
         {
-          "number": 25,
+          "number": 27,
           "content": [
             {
               "text": "  ",
@@ -808,7 +971,7 @@
           ]
         },
         {
-          "number": 26,
+          "number": 28,
           "content": [
             {
               "text": ")",
@@ -821,11 +984,11 @@
           ]
         },
         {
-          "number": 27,
+          "number": 29,
           "content": []
         },
         {
-          "number": 28,
+          "number": 30,
           "content": [
             {
               "text": "const",
@@ -930,11 +1093,11 @@
           ]
         },
         {
-          "number": 29,
+          "number": 31,
           "content": []
         },
         {
-          "number": 30,
+          "number": 32,
           "content": [
             {
               "text": "export",
@@ -959,7 +1122,7 @@
           ]
         },
         {
-          "number": 31,
+          "number": 33,
           "content": [
             {
               "text": "  ",
@@ -984,7 +1147,7 @@
           ]
         },
         {
-          "number": 32,
+          "number": 34,
           "content": [
             {
               "text": "    ",
@@ -1009,7 +1172,7 @@
           ]
         },
         {
-          "number": 33,
+          "number": 35,
           "content": [
             {
               "text": "    ",
@@ -1150,7 +1313,7 @@
           ]
         },
         {
-          "number": 34,
+          "number": 36,
           "content": [
             {
               "text": "  ",
@@ -1171,7 +1334,7 @@
           ]
         },
         {
-          "number": 35,
+          "number": 37,
           "content": [
             {
               "text": "  value",
@@ -1196,7 +1359,7 @@
           ]
         },
         {
-          "number": 36,
+          "number": 38,
           "content": [
             {
               "text": "  defaultValue",
@@ -1221,7 +1384,7 @@
           ]
         },
         {
-          "number": 37,
+          "number": 39,
           "content": [
             {
               "text": "  ",
@@ -1286,7 +1449,7 @@
           ]
         },
         {
-          "number": 38,
+          "number": 40,
           "content": [
             {
               "text": "  ",
@@ -1331,7 +1494,7 @@
           ]
         },
         {
-          "number": 39,
+          "number": 41,
           "content": [
             {
               "text": "  ",
@@ -1376,7 +1539,7 @@
           ]
         },
         {
-          "number": 40,
+          "number": 42,
           "content": [
             {
               "text": "  prefix",
@@ -1401,7 +1564,7 @@
           ]
         },
         {
-          "number": 41,
+          "number": 43,
           "content": [
             {
               "text": "  size",
@@ -1482,7 +1645,7 @@
           ]
         },
         {
-          "number": 42,
+          "number": 44,
           "content": [
             {
               "text": "  error",
@@ -1507,7 +1670,7 @@
           ]
         },
         {
-          "number": 43,
+          "number": 45,
           "content": [
             {
               "text": "  invalid",
@@ -1532,7 +1695,7 @@
           ]
         },
         {
-          "number": 44,
+          "number": 46,
           "content": [
             {
               "text": "  ref",
@@ -1565,7 +1728,7 @@
           ]
         },
         {
-          "number": 45,
+          "number": 47,
           "content": [
             {
               "text": "}",
@@ -1574,11 +1737,685 @@
           ]
         },
         {
-          "number": 46,
+          "number": 48,
           "content": []
         },
         {
-          "number": 47,
+          "number": 49,
+          "content": [
+            {
+              "text": "function",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "resolveInvalidState",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 50,
+          "content": [
+            {
+              "text": "  invalid",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "boolean",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "undefined",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 51,
+          "content": [
+            {
+              "text": "  error",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "boolean",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "undefined",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 52,
+          "content": [
+            {
+              "text": "  ariaInvalid",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "InputHTMLAttributes",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "HTMLInputElement",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "[",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "aria-invalid",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "]",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 53,
+          "content": [
+            {
+              "text": ")",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 54,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (invalid ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "||",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " error) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " isInvalid",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "true",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ariaInvalid",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "true",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "};",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 55,
+          "content": []
+        },
+        {
+          "number": 56,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (ariaInvalid ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "true",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "||",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ariaInvalid ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "true",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "||",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ariaInvalid ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "grammar",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "||",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ariaInvalid ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "spelling",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 57,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " isInvalid",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "true",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ariaInvalid ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "};",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 58,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 59,
+          "content": []
+        },
+        {
+          "number": 60,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (ariaInvalid ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "||",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ariaInvalid ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 61,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " isInvalid",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ariaInvalid ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "};",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 62,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 63,
+          "content": []
+        },
+        {
+          "number": 64,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " isInvalid",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "false",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ariaInvalid",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "undefined",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "};",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 65,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 66,
+          "content": []
+        },
+        {
+          "number": 67,
           "content": [
             {
               "text": "export",
@@ -1607,7 +2444,7 @@
           ]
         },
         {
-          "number": 48,
+          "number": 68,
           "content": [
             {
               "text": "  value",
@@ -1620,7 +2457,7 @@
           ]
         },
         {
-          "number": 49,
+          "number": 69,
           "content": [
             {
               "text": "  defaultValue",
@@ -1633,7 +2470,7 @@
           ]
         },
         {
-          "number": 50,
+          "number": 70,
           "content": [
             {
               "text": "  onChange",
@@ -1646,7 +2483,7 @@
           ]
         },
         {
-          "number": 51,
+          "number": 71,
           "content": [
             {
               "text": "  onEscape",
@@ -1659,7 +2496,7 @@
           ]
         },
         {
-          "number": 52,
+          "number": 72,
           "content": [
             {
               "text": "  onEnter",
@@ -1672,7 +2509,7 @@
           ]
         },
         {
-          "number": 53,
+          "number": 73,
           "content": [
             {
               "text": "  onKeyDown",
@@ -1685,7 +2522,7 @@
           ]
         },
         {
-          "number": 54,
+          "number": 74,
           "content": [
             {
               "text": "  placeholder ",
@@ -1718,7 +2555,7 @@
           ]
         },
         {
-          "number": 55,
+          "number": 75,
           "content": [
             {
               "text": "  prefix ",
@@ -1739,7 +2576,7 @@
           ]
         },
         {
-          "number": 56,
+          "number": 76,
           "content": [
             {
               "text": "  className",
@@ -1752,7 +2589,7 @@
           ]
         },
         {
-          "number": 57,
+          "number": 77,
           "content": [
             {
               "text": "  ref",
@@ -1765,7 +2602,7 @@
           ]
         },
         {
-          "number": 58,
+          "number": 78,
           "content": [
             {
               "text": "  size",
@@ -1778,7 +2615,7 @@
           ]
         },
         {
-          "number": 59,
+          "number": 79,
           "content": [
             {
               "text": "  error",
@@ -1791,7 +2628,7 @@
           ]
         },
         {
-          "number": 60,
+          "number": 80,
           "content": [
             {
               "text": "  invalid",
@@ -1804,7 +2641,7 @@
           ]
         },
         {
-          "number": 61,
+          "number": 81,
           "content": [
             {
               "text": "  disabled",
@@ -1817,7 +2654,7 @@
           ]
         },
         {
-          "number": 62,
+          "number": 82,
           "content": [
             {
               "text": "  ",
@@ -1850,7 +2687,7 @@
           ]
         },
         {
-          "number": 63,
+          "number": 83,
           "content": [
             {
               "text": "  ",
@@ -1883,7 +2720,7 @@
           ]
         },
         {
-          "number": 64,
+          "number": 84,
           "content": [
             {
               "text": "  ",
@@ -1900,7 +2737,7 @@
           ]
         },
         {
-          "number": 65,
+          "number": 85,
           "content": [
             {
               "text": "}:",
@@ -1929,7 +2766,7 @@
           ]
         },
         {
-          "number": 66,
+          "number": 86,
           "content": [
             {
               "text": "  ",
@@ -1944,7 +2781,7 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "isInvalid",
+              "text": "invalidState",
               "color": "var(--code-number)"
             },
             {
@@ -1956,23 +2793,31 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": " invalid ",
+              "text": " ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "??",
-              "color": "var(--code-operator)"
+              "text": "resolveInvalidState",
+              "color": "var(--code-function)"
             },
             {
-              "text": " error ",
+              "text": "(invalid",
               "color": "var(--code-variable)"
             },
             {
-              "text": "??",
+              "text": ",",
               "color": "var(--code-operator)"
             },
             {
-              "text": " ariaInvalid",
+              "text": " error",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ariaInvalid)",
               "color": "var(--code-variable)"
             },
             {
@@ -1982,7 +2827,72 @@
           ]
         },
         {
-          "number": 67,
+          "number": 87,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "inputRef",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useRef",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "HTMLInputElement",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 88,
           "content": [
             {
               "text": "  ",
@@ -2047,7 +2957,7 @@
           ]
         },
         {
-          "number": 68,
+          "number": 89,
           "content": [
             {
               "text": "    value",
@@ -2060,7 +2970,7 @@
           ]
         },
         {
-          "number": 69,
+          "number": 90,
           "content": [
             {
               "text": "    defaultValue",
@@ -2093,7 +3003,7 @@
           ]
         },
         {
-          "number": 70,
+          "number": 91,
           "content": [
             {
               "text": "    onChange",
@@ -2106,7 +3016,7 @@
           ]
         },
         {
-          "number": 71,
+          "number": 92,
           "content": [
             {
               "text": "  ",
@@ -2127,11 +3037,84 @@
           ]
         },
         {
-          "number": 72,
+          "number": 93,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useFormReset",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(inputRef",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " defaultValue ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "??",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " setValue",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " value ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "undefined",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 94,
           "content": []
         },
         {
-          "number": 73,
+          "number": 95,
           "content": [
             {
               "text": "  ",
@@ -2212,7 +3195,73 @@
           ]
         },
         {
-          "number": 74,
+          "number": 96,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onKeyDown",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "?.",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "(e)",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 97,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "e",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "defaultPrevented) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 98,
+          "content": []
+        },
+        {
+          "number": 99,
           "content": [
             {
               "text": "    ",
@@ -2269,7 +3318,7 @@
           ]
         },
         {
-          "number": 75,
+          "number": 100,
           "content": [
             {
               "text": "      ",
@@ -2298,7 +3347,7 @@
           ]
         },
         {
-          "number": 76,
+          "number": 101,
           "content": [
             {
               "text": "      ",
@@ -2323,7 +3372,7 @@
           ]
         },
         {
-          "number": 77,
+          "number": 102,
           "content": [
             {
               "text": "    ",
@@ -2404,7 +3453,7 @@
           ]
         },
         {
-          "number": 78,
+          "number": 103,
           "content": [
             {
               "text": "      ",
@@ -2433,7 +3482,7 @@
           ]
         },
         {
-          "number": 79,
+          "number": 104,
           "content": [
             {
               "text": "      ",
@@ -2454,7 +3503,7 @@
           ]
         },
         {
-          "number": 80,
+          "number": 105,
           "content": [
             {
               "text": "    ",
@@ -2467,32 +3516,7 @@
           ]
         },
         {
-          "number": 81,
-          "content": [
-            {
-              "text": "    ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "onKeyDown",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "?.",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "(e)",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ";",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 82,
+          "number": 106,
           "content": [
             {
               "text": "  ",
@@ -2505,11 +3529,11 @@
           ]
         },
         {
-          "number": 83,
+          "number": 107,
           "content": []
         },
         {
-          "number": 84,
+          "number": 108,
           "content": [
             {
               "text": "  ",
@@ -2526,7 +3550,7 @@
           ]
         },
         {
-          "number": 85,
+          "number": 109,
           "content": [
             {
               "text": "    ",
@@ -2543,7 +3567,7 @@
           ]
         },
         {
-          "number": 86,
+          "number": 110,
           "content": [
             {
               "text": "      ",
@@ -2568,7 +3592,7 @@
           ]
         },
         {
-          "number": 87,
+          "number": 111,
           "content": [
             {
               "text": "        ",
@@ -2607,7 +3631,11 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "!!",
+              "text": "invalidState",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
               "color": "var(--code-operator)"
             },
             {
@@ -2637,7 +3665,7 @@
           ]
         },
         {
-          "number": 88,
+          "number": 112,
           "content": [
             {
               "text": "        className",
@@ -2650,7 +3678,7 @@
           ]
         },
         {
-          "number": 89,
+          "number": 113,
           "content": [
             {
               "text": "      )",
@@ -2663,7 +3691,7 @@
           ]
         },
         {
-          "number": 90,
+          "number": 114,
           "content": [
             {
               "text": "    ",
@@ -2676,7 +3704,7 @@
           ]
         },
         {
-          "number": 91,
+          "number": 115,
           "content": [
             {
               "text": "      ",
@@ -2697,7 +3725,7 @@
           ]
         },
         {
-          "number": 92,
+          "number": 116,
           "content": [
             {
               "text": "      ",
@@ -2714,7 +3742,7 @@
           ]
         },
         {
-          "number": 93,
+          "number": 117,
           "content": [
             {
               "text": "        ",
@@ -2729,7 +3757,19 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "ref",
+              "text": "composeRefs",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(inputRef",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ref)",
               "color": "var(--code-variable)"
             },
             {
@@ -2739,7 +3779,7 @@
           ]
         },
         {
-          "number": 94,
+          "number": 118,
           "content": [
             {
               "text": "        ",
@@ -2768,7 +3808,7 @@
           ]
         },
         {
-          "number": 95,
+          "number": 119,
           "content": [
             {
               "text": "        ",
@@ -2793,7 +3833,7 @@
           ]
         },
         {
-          "number": 96,
+          "number": 120,
           "content": [
             {
               "text": "        ",
@@ -2862,7 +3902,7 @@
           ]
         },
         {
-          "number": 97,
+          "number": 121,
           "content": [
             {
               "text": "        ",
@@ -2887,7 +3927,7 @@
           ]
         },
         {
-          "number": 98,
+          "number": 122,
           "content": [
             {
               "text": "        ",
@@ -2912,7 +3952,7 @@
           ]
         },
         {
-          "number": 99,
+          "number": 123,
           "content": [
             {
               "text": "        ",
@@ -2945,7 +3985,7 @@
           ]
         },
         {
-          "number": 100,
+          "number": 124,
           "content": [
             {
               "text": "        ",
@@ -2960,20 +4000,16 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "isInvalid ",
-              "color": "var(--code-variable)"
+              "text": "invalidState",
+              "color": "var(--code-number)"
             },
             {
-              "text": "||",
+              "text": ".",
               "color": "var(--code-operator)"
             },
             {
-              "text": " ",
+              "text": "ariaInvalid",
               "color": "var(--code-variable)"
-            },
-            {
-              "text": "undefined",
-              "color": "var(--code-number)"
             },
             {
               "text": "}",
@@ -2982,7 +4018,7 @@
           ]
         },
         {
-          "number": 101,
+          "number": 125,
           "content": [
             {
               "text": "        ",
@@ -3007,7 +4043,7 @@
           ]
         },
         {
-          "number": 102,
+          "number": 126,
           "content": [
             {
               "text": "        ",
@@ -3028,7 +4064,7 @@
           ]
         },
         {
-          "number": 103,
+          "number": 127,
           "content": [
             {
               "text": "        ",
@@ -3057,7 +4093,7 @@
           ]
         },
         {
-          "number": 104,
+          "number": 128,
           "content": [
             {
               "text": "      ",
@@ -3070,7 +4106,7 @@
           ]
         },
         {
-          "number": 105,
+          "number": 129,
           "content": [
             {
               "text": "    ",
@@ -3091,7 +4127,7 @@
           ]
         },
         {
-          "number": 106,
+          "number": 130,
           "content": [
             {
               "text": "  )",
@@ -3104,7 +4140,7 @@
           ]
         },
         {
-          "number": 107,
+          "number": 131,
           "content": [
             {
               "text": "}",
@@ -3113,16 +4149,41 @@
           ]
         },
         {
-          "number": 108,
+          "number": 132,
           "content": []
         }
       ]
     }
   },
-  "mergedSource": "export { SearchInput, type SearchInputProps } from \"./search-input\";\n\n\n\"use client\";\n\nimport type { InputHTMLAttributes, KeyboardEvent, ReactNode, Ref } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\n\nconst searchInputVariants = cva(\n  \"flex items-center gap-2 bg-background border-x border-b border-border font-mono shrink-0 transition-colors focus-within:border-foreground\",\n  {\n    variants: {\n      size: {\n        sm: \"p-2 text-xs\",\n        md: \"p-3 text-sm\",\n        lg: \"p-3 text-base\",\n      },\n      error: {\n        true: \"border-destructive\",\n      },\n      disabled: {\n        true: \"opacity-50 pointer-events-none\",\n      },\n    },\n    defaultVariants: { size: \"md\" },\n  },\n);\n\nconst defaultPrefix = <span className=\"text-foreground font-bold\" aria-hidden=\"true\">/</span>;\n\nexport interface SearchInputProps\n  extends Omit<\n    InputHTMLAttributes<HTMLInputElement>,\n    \"value\" | \"defaultValue\" | \"onChange\" | \"type\" | \"size\" | \"prefix\"\n  > {\n  value?: string;\n  defaultValue?: string;\n  onChange?: (value: string) => void;\n  onEscape?: () => void;\n  onEnter?: () => void;\n  prefix?: ReactNode;\n  size?: \"sm\" | \"md\" | \"lg\";\n  error?: boolean;\n  invalid?: boolean;\n  ref?: Ref<HTMLInputElement>;\n}\n\nexport function SearchInput({\n  value,\n  defaultValue,\n  onChange,\n  onEscape,\n  onEnter,\n  onKeyDown,\n  placeholder = \"Search...\",\n  prefix = defaultPrefix,\n  className,\n  ref,\n  size,\n  error,\n  invalid,\n  disabled,\n  \"aria-label\": ariaLabel,\n  \"aria-invalid\": ariaInvalid,\n  ...rest\n}: SearchInputProps) {\n  const isInvalid = invalid ?? error ?? ariaInvalid;\n  const [current, setValue] = useControllableState({\n    value,\n    defaultValue: defaultValue ?? \"\",\n    onChange,\n  });\n\n  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {\n    if (e.key === \"Escape\") {\n      e.preventDefault();\n      onEscape?.();\n    } else if (e.key === \"Enter\" && onEnter) {\n      e.preventDefault();\n      onEnter();\n    }\n    onKeyDown?.(e);\n  };\n\n  return (\n    <search\n      className={cn(\n        searchInputVariants({ size, error: !!isInvalid, disabled }),\n        className,\n      )}\n    >\n      {prefix}\n      <input\n        ref={ref}\n        type=\"search\"\n        value={current}\n        onChange={(e) => setValue(e.target.value)}\n        onKeyDown={handleKeyDown}\n        placeholder={placeholder}\n        aria-label={ariaLabel ?? placeholder}\n        aria-invalid={isInvalid || undefined}\n        disabled={disabled}\n        {...rest}\n        className=\"flex-1 bg-transparent font-mono text-foreground placeholder:text-foreground/50 focus:outline-none disabled:cursor-not-allowed [&::-webkit-search-cancel-button]:appearance-none\"\n      />\n    </search>\n  );\n}\n",
+  "mergedSource": "\"use client\";\n\nexport { SearchInput, type SearchInputProps } from \"./search-input\";\n\n\n\"use client\";\n\nimport { useRef, type InputHTMLAttributes, type KeyboardEvent, type ReactNode, type Ref } from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\nimport { useFormReset } from \"@/hooks/use-form-reset\";\nimport { composeRefs } from \"@/lib/compose-refs\";\n\nconst searchInputVariants = cva(\n  \"flex items-center gap-2 bg-background border-x border-b border-border font-mono shrink-0 transition-colors focus-within:border-foreground\",\n  {\n    variants: {\n      size: {\n        sm: \"p-2 text-xs\",\n        md: \"p-3 text-sm\",\n        lg: \"p-3 text-base\",\n      },\n      error: {\n        true: \"border-destructive\",\n      },\n      disabled: {\n        true: \"opacity-50 pointer-events-none\",\n      },\n    },\n    defaultVariants: { size: \"md\" },\n  },\n);\n\nconst defaultPrefix = <span className=\"text-foreground font-bold\" aria-hidden=\"true\">/</span>;\n\nexport interface SearchInputProps\n  extends Omit<\n    InputHTMLAttributes<HTMLInputElement>,\n    \"value\" | \"defaultValue\" | \"onChange\" | \"type\" | \"size\" | \"prefix\"\n  > {\n  value?: string;\n  defaultValue?: string;\n  onChange?: (value: string) => void;\n  onEscape?: () => void;\n  onEnter?: () => void;\n  prefix?: ReactNode;\n  size?: \"sm\" | \"md\" | \"lg\";\n  error?: boolean;\n  invalid?: boolean;\n  ref?: Ref<HTMLInputElement>;\n}\n\nfunction resolveInvalidState(\n  invalid: boolean | undefined,\n  error: boolean | undefined,\n  ariaInvalid: InputHTMLAttributes<HTMLInputElement>[\"aria-invalid\"],\n) {\n  if (invalid || error) return { isInvalid: true, ariaInvalid: true };\n\n  if (ariaInvalid === true || ariaInvalid === \"true\" || ariaInvalid === \"grammar\" || ariaInvalid === \"spelling\") {\n    return { isInvalid: true, ariaInvalid };\n  }\n\n  if (ariaInvalid === false || ariaInvalid === \"false\") {\n    return { isInvalid: false, ariaInvalid };\n  }\n\n  return { isInvalid: false, ariaInvalid: undefined };\n}\n\nexport function SearchInput({\n  value,\n  defaultValue,\n  onChange,\n  onEscape,\n  onEnter,\n  onKeyDown,\n  placeholder = \"Search...\",\n  prefix = defaultPrefix,\n  className,\n  ref,\n  size,\n  error,\n  invalid,\n  disabled,\n  \"aria-label\": ariaLabel,\n  \"aria-invalid\": ariaInvalid,\n  ...rest\n}: SearchInputProps) {\n  const invalidState = resolveInvalidState(invalid, error, ariaInvalid);\n  const inputRef = useRef<HTMLInputElement>(null);\n  const [current, setValue] = useControllableState({\n    value,\n    defaultValue: defaultValue ?? \"\",\n    onChange,\n  });\n  useFormReset(inputRef, defaultValue ?? \"\", setValue, value === undefined);\n\n  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {\n    onKeyDown?.(e);\n    if (e.defaultPrevented) return;\n\n    if (e.key === \"Escape\") {\n      e.preventDefault();\n      onEscape?.();\n    } else if (e.key === \"Enter\" && onEnter) {\n      e.preventDefault();\n      onEnter();\n    }\n  };\n\n  return (\n    <search\n      className={cn(\n        searchInputVariants({ size, error: invalidState.isInvalid, disabled }),\n        className,\n      )}\n    >\n      {prefix}\n      <input\n        ref={composeRefs(inputRef, ref)}\n        type=\"search\"\n        value={current}\n        onChange={(e) => setValue(e.target.value)}\n        onKeyDown={handleKeyDown}\n        placeholder={placeholder}\n        aria-label={ariaLabel ?? placeholder}\n        aria-invalid={invalidState.ariaInvalid}\n        disabled={disabled}\n        {...rest}\n        className=\"flex-1 bg-transparent font-mono text-foreground placeholder:text-foreground/50 focus:outline-none disabled:cursor-not-allowed [&::-webkit-search-cancel-button]:appearance-none\"\n      />\n    </search>\n  );\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
+      "content": [
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "use client",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "content": []
+    },
+    {
+      "number": 3,
       "content": [
         {
           "text": "export",
@@ -3191,15 +4252,15 @@
       ]
     },
     {
-      "number": 2,
-      "content": []
-    },
-    {
-      "number": 3,
-      "content": []
-    },
-    {
       "number": 4,
+      "content": []
+    },
+    {
+      "number": 5,
+      "content": []
+    },
+    {
+      "number": 6,
       "content": [
         {
           "text": "\"",
@@ -3220,22 +4281,14 @@
       ]
     },
     {
-      "number": 5,
+      "number": 7,
       "content": []
     },
     {
-      "number": 6,
+      "number": 8,
       "content": [
         {
           "text": "import",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "type",
           "color": "var(--code-keyword)"
         },
         {
@@ -3247,12 +4300,36 @@
           "color": "var(--code-operator)"
         },
         {
+          "text": " useRef",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "type",
+          "color": "var(--code-keyword)"
+        },
+        {
           "text": " InputHTMLAttributes",
           "color": "var(--code-variable)"
         },
         {
           "text": ",",
           "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "type",
+          "color": "var(--code-keyword)"
         },
         {
           "text": " KeyboardEvent",
@@ -3263,12 +4340,28 @@
           "color": "var(--code-operator)"
         },
         {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "type",
+          "color": "var(--code-keyword)"
+        },
+        {
           "text": " ReactNode",
           "color": "var(--code-variable)"
         },
         {
           "text": ",",
           "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "type",
+          "color": "var(--code-keyword)"
         },
         {
           "text": " Ref ",
@@ -3309,7 +4402,7 @@
       ]
     },
     {
-      "number": 7,
+      "number": 9,
       "content": [
         {
           "text": "import",
@@ -3362,7 +4455,7 @@
       ]
     },
     {
-      "number": 8,
+      "number": 10,
       "content": [
         {
           "text": "import",
@@ -3415,7 +4508,7 @@
       ]
     },
     {
-      "number": 9,
+      "number": 11,
       "content": [
         {
           "text": "import",
@@ -3468,11 +4561,117 @@
       ]
     },
     {
-      "number": 10,
+      "number": 12,
+      "content": [
+        {
+          "text": "import",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " useFormReset ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "from",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "@/hooks/use-form-reset",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 13,
+      "content": [
+        {
+          "text": "import",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " composeRefs ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "from",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "@/lib/compose-refs",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 14,
       "content": []
     },
     {
-      "number": 11,
+      "number": 15,
       "content": [
         {
           "text": "const",
@@ -3509,7 +4708,7 @@
       ]
     },
     {
-      "number": 12,
+      "number": 16,
       "content": [
         {
           "text": "  ",
@@ -3534,7 +4733,7 @@
       ]
     },
     {
-      "number": 13,
+      "number": 17,
       "content": [
         {
           "text": "  ",
@@ -3547,7 +4746,7 @@
       ]
     },
     {
-      "number": 14,
+      "number": 18,
       "content": [
         {
           "text": "    variants",
@@ -3568,7 +4767,7 @@
       ]
     },
     {
-      "number": 15,
+      "number": 19,
       "content": [
         {
           "text": "      size",
@@ -3589,7 +4788,7 @@
       ]
     },
     {
-      "number": 16,
+      "number": 20,
       "content": [
         {
           "text": "        sm",
@@ -3622,7 +4821,7 @@
       ]
     },
     {
-      "number": 17,
+      "number": 21,
       "content": [
         {
           "text": "        md",
@@ -3655,7 +4854,7 @@
       ]
     },
     {
-      "number": 18,
+      "number": 22,
       "content": [
         {
           "text": "        lg",
@@ -3688,7 +4887,7 @@
       ]
     },
     {
-      "number": 19,
+      "number": 23,
       "content": [
         {
           "text": "      ",
@@ -3701,7 +4900,7 @@
       ]
     },
     {
-      "number": 20,
+      "number": 24,
       "content": [
         {
           "text": "      error",
@@ -3722,7 +4921,7 @@
       ]
     },
     {
-      "number": 21,
+      "number": 25,
       "content": [
         {
           "text": "        true",
@@ -3755,7 +4954,7 @@
       ]
     },
     {
-      "number": 22,
+      "number": 26,
       "content": [
         {
           "text": "      ",
@@ -3768,7 +4967,7 @@
       ]
     },
     {
-      "number": 23,
+      "number": 27,
       "content": [
         {
           "text": "      disabled",
@@ -3789,7 +4988,7 @@
       ]
     },
     {
-      "number": 24,
+      "number": 28,
       "content": [
         {
           "text": "        true",
@@ -3822,7 +5021,7 @@
       ]
     },
     {
-      "number": 25,
+      "number": 29,
       "content": [
         {
           "text": "      ",
@@ -3835,7 +5034,7 @@
       ]
     },
     {
-      "number": 26,
+      "number": 30,
       "content": [
         {
           "text": "    ",
@@ -3848,7 +5047,7 @@
       ]
     },
     {
-      "number": 27,
+      "number": 31,
       "content": [
         {
           "text": "    defaultVariants",
@@ -3901,7 +5100,7 @@
       ]
     },
     {
-      "number": 28,
+      "number": 32,
       "content": [
         {
           "text": "  ",
@@ -3914,7 +5113,7 @@
       ]
     },
     {
-      "number": 29,
+      "number": 33,
       "content": [
         {
           "text": ")",
@@ -3927,11 +5126,11 @@
       ]
     },
     {
-      "number": 30,
+      "number": 34,
       "content": []
     },
     {
-      "number": 31,
+      "number": 35,
       "content": [
         {
           "text": "const",
@@ -4036,11 +5235,11 @@
       ]
     },
     {
-      "number": 32,
+      "number": 36,
       "content": []
     },
     {
-      "number": 33,
+      "number": 37,
       "content": [
         {
           "text": "export",
@@ -4065,7 +5264,7 @@
       ]
     },
     {
-      "number": 34,
+      "number": 38,
       "content": [
         {
           "text": "  ",
@@ -4090,7 +5289,7 @@
       ]
     },
     {
-      "number": 35,
+      "number": 39,
       "content": [
         {
           "text": "    ",
@@ -4115,7 +5314,7 @@
       ]
     },
     {
-      "number": 36,
+      "number": 40,
       "content": [
         {
           "text": "    ",
@@ -4256,7 +5455,7 @@
       ]
     },
     {
-      "number": 37,
+      "number": 41,
       "content": [
         {
           "text": "  ",
@@ -4277,7 +5476,7 @@
       ]
     },
     {
-      "number": 38,
+      "number": 42,
       "content": [
         {
           "text": "  value",
@@ -4302,7 +5501,7 @@
       ]
     },
     {
-      "number": 39,
+      "number": 43,
       "content": [
         {
           "text": "  defaultValue",
@@ -4327,7 +5526,7 @@
       ]
     },
     {
-      "number": 40,
+      "number": 44,
       "content": [
         {
           "text": "  ",
@@ -4392,7 +5591,7 @@
       ]
     },
     {
-      "number": 41,
+      "number": 45,
       "content": [
         {
           "text": "  ",
@@ -4437,7 +5636,7 @@
       ]
     },
     {
-      "number": 42,
+      "number": 46,
       "content": [
         {
           "text": "  ",
@@ -4482,7 +5681,7 @@
       ]
     },
     {
-      "number": 43,
+      "number": 47,
       "content": [
         {
           "text": "  prefix",
@@ -4507,7 +5706,7 @@
       ]
     },
     {
-      "number": 44,
+      "number": 48,
       "content": [
         {
           "text": "  size",
@@ -4588,7 +5787,7 @@
       ]
     },
     {
-      "number": 45,
+      "number": 49,
       "content": [
         {
           "text": "  error",
@@ -4613,7 +5812,7 @@
       ]
     },
     {
-      "number": 46,
+      "number": 50,
       "content": [
         {
           "text": "  invalid",
@@ -4638,7 +5837,7 @@
       ]
     },
     {
-      "number": 47,
+      "number": 51,
       "content": [
         {
           "text": "  ref",
@@ -4671,7 +5870,7 @@
       ]
     },
     {
-      "number": 48,
+      "number": 52,
       "content": [
         {
           "text": "}",
@@ -4680,11 +5879,685 @@
       ]
     },
     {
-      "number": 49,
+      "number": 53,
       "content": []
     },
     {
-      "number": 50,
+      "number": 54,
+      "content": [
+        {
+          "text": "function",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "resolveInvalidState",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 55,
+      "content": [
+        {
+          "text": "  invalid",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "boolean",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "undefined",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 56,
+      "content": [
+        {
+          "text": "  error",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "boolean",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "undefined",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 57,
+      "content": [
+        {
+          "text": "  ariaInvalid",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "InputHTMLAttributes",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "HTMLInputElement",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": ">",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "[",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "aria-invalid",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "]",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 58,
+      "content": [
+        {
+          "text": ")",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 59,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (invalid ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "||",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " error) ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " isInvalid",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "true",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ariaInvalid",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "true",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "};",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 60,
+      "content": []
+    },
+    {
+      "number": 61,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (ariaInvalid ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "true",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "||",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ariaInvalid ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "true",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "||",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ariaInvalid ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "grammar",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "||",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ariaInvalid ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "spelling",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ") ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 62,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " isInvalid",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "true",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ariaInvalid ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "};",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 63,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 64,
+      "content": []
+    },
+    {
+      "number": 65,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (ariaInvalid ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "false",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "||",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ariaInvalid ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "false",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ") ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 66,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " isInvalid",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "false",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ariaInvalid ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "};",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 67,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 68,
+      "content": []
+    },
+    {
+      "number": 69,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " isInvalid",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "false",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ariaInvalid",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "undefined",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "};",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 70,
+      "content": [
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 71,
+      "content": []
+    },
+    {
+      "number": 72,
       "content": [
         {
           "text": "export",
@@ -4713,7 +6586,7 @@
       ]
     },
     {
-      "number": 51,
+      "number": 73,
       "content": [
         {
           "text": "  value",
@@ -4726,7 +6599,7 @@
       ]
     },
     {
-      "number": 52,
+      "number": 74,
       "content": [
         {
           "text": "  defaultValue",
@@ -4739,7 +6612,7 @@
       ]
     },
     {
-      "number": 53,
+      "number": 75,
       "content": [
         {
           "text": "  onChange",
@@ -4752,7 +6625,7 @@
       ]
     },
     {
-      "number": 54,
+      "number": 76,
       "content": [
         {
           "text": "  onEscape",
@@ -4765,7 +6638,7 @@
       ]
     },
     {
-      "number": 55,
+      "number": 77,
       "content": [
         {
           "text": "  onEnter",
@@ -4778,7 +6651,7 @@
       ]
     },
     {
-      "number": 56,
+      "number": 78,
       "content": [
         {
           "text": "  onKeyDown",
@@ -4791,7 +6664,7 @@
       ]
     },
     {
-      "number": 57,
+      "number": 79,
       "content": [
         {
           "text": "  placeholder ",
@@ -4824,7 +6697,7 @@
       ]
     },
     {
-      "number": 58,
+      "number": 80,
       "content": [
         {
           "text": "  prefix ",
@@ -4845,7 +6718,7 @@
       ]
     },
     {
-      "number": 59,
+      "number": 81,
       "content": [
         {
           "text": "  className",
@@ -4858,7 +6731,7 @@
       ]
     },
     {
-      "number": 60,
+      "number": 82,
       "content": [
         {
           "text": "  ref",
@@ -4871,7 +6744,7 @@
       ]
     },
     {
-      "number": 61,
+      "number": 83,
       "content": [
         {
           "text": "  size",
@@ -4884,7 +6757,7 @@
       ]
     },
     {
-      "number": 62,
+      "number": 84,
       "content": [
         {
           "text": "  error",
@@ -4897,7 +6770,7 @@
       ]
     },
     {
-      "number": 63,
+      "number": 85,
       "content": [
         {
           "text": "  invalid",
@@ -4910,7 +6783,7 @@
       ]
     },
     {
-      "number": 64,
+      "number": 86,
       "content": [
         {
           "text": "  disabled",
@@ -4923,7 +6796,7 @@
       ]
     },
     {
-      "number": 65,
+      "number": 87,
       "content": [
         {
           "text": "  ",
@@ -4956,7 +6829,7 @@
       ]
     },
     {
-      "number": 66,
+      "number": 88,
       "content": [
         {
           "text": "  ",
@@ -4989,7 +6862,7 @@
       ]
     },
     {
-      "number": 67,
+      "number": 89,
       "content": [
         {
           "text": "  ",
@@ -5006,7 +6879,7 @@
       ]
     },
     {
-      "number": 68,
+      "number": 90,
       "content": [
         {
           "text": "}:",
@@ -5035,7 +6908,7 @@
       ]
     },
     {
-      "number": 69,
+      "number": 91,
       "content": [
         {
           "text": "  ",
@@ -5050,7 +6923,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "isInvalid",
+          "text": "invalidState",
           "color": "var(--code-number)"
         },
         {
@@ -5062,23 +6935,31 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": " invalid ",
+          "text": " ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "??",
-          "color": "var(--code-operator)"
+          "text": "resolveInvalidState",
+          "color": "var(--code-function)"
         },
         {
-          "text": " error ",
+          "text": "(invalid",
           "color": "var(--code-variable)"
         },
         {
-          "text": "??",
+          "text": ",",
           "color": "var(--code-operator)"
         },
         {
-          "text": " ariaInvalid",
+          "text": " error",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ariaInvalid)",
           "color": "var(--code-variable)"
         },
         {
@@ -5088,7 +6969,72 @@
       ]
     },
     {
-      "number": 70,
+      "number": 92,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "inputRef",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "useRef",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "HTMLInputElement",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": ">",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "null",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ")",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 93,
       "content": [
         {
           "text": "  ",
@@ -5153,7 +7099,7 @@
       ]
     },
     {
-      "number": 71,
+      "number": 94,
       "content": [
         {
           "text": "    value",
@@ -5166,7 +7112,7 @@
       ]
     },
     {
-      "number": 72,
+      "number": 95,
       "content": [
         {
           "text": "    defaultValue",
@@ -5199,7 +7145,7 @@
       ]
     },
     {
-      "number": 73,
+      "number": 96,
       "content": [
         {
           "text": "    onChange",
@@ -5212,7 +7158,7 @@
       ]
     },
     {
-      "number": 74,
+      "number": 97,
       "content": [
         {
           "text": "  ",
@@ -5233,11 +7179,84 @@
       ]
     },
     {
-      "number": 75,
+      "number": 98,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "useFormReset",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(inputRef",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " defaultValue ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "??",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " setValue",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " value ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "undefined",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ")",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 99,
       "content": []
     },
     {
-      "number": 76,
+      "number": 100,
       "content": [
         {
           "text": "  ",
@@ -5318,7 +7337,73 @@
       ]
     },
     {
-      "number": 77,
+      "number": 101,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "onKeyDown",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "?.",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "(e)",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 102,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "e",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "defaultPrevented) ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 103,
+      "content": []
+    },
+    {
+      "number": 104,
       "content": [
         {
           "text": "    ",
@@ -5375,7 +7460,7 @@
       ]
     },
     {
-      "number": 78,
+      "number": 105,
       "content": [
         {
           "text": "      ",
@@ -5404,7 +7489,7 @@
       ]
     },
     {
-      "number": 79,
+      "number": 106,
       "content": [
         {
           "text": "      ",
@@ -5429,7 +7514,7 @@
       ]
     },
     {
-      "number": 80,
+      "number": 107,
       "content": [
         {
           "text": "    ",
@@ -5510,7 +7595,7 @@
       ]
     },
     {
-      "number": 81,
+      "number": 108,
       "content": [
         {
           "text": "      ",
@@ -5539,7 +7624,7 @@
       ]
     },
     {
-      "number": 82,
+      "number": 109,
       "content": [
         {
           "text": "      ",
@@ -5560,7 +7645,7 @@
       ]
     },
     {
-      "number": 83,
+      "number": 110,
       "content": [
         {
           "text": "    ",
@@ -5573,32 +7658,7 @@
       ]
     },
     {
-      "number": 84,
-      "content": [
-        {
-          "text": "    ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "onKeyDown",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "?.",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "(e)",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ";",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 85,
+      "number": 111,
       "content": [
         {
           "text": "  ",
@@ -5611,11 +7671,11 @@
       ]
     },
     {
-      "number": 86,
+      "number": 112,
       "content": []
     },
     {
-      "number": 87,
+      "number": 113,
       "content": [
         {
           "text": "  ",
@@ -5632,7 +7692,7 @@
       ]
     },
     {
-      "number": 88,
+      "number": 114,
       "content": [
         {
           "text": "    ",
@@ -5649,7 +7709,7 @@
       ]
     },
     {
-      "number": 89,
+      "number": 115,
       "content": [
         {
           "text": "      ",
@@ -5674,7 +7734,7 @@
       ]
     },
     {
-      "number": 90,
+      "number": 116,
       "content": [
         {
           "text": "        ",
@@ -5713,7 +7773,11 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "!!",
+          "text": "invalidState",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
           "color": "var(--code-operator)"
         },
         {
@@ -5743,7 +7807,7 @@
       ]
     },
     {
-      "number": 91,
+      "number": 117,
       "content": [
         {
           "text": "        className",
@@ -5756,7 +7820,7 @@
       ]
     },
     {
-      "number": 92,
+      "number": 118,
       "content": [
         {
           "text": "      )",
@@ -5769,7 +7833,7 @@
       ]
     },
     {
-      "number": 93,
+      "number": 119,
       "content": [
         {
           "text": "    ",
@@ -5782,7 +7846,7 @@
       ]
     },
     {
-      "number": 94,
+      "number": 120,
       "content": [
         {
           "text": "      ",
@@ -5803,7 +7867,7 @@
       ]
     },
     {
-      "number": 95,
+      "number": 121,
       "content": [
         {
           "text": "      ",
@@ -5820,7 +7884,7 @@
       ]
     },
     {
-      "number": 96,
+      "number": 122,
       "content": [
         {
           "text": "        ",
@@ -5835,7 +7899,19 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "ref",
+          "text": "composeRefs",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(inputRef",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ref)",
           "color": "var(--code-variable)"
         },
         {
@@ -5845,7 +7921,7 @@
       ]
     },
     {
-      "number": 97,
+      "number": 123,
       "content": [
         {
           "text": "        ",
@@ -5874,7 +7950,7 @@
       ]
     },
     {
-      "number": 98,
+      "number": 124,
       "content": [
         {
           "text": "        ",
@@ -5899,7 +7975,7 @@
       ]
     },
     {
-      "number": 99,
+      "number": 125,
       "content": [
         {
           "text": "        ",
@@ -5968,7 +8044,7 @@
       ]
     },
     {
-      "number": 100,
+      "number": 126,
       "content": [
         {
           "text": "        ",
@@ -5993,7 +8069,7 @@
       ]
     },
     {
-      "number": 101,
+      "number": 127,
       "content": [
         {
           "text": "        ",
@@ -6018,7 +8094,7 @@
       ]
     },
     {
-      "number": 102,
+      "number": 128,
       "content": [
         {
           "text": "        ",
@@ -6051,7 +8127,7 @@
       ]
     },
     {
-      "number": 103,
+      "number": 129,
       "content": [
         {
           "text": "        ",
@@ -6066,20 +8142,16 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "isInvalid ",
-          "color": "var(--code-variable)"
+          "text": "invalidState",
+          "color": "var(--code-number)"
         },
         {
-          "text": "||",
+          "text": ".",
           "color": "var(--code-operator)"
         },
         {
-          "text": " ",
+          "text": "ariaInvalid",
           "color": "var(--code-variable)"
-        },
-        {
-          "text": "undefined",
-          "color": "var(--code-number)"
         },
         {
           "text": "}",
@@ -6088,7 +8160,7 @@
       ]
     },
     {
-      "number": 104,
+      "number": 130,
       "content": [
         {
           "text": "        ",
@@ -6113,7 +8185,7 @@
       ]
     },
     {
-      "number": 105,
+      "number": 131,
       "content": [
         {
           "text": "        ",
@@ -6134,7 +8206,7 @@
       ]
     },
     {
-      "number": 106,
+      "number": 132,
       "content": [
         {
           "text": "        ",
@@ -6163,7 +8235,7 @@
       ]
     },
     {
-      "number": 107,
+      "number": 133,
       "content": [
         {
           "text": "      ",
@@ -6176,7 +8248,7 @@
       ]
     },
     {
-      "number": 108,
+      "number": 134,
       "content": [
         {
           "text": "    ",
@@ -6197,7 +8269,7 @@
       ]
     },
     {
-      "number": 109,
+      "number": 135,
       "content": [
         {
           "text": "  )",
@@ -6210,7 +8282,7 @@
       ]
     },
     {
-      "number": 110,
+      "number": 136,
       "content": [
         {
           "text": "}",
@@ -6219,7 +8291,7 @@
       ]
     },
     {
-      "number": 111,
+      "number": 137,
       "content": []
     }
   ],

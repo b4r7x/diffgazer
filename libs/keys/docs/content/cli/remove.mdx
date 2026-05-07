@@ -4,8 +4,10 @@ description: Remove copied @diffgazer/keys hook files.
 ---
 
 ```bash
-npx @diffgazer/add remove keys/navigation
-npx @diffgazer/add remove keys/focus-trap keys/scroll-lock
+pnpm exec dgadd remove keys/navigation
+pnpm exec dgadd remove keys/focus-trap keys/scroll-lock
 ```
+
+Before publication, install a locally packed `@diffgazer/add` tarball into the target app and run `pnpm exec dgadd`. Use `npx @diffgazer/add remove ...` only after `npm view @diffgazer/add version` succeeds.
 
 `dgadd remove` updates the local manifest and skips files still required by other installed items.

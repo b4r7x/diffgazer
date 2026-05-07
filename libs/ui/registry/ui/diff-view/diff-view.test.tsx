@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { createRef, useLayoutEffect } from "react"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect } from "vitest"
 import { DiffView, computeDiff } from "./index.js"
@@ -76,6 +77,14 @@ function getLiveRegion() {
   return document.querySelector("[aria-live='polite']")!
 }
 
+function LayoutTextProbe({ onText }: { onText: (text: string) => void }) {
+  useLayoutEffect(() => {
+    onText(getLiveRegion().textContent ?? "")
+  })
+
+  return null
+}
+
 describe("DiffView", () => {
   // --- Behavioral ---
 
@@ -88,6 +97,13 @@ describe("DiffView", () => {
     render(<DiffView diff={ONE_HUNK} mode="split" />)
     expect(screen.getByLabelText("Split diff")).toBeInTheDocument()
     expect(screen.queryByLabelText("Unified diff")).not.toBeInTheDocument()
+  })
+
+  it("forwards refs to the diff region", () => {
+    const ref = createRef<HTMLDivElement>()
+    render(<DiffView ref={ref} diff={ONE_HUNK} label="Changes" />)
+
+    expect(ref.current).toBe(screen.getByRole("region", { name: "Changes" }))
   })
 
   it("shows file header with path", () => {
@@ -175,6 +191,18 @@ describe("DiffView", () => {
     expect(await axe(container)).toHaveNoViolations()
   })
 
+  it("does not render div descendants under pre code in unified mode", () => {
+    const { container } = render(<DiffView diff={ONE_HUNK} />)
+
+    expect(container.querySelector("pre code div")).toBeNull()
+  })
+
+  it("does not render div descendants under pre code in split mode", () => {
+    const { container } = render(<DiffView diff={ONE_HUNK} mode="split" />)
+
+    expect(container.querySelector("pre code div")).toBeNull()
+  })
+
   // --- Keyboard ---
 
   it("Escape clears active hunk selection", async () => {
@@ -243,6 +271,39 @@ describe("DiffView", () => {
     expect(getLiveRegion()).toHaveTextContent("")
   })
 
+  it("clears stale active hunk during the same render as a diff identity change", async () => {
+    const user = userEvent.setup()
+    const layoutTexts: string[] = []
+    const replacementDiff = {
+      ...THREE_HUNKS,
+      hunks: THREE_HUNKS.hunks.map((hunk, index) => ({
+        ...hunk,
+        heading: `replacement ${index + 1}`,
+      })),
+    }
+    const { rerender } = render(
+      <>
+        <DiffView diff={THREE_HUNKS} />
+        <LayoutTextProbe onText={(text) => layoutTexts.push(text)} />
+      </>,
+    )
+
+    await user.click(screen.getByLabelText("Unified diff"))
+    await user.keyboard("j")
+    expect(getLiveRegion()).toHaveTextContent("Hunk 1 of 3")
+
+    layoutTexts.length = 0
+    rerender(
+      <>
+        <DiffView diff={replacementDiff} />
+        <LayoutTextProbe onText={(text) => layoutTexts.push(text)} />
+      </>,
+    )
+
+    expect(layoutTexts[layoutTexts.length - 1]).toBe("")
+    expect(getLiveRegion()).toHaveTextContent("")
+  })
+
   it("falls back for large computed diffs instead of building huge LCS tables", () => {
     const before = Array.from({ length: 600 }, (_, i) => `old ${i}`).join("\n")
     const after = Array.from({ length: 600 }, (_, i) => `new ${i}`).join("\n")
@@ -252,6 +313,49 @@ describe("DiffView", () => {
     expect(parsed.hunks).toHaveLength(1)
     expect(parsed.hunks[0].oldCount).toBe(600)
     expect(parsed.hunks[0].newCount).toBe(600)
+  })
+
+  it("uses an aggregate word-diff budget and falls back to line-level segments", () => {
+    const makeLine = (variant: string, index: number) =>
+      Array.from({ length: 18 }, (_, i) => `shared-${i}`)
+        .concat(`${variant}-${index}`)
+        .join(" ")
+    const removes = Array.from({ length: 45 }, (_, i) => ({
+      type: "remove" as const,
+      content: makeLine("old", i),
+      oldLine: i + 1,
+      newLine: null,
+    }))
+    const adds = Array.from({ length: 45 }, (_, i) => ({
+      type: "add" as const,
+      content: makeLine("new", i),
+      oldLine: null,
+      newLine: i + 1,
+    }))
+    const lastRemovedLine = removes[removes.length - 1].content
+    const { container } = render(
+      <DiffView
+        diff={{
+          oldPath: "old.txt",
+          newPath: "new.txt",
+          hunks: [{
+            oldStart: 1,
+            oldCount: removes.length,
+            newStart: 1,
+            newCount: adds.length,
+            heading: "",
+            changes: [...removes, ...adds],
+          }],
+        }}
+      />,
+    )
+
+    const changedRemoveSegments = Array.from(container.querySelectorAll("span"))
+      .filter((element) =>
+        element.className.includes("bg-destructive/20") &&
+        element.textContent === lastRemovedLine,
+      )
+    expect(changedRemoveSegments).toHaveLength(1)
   })
 
 })

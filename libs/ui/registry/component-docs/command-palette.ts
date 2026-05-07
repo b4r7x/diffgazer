@@ -12,16 +12,16 @@ export const commandPaletteDoc: ComponentDoc = {
       content: "Items are filtered automatically as you type. Each item matches against its `value` prop (falls back to `id`). Pass `shouldFilter={false}` to disable and handle filtering yourself. Pass a custom `filter` function to override the default case-insensitive includes match.",
     },
     {
-      title: "Item Registration",
-      content: "Items register themselves via context on mount. Disabled and filtered-out items are excluded from keyboard navigation. The selected item auto-scrolls into view.",
+      title: "Composition Contract",
+      content: "Use CommandPalette.Item as an explicit child in the CommandPalette JSX tree, usually inside CommandPalette.List or CommandPalette.Group. Custom item UI belongs inside CommandPalette.Item. Components that create items internally from an opaque wrapper are not part of the current public contract.",
     },
     {
       title: "Built-in Keyboard Navigation",
-      content: "CommandPalette integrates @diffgazer/keys's useNavigation internally for arrow-key navigation, wrapping, and Enter activation. Selection and search state can still be controlled externally via selectedId/onSelectedIdChange.",
+      content: "CommandPalette integrates @diffgazer/keys's useNavigation internally for arrow-key navigation, wrapping, and Enter activation. Highlight and search state can be controlled externally via highlightedId/onHighlightChange and search/onSearchChange. selectedId/onSelectedIdChange remain deprecated aliases for highlight state.",
     },
   ],
   anatomy: [
-    { name: "CommandPalette", indent: 0, note: "Root (manages open state, search, selection, filtering)" },
+    { name: "CommandPalette", indent: 0, note: "Root (manages open state, search, highlighted item, filtering)" },
     { name: "CommandPaletteContent", indent: 1, note: "Native dialog modal container" },
     { name: "CommandPaletteInput", indent: 2, note: "Search input with prefix/suffix slots" },
     { name: "CommandPaletteList", indent: 2, note: "Scrollable item container" },
@@ -35,7 +35,7 @@ export const commandPaletteDoc: ComponentDoc = {
     { name: "command-palette-demo", title: "Default" },
   ],
   keyboard: {
-    description: "Arrow keys navigate items (with wrapping), Enter activates the selected item. Escape clears search first, then closes the palette. Navigation is handled internally via @diffgazer/keys's useNavigation hook.",
+    description: "Arrow keys navigate items (with wrapping), Enter activates the highlighted item. Escape clears search first, then closes the palette. Navigation is handled internally via @diffgazer/keys's useNavigation hook.",
     examples: [
       { name: "command-palette-demo", title: "Keyboard navigation" },
     ],

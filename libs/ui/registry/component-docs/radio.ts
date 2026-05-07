@@ -18,6 +18,11 @@ export const radioDoc: ComponentDoc = {
   ],
   notes: [
     {
+      title: "Composition Contract",
+      content:
+        "Use RadioGroup.Item as an explicit child in the RadioGroup JSX tree. Custom label or description UI belongs inside the item label/content props supported by RadioGroup.Item. Components that create group items internally from an opaque wrapper are not part of the current public contract.",
+    },
+    {
       title: "Keyboard Navigation",
       content:
         "RadioGroup uses @diffgazer/keys's useNavigation hook internally for arrow-key navigation. All four arrow keys move focus and select items regardless of orientation (per WAI-ARIA APG radio group pattern). Home/End jump to first/last item. Space selects the focused item.",

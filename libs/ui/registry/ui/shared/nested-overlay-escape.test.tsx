@@ -26,19 +26,23 @@ describe("Nested overlay: Popover inside Dialog", () => {
       </Dialog>
     )
 
-    // Both should be open: the native dialog + the popover (both role="dialog")
-    const dialogs = screen.getAllByRole("dialog")
-    expect(dialogs.length).toBeGreaterThanOrEqual(2)
+    const dialog = screen.getByRole("dialog", { name: "Test Dialog" })
+    const popoverTrigger = screen.getByRole("button", { name: "Open Popover" })
+    const popoverId = popoverTrigger.getAttribute("aria-controls")
+    if (!popoverId) throw new Error("Expected popover trigger to control mounted content")
 
-    // Press Escape — popover's document keydown handler should intercept
+    const popover = document.getElementById(popoverId)
+    expect(dialog).toHaveAttribute("data-state", "open")
+    expect(popoverTrigger).toHaveAttribute("aria-expanded", "true")
+    expect(popover).toHaveAttribute("aria-label", "Nested popover")
+    expect(popover).toHaveAttribute("data-state", "open")
+
     await userEvent.keyboard("{Escape}")
 
-    // Popover should have been closed
     expect(onPopoverChange).toHaveBeenCalledWith(false)
-
-    // Dialog's onOpenChange should NOT have been called
-    // (popover's handler calls stopPropagation + preventDefault,
-    //  preventing the browser from generating a cancel event on the <dialog>)
     expect(onDialogChange).not.toHaveBeenCalled()
+    expect(dialog).toHaveAttribute("data-state", "open")
+    expect(popoverTrigger).toHaveAttribute("aria-expanded", "false")
+    expect(popover).toHaveAttribute("data-state", "closed")
   })
 })

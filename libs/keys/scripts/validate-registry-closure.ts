@@ -15,7 +15,7 @@ function addError(code: string, item: string, message: string) {
 }
 
 /**
- * RDY-002: Validate that keys registry items have complete import closure.
+ * Validate that keys registry items have complete import closure.
  * For each hook, check that all its relative imports are included in the files array.
  */
 function validateImportClosure(registry: Registry, registryRoot: string) {
@@ -29,19 +29,14 @@ function validateImportClosure(registry: Registry, registryRoot: string) {
     for (const file of item.files) {
       const filePath = resolve(registryRoot, file.path);
       if (!existsSync(filePath)) {
-        addError("RDY-002", item.name, `Source file not found: ${file.path}`);
+        addError("REGISTRY_IMPORT_CLOSURE", item.name, `Source file not found: ${file.path}`);
         continue;
       }
 
       const content = readFileSync(filePath, "utf-8");
 
-      // Extract all relative imports from the file
-      // Matches: import ... from "../path" (may have .js or .ts extension)
-      const importRegex = /from\s+["'](\.\.[^"']+)["']/g;
-      let match;
-
-      while ((match = importRegex.exec(content)) !== null) {
-        let importPath = match[1];
+      for (const importPathRaw of extractRelativeImports(content)) {
+        let importPath = importPathRaw;
 
         // If import ends with .js, remove it for resolution (source files are .ts)
         const hasJsExtension = importPath.endsWith(".js");
@@ -80,9 +75,9 @@ function validateImportClosure(registry: Registry, registryRoot: string) {
 
         if (!found) {
           addError(
-            "RDY-002",
+            "REGISTRY_IMPORT_CLOSURE",
             item.name,
-            `Cannot resolve import "${match[1]}" from ${file.path}`
+            `Cannot resolve import "${importPathRaw}" from ${file.path}`
           );
           continue;
         }
@@ -90,9 +85,9 @@ function validateImportClosure(registry: Registry, registryRoot: string) {
         // Check if this import is included in the files array
         if (!includedFiles.has(foundRelativePath)) {
           addError(
-            "RDY-002",
+            "REGISTRY_IMPORT_CLOSURE",
             item.name,
-            `Missing transitive import in registry: ${match[1]} (resolves to ${foundRelativePath})`
+            `Missing transitive import in registry: ${importPathRaw} (resolves to ${foundRelativePath})`
           );
         }
       }
@@ -100,12 +95,32 @@ function validateImportClosure(registry: Registry, registryRoot: string) {
   }
 }
 
+function extractRelativeImports(content: string): string[] {
+  const imports = new Set<string>();
+  const patterns = [
+    /import\s+(?:type\s+)?[^"']*?\s+from\s+["'](\.[^"']+)["']/g,
+    /export\s+(?:type\s+)?[^"']*?\s+from\s+["'](\.[^"']+)["']/g,
+    /import\s*\(\s*["'](\.[^"']+)["']\s*\)/g,
+    /require\s*\(\s*["'](\.[^"']+)["']\s*\)/g,
+    /import\s+["'](\.[^"']+)["']/g,
+  ];
+
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(content)) !== null) {
+      if (match[1]) imports.add(match[1]);
+    }
+  }
+
+  return [...imports];
+}
+
 /**
- * RDY-016: Validate registry structure for copy payload closure.
+ * Validate registry structure for copy payload closure.
  */
 function validateRegistryStructure(registry: Registry) {
   if (!registry.items || !Array.isArray(registry.items)) {
-    addError("structure", "registry", `Missing or invalid items array`);
+    addError("REGISTRY_STRUCTURE", "registry", `Missing or invalid items array`);
     return;
   }
 
@@ -113,7 +128,7 @@ function validateRegistryStructure(registry: Registry) {
     if (item.type !== "registry:hook") continue;
 
     if (!item.files || !Array.isArray(item.files) || item.files.length === 0) {
-      addError("RDY-016", item.name, `Hook missing files array`);
+      addError("REGISTRY_HOOK_FILES", item.name, `Hook missing files array`);
       continue;
     }
 
@@ -122,12 +137,23 @@ function validateRegistryStructure(registry: Registry) {
       (f) => f.path.endsWith(".ts") || f.path.endsWith(".tsx")
     );
     if (!hasSourceFile) {
-      addError("RDY-016", item.name, `Hook has no TypeScript source files`);
+      addError("REGISTRY_HOOK_FILES", item.name, `Hook has no TypeScript source files`);
+    }
+
+    for (const file of item.files) {
+      if (!file.path.startsWith("src/hooks/")) {
+        addError(
+          "REGISTRY_HOOK_PATH",
+          item.name,
+          `Hook file must live under src/hooks/ for shadcn registry:hook install paths: ${file.path}`,
+        );
+      }
     }
   }
 }
 
 export function validateRegistryClosure(registryPath: string): boolean {
+  errors.length = 0;
   const registryRoot = resolve(registryPath, "..", "..");
 
   let registry: Registry;

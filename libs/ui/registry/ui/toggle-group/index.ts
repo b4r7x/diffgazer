@@ -1,3 +1,5 @@
+"use client";
+
 import { ToggleGroup as ToggleGroupRoot, type ToggleGroupProps } from "./toggle-group";
 import { ToggleGroupItem, type ToggleGroupItemProps } from "./toggle-group-item";
 

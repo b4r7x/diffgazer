@@ -11,10 +11,35 @@
   "props": {},
   "source": {
     "registry/ui/pager/index.ts": {
-      "raw": "import { Pager as PagerRoot, type PagerProps } from \"./pager\";\nimport { PagerLink, type PagerLinkProps, type PagerLinkRenderProps } from \"./pager-link\";\n\nconst Pager = Object.assign(PagerRoot, {\n  Link: PagerLink,\n});\n\nexport { Pager, type PagerProps };\nexport { PagerLink, type PagerLinkProps, type PagerLinkRenderProps };\n",
+      "raw": "\"use client\";\n\nimport { Pager as PagerRoot, type PagerProps } from \"./pager\";\nimport { PagerLink, type PagerLinkProps, type PagerLinkRenderProps } from \"./pager-link\";\n\nconst Pager = Object.assign(PagerRoot, {\n  Link: PagerLink,\n});\n\nexport { Pager, type PagerProps };\nexport { PagerLink, type PagerLinkProps, type PagerLinkRenderProps };\n",
       "highlighted": [
         {
           "number": 1,
+          "content": [
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "use client",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
           "content": [
             {
               "text": "import",
@@ -91,7 +116,7 @@
           ]
         },
         {
-          "number": 2,
+          "number": 4,
           "content": [
             {
               "text": "import",
@@ -176,11 +201,11 @@
           ]
         },
         {
-          "number": 3,
+          "number": 5,
           "content": []
         },
         {
-          "number": 4,
+          "number": 6,
           "content": [
             {
               "text": "const",
@@ -237,7 +262,7 @@
           ]
         },
         {
-          "number": 5,
+          "number": 7,
           "content": [
             {
               "text": "  Link",
@@ -258,7 +283,7 @@
           ]
         },
         {
-          "number": 6,
+          "number": 8,
           "content": [
             {
               "text": "}",
@@ -275,11 +300,11 @@
           ]
         },
         {
-          "number": 7,
+          "number": 9,
           "content": []
         },
         {
-          "number": 8,
+          "number": 10,
           "content": [
             {
               "text": "export",
@@ -320,7 +345,7 @@
           ]
         },
         {
-          "number": 9,
+          "number": 11,
           "content": [
             {
               "text": "export",
@@ -377,7 +402,7 @@
           ]
         },
         {
-          "number": 10,
+          "number": 12,
           "content": []
         }
       ]
@@ -2628,10 +2653,35 @@
       ]
     }
   },
-  "mergedSource": "import { Pager as PagerRoot, type PagerProps } from \"./pager\";\nimport { PagerLink, type PagerLinkProps, type PagerLinkRenderProps } from \"./pager-link\";\n\nconst Pager = Object.assign(PagerRoot, {\n  Link: PagerLink,\n});\n\nexport { Pager, type PagerProps };\nexport { PagerLink, type PagerLinkProps, type PagerLinkRenderProps };\n\n\n\"use client\"\n\nimport type { ComponentPropsWithRef } from \"react\"\nimport { cn } from \"@/lib/utils\"\n\nexport interface PagerProps extends ComponentPropsWithRef<\"nav\"> {}\n\nexport function Pager({ className, ref, children, ...props }: PagerProps) {\n  return (\n    <nav\n      ref={ref}\n      aria-label=\"Page navigation\"\n      className={cn(\n        \"flex items-center justify-between border-t border-border pt-4 mt-8\",\n        className\n      )}\n      {...props}\n    >\n      {children}\n    </nav>\n  )\n}\n\n\"use client\"\n\nimport type { AnchorHTMLAttributes, ComponentPropsWithRef, ReactNode, Ref } from \"react\"\nimport { cn } from \"@/lib/utils\"\n\nconst DIRECTION_CONFIG = {\n  previous: { rel: \"prev\" },\n  next: { rel: \"next\" },\n} as const\n\nexport type PagerLinkRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {\n  ref: Ref<HTMLAnchorElement>\n  className: string\n  rel: string\n  direction: \"previous\" | \"next\"\n}\n\nexport interface PagerLinkProps extends Omit<ComponentPropsWithRef<\"a\">, \"children\"> {\n  children: ReactNode | ((props: PagerLinkRenderProps) => ReactNode)\n  direction: \"previous\" | \"next\"\n}\n\nexport function PagerLink({ className, ref, children, direction, ...props }: PagerLinkProps) {\n  const { rel } = DIRECTION_CONFIG[direction]\n  const resolvedClassName = cn(\n    \"text-xs font-mono text-muted-foreground hover:text-foreground transition-colors\",\n    direction === \"next\" && \"ml-auto\",\n    className,\n  )\n\n  if (typeof children === \"function\") {\n    return <>{children({ ref: ref ?? null, className: resolvedClassName, rel, direction, ...props })}</>\n  }\n\n  return (\n    <a\n      ref={ref}\n      rel={rel}\n      className={resolvedClassName}\n      {...props}\n    >\n      {direction === \"previous\" && <span aria-hidden=\"true\">&larr; </span>}\n      {children}\n      {direction === \"next\" && <span aria-hidden=\"true\"> &rarr;</span>}\n    </a>\n  )\n}\n",
+  "mergedSource": "\"use client\";\n\nimport { Pager as PagerRoot, type PagerProps } from \"./pager\";\nimport { PagerLink, type PagerLinkProps, type PagerLinkRenderProps } from \"./pager-link\";\n\nconst Pager = Object.assign(PagerRoot, {\n  Link: PagerLink,\n});\n\nexport { Pager, type PagerProps };\nexport { PagerLink, type PagerLinkProps, type PagerLinkRenderProps };\n\n\n\"use client\"\n\nimport type { ComponentPropsWithRef } from \"react\"\nimport { cn } from \"@/lib/utils\"\n\nexport interface PagerProps extends ComponentPropsWithRef<\"nav\"> {}\n\nexport function Pager({ className, ref, children, ...props }: PagerProps) {\n  return (\n    <nav\n      ref={ref}\n      aria-label=\"Page navigation\"\n      className={cn(\n        \"flex items-center justify-between border-t border-border pt-4 mt-8\",\n        className\n      )}\n      {...props}\n    >\n      {children}\n    </nav>\n  )\n}\n\n\"use client\"\n\nimport type { AnchorHTMLAttributes, ComponentPropsWithRef, ReactNode, Ref } from \"react\"\nimport { cn } from \"@/lib/utils\"\n\nconst DIRECTION_CONFIG = {\n  previous: { rel: \"prev\" },\n  next: { rel: \"next\" },\n} as const\n\nexport type PagerLinkRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {\n  ref: Ref<HTMLAnchorElement>\n  className: string\n  rel: string\n  direction: \"previous\" | \"next\"\n}\n\nexport interface PagerLinkProps extends Omit<ComponentPropsWithRef<\"a\">, \"children\"> {\n  children: ReactNode | ((props: PagerLinkRenderProps) => ReactNode)\n  direction: \"previous\" | \"next\"\n}\n\nexport function PagerLink({ className, ref, children, direction, ...props }: PagerLinkProps) {\n  const { rel } = DIRECTION_CONFIG[direction]\n  const resolvedClassName = cn(\n    \"text-xs font-mono text-muted-foreground hover:text-foreground transition-colors\",\n    direction === \"next\" && \"ml-auto\",\n    className,\n  )\n\n  if (typeof children === \"function\") {\n    return <>{children({ ref: ref ?? null, className: resolvedClassName, rel, direction, ...props })}</>\n  }\n\n  return (\n    <a\n      ref={ref}\n      rel={rel}\n      className={resolvedClassName}\n      {...props}\n    >\n      {direction === \"previous\" && <span aria-hidden=\"true\">&larr; </span>}\n      {children}\n      {direction === \"next\" && <span aria-hidden=\"true\"> &rarr;</span>}\n    </a>\n  )\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
+      "content": [
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "use client",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "content": []
+    },
+    {
+      "number": 3,
       "content": [
         {
           "text": "import",
@@ -2708,7 +2758,7 @@
       ]
     },
     {
-      "number": 2,
+      "number": 4,
       "content": [
         {
           "text": "import",
@@ -2793,11 +2843,11 @@
       ]
     },
     {
-      "number": 3,
+      "number": 5,
       "content": []
     },
     {
-      "number": 4,
+      "number": 6,
       "content": [
         {
           "text": "const",
@@ -2854,7 +2904,7 @@
       ]
     },
     {
-      "number": 5,
+      "number": 7,
       "content": [
         {
           "text": "  Link",
@@ -2875,7 +2925,7 @@
       ]
     },
     {
-      "number": 6,
+      "number": 8,
       "content": [
         {
           "text": "}",
@@ -2892,11 +2942,11 @@
       ]
     },
     {
-      "number": 7,
+      "number": 9,
       "content": []
     },
     {
-      "number": 8,
+      "number": 10,
       "content": [
         {
           "text": "export",
@@ -2937,7 +2987,7 @@
       ]
     },
     {
-      "number": 9,
+      "number": 11,
       "content": [
         {
           "text": "export",
@@ -2994,15 +3044,15 @@
       ]
     },
     {
-      "number": 10,
-      "content": []
-    },
-    {
-      "number": 11,
-      "content": []
-    },
-    {
       "number": 12,
+      "content": []
+    },
+    {
+      "number": 13,
+      "content": []
+    },
+    {
+      "number": 14,
       "content": [
         {
           "text": "\"",
@@ -3019,11 +3069,11 @@
       ]
     },
     {
-      "number": 13,
+      "number": 15,
       "content": []
     },
     {
-      "number": 14,
+      "number": 16,
       "content": [
         {
           "text": "import",
@@ -3080,7 +3130,7 @@
       ]
     },
     {
-      "number": 15,
+      "number": 17,
       "content": [
         {
           "text": "import",
@@ -3129,11 +3179,11 @@
       ]
     },
     {
-      "number": 16,
+      "number": 18,
       "content": []
     },
     {
-      "number": 17,
+      "number": 19,
       "content": [
         {
           "text": "export",
@@ -3202,11 +3252,11 @@
       ]
     },
     {
-      "number": 18,
+      "number": 20,
       "content": []
     },
     {
-      "number": 19,
+      "number": 21,
       "content": [
         {
           "text": "export",
@@ -3295,7 +3345,7 @@
       ]
     },
     {
-      "number": 20,
+      "number": 22,
       "content": [
         {
           "text": "  ",
@@ -3312,7 +3362,7 @@
       ]
     },
     {
-      "number": 21,
+      "number": 23,
       "content": [
         {
           "text": "    ",
@@ -3329,7 +3379,7 @@
       ]
     },
     {
-      "number": 22,
+      "number": 24,
       "content": [
         {
           "text": "      ",
@@ -3354,7 +3404,7 @@
       ]
     },
     {
-      "number": 23,
+      "number": 25,
       "content": [
         {
           "text": "      ",
@@ -3383,7 +3433,7 @@
       ]
     },
     {
-      "number": 24,
+      "number": 26,
       "content": [
         {
           "text": "      ",
@@ -3408,7 +3458,7 @@
       ]
     },
     {
-      "number": 25,
+      "number": 27,
       "content": [
         {
           "text": "        ",
@@ -3433,7 +3483,7 @@
       ]
     },
     {
-      "number": 26,
+      "number": 28,
       "content": [
         {
           "text": "        className",
@@ -3442,7 +3492,7 @@
       ]
     },
     {
-      "number": 27,
+      "number": 29,
       "content": [
         {
           "text": "      )",
@@ -3455,7 +3505,7 @@
       ]
     },
     {
-      "number": 28,
+      "number": 30,
       "content": [
         {
           "text": "      ",
@@ -3476,7 +3526,7 @@
       ]
     },
     {
-      "number": 29,
+      "number": 31,
       "content": [
         {
           "text": "    ",
@@ -3489,7 +3539,7 @@
       ]
     },
     {
-      "number": 30,
+      "number": 32,
       "content": [
         {
           "text": "      ",
@@ -3510,7 +3560,7 @@
       ]
     },
     {
-      "number": 31,
+      "number": 33,
       "content": [
         {
           "text": "    ",
@@ -3531,7 +3581,7 @@
       ]
     },
     {
-      "number": 32,
+      "number": 34,
       "content": [
         {
           "text": "  )",
@@ -3540,7 +3590,7 @@
       ]
     },
     {
-      "number": 33,
+      "number": 35,
       "content": [
         {
           "text": "}",
@@ -3549,11 +3599,11 @@
       ]
     },
     {
-      "number": 34,
+      "number": 36,
       "content": []
     },
     {
-      "number": 35,
+      "number": 37,
       "content": [
         {
           "text": "\"",
@@ -3570,11 +3620,11 @@
       ]
     },
     {
-      "number": 36,
+      "number": 38,
       "content": []
     },
     {
-      "number": 37,
+      "number": 39,
       "content": [
         {
           "text": "import",
@@ -3655,7 +3705,7 @@
       ]
     },
     {
-      "number": 38,
+      "number": 40,
       "content": [
         {
           "text": "import",
@@ -3704,11 +3754,11 @@
       ]
     },
     {
-      "number": 39,
+      "number": 41,
       "content": []
     },
     {
-      "number": 40,
+      "number": 42,
       "content": [
         {
           "text": "const",
@@ -3741,7 +3791,7 @@
       ]
     },
     {
-      "number": 41,
+      "number": 43,
       "content": [
         {
           "text": "  previous",
@@ -3794,7 +3844,7 @@
       ]
     },
     {
-      "number": 42,
+      "number": 44,
       "content": [
         {
           "text": "  next",
@@ -3847,7 +3897,7 @@
       ]
     },
     {
-      "number": 43,
+      "number": 45,
       "content": [
         {
           "text": "}",
@@ -3872,11 +3922,11 @@
       ]
     },
     {
-      "number": 44,
+      "number": 46,
       "content": []
     },
     {
-      "number": 45,
+      "number": 47,
       "content": [
         {
           "text": "export",
@@ -3945,7 +3995,7 @@
       ]
     },
     {
-      "number": 46,
+      "number": 48,
       "content": [
         {
           "text": "  ref",
@@ -3978,7 +4028,7 @@
       ]
     },
     {
-      "number": 47,
+      "number": 49,
       "content": [
         {
           "text": "  className",
@@ -3999,7 +4049,7 @@
       ]
     },
     {
-      "number": 48,
+      "number": 50,
       "content": [
         {
           "text": "  rel",
@@ -4020,7 +4070,7 @@
       ]
     },
     {
-      "number": 49,
+      "number": 51,
       "content": [
         {
           "text": "  direction",
@@ -4073,7 +4123,7 @@
       ]
     },
     {
-      "number": 50,
+      "number": 52,
       "content": [
         {
           "text": "}",
@@ -4082,11 +4132,11 @@
       ]
     },
     {
-      "number": 51,
+      "number": 53,
       "content": []
     },
     {
-      "number": 52,
+      "number": 54,
       "content": [
         {
           "text": "export",
@@ -4183,7 +4233,7 @@
       ]
     },
     {
-      "number": 53,
+      "number": 55,
       "content": [
         {
           "text": "  children",
@@ -4260,7 +4310,7 @@
       ]
     },
     {
-      "number": 54,
+      "number": 56,
       "content": [
         {
           "text": "  direction",
@@ -4313,7 +4363,7 @@
       ]
     },
     {
-      "number": 55,
+      "number": 57,
       "content": [
         {
           "text": "}",
@@ -4322,11 +4372,11 @@
       ]
     },
     {
-      "number": 56,
+      "number": 58,
       "content": []
     },
     {
-      "number": 57,
+      "number": 59,
       "content": [
         {
           "text": "export",
@@ -4423,7 +4473,7 @@
       ]
     },
     {
-      "number": 58,
+      "number": 60,
       "content": [
         {
           "text": "  ",
@@ -4480,7 +4530,7 @@
       ]
     },
     {
-      "number": 59,
+      "number": 61,
       "content": [
         {
           "text": "  ",
@@ -4521,7 +4571,7 @@
       ]
     },
     {
-      "number": 60,
+      "number": 62,
       "content": [
         {
           "text": "    ",
@@ -4546,7 +4596,7 @@
       ]
     },
     {
-      "number": 61,
+      "number": 63,
       "content": [
         {
           "text": "    direction ",
@@ -4603,7 +4653,7 @@
       ]
     },
     {
-      "number": 62,
+      "number": 64,
       "content": [
         {
           "text": "    className",
@@ -4616,7 +4666,7 @@
       ]
     },
     {
-      "number": 63,
+      "number": 65,
       "content": [
         {
           "text": "  )",
@@ -4625,11 +4675,11 @@
       ]
     },
     {
-      "number": 64,
+      "number": 66,
       "content": []
     },
     {
-      "number": 65,
+      "number": 67,
       "content": [
         {
           "text": "  ",
@@ -4682,7 +4732,7 @@
       ]
     },
     {
-      "number": 66,
+      "number": 68,
       "content": [
         {
           "text": "    ",
@@ -4799,7 +4849,7 @@
       ]
     },
     {
-      "number": 67,
+      "number": 69,
       "content": [
         {
           "text": "  ",
@@ -4812,11 +4862,11 @@
       ]
     },
     {
-      "number": 68,
+      "number": 70,
       "content": []
     },
     {
-      "number": 69,
+      "number": 71,
       "content": [
         {
           "text": "  ",
@@ -4833,7 +4883,7 @@
       ]
     },
     {
-      "number": 70,
+      "number": 72,
       "content": [
         {
           "text": "    ",
@@ -4850,57 +4900,57 @@
       ]
     },
     {
-      "number": 71,
-      "content": [
-        {
-          "text": "      ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "ref",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "={",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "ref",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 72,
-      "content": [
-        {
-          "text": "      ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "rel",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "={",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "rel",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
       "number": 73,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "ref",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 74,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "rel",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "rel",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 75,
       "content": [
         {
           "text": "      ",
@@ -4925,7 +4975,7 @@
       ]
     },
     {
-      "number": 74,
+      "number": 76,
       "content": [
         {
           "text": "      ",
@@ -4946,7 +4996,7 @@
       ]
     },
     {
-      "number": 75,
+      "number": 77,
       "content": [
         {
           "text": "    ",
@@ -4959,7 +5009,7 @@
       ]
     },
     {
-      "number": 76,
+      "number": 78,
       "content": [
         {
           "text": "      ",
@@ -5068,7 +5118,7 @@
       ]
     },
     {
-      "number": 77,
+      "number": 79,
       "content": [
         {
           "text": "      ",
@@ -5089,7 +5139,7 @@
       ]
     },
     {
-      "number": 78,
+      "number": 80,
       "content": [
         {
           "text": "      ",
@@ -5198,7 +5248,7 @@
       ]
     },
     {
-      "number": 79,
+      "number": 81,
       "content": [
         {
           "text": "    ",
@@ -5219,7 +5269,7 @@
       ]
     },
     {
-      "number": 80,
+      "number": 82,
       "content": [
         {
           "text": "  )",
@@ -5228,7 +5278,7 @@
       ]
     },
     {
-      "number": 81,
+      "number": 83,
       "content": [
         {
           "text": "}",
@@ -5237,7 +5287,7 @@
       ]
     },
     {
-      "number": 82,
+      "number": 84,
       "content": []
     }
   ],

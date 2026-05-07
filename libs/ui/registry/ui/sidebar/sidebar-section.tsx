@@ -1,9 +1,10 @@
 "use client";
 
-import { useId, useMemo, type HTMLAttributes, type Ref } from "react";
+import { Children, isValidElement, useId, useMemo, type HTMLAttributes, type ReactNode, type Ref } from "react";
 import { cn } from "@/lib/utils";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { SidebarSectionContext } from "./sidebar-section-context";
+import { SidebarSectionTitle } from "./sidebar-section-title";
 
 export interface SidebarSectionProps extends HTMLAttributes<HTMLDivElement> {
   ref?: Ref<HTMLDivElement>;
@@ -21,9 +22,11 @@ export function SidebarSection({
   defaultOpen = true,
   className,
   children,
+  "aria-labelledby": ariaLabelledBy,
   ...rest
 }: SidebarSectionProps) {
   const titleId = useId();
+  const labelledBy = ariaLabelledBy ?? (containsSidebarSectionTitleElement(children) ? titleId : undefined);
 
   const [isOpen, setIsOpen] = useControllableState<boolean>({
     value: controlledOpen,
@@ -47,7 +50,7 @@ export function SidebarSection({
         {...rest}
         ref={ref}
         role="group"
-        aria-labelledby={titleId}
+        aria-labelledby={labelledBy}
         data-state={isOpen ? "open" : "closed"}
         className={cn("mb-4", className)}
       >
@@ -55,4 +58,12 @@ export function SidebarSection({
       </div>
     </SidebarSectionContext>
   );
+}
+
+function containsSidebarSectionTitleElement(children: ReactNode): boolean {
+  return Children.toArray(children).some((child) => {
+    if (!isValidElement<{ children?: ReactNode }>(child)) return false;
+    if (child.type === SidebarSectionTitle) return true;
+    return containsSidebarSectionTitleElement(child.props.children);
+  });
 }

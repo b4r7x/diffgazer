@@ -1,17 +1,18 @@
 import { existsSync, mkdirSync } from "node:fs";
-import { resolve } from "node:path";
 import { detectProject } from "../utils/detect.js";
-import { createInitCommand, writeFileSafe, ensureWithinDir, installDepsWithSpinner, heading, warn, REGISTRY_ORIGIN } from "@diffgazer/registry/cli";
+import { createInitCommand, writeFileSafe, installDepsWithSpinner, heading, warn, REGISTRY_ORIGIN } from "@diffgazer/registry/cli";
 import { ctx, getRegistry, VERSION } from "../context.js";
+import { resolveInstallPath, resolveProjectPath } from "../utils/paths.js";
 
 type FileResult = { action: "created" | "skipped"; path: string };
 
 function derivePaths(cwd: string, componentsDir: string) {
   const project = detectProject(cwd);
   const sourcePrefix = project.sourceDir === "." ? "" : `${project.sourceDir}/`;
-  const resolvedComponentsDir = componentsDir === "src/components/ui" && project.sourceDir !== "src"
+  const requestedDir = componentsDir.replace(/\\/g, "/");
+  const resolvedComponentsDir = requestedDir === "src/components/ui" && project.sourceDir !== "src"
     ? `${sourcePrefix}components/ui`
-    : componentsDir;
+    : requestedDir;
   return {
     project,
     componentsDir: resolvedComponentsDir,
@@ -27,8 +28,8 @@ function writeFileResult(absolutePath: string, content: string, displayPath: str
 }
 
 function createDirs(cwd: string, componentsDir: string, hooksDir: string): FileResult[] {
-  const compPath = resolve(cwd, componentsDir);
-  const hookPath = resolve(cwd, hooksDir);
+  const compPath = resolveProjectPath(cwd, componentsDir);
+  const hookPath = resolveProjectPath(cwd, hooksDir);
   const compExists = existsSync(compPath);
   const hookExists = existsSync(hookPath);
   if (!compExists) mkdirSync(compPath, { recursive: true });
@@ -49,26 +50,48 @@ const UTILS_CONTENT = [
   ``,
 ].join("\n");
 
+function componentCssContent(registry: ReturnType<typeof getRegistry>): string {
+  const seen = new Set<string>();
+  const chunks: string[] = [];
+
+  for (const item of registry.items) {
+    if (item.type === "registry:theme") continue;
+
+    for (const file of item.files) {
+      if (!file.path.endsWith(".css") || seen.has(file.path)) continue;
+      seen.add(file.path);
+      chunks.push(file.content.trimEnd());
+    }
+  }
+
+  return chunks.filter(Boolean).join("\n\n");
+}
+
+function buildStylesContent(registry: ReturnType<typeof getRegistry>): string {
+  const chunks = [registry.styles.trimEnd(), componentCssContent(registry)].filter(Boolean);
+  return `${chunks.join("\n\n")}\n`;
+}
+
 export const initCommand = createInitCommand({
   configFileName: "diffgazer.json",
   loadConfig: ctx.config.loadConfig,
   extraOptions: [
     { flags: "--components-dir <path>", description: "Component install directory", default: "src/components/ui" },
-    { flags: "--allow-missing-alias", description: "Initialize even when the app has no @/* TypeScript/bundler alias" },
+    { flags: "--allow-missing-alias", description: "Initialize even when the app has no TypeScript/bundler source alias" },
   ],
   detectProject: (cwd, opts) => {
     const { project, componentsDir, libDir, stylesDir, hooksDir } = derivePaths(cwd, String(opts.componentsDir));
 
-    ensureWithinDir(resolve(cwd, componentsDir), cwd);
-    ensureWithinDir(resolve(cwd, libDir), cwd);
-    ensureWithinDir(resolve(cwd, stylesDir), cwd);
-    ensureWithinDir(resolve(cwd, hooksDir), cwd);
+    resolveProjectPath(cwd, componentsDir);
+    resolveProjectPath(cwd, libDir);
+    resolveProjectPath(cwd, stylesDir);
+    resolveProjectPath(cwd, hooksDir);
 
     if (!project.hasPathAlias && !opts.allowMissingAlias) {
       throw new Error(
-        "dgadd requires an @/* alias that resolves to your source directory. "
+        "dgadd requires a TypeScript or Vite alias that resolves to your source directory. "
         + "Configure it in your TypeScript and bundler config, then rerun init. "
-        + "Use --allow-missing-alias only if your app already resolves @/* another way.",
+        + "Use --allow-missing-alias only if your app already resolves source aliases another way.",
       );
     }
 
@@ -77,7 +100,7 @@ export const initCommand = createInitCommand({
         ["Package manager", project.packageManager],
         ["Tailwind", project.tailwindVersion || "not found"],
         ["Source dir", `${project.sourceDir}/`],
-        ["Path alias @/*", project.hasPathAlias ? "yes" : "no"],
+        ["Path alias", project.hasPathAlias ? `${project.importAliasPrefix}/*` : "no"],
         ["RSC", project.rsc ? "yes" : "no"],
       ],
     };
@@ -88,9 +111,9 @@ export const initCommand = createInitCommand({
 
     return [
       ...createDirs(cwd, componentsDir, hooksDir),
-      writeFileResult(resolve(cwd, libDir, "utils.ts"), UTILS_CONTENT, `${libDir}/utils.ts`),
-      writeFileResult(resolve(cwd, stylesDir, "theme.css"), registry.theme, `${stylesDir}/theme.css`),
-      writeFileResult(resolve(cwd, stylesDir, "styles.css"), registry.styles, `${stylesDir}/styles.css`),
+      writeFileResult(resolveInstallPath(cwd, libDir, "utils.ts"), UTILS_CONTENT, `${libDir}/utils.ts`),
+      writeFileResult(resolveInstallPath(cwd, stylesDir, "theme.css"), registry.theme, `${stylesDir}/theme.css`),
+      writeFileResult(resolveInstallPath(cwd, stylesDir, "styles.css"), buildStylesContent(registry), `${stylesDir}/styles.css`),
     ];
   },
   afterFiles: async (cwd) => {
@@ -107,11 +130,12 @@ export const initCommand = createInitCommand({
       const prefix = project.sourceDir === "." ? "" : `${project.sourceDir}/`;
       return prefix && p.startsWith(prefix) ? p.slice(prefix.length) : p;
     };
+    const aliasPath = (path: string) => `${project.importAliasPrefix}/${path}`;
     const aliases = {
-      components: `@/${stripSource(componentsDir)}`,
-      utils: `@/${stripSource(libDir)}/utils`,
-      lib: `@/${stripSource(libDir)}`,
-      hooks: "@/hooks",
+      components: aliasPath(stripSource(componentsDir)),
+      utils: aliasPath(`${stripSource(libDir)}/utils`),
+      lib: aliasPath(stripSource(libDir)),
+      hooks: aliasPath(stripSource(hooksDir)),
     };
 
     ctx.config.writeConfig(cwd, {
@@ -122,7 +146,7 @@ export const initCommand = createInitCommand({
       libFsPath: libDir,
       hooksFsPath: hooksDir,
       rsc: project.rsc,
-      tailwind: { css: `${stylesDir}/theme.css` },
+      tailwind: { css: `${stylesDir}/styles.css` },
     });
   },
   nextSteps: [

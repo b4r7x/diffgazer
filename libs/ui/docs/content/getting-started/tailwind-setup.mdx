@@ -16,22 +16,28 @@ pnpm add -D tailwindcss @tailwindcss/vite
 ```ts
 // vite.config.ts
 import tailwindcss from "@tailwindcss/vite"
+import { defineConfig } from "vite"
 
 export default defineConfig({
   plugins: [tailwindcss()],
 })
 ```
 
-## 3. Import the theme
+## 3. Import the component CSS
 
 If you initialized with `dgadd`, import the copied CSS entry from your app CSS:
 
 ```css
 /* src/index.css */
+@import "tailwindcss";
 @import "./styles/styles.css";
 ```
 
-`src/styles/styles.css` contains the Tailwind import and the copied theme import. If you are wiring files manually instead, use:
+`src/styles/styles.css` is the canonical component CSS entrypoint. It contains the copied theme import plus component-level CSS that copied components expect.
+
+In the workspace source, `libs/ui/styles/styles.css` is the seed entry that imports `theme.css`. `dgadd init` and the package build materialize the canonical component entry by appending registry component CSS, such as dialog backdrop and body-lock rules, to that seed.
+
+Use `theme.css` only when you intentionally want token variables without component CSS, for example in an advanced integration that provides its own component styles:
 
 ```css
 @import "tailwindcss";
@@ -39,6 +45,8 @@ If you initialized with `dgadd`, import the copied CSS entry from your app CSS:
 ```
 
 `dgadd init` copies `src/styles/theme.css` and `src/styles/styles.css`, but it does not add either import to your app CSS entrypoint.
+
+In Next App Router, import your app CSS entrypoint once from `app/layout.tsx`. Keep the Tailwind import, Diffgazer styles import, and any `@source` directives in that CSS file.
 
 ## Package Mode Source Scanning
 
@@ -48,8 +56,8 @@ If you install `@diffgazer/ui` as a runtime npm package instead of copying sourc
 
 ```css
 @import "tailwindcss";
-@source "../node_modules/@diffgazer/ui/dist";
 @import "@diffgazer/ui/styles.css";
+@source "../node_modules/@diffgazer/ui/dist";
 ```
 
 Adjust the `@source` path so it is relative to the CSS file that contains it.
@@ -58,23 +66,32 @@ Adjust the `@source` path so it is relative to the CSS file that contains it.
 
 @diffgazer/ui uses a two-layer CSS variable system:
 
-**Layer 1 -- Primitives** (`--tui-*`): Raw color values from the GitHub Dark palette.
+**Layer 1 -- Primitives** (`--tui-*`): Raw color values from the Diffgazer monochrome palette.
 
 **Layer 2 -- Semantics**: Functional tokens that reference primitives.
 
 | Primitive | Value (dark) | Semantic tokens |
 |-----------|-------------|-----------------|
-| `--tui-bg` | `#0d1117` | `--background` |
-| `--tui-fg` | `#c9d1d9` | `--foreground` |
-| `--tui-blue` | `#58a6ff` | `--primary`, `--accent`, `--ring`, `--info` |
-| `--tui-green` | `#3fb950` | `--success` |
+| `--tui-bg` | `#0a0a0a` | `--background` |
+| `--tui-fg` | `#e5e5e5` | `--foreground`, `--primary`, `--ring` |
+| `--tui-dim` | `#9c9c9c` | `--muted-foreground` |
+| `--tui-blue` | `#ccccff` | `--info` |
+| `--tui-green` | `#e5e5e5` | `--success` |
 | `--tui-red` | `#ff7b72` | `--destructive`, `--error` |
 | `--tui-yellow` | `#d29922` | `--warning` |
-| `--tui-violet` | `#bc8cff` | (used in syntax highlighting) |
-| `--tui-border` | `#30363d` | `--border` |
-| `--tui-muted` | `#6e7681` | `--muted` |
+| `--tui-violet` | `#787878` | (used in syntax highlighting) |
+| `--tui-border` | `#606060` | `--border` |
+| `--tui-highlight` | `#ffffff` | `--accent`, `--action` |
+| `--tui-highlight-fg` | `#000000` | `--accent-foreground`, `--action-foreground` |
+| `--tui-selection` | `#333333` | `--secondary`, `--card`, `--popover`, `--input` |
+| `--tui-muted` | `#787878` | `--muted` |
+| `--tui-input-bg` | `#0a0a0a` | Primitive available for custom inputs |
 
 See [Theme Overview](/ui/docs/theme/overview) for the full variable diagram.
+
+## Yarn PnP
+
+Package mode currently documents `@source "../node_modules/@diffgazer/ui/dist"` because Tailwind CSS v4 scans a real package output directory. Yarn Plug'n'Play does not provide that `node_modules` path by default, so package mode is not claimed as PnP-compatible in this release. Use copy mode, configure a real unplugged/package path for Tailwind `@source`, or validate a project-specific PnP setup before relying on package mode.
 
 ## Dark Mode
 

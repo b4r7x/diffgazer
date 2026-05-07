@@ -2,28 +2,43 @@
 
 Installer CLI for adding Diffgazer UI components and keys hooks to your React project. Files are copied into your codebase so you own the implementation.
 
-## Installation
+## Before Publication
 
 `@diffgazer/add` is external publish-gated as of May 6, 2026. Public `npx`/global install commands are valid only after `npm view @diffgazer/add version` succeeds.
 
-Before publication, validate the CLI from this workspace:
+Before publication, pack the CLI from this workspace and install the tarball into the target app:
+
+From this repository:
 
 ```bash
 pnpm --filter @diffgazer/add build
 pnpm --filter @diffgazer/add pack --pack-destination /tmp/diffgazer-packs
-pnpm add -D /tmp/diffgazer-packs/diffgazer-add-*.tgz
-pnpm exec dgadd init
 ```
 
-After publication, use:
+From the target app:
 
 ```bash
-npx @diffgazer/add init
+pnpm add -D /tmp/diffgazer-packs/diffgazer-add-*.tgz
+pnpm exec dgadd init
+pnpm exec dgadd add ui/button
 ```
 
-This detects your project setup and creates a `diffgazer.json` config file. Configure your `@/*` alias before running `init`.
+This detects your project setup and creates a `diffgazer.json` config file. Configure a TypeScript or Vite source alias, for example `@/*` or `~/*`, before running `init`.
 
 ## Quick Start
+
+Use these commands after installing the local tarball into the target app:
+
+```bash
+pnpm exec dgadd init
+pnpm exec dgadd add ui/button
+pnpm exec dgadd add ui/input keys/navigation
+pnpm exec dgadd list
+```
+
+## After Publication
+
+Public hosted registry and npm deployment remain future work. Once `npm view @diffgazer/add version` succeeds, these public commands are valid:
 
 ```bash
 npx @diffgazer/add init
@@ -45,25 +60,28 @@ npx @diffgazer/add list
 Initialize dgadd in your project. Detects your setup and creates the config file, utility files, and theme styles.
 
 ```bash
-npx @diffgazer/add init [options]
+pnpm exec dgadd init [options]
 ```
 
 | Option | Description | Default |
 |---|---|---|
 | `--cwd <path>` | Working directory | `.` |
 | `--components-dir <path>` | Component install directory | `src/components/ui` |
-| `--allow-missing-alias` | Continue when the app has no `@/*` alias configured | `false` |
+| `--allow-missing-alias` | Continue when the app has no source alias configured | `false` |
 | `-y, --yes` | Skip confirmation prompts | `false` |
+| `--force` | Overwrite existing configuration | `false` |
+| `--dry-run` | Preview initialization without writing files | `false` |
+| `--skip-install` | Write files without installing npm dependencies | `false` |
 
-`dgadd init` does not mutate `tsconfig`, Vite, Next, or your CSS entrypoint. Configure an `@/*` alias in the app first, or use `--allow-missing-alias` only when your tooling already resolves `@/*`.
+`dgadd init` does not mutate `tsconfig`, Vite, Next, or your CSS entrypoint. Configure a TypeScript or Vite alias to your source directory first, or use `--allow-missing-alias` only when your tooling already resolves source aliases.
 
 ### `add`
 
 Add `ui/*` and `keys/*` items to your project. UI dependencies are resolved automatically.
 
 ```bash
-npx @diffgazer/add add ui/button keys/navigation [options]
-npx @diffgazer/add ui/button
+pnpm exec dgadd add ui/button keys/navigation [options]
+pnpm exec dgadd ui/button
 ```
 
 | Option | Description | Default |
@@ -72,6 +90,7 @@ npx @diffgazer/add ui/button
 | `--all` | Add all public items | `false` |
 | `--overwrite` | Overwrite existing files | `false` |
 | `--dry-run` | Preview changes without writing files | `false` |
+| `--skip-install` | Write files without installing npm dependencies | `false` |
 | `--integration <mode>` | Keyboard integration mode: `ask \| none \| copy \| keys` | `ask` |
 | `--keys-version <version>` | Version/range used by `@diffgazer/keys` package mode | `^0.1.1` |
 | `-y, --yes` | Skip confirmation prompts | `false` |
@@ -83,7 +102,7 @@ npx @diffgazer/add ui/button
 List available or installed `ui/*` and `keys/*` items.
 
 ```bash
-npx @diffgazer/add list [options]
+pnpm exec dgadd list [options]
 ```
 
 | Option | Description | Default |
@@ -98,7 +117,7 @@ npx @diffgazer/add list [options]
 Compare local files with the registry data bundled in the installed `dgadd` package.
 
 ```bash
-npx @diffgazer/add diff ui/button keys/navigation [options]
+pnpm exec dgadd diff ui/button keys/navigation [options]
 ```
 
 | Option | Description | Default |
@@ -112,7 +131,7 @@ If no item names are given, all installed items are compared.
 Remove installed items from your project.
 
 ```bash
-npx @diffgazer/add remove ui/button keys/navigation [options]
+pnpm exec dgadd remove ui/button keys/navigation [options]
 ```
 
 | Option | Description | Default |
@@ -120,6 +139,7 @@ npx @diffgazer/add remove ui/button keys/navigation [options]
 | `--cwd <path>` | Working directory | `.` |
 | `-y, --yes` | Skip confirmation prompts | `false` |
 | `--dry-run` | Preview changes without removing files | `false` |
+| `--force` | Remove files even when ownership metadata is missing or content changed | `false` |
 
 ## Configuration
 
@@ -135,7 +155,7 @@ Running `dgadd init` creates a `diffgazer.json` file in your project root:
   },
   "rsc": true,
   "tailwind": {
-    "css": "src/styles/theme.css"
+    "css": "src/styles/styles.css"
   }
 }
 ```
@@ -143,7 +163,7 @@ Running `dgadd init` creates a `diffgazer.json` file in your project root:
 ## Requirements
 
 - Node.js >= 18
-- React 19
+- React `>=19.2.0`
 - Tailwind CSS v4
 
 ## License

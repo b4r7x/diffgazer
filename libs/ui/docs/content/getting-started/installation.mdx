@@ -17,9 +17,16 @@ pnpm run smoke:packages
 
 To test `dgadd` in a separate fixture app before publication, pack and install the local CLI package:
 
+From this repository:
+
 ```bash
 pnpm --filter @diffgazer/add build
 pnpm --filter @diffgazer/add pack --pack-destination /tmp/diffgazer-packs
+```
+
+From the target fixture app:
+
+```bash
 pnpm add -D /tmp/diffgazer-packs/diffgazer-add-*.tgz
 pnpm exec dgadd init
 pnpm exec dgadd add ui/button
@@ -27,9 +34,9 @@ pnpm exec dgadd add ui/button
 
 ## Required App Wiring
 
-Configure the `@/*` alias before running `dgadd init`. The initializer rejects projects without this alias unless `--allow-missing-alias` is passed for an app whose tooling already resolves `@/*`.
+Configure a TypeScript or Vite source alias before running `dgadd init`, for example `@/*` or `~/*`. The initializer rejects projects without a source alias unless `--allow-missing-alias` is passed for an app whose tooling already resolves source aliases.
 
-Add the `@/*` alias to TypeScript and to your bundler or framework:
+Add the source alias to TypeScript and to your bundler or framework:
 
 ```json
 {
@@ -42,10 +49,11 @@ Add the `@/*` alias to TypeScript and to your bundler or framework:
 }
 ```
 
-For Vite, mirror the alias in `vite.config.ts`:
+For Vite, mirror the same source alias in `vite.config.ts`:
 
 ```ts
 import { resolve } from "node:path"
+import { defineConfig } from "vite"
 
 export default defineConfig({
   resolve: {
@@ -59,6 +67,7 @@ export default defineConfig({
 Then import the copied Tailwind/theme entry from your app CSS:
 
 ```css
+@import "tailwindcss";
 @import "./styles/styles.css";
 ```
 
@@ -66,11 +75,11 @@ See [TypeScript](/ui/docs/getting-started/typescript) and [Tailwind Setup](/ui/d
 
 ## Initialize
 
-After `@diffgazer/add` is published and the required app wiring is in place, use one command style consistently:
+After the local `@diffgazer/add` tarball is installed and the required app wiring is in place, use one command style consistently:
 
 ```bash
-npx @diffgazer/add init
-npx @diffgazer/add add ui/button
+pnpm exec dgadd init
+pnpm exec dgadd add ui/button
 ```
 
 This creates `diffgazer.json`, records the aliases used by `dgadd`, creates install directories, writes `src/lib/utils.ts`, and copies `src/styles/theme.css` plus `src/styles/styles.css`. It does not edit your TypeScript config, bundler config, or app CSS entrypoint.
@@ -78,13 +87,13 @@ This creates `diffgazer.json`, records the aliases used by `dgadd`, creates inst
 ## Add Components
 
 ```bash
-npx @diffgazer/add add ui/dialog ui/tabs ui/menu
+pnpm exec dgadd add ui/dialog ui/tabs ui/menu
 ```
 
 Bare names are treated as UI components:
 
 ```bash
-npx @diffgazer/add add button
+pnpm exec dgadd add button
 ```
 
 ## Add Keyboard Hooks
@@ -92,19 +101,21 @@ npx @diffgazer/add add button
 Standalone hooks can be copied directly:
 
 ```bash
-npx @diffgazer/add add keys/navigation keys/focus-trap keys/scroll-lock
+pnpm exec dgadd add keys/navigation keys/focus-trap keys/scroll-lock
 ```
 
 Components with keyboard behavior can choose copy mode or package mode:
 
 ```bash
-npx @diffgazer/add add ui/menu --integration copy
-npx @diffgazer/add add ui/menu --integration keys
+pnpm exec dgadd add ui/menu --integration copy
+pnpm exec dgadd add ui/menu --integration keys
 ```
 
 `copy` mode installs local hook source. `keys` mode imports hooks from `@diffgazer/keys`.
 
 ## Package Managers
+
+Use these package-manager one-shot commands only after `@diffgazer/add` is published:
 
 ```bash
 pnpm dlx @diffgazer/add init
@@ -113,26 +124,26 @@ yarn dlx @diffgazer/add init
 bunx @diffgazer/add init
 ```
 
-Use these package-manager one-shot commands only after `@diffgazer/add` is published.
-
 ## Result
 
-After adding `ui/dialog` with copied keys hooks, a typical project looks like this:
+After adding `ui/menu --integration copy`, a typical project looks like this:
 
 ```text
 src/
   components/
     ui/
-      dialog/
-        dialog.tsx
-        dialog-content.tsx
+      menu/
+        menu.tsx
+        menu-item.tsx
         index.ts
   hooks/
-    use-focus-trap.ts
-    use-scroll-lock.ts
+    use-navigation.ts
+    internal/
+      navigation-dispatch.ts
   lib/
     utils.ts
   styles/
+    styles.css
     theme.css
 diffgazer.json
 ```

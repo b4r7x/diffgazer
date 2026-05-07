@@ -3,36 +3,27 @@ title: Patterns
 description: Complete integration examples for @diffgazer/keys with @diffgazer/ui components including Menu, Dialog, CommandPalette, Tabs, and multi-zone layouts.
 ---
 
-@diffgazer/ui components are visual-only -- they don't handle keyboard events internally. @diffgazer/keys provides the keyboard layer. Here are the common patterns for integrating the two.
+@diffgazer/ui components include their local keyboard behavior. Use @diffgazer/keys when you need app-level shortcuts, scoped shortcut stacks, package-mode hook imports, or custom composites that are not already covered by a UI component.
 
 ---
 
-## Menu with useNavigation
+## Menu with controlled state
 
 ```tsx
-import { useRef } from "react"
-import { useNavigation } from "@diffgazer/keys"
+import { useState } from "react"
 import { Menu, MenuItem } from "@/components/ui/menu"
 
-function KeyboardMenu() {
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  const { highlighted, isHighlighted } = useNavigation({
-    containerRef,
-    role: "option",
-    upKeys: ["ArrowUp", "k"],
-    downKeys: ["ArrowDown", "j"],
-    onSelect: (value) => console.log("selected", value),
-    onEnter: (value) => console.log("activated", value),
-  })
+function ControlledMenu() {
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [highlightedId, setHighlightedId] = useState<string | null>(null)
 
   return (
     <Menu
-      ref={containerRef}
-      selectedId={highlighted}
-      highlighted={highlighted}
-      onSelect={(id) => console.log("clicked", id)}
       aria-label="File menu"
+      selectedId={selectedId}
+      highlightedId={highlightedId}
+      onSelect={setSelectedId}
+      onHighlightChange={setHighlightedId}
     >
       <MenuItem id="new">New File</MenuItem>
       <MenuItem id="open">Open File</MenuItem>
@@ -44,33 +35,29 @@ function KeyboardMenu() {
 
 ---
 
-## Dialog with useFocusTrap + useScrollLock + useScope
+## Dialog with shortcut scope
 
 ```tsx
-import { useRef } from "react"
-import { useScope, useFocusTrap, useScrollLock, useKey } from "@diffgazer/keys"
+import { useScope, useKey } from "@diffgazer/keys"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogBody, DialogFooter, DialogClose, DialogAction,
 } from "@/components/ui/dialog"
 
-function ConfirmDialog({ open, onOpenChange }) {
-  const contentRef = useRef<HTMLDivElement>(null)
-
+function ConfirmDialog({ open, onOpenChange, onConfirm }) {
   useScope("confirm-dialog", { enabled: open })
-  useFocusTrap(contentRef, { enabled: open })
-  useScrollLock(undefined, open)
+  useKey("mod+enter", onConfirm, { enabled: open })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent ref={contentRef}>
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Confirm Action</DialogTitle>
         </DialogHeader>
         <DialogBody>Save changes?</DialogBody>
         <DialogFooter>
           <DialogClose bracket variant="ghost">Cancel</DialogClose>
-          <DialogAction>Save</DialogAction>
+          <DialogAction onClick={onConfirm}>Save</DialogAction>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -78,13 +65,14 @@ function ConfirmDialog({ open, onOpenChange }) {
 }
 ```
 
+Dialog owns focus trapping, Escape handling, and scroll locking. Use @diffgazer/keys here for app-level shortcuts that should be active only while the dialog scope is on top.
+
 ---
 
 ## Command Palette with useScope
 
 ```tsx
-import { useRef } from "react"
-import { useScope, useKey } from "@diffgazer/keys"
+import { useScope } from "@diffgazer/keys"
 import {
   CommandPalette, CommandPaletteContent, CommandPaletteInput,
   CommandPaletteList, CommandPaletteGroup, CommandPaletteItem,
@@ -148,24 +136,15 @@ function TwoPaneLayout() {
 
 ---
 
-## Tabs with useNavigation
+## Tabs with built-in navigation
 
 ```tsx
-import { useRef } from "react"
-import { useNavigation } from "@diffgazer/keys"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
 function KeyboardTabs() {
-  const listRef = useRef<HTMLDivElement>(null)
-  const { onKeyDown } = useNavigation({
-    containerRef: listRef,
-    role: "tab",
-    orientation: "horizontal",
-  })
-
   return (
     <Tabs defaultValue="preview">
-      <TabsList ref={listRef} onKeyDown={onKeyDown}>
+      <TabsList>
         <TabsTrigger value="preview">Preview</TabsTrigger>
         <TabsTrigger value="code">Code</TabsTrigger>
         <TabsTrigger value="api">API</TabsTrigger>
@@ -180,36 +159,44 @@ function KeyboardTabs() {
 
 ---
 
-## Select with useNavigation (local mode)
+## Custom composite with useNavigation
 
 ```tsx
 import { useRef } from "react"
 import { useNavigation } from "@diffgazer/keys"
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
 
-function KeyboardSelect() {
-  const listboxRef = useRef<HTMLDivElement>(null)
+const items = [
+  { id: "main", label: "main" },
+  { id: "develop", label: "develop" },
+  { id: "feature-auth", label: "feature/auth" },
+]
 
-  const { onKeyDown } = useNavigation({
-    mode: "local",
-    containerRef: listboxRef,
+function BranchList({ onChoose }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const { highlighted, isHighlighted, onKeyDown } = useNavigation({
+    containerRef,
     role: "option",
     wrap: true,
-    onEnter: (val) => selectBranch(val),
-    onSelect: (val) => selectBranch(val),
+    onEnter: onChoose,
+    onSelect: onChoose,
   })
 
   return (
-    <Select value={branch} onValueChange={setBranch}>
-      <SelectTrigger>
-        <SelectValue placeholder="Branch..." />
-      </SelectTrigger>
-      <SelectContent ref={listboxRef} onKeyDown={onKeyDown}>
-        <SelectItem value="main">main</SelectItem>
-        <SelectItem value="develop">develop</SelectItem>
-        <SelectItem value="feature/auth">feature/auth</SelectItem>
-      </SelectContent>
-    </Select>
+    <div ref={containerRef} role="listbox" tabIndex={0} onKeyDown={onKeyDown}>
+      {items.map((item) => (
+        <Button
+          key={item.id}
+          data-value={item.id}
+          role="option"
+          aria-selected={highlighted === item.id}
+          variant={isHighlighted(item.id) ? "secondary" : "ghost"}
+          onClick={() => onChoose(item.id)}
+        >
+          {item.label}
+        </Button>
+      ))}
+    </div>
   )
 }
 ```

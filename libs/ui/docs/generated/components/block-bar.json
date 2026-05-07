@@ -14,10 +14,35 @@
   "props": {},
   "source": {
     "registry/ui/block-bar/index.ts": {
-      "raw": "import {\n  BlockBar as BlockBarRoot,\n  type BlockBarProps,\n  type BlockBarSegmentData,\n} from \"./block-bar.js\";\nimport {\n  BlockBarSegment,\n  type BlockBarSegmentProps,\n} from \"./block-bar-segment.js\";\n\nconst BlockBar = Object.assign(BlockBarRoot, {\n  Segment: BlockBarSegment,\n});\n\nexport { BlockBar, type BlockBarProps, type BlockBarSegmentData };\nexport { BlockBarSegment, type BlockBarSegmentProps };\n",
+      "raw": "\"use client\";\n\nimport {\n  BlockBar as BlockBarRoot,\n  type BlockBarProps,\n  type BlockBarSegmentData,\n} from \"./block-bar.js\";\nimport {\n  BlockBarSegment,\n  type BlockBarSegmentProps,\n} from \"./block-bar-segment.js\";\n\nconst BlockBar = Object.assign(BlockBarRoot, {\n  Segment: BlockBarSegment,\n});\n\nexport { BlockBar, type BlockBarProps, type BlockBarSegmentData };\nexport { BlockBarSegment, type BlockBarSegmentProps };\n",
       "highlighted": [
         {
           "number": 1,
+          "content": [
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "use client",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
           "content": [
             {
               "text": "import",
@@ -34,7 +59,7 @@
           ]
         },
         {
-          "number": 2,
+          "number": 4,
           "content": [
             {
               "text": "  BlockBar ",
@@ -55,7 +80,7 @@
           ]
         },
         {
-          "number": 3,
+          "number": 5,
           "content": [
             {
               "text": "  ",
@@ -76,7 +101,7 @@
           ]
         },
         {
-          "number": 4,
+          "number": 6,
           "content": [
             {
               "text": "  ",
@@ -97,7 +122,7 @@
           ]
         },
         {
-          "number": 5,
+          "number": 7,
           "content": [
             {
               "text": "}",
@@ -134,7 +159,7 @@
           ]
         },
         {
-          "number": 6,
+          "number": 8,
           "content": [
             {
               "text": "import",
@@ -151,7 +176,7 @@
           ]
         },
         {
-          "number": 7,
+          "number": 9,
           "content": [
             {
               "text": "  BlockBarSegment",
@@ -164,7 +189,7 @@
           ]
         },
         {
-          "number": 8,
+          "number": 10,
           "content": [
             {
               "text": "  ",
@@ -185,7 +210,7 @@
           ]
         },
         {
-          "number": 9,
+          "number": 11,
           "content": [
             {
               "text": "}",
@@ -222,11 +247,11 @@
           ]
         },
         {
-          "number": 10,
+          "number": 12,
           "content": []
         },
         {
-          "number": 11,
+          "number": 13,
           "content": [
             {
               "text": "const",
@@ -283,7 +308,7 @@
           ]
         },
         {
-          "number": 12,
+          "number": 14,
           "content": [
             {
               "text": "  Segment",
@@ -304,7 +329,7 @@
           ]
         },
         {
-          "number": 13,
+          "number": 15,
           "content": [
             {
               "text": "}",
@@ -321,11 +346,11 @@
           ]
         },
         {
-          "number": 14,
+          "number": 16,
           "content": []
         },
         {
-          "number": 15,
+          "number": 17,
           "content": [
             {
               "text": "export",
@@ -382,7 +407,7 @@
           ]
         },
         {
-          "number": 16,
+          "number": 18,
           "content": [
             {
               "text": "export",
@@ -423,13 +448,13 @@
           ]
         },
         {
-          "number": 17,
+          "number": 19,
           "content": []
         }
       ]
     },
     "registry/ui/block-bar/block-bar.tsx": {
-      "raw": "\"use client\";\n\nimport { useMemo, type HTMLAttributes, type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { BlockBarContext } from \"./block-bar-context.js\";\nimport { BlockBarSegment, type SegmentVariant } from \"./block-bar-segment.js\";\n\nexport interface BlockBarSegmentData {\n  value: number;\n  variant?: SegmentVariant;\n  char?: string;\n}\n\nexport interface BlockBarProps extends HTMLAttributes<HTMLDivElement> {\n  value?: number;\n  max: number;\n  barWidth?: number;\n  filledChar?: string;\n  emptyChar?: string;\n  label?: string;\n  variant?: SegmentVariant;\n  segments?: BlockBarSegmentData[];\n  children?: ReactNode;\n}\n\nfunction BlockBarRoot({\n  value,\n  max,\n  barWidth = 20,\n  filledChar = \"\\u2588\",\n  emptyChar = \"\\u2591\",\n  label,\n  variant,\n  segments,\n  className,\n  children,\n  ...props\n}: BlockBarProps) {\n  const safeMax = Number.isFinite(max) ? Math.max(0, max) : 0;\n  const safeBarWidth = Number.isFinite(barWidth)\n    ? Math.max(0, Math.floor(barWidth))\n    : 0;\n  const rawValue =\n    value ?? (segments ? segments.reduce((sum, seg) => (\n      Number.isFinite(seg.value) ? sum + Math.max(0, seg.value) : sum\n    ), 0) : 0);\n  const displayValue = Number.isFinite(rawValue)\n    ? Math.min(Math.max(0, rawValue), safeMax)\n    : 0;\n  const resolvedSegments = segments\n    ? segments.map((segment) => ({\n        ...segment,\n        value: Number.isFinite(segment.value) ? Math.max(0, segment.value) : 0,\n      }))\n    : [{ value: displayValue, variant }];\n\n  const contextValue = useMemo(\n    () => ({ max: safeMax, barWidth: safeBarWidth, filledChar, emptyChar }),\n    [safeMax, safeBarWidth, filledChar, emptyChar],\n  );\n\n  return (\n    <BlockBarContext value={contextValue}>\n      <div\n        role=\"meter\"\n        aria-valuemin={0}\n        aria-valuemax={safeMax}\n        aria-valuenow={displayValue}\n        aria-valuetext={`${displayValue} of ${safeMax}`}\n        aria-label={!children ? label : undefined}\n        className={cn(\"flex items-center font-mono text-sm\", className)}\n        {...props}\n      >\n        {!children && label && (\n          <span className=\"w-20 truncate text-xs text-muted-foreground\">\n            {label}\n          </span>\n        )}\n        <span className=\"relative flex-1 overflow-hidden tracking-widest\">\n          <span className=\"text-border select-none\" aria-hidden=\"true\">\n            {emptyChar.repeat(safeBarWidth)}\n          </span>\n          <span className=\"absolute inset-0 flex\">\n            {children ??\n              resolvedSegments.map((seg, i) => (\n                <BlockBarSegment\n                  key={i}\n                  value={seg.value}\n                  variant={seg.variant}\n                  char={seg.char}\n                />\n              ))}\n          </span>\n        </span>\n        {!children && (\n          <span className=\"w-8 text-right font-bold\">{displayValue}</span>\n        )}\n      </div>\n    </BlockBarContext>\n  );\n}\n\nexport { BlockBarRoot as BlockBar };\n",
+      "raw": "\"use client\";\n\nimport {\n  Children,\n  isValidElement,\n  useMemo,\n  type HTMLAttributes,\n  type ReactElement,\n  type ReactNode,\n} from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { BlockBarContext } from \"./block-bar-context.js\";\nimport { BlockBarSegment, type SegmentVariant } from \"./block-bar-segment.js\";\n\nconst MAX_BAR_WIDTH = 200;\n\nexport interface BlockBarSegmentData {\n  value: number;\n  variant?: SegmentVariant;\n  char?: string;\n}\n\nexport interface BlockBarProps extends HTMLAttributes<HTMLDivElement> {\n  value?: number;\n  max: number;\n  barWidth?: number;\n  filledChar?: string;\n  emptyChar?: string;\n  label?: string;\n  variant?: SegmentVariant;\n  segments?: BlockBarSegmentData[];\n  children?: ReactNode;\n}\n\nfunction getSegmentChildValue(child: ReactNode): number | null {\n  if (!isValidElement(child) || child.type !== BlockBarSegment) return null;\n\n  const segment = child as ReactElement<BlockBarSegmentData>;\n  return Number.isFinite(segment.props.value)\n    ? Math.max(0, segment.props.value)\n    : 0;\n}\n\nfunction deriveValueFromSegmentChildren(children: ReactNode): number | null {\n  const childArray = Children.toArray(children);\n  if (childArray.length === 0) return null;\n\n  let total = 0;\n  for (const child of childArray) {\n    const childValue = getSegmentChildValue(child);\n    if (childValue === null) return null;\n    total += childValue;\n  }\n\n  return total;\n}\n\nfunction BlockBarRoot({\n  value,\n  max,\n  barWidth = 20,\n  filledChar = \"\\u2588\",\n  emptyChar = \"\\u2591\",\n  label,\n  variant,\n  segments,\n  className,\n  children,\n  ...props\n}: BlockBarProps) {\n  const safeMax = Number.isFinite(max) ? Math.max(0, max) : 0;\n  const safeBarWidth = Number.isFinite(barWidth)\n    ? Math.min(MAX_BAR_WIDTH, Math.max(0, Math.floor(barWidth)))\n    : 0;\n  const hasChildren = children !== undefined && children !== null;\n  const childValue = hasChildren ? deriveValueFromSegmentChildren(children) : null;\n  if (hasChildren && value === undefined && !segments && childValue === null) {\n    throw new Error(\"BlockBar requires `value` when custom children are not BlockBar.Segment elements.\");\n  }\n\n  const rawValue =\n    value ?? (segments ? segments.reduce((sum, seg) => (\n      Number.isFinite(seg.value) ? sum + Math.max(0, seg.value) : sum\n    ), 0) : childValue ?? 0);\n  const displayValue = Number.isFinite(rawValue)\n    ? Math.min(Math.max(0, rawValue), safeMax)\n    : 0;\n  const resolvedSegments = segments\n    ? segments.map((segment) => ({\n        ...segment,\n        value: Number.isFinite(segment.value)\n          ? Math.min(Math.max(0, segment.value), safeMax)\n          : 0,\n      }))\n    : [{ value: displayValue, variant }];\n\n  const contextValue = useMemo(\n    () => ({ max: safeMax, barWidth: safeBarWidth, filledChar, emptyChar }),\n    [safeMax, safeBarWidth, filledChar, emptyChar],\n  );\n\n  return (\n    <BlockBarContext value={contextValue}>\n      <div\n        role=\"meter\"\n        aria-valuemin={0}\n        aria-valuemax={safeMax}\n        aria-valuenow={displayValue}\n        aria-valuetext={`${displayValue} of ${safeMax}`}\n        aria-label={label}\n        className={cn(\"flex items-center font-mono text-sm\", className)}\n        {...props}\n      >\n        {(!hasChildren || segments) && label && (\n          <span className=\"w-20 truncate text-xs text-muted-foreground\">\n            {label}\n          </span>\n        )}\n        <span\n          className=\"relative inline-block max-w-full shrink-0 overflow-hidden tracking-widest\"\n          style={{ width: `${safeBarWidth}ch` }}\n        >\n          <span className=\"text-border select-none\" aria-hidden=\"true\">\n            {emptyChar.repeat(safeBarWidth)}\n          </span>\n          <span className=\"absolute inset-0 flex\">\n            {segments || !hasChildren\n              ? resolvedSegments.map((seg, i) => (\n                <BlockBarSegment\n                  key={i}\n                  value={seg.value}\n                  variant={seg.variant}\n                  char={seg.char}\n                />\n              ))\n              : children}\n          </span>\n        </span>\n        {(!hasChildren || segments) && (\n          <span className=\"w-8 text-right font-bold\">{displayValue}</span>\n        )}\n      </div>\n    </BlockBarContext>\n  );\n}\n\nexport { BlockBarRoot as BlockBar };\n",
       "highlighted": [
         {
           "number": 1,
@@ -470,17 +495,53 @@
             {
               "text": "{",
               "color": "var(--code-operator)"
-            },
+            }
+          ]
+        },
+        {
+          "number": 4,
+          "content": [
             {
-              "text": " useMemo",
+              "text": "  Children",
               "color": "var(--code-variable)"
             },
             {
               "text": ",",
               "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 5,
+          "content": [
+            {
+              "text": "  isValidElement",
+              "color": "var(--code-variable)"
             },
             {
-              "text": " ",
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 6,
+          "content": [
+            {
+              "text": "  useMemo",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 7,
+          "content": [
+            {
+              "text": "  ",
               "color": "var(--code-variable)"
             },
             {
@@ -494,9 +555,14 @@
             {
               "text": ",",
               "color": "var(--code-operator)"
-            },
+            }
+          ]
+        },
+        {
+          "number": 8,
+          "content": [
             {
-              "text": " ",
+              "text": "  ",
               "color": "var(--code-variable)"
             },
             {
@@ -504,9 +570,39 @@
               "color": "var(--code-keyword)"
             },
             {
-              "text": " ReactNode ",
+              "text": " ReactElement",
               "color": "var(--code-variable)"
             },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 9,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "type",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ReactNode",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 10,
+          "content": [
             {
               "text": "}",
               "color": "var(--code-operator)"
@@ -542,7 +638,7 @@
           ]
         },
         {
-          "number": 4,
+          "number": 11,
           "content": [
             {
               "text": "import",
@@ -595,7 +691,7 @@
           ]
         },
         {
-          "number": 5,
+          "number": 12,
           "content": [
             {
               "text": "import",
@@ -648,7 +744,7 @@
           ]
         },
         {
-          "number": 6,
+          "number": 13,
           "content": [
             {
               "text": "import",
@@ -717,11 +813,52 @@
           ]
         },
         {
-          "number": 7,
+          "number": 14,
           "content": []
         },
         {
-          "number": 8,
+          "number": 15,
+          "content": [
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "MAX_BAR_WIDTH",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "200",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 16,
+          "content": []
+        },
+        {
+          "number": 17,
           "content": [
             {
               "text": "export",
@@ -754,7 +891,7 @@
           ]
         },
         {
-          "number": 9,
+          "number": 18,
           "content": [
             {
               "text": "  value",
@@ -779,7 +916,7 @@
           ]
         },
         {
-          "number": 10,
+          "number": 19,
           "content": [
             {
               "text": "  variant",
@@ -804,7 +941,7 @@
           ]
         },
         {
-          "number": 11,
+          "number": 20,
           "content": [
             {
               "text": "  char",
@@ -829,7 +966,7 @@
           ]
         },
         {
-          "number": 12,
+          "number": 21,
           "content": [
             {
               "text": "}",
@@ -838,11 +975,11 @@
           ]
         },
         {
-          "number": 13,
+          "number": 22,
           "content": []
         },
         {
-          "number": 14,
+          "number": 23,
           "content": [
             {
               "text": "export",
@@ -903,7 +1040,7 @@
           ]
         },
         {
-          "number": 15,
+          "number": 24,
           "content": [
             {
               "text": "  value",
@@ -928,7 +1065,7 @@
           ]
         },
         {
-          "number": 16,
+          "number": 25,
           "content": [
             {
               "text": "  max",
@@ -953,7 +1090,7 @@
           ]
         },
         {
-          "number": 17,
+          "number": 26,
           "content": [
             {
               "text": "  barWidth",
@@ -978,7 +1115,7 @@
           ]
         },
         {
-          "number": 18,
+          "number": 27,
           "content": [
             {
               "text": "  filledChar",
@@ -1003,7 +1140,7 @@
           ]
         },
         {
-          "number": 19,
+          "number": 28,
           "content": [
             {
               "text": "  emptyChar",
@@ -1028,7 +1165,7 @@
           ]
         },
         {
-          "number": 20,
+          "number": 29,
           "content": [
             {
               "text": "  label",
@@ -1053,7 +1190,7 @@
           ]
         },
         {
-          "number": 21,
+          "number": 30,
           "content": [
             {
               "text": "  variant",
@@ -1078,7 +1215,7 @@
           ]
         },
         {
-          "number": 22,
+          "number": 31,
           "content": [
             {
               "text": "  segments",
@@ -1107,7 +1244,7 @@
           ]
         },
         {
-          "number": 23,
+          "number": 32,
           "content": [
             {
               "text": "  children",
@@ -1132,7 +1269,7 @@
           ]
         },
         {
-          "number": 24,
+          "number": 33,
           "content": [
             {
               "text": "}",
@@ -1141,11 +1278,813 @@
           ]
         },
         {
-          "number": 25,
+          "number": 34,
           "content": []
         },
         {
-          "number": 26,
+          "number": 35,
+          "content": [
+            {
+              "text": "function",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "getSegmentChildValue",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "child",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ReactNode",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "):",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "number",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 36,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "!",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "isValidElement",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(child) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "||",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "child",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "type ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "!==",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " BlockBarSegment) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 37,
+          "content": []
+        },
+        {
+          "number": 38,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "segment",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " child ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "as",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ReactElement",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "BlockBarSegmentData",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ">;",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 39,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Number",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "isFinite",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "segment",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "props",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "value)",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 40,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "?",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Math",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "max",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "0",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "segment",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "props",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "value)",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 41,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "0",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 42,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 43,
+          "content": []
+        },
+        {
+          "number": 44,
+          "content": [
+            {
+              "text": "function",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "deriveValueFromSegmentChildren",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "children",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "ReactNode",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "):",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "number",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 45,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "childArray",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Children",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "toArray",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(children)",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 46,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "childArray",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "length",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "0",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 47,
+          "content": []
+        },
+        {
+          "number": 48,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "let",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " total ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "0",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 49,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "for",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "child",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "of",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " childArray) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 50,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "childValue",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "getSegmentChildValue",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(child)",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 51,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (childValue ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 52,
+          "content": [
+            {
+              "text": "    total ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "+=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " childValue",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 53,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 54,
+          "content": []
+        },
+        {
+          "number": 55,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " total",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 56,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 57,
+          "content": []
+        },
+        {
+          "number": 58,
           "content": [
             {
               "text": "function",
@@ -1166,7 +2105,7 @@
           ]
         },
         {
-          "number": 27,
+          "number": 59,
           "content": [
             {
               "text": "  value",
@@ -1179,7 +2118,7 @@
           ]
         },
         {
-          "number": 28,
+          "number": 60,
           "content": [
             {
               "text": "  max",
@@ -1192,7 +2131,7 @@
           ]
         },
         {
-          "number": 29,
+          "number": 61,
           "content": [
             {
               "text": "  barWidth ",
@@ -1217,7 +2156,7 @@
           ]
         },
         {
-          "number": 30,
+          "number": 62,
           "content": [
             {
               "text": "  filledChar ",
@@ -1250,7 +2189,7 @@
           ]
         },
         {
-          "number": 31,
+          "number": 63,
           "content": [
             {
               "text": "  emptyChar ",
@@ -1283,7 +2222,7 @@
           ]
         },
         {
-          "number": 32,
+          "number": 64,
           "content": [
             {
               "text": "  label",
@@ -1296,7 +2235,7 @@
           ]
         },
         {
-          "number": 33,
+          "number": 65,
           "content": [
             {
               "text": "  variant",
@@ -1309,7 +2248,7 @@
           ]
         },
         {
-          "number": 34,
+          "number": 66,
           "content": [
             {
               "text": "  segments",
@@ -1322,7 +2261,7 @@
           ]
         },
         {
-          "number": 35,
+          "number": 67,
           "content": [
             {
               "text": "  className",
@@ -1335,7 +2274,7 @@
           ]
         },
         {
-          "number": 36,
+          "number": 68,
           "content": [
             {
               "text": "  children",
@@ -1348,7 +2287,7 @@
           ]
         },
         {
-          "number": 37,
+          "number": 69,
           "content": [
             {
               "text": "  ",
@@ -1365,7 +2304,7 @@
           ]
         },
         {
-          "number": 38,
+          "number": 70,
           "content": [
             {
               "text": "}:",
@@ -1394,7 +2333,7 @@
           ]
         },
         {
-          "number": 39,
+          "number": 71,
           "content": [
             {
               "text": "  ",
@@ -1495,7 +2434,7 @@
           ]
         },
         {
-          "number": 40,
+          "number": 72,
           "content": [
             {
               "text": "  ",
@@ -1544,7 +2483,7 @@
           ]
         },
         {
-          "number": 41,
+          "number": 73,
           "content": [
             {
               "text": "    ",
@@ -1552,6 +2491,34 @@
             },
             {
               "text": "?",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Math",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "min",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "MAX_BAR_WIDTH",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
               "color": "var(--code-operator)"
             },
             {
@@ -1599,13 +2566,13 @@
               "color": "var(--code-function)"
             },
             {
-              "text": "(barWidth))",
+              "text": "(barWidth)))",
               "color": "var(--code-variable)"
             }
           ]
         },
         {
-          "number": 42,
+          "number": 74,
           "content": [
             {
               "text": "    ",
@@ -1630,7 +2597,300 @@
           ]
         },
         {
-          "number": 43,
+          "number": 75,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "hasChildren",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " children ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "!==",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "undefined",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " children ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "!==",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 76,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "childValue",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " hasChildren ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "?",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "deriveValueFromSegmentChildren",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(children) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 77,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (hasChildren ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " value ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "undefined",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "!",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "segments ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " childValue ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 78,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "throw",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "new",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Error",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "BlockBar requires `value` when custom children are not BlockBar.Segment elements.",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 79,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 80,
+          "content": []
+        },
+        {
+          "number": 81,
           "content": [
             {
               "text": "  ",
@@ -1659,7 +2919,7 @@
           ]
         },
         {
-          "number": 44,
+          "number": 82,
           "content": [
             {
               "text": "    value ",
@@ -1732,7 +2992,7 @@
           ]
         },
         {
-          "number": 45,
+          "number": 83,
           "content": [
             {
               "text": "      ",
@@ -1833,7 +3093,7 @@
           ]
         },
         {
-          "number": 46,
+          "number": 84,
           "content": [
             {
               "text": "    )",
@@ -1860,6 +3120,14 @@
               "color": "var(--code-operator)"
             },
             {
+              "text": " childValue ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "??",
+              "color": "var(--code-operator)"
+            },
+            {
               "text": " ",
               "color": "var(--code-variable)"
             },
@@ -1878,7 +3146,7 @@
           ]
         },
         {
-          "number": 47,
+          "number": 85,
           "content": [
             {
               "text": "  ",
@@ -1927,7 +3195,7 @@
           ]
         },
         {
-          "number": 48,
+          "number": 86,
           "content": [
             {
               "text": "    ",
@@ -1996,7 +3264,7 @@
           ]
         },
         {
-          "number": 49,
+          "number": 87,
           "content": [
             {
               "text": "    ",
@@ -2021,7 +3289,7 @@
           ]
         },
         {
-          "number": 50,
+          "number": 88,
           "content": [
             {
               "text": "  ",
@@ -2054,7 +3322,7 @@
           ]
         },
         {
-          "number": 51,
+          "number": 89,
           "content": [
             {
               "text": "    ",
@@ -2115,7 +3383,7 @@
           ]
         },
         {
-          "number": 52,
+          "number": 90,
           "content": [
             {
               "text": "        ",
@@ -2136,7 +3404,7 @@
           ]
         },
         {
-          "number": 53,
+          "number": 91,
           "content": [
             {
               "text": "        value",
@@ -2175,7 +3443,16 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "value) ",
+              "text": "value)",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 92,
+          "content": [
+            {
+              "text": "          ",
               "color": "var(--code-variable)"
             },
             {
@@ -2184,6 +3461,22 @@
             },
             {
               "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Math",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "min",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
               "color": "var(--code-variable)"
             },
             {
@@ -2223,7 +3516,24 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "value) ",
+              "text": "value)",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " safeMax)",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 93,
+          "content": [
+            {
+              "text": "          ",
               "color": "var(--code-variable)"
             },
             {
@@ -2245,7 +3555,7 @@
           ]
         },
         {
-          "number": 54,
+          "number": 94,
           "content": [
             {
               "text": "      ",
@@ -2262,7 +3572,7 @@
           ]
         },
         {
-          "number": 55,
+          "number": 95,
           "content": [
             {
               "text": "    ",
@@ -2315,11 +3625,11 @@
           ]
         },
         {
-          "number": 56,
+          "number": 96,
           "content": []
         },
         {
-          "number": 57,
+          "number": 97,
           "content": [
             {
               "text": "  ",
@@ -2360,7 +3670,7 @@
           ]
         },
         {
-          "number": 58,
+          "number": 98,
           "content": [
             {
               "text": "    ",
@@ -2445,7 +3755,7 @@
           ]
         },
         {
-          "number": 59,
+          "number": 99,
           "content": [
             {
               "text": "    [safeMax",
@@ -2482,7 +3792,7 @@
           ]
         },
         {
-          "number": 60,
+          "number": 100,
           "content": [
             {
               "text": "  )",
@@ -2495,11 +3805,11 @@
           ]
         },
         {
-          "number": 61,
+          "number": 101,
           "content": []
         },
         {
-          "number": 62,
+          "number": 102,
           "content": [
             {
               "text": "  ",
@@ -2516,7 +3826,7 @@
           ]
         },
         {
-          "number": 63,
+          "number": 103,
           "content": [
             {
               "text": "    ",
@@ -2553,7 +3863,7 @@
           ]
         },
         {
-          "number": 64,
+          "number": 104,
           "content": [
             {
               "text": "      ",
@@ -2570,7 +3880,7 @@
           ]
         },
         {
-          "number": 65,
+          "number": 105,
           "content": [
             {
               "text": "        ",
@@ -2599,7 +3909,7 @@
           ]
         },
         {
-          "number": 66,
+          "number": 106,
           "content": [
             {
               "text": "        ",
@@ -2624,7 +3934,7 @@
           ]
         },
         {
-          "number": 67,
+          "number": 107,
           "content": [
             {
               "text": "        ",
@@ -2649,7 +3959,7 @@
           ]
         },
         {
-          "number": 68,
+          "number": 108,
           "content": [
             {
               "text": "        ",
@@ -2674,7 +3984,7 @@
           ]
         },
         {
-          "number": 69,
+          "number": 109,
           "content": [
             {
               "text": "        ",
@@ -2731,7 +4041,7 @@
           ]
         },
         {
-          "number": 70,
+          "number": 110,
           "content": [
             {
               "text": "        ",
@@ -2742,32 +4052,12 @@
               "color": "var(--code-function)"
             },
             {
-              "text": "={!",
+              "text": "={",
               "color": "var(--code-operator)"
             },
             {
-              "text": "children ",
+              "text": "label",
               "color": "var(--code-variable)"
-            },
-            {
-              "text": "?",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " label ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ":",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "undefined",
-              "color": "var(--code-number)"
             },
             {
               "text": "}",
@@ -2776,7 +4066,7 @@
           ]
         },
         {
-          "number": 71,
+          "number": 111,
           "content": [
             {
               "text": "        ",
@@ -2825,7 +4115,7 @@
           ]
         },
         {
-          "number": 72,
+          "number": 112,
           "content": [
             {
               "text": "        ",
@@ -2846,7 +4136,7 @@
           ]
         },
         {
-          "number": 73,
+          "number": 113,
           "content": [
             {
               "text": "      ",
@@ -2859,18 +4149,34 @@
           ]
         },
         {
-          "number": 74,
+          "number": 114,
           "content": [
             {
               "text": "        ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "{!",
+              "text": "{",
               "color": "var(--code-operator)"
             },
             {
-              "text": "children ",
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "!",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "hasChildren ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "||",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " segments) ",
               "color": "var(--code-variable)"
             },
             {
@@ -2892,7 +4198,7 @@
           ]
         },
         {
-          "number": 75,
+          "number": 115,
           "content": [
             {
               "text": "          ",
@@ -2937,7 +4243,7 @@
           ]
         },
         {
-          "number": 76,
+          "number": 116,
           "content": [
             {
               "text": "            ",
@@ -2958,7 +4264,7 @@
           ]
         },
         {
-          "number": 77,
+          "number": 117,
           "content": [
             {
               "text": "          ",
@@ -2979,7 +4285,7 @@
           ]
         },
         {
-          "number": 78,
+          "number": 118,
           "content": [
             {
               "text": "        )",
@@ -2992,7 +4298,7 @@
           ]
         },
         {
-          "number": 79,
+          "number": 119,
           "content": [
             {
               "text": "        ",
@@ -3005,9 +4311,14 @@
             {
               "text": "span",
               "color": "var(--code-tag)"
-            },
+            }
+          ]
+        },
+        {
+          "number": 120,
+          "content": [
             {
-              "text": " ",
+              "text": "          ",
               "color": "var(--code-variable)"
             },
             {
@@ -3023,12 +4334,82 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "relative flex-1 overflow-hidden tracking-widest",
+              "text": "relative inline-block max-w-full shrink-0 overflow-hidden tracking-widest",
               "color": "var(--code-tag)"
             },
             {
               "text": "\"",
               "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 121,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "style",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " width",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "`",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "${",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": "safeBarWidth",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": "ch",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "`",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 122,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
             },
             {
               "text": ">",
@@ -3037,7 +4418,7 @@
           ]
         },
         {
-          "number": 80,
+          "number": 123,
           "content": [
             {
               "text": "          ",
@@ -3106,7 +4487,7 @@
           ]
         },
         {
-          "number": 81,
+          "number": 124,
           "content": [
             {
               "text": "            ",
@@ -3139,7 +4520,7 @@
           ]
         },
         {
-          "number": 82,
+          "number": 125,
           "content": [
             {
               "text": "          ",
@@ -3160,7 +4541,7 @@
           ]
         },
         {
-          "number": 83,
+          "number": 126,
           "content": [
             {
               "text": "          ",
@@ -3205,7 +4586,7 @@
           ]
         },
         {
-          "number": 84,
+          "number": 127,
           "content": [
             {
               "text": "            ",
@@ -3216,20 +4597,40 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "children ",
+              "text": "segments ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "??",
+              "text": "||",
               "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "!",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "hasChildren",
+              "color": "var(--code-variable)"
             }
           ]
         },
         {
-          "number": 85,
+          "number": 128,
           "content": [
             {
               "text": "              ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "?",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
               "color": "var(--code-variable)"
             },
             {
@@ -3283,7 +4684,7 @@
           ]
         },
         {
-          "number": 86,
+          "number": 129,
           "content": [
             {
               "text": "                ",
@@ -3300,7 +4701,7 @@
           ]
         },
         {
-          "number": 87,
+          "number": 130,
           "content": [
             {
               "text": "                  ",
@@ -3325,7 +4726,7 @@
           ]
         },
         {
-          "number": 88,
+          "number": 131,
           "content": [
             {
               "text": "                  ",
@@ -3358,7 +4759,7 @@
           ]
         },
         {
-          "number": 89,
+          "number": 132,
           "content": [
             {
               "text": "                  ",
@@ -3391,7 +4792,7 @@
           ]
         },
         {
-          "number": 90,
+          "number": 133,
           "content": [
             {
               "text": "                  ",
@@ -3424,7 +4825,7 @@
           ]
         },
         {
-          "number": 91,
+          "number": 134,
           "content": [
             {
               "text": "                ",
@@ -3437,10 +4838,27 @@
           ]
         },
         {
-          "number": 92,
+          "number": 135,
           "content": [
             {
               "text": "              ))",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 136,
+          "content": [
+            {
+              "text": "              ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " children",
               "color": "var(--code-variable)"
             },
             {
@@ -3450,7 +4868,7 @@
           ]
         },
         {
-          "number": 93,
+          "number": 137,
           "content": [
             {
               "text": "          ",
@@ -3471,7 +4889,7 @@
           ]
         },
         {
-          "number": 94,
+          "number": 138,
           "content": [
             {
               "text": "        ",
@@ -3492,18 +4910,34 @@
           ]
         },
         {
-          "number": 95,
+          "number": 139,
           "content": [
             {
               "text": "        ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "{!",
+              "text": "{",
               "color": "var(--code-operator)"
             },
             {
-              "text": "children ",
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "!",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "hasChildren ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "||",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " segments) ",
               "color": "var(--code-variable)"
             },
             {
@@ -3517,7 +4951,7 @@
           ]
         },
         {
-          "number": 96,
+          "number": 140,
           "content": [
             {
               "text": "          ",
@@ -3578,7 +5012,7 @@
           ]
         },
         {
-          "number": 97,
+          "number": 141,
           "content": [
             {
               "text": "        )",
@@ -3591,7 +5025,7 @@
           ]
         },
         {
-          "number": 98,
+          "number": 142,
           "content": [
             {
               "text": "      ",
@@ -3612,7 +5046,7 @@
           ]
         },
         {
-          "number": 99,
+          "number": 143,
           "content": [
             {
               "text": "    ",
@@ -3633,7 +5067,7 @@
           ]
         },
         {
-          "number": 100,
+          "number": 144,
           "content": [
             {
               "text": "  )",
@@ -3646,7 +5080,7 @@
           ]
         },
         {
-          "number": 101,
+          "number": 145,
           "content": [
             {
               "text": "}",
@@ -3655,11 +5089,11 @@
           ]
         },
         {
-          "number": 102,
+          "number": 146,
           "content": []
         },
         {
-          "number": 103,
+          "number": 147,
           "content": [
             {
               "text": "export",
@@ -3692,7 +5126,7 @@
           ]
         },
         {
-          "number": 104,
+          "number": 148,
           "content": []
         }
       ]
@@ -6401,10 +7835,35 @@
       ]
     }
   },
-  "mergedSource": "import {\n  BlockBar as BlockBarRoot,\n  type BlockBarProps,\n  type BlockBarSegmentData,\n} from \"./block-bar.js\";\nimport {\n  BlockBarSegment,\n  type BlockBarSegmentProps,\n} from \"./block-bar-segment.js\";\n\nconst BlockBar = Object.assign(BlockBarRoot, {\n  Segment: BlockBarSegment,\n});\n\nexport { BlockBar, type BlockBarProps, type BlockBarSegmentData };\nexport { BlockBarSegment, type BlockBarSegmentProps };\n\n\n\"use client\";\n\nimport { useMemo, type HTMLAttributes, type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { BlockBarContext } from \"./block-bar-context.js\";\nimport { BlockBarSegment, type SegmentVariant } from \"./block-bar-segment.js\";\n\nexport interface BlockBarSegmentData {\n  value: number;\n  variant?: SegmentVariant;\n  char?: string;\n}\n\nexport interface BlockBarProps extends HTMLAttributes<HTMLDivElement> {\n  value?: number;\n  max: number;\n  barWidth?: number;\n  filledChar?: string;\n  emptyChar?: string;\n  label?: string;\n  variant?: SegmentVariant;\n  segments?: BlockBarSegmentData[];\n  children?: ReactNode;\n}\n\nfunction BlockBarRoot({\n  value,\n  max,\n  barWidth = 20,\n  filledChar = \"\\u2588\",\n  emptyChar = \"\\u2591\",\n  label,\n  variant,\n  segments,\n  className,\n  children,\n  ...props\n}: BlockBarProps) {\n  const safeMax = Number.isFinite(max) ? Math.max(0, max) : 0;\n  const safeBarWidth = Number.isFinite(barWidth)\n    ? Math.max(0, Math.floor(barWidth))\n    : 0;\n  const rawValue =\n    value ?? (segments ? segments.reduce((sum, seg) => (\n      Number.isFinite(seg.value) ? sum + Math.max(0, seg.value) : sum\n    ), 0) : 0);\n  const displayValue = Number.isFinite(rawValue)\n    ? Math.min(Math.max(0, rawValue), safeMax)\n    : 0;\n  const resolvedSegments = segments\n    ? segments.map((segment) => ({\n        ...segment,\n        value: Number.isFinite(segment.value) ? Math.max(0, segment.value) : 0,\n      }))\n    : [{ value: displayValue, variant }];\n\n  const contextValue = useMemo(\n    () => ({ max: safeMax, barWidth: safeBarWidth, filledChar, emptyChar }),\n    [safeMax, safeBarWidth, filledChar, emptyChar],\n  );\n\n  return (\n    <BlockBarContext value={contextValue}>\n      <div\n        role=\"meter\"\n        aria-valuemin={0}\n        aria-valuemax={safeMax}\n        aria-valuenow={displayValue}\n        aria-valuetext={`${displayValue} of ${safeMax}`}\n        aria-label={!children ? label : undefined}\n        className={cn(\"flex items-center font-mono text-sm\", className)}\n        {...props}\n      >\n        {!children && label && (\n          <span className=\"w-20 truncate text-xs text-muted-foreground\">\n            {label}\n          </span>\n        )}\n        <span className=\"relative flex-1 overflow-hidden tracking-widest\">\n          <span className=\"text-border select-none\" aria-hidden=\"true\">\n            {emptyChar.repeat(safeBarWidth)}\n          </span>\n          <span className=\"absolute inset-0 flex\">\n            {children ??\n              resolvedSegments.map((seg, i) => (\n                <BlockBarSegment\n                  key={i}\n                  value={seg.value}\n                  variant={seg.variant}\n                  char={seg.char}\n                />\n              ))}\n          </span>\n        </span>\n        {!children && (\n          <span className=\"w-8 text-right font-bold\">{displayValue}</span>\n        )}\n      </div>\n    </BlockBarContext>\n  );\n}\n\nexport { BlockBarRoot as BlockBar };\n\n\n\"use client\";\n\nimport { createContext, useContext } from \"react\";\n\ninterface BlockBarContextValue {\n  max: number;\n  barWidth: number;\n  filledChar: string;\n  emptyChar: string;\n}\n\nexport const BlockBarContext = createContext<BlockBarContextValue | undefined>(\n  undefined,\n);\n\nexport function useBlockBarContext() {\n  const context = useContext(BlockBarContext);\n  if (!context) {\n    throw new Error(\"BlockBar.Segment must be used within BlockBar\");\n  }\n  return context;\n}\n\nexport function computeFilledCount(\n  value: number,\n  max: number,\n  barWidth: number,\n): number {\n  if (!Number.isFinite(value) || !Number.isFinite(max) || max <= 0) return 0;\n\n  const safeBarWidth = Number.isFinite(barWidth)\n    ? Math.max(0, Math.floor(barWidth))\n    : 0;\n\n  return Math.max(\n    0,\n    Math.min(Math.round((Math.max(0, value) / max) * safeBarWidth), safeBarWidth),\n  );\n}\n\n\n\"use client\";\n\nimport type { HTMLAttributes, ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport {\n  useBlockBarContext,\n  computeFilledCount,\n} from \"./block-bar-context.js\";\n\nconst segmentVariants = cva(\"\", {\n  variants: {\n    variant: {\n      default: \"text-foreground\",\n      muted: \"text-muted-foreground\",\n      error: \"text-error-fg\",\n      warning: \"text-warning-fg\",\n      success: \"text-success-fg\",\n      info: \"text-info-fg\",\n    },\n  },\n  defaultVariants: { variant: \"default\" },\n});\n\nexport type SegmentVariant = NonNullable<\n  VariantProps<typeof segmentVariants>[\"variant\"]\n>;\n\nexport interface BlockBarSegmentProps\n  extends VariantProps<typeof segmentVariants>,\n    Omit<HTMLAttributes<HTMLSpanElement>, \"children\"> {\n  value: number;\n  char?: string;\n  children?: ReactNode;\n}\n\nexport function BlockBarSegment({\n  value,\n  variant,\n  char,\n  className,\n  children,\n  ...props\n}: BlockBarSegmentProps) {\n  const { max, barWidth, filledChar } = useBlockBarContext();\n  const chars = computeFilledCount(value, max, barWidth);\n  const displayChar = char ?? filledChar;\n\n  return (\n    <span\n      aria-hidden=\"true\"\n      className={cn(segmentVariants({ variant }), className)}\n      {...props}\n    >\n      {displayChar.repeat(chars)}\n      {children}\n    </span>\n  );\n}\n",
+  "mergedSource": "\"use client\";\n\nimport {\n  BlockBar as BlockBarRoot,\n  type BlockBarProps,\n  type BlockBarSegmentData,\n} from \"./block-bar.js\";\nimport {\n  BlockBarSegment,\n  type BlockBarSegmentProps,\n} from \"./block-bar-segment.js\";\n\nconst BlockBar = Object.assign(BlockBarRoot, {\n  Segment: BlockBarSegment,\n});\n\nexport { BlockBar, type BlockBarProps, type BlockBarSegmentData };\nexport { BlockBarSegment, type BlockBarSegmentProps };\n\n\n\"use client\";\n\nimport {\n  Children,\n  isValidElement,\n  useMemo,\n  type HTMLAttributes,\n  type ReactElement,\n  type ReactNode,\n} from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { BlockBarContext } from \"./block-bar-context.js\";\nimport { BlockBarSegment, type SegmentVariant } from \"./block-bar-segment.js\";\n\nconst MAX_BAR_WIDTH = 200;\n\nexport interface BlockBarSegmentData {\n  value: number;\n  variant?: SegmentVariant;\n  char?: string;\n}\n\nexport interface BlockBarProps extends HTMLAttributes<HTMLDivElement> {\n  value?: number;\n  max: number;\n  barWidth?: number;\n  filledChar?: string;\n  emptyChar?: string;\n  label?: string;\n  variant?: SegmentVariant;\n  segments?: BlockBarSegmentData[];\n  children?: ReactNode;\n}\n\nfunction getSegmentChildValue(child: ReactNode): number | null {\n  if (!isValidElement(child) || child.type !== BlockBarSegment) return null;\n\n  const segment = child as ReactElement<BlockBarSegmentData>;\n  return Number.isFinite(segment.props.value)\n    ? Math.max(0, segment.props.value)\n    : 0;\n}\n\nfunction deriveValueFromSegmentChildren(children: ReactNode): number | null {\n  const childArray = Children.toArray(children);\n  if (childArray.length === 0) return null;\n\n  let total = 0;\n  for (const child of childArray) {\n    const childValue = getSegmentChildValue(child);\n    if (childValue === null) return null;\n    total += childValue;\n  }\n\n  return total;\n}\n\nfunction BlockBarRoot({\n  value,\n  max,\n  barWidth = 20,\n  filledChar = \"\\u2588\",\n  emptyChar = \"\\u2591\",\n  label,\n  variant,\n  segments,\n  className,\n  children,\n  ...props\n}: BlockBarProps) {\n  const safeMax = Number.isFinite(max) ? Math.max(0, max) : 0;\n  const safeBarWidth = Number.isFinite(barWidth)\n    ? Math.min(MAX_BAR_WIDTH, Math.max(0, Math.floor(barWidth)))\n    : 0;\n  const hasChildren = children !== undefined && children !== null;\n  const childValue = hasChildren ? deriveValueFromSegmentChildren(children) : null;\n  if (hasChildren && value === undefined && !segments && childValue === null) {\n    throw new Error(\"BlockBar requires `value` when custom children are not BlockBar.Segment elements.\");\n  }\n\n  const rawValue =\n    value ?? (segments ? segments.reduce((sum, seg) => (\n      Number.isFinite(seg.value) ? sum + Math.max(0, seg.value) : sum\n    ), 0) : childValue ?? 0);\n  const displayValue = Number.isFinite(rawValue)\n    ? Math.min(Math.max(0, rawValue), safeMax)\n    : 0;\n  const resolvedSegments = segments\n    ? segments.map((segment) => ({\n        ...segment,\n        value: Number.isFinite(segment.value)\n          ? Math.min(Math.max(0, segment.value), safeMax)\n          : 0,\n      }))\n    : [{ value: displayValue, variant }];\n\n  const contextValue = useMemo(\n    () => ({ max: safeMax, barWidth: safeBarWidth, filledChar, emptyChar }),\n    [safeMax, safeBarWidth, filledChar, emptyChar],\n  );\n\n  return (\n    <BlockBarContext value={contextValue}>\n      <div\n        role=\"meter\"\n        aria-valuemin={0}\n        aria-valuemax={safeMax}\n        aria-valuenow={displayValue}\n        aria-valuetext={`${displayValue} of ${safeMax}`}\n        aria-label={label}\n        className={cn(\"flex items-center font-mono text-sm\", className)}\n        {...props}\n      >\n        {(!hasChildren || segments) && label && (\n          <span className=\"w-20 truncate text-xs text-muted-foreground\">\n            {label}\n          </span>\n        )}\n        <span\n          className=\"relative inline-block max-w-full shrink-0 overflow-hidden tracking-widest\"\n          style={{ width: `${safeBarWidth}ch` }}\n        >\n          <span className=\"text-border select-none\" aria-hidden=\"true\">\n            {emptyChar.repeat(safeBarWidth)}\n          </span>\n          <span className=\"absolute inset-0 flex\">\n            {segments || !hasChildren\n              ? resolvedSegments.map((seg, i) => (\n                <BlockBarSegment\n                  key={i}\n                  value={seg.value}\n                  variant={seg.variant}\n                  char={seg.char}\n                />\n              ))\n              : children}\n          </span>\n        </span>\n        {(!hasChildren || segments) && (\n          <span className=\"w-8 text-right font-bold\">{displayValue}</span>\n        )}\n      </div>\n    </BlockBarContext>\n  );\n}\n\nexport { BlockBarRoot as BlockBar };\n\n\n\"use client\";\n\nimport { createContext, useContext } from \"react\";\n\ninterface BlockBarContextValue {\n  max: number;\n  barWidth: number;\n  filledChar: string;\n  emptyChar: string;\n}\n\nexport const BlockBarContext = createContext<BlockBarContextValue | undefined>(\n  undefined,\n);\n\nexport function useBlockBarContext() {\n  const context = useContext(BlockBarContext);\n  if (!context) {\n    throw new Error(\"BlockBar.Segment must be used within BlockBar\");\n  }\n  return context;\n}\n\nexport function computeFilledCount(\n  value: number,\n  max: number,\n  barWidth: number,\n): number {\n  if (!Number.isFinite(value) || !Number.isFinite(max) || max <= 0) return 0;\n\n  const safeBarWidth = Number.isFinite(barWidth)\n    ? Math.max(0, Math.floor(barWidth))\n    : 0;\n\n  return Math.max(\n    0,\n    Math.min(Math.round((Math.max(0, value) / max) * safeBarWidth), safeBarWidth),\n  );\n}\n\n\n\"use client\";\n\nimport type { HTMLAttributes, ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport {\n  useBlockBarContext,\n  computeFilledCount,\n} from \"./block-bar-context.js\";\n\nconst segmentVariants = cva(\"\", {\n  variants: {\n    variant: {\n      default: \"text-foreground\",\n      muted: \"text-muted-foreground\",\n      error: \"text-error-fg\",\n      warning: \"text-warning-fg\",\n      success: \"text-success-fg\",\n      info: \"text-info-fg\",\n    },\n  },\n  defaultVariants: { variant: \"default\" },\n});\n\nexport type SegmentVariant = NonNullable<\n  VariantProps<typeof segmentVariants>[\"variant\"]\n>;\n\nexport interface BlockBarSegmentProps\n  extends VariantProps<typeof segmentVariants>,\n    Omit<HTMLAttributes<HTMLSpanElement>, \"children\"> {\n  value: number;\n  char?: string;\n  children?: ReactNode;\n}\n\nexport function BlockBarSegment({\n  value,\n  variant,\n  char,\n  className,\n  children,\n  ...props\n}: BlockBarSegmentProps) {\n  const { max, barWidth, filledChar } = useBlockBarContext();\n  const chars = computeFilledCount(value, max, barWidth);\n  const displayChar = char ?? filledChar;\n\n  return (\n    <span\n      aria-hidden=\"true\"\n      className={cn(segmentVariants({ variant }), className)}\n      {...props}\n    >\n      {displayChar.repeat(chars)}\n      {children}\n    </span>\n  );\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
+      "content": [
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "use client",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "content": []
+    },
+    {
+      "number": 3,
       "content": [
         {
           "text": "import",
@@ -6421,7 +7880,7 @@
       ]
     },
     {
-      "number": 2,
+      "number": 4,
       "content": [
         {
           "text": "  BlockBar ",
@@ -6442,7 +7901,7 @@
       ]
     },
     {
-      "number": 3,
+      "number": 5,
       "content": [
         {
           "text": "  ",
@@ -6463,7 +7922,7 @@
       ]
     },
     {
-      "number": 4,
+      "number": 6,
       "content": [
         {
           "text": "  ",
@@ -6484,7 +7943,7 @@
       ]
     },
     {
-      "number": 5,
+      "number": 7,
       "content": [
         {
           "text": "}",
@@ -6521,7 +7980,7 @@
       ]
     },
     {
-      "number": 6,
+      "number": 8,
       "content": [
         {
           "text": "import",
@@ -6538,7 +7997,7 @@
       ]
     },
     {
-      "number": 7,
+      "number": 9,
       "content": [
         {
           "text": "  BlockBarSegment",
@@ -6551,7 +8010,7 @@
       ]
     },
     {
-      "number": 8,
+      "number": 10,
       "content": [
         {
           "text": "  ",
@@ -6572,7 +8031,7 @@
       ]
     },
     {
-      "number": 9,
+      "number": 11,
       "content": [
         {
           "text": "}",
@@ -6609,11 +8068,11 @@
       ]
     },
     {
-      "number": 10,
+      "number": 12,
       "content": []
     },
     {
-      "number": 11,
+      "number": 13,
       "content": [
         {
           "text": "const",
@@ -6670,7 +8129,7 @@
       ]
     },
     {
-      "number": 12,
+      "number": 14,
       "content": [
         {
           "text": "  Segment",
@@ -6691,7 +8150,7 @@
       ]
     },
     {
-      "number": 13,
+      "number": 15,
       "content": [
         {
           "text": "}",
@@ -6708,11 +8167,11 @@
       ]
     },
     {
-      "number": 14,
+      "number": 16,
       "content": []
     },
     {
-      "number": 15,
+      "number": 17,
       "content": [
         {
           "text": "export",
@@ -6769,7 +8228,7 @@
       ]
     },
     {
-      "number": 16,
+      "number": 18,
       "content": [
         {
           "text": "export",
@@ -6810,15 +8269,15 @@
       ]
     },
     {
-      "number": 17,
-      "content": []
-    },
-    {
-      "number": 18,
-      "content": []
-    },
-    {
       "number": 19,
+      "content": []
+    },
+    {
+      "number": 20,
+      "content": []
+    },
+    {
+      "number": 21,
       "content": [
         {
           "text": "\"",
@@ -6839,11 +8298,11 @@
       ]
     },
     {
-      "number": 20,
+      "number": 22,
       "content": []
     },
     {
-      "number": 21,
+      "number": 23,
       "content": [
         {
           "text": "import",
@@ -6856,17 +8315,53 @@
         {
           "text": "{",
           "color": "var(--code-operator)"
-        },
+        }
+      ]
+    },
+    {
+      "number": 24,
+      "content": [
         {
-          "text": " useMemo",
+          "text": "  Children",
           "color": "var(--code-variable)"
         },
         {
           "text": ",",
           "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 25,
+      "content": [
+        {
+          "text": "  isValidElement",
+          "color": "var(--code-variable)"
         },
         {
-          "text": " ",
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 26,
+      "content": [
+        {
+          "text": "  useMemo",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 27,
+      "content": [
+        {
+          "text": "  ",
           "color": "var(--code-variable)"
         },
         {
@@ -6880,9 +8375,14 @@
         {
           "text": ",",
           "color": "var(--code-operator)"
-        },
+        }
+      ]
+    },
+    {
+      "number": 28,
+      "content": [
         {
-          "text": " ",
+          "text": "  ",
           "color": "var(--code-variable)"
         },
         {
@@ -6890,9 +8390,39 @@
           "color": "var(--code-keyword)"
         },
         {
-          "text": " ReactNode ",
+          "text": " ReactElement",
           "color": "var(--code-variable)"
         },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 29,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "type",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ReactNode",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 30,
+      "content": [
         {
           "text": "}",
           "color": "var(--code-operator)"
@@ -6928,7 +8458,7 @@
       ]
     },
     {
-      "number": 22,
+      "number": 31,
       "content": [
         {
           "text": "import",
@@ -6981,7 +8511,7 @@
       ]
     },
     {
-      "number": 23,
+      "number": 32,
       "content": [
         {
           "text": "import",
@@ -7034,7 +8564,7 @@
       ]
     },
     {
-      "number": 24,
+      "number": 33,
       "content": [
         {
           "text": "import",
@@ -7103,11 +8633,52 @@
       ]
     },
     {
-      "number": 25,
+      "number": 34,
       "content": []
     },
     {
-      "number": 26,
+      "number": 35,
+      "content": [
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "MAX_BAR_WIDTH",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "200",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 36,
+      "content": []
+    },
+    {
+      "number": 37,
       "content": [
         {
           "text": "export",
@@ -7140,7 +8711,7 @@
       ]
     },
     {
-      "number": 27,
+      "number": 38,
       "content": [
         {
           "text": "  value",
@@ -7165,7 +8736,7 @@
       ]
     },
     {
-      "number": 28,
+      "number": 39,
       "content": [
         {
           "text": "  variant",
@@ -7190,7 +8761,7 @@
       ]
     },
     {
-      "number": 29,
+      "number": 40,
       "content": [
         {
           "text": "  char",
@@ -7215,7 +8786,7 @@
       ]
     },
     {
-      "number": 30,
+      "number": 41,
       "content": [
         {
           "text": "}",
@@ -7224,11 +8795,11 @@
       ]
     },
     {
-      "number": 31,
+      "number": 42,
       "content": []
     },
     {
-      "number": 32,
+      "number": 43,
       "content": [
         {
           "text": "export",
@@ -7289,7 +8860,7 @@
       ]
     },
     {
-      "number": 33,
+      "number": 44,
       "content": [
         {
           "text": "  value",
@@ -7314,7 +8885,7 @@
       ]
     },
     {
-      "number": 34,
+      "number": 45,
       "content": [
         {
           "text": "  max",
@@ -7339,7 +8910,7 @@
       ]
     },
     {
-      "number": 35,
+      "number": 46,
       "content": [
         {
           "text": "  barWidth",
@@ -7364,7 +8935,7 @@
       ]
     },
     {
-      "number": 36,
+      "number": 47,
       "content": [
         {
           "text": "  filledChar",
@@ -7389,7 +8960,7 @@
       ]
     },
     {
-      "number": 37,
+      "number": 48,
       "content": [
         {
           "text": "  emptyChar",
@@ -7414,7 +8985,7 @@
       ]
     },
     {
-      "number": 38,
+      "number": 49,
       "content": [
         {
           "text": "  label",
@@ -7439,7 +9010,7 @@
       ]
     },
     {
-      "number": 39,
+      "number": 50,
       "content": [
         {
           "text": "  variant",
@@ -7464,7 +9035,7 @@
       ]
     },
     {
-      "number": 40,
+      "number": 51,
       "content": [
         {
           "text": "  segments",
@@ -7493,7 +9064,7 @@
       ]
     },
     {
-      "number": 41,
+      "number": 52,
       "content": [
         {
           "text": "  children",
@@ -7518,7 +9089,7 @@
       ]
     },
     {
-      "number": 42,
+      "number": 53,
       "content": [
         {
           "text": "}",
@@ -7527,11 +9098,813 @@
       ]
     },
     {
-      "number": 43,
+      "number": 54,
       "content": []
     },
     {
-      "number": 44,
+      "number": 55,
+      "content": [
+        {
+          "text": "function",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "getSegmentChildValue",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "child",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ReactNode",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "):",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "number",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "null",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 56,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "!",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "isValidElement",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(child) ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "||",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "child",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "type ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "!==",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " BlockBarSegment) ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "null",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 57,
+      "content": []
+    },
+    {
+      "number": 58,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "segment",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " child ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "as",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ReactElement",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "BlockBarSegmentData",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": ">;",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 59,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "Number",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "isFinite",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "segment",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "props",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "value)",
+          "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 60,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "?",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "Math",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "max",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "0",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "segment",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "props",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "value)",
+          "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 61,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "0",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 62,
+      "content": [
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 63,
+      "content": []
+    },
+    {
+      "number": 64,
+      "content": [
+        {
+          "text": "function",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "deriveValueFromSegmentChildren",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "children",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "ReactNode",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "):",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "number",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "null",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 65,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "childArray",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "Children",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "toArray",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(children)",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 66,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "childArray",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "length",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "0",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ") ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "null",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 67,
+      "content": []
+    },
+    {
+      "number": 68,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "let",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " total ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "0",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 69,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "for",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "child",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "of",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " childArray) ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 70,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "childValue",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "getSegmentChildValue",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(child)",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 71,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (childValue ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "null",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ") ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "null",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 72,
+      "content": [
+        {
+          "text": "    total ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "+=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " childValue",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 73,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 74,
+      "content": []
+    },
+    {
+      "number": 75,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " total",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 76,
+      "content": [
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 77,
+      "content": []
+    },
+    {
+      "number": 78,
       "content": [
         {
           "text": "function",
@@ -7552,7 +9925,7 @@
       ]
     },
     {
-      "number": 45,
+      "number": 79,
       "content": [
         {
           "text": "  value",
@@ -7565,7 +9938,7 @@
       ]
     },
     {
-      "number": 46,
+      "number": 80,
       "content": [
         {
           "text": "  max",
@@ -7578,7 +9951,7 @@
       ]
     },
     {
-      "number": 47,
+      "number": 81,
       "content": [
         {
           "text": "  barWidth ",
@@ -7603,7 +9976,7 @@
       ]
     },
     {
-      "number": 48,
+      "number": 82,
       "content": [
         {
           "text": "  filledChar ",
@@ -7636,7 +10009,7 @@
       ]
     },
     {
-      "number": 49,
+      "number": 83,
       "content": [
         {
           "text": "  emptyChar ",
@@ -7669,7 +10042,7 @@
       ]
     },
     {
-      "number": 50,
+      "number": 84,
       "content": [
         {
           "text": "  label",
@@ -7682,7 +10055,7 @@
       ]
     },
     {
-      "number": 51,
+      "number": 85,
       "content": [
         {
           "text": "  variant",
@@ -7695,7 +10068,7 @@
       ]
     },
     {
-      "number": 52,
+      "number": 86,
       "content": [
         {
           "text": "  segments",
@@ -7708,7 +10081,7 @@
       ]
     },
     {
-      "number": 53,
+      "number": 87,
       "content": [
         {
           "text": "  className",
@@ -7721,7 +10094,7 @@
       ]
     },
     {
-      "number": 54,
+      "number": 88,
       "content": [
         {
           "text": "  children",
@@ -7734,7 +10107,7 @@
       ]
     },
     {
-      "number": 55,
+      "number": 89,
       "content": [
         {
           "text": "  ",
@@ -7751,7 +10124,7 @@
       ]
     },
     {
-      "number": 56,
+      "number": 90,
       "content": [
         {
           "text": "}:",
@@ -7780,7 +10153,7 @@
       ]
     },
     {
-      "number": 57,
+      "number": 91,
       "content": [
         {
           "text": "  ",
@@ -7881,7 +10254,7 @@
       ]
     },
     {
-      "number": 58,
+      "number": 92,
       "content": [
         {
           "text": "  ",
@@ -7930,7 +10303,7 @@
       ]
     },
     {
-      "number": 59,
+      "number": 93,
       "content": [
         {
           "text": "    ",
@@ -7938,6 +10311,34 @@
         },
         {
           "text": "?",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "Math",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "min",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "MAX_BAR_WIDTH",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
           "color": "var(--code-operator)"
         },
         {
@@ -7985,13 +10386,13 @@
           "color": "var(--code-function)"
         },
         {
-          "text": "(barWidth))",
+          "text": "(barWidth)))",
           "color": "var(--code-variable)"
         }
       ]
     },
     {
-      "number": 60,
+      "number": 94,
       "content": [
         {
           "text": "    ",
@@ -8016,7 +10417,300 @@
       ]
     },
     {
-      "number": 61,
+      "number": 95,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "hasChildren",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " children ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "!==",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "undefined",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&&",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " children ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "!==",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "null",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 96,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "childValue",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " hasChildren ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "?",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "deriveValueFromSegmentChildren",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(children) ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "null",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 97,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (hasChildren ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&&",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " value ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "undefined",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&&",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "!",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "segments ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&&",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " childValue ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "null",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ") ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 98,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "throw",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "new",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "Error",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "BlockBar requires `value` when custom children are not BlockBar.Segment elements.",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ")",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 99,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 100,
+      "content": []
+    },
+    {
+      "number": 101,
       "content": [
         {
           "text": "  ",
@@ -8045,7 +10739,7 @@
       ]
     },
     {
-      "number": 62,
+      "number": 102,
       "content": [
         {
           "text": "    value ",
@@ -8118,7 +10812,7 @@
       ]
     },
     {
-      "number": 63,
+      "number": 103,
       "content": [
         {
           "text": "      ",
@@ -8219,7 +10913,7 @@
       ]
     },
     {
-      "number": 64,
+      "number": 104,
       "content": [
         {
           "text": "    )",
@@ -8246,6 +10940,14 @@
           "color": "var(--code-operator)"
         },
         {
+          "text": " childValue ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "??",
+          "color": "var(--code-operator)"
+        },
+        {
           "text": " ",
           "color": "var(--code-variable)"
         },
@@ -8264,7 +10966,7 @@
       ]
     },
     {
-      "number": 65,
+      "number": 105,
       "content": [
         {
           "text": "  ",
@@ -8313,7 +11015,7 @@
       ]
     },
     {
-      "number": 66,
+      "number": 106,
       "content": [
         {
           "text": "    ",
@@ -8382,7 +11084,7 @@
       ]
     },
     {
-      "number": 67,
+      "number": 107,
       "content": [
         {
           "text": "    ",
@@ -8407,7 +11109,7 @@
       ]
     },
     {
-      "number": 68,
+      "number": 108,
       "content": [
         {
           "text": "  ",
@@ -8440,7 +11142,7 @@
       ]
     },
     {
-      "number": 69,
+      "number": 109,
       "content": [
         {
           "text": "    ",
@@ -8501,7 +11203,7 @@
       ]
     },
     {
-      "number": 70,
+      "number": 110,
       "content": [
         {
           "text": "        ",
@@ -8522,7 +11224,7 @@
       ]
     },
     {
-      "number": 71,
+      "number": 111,
       "content": [
         {
           "text": "        value",
@@ -8561,7 +11263,16 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "value) ",
+          "text": "value)",
+          "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 112,
+      "content": [
+        {
+          "text": "          ",
           "color": "var(--code-variable)"
         },
         {
@@ -8570,6 +11281,22 @@
         },
         {
           "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "Math",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "min",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
           "color": "var(--code-variable)"
         },
         {
@@ -8609,7 +11336,24 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "value) ",
+          "text": "value)",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " safeMax)",
+          "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 113,
+      "content": [
+        {
+          "text": "          ",
           "color": "var(--code-variable)"
         },
         {
@@ -8631,7 +11375,7 @@
       ]
     },
     {
-      "number": 72,
+      "number": 114,
       "content": [
         {
           "text": "      ",
@@ -8648,7 +11392,7 @@
       ]
     },
     {
-      "number": 73,
+      "number": 115,
       "content": [
         {
           "text": "    ",
@@ -8701,11 +11445,11 @@
       ]
     },
     {
-      "number": 74,
+      "number": 116,
       "content": []
     },
     {
-      "number": 75,
+      "number": 117,
       "content": [
         {
           "text": "  ",
@@ -8746,7 +11490,7 @@
       ]
     },
     {
-      "number": 76,
+      "number": 118,
       "content": [
         {
           "text": "    ",
@@ -8831,7 +11575,7 @@
       ]
     },
     {
-      "number": 77,
+      "number": 119,
       "content": [
         {
           "text": "    [safeMax",
@@ -8868,7 +11612,7 @@
       ]
     },
     {
-      "number": 78,
+      "number": 120,
       "content": [
         {
           "text": "  )",
@@ -8881,11 +11625,11 @@
       ]
     },
     {
-      "number": 79,
+      "number": 121,
       "content": []
     },
     {
-      "number": 80,
+      "number": 122,
       "content": [
         {
           "text": "  ",
@@ -8902,7 +11646,7 @@
       ]
     },
     {
-      "number": 81,
+      "number": 123,
       "content": [
         {
           "text": "    ",
@@ -8939,7 +11683,7 @@
       ]
     },
     {
-      "number": 82,
+      "number": 124,
       "content": [
         {
           "text": "      ",
@@ -8956,7 +11700,7 @@
       ]
     },
     {
-      "number": 83,
+      "number": 125,
       "content": [
         {
           "text": "        ",
@@ -8985,7 +11729,7 @@
       ]
     },
     {
-      "number": 84,
+      "number": 126,
       "content": [
         {
           "text": "        ",
@@ -9010,7 +11754,7 @@
       ]
     },
     {
-      "number": 85,
+      "number": 127,
       "content": [
         {
           "text": "        ",
@@ -9035,7 +11779,7 @@
       ]
     },
     {
-      "number": 86,
+      "number": 128,
       "content": [
         {
           "text": "        ",
@@ -9060,7 +11804,7 @@
       ]
     },
     {
-      "number": 87,
+      "number": 129,
       "content": [
         {
           "text": "        ",
@@ -9117,7 +11861,7 @@
       ]
     },
     {
-      "number": 88,
+      "number": 130,
       "content": [
         {
           "text": "        ",
@@ -9128,32 +11872,12 @@
           "color": "var(--code-function)"
         },
         {
-          "text": "={!",
+          "text": "={",
           "color": "var(--code-operator)"
         },
         {
-          "text": "children ",
+          "text": "label",
           "color": "var(--code-variable)"
-        },
-        {
-          "text": "?",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " label ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ":",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "undefined",
-          "color": "var(--code-number)"
         },
         {
           "text": "}",
@@ -9162,7 +11886,7 @@
       ]
     },
     {
-      "number": 89,
+      "number": 131,
       "content": [
         {
           "text": "        ",
@@ -9211,7 +11935,7 @@
       ]
     },
     {
-      "number": 90,
+      "number": 132,
       "content": [
         {
           "text": "        ",
@@ -9232,7 +11956,7 @@
       ]
     },
     {
-      "number": 91,
+      "number": 133,
       "content": [
         {
           "text": "      ",
@@ -9245,18 +11969,34 @@
       ]
     },
     {
-      "number": 92,
+      "number": 134,
       "content": [
         {
           "text": "        ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "{!",
+          "text": "{",
           "color": "var(--code-operator)"
         },
         {
-          "text": "children ",
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "!",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "hasChildren ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "||",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " segments) ",
           "color": "var(--code-variable)"
         },
         {
@@ -9278,7 +12018,7 @@
       ]
     },
     {
-      "number": 93,
+      "number": 135,
       "content": [
         {
           "text": "          ",
@@ -9323,7 +12063,7 @@
       ]
     },
     {
-      "number": 94,
+      "number": 136,
       "content": [
         {
           "text": "            ",
@@ -9344,7 +12084,7 @@
       ]
     },
     {
-      "number": 95,
+      "number": 137,
       "content": [
         {
           "text": "          ",
@@ -9365,7 +12105,7 @@
       ]
     },
     {
-      "number": 96,
+      "number": 138,
       "content": [
         {
           "text": "        )",
@@ -9378,7 +12118,7 @@
       ]
     },
     {
-      "number": 97,
+      "number": 139,
       "content": [
         {
           "text": "        ",
@@ -9391,9 +12131,14 @@
         {
           "text": "span",
           "color": "var(--code-tag)"
-        },
+        }
+      ]
+    },
+    {
+      "number": 140,
+      "content": [
         {
-          "text": " ",
+          "text": "          ",
           "color": "var(--code-variable)"
         },
         {
@@ -9409,12 +12154,82 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "relative flex-1 overflow-hidden tracking-widest",
+          "text": "relative inline-block max-w-full shrink-0 overflow-hidden tracking-widest",
           "color": "var(--code-tag)"
         },
         {
           "text": "\"",
           "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 141,
+      "content": [
+        {
+          "text": "          ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "style",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " width",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "`",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "${",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": "safeBarWidth",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": "ch",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "`",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 142,
+      "content": [
+        {
+          "text": "        ",
+          "color": "var(--code-variable)"
         },
         {
           "text": ">",
@@ -9423,7 +12238,7 @@
       ]
     },
     {
-      "number": 98,
+      "number": 143,
       "content": [
         {
           "text": "          ",
@@ -9492,7 +12307,7 @@
       ]
     },
     {
-      "number": 99,
+      "number": 144,
       "content": [
         {
           "text": "            ",
@@ -9525,7 +12340,7 @@
       ]
     },
     {
-      "number": 100,
+      "number": 145,
       "content": [
         {
           "text": "          ",
@@ -9546,7 +12361,7 @@
       ]
     },
     {
-      "number": 101,
+      "number": 146,
       "content": [
         {
           "text": "          ",
@@ -9591,7 +12406,7 @@
       ]
     },
     {
-      "number": 102,
+      "number": 147,
       "content": [
         {
           "text": "            ",
@@ -9602,20 +12417,40 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "children ",
+          "text": "segments ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "??",
+          "text": "||",
           "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "!",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "hasChildren",
+          "color": "var(--code-variable)"
         }
       ]
     },
     {
-      "number": 103,
+      "number": 148,
       "content": [
         {
           "text": "              ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "?",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
           "color": "var(--code-variable)"
         },
         {
@@ -9669,7 +12504,7 @@
       ]
     },
     {
-      "number": 104,
+      "number": 149,
       "content": [
         {
           "text": "                ",
@@ -9686,7 +12521,7 @@
       ]
     },
     {
-      "number": 105,
+      "number": 150,
       "content": [
         {
           "text": "                  ",
@@ -9711,7 +12546,7 @@
       ]
     },
     {
-      "number": 106,
+      "number": 151,
       "content": [
         {
           "text": "                  ",
@@ -9744,7 +12579,7 @@
       ]
     },
     {
-      "number": 107,
+      "number": 152,
       "content": [
         {
           "text": "                  ",
@@ -9777,7 +12612,7 @@
       ]
     },
     {
-      "number": 108,
+      "number": 153,
       "content": [
         {
           "text": "                  ",
@@ -9810,7 +12645,7 @@
       ]
     },
     {
-      "number": 109,
+      "number": 154,
       "content": [
         {
           "text": "                ",
@@ -9823,10 +12658,27 @@
       ]
     },
     {
-      "number": 110,
+      "number": 155,
       "content": [
         {
           "text": "              ))",
+          "color": "var(--code-variable)"
+        }
+      ]
+    },
+    {
+      "number": 156,
+      "content": [
+        {
+          "text": "              ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " children",
           "color": "var(--code-variable)"
         },
         {
@@ -9836,7 +12688,7 @@
       ]
     },
     {
-      "number": 111,
+      "number": 157,
       "content": [
         {
           "text": "          ",
@@ -9857,7 +12709,7 @@
       ]
     },
     {
-      "number": 112,
+      "number": 158,
       "content": [
         {
           "text": "        ",
@@ -9878,18 +12730,34 @@
       ]
     },
     {
-      "number": 113,
+      "number": 159,
       "content": [
         {
           "text": "        ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "{!",
+          "text": "{",
           "color": "var(--code-operator)"
         },
         {
-          "text": "children ",
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "!",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "hasChildren ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "||",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " segments) ",
           "color": "var(--code-variable)"
         },
         {
@@ -9903,7 +12771,7 @@
       ]
     },
     {
-      "number": 114,
+      "number": 160,
       "content": [
         {
           "text": "          ",
@@ -9964,7 +12832,7 @@
       ]
     },
     {
-      "number": 115,
+      "number": 161,
       "content": [
         {
           "text": "        )",
@@ -9977,7 +12845,7 @@
       ]
     },
     {
-      "number": 116,
+      "number": 162,
       "content": [
         {
           "text": "      ",
@@ -9998,7 +12866,7 @@
       ]
     },
     {
-      "number": 117,
+      "number": 163,
       "content": [
         {
           "text": "    ",
@@ -10019,7 +12887,7 @@
       ]
     },
     {
-      "number": 118,
+      "number": 164,
       "content": [
         {
           "text": "  )",
@@ -10032,7 +12900,7 @@
       ]
     },
     {
-      "number": 119,
+      "number": 165,
       "content": [
         {
           "text": "}",
@@ -10041,11 +12909,11 @@
       ]
     },
     {
-      "number": 120,
+      "number": 166,
       "content": []
     },
     {
-      "number": 121,
+      "number": 167,
       "content": [
         {
           "text": "export",
@@ -10078,15 +12946,15 @@
       ]
     },
     {
-      "number": 122,
+      "number": 168,
       "content": []
     },
     {
-      "number": 123,
+      "number": 169,
       "content": []
     },
     {
-      "number": 124,
+      "number": 170,
       "content": [
         {
           "text": "\"",
@@ -10107,11 +12975,11 @@
       ]
     },
     {
-      "number": 125,
+      "number": 171,
       "content": []
     },
     {
-      "number": 126,
+      "number": 172,
       "content": [
         {
           "text": "import",
@@ -10172,11 +13040,11 @@
       ]
     },
     {
-      "number": 127,
+      "number": 173,
       "content": []
     },
     {
-      "number": 128,
+      "number": 174,
       "content": [
         {
           "text": "interface",
@@ -10201,7 +13069,7 @@
       ]
     },
     {
-      "number": 129,
+      "number": 175,
       "content": [
         {
           "text": "  max",
@@ -10226,7 +13094,7 @@
       ]
     },
     {
-      "number": 130,
+      "number": 176,
       "content": [
         {
           "text": "  barWidth",
@@ -10251,7 +13119,7 @@
       ]
     },
     {
-      "number": 131,
+      "number": 177,
       "content": [
         {
           "text": "  filledChar",
@@ -10276,7 +13144,7 @@
       ]
     },
     {
-      "number": 132,
+      "number": 178,
       "content": [
         {
           "text": "  emptyChar",
@@ -10301,7 +13169,7 @@
       ]
     },
     {
-      "number": 133,
+      "number": 179,
       "content": [
         {
           "text": "}",
@@ -10310,11 +13178,11 @@
       ]
     },
     {
-      "number": 134,
+      "number": 180,
       "content": []
     },
     {
-      "number": 135,
+      "number": 181,
       "content": [
         {
           "text": "export",
@@ -10387,7 +13255,7 @@
       ]
     },
     {
-      "number": 136,
+      "number": 182,
       "content": [
         {
           "text": "  ",
@@ -10404,7 +13272,7 @@
       ]
     },
     {
-      "number": 137,
+      "number": 183,
       "content": [
         {
           "text": ")",
@@ -10417,11 +13285,11 @@
       ]
     },
     {
-      "number": 138,
+      "number": 184,
       "content": []
     },
     {
-      "number": 139,
+      "number": 185,
       "content": [
         {
           "text": "export",
@@ -10458,7 +13326,7 @@
       ]
     },
     {
-      "number": 140,
+      "number": 186,
       "content": [
         {
           "text": "  ",
@@ -10503,7 +13371,7 @@
       ]
     },
     {
-      "number": 141,
+      "number": 187,
       "content": [
         {
           "text": "  ",
@@ -10532,7 +13400,7 @@
       ]
     },
     {
-      "number": 142,
+      "number": 188,
       "content": [
         {
           "text": "    ",
@@ -10585,7 +13453,7 @@
       ]
     },
     {
-      "number": 143,
+      "number": 189,
       "content": [
         {
           "text": "  ",
@@ -10598,7 +13466,7 @@
       ]
     },
     {
-      "number": 144,
+      "number": 190,
       "content": [
         {
           "text": "  ",
@@ -10619,7 +13487,7 @@
       ]
     },
     {
-      "number": 145,
+      "number": 191,
       "content": [
         {
           "text": "}",
@@ -10628,11 +13496,11 @@
       ]
     },
     {
-      "number": 146,
+      "number": 192,
       "content": []
     },
     {
-      "number": 147,
+      "number": 193,
       "content": [
         {
           "text": "export",
@@ -10661,7 +13529,7 @@
       ]
     },
     {
-      "number": 148,
+      "number": 194,
       "content": [
         {
           "text": "  value",
@@ -10686,7 +13554,7 @@
       ]
     },
     {
-      "number": 149,
+      "number": 195,
       "content": [
         {
           "text": "  max",
@@ -10711,7 +13579,7 @@
       ]
     },
     {
-      "number": 150,
+      "number": 196,
       "content": [
         {
           "text": "  barWidth",
@@ -10736,7 +13604,7 @@
       ]
     },
     {
-      "number": 151,
+      "number": 197,
       "content": [
         {
           "text": "):",
@@ -10761,7 +13629,7 @@
       ]
     },
     {
-      "number": 152,
+      "number": 198,
       "content": [
         {
           "text": "  ",
@@ -10866,11 +13734,11 @@
       ]
     },
     {
-      "number": 153,
+      "number": 199,
       "content": []
     },
     {
-      "number": 154,
+      "number": 200,
       "content": [
         {
           "text": "  ",
@@ -10919,7 +13787,7 @@
       ]
     },
     {
-      "number": 155,
+      "number": 201,
       "content": [
         {
           "text": "    ",
@@ -10980,7 +13848,7 @@
       ]
     },
     {
-      "number": 156,
+      "number": 202,
       "content": [
         {
           "text": "    ",
@@ -11005,11 +13873,11 @@
       ]
     },
     {
-      "number": 157,
+      "number": 203,
       "content": []
     },
     {
-      "number": 158,
+      "number": 204,
       "content": [
         {
           "text": "  ",
@@ -11042,7 +13910,7 @@
       ]
     },
     {
-      "number": 159,
+      "number": 205,
       "content": [
         {
           "text": "    ",
@@ -11059,7 +13927,7 @@
       ]
     },
     {
-      "number": 160,
+      "number": 206,
       "content": [
         {
           "text": "    ",
@@ -11156,7 +14024,7 @@
       ]
     },
     {
-      "number": 161,
+      "number": 207,
       "content": [
         {
           "text": "  )",
@@ -11169,7 +14037,7 @@
       ]
     },
     {
-      "number": 162,
+      "number": 208,
       "content": [
         {
           "text": "}",
@@ -11178,15 +14046,15 @@
       ]
     },
     {
-      "number": 163,
+      "number": 209,
       "content": []
     },
     {
-      "number": 164,
+      "number": 210,
       "content": []
     },
     {
-      "number": 165,
+      "number": 211,
       "content": [
         {
           "text": "\"",
@@ -11207,11 +14075,11 @@
       ]
     },
     {
-      "number": 166,
+      "number": 212,
       "content": []
     },
     {
-      "number": 167,
+      "number": 213,
       "content": [
         {
           "text": "import",
@@ -11280,7 +14148,7 @@
       ]
     },
     {
-      "number": 168,
+      "number": 214,
       "content": [
         {
           "text": "import",
@@ -11333,7 +14201,7 @@
       ]
     },
     {
-      "number": 169,
+      "number": 215,
       "content": [
         {
           "text": "import",
@@ -11402,7 +14270,7 @@
       ]
     },
     {
-      "number": 170,
+      "number": 216,
       "content": [
         {
           "text": "import",
@@ -11419,7 +14287,7 @@
       ]
     },
     {
-      "number": 171,
+      "number": 217,
       "content": [
         {
           "text": "  useBlockBarContext",
@@ -11432,7 +14300,7 @@
       ]
     },
     {
-      "number": 172,
+      "number": 218,
       "content": [
         {
           "text": "  computeFilledCount",
@@ -11445,7 +14313,7 @@
       ]
     },
     {
-      "number": 173,
+      "number": 219,
       "content": [
         {
           "text": "}",
@@ -11482,11 +14350,11 @@
       ]
     },
     {
-      "number": 174,
+      "number": 220,
       "content": []
     },
     {
-      "number": 175,
+      "number": 221,
       "content": [
         {
           "text": "const",
@@ -11539,7 +14407,7 @@
       ]
     },
     {
-      "number": 176,
+      "number": 222,
       "content": [
         {
           "text": "  variants",
@@ -11560,7 +14428,7 @@
       ]
     },
     {
-      "number": 177,
+      "number": 223,
       "content": [
         {
           "text": "    variant",
@@ -11581,7 +14449,7 @@
       ]
     },
     {
-      "number": 178,
+      "number": 224,
       "content": [
         {
           "text": "      default",
@@ -11614,7 +14482,7 @@
       ]
     },
     {
-      "number": 179,
+      "number": 225,
       "content": [
         {
           "text": "      muted",
@@ -11647,7 +14515,7 @@
       ]
     },
     {
-      "number": 180,
+      "number": 226,
       "content": [
         {
           "text": "      error",
@@ -11680,7 +14548,7 @@
       ]
     },
     {
-      "number": 181,
+      "number": 227,
       "content": [
         {
           "text": "      warning",
@@ -11713,7 +14581,7 @@
       ]
     },
     {
-      "number": 182,
+      "number": 228,
       "content": [
         {
           "text": "      success",
@@ -11746,7 +14614,7 @@
       ]
     },
     {
-      "number": 183,
+      "number": 229,
       "content": [
         {
           "text": "      info",
@@ -11779,7 +14647,7 @@
       ]
     },
     {
-      "number": 184,
+      "number": 230,
       "content": [
         {
           "text": "    ",
@@ -11792,7 +14660,7 @@
       ]
     },
     {
-      "number": 185,
+      "number": 231,
       "content": [
         {
           "text": "  ",
@@ -11805,7 +14673,7 @@
       ]
     },
     {
-      "number": 186,
+      "number": 232,
       "content": [
         {
           "text": "  defaultVariants",
@@ -11858,7 +14726,7 @@
       ]
     },
     {
-      "number": 187,
+      "number": 233,
       "content": [
         {
           "text": "}",
@@ -11875,11 +14743,11 @@
       ]
     },
     {
-      "number": 188,
+      "number": 234,
       "content": []
     },
     {
-      "number": 189,
+      "number": 235,
       "content": [
         {
           "text": "export",
@@ -11924,7 +14792,7 @@
       ]
     },
     {
-      "number": 190,
+      "number": 236,
       "content": [
         {
           "text": "  ",
@@ -11969,7 +14837,7 @@
       ]
     },
     {
-      "number": 191,
+      "number": 237,
       "content": [
         {
           "text": ">;",
@@ -11978,11 +14846,11 @@
       ]
     },
     {
-      "number": 192,
+      "number": 238,
       "content": []
     },
     {
-      "number": 193,
+      "number": 239,
       "content": [
         {
           "text": "export",
@@ -12007,7 +14875,7 @@
       ]
     },
     {
-      "number": 194,
+      "number": 240,
       "content": [
         {
           "text": "  ",
@@ -12040,7 +14908,7 @@
       ]
     },
     {
-      "number": 195,
+      "number": 241,
       "content": [
         {
           "text": "    ",
@@ -12101,7 +14969,7 @@
       ]
     },
     {
-      "number": 196,
+      "number": 242,
       "content": [
         {
           "text": "  value",
@@ -12126,7 +14994,7 @@
       ]
     },
     {
-      "number": 197,
+      "number": 243,
       "content": [
         {
           "text": "  char",
@@ -12151,7 +15019,7 @@
       ]
     },
     {
-      "number": 198,
+      "number": 244,
       "content": [
         {
           "text": "  children",
@@ -12176,7 +15044,7 @@
       ]
     },
     {
-      "number": 199,
+      "number": 245,
       "content": [
         {
           "text": "}",
@@ -12185,11 +15053,11 @@
       ]
     },
     {
-      "number": 200,
+      "number": 246,
       "content": []
     },
     {
-      "number": 201,
+      "number": 247,
       "content": [
         {
           "text": "export",
@@ -12218,7 +15086,7 @@
       ]
     },
     {
-      "number": 202,
+      "number": 248,
       "content": [
         {
           "text": "  value",
@@ -12231,7 +15099,7 @@
       ]
     },
     {
-      "number": 203,
+      "number": 249,
       "content": [
         {
           "text": "  variant",
@@ -12244,7 +15112,7 @@
       ]
     },
     {
-      "number": 204,
+      "number": 250,
       "content": [
         {
           "text": "  char",
@@ -12257,7 +15125,7 @@
       ]
     },
     {
-      "number": 205,
+      "number": 251,
       "content": [
         {
           "text": "  className",
@@ -12270,7 +15138,7 @@
       ]
     },
     {
-      "number": 206,
+      "number": 252,
       "content": [
         {
           "text": "  children",
@@ -12283,7 +15151,7 @@
       ]
     },
     {
-      "number": 207,
+      "number": 253,
       "content": [
         {
           "text": "  ",
@@ -12300,7 +15168,7 @@
       ]
     },
     {
-      "number": 208,
+      "number": 254,
       "content": [
         {
           "text": "}:",
@@ -12329,7 +15197,7 @@
       ]
     },
     {
-      "number": 209,
+      "number": 255,
       "content": [
         {
           "text": "  ",
@@ -12414,7 +15282,7 @@
       ]
     },
     {
-      "number": 210,
+      "number": 256,
       "content": [
         {
           "text": "  ",
@@ -12475,7 +15343,7 @@
       ]
     },
     {
-      "number": 211,
+      "number": 257,
       "content": [
         {
           "text": "  ",
@@ -12520,11 +15388,11 @@
       ]
     },
     {
-      "number": 212,
+      "number": 258,
       "content": []
     },
     {
-      "number": 213,
+      "number": 259,
       "content": [
         {
           "text": "  ",
@@ -12541,7 +15409,7 @@
       ]
     },
     {
-      "number": 214,
+      "number": 260,
       "content": [
         {
           "text": "    ",
@@ -12558,7 +15426,7 @@
       ]
     },
     {
-      "number": 215,
+      "number": 261,
       "content": [
         {
           "text": "      ",
@@ -12587,7 +15455,7 @@
       ]
     },
     {
-      "number": 216,
+      "number": 262,
       "content": [
         {
           "text": "      ",
@@ -12648,7 +15516,7 @@
       ]
     },
     {
-      "number": 217,
+      "number": 263,
       "content": [
         {
           "text": "      ",
@@ -12669,7 +15537,7 @@
       ]
     },
     {
-      "number": 218,
+      "number": 264,
       "content": [
         {
           "text": "    ",
@@ -12682,7 +15550,7 @@
       ]
     },
     {
-      "number": 219,
+      "number": 265,
       "content": [
         {
           "text": "      ",
@@ -12715,7 +15583,7 @@
       ]
     },
     {
-      "number": 220,
+      "number": 266,
       "content": [
         {
           "text": "      ",
@@ -12736,7 +15604,7 @@
       ]
     },
     {
-      "number": 221,
+      "number": 267,
       "content": [
         {
           "text": "    ",
@@ -12757,7 +15625,7 @@
       ]
     },
     {
-      "number": 222,
+      "number": 268,
       "content": [
         {
           "text": "  )",
@@ -12770,7 +15638,7 @@
       ]
     },
     {
-      "number": 223,
+      "number": 269,
       "content": [
         {
           "text": "}",
@@ -12779,7 +15647,7 @@
       ]
     },
     {
-      "number": 224,
+      "number": 270,
       "content": []
     }
   ],
@@ -14400,7 +17268,7 @@
       },
       {
         "title": "Multi-Segment Mode",
-        "content": "Pass a segments array: segments={[{ value: 60, variant: 'success' }, { value: 25, variant: 'warning' }]}. Value is derived from the segment sum unless explicitly provided."
+        "content": "Pass a segments array: segments={[{ value: 60, variant: 'success' }, { value: 25, variant: 'warning' }]}. Value is derived from the segment sum unless explicitly provided. When segments and children are both provided, segments win and define rendering and value."
       },
       {
         "title": "Compound Mode",

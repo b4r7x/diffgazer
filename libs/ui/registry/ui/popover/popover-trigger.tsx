@@ -14,16 +14,14 @@ import {
 } from "react";
 import { cn } from "@/lib/utils";
 import { composeRefs } from "@/lib/compose-refs";
-import { usePopoverContext } from "./popover-context";
-
-type PopoverTriggerHasPopup = "dialog" | "menu" | "listbox" | "tree" | "grid";
+import { usePopoverContext, type PopoverPopupRole } from "./popover-context";
 
 export interface PopoverTriggerRenderProps {
   ref: RefCallback<HTMLElement>;
   className?: string;
   role?: "button";
   "aria-expanded"?: boolean;
-  "aria-haspopup"?: PopoverTriggerHasPopup;
+  "aria-haspopup"?: PopoverPopupRole;
   "aria-controls"?: string;
   "aria-describedby"?: string;
   "aria-label"?: string;
@@ -51,7 +49,7 @@ interface HoverTriggerElementProps {
   tabIndex?: number;
   children?: ReactNode;
   "aria-expanded"?: boolean;
-  "aria-haspopup"?: PopoverTriggerHasPopup;
+  "aria-haspopup"?: PopoverPopupRole;
   "aria-controls"?: string;
   "aria-describedby"?: string;
   "aria-label"?: string;
@@ -83,10 +81,8 @@ function isNativeInteractiveElement(element: ReactElement<HoverTriggerElementPro
   return typeof element.type === "string" && nativeInteractiveElements.has(element.type);
 }
 
-function getElementTextLabel(element: ReactElement<HoverTriggerElementProps>): string | undefined {
-  const children = element.props.children;
-  if (typeof children === "string" || typeof children === "number") return String(children);
-  return undefined;
+function usesButtonLikeHoverSemantics(element: ReactElement<HoverTriggerElementProps>): boolean {
+  return isNativeInteractiveElement(element) || element.props.role === "button";
 }
 
 export function PopoverTrigger({
@@ -104,6 +100,7 @@ export function PopoverTrigger({
     onTriggerLeave,
     onTriggerClick,
     enabled,
+    popupRole,
   } = usePopoverContext();
 
   const composedRef = composeRefs(triggerRef, ref);
@@ -123,28 +120,42 @@ export function PopoverTrigger({
     onOpenChange(!open);
   };
 
+  const clickTriggerProps: PopoverTriggerRenderProps = {
+    ref: composedRef,
+    className,
+    "aria-expanded": open,
+    "aria-haspopup": popupRole,
+    "aria-controls": open ? popoverId : undefined,
+    onClick: onTriggerClick,
+  };
+  const interactiveHoverTriggerProps: PopoverTriggerRenderProps = {
+    ref: composedRef,
+    role: "button",
+    className: hoverClassName,
+    "aria-describedby": open ? popoverId : undefined,
+    onMouseEnter: onTriggerEnter,
+    onMouseLeave: onTriggerLeave,
+    onFocus: onTriggerEnter,
+    onBlur: onTriggerLeave,
+    onClick: handleHoverClick,
+    onKeyDown: handleHoverKeyDown,
+    tabIndex: enabled ? 0 : undefined,
+  };
+  const passiveHoverTriggerProps: PopoverTriggerRenderProps = {
+    ref: composedRef,
+    className: hoverClassName,
+    "aria-describedby": open ? popoverId : undefined,
+    onMouseEnter: onTriggerEnter,
+    onMouseLeave: onTriggerLeave,
+    onFocus: onTriggerEnter,
+    onBlur: onTriggerLeave,
+  };
+
   const triggerProps = isClick
-    ? ({
-        ref: composedRef,
-        className,
-        "aria-expanded": open,
-        "aria-haspopup": "dialog",
-        "aria-controls": open ? popoverId : undefined,
-        onClick: onTriggerClick,
-      } satisfies PopoverTriggerRenderProps)
-    : ({
-        ref: composedRef,
-        role: "button",
-        className: hoverClassName,
-        "aria-describedby": open ? popoverId : undefined,
-        onMouseEnter: onTriggerEnter,
-        onMouseLeave: onTriggerLeave,
-        onFocus: onTriggerEnter,
-        onBlur: onTriggerLeave,
-        onClick: handleHoverClick,
-        onKeyDown: handleHoverKeyDown,
-        tabIndex: enabled ? 0 : undefined,
-      } satisfies PopoverTriggerRenderProps);
+    ? clickTriggerProps
+    : interactiveHoverTriggerProps;
+
+  const passiveTriggerProps = isClick ? clickTriggerProps : passiveHoverTriggerProps;
 
   if (typeof children === "function") return <>{children(triggerProps)}</>;
 
@@ -152,6 +163,7 @@ export function PopoverTrigger({
     const child = children as ReactElement<HoverTriggerElementProps>;
     const childRef = child.props.ref;
     const isNativeInteractive = isNativeInteractiveElement(child);
+    const isButtonLikeHover = usesButtonLikeHoverSemantics(child);
     const buttonType = child.type === "button" ? { type: child.props.type ?? "button" } : {};
 
     if (isClick && isNativeInteractive) {
@@ -171,34 +183,33 @@ export function PopoverTrigger({
       return <button type="button" {...buttonProps}>{children}</button>;
     }
 
-    const needsTabIndex = enabled && child.props.tabIndex === undefined && !isNativeInteractive;
+    const needsTabIndex = enabled && child.props.tabIndex === undefined && child.props.role === "button";
     const isDisabledNative = triggerMode === "hover" && isNativeInteractive && child.props.disabled;
 
     if (isDisabledNative) {
-      const spanProps = triggerProps satisfies ComponentPropsWithRef<"span">;
-      const ariaLabel = child.props["aria-label"] ?? getElementTextLabel(child);
+      const spanProps = passiveTriggerProps satisfies ComponentPropsWithRef<"span">;
       return (
-        <span {...spanProps} aria-label={ariaLabel}>
+        <span {...spanProps}>
           {cloneElement(child, {
             className: cn(child.props.className, className),
-            "aria-hidden": true,
-            tabIndex: -1,
           })}
         </span>
       );
     }
 
+    const hoverProps = isButtonLikeHover ? triggerProps : passiveTriggerProps;
+
     return cloneElement(child, {
       ref: composeRefs(composedRef, childRef),
       className: cn(child.props.className, className),
-      role: child.props.role ?? (isNativeInteractive ? undefined : triggerProps.role),
-      "aria-describedby": triggerProps["aria-describedby"],
-      onClick: mergeHandlers(child.props.onClick, triggerProps.onClick, true),
-      onMouseEnter: mergeHandlers(child.props.onMouseEnter, triggerProps.onMouseEnter),
-      onMouseLeave: mergeHandlers(child.props.onMouseLeave, triggerProps.onMouseLeave),
-      onFocus: mergeHandlers(child.props.onFocus, triggerProps.onFocus),
-      onBlur: mergeHandlers(child.props.onBlur, triggerProps.onBlur),
-      onKeyDown: mergeHandlers(child.props.onKeyDown, triggerProps.onKeyDown, true),
+      role: child.props.role ?? (isClick || isNativeInteractive ? undefined : hoverProps.role),
+      "aria-describedby": hoverProps["aria-describedby"],
+      onClick: mergeHandlers(child.props.onClick, hoverProps.onClick, true),
+      onMouseEnter: mergeHandlers(child.props.onMouseEnter, hoverProps.onMouseEnter),
+      onMouseLeave: mergeHandlers(child.props.onMouseLeave, hoverProps.onMouseLeave),
+      onFocus: mergeHandlers(child.props.onFocus, hoverProps.onFocus),
+      onBlur: mergeHandlers(child.props.onBlur, hoverProps.onBlur),
+      onKeyDown: mergeHandlers(child.props.onKeyDown, hoverProps.onKeyDown, true),
       tabIndex: needsTabIndex ? 0 : child.props.tabIndex,
     });
   }
@@ -208,6 +219,6 @@ export function PopoverTrigger({
     return <button type="button" {...buttonProps}>{children}</button>;
   }
 
-  const spanProps = triggerProps satisfies ComponentPropsWithRef<"span">;
+  const spanProps = passiveTriggerProps satisfies ComponentPropsWithRef<"span">;
   return <span {...spanProps}>{children}</span>;
 }

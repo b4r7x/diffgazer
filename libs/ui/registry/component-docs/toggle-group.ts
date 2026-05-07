@@ -10,6 +10,11 @@ export const toggleGroupDoc: ComponentDoc = {
         "ToggleGroup uses compound sub-components (ToggleGroup.Item) rather than a data array. Each item accepts children for the label and an optional count prop that renders as [label count].",
     },
     {
+      title: "Composition Contract",
+      content:
+        "Use ToggleGroup.Item as an explicit child in the ToggleGroup JSX tree. Custom item UI belongs inside ToggleGroup.Item. Components that create items internally from an opaque wrapper are not part of the current public contract.",
+    },
+    {
       title: "Keyboard Navigation",
       content:
         "Arrow keys navigate between items with wrapping. Enter/Space activation uses native button semantics. Highlight state can be controlled externally via highlighted and onHighlightChange props.",

@@ -123,21 +123,41 @@ function tryRemoveIfEmpty(dir: string): void {
 }
 
 export function readTsConfigPaths(cwd: string): Record<string, string[]> | null {
-  for (const configFile of ["tsconfig.json", "jsconfig.json"]) {
-    const paths = tryReadPaths(resolve(cwd, configFile));
+  for (const configFile of ["tsconfig.json", "tsconfig.app.json", "jsconfig.json"]) {
+    const paths = tryReadPaths(resolve(cwd, configFile), new Set());
     if (paths) return paths;
   }
   return null;
 }
 
-function tryReadPaths(configPath: string): Record<string, string[]> | null {
+function tryReadPaths(configPath: string, seen: Set<string>): Record<string, string[]> | null {
+  const resolvedConfigPath = resolve(configPath);
+  if (seen.has(resolvedConfigPath)) return null;
+  seen.add(resolvedConfigPath);
+
   try {
     const raw = readFileSync(configPath, "utf-8");
     const config = JSON.parse(stripJsonComments(raw));
     const paths = config.compilerOptions?.paths;
     if (paths && typeof paths === "object") return paths;
+    const extended = resolveExtendsPath(config.extends, dirname(configPath));
+    if (extended) return tryReadPaths(extended, seen);
+    for (const reference of config.references ?? []) {
+      if (!reference?.path || typeof reference.path !== "string") continue;
+      const referenced = resolve(dirname(configPath), reference.path);
+      const referencedConfig = referenced.endsWith(".json") ? referenced : resolve(referenced, "tsconfig.json");
+      const referencedPaths = tryReadPaths(referencedConfig, seen);
+      if (referencedPaths) return referencedPaths;
+    }
   } catch { /* Optional tsconfig reading; missing file is OK */ }
   return null;
+}
+
+function resolveExtendsPath(value: unknown, baseDir: string): string | null {
+  if (typeof value !== "string" || value.length === 0) return null;
+  if (!value.startsWith(".")) return null;
+  const resolved = resolve(baseDir, value);
+  return resolved.endsWith(".json") ? resolved : `${resolved}.json`;
 }
 
 export function atomicWriteFile(targetPath: string, content: string, opts?: { ensureDir?: boolean }): void {

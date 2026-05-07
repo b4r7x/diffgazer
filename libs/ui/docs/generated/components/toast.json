@@ -17,10 +17,35 @@
   "props": {},
   "source": {
     "registry/ui/toast/index.ts": {
-      "raw": "export { toast } from \"./toast-store\";\nexport type { Toast, ToastPosition, ToastOptions } from \"./toast-store\";\nexport type { ToastVariant } from \"./toast-variants\";\n\nexport { Toaster } from \"./toast-container\";\nexport type { ToasterProps } from \"./toast-container\";\n",
+      "raw": "\"use client\";\n\nexport { toast } from \"./toast-store\";\nexport type { Toast, ToastPosition, ToastOptions } from \"./toast-store\";\nexport type { ToastVariant } from \"./toast-variants\";\n\nexport { Toaster } from \"./toast-container\";\nexport type { ToasterProps } from \"./toast-container\";\n",
       "highlighted": [
         {
           "number": 1,
+          "content": [
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "use client",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "content": []
+        },
+        {
+          "number": 3,
           "content": [
             {
               "text": "export",
@@ -73,7 +98,7 @@
           ]
         },
         {
-          "number": 2,
+          "number": 4,
           "content": [
             {
               "text": "export",
@@ -150,7 +175,7 @@
           ]
         },
         {
-          "number": 3,
+          "number": 5,
           "content": [
             {
               "text": "export",
@@ -211,11 +236,11 @@
           ]
         },
         {
-          "number": 4,
+          "number": 6,
           "content": []
         },
         {
-          "number": 5,
+          "number": 7,
           "content": [
             {
               "text": "export",
@@ -268,7 +293,7 @@
           ]
         },
         {
-          "number": 6,
+          "number": 8,
           "content": [
             {
               "text": "export",
@@ -329,7 +354,7 @@
           ]
         },
         {
-          "number": 7,
+          "number": 9,
           "content": []
         }
       ]
@@ -6713,7 +6738,7 @@
       ]
     },
     "registry/ui/toast/toast-store.ts": {
-      "raw": "\"use client\";\n\nimport { useSyncExternalStore, type ReactNode } from \"react\";\nimport type { ToastVariant } from \"./toast-variants\";\n\nexport type ToastPosition =\n  | \"top-left\"\n  | \"top-center\"\n  | \"top-right\"\n  | \"bottom-left\"\n  | \"bottom-center\"\n  | \"bottom-right\";\n\nexport interface Toast {\n  id: string;\n  variant: ToastVariant;\n  title: string;\n  message?: string;\n  duration?: number;\n  action?: ReactNode;\n}\n\nexport interface ToastOptions {\n  title: string;\n  variant?: ToastVariant;\n  message?: string;\n  /** Auto-dismiss delay in ms. When `action` is set and duration is omitted, the toast persists indefinitely (WCAG 2.2.1 — enough time). */\n  duration?: number;\n  action?: ReactNode;\n  id?: string;\n}\n\nconst DEFAULT_DURATION = 5000;\nconst MAX_TOASTS = 5;\n\ninterface StoreState {\n  toasts: Toast[];\n  dismissingIds: Set<string>;\n}\n\nconst INITIAL_STATE: StoreState = { toasts: [], dismissingIds: new Set() };\n\ninterface TimerEntry {\n  timeout: ReturnType<typeof setTimeout> | undefined;\n  startedAt: number;\n  remaining: number;\n}\n\nlet state: StoreState = INITIAL_STATE;\nconst listeners = new Set<() => void>();\nconst timers = new Map<string, TimerEntry>();\nlet paused = false;\n\nfunction emit() {\n  for (const listener of listeners) listener();\n}\n\nfunction clearTimer(id: string) {\n  const entry = timers.get(id);\n  if (entry) {\n    clearTimeout(entry.timeout);\n    timers.delete(id);\n  }\n}\n\nfunction subscribe(listener: () => void) {\n  listeners.add(listener);\n  return () => listeners.delete(listener);\n}\n\nfunction getSnapshot(): StoreState {\n  return state;\n}\n\nfunction getServerSnapshot(): StoreState {\n  return INITIAL_STATE;\n}\n\nfunction scheduleAutoDismiss(id: string, variant: ToastVariant, duration?: number) {\n  if ((variant === \"error\" || variant === \"loading\") && duration === undefined) return;\n  const resolved = duration ?? DEFAULT_DURATION;\n  if (!Number.isFinite(resolved) || resolved <= 0) return;\n  const entry: TimerEntry = {\n    timeout: paused ? undefined : setTimeout(() => dismiss(id), resolved),\n    startedAt: Date.now(),\n    remaining: resolved,\n  };\n  timers.set(id, entry);\n}\n\nfunction resolveNextToasts(current: Toast[], incoming: Toast): Toast[] {\n  const existingIdx = current.findIndex((t) => t.id === incoming.id);\n  if (existingIdx >= 0) return current.map((t) => (t.id === incoming.id ? incoming : t));\n\n  const all = [...current, incoming];\n  const evicted = all.slice(0, Math.max(0, all.length - MAX_TOASTS));\n  for (const t of evicted) clearTimer(t.id);\n  return all.slice(-MAX_TOASTS);\n}\n\nfunction create(options: ToastOptions): string {\n  const id = options.id ?? crypto.randomUUID();\n  const variant = options.variant ?? \"info\";\n  const newToast: Toast = {\n    id, variant,\n    title: options.title,\n    message: options.message,\n    duration: options.duration,\n    action: options.action,\n  };\n\n  clearTimer(id);\n  const nextDismissing = new Set(state.dismissingIds);\n  nextDismissing.delete(id);\n  if (!options.action || options.duration !== undefined) {\n    scheduleAutoDismiss(id, variant, options.duration);\n  }\n\n  const nextToasts = resolveNextToasts(state.toasts, newToast);\n  const nextIds = new Set(nextToasts.map(t => t.id));\n  for (const dismissId of nextDismissing) {\n    if (!nextIds.has(dismissId)) nextDismissing.delete(dismissId);\n  }\n\n  state = { toasts: nextToasts, dismissingIds: nextDismissing };\n  emit();\n  return id;\n}\n\nexport function dismiss(id?: string) {\n  if (id) {\n    state = {\n      toasts: state.toasts,\n      dismissingIds: new Set(state.dismissingIds).add(id),\n    };\n  } else {\n    state = { toasts: state.toasts, dismissingIds: new Set(state.toasts.map(t => t.id)) };\n  }\n  emit();\n}\n\nexport function remove(id: string) {\n  clearTimer(id);\n  const nextDismissing = new Set(state.dismissingIds);\n  nextDismissing.delete(id);\n  state = {\n    toasts: state.toasts.filter((t) => t.id !== id),\n    dismissingIds: nextDismissing,\n  };\n  emit();\n}\n\nexport function pause() {\n  if (paused) return;\n  paused = true;\n  for (const [, entry] of timers) {\n    clearTimeout(entry.timeout);\n    entry.remaining = Math.max(0, entry.remaining - (Date.now() - entry.startedAt));\n  }\n}\n\nexport function resume() {\n  if (!paused) return;\n  paused = false;\n  for (const [id, entry] of timers) {\n    entry.startedAt = Date.now();\n    entry.timeout = setTimeout(() => dismiss(id), entry.remaining);\n  }\n}\n\ntype VariantMethod = (title: string, options?: Omit<ToastOptions, \"variant\" | \"title\">) => string;\n\ninterface ToastFn extends Record<ToastVariant, VariantMethod> {\n  (title: string, options?: Omit<ToastOptions, \"title\">): string;\n  dismiss: (id?: string) => void;\n  promise: <T>(\n    promise: Promise<T>,\n    options: {\n      loading: string;\n      success: string | ((data: T) => string);\n      error: string | ((err: unknown) => string);\n    },\n  ) => Promise<T>;\n}\n\nfunction variantMethod(variant: ToastVariant): VariantMethod {\n  return (title, options) => create({ ...options, title, variant });\n}\n\nfunction promiseToast<T>(\n  promise: Promise<T>,\n  options: {\n    loading: string;\n    success: string | ((data: T) => string);\n    error: string | ((err: unknown) => string);\n  },\n): Promise<T> {\n  const id = create({ title: options.loading, variant: \"loading\" });\n\n  return promise.then(\n    (data) => {\n      const title = typeof options.success === \"function\" ? options.success(data) : options.success;\n      create({ id, title, variant: \"success\" });\n      return data;\n    },\n    (err) => {\n      const title = typeof options.error === \"function\" ? options.error(err) : options.error;\n      create({ id, title, variant: \"error\" });\n      throw err;\n    },\n  );\n}\n\nexport const toast: ToastFn = Object.assign(\n  (title: string, options?: Omit<ToastOptions, \"title\">) => create({ ...options, title }),\n  {\n    success: variantMethod(\"success\"),\n    error: variantMethod(\"error\"),\n    warning: variantMethod(\"warning\"),\n    info: variantMethod(\"info\"),\n    loading: variantMethod(\"loading\"),\n    dismiss,\n    promise: promiseToast,\n  },\n);\n\nexport function useToastStore(): StoreState {\n  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);\n}\n\n",
+      "raw": "\"use client\";\n\nimport { useSyncExternalStore, type ReactNode } from \"react\";\nimport type { ToastVariant } from \"./toast-variants\";\n\nexport type ToastPosition =\n  | \"top-left\"\n  | \"top-center\"\n  | \"top-right\"\n  | \"bottom-left\"\n  | \"bottom-center\"\n  | \"bottom-right\";\n\nexport interface Toast {\n  id: string;\n  variant: ToastVariant;\n  title: string;\n  message?: string;\n  duration?: number;\n  action?: ReactNode;\n}\n\nexport interface ToastOptions {\n  title: string;\n  variant?: ToastVariant;\n  message?: string;\n  /** Auto-dismiss delay in ms. When `action` is set and duration is omitted, the toast persists indefinitely (WCAG 2.2.1 — enough time). */\n  duration?: number;\n  action?: ReactNode;\n  id?: string;\n}\n\nconst DEFAULT_DURATION = 5000;\nconst MAX_TOASTS = 5;\n\ninterface StoreState {\n  toasts: Toast[];\n  dismissingIds: Set<string>;\n}\n\nconst INITIAL_STATE: StoreState = { toasts: [], dismissingIds: new Set() };\n\ninterface TimerEntry {\n  timeout: ReturnType<typeof setTimeout> | undefined;\n  startedAt: number;\n  remaining: number;\n}\n\nlet state: StoreState = INITIAL_STATE;\nconst listeners = new Set<() => void>();\nconst timers = new Map<string, TimerEntry>();\nlet paused = false;\nlet fallbackToastId = 0;\n\nfunction emit() {\n  for (const listener of listeners) listener();\n}\n\nfunction clearTimer(id: string) {\n  const entry = timers.get(id);\n  if (entry) {\n    clearTimeout(entry.timeout);\n    timers.delete(id);\n  }\n}\n\nfunction subscribe(listener: () => void) {\n  listeners.add(listener);\n  return () => listeners.delete(listener);\n}\n\nfunction getSnapshot(): StoreState {\n  return state;\n}\n\nfunction getServerSnapshot(): StoreState {\n  return INITIAL_STATE;\n}\n\nfunction scheduleAutoDismiss(id: string, variant: ToastVariant, duration?: number) {\n  if ((variant === \"error\" || variant === \"loading\") && duration === undefined) return;\n  const resolved = duration ?? DEFAULT_DURATION;\n  if (!Number.isFinite(resolved) || resolved <= 0) return;\n  const entry: TimerEntry = {\n    timeout: paused ? undefined : setTimeout(() => dismiss(id), resolved),\n    startedAt: Date.now(),\n    remaining: resolved,\n  };\n  timers.set(id, entry);\n}\n\nfunction resolveNextToasts(current: Toast[], incoming: Toast): Toast[] {\n  const existingIdx = current.findIndex((t) => t.id === incoming.id);\n  if (existingIdx >= 0) return current.map((t) => (t.id === incoming.id ? incoming : t));\n\n  const all = [...current, incoming];\n  const evicted = all.slice(0, Math.max(0, all.length - MAX_TOASTS));\n  for (const t of evicted) clearTimer(t.id);\n  return all.slice(-MAX_TOASTS);\n}\n\nfunction createToastId(): string {\n  const randomUUID = globalThis.crypto?.randomUUID;\n  if (typeof randomUUID === \"function\") return randomUUID.call(globalThis.crypto);\n\n  fallbackToastId += 1;\n  return `toast-${Date.now().toString(36)}-${fallbackToastId.toString(36)}`;\n}\n\nfunction create(options: ToastOptions): string {\n  const id = options.id ?? createToastId();\n  const variant = options.variant ?? \"info\";\n  const newToast: Toast = {\n    id, variant,\n    title: options.title,\n    message: options.message,\n    duration: options.duration,\n    action: options.action,\n  };\n\n  clearTimer(id);\n  const nextDismissing = new Set(state.dismissingIds);\n  nextDismissing.delete(id);\n  if (!options.action || options.duration !== undefined) {\n    scheduleAutoDismiss(id, variant, options.duration);\n  }\n\n  const nextToasts = resolveNextToasts(state.toasts, newToast);\n  const nextIds = new Set(nextToasts.map(t => t.id));\n  for (const dismissId of nextDismissing) {\n    if (!nextIds.has(dismissId)) nextDismissing.delete(dismissId);\n  }\n\n  state = { toasts: nextToasts, dismissingIds: nextDismissing };\n  emit();\n  return id;\n}\n\nexport function dismiss(id?: string) {\n  if (id) {\n    state = {\n      toasts: state.toasts,\n      dismissingIds: new Set(state.dismissingIds).add(id),\n    };\n  } else {\n    state = { toasts: state.toasts, dismissingIds: new Set(state.toasts.map(t => t.id)) };\n  }\n  emit();\n}\n\nexport function remove(id: string) {\n  clearTimer(id);\n  const nextDismissing = new Set(state.dismissingIds);\n  nextDismissing.delete(id);\n  state = {\n    toasts: state.toasts.filter((t) => t.id !== id),\n    dismissingIds: nextDismissing,\n  };\n  emit();\n}\n\nexport function pause() {\n  if (paused) return;\n  paused = true;\n  for (const [, entry] of timers) {\n    clearTimeout(entry.timeout);\n    entry.remaining = Math.max(0, entry.remaining - (Date.now() - entry.startedAt));\n  }\n}\n\nexport function resume() {\n  if (!paused) return;\n  paused = false;\n  for (const [id, entry] of timers) {\n    entry.startedAt = Date.now();\n    entry.timeout = setTimeout(() => dismiss(id), entry.remaining);\n  }\n}\n\ntype VariantMethod = (title: string, options?: Omit<ToastOptions, \"variant\" | \"title\">) => string;\n\ninterface ToastFn extends Record<ToastVariant, VariantMethod> {\n  (title: string, options?: Omit<ToastOptions, \"title\">): string;\n  dismiss: (id?: string) => void;\n  promise: <T>(\n    promise: Promise<T>,\n    options: {\n      loading: string;\n      success: string | ((data: T) => string);\n      error: string | ((err: unknown) => string);\n    },\n  ) => Promise<T>;\n}\n\nfunction variantMethod(variant: ToastVariant): VariantMethod {\n  return (title, options) => create({ ...options, title, variant });\n}\n\nfunction promiseToast<T>(\n  promise: Promise<T>,\n  options: {\n    loading: string;\n    success: string | ((data: T) => string);\n    error: string | ((err: unknown) => string);\n  },\n): Promise<T> {\n  const id = create({ title: options.loading, variant: \"loading\" });\n\n  return promise.then(\n    (data) => {\n      const title = typeof options.success === \"function\" ? options.success(data) : options.success;\n      create({ id, title, variant: \"success\" });\n      return data;\n    },\n    (err) => {\n      const title = typeof options.error === \"function\" ? options.error(err) : options.error;\n      create({ id, title, variant: \"error\" });\n      throw err;\n    },\n  );\n}\n\nexport const toast: ToastFn = Object.assign(\n  (title: string, options?: Omit<ToastOptions, \"title\">) => create({ ...options, title }),\n  {\n    success: variantMethod(\"success\"),\n    error: variantMethod(\"error\"),\n    warning: variantMethod(\"warning\"),\n    info: variantMethod(\"info\"),\n    loading: variantMethod(\"loading\"),\n    dismiss,\n    promise: promiseToast,\n  },\n);\n\nexport function useToastStore(): StoreState {\n  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -8140,10 +8165,39 @@
         },
         {
           "number": 53,
-          "content": []
+          "content": [
+            {
+              "text": "let",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " fallbackToastId ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "0",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
         },
         {
           "number": 54,
+          "content": []
+        },
+        {
+          "number": 55,
           "content": [
             {
               "text": "function",
@@ -8172,7 +8226,7 @@
           ]
         },
         {
-          "number": 55,
+          "number": 56,
           "content": [
             {
               "text": "  ",
@@ -8225,7 +8279,7 @@
           ]
         },
         {
-          "number": 56,
+          "number": 57,
           "content": [
             {
               "text": "}",
@@ -8234,11 +8288,11 @@
           ]
         },
         {
-          "number": 57,
+          "number": 58,
           "content": []
         },
         {
-          "number": 58,
+          "number": 59,
           "content": [
             {
               "text": "function",
@@ -8287,7 +8341,7 @@
           ]
         },
         {
-          "number": 59,
+          "number": 60,
           "content": [
             {
               "text": "  ",
@@ -8340,7 +8394,7 @@
           ]
         },
         {
-          "number": 60,
+          "number": 61,
           "content": [
             {
               "text": "  ",
@@ -8361,7 +8415,7 @@
           ]
         },
         {
-          "number": 61,
+          "number": 62,
           "content": [
             {
               "text": "    ",
@@ -8394,7 +8448,7 @@
           ]
         },
         {
-          "number": 62,
+          "number": 63,
           "content": [
             {
               "text": "    ",
@@ -8423,7 +8477,7 @@
           ]
         },
         {
-          "number": 63,
+          "number": 64,
           "content": [
             {
               "text": "  ",
@@ -8436,7 +8490,7 @@
           ]
         },
         {
-          "number": 64,
+          "number": 65,
           "content": [
             {
               "text": "}",
@@ -8445,11 +8499,11 @@
           ]
         },
         {
-          "number": 65,
+          "number": 66,
           "content": []
         },
         {
-          "number": 66,
+          "number": 67,
           "content": [
             {
               "text": "function",
@@ -8514,7 +8568,7 @@
           ]
         },
         {
-          "number": 67,
+          "number": 68,
           "content": [
             {
               "text": "  ",
@@ -8543,7 +8597,7 @@
           ]
         },
         {
-          "number": 68,
+          "number": 69,
           "content": [
             {
               "text": "  ",
@@ -8596,7 +8650,7 @@
           ]
         },
         {
-          "number": 69,
+          "number": 70,
           "content": [
             {
               "text": "}",
@@ -8605,11 +8659,11 @@
           ]
         },
         {
-          "number": 70,
+          "number": 71,
           "content": []
         },
         {
-          "number": 71,
+          "number": 72,
           "content": [
             {
               "text": "function",
@@ -8646,7 +8700,7 @@
           ]
         },
         {
-          "number": 72,
+          "number": 73,
           "content": [
             {
               "text": "  ",
@@ -8667,7 +8721,7 @@
           ]
         },
         {
-          "number": 73,
+          "number": 74,
           "content": [
             {
               "text": "}",
@@ -8676,11 +8730,11 @@
           ]
         },
         {
-          "number": 74,
+          "number": 75,
           "content": []
         },
         {
-          "number": 75,
+          "number": 76,
           "content": [
             {
               "text": "function",
@@ -8717,7 +8771,7 @@
           ]
         },
         {
-          "number": 76,
+          "number": 77,
           "content": [
             {
               "text": "  ",
@@ -8742,7 +8796,7 @@
           ]
         },
         {
-          "number": 77,
+          "number": 78,
           "content": [
             {
               "text": "}",
@@ -8751,11 +8805,11 @@
           ]
         },
         {
-          "number": 78,
+          "number": 79,
           "content": []
         },
         {
-          "number": 79,
+          "number": 80,
           "content": [
             {
               "text": "function",
@@ -8844,7 +8898,7 @@
           ]
         },
         {
-          "number": 80,
+          "number": 81,
           "content": [
             {
               "text": "  ",
@@ -8949,7 +9003,7 @@
           ]
         },
         {
-          "number": 81,
+          "number": 82,
           "content": [
             {
               "text": "  ",
@@ -8998,7 +9052,7 @@
           ]
         },
         {
-          "number": 82,
+          "number": 83,
           "content": [
             {
               "text": "  ",
@@ -9067,7 +9121,7 @@
           ]
         },
         {
-          "number": 83,
+          "number": 84,
           "content": [
             {
               "text": "  ",
@@ -9116,7 +9170,7 @@
           ]
         },
         {
-          "number": 84,
+          "number": 85,
           "content": [
             {
               "text": "    timeout",
@@ -9201,7 +9255,7 @@
           ]
         },
         {
-          "number": 85,
+          "number": 86,
           "content": [
             {
               "text": "    startedAt",
@@ -9238,7 +9292,7 @@
           ]
         },
         {
-          "number": 86,
+          "number": 87,
           "content": [
             {
               "text": "    remaining",
@@ -9259,7 +9313,7 @@
           ]
         },
         {
-          "number": 87,
+          "number": 88,
           "content": [
             {
               "text": "  ",
@@ -9272,7 +9326,7 @@
           ]
         },
         {
-          "number": 88,
+          "number": 89,
           "content": [
             {
               "text": "  ",
@@ -9309,7 +9363,7 @@
           ]
         },
         {
-          "number": 89,
+          "number": 90,
           "content": [
             {
               "text": "}",
@@ -9318,11 +9372,11 @@
           ]
         },
         {
-          "number": 90,
+          "number": 91,
           "content": []
         },
         {
-          "number": 91,
+          "number": 92,
           "content": [
             {
               "text": "function",
@@ -9403,7 +9457,7 @@
           ]
         },
         {
-          "number": 92,
+          "number": 93,
           "content": [
             {
               "text": "  ",
@@ -9512,7 +9566,7 @@
           ]
         },
         {
-          "number": 93,
+          "number": 94,
           "content": [
             {
               "text": "  ",
@@ -9645,11 +9699,11 @@
           ]
         },
         {
-          "number": 94,
+          "number": 95,
           "content": []
         },
         {
-          "number": 95,
+          "number": 96,
           "content": [
             {
               "text": "  ",
@@ -9702,7 +9756,7 @@
           ]
         },
         {
-          "number": 96,
+          "number": 97,
           "content": [
             {
               "text": "  ",
@@ -9827,7 +9881,7 @@
           ]
         },
         {
-          "number": 97,
+          "number": 98,
           "content": [
             {
               "text": "  ",
@@ -9892,7 +9946,7 @@
           ]
         },
         {
-          "number": 98,
+          "number": 99,
           "content": [
             {
               "text": "  ",
@@ -9941,7 +9995,7 @@
           ]
         },
         {
-          "number": 99,
+          "number": 100,
           "content": [
             {
               "text": "}",
@@ -9950,11 +10004,349 @@
           ]
         },
         {
-          "number": 100,
+          "number": 101,
           "content": []
         },
         {
-          "number": 101,
+          "number": 102,
+          "content": [
+            {
+              "text": "function",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "createToastId",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "():",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "string",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 103,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "randomUUID",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "globalThis",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "crypto",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": "?.",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "randomUUID",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 104,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "typeof",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " randomUUID ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "function",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "\"",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "randomUUID",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "call",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "globalThis",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "crypto)",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 105,
+          "content": []
+        },
+        {
+          "number": 106,
+          "content": [
+            {
+              "text": "  fallbackToastId ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "+=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "1",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 107,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "`",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "toast-",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "${",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": "Date",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "now",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "toString",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "36",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": "-",
+              "color": "var(--code-tag)"
+            },
+            {
+              "text": "${",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": "fallbackToastId",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "toString",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "36",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": "`",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 108,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 109,
+          "content": []
+        },
+        {
+          "number": 110,
           "content": [
             {
               "text": "function",
@@ -10011,7 +10403,7 @@
           ]
         },
         {
-          "number": 102,
+          "number": 111,
           "content": [
             {
               "text": "  ",
@@ -10062,15 +10454,7 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "crypto",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": ".",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "randomUUID",
+              "text": "createToastId",
               "color": "var(--code-function)"
             },
             {
@@ -10084,7 +10468,7 @@
           ]
         },
         {
-          "number": 103,
+          "number": 112,
           "content": [
             {
               "text": "  ",
@@ -10153,7 +10537,7 @@
           ]
         },
         {
-          "number": 104,
+          "number": 113,
           "content": [
             {
               "text": "  ",
@@ -10202,7 +10586,7 @@
           ]
         },
         {
-          "number": 105,
+          "number": 114,
           "content": [
             {
               "text": "    id",
@@ -10223,7 +10607,7 @@
           ]
         },
         {
-          "number": 106,
+          "number": 115,
           "content": [
             {
               "text": "    title",
@@ -10256,7 +10640,7 @@
           ]
         },
         {
-          "number": 107,
+          "number": 116,
           "content": [
             {
               "text": "    message",
@@ -10289,7 +10673,7 @@
           ]
         },
         {
-          "number": 108,
+          "number": 117,
           "content": [
             {
               "text": "    duration",
@@ -10322,7 +10706,7 @@
           ]
         },
         {
-          "number": 109,
+          "number": 118,
           "content": [
             {
               "text": "    action",
@@ -10355,7 +10739,7 @@
           ]
         },
         {
-          "number": 110,
+          "number": 119,
           "content": [
             {
               "text": "  ",
@@ -10368,11 +10752,11 @@
           ]
         },
         {
-          "number": 111,
+          "number": 120,
           "content": []
         },
         {
-          "number": 112,
+          "number": 121,
           "content": [
             {
               "text": "  ",
@@ -10393,7 +10777,7 @@
           ]
         },
         {
-          "number": 113,
+          "number": 122,
           "content": [
             {
               "text": "  ",
@@ -10458,7 +10842,7 @@
           ]
         },
         {
-          "number": 114,
+          "number": 123,
           "content": [
             {
               "text": "  ",
@@ -10487,7 +10871,7 @@
           ]
         },
         {
-          "number": 115,
+          "number": 124,
           "content": [
             {
               "text": "  ",
@@ -10560,7 +10944,7 @@
           ]
         },
         {
-          "number": 116,
+          "number": 125,
           "content": [
             {
               "text": "    ",
@@ -10609,7 +10993,7 @@
           ]
         },
         {
-          "number": 117,
+          "number": 126,
           "content": [
             {
               "text": "  ",
@@ -10622,11 +11006,11 @@
           ]
         },
         {
-          "number": 118,
+          "number": 127,
           "content": []
         },
         {
-          "number": 119,
+          "number": 128,
           "content": [
             {
               "text": "  ",
@@ -10691,7 +11075,7 @@
           ]
         },
         {
-          "number": 120,
+          "number": 129,
           "content": [
             {
               "text": "  ",
@@ -10780,7 +11164,7 @@
           ]
         },
         {
-          "number": 121,
+          "number": 130,
           "content": [
             {
               "text": "  ",
@@ -10825,7 +11209,7 @@
           ]
         },
         {
-          "number": 122,
+          "number": 131,
           "content": [
             {
               "text": "    ",
@@ -10882,7 +11266,7 @@
           ]
         },
         {
-          "number": 123,
+          "number": 132,
           "content": [
             {
               "text": "  ",
@@ -10895,11 +11279,11 @@
           ]
         },
         {
-          "number": 124,
+          "number": 133,
           "content": []
         },
         {
-          "number": 125,
+          "number": 134,
           "content": [
             {
               "text": "  state ",
@@ -10952,7 +11336,7 @@
           ]
         },
         {
-          "number": 126,
+          "number": 135,
           "content": [
             {
               "text": "  ",
@@ -10973,7 +11357,7 @@
           ]
         },
         {
-          "number": 127,
+          "number": 136,
           "content": [
             {
               "text": "  ",
@@ -10994,7 +11378,7 @@
           ]
         },
         {
-          "number": 128,
+          "number": 137,
           "content": [
             {
               "text": "}",
@@ -11003,11 +11387,11 @@
           ]
         },
         {
-          "number": 129,
+          "number": 138,
           "content": []
         },
         {
-          "number": 130,
+          "number": 139,
           "content": [
             {
               "text": "export",
@@ -11064,7 +11448,7 @@
           ]
         },
         {
-          "number": 131,
+          "number": 140,
           "content": [
             {
               "text": "  ",
@@ -11085,7 +11469,7 @@
           ]
         },
         {
-          "number": 132,
+          "number": 141,
           "content": [
             {
               "text": "    state ",
@@ -11106,7 +11490,7 @@
           ]
         },
         {
-          "number": 133,
+          "number": 142,
           "content": [
             {
               "text": "      toasts",
@@ -11139,7 +11523,7 @@
           ]
         },
         {
-          "number": 134,
+          "number": 143,
           "content": [
             {
               "text": "      dismissingIds",
@@ -11200,7 +11584,7 @@
           ]
         },
         {
-          "number": 135,
+          "number": 144,
           "content": [
             {
               "text": "    ",
@@ -11213,7 +11597,7 @@
           ]
         },
         {
-          "number": 136,
+          "number": 145,
           "content": [
             {
               "text": "  ",
@@ -11242,7 +11626,7 @@
           ]
         },
         {
-          "number": 137,
+          "number": 146,
           "content": [
             {
               "text": "    state ",
@@ -11367,7 +11751,7 @@
           ]
         },
         {
-          "number": 138,
+          "number": 147,
           "content": [
             {
               "text": "  ",
@@ -11380,7 +11764,7 @@
           ]
         },
         {
-          "number": 139,
+          "number": 148,
           "content": [
             {
               "text": "  ",
@@ -11401,7 +11785,7 @@
           ]
         },
         {
-          "number": 140,
+          "number": 149,
           "content": [
             {
               "text": "}",
@@ -11410,11 +11794,11 @@
           ]
         },
         {
-          "number": 141,
+          "number": 150,
           "content": []
         },
         {
-          "number": 142,
+          "number": 151,
           "content": [
             {
               "text": "export",
@@ -11471,7 +11855,7 @@
           ]
         },
         {
-          "number": 143,
+          "number": 152,
           "content": [
             {
               "text": "  ",
@@ -11492,7 +11876,7 @@
           ]
         },
         {
-          "number": 144,
+          "number": 153,
           "content": [
             {
               "text": "  ",
@@ -11557,7 +11941,7 @@
           ]
         },
         {
-          "number": 145,
+          "number": 154,
           "content": [
             {
               "text": "  ",
@@ -11586,7 +11970,7 @@
           ]
         },
         {
-          "number": 146,
+          "number": 155,
           "content": [
             {
               "text": "  state ",
@@ -11607,7 +11991,7 @@
           ]
         },
         {
-          "number": 147,
+          "number": 156,
           "content": [
             {
               "text": "    toasts",
@@ -11696,7 +12080,7 @@
           ]
         },
         {
-          "number": 148,
+          "number": 157,
           "content": [
             {
               "text": "    dismissingIds",
@@ -11717,7 +12101,7 @@
           ]
         },
         {
-          "number": 149,
+          "number": 158,
           "content": [
             {
               "text": "  ",
@@ -11730,7 +12114,7 @@
           ]
         },
         {
-          "number": 150,
+          "number": 159,
           "content": [
             {
               "text": "  ",
@@ -11751,7 +12135,7 @@
           ]
         },
         {
-          "number": 151,
+          "number": 160,
           "content": [
             {
               "text": "}",
@@ -11760,11 +12144,11 @@
           ]
         },
         {
-          "number": 152,
+          "number": 161,
           "content": []
         },
         {
-          "number": 153,
+          "number": 162,
           "content": [
             {
               "text": "export",
@@ -11801,7 +12185,7 @@
           ]
         },
         {
-          "number": 154,
+          "number": 163,
           "content": [
             {
               "text": "  ",
@@ -11826,7 +12210,7 @@
           ]
         },
         {
-          "number": 155,
+          "number": 164,
           "content": [
             {
               "text": "  paused ",
@@ -11851,7 +12235,7 @@
           ]
         },
         {
-          "number": 156,
+          "number": 165,
           "content": [
             {
               "text": "  ",
@@ -11908,7 +12292,7 @@
           ]
         },
         {
-          "number": 157,
+          "number": 166,
           "content": [
             {
               "text": "    ",
@@ -11941,7 +12325,7 @@
           ]
         },
         {
-          "number": 158,
+          "number": 167,
           "content": [
             {
               "text": "    ",
@@ -12058,7 +12442,7 @@
           ]
         },
         {
-          "number": 159,
+          "number": 168,
           "content": [
             {
               "text": "  ",
@@ -12071,7 +12455,7 @@
           ]
         },
         {
-          "number": 160,
+          "number": 169,
           "content": [
             {
               "text": "}",
@@ -12080,11 +12464,11 @@
           ]
         },
         {
-          "number": 161,
+          "number": 170,
           "content": []
         },
         {
-          "number": 162,
+          "number": 171,
           "content": [
             {
               "text": "export",
@@ -12121,7 +12505,7 @@
           ]
         },
         {
-          "number": 163,
+          "number": 172,
           "content": [
             {
               "text": "  ",
@@ -12154,7 +12538,7 @@
           ]
         },
         {
-          "number": 164,
+          "number": 173,
           "content": [
             {
               "text": "  paused ",
@@ -12179,7 +12563,7 @@
           ]
         },
         {
-          "number": 165,
+          "number": 174,
           "content": [
             {
               "text": "  ",
@@ -12244,7 +12628,7 @@
           ]
         },
         {
-          "number": 166,
+          "number": 175,
           "content": [
             {
               "text": "    ",
@@ -12293,7 +12677,7 @@
           ]
         },
         {
-          "number": 167,
+          "number": 176,
           "content": [
             {
               "text": "    ",
@@ -12378,7 +12762,7 @@
           ]
         },
         {
-          "number": 168,
+          "number": 177,
           "content": [
             {
               "text": "  ",
@@ -12391,7 +12775,7 @@
           ]
         },
         {
-          "number": 169,
+          "number": 178,
           "content": [
             {
               "text": "}",
@@ -12400,11 +12784,11 @@
           ]
         },
         {
-          "number": 170,
+          "number": 179,
           "content": []
         },
         {
-          "number": 171,
+          "number": 180,
           "content": [
             {
               "text": "type",
@@ -12549,11 +12933,11 @@
           ]
         },
         {
-          "number": 172,
+          "number": 181,
           "content": []
         },
         {
-          "number": 173,
+          "number": 182,
           "content": [
             {
               "text": "interface",
@@ -12618,7 +13002,7 @@
           ]
         },
         {
-          "number": 174,
+          "number": 183,
           "content": [
             {
               "text": "  ",
@@ -12711,7 +13095,7 @@
           ]
         },
         {
-          "number": 175,
+          "number": 184,
           "content": [
             {
               "text": "  ",
@@ -12776,7 +13160,7 @@
           ]
         },
         {
-          "number": 176,
+          "number": 185,
           "content": [
             {
               "text": "  ",
@@ -12813,7 +13197,7 @@
           ]
         },
         {
-          "number": 177,
+          "number": 186,
           "content": [
             {
               "text": "    promise",
@@ -12846,7 +13230,7 @@
           ]
         },
         {
-          "number": 178,
+          "number": 187,
           "content": [
             {
               "text": "    options",
@@ -12867,7 +13251,7 @@
           ]
         },
         {
-          "number": 179,
+          "number": 188,
           "content": [
             {
               "text": "      loading",
@@ -12892,7 +13276,7 @@
           ]
         },
         {
-          "number": 180,
+          "number": 189,
           "content": [
             {
               "text": "      success",
@@ -12973,7 +13357,7 @@
           ]
         },
         {
-          "number": 181,
+          "number": 190,
           "content": [
             {
               "text": "      error",
@@ -13054,7 +13438,7 @@
           ]
         },
         {
-          "number": 182,
+          "number": 191,
           "content": [
             {
               "text": "    ",
@@ -13067,7 +13451,7 @@
           ]
         },
         {
-          "number": 183,
+          "number": 192,
           "content": [
             {
               "text": "  ) ",
@@ -13100,7 +13484,7 @@
           ]
         },
         {
-          "number": 184,
+          "number": 193,
           "content": [
             {
               "text": "}",
@@ -13109,11 +13493,11 @@
           ]
         },
         {
-          "number": 185,
+          "number": 194,
           "content": []
         },
         {
-          "number": 186,
+          "number": 195,
           "content": [
             {
               "text": "function",
@@ -13170,7 +13554,7 @@
           ]
         },
         {
-          "number": 187,
+          "number": 196,
           "content": [
             {
               "text": "  ",
@@ -13271,7 +13655,7 @@
           ]
         },
         {
-          "number": 188,
+          "number": 197,
           "content": [
             {
               "text": "}",
@@ -13280,11 +13664,11 @@
           ]
         },
         {
-          "number": 189,
+          "number": 198,
           "content": []
         },
         {
-          "number": 190,
+          "number": 199,
           "content": [
             {
               "text": "function",
@@ -13313,7 +13697,7 @@
           ]
         },
         {
-          "number": 191,
+          "number": 200,
           "content": [
             {
               "text": "  promise",
@@ -13346,7 +13730,7 @@
           ]
         },
         {
-          "number": 192,
+          "number": 201,
           "content": [
             {
               "text": "  options",
@@ -13367,7 +13751,7 @@
           ]
         },
         {
-          "number": 193,
+          "number": 202,
           "content": [
             {
               "text": "    loading",
@@ -13392,7 +13776,7 @@
           ]
         },
         {
-          "number": 194,
+          "number": 203,
           "content": [
             {
               "text": "    success",
@@ -13473,7 +13857,7 @@
           ]
         },
         {
-          "number": 195,
+          "number": 204,
           "content": [
             {
               "text": "    error",
@@ -13554,7 +13938,7 @@
           ]
         },
         {
-          "number": 196,
+          "number": 205,
           "content": [
             {
               "text": "  ",
@@ -13567,7 +13951,7 @@
           ]
         },
         {
-          "number": 197,
+          "number": 206,
           "content": [
             {
               "text": "):",
@@ -13604,7 +13988,7 @@
           ]
         },
         {
-          "number": 198,
+          "number": 207,
           "content": [
             {
               "text": "  ",
@@ -13717,11 +14101,11 @@
           ]
         },
         {
-          "number": 199,
+          "number": 208,
           "content": []
         },
         {
-          "number": 200,
+          "number": 209,
           "content": [
             {
               "text": "  ",
@@ -13754,7 +14138,7 @@
           ]
         },
         {
-          "number": 201,
+          "number": 210,
           "content": [
             {
               "text": "    ",
@@ -13791,7 +14175,7 @@
           ]
         },
         {
-          "number": 202,
+          "number": 211,
           "content": [
             {
               "text": "      ",
@@ -13916,7 +14300,7 @@
           ]
         },
         {
-          "number": 203,
+          "number": 212,
           "content": [
             {
               "text": "      ",
@@ -13993,7 +14377,7 @@
           ]
         },
         {
-          "number": 204,
+          "number": 213,
           "content": [
             {
               "text": "      ",
@@ -14014,7 +14398,7 @@
           ]
         },
         {
-          "number": 205,
+          "number": 214,
           "content": [
             {
               "text": "    ",
@@ -14027,7 +14411,7 @@
           ]
         },
         {
-          "number": 206,
+          "number": 215,
           "content": [
             {
               "text": "    ",
@@ -14064,7 +14448,7 @@
           ]
         },
         {
-          "number": 207,
+          "number": 216,
           "content": [
             {
               "text": "      ",
@@ -14189,7 +14573,7 @@
           ]
         },
         {
-          "number": 208,
+          "number": 217,
           "content": [
             {
               "text": "      ",
@@ -14266,7 +14650,7 @@
           ]
         },
         {
-          "number": 209,
+          "number": 218,
           "content": [
             {
               "text": "      ",
@@ -14287,7 +14671,7 @@
           ]
         },
         {
-          "number": 210,
+          "number": 219,
           "content": [
             {
               "text": "    ",
@@ -14300,7 +14684,7 @@
           ]
         },
         {
-          "number": 211,
+          "number": 220,
           "content": [
             {
               "text": "  )",
@@ -14313,7 +14697,7 @@
           ]
         },
         {
-          "number": 212,
+          "number": 221,
           "content": [
             {
               "text": "}",
@@ -14322,11 +14706,11 @@
           ]
         },
         {
-          "number": 213,
+          "number": 222,
           "content": []
         },
         {
-          "number": 214,
+          "number": 223,
           "content": [
             {
               "text": "export",
@@ -14391,7 +14775,7 @@
           ]
         },
         {
-          "number": 215,
+          "number": 224,
           "content": [
             {
               "text": "  ",
@@ -14528,7 +14912,7 @@
           ]
         },
         {
-          "number": 216,
+          "number": 225,
           "content": [
             {
               "text": "  ",
@@ -14541,7 +14925,7 @@
           ]
         },
         {
-          "number": 217,
+          "number": 226,
           "content": [
             {
               "text": "    success",
@@ -14586,7 +14970,7 @@
           ]
         },
         {
-          "number": 218,
+          "number": 227,
           "content": [
             {
               "text": "    error",
@@ -14631,7 +15015,7 @@
           ]
         },
         {
-          "number": 219,
+          "number": 228,
           "content": [
             {
               "text": "    warning",
@@ -14676,7 +15060,7 @@
           ]
         },
         {
-          "number": 220,
+          "number": 229,
           "content": [
             {
               "text": "    info",
@@ -14721,7 +15105,7 @@
           ]
         },
         {
-          "number": 221,
+          "number": 230,
           "content": [
             {
               "text": "    loading",
@@ -14766,7 +15150,7 @@
           ]
         },
         {
-          "number": 222,
+          "number": 231,
           "content": [
             {
               "text": "    dismiss",
@@ -14779,7 +15163,7 @@
           ]
         },
         {
-          "number": 223,
+          "number": 232,
           "content": [
             {
               "text": "    promise",
@@ -14800,7 +15184,7 @@
           ]
         },
         {
-          "number": 224,
+          "number": 233,
           "content": [
             {
               "text": "  ",
@@ -14813,7 +15197,7 @@
           ]
         },
         {
-          "number": 225,
+          "number": 234,
           "content": [
             {
               "text": ")",
@@ -14826,11 +15210,11 @@
           ]
         },
         {
-          "number": 226,
+          "number": 235,
           "content": []
         },
         {
-          "number": 227,
+          "number": 236,
           "content": [
             {
               "text": "export",
@@ -14875,7 +15259,7 @@
           ]
         },
         {
-          "number": 228,
+          "number": 237,
           "content": [
             {
               "text": "  ",
@@ -14920,7 +15304,7 @@
           ]
         },
         {
-          "number": 229,
+          "number": 238,
           "content": [
             {
               "text": "}",
@@ -14929,11 +15313,7 @@
           ]
         },
         {
-          "number": 230,
-          "content": []
-        },
-        {
-          "number": 231,
+          "number": 239,
           "content": []
         }
       ]
@@ -16058,7 +16438,7 @@
       ]
     },
     "registry/ui/toast/use-toast-container.ts": {
-      "raw": "\"use client\";\n\nimport { useCallback, useEffect, useRef } from \"react\";\nimport { useEscapeKey } from \"@/hooks/use-outside-click\";\nimport type { Toast } from \"./toast-store\";\nimport { dismiss, pause, resume } from \"./toast-store\";\n\nexport function useToastContainer(\n  toasts: Toast[],\n  dismissingIds: Set<string>,\n) {\n  const stateRef = useRef({ toasts, dismissingIds });\n  stateRef.current = { toasts, dismissingIds };\n\n  const handleEscape = useCallback(() => {\n    if (document.querySelector(\"dialog[open]\")) return;\n    const current = stateRef.current;\n    const last = current.toasts.findLast((t) => !current.dismissingIds.has(t.id));\n    if (last) dismiss(last.id);\n  }, []);\n\n  useEscapeKey(handleEscape, toasts.length > 0, { priority: 0 });\n\n  useEffect(() => {\n    if (!document.hidden) resume();\n    function onVisibilityChange() {\n      if (document.hidden) pause();\n      else resume();\n    }\n    document.addEventListener(\"visibilitychange\", onVisibilityChange);\n    return () => {\n      document.removeEventListener(\"visibilitychange\", onVisibilityChange);\n      resume();\n    };\n  }, []);\n}\n",
+      "raw": "\"use client\";\n\nimport { useEffect } from \"react\";\nimport { useEscapeKey } from \"@/hooks/use-outside-click\";\nimport type { Toast } from \"./toast-store\";\nimport { dismiss, pause, resume } from \"./toast-store\";\n\nexport function useToastContainer(\n  toasts: Toast[],\n  dismissingIds: Set<string>,\n) {\n  const handleEscape = () => {\n    if (document.querySelector(\"dialog[open]\")) return;\n    const last = toasts.findLast((t) => !dismissingIds.has(t.id));\n    if (last) dismiss(last.id);\n  };\n\n  useEscapeKey(handleEscape, toasts.length > 0, { priority: 0 });\n\n  useEffect(() => {\n    if (!document.hidden) resume();\n    function onVisibilityChange() {\n      if (document.hidden) pause();\n      else resume();\n    }\n    document.addEventListener(\"visibilitychange\", onVisibilityChange);\n    return () => {\n      document.removeEventListener(\"visibilitychange\", onVisibilityChange);\n      resume();\n    };\n  }, []);\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -16101,23 +16481,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": " useCallback",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " useEffect",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " useRef ",
+              "text": " useEffect ",
               "color": "var(--code-variable)"
             },
             {
@@ -16465,130 +16829,8 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "stateRef",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "=",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "useRef",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "(",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "{",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " toasts",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " dismissingIds ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "}",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": ")",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ";",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 13,
-          "content": [
-            {
-              "text": "  ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "stateRef",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": ".",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "current ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "=",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "{",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " toasts",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " dismissingIds ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "};",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 14,
-          "content": []
-        },
-        {
-          "number": 15,
-          "content": [
-            {
-              "text": "  ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "const",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
               "text": "handleEscape",
-              "color": "var(--code-number)"
+              "color": "var(--code-function)"
             },
             {
               "text": " ",
@@ -16600,14 +16842,6 @@
             },
             {
               "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "useCallback",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "(",
               "color": "var(--code-variable)"
             },
             {
@@ -16633,7 +16867,7 @@
           ]
         },
         {
-          "number": 16,
+          "number": 13,
           "content": [
             {
               "text": "    ",
@@ -16690,56 +16924,7 @@
           ]
         },
         {
-          "number": 17,
-          "content": [
-            {
-              "text": "    ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "const",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "current",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "=",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "stateRef",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": ".",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "current",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ";",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 18,
+          "number": 14,
           "content": [
             {
               "text": "    ",
@@ -16768,14 +16953,6 @@
             {
               "text": " ",
               "color": "var(--code-variable)"
-            },
-            {
-              "text": "current",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": ".",
-              "color": "var(--code-operator)"
             },
             {
               "text": "toasts",
@@ -16822,14 +16999,6 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "current",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": ".",
-              "color": "var(--code-operator)"
-            },
-            {
               "text": "dismissingIds",
               "color": "var(--code-number)"
             },
@@ -16864,7 +17033,7 @@
           ]
         },
         {
-          "number": 19,
+          "number": 15,
           "content": [
             {
               "text": "    ",
@@ -16905,32 +17074,24 @@
           ]
         },
         {
-          "number": 20,
+          "number": 16,
           "content": [
             {
               "text": "  ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "},",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " [])",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ";",
+              "text": "};",
               "color": "var(--code-operator)"
             }
           ]
         },
         {
-          "number": 21,
+          "number": 17,
           "content": []
         },
         {
-          "number": 22,
+          "number": 18,
           "content": [
             {
               "text": "  ",
@@ -17027,11 +17188,11 @@
           ]
         },
         {
-          "number": 23,
+          "number": 19,
           "content": []
         },
         {
-          "number": 24,
+          "number": 20,
           "content": [
             {
               "text": "  ",
@@ -17068,7 +17229,7 @@
           ]
         },
         {
-          "number": 25,
+          "number": 21,
           "content": [
             {
               "text": "    ",
@@ -17113,7 +17274,7 @@
           ]
         },
         {
-          "number": 26,
+          "number": 22,
           "content": [
             {
               "text": "    ",
@@ -17146,7 +17307,7 @@
           ]
         },
         {
-          "number": 27,
+          "number": 23,
           "content": [
             {
               "text": "      ",
@@ -17187,7 +17348,7 @@
           ]
         },
         {
-          "number": 28,
+          "number": 24,
           "content": [
             {
               "text": "      ",
@@ -17216,7 +17377,7 @@
           ]
         },
         {
-          "number": 29,
+          "number": 25,
           "content": [
             {
               "text": "    ",
@@ -17229,7 +17390,7 @@
           ]
         },
         {
-          "number": 30,
+          "number": 26,
           "content": [
             {
               "text": "    ",
@@ -17278,7 +17439,7 @@
           ]
         },
         {
-          "number": 31,
+          "number": 27,
           "content": [
             {
               "text": "    ",
@@ -17315,7 +17476,7 @@
           ]
         },
         {
-          "number": 32,
+          "number": 28,
           "content": [
             {
               "text": "      ",
@@ -17364,7 +17525,7 @@
           ]
         },
         {
-          "number": 33,
+          "number": 29,
           "content": [
             {
               "text": "      ",
@@ -17385,7 +17546,7 @@
           ]
         },
         {
-          "number": 34,
+          "number": 30,
           "content": [
             {
               "text": "    ",
@@ -17398,7 +17559,7 @@
           ]
         },
         {
-          "number": 35,
+          "number": 31,
           "content": [
             {
               "text": "  ",
@@ -17419,7 +17580,7 @@
           ]
         },
         {
-          "number": 36,
+          "number": 32,
           "content": [
             {
               "text": "}",
@@ -17428,16 +17589,41 @@
           ]
         },
         {
-          "number": 37,
+          "number": 33,
           "content": []
         }
       ]
     }
   },
-  "mergedSource": "export { toast } from \"./toast-store\";\nexport type { Toast, ToastPosition, ToastOptions } from \"./toast-store\";\nexport type { ToastVariant } from \"./toast-variants\";\n\nexport { Toaster } from \"./toast-container\";\nexport type { ToasterProps } from \"./toast-container\";\n\n\n\"use client\";\n\nimport { cn } from \"@/lib/utils\";\nimport { Spinner } from \"../spinner/spinner\";\nimport type { Toast as ToastType, ToastPosition } from \"./toast-store\";\nimport { toastVariants, iconColors, icons, slideAnimations, positionToSide } from \"./toast-variants\";\nimport { useToastDismiss } from \"./use-toast-dismiss\";\n\ninterface ToastProps extends ToastType {\n  position: ToastPosition;\n  onDismiss: (id: string) => void;\n  onRemove: (id: string) => void;\n  dismissing?: boolean;\n}\n\nexport function Toast({\n  id,\n  variant = \"info\",\n  title,\n  message,\n  action,\n  position,\n  onDismiss,\n  onRemove,\n  dismissing,\n}: ToastProps) {\n  const { onAnimationEnd } = useToastDismiss(dismissing ?? false, id, onRemove);\n  const animation = slideAnimations[positionToSide[position]][dismissing ? \"out\" : \"in\"];\n  const isError = variant === \"error\";\n\n  return (\n    <div\n      role={isError ? \"alert\" : \"status\"}\n      aria-live={isError ? \"assertive\" : \"polite\"}\n      aria-atomic=\"true\"\n      className={cn(\"pointer-events-auto\", toastVariants({ variant }), animation)}\n      onAnimationEnd={onAnimationEnd}\n    >\n      <div className=\"flex items-center justify-between px-3 py-1.5 border-b border-border bg-secondary/40\">\n        <div className=\"flex items-center gap-2\">\n          <span className={cn(\"font-bold\", iconColors[variant])} aria-hidden=\"true\">\n            {variant === \"loading\" ? <Spinner variant=\"braille\" size=\"sm\" gap=\"none\" aria-hidden=\"true\" /> : icons[variant]}\n          </span>\n          <span className=\"sr-only\">{variant}:</span>\n          <span className=\"text-xs font-bold uppercase tracking-tight text-foreground\">\n            {title}\n          </span>\n        </div>\n        <button\n          type=\"button\"\n          onClick={() => onDismiss(id)}\n          className=\"p-1 min-h-6 min-w-6 flex items-center justify-center text-xs leading-none text-muted hover:text-foreground\"\n          aria-label={`Dismiss: ${title}`}\n        >\n          ✕\n        </button>\n      </div>\n      {(message || action) && (\n        <div className=\"p-3 text-sm flex items-center justify-between gap-2\">\n          {message && <span className=\"text-foreground/90\">{message}</span>}\n          {action && <span className=\"shrink-0\">{action}</span>}\n        </div>\n      )}\n    </div>\n  );\n}\n\n\n\"use client\";\n\nimport type { FocusEvent } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useToastStore, dismiss, remove, pause, resume, type ToastPosition } from \"./toast-store\";\nimport { positionClasses } from \"./toast-variants\";\nimport { Toast } from \"./toast\";\nimport { useToastContainer } from \"./use-toast-container\";\n\nfunction handleBlur(e: FocusEvent<HTMLDivElement>) {\n  if (!(e.relatedTarget instanceof Node) || !e.currentTarget.contains(e.relatedTarget)) resume();\n}\n\nexport interface ToasterProps {\n  position?: ToastPosition;\n}\n\nexport function Toaster({ position = \"bottom-right\" }: ToasterProps) {\n  const { toasts, dismissingIds } = useToastStore();\n  useToastContainer(toasts, dismissingIds);\n  const hasToasts = toasts.length > 0;\n\n  return (\n    <div\n      role=\"region\"\n      aria-label=\"Notifications\"\n      onMouseEnter={hasToasts ? pause : undefined}\n      onMouseLeave={hasToasts ? resume : undefined}\n      onFocus={hasToasts ? pause : undefined}\n      onBlur={hasToasts ? handleBlur : undefined}\n      className={cn(\n        \"fixed z-50 flex gap-2 pointer-events-none\",\n        position.startsWith(\"top\") ? \"flex-col\" : \"flex-col-reverse\",\n        positionClasses[position],\n      )}\n    >\n      {toasts.map((t) => (\n        <Toast\n          key={t.id}\n          {...t}\n          position={position}\n          onDismiss={dismiss}\n          onRemove={remove}\n          dismissing={dismissingIds.has(t.id)}\n        />\n      ))}\n    </div>\n  );\n}\n\n\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport type { ToastPosition } from \"./toast-store\";\n\nexport const toastVariants = cva(\"w-full border border-border bg-background shadow-2xl\", {\n  variants: {\n    variant: {\n      success: \"border-success-border\",\n      error: \"border-error-border\",\n      warning: \"border-warning-border\",\n      info: \"border-info-border\",\n      loading: \"border-info-border\",\n    },\n  },\n  defaultVariants: {\n    variant: \"info\",\n  },\n});\n\n/** @see @diffgazer/core/schemas/ui ToastVariant (subset without \"loading\", used for app-level toast state) */\nexport type ToastVariant = NonNullable<VariantProps<typeof toastVariants>[\"variant\"]>;\n\nexport const iconColors: Record<ToastVariant, string> = {\n  success: \"text-success-fg\",\n  error: \"text-error-fg\",\n  warning: \"text-warning-fg\",\n  info: \"text-info-fg\",\n  loading: \"text-info-fg\",\n};\n\nexport const icons: Record<Exclude<ToastVariant, \"loading\">, string> = {\n  success: \"✓\",\n  error: \"✕\",\n  warning: \"!\",\n  info: \"i\",\n};\n\nexport const slideAnimations = {\n  left:   { in: \"motion-safe:animate-slide-in-left\",   out: \"motion-safe:animate-slide-out-left\"   },\n  right:  { in: \"motion-safe:animate-slide-in-right\",  out: \"motion-safe:animate-slide-out-right\"  },\n  top:    { in: \"motion-safe:animate-slide-in-top\",    out: \"motion-safe:animate-slide-out-top\"    },\n  bottom: { in: \"motion-safe:animate-slide-in-bottom\", out: \"motion-safe:animate-slide-out-bottom\" },\n} as const;\n\nexport const positionToSide: Record<ToastPosition, keyof typeof slideAnimations> = {\n  \"top-left\": \"left\",    \"top-center\": \"top\",      \"top-right\": \"right\",\n  \"bottom-left\": \"left\", \"bottom-center\": \"bottom\", \"bottom-right\": \"right\",\n};\n\nexport const positionClasses: Record<ToastPosition, string> = {\n  \"top-left\": \"top-4 left-4 right-4 sm:right-auto sm:left-8 sm:w-80\",\n  \"top-center\": \"top-4 left-4 right-4 sm:inset-x-0 sm:mx-auto sm:w-80\",\n  \"top-right\": \"top-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-80\",\n  \"bottom-left\": \"bottom-4 left-4 right-4 sm:right-auto sm:left-8 sm:w-80\",\n  \"bottom-center\": \"bottom-4 left-4 right-4 sm:inset-x-0 sm:mx-auto sm:w-80\",\n  \"bottom-right\": \"bottom-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-80\",\n};\n\n\n\"use client\";\n\nimport { useSyncExternalStore, type ReactNode } from \"react\";\nimport type { ToastVariant } from \"./toast-variants\";\n\nexport type ToastPosition =\n  | \"top-left\"\n  | \"top-center\"\n  | \"top-right\"\n  | \"bottom-left\"\n  | \"bottom-center\"\n  | \"bottom-right\";\n\nexport interface Toast {\n  id: string;\n  variant: ToastVariant;\n  title: string;\n  message?: string;\n  duration?: number;\n  action?: ReactNode;\n}\n\nexport interface ToastOptions {\n  title: string;\n  variant?: ToastVariant;\n  message?: string;\n  /** Auto-dismiss delay in ms. When `action` is set and duration is omitted, the toast persists indefinitely (WCAG 2.2.1 — enough time). */\n  duration?: number;\n  action?: ReactNode;\n  id?: string;\n}\n\nconst DEFAULT_DURATION = 5000;\nconst MAX_TOASTS = 5;\n\ninterface StoreState {\n  toasts: Toast[];\n  dismissingIds: Set<string>;\n}\n\nconst INITIAL_STATE: StoreState = { toasts: [], dismissingIds: new Set() };\n\ninterface TimerEntry {\n  timeout: ReturnType<typeof setTimeout> | undefined;\n  startedAt: number;\n  remaining: number;\n}\n\nlet state: StoreState = INITIAL_STATE;\nconst listeners = new Set<() => void>();\nconst timers = new Map<string, TimerEntry>();\nlet paused = false;\n\nfunction emit() {\n  for (const listener of listeners) listener();\n}\n\nfunction clearTimer(id: string) {\n  const entry = timers.get(id);\n  if (entry) {\n    clearTimeout(entry.timeout);\n    timers.delete(id);\n  }\n}\n\nfunction subscribe(listener: () => void) {\n  listeners.add(listener);\n  return () => listeners.delete(listener);\n}\n\nfunction getSnapshot(): StoreState {\n  return state;\n}\n\nfunction getServerSnapshot(): StoreState {\n  return INITIAL_STATE;\n}\n\nfunction scheduleAutoDismiss(id: string, variant: ToastVariant, duration?: number) {\n  if ((variant === \"error\" || variant === \"loading\") && duration === undefined) return;\n  const resolved = duration ?? DEFAULT_DURATION;\n  if (!Number.isFinite(resolved) || resolved <= 0) return;\n  const entry: TimerEntry = {\n    timeout: paused ? undefined : setTimeout(() => dismiss(id), resolved),\n    startedAt: Date.now(),\n    remaining: resolved,\n  };\n  timers.set(id, entry);\n}\n\nfunction resolveNextToasts(current: Toast[], incoming: Toast): Toast[] {\n  const existingIdx = current.findIndex((t) => t.id === incoming.id);\n  if (existingIdx >= 0) return current.map((t) => (t.id === incoming.id ? incoming : t));\n\n  const all = [...current, incoming];\n  const evicted = all.slice(0, Math.max(0, all.length - MAX_TOASTS));\n  for (const t of evicted) clearTimer(t.id);\n  return all.slice(-MAX_TOASTS);\n}\n\nfunction create(options: ToastOptions): string {\n  const id = options.id ?? crypto.randomUUID();\n  const variant = options.variant ?? \"info\";\n  const newToast: Toast = {\n    id, variant,\n    title: options.title,\n    message: options.message,\n    duration: options.duration,\n    action: options.action,\n  };\n\n  clearTimer(id);\n  const nextDismissing = new Set(state.dismissingIds);\n  nextDismissing.delete(id);\n  if (!options.action || options.duration !== undefined) {\n    scheduleAutoDismiss(id, variant, options.duration);\n  }\n\n  const nextToasts = resolveNextToasts(state.toasts, newToast);\n  const nextIds = new Set(nextToasts.map(t => t.id));\n  for (const dismissId of nextDismissing) {\n    if (!nextIds.has(dismissId)) nextDismissing.delete(dismissId);\n  }\n\n  state = { toasts: nextToasts, dismissingIds: nextDismissing };\n  emit();\n  return id;\n}\n\nexport function dismiss(id?: string) {\n  if (id) {\n    state = {\n      toasts: state.toasts,\n      dismissingIds: new Set(state.dismissingIds).add(id),\n    };\n  } else {\n    state = { toasts: state.toasts, dismissingIds: new Set(state.toasts.map(t => t.id)) };\n  }\n  emit();\n}\n\nexport function remove(id: string) {\n  clearTimer(id);\n  const nextDismissing = new Set(state.dismissingIds);\n  nextDismissing.delete(id);\n  state = {\n    toasts: state.toasts.filter((t) => t.id !== id),\n    dismissingIds: nextDismissing,\n  };\n  emit();\n}\n\nexport function pause() {\n  if (paused) return;\n  paused = true;\n  for (const [, entry] of timers) {\n    clearTimeout(entry.timeout);\n    entry.remaining = Math.max(0, entry.remaining - (Date.now() - entry.startedAt));\n  }\n}\n\nexport function resume() {\n  if (!paused) return;\n  paused = false;\n  for (const [id, entry] of timers) {\n    entry.startedAt = Date.now();\n    entry.timeout = setTimeout(() => dismiss(id), entry.remaining);\n  }\n}\n\ntype VariantMethod = (title: string, options?: Omit<ToastOptions, \"variant\" | \"title\">) => string;\n\ninterface ToastFn extends Record<ToastVariant, VariantMethod> {\n  (title: string, options?: Omit<ToastOptions, \"title\">): string;\n  dismiss: (id?: string) => void;\n  promise: <T>(\n    promise: Promise<T>,\n    options: {\n      loading: string;\n      success: string | ((data: T) => string);\n      error: string | ((err: unknown) => string);\n    },\n  ) => Promise<T>;\n}\n\nfunction variantMethod(variant: ToastVariant): VariantMethod {\n  return (title, options) => create({ ...options, title, variant });\n}\n\nfunction promiseToast<T>(\n  promise: Promise<T>,\n  options: {\n    loading: string;\n    success: string | ((data: T) => string);\n    error: string | ((err: unknown) => string);\n  },\n): Promise<T> {\n  const id = create({ title: options.loading, variant: \"loading\" });\n\n  return promise.then(\n    (data) => {\n      const title = typeof options.success === \"function\" ? options.success(data) : options.success;\n      create({ id, title, variant: \"success\" });\n      return data;\n    },\n    (err) => {\n      const title = typeof options.error === \"function\" ? options.error(err) : options.error;\n      create({ id, title, variant: \"error\" });\n      throw err;\n    },\n  );\n}\n\nexport const toast: ToastFn = Object.assign(\n  (title: string, options?: Omit<ToastOptions, \"title\">) => create({ ...options, title }),\n  {\n    success: variantMethod(\"success\"),\n    error: variantMethod(\"error\"),\n    warning: variantMethod(\"warning\"),\n    info: variantMethod(\"info\"),\n    loading: variantMethod(\"loading\"),\n    dismiss,\n    promise: promiseToast,\n  },\n);\n\nexport function useToastStore(): StoreState {\n  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);\n}\n\n\n\n\"use client\";\n\nimport { useCallback, useRef, useEffect } from \"react\";\n\n// Fallback timeout for reduced-motion: onAnimationEnd won't fire when\n// motion-safe:animate-* classes are suppressed by prefers-reduced-motion.\nconst DISMISS_FALLBACK_MS = 200;\n\nexport function useToastDismiss(\n  dismissing: boolean,\n  id: string,\n  onRemove: (id: string) => void,\n) {\n  const removedRef = useRef(false);\n  const remove = useCallback((removeId: string) => onRemove(removeId), [onRemove]);\n\n  useEffect(() => {\n    if (!dismissing) {\n      removedRef.current = false;\n      return;\n    }\n    const timer = setTimeout(() => {\n      if (!removedRef.current) {\n        removedRef.current = true;\n        remove(id);\n      }\n    }, DISMISS_FALLBACK_MS);\n    return () => clearTimeout(timer);\n  }, [dismissing, id, remove]);\n\n  return {\n    onAnimationEnd: () => {\n      if (dismissing && !removedRef.current) {\n        removedRef.current = true;\n        remove(id);\n      }\n    },\n  };\n}\n\n\n\"use client\";\n\nimport { useCallback, useEffect, useRef } from \"react\";\nimport { useEscapeKey } from \"@/hooks/use-outside-click\";\nimport type { Toast } from \"./toast-store\";\nimport { dismiss, pause, resume } from \"./toast-store\";\n\nexport function useToastContainer(\n  toasts: Toast[],\n  dismissingIds: Set<string>,\n) {\n  const stateRef = useRef({ toasts, dismissingIds });\n  stateRef.current = { toasts, dismissingIds };\n\n  const handleEscape = useCallback(() => {\n    if (document.querySelector(\"dialog[open]\")) return;\n    const current = stateRef.current;\n    const last = current.toasts.findLast((t) => !current.dismissingIds.has(t.id));\n    if (last) dismiss(last.id);\n  }, []);\n\n  useEscapeKey(handleEscape, toasts.length > 0, { priority: 0 });\n\n  useEffect(() => {\n    if (!document.hidden) resume();\n    function onVisibilityChange() {\n      if (document.hidden) pause();\n      else resume();\n    }\n    document.addEventListener(\"visibilitychange\", onVisibilityChange);\n    return () => {\n      document.removeEventListener(\"visibilitychange\", onVisibilityChange);\n      resume();\n    };\n  }, []);\n}\n",
+  "mergedSource": "\"use client\";\n\nexport { toast } from \"./toast-store\";\nexport type { Toast, ToastPosition, ToastOptions } from \"./toast-store\";\nexport type { ToastVariant } from \"./toast-variants\";\n\nexport { Toaster } from \"./toast-container\";\nexport type { ToasterProps } from \"./toast-container\";\n\n\n\"use client\";\n\nimport { cn } from \"@/lib/utils\";\nimport { Spinner } from \"../spinner/spinner\";\nimport type { Toast as ToastType, ToastPosition } from \"./toast-store\";\nimport { toastVariants, iconColors, icons, slideAnimations, positionToSide } from \"./toast-variants\";\nimport { useToastDismiss } from \"./use-toast-dismiss\";\n\ninterface ToastProps extends ToastType {\n  position: ToastPosition;\n  onDismiss: (id: string) => void;\n  onRemove: (id: string) => void;\n  dismissing?: boolean;\n}\n\nexport function Toast({\n  id,\n  variant = \"info\",\n  title,\n  message,\n  action,\n  position,\n  onDismiss,\n  onRemove,\n  dismissing,\n}: ToastProps) {\n  const { onAnimationEnd } = useToastDismiss(dismissing ?? false, id, onRemove);\n  const animation = slideAnimations[positionToSide[position]][dismissing ? \"out\" : \"in\"];\n  const isError = variant === \"error\";\n\n  return (\n    <div\n      role={isError ? \"alert\" : \"status\"}\n      aria-live={isError ? \"assertive\" : \"polite\"}\n      aria-atomic=\"true\"\n      className={cn(\"pointer-events-auto\", toastVariants({ variant }), animation)}\n      onAnimationEnd={onAnimationEnd}\n    >\n      <div className=\"flex items-center justify-between px-3 py-1.5 border-b border-border bg-secondary/40\">\n        <div className=\"flex items-center gap-2\">\n          <span className={cn(\"font-bold\", iconColors[variant])} aria-hidden=\"true\">\n            {variant === \"loading\" ? <Spinner variant=\"braille\" size=\"sm\" gap=\"none\" aria-hidden=\"true\" /> : icons[variant]}\n          </span>\n          <span className=\"sr-only\">{variant}:</span>\n          <span className=\"text-xs font-bold uppercase tracking-tight text-foreground\">\n            {title}\n          </span>\n        </div>\n        <button\n          type=\"button\"\n          onClick={() => onDismiss(id)}\n          className=\"p-1 min-h-6 min-w-6 flex items-center justify-center text-xs leading-none text-muted hover:text-foreground\"\n          aria-label={`Dismiss: ${title}`}\n        >\n          ✕\n        </button>\n      </div>\n      {(message || action) && (\n        <div className=\"p-3 text-sm flex items-center justify-between gap-2\">\n          {message && <span className=\"text-foreground/90\">{message}</span>}\n          {action && <span className=\"shrink-0\">{action}</span>}\n        </div>\n      )}\n    </div>\n  );\n}\n\n\n\"use client\";\n\nimport type { FocusEvent } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useToastStore, dismiss, remove, pause, resume, type ToastPosition } from \"./toast-store\";\nimport { positionClasses } from \"./toast-variants\";\nimport { Toast } from \"./toast\";\nimport { useToastContainer } from \"./use-toast-container\";\n\nfunction handleBlur(e: FocusEvent<HTMLDivElement>) {\n  if (!(e.relatedTarget instanceof Node) || !e.currentTarget.contains(e.relatedTarget)) resume();\n}\n\nexport interface ToasterProps {\n  position?: ToastPosition;\n}\n\nexport function Toaster({ position = \"bottom-right\" }: ToasterProps) {\n  const { toasts, dismissingIds } = useToastStore();\n  useToastContainer(toasts, dismissingIds);\n  const hasToasts = toasts.length > 0;\n\n  return (\n    <div\n      role=\"region\"\n      aria-label=\"Notifications\"\n      onMouseEnter={hasToasts ? pause : undefined}\n      onMouseLeave={hasToasts ? resume : undefined}\n      onFocus={hasToasts ? pause : undefined}\n      onBlur={hasToasts ? handleBlur : undefined}\n      className={cn(\n        \"fixed z-50 flex gap-2 pointer-events-none\",\n        position.startsWith(\"top\") ? \"flex-col\" : \"flex-col-reverse\",\n        positionClasses[position],\n      )}\n    >\n      {toasts.map((t) => (\n        <Toast\n          key={t.id}\n          {...t}\n          position={position}\n          onDismiss={dismiss}\n          onRemove={remove}\n          dismissing={dismissingIds.has(t.id)}\n        />\n      ))}\n    </div>\n  );\n}\n\n\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport type { ToastPosition } from \"./toast-store\";\n\nexport const toastVariants = cva(\"w-full border border-border bg-background shadow-2xl\", {\n  variants: {\n    variant: {\n      success: \"border-success-border\",\n      error: \"border-error-border\",\n      warning: \"border-warning-border\",\n      info: \"border-info-border\",\n      loading: \"border-info-border\",\n    },\n  },\n  defaultVariants: {\n    variant: \"info\",\n  },\n});\n\n/** @see @diffgazer/core/schemas/ui ToastVariant (subset without \"loading\", used for app-level toast state) */\nexport type ToastVariant = NonNullable<VariantProps<typeof toastVariants>[\"variant\"]>;\n\nexport const iconColors: Record<ToastVariant, string> = {\n  success: \"text-success-fg\",\n  error: \"text-error-fg\",\n  warning: \"text-warning-fg\",\n  info: \"text-info-fg\",\n  loading: \"text-info-fg\",\n};\n\nexport const icons: Record<Exclude<ToastVariant, \"loading\">, string> = {\n  success: \"✓\",\n  error: \"✕\",\n  warning: \"!\",\n  info: \"i\",\n};\n\nexport const slideAnimations = {\n  left:   { in: \"motion-safe:animate-slide-in-left\",   out: \"motion-safe:animate-slide-out-left\"   },\n  right:  { in: \"motion-safe:animate-slide-in-right\",  out: \"motion-safe:animate-slide-out-right\"  },\n  top:    { in: \"motion-safe:animate-slide-in-top\",    out: \"motion-safe:animate-slide-out-top\"    },\n  bottom: { in: \"motion-safe:animate-slide-in-bottom\", out: \"motion-safe:animate-slide-out-bottom\" },\n} as const;\n\nexport const positionToSide: Record<ToastPosition, keyof typeof slideAnimations> = {\n  \"top-left\": \"left\",    \"top-center\": \"top\",      \"top-right\": \"right\",\n  \"bottom-left\": \"left\", \"bottom-center\": \"bottom\", \"bottom-right\": \"right\",\n};\n\nexport const positionClasses: Record<ToastPosition, string> = {\n  \"top-left\": \"top-4 left-4 right-4 sm:right-auto sm:left-8 sm:w-80\",\n  \"top-center\": \"top-4 left-4 right-4 sm:inset-x-0 sm:mx-auto sm:w-80\",\n  \"top-right\": \"top-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-80\",\n  \"bottom-left\": \"bottom-4 left-4 right-4 sm:right-auto sm:left-8 sm:w-80\",\n  \"bottom-center\": \"bottom-4 left-4 right-4 sm:inset-x-0 sm:mx-auto sm:w-80\",\n  \"bottom-right\": \"bottom-4 left-4 right-4 sm:left-auto sm:right-8 sm:w-80\",\n};\n\n\n\"use client\";\n\nimport { useSyncExternalStore, type ReactNode } from \"react\";\nimport type { ToastVariant } from \"./toast-variants\";\n\nexport type ToastPosition =\n  | \"top-left\"\n  | \"top-center\"\n  | \"top-right\"\n  | \"bottom-left\"\n  | \"bottom-center\"\n  | \"bottom-right\";\n\nexport interface Toast {\n  id: string;\n  variant: ToastVariant;\n  title: string;\n  message?: string;\n  duration?: number;\n  action?: ReactNode;\n}\n\nexport interface ToastOptions {\n  title: string;\n  variant?: ToastVariant;\n  message?: string;\n  /** Auto-dismiss delay in ms. When `action` is set and duration is omitted, the toast persists indefinitely (WCAG 2.2.1 — enough time). */\n  duration?: number;\n  action?: ReactNode;\n  id?: string;\n}\n\nconst DEFAULT_DURATION = 5000;\nconst MAX_TOASTS = 5;\n\ninterface StoreState {\n  toasts: Toast[];\n  dismissingIds: Set<string>;\n}\n\nconst INITIAL_STATE: StoreState = { toasts: [], dismissingIds: new Set() };\n\ninterface TimerEntry {\n  timeout: ReturnType<typeof setTimeout> | undefined;\n  startedAt: number;\n  remaining: number;\n}\n\nlet state: StoreState = INITIAL_STATE;\nconst listeners = new Set<() => void>();\nconst timers = new Map<string, TimerEntry>();\nlet paused = false;\nlet fallbackToastId = 0;\n\nfunction emit() {\n  for (const listener of listeners) listener();\n}\n\nfunction clearTimer(id: string) {\n  const entry = timers.get(id);\n  if (entry) {\n    clearTimeout(entry.timeout);\n    timers.delete(id);\n  }\n}\n\nfunction subscribe(listener: () => void) {\n  listeners.add(listener);\n  return () => listeners.delete(listener);\n}\n\nfunction getSnapshot(): StoreState {\n  return state;\n}\n\nfunction getServerSnapshot(): StoreState {\n  return INITIAL_STATE;\n}\n\nfunction scheduleAutoDismiss(id: string, variant: ToastVariant, duration?: number) {\n  if ((variant === \"error\" || variant === \"loading\") && duration === undefined) return;\n  const resolved = duration ?? DEFAULT_DURATION;\n  if (!Number.isFinite(resolved) || resolved <= 0) return;\n  const entry: TimerEntry = {\n    timeout: paused ? undefined : setTimeout(() => dismiss(id), resolved),\n    startedAt: Date.now(),\n    remaining: resolved,\n  };\n  timers.set(id, entry);\n}\n\nfunction resolveNextToasts(current: Toast[], incoming: Toast): Toast[] {\n  const existingIdx = current.findIndex((t) => t.id === incoming.id);\n  if (existingIdx >= 0) return current.map((t) => (t.id === incoming.id ? incoming : t));\n\n  const all = [...current, incoming];\n  const evicted = all.slice(0, Math.max(0, all.length - MAX_TOASTS));\n  for (const t of evicted) clearTimer(t.id);\n  return all.slice(-MAX_TOASTS);\n}\n\nfunction createToastId(): string {\n  const randomUUID = globalThis.crypto?.randomUUID;\n  if (typeof randomUUID === \"function\") return randomUUID.call(globalThis.crypto);\n\n  fallbackToastId += 1;\n  return `toast-${Date.now().toString(36)}-${fallbackToastId.toString(36)}`;\n}\n\nfunction create(options: ToastOptions): string {\n  const id = options.id ?? createToastId();\n  const variant = options.variant ?? \"info\";\n  const newToast: Toast = {\n    id, variant,\n    title: options.title,\n    message: options.message,\n    duration: options.duration,\n    action: options.action,\n  };\n\n  clearTimer(id);\n  const nextDismissing = new Set(state.dismissingIds);\n  nextDismissing.delete(id);\n  if (!options.action || options.duration !== undefined) {\n    scheduleAutoDismiss(id, variant, options.duration);\n  }\n\n  const nextToasts = resolveNextToasts(state.toasts, newToast);\n  const nextIds = new Set(nextToasts.map(t => t.id));\n  for (const dismissId of nextDismissing) {\n    if (!nextIds.has(dismissId)) nextDismissing.delete(dismissId);\n  }\n\n  state = { toasts: nextToasts, dismissingIds: nextDismissing };\n  emit();\n  return id;\n}\n\nexport function dismiss(id?: string) {\n  if (id) {\n    state = {\n      toasts: state.toasts,\n      dismissingIds: new Set(state.dismissingIds).add(id),\n    };\n  } else {\n    state = { toasts: state.toasts, dismissingIds: new Set(state.toasts.map(t => t.id)) };\n  }\n  emit();\n}\n\nexport function remove(id: string) {\n  clearTimer(id);\n  const nextDismissing = new Set(state.dismissingIds);\n  nextDismissing.delete(id);\n  state = {\n    toasts: state.toasts.filter((t) => t.id !== id),\n    dismissingIds: nextDismissing,\n  };\n  emit();\n}\n\nexport function pause() {\n  if (paused) return;\n  paused = true;\n  for (const [, entry] of timers) {\n    clearTimeout(entry.timeout);\n    entry.remaining = Math.max(0, entry.remaining - (Date.now() - entry.startedAt));\n  }\n}\n\nexport function resume() {\n  if (!paused) return;\n  paused = false;\n  for (const [id, entry] of timers) {\n    entry.startedAt = Date.now();\n    entry.timeout = setTimeout(() => dismiss(id), entry.remaining);\n  }\n}\n\ntype VariantMethod = (title: string, options?: Omit<ToastOptions, \"variant\" | \"title\">) => string;\n\ninterface ToastFn extends Record<ToastVariant, VariantMethod> {\n  (title: string, options?: Omit<ToastOptions, \"title\">): string;\n  dismiss: (id?: string) => void;\n  promise: <T>(\n    promise: Promise<T>,\n    options: {\n      loading: string;\n      success: string | ((data: T) => string);\n      error: string | ((err: unknown) => string);\n    },\n  ) => Promise<T>;\n}\n\nfunction variantMethod(variant: ToastVariant): VariantMethod {\n  return (title, options) => create({ ...options, title, variant });\n}\n\nfunction promiseToast<T>(\n  promise: Promise<T>,\n  options: {\n    loading: string;\n    success: string | ((data: T) => string);\n    error: string | ((err: unknown) => string);\n  },\n): Promise<T> {\n  const id = create({ title: options.loading, variant: \"loading\" });\n\n  return promise.then(\n    (data) => {\n      const title = typeof options.success === \"function\" ? options.success(data) : options.success;\n      create({ id, title, variant: \"success\" });\n      return data;\n    },\n    (err) => {\n      const title = typeof options.error === \"function\" ? options.error(err) : options.error;\n      create({ id, title, variant: \"error\" });\n      throw err;\n    },\n  );\n}\n\nexport const toast: ToastFn = Object.assign(\n  (title: string, options?: Omit<ToastOptions, \"title\">) => create({ ...options, title }),\n  {\n    success: variantMethod(\"success\"),\n    error: variantMethod(\"error\"),\n    warning: variantMethod(\"warning\"),\n    info: variantMethod(\"info\"),\n    loading: variantMethod(\"loading\"),\n    dismiss,\n    promise: promiseToast,\n  },\n);\n\nexport function useToastStore(): StoreState {\n  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);\n}\n\n\n\"use client\";\n\nimport { useCallback, useRef, useEffect } from \"react\";\n\n// Fallback timeout for reduced-motion: onAnimationEnd won't fire when\n// motion-safe:animate-* classes are suppressed by prefers-reduced-motion.\nconst DISMISS_FALLBACK_MS = 200;\n\nexport function useToastDismiss(\n  dismissing: boolean,\n  id: string,\n  onRemove: (id: string) => void,\n) {\n  const removedRef = useRef(false);\n  const remove = useCallback((removeId: string) => onRemove(removeId), [onRemove]);\n\n  useEffect(() => {\n    if (!dismissing) {\n      removedRef.current = false;\n      return;\n    }\n    const timer = setTimeout(() => {\n      if (!removedRef.current) {\n        removedRef.current = true;\n        remove(id);\n      }\n    }, DISMISS_FALLBACK_MS);\n    return () => clearTimeout(timer);\n  }, [dismissing, id, remove]);\n\n  return {\n    onAnimationEnd: () => {\n      if (dismissing && !removedRef.current) {\n        removedRef.current = true;\n        remove(id);\n      }\n    },\n  };\n}\n\n\n\"use client\";\n\nimport { useEffect } from \"react\";\nimport { useEscapeKey } from \"@/hooks/use-outside-click\";\nimport type { Toast } from \"./toast-store\";\nimport { dismiss, pause, resume } from \"./toast-store\";\n\nexport function useToastContainer(\n  toasts: Toast[],\n  dismissingIds: Set<string>,\n) {\n  const handleEscape = () => {\n    if (document.querySelector(\"dialog[open]\")) return;\n    const last = toasts.findLast((t) => !dismissingIds.has(t.id));\n    if (last) dismiss(last.id);\n  };\n\n  useEscapeKey(handleEscape, toasts.length > 0, { priority: 0 });\n\n  useEffect(() => {\n    if (!document.hidden) resume();\n    function onVisibilityChange() {\n      if (document.hidden) pause();\n      else resume();\n    }\n    document.addEventListener(\"visibilitychange\", onVisibilityChange);\n    return () => {\n      document.removeEventListener(\"visibilitychange\", onVisibilityChange);\n      resume();\n    };\n  }, []);\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
+      "content": [
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "use client",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 2,
+      "content": []
+    },
+    {
+      "number": 3,
       "content": [
         {
           "text": "export",
@@ -17490,7 +17676,7 @@
       ]
     },
     {
-      "number": 2,
+      "number": 4,
       "content": [
         {
           "text": "export",
@@ -17567,7 +17753,7 @@
       ]
     },
     {
-      "number": 3,
+      "number": 5,
       "content": [
         {
           "text": "export",
@@ -17628,11 +17814,11 @@
       ]
     },
     {
-      "number": 4,
+      "number": 6,
       "content": []
     },
     {
-      "number": 5,
+      "number": 7,
       "content": [
         {
           "text": "export",
@@ -17685,7 +17871,7 @@
       ]
     },
     {
-      "number": 6,
+      "number": 8,
       "content": [
         {
           "text": "export",
@@ -17746,15 +17932,15 @@
       ]
     },
     {
-      "number": 7,
-      "content": []
-    },
-    {
-      "number": 8,
-      "content": []
-    },
-    {
       "number": 9,
+      "content": []
+    },
+    {
+      "number": 10,
+      "content": []
+    },
+    {
+      "number": 11,
       "content": [
         {
           "text": "\"",
@@ -17775,11 +17961,11 @@
       ]
     },
     {
-      "number": 10,
+      "number": 12,
       "content": []
     },
     {
-      "number": 11,
+      "number": 13,
       "content": [
         {
           "text": "import",
@@ -17832,7 +18018,7 @@
       ]
     },
     {
-      "number": 12,
+      "number": 14,
       "content": [
         {
           "text": "import",
@@ -17885,7 +18071,7 @@
       ]
     },
     {
-      "number": 13,
+      "number": 15,
       "content": [
         {
           "text": "import",
@@ -17962,7 +18148,7 @@
       ]
     },
     {
-      "number": 14,
+      "number": 16,
       "content": [
         {
           "text": "import",
@@ -18047,7 +18233,7 @@
       ]
     },
     {
-      "number": 15,
+      "number": 17,
       "content": [
         {
           "text": "import",
@@ -18100,11 +18286,11 @@
       ]
     },
     {
-      "number": 16,
+      "number": 18,
       "content": []
     },
     {
-      "number": 17,
+      "number": 19,
       "content": [
         {
           "text": "interface",
@@ -18145,7 +18331,7 @@
       ]
     },
     {
-      "number": 18,
+      "number": 20,
       "content": [
         {
           "text": "  position",
@@ -18170,7 +18356,7 @@
       ]
     },
     {
-      "number": 19,
+      "number": 21,
       "content": [
         {
           "text": "  ",
@@ -18235,7 +18421,7 @@
       ]
     },
     {
-      "number": 20,
+      "number": 22,
       "content": [
         {
           "text": "  ",
@@ -18300,7 +18486,7 @@
       ]
     },
     {
-      "number": 21,
+      "number": 23,
       "content": [
         {
           "text": "  dismissing",
@@ -18325,7 +18511,7 @@
       ]
     },
     {
-      "number": 22,
+      "number": 24,
       "content": [
         {
           "text": "}",
@@ -18334,11 +18520,11 @@
       ]
     },
     {
-      "number": 23,
+      "number": 25,
       "content": []
     },
     {
-      "number": 24,
+      "number": 26,
       "content": [
         {
           "text": "export",
@@ -18367,7 +18553,7 @@
       ]
     },
     {
-      "number": 25,
+      "number": 27,
       "content": [
         {
           "text": "  id",
@@ -18380,7 +18566,7 @@
       ]
     },
     {
-      "number": 26,
+      "number": 28,
       "content": [
         {
           "text": "  variant ",
@@ -18413,7 +18599,7 @@
       ]
     },
     {
-      "number": 27,
+      "number": 29,
       "content": [
         {
           "text": "  title",
@@ -18426,7 +18612,7 @@
       ]
     },
     {
-      "number": 28,
+      "number": 30,
       "content": [
         {
           "text": "  message",
@@ -18439,7 +18625,7 @@
       ]
     },
     {
-      "number": 29,
+      "number": 31,
       "content": [
         {
           "text": "  action",
@@ -18452,7 +18638,7 @@
       ]
     },
     {
-      "number": 30,
+      "number": 32,
       "content": [
         {
           "text": "  position",
@@ -18465,7 +18651,7 @@
       ]
     },
     {
-      "number": 31,
+      "number": 33,
       "content": [
         {
           "text": "  onDismiss",
@@ -18478,7 +18664,7 @@
       ]
     },
     {
-      "number": 32,
+      "number": 34,
       "content": [
         {
           "text": "  onRemove",
@@ -18491,7 +18677,7 @@
       ]
     },
     {
-      "number": 33,
+      "number": 35,
       "content": [
         {
           "text": "  dismissing",
@@ -18504,7 +18690,7 @@
       ]
     },
     {
-      "number": 34,
+      "number": 36,
       "content": [
         {
           "text": "}:",
@@ -18533,7 +18719,7 @@
       ]
     },
     {
-      "number": 35,
+      "number": 37,
       "content": [
         {
           "text": "  ",
@@ -18622,7 +18808,7 @@
       ]
     },
     {
-      "number": 36,
+      "number": 38,
       "content": [
         {
           "text": "  ",
@@ -18707,7 +18893,7 @@
       ]
     },
     {
-      "number": 37,
+      "number": 39,
       "content": [
         {
           "text": "  ",
@@ -18764,11 +18950,11 @@
       ]
     },
     {
-      "number": 38,
+      "number": 40,
       "content": []
     },
     {
-      "number": 39,
+      "number": 41,
       "content": [
         {
           "text": "  ",
@@ -18785,7 +18971,7 @@
       ]
     },
     {
-      "number": 40,
+      "number": 42,
       "content": [
         {
           "text": "    ",
@@ -18802,7 +18988,7 @@
       ]
     },
     {
-      "number": 41,
+      "number": 43,
       "content": [
         {
           "text": "      ",
@@ -18871,7 +19057,7 @@
       ]
     },
     {
-      "number": 42,
+      "number": 44,
       "content": [
         {
           "text": "      ",
@@ -18940,7 +19126,7 @@
       ]
     },
     {
-      "number": 43,
+      "number": 45,
       "content": [
         {
           "text": "      ",
@@ -18969,7 +19155,7 @@
       ]
     },
     {
-      "number": 44,
+      "number": 46,
       "content": [
         {
           "text": "      ",
@@ -19050,7 +19236,7 @@
       ]
     },
     {
-      "number": 45,
+      "number": 47,
       "content": [
         {
           "text": "      ",
@@ -19075,7 +19261,7 @@
       ]
     },
     {
-      "number": 46,
+      "number": 48,
       "content": [
         {
           "text": "    ",
@@ -19088,7 +19274,7 @@
       ]
     },
     {
-      "number": 47,
+      "number": 49,
       "content": [
         {
           "text": "      ",
@@ -19133,7 +19319,7 @@
       ]
     },
     {
-      "number": 48,
+      "number": 50,
       "content": [
         {
           "text": "        ",
@@ -19178,7 +19364,7 @@
       ]
     },
     {
-      "number": 49,
+      "number": 51,
       "content": [
         {
           "text": "          ",
@@ -19267,7 +19453,7 @@
       ]
     },
     {
-      "number": 50,
+      "number": 52,
       "content": [
         {
           "text": "            ",
@@ -19444,7 +19630,7 @@
       ]
     },
     {
-      "number": 51,
+      "number": 53,
       "content": [
         {
           "text": "          ",
@@ -19465,7 +19651,7 @@
       ]
     },
     {
-      "number": 52,
+      "number": 54,
       "content": [
         {
           "text": "          ",
@@ -19534,7 +19720,7 @@
       ]
     },
     {
-      "number": 53,
+      "number": 55,
       "content": [
         {
           "text": "          ",
@@ -19579,7 +19765,7 @@
       ]
     },
     {
-      "number": 54,
+      "number": 56,
       "content": [
         {
           "text": "            ",
@@ -19600,7 +19786,7 @@
       ]
     },
     {
-      "number": 55,
+      "number": 57,
       "content": [
         {
           "text": "          ",
@@ -19621,7 +19807,7 @@
       ]
     },
     {
-      "number": 56,
+      "number": 58,
       "content": [
         {
           "text": "        ",
@@ -19642,7 +19828,7 @@
       ]
     },
     {
-      "number": 57,
+      "number": 59,
       "content": [
         {
           "text": "        ",
@@ -19659,7 +19845,7 @@
       ]
     },
     {
-      "number": 58,
+      "number": 60,
       "content": [
         {
           "text": "          ",
@@ -19688,7 +19874,7 @@
       ]
     },
     {
-      "number": 59,
+      "number": 61,
       "content": [
         {
           "text": "          ",
@@ -19729,7 +19915,7 @@
       ]
     },
     {
-      "number": 60,
+      "number": 62,
       "content": [
         {
           "text": "          ",
@@ -19758,7 +19944,7 @@
       ]
     },
     {
-      "number": 61,
+      "number": 63,
       "content": [
         {
           "text": "          ",
@@ -19803,7 +19989,7 @@
       ]
     },
     {
-      "number": 62,
+      "number": 64,
       "content": [
         {
           "text": "        ",
@@ -19816,7 +20002,7 @@
       ]
     },
     {
-      "number": 63,
+      "number": 65,
       "content": [
         {
           "text": "          ✕",
@@ -19825,7 +20011,7 @@
       ]
     },
     {
-      "number": 64,
+      "number": 66,
       "content": [
         {
           "text": "        ",
@@ -19846,7 +20032,7 @@
       ]
     },
     {
-      "number": 65,
+      "number": 67,
       "content": [
         {
           "text": "      ",
@@ -19867,7 +20053,7 @@
       ]
     },
     {
-      "number": 66,
+      "number": 68,
       "content": [
         {
           "text": "      ",
@@ -19900,7 +20086,7 @@
       ]
     },
     {
-      "number": 67,
+      "number": 69,
       "content": [
         {
           "text": "        ",
@@ -19945,7 +20131,7 @@
       ]
     },
     {
-      "number": 68,
+      "number": 70,
       "content": [
         {
           "text": "          ",
@@ -20022,7 +20208,7 @@
       ]
     },
     {
-      "number": 69,
+      "number": 71,
       "content": [
         {
           "text": "          ",
@@ -20099,7 +20285,7 @@
       ]
     },
     {
-      "number": 70,
+      "number": 72,
       "content": [
         {
           "text": "        ",
@@ -20120,7 +20306,7 @@
       ]
     },
     {
-      "number": 71,
+      "number": 73,
       "content": [
         {
           "text": "      )",
@@ -20133,7 +20319,7 @@
       ]
     },
     {
-      "number": 72,
+      "number": 74,
       "content": [
         {
           "text": "    ",
@@ -20154,7 +20340,7 @@
       ]
     },
     {
-      "number": 73,
+      "number": 75,
       "content": [
         {
           "text": "  )",
@@ -20167,7 +20353,7 @@
       ]
     },
     {
-      "number": 74,
+      "number": 76,
       "content": [
         {
           "text": "}",
@@ -20176,15 +20362,15 @@
       ]
     },
     {
-      "number": 75,
-      "content": []
-    },
-    {
-      "number": 76,
-      "content": []
-    },
-    {
       "number": 77,
+      "content": []
+    },
+    {
+      "number": 78,
+      "content": []
+    },
+    {
+      "number": 79,
       "content": [
         {
           "text": "\"",
@@ -20205,11 +20391,11 @@
       ]
     },
     {
-      "number": 78,
+      "number": 80,
       "content": []
     },
     {
-      "number": 79,
+      "number": 81,
       "content": [
         {
           "text": "import",
@@ -20270,7 +20456,7 @@
       ]
     },
     {
-      "number": 80,
+      "number": 82,
       "content": [
         {
           "text": "import",
@@ -20323,7 +20509,7 @@
       ]
     },
     {
-      "number": 81,
+      "number": 83,
       "content": [
         {
           "text": "import",
@@ -20424,7 +20610,7 @@
       ]
     },
     {
-      "number": 82,
+      "number": 84,
       "content": [
         {
           "text": "import",
@@ -20477,7 +20663,7 @@
       ]
     },
     {
-      "number": 83,
+      "number": 85,
       "content": [
         {
           "text": "import",
@@ -20530,7 +20716,7 @@
       ]
     },
     {
-      "number": 84,
+      "number": 86,
       "content": [
         {
           "text": "import",
@@ -20583,11 +20769,11 @@
       ]
     },
     {
-      "number": 85,
+      "number": 87,
       "content": []
     },
     {
-      "number": 86,
+      "number": 88,
       "content": [
         {
           "text": "function",
@@ -20644,7 +20830,7 @@
       ]
     },
     {
-      "number": 87,
+      "number": 89,
       "content": [
         {
           "text": "  ",
@@ -20757,7 +20943,7 @@
       ]
     },
     {
-      "number": 88,
+      "number": 90,
       "content": [
         {
           "text": "}",
@@ -20766,11 +20952,11 @@
       ]
     },
     {
-      "number": 89,
+      "number": 91,
       "content": []
     },
     {
-      "number": 90,
+      "number": 92,
       "content": [
         {
           "text": "export",
@@ -20803,7 +20989,7 @@
       ]
     },
     {
-      "number": 91,
+      "number": 93,
       "content": [
         {
           "text": "  position",
@@ -20828,7 +21014,7 @@
       ]
     },
     {
-      "number": 92,
+      "number": 94,
       "content": [
         {
           "text": "}",
@@ -20837,11 +21023,11 @@
       ]
     },
     {
-      "number": 93,
+      "number": 95,
       "content": []
     },
     {
-      "number": 94,
+      "number": 96,
       "content": [
         {
           "text": "export",
@@ -20922,7 +21108,7 @@
       ]
     },
     {
-      "number": 95,
+      "number": 97,
       "content": [
         {
           "text": "  ",
@@ -20995,7 +21181,7 @@
       ]
     },
     {
-      "number": 96,
+      "number": 98,
       "content": [
         {
           "text": "  ",
@@ -21024,7 +21210,7 @@
       ]
     },
     {
-      "number": 97,
+      "number": 99,
       "content": [
         {
           "text": "  ",
@@ -21089,11 +21275,11 @@
       ]
     },
     {
-      "number": 98,
+      "number": 100,
       "content": []
     },
     {
-      "number": 99,
+      "number": 101,
       "content": [
         {
           "text": "  ",
@@ -21110,7 +21296,7 @@
       ]
     },
     {
-      "number": 100,
+      "number": 102,
       "content": [
         {
           "text": "    ",
@@ -21127,7 +21313,7 @@
       ]
     },
     {
-      "number": 101,
+      "number": 103,
       "content": [
         {
           "text": "      ",
@@ -21156,7 +21342,7 @@
       ]
     },
     {
-      "number": 102,
+      "number": 104,
       "content": [
         {
           "text": "      ",
@@ -21185,7 +21371,7 @@
       ]
     },
     {
-      "number": 103,
+      "number": 105,
       "content": [
         {
           "text": "      ",
@@ -21230,7 +21416,7 @@
       ]
     },
     {
-      "number": 104,
+      "number": 106,
       "content": [
         {
           "text": "      ",
@@ -21275,7 +21461,7 @@
       ]
     },
     {
-      "number": 105,
+      "number": 107,
       "content": [
         {
           "text": "      ",
@@ -21320,7 +21506,7 @@
       ]
     },
     {
-      "number": 106,
+      "number": 108,
       "content": [
         {
           "text": "      ",
@@ -21365,7 +21551,7 @@
       ]
     },
     {
-      "number": 107,
+      "number": 109,
       "content": [
         {
           "text": "      ",
@@ -21390,7 +21576,7 @@
       ]
     },
     {
-      "number": 108,
+      "number": 110,
       "content": [
         {
           "text": "        ",
@@ -21415,7 +21601,7 @@
       ]
     },
     {
-      "number": 109,
+      "number": 111,
       "content": [
         {
           "text": "        ",
@@ -21504,7 +21690,7 @@
       ]
     },
     {
-      "number": 110,
+      "number": 112,
       "content": [
         {
           "text": "        positionClasses[position]",
@@ -21517,7 +21703,7 @@
       ]
     },
     {
-      "number": 111,
+      "number": 113,
       "content": [
         {
           "text": "      )",
@@ -21530,7 +21716,7 @@
       ]
     },
     {
-      "number": 112,
+      "number": 114,
       "content": [
         {
           "text": "    ",
@@ -21543,7 +21729,7 @@
       ]
     },
     {
-      "number": 113,
+      "number": 115,
       "content": [
         {
           "text": "      ",
@@ -21596,7 +21782,7 @@
       ]
     },
     {
-      "number": 114,
+      "number": 116,
       "content": [
         {
           "text": "        ",
@@ -21613,7 +21799,7 @@
       ]
     },
     {
-      "number": 115,
+      "number": 117,
       "content": [
         {
           "text": "          ",
@@ -21646,7 +21832,7 @@
       ]
     },
     {
-      "number": 116,
+      "number": 118,
       "content": [
         {
           "text": "          ",
@@ -21667,7 +21853,7 @@
       ]
     },
     {
-      "number": 117,
+      "number": 119,
       "content": [
         {
           "text": "          ",
@@ -21692,7 +21878,7 @@
       ]
     },
     {
-      "number": 118,
+      "number": 120,
       "content": [
         {
           "text": "          ",
@@ -21717,7 +21903,7 @@
       ]
     },
     {
-      "number": 119,
+      "number": 121,
       "content": [
         {
           "text": "          ",
@@ -21742,7 +21928,7 @@
       ]
     },
     {
-      "number": 120,
+      "number": 122,
       "content": [
         {
           "text": "          ",
@@ -21791,7 +21977,7 @@
       ]
     },
     {
-      "number": 121,
+      "number": 123,
       "content": [
         {
           "text": "        ",
@@ -21804,7 +21990,7 @@
       ]
     },
     {
-      "number": 122,
+      "number": 124,
       "content": [
         {
           "text": "      ))",
@@ -21817,7 +22003,7 @@
       ]
     },
     {
-      "number": 123,
+      "number": 125,
       "content": [
         {
           "text": "    ",
@@ -21838,7 +22024,7 @@
       ]
     },
     {
-      "number": 124,
+      "number": 126,
       "content": [
         {
           "text": "  )",
@@ -21851,7 +22037,7 @@
       ]
     },
     {
-      "number": 125,
+      "number": 127,
       "content": [
         {
           "text": "}",
@@ -21860,15 +22046,15 @@
       ]
     },
     {
-      "number": 126,
-      "content": []
-    },
-    {
-      "number": 127,
-      "content": []
-    },
-    {
       "number": 128,
+      "content": []
+    },
+    {
+      "number": 129,
+      "content": []
+    },
+    {
+      "number": 130,
       "content": [
         {
           "text": "import",
@@ -21937,7 +22123,7 @@
       ]
     },
     {
-      "number": 129,
+      "number": 131,
       "content": [
         {
           "text": "import",
@@ -21998,11 +22184,11 @@
       ]
     },
     {
-      "number": 130,
+      "number": 132,
       "content": []
     },
     {
-      "number": 131,
+      "number": 133,
       "content": [
         {
           "text": "export",
@@ -22071,7 +22257,7 @@
       ]
     },
     {
-      "number": 132,
+      "number": 134,
       "content": [
         {
           "text": "  variants",
@@ -22092,7 +22278,7 @@
       ]
     },
     {
-      "number": 133,
+      "number": 135,
       "content": [
         {
           "text": "    variant",
@@ -22113,7 +22299,7 @@
       ]
     },
     {
-      "number": 134,
+      "number": 136,
       "content": [
         {
           "text": "      success",
@@ -22146,7 +22332,7 @@
       ]
     },
     {
-      "number": 135,
+      "number": 137,
       "content": [
         {
           "text": "      error",
@@ -22179,7 +22365,7 @@
       ]
     },
     {
-      "number": 136,
+      "number": 138,
       "content": [
         {
           "text": "      warning",
@@ -22212,7 +22398,7 @@
       ]
     },
     {
-      "number": 137,
+      "number": 139,
       "content": [
         {
           "text": "      info",
@@ -22245,7 +22431,7 @@
       ]
     },
     {
-      "number": 138,
+      "number": 140,
       "content": [
         {
           "text": "      loading",
@@ -22278,7 +22464,7 @@
       ]
     },
     {
-      "number": 139,
+      "number": 141,
       "content": [
         {
           "text": "    ",
@@ -22291,7 +22477,7 @@
       ]
     },
     {
-      "number": 140,
+      "number": 142,
       "content": [
         {
           "text": "  ",
@@ -22304,7 +22490,7 @@
       ]
     },
     {
-      "number": 141,
+      "number": 143,
       "content": [
         {
           "text": "  defaultVariants",
@@ -22325,7 +22511,7 @@
       ]
     },
     {
-      "number": 142,
+      "number": 144,
       "content": [
         {
           "text": "    variant",
@@ -22358,7 +22544,7 @@
       ]
     },
     {
-      "number": 143,
+      "number": 145,
       "content": [
         {
           "text": "  ",
@@ -22371,7 +22557,7 @@
       ]
     },
     {
-      "number": 144,
+      "number": 146,
       "content": [
         {
           "text": "}",
@@ -22388,11 +22574,11 @@
       ]
     },
     {
-      "number": 145,
+      "number": 147,
       "content": []
     },
     {
-      "number": 146,
+      "number": 148,
       "content": [
         {
           "text": "/**",
@@ -22421,7 +22607,7 @@
       ]
     },
     {
-      "number": 147,
+      "number": 149,
       "content": [
         {
           "text": "export",
@@ -22506,11 +22692,11 @@
       ]
     },
     {
-      "number": 148,
+      "number": 150,
       "content": []
     },
     {
-      "number": 149,
+      "number": 151,
       "content": [
         {
           "text": "export",
@@ -22587,7 +22773,7 @@
       ]
     },
     {
-      "number": 150,
+      "number": 152,
       "content": [
         {
           "text": "  success",
@@ -22620,7 +22806,7 @@
       ]
     },
     {
-      "number": 151,
+      "number": 153,
       "content": [
         {
           "text": "  error",
@@ -22653,7 +22839,7 @@
       ]
     },
     {
-      "number": 152,
+      "number": 154,
       "content": [
         {
           "text": "  warning",
@@ -22686,7 +22872,7 @@
       ]
     },
     {
-      "number": 153,
+      "number": 155,
       "content": [
         {
           "text": "  info",
@@ -22719,7 +22905,7 @@
       ]
     },
     {
-      "number": 154,
+      "number": 156,
       "content": [
         {
           "text": "  loading",
@@ -22752,7 +22938,7 @@
       ]
     },
     {
-      "number": 155,
+      "number": 157,
       "content": [
         {
           "text": "};",
@@ -22761,11 +22947,11 @@
       ]
     },
     {
-      "number": 156,
+      "number": 158,
       "content": []
     },
     {
-      "number": 157,
+      "number": 159,
       "content": [
         {
           "text": "export",
@@ -22870,7 +23056,7 @@
       ]
     },
     {
-      "number": 158,
+      "number": 160,
       "content": [
         {
           "text": "  success",
@@ -22903,7 +23089,7 @@
       ]
     },
     {
-      "number": 159,
+      "number": 161,
       "content": [
         {
           "text": "  error",
@@ -22936,7 +23122,7 @@
       ]
     },
     {
-      "number": 160,
+      "number": 162,
       "content": [
         {
           "text": "  warning",
@@ -22969,7 +23155,7 @@
       ]
     },
     {
-      "number": 161,
+      "number": 163,
       "content": [
         {
           "text": "  info",
@@ -23002,7 +23188,7 @@
       ]
     },
     {
-      "number": 162,
+      "number": 164,
       "content": [
         {
           "text": "};",
@@ -23011,11 +23197,11 @@
       ]
     },
     {
-      "number": 163,
+      "number": 165,
       "content": []
     },
     {
-      "number": 164,
+      "number": 166,
       "content": [
         {
           "text": "export",
@@ -23056,7 +23242,7 @@
       ]
     },
     {
-      "number": 165,
+      "number": 167,
       "content": [
         {
           "text": "  left",
@@ -23137,7 +23323,7 @@
       ]
     },
     {
-      "number": 166,
+      "number": 168,
       "content": [
         {
           "text": "  right",
@@ -23218,7 +23404,7 @@
       ]
     },
     {
-      "number": 167,
+      "number": 169,
       "content": [
         {
           "text": "  top",
@@ -23299,7 +23485,7 @@
       ]
     },
     {
-      "number": 168,
+      "number": 170,
       "content": [
         {
           "text": "  bottom",
@@ -23380,7 +23566,7 @@
       ]
     },
     {
-      "number": 169,
+      "number": 171,
       "content": [
         {
           "text": "}",
@@ -23409,11 +23595,11 @@
       ]
     },
     {
-      "number": 170,
+      "number": 172,
       "content": []
     },
     {
-      "number": 171,
+      "number": 173,
       "content": [
         {
           "text": "export",
@@ -23502,7 +23688,7 @@
       ]
     },
     {
-      "number": 172,
+      "number": 174,
       "content": [
         {
           "text": "  ",
@@ -23627,7 +23813,7 @@
       ]
     },
     {
-      "number": 173,
+      "number": 175,
       "content": [
         {
           "text": "  ",
@@ -23752,7 +23938,7 @@
       ]
     },
     {
-      "number": 174,
+      "number": 176,
       "content": [
         {
           "text": "};",
@@ -23761,11 +23947,11 @@
       ]
     },
     {
-      "number": 175,
+      "number": 177,
       "content": []
     },
     {
-      "number": 176,
+      "number": 178,
       "content": [
         {
           "text": "export",
@@ -23842,7 +24028,7 @@
       ]
     },
     {
-      "number": 177,
+      "number": 179,
       "content": [
         {
           "text": "  ",
@@ -23887,7 +24073,7 @@
       ]
     },
     {
-      "number": 178,
+      "number": 180,
       "content": [
         {
           "text": "  ",
@@ -23932,7 +24118,7 @@
       ]
     },
     {
-      "number": 179,
+      "number": 181,
       "content": [
         {
           "text": "  ",
@@ -23977,7 +24163,7 @@
       ]
     },
     {
-      "number": 180,
+      "number": 182,
       "content": [
         {
           "text": "  ",
@@ -24022,7 +24208,7 @@
       ]
     },
     {
-      "number": 181,
+      "number": 183,
       "content": [
         {
           "text": "  ",
@@ -24067,7 +24253,7 @@
       ]
     },
     {
-      "number": 182,
+      "number": 184,
       "content": [
         {
           "text": "  ",
@@ -24112,7 +24298,7 @@
       ]
     },
     {
-      "number": 183,
+      "number": 185,
       "content": [
         {
           "text": "};",
@@ -24121,15 +24307,15 @@
       ]
     },
     {
-      "number": 184,
-      "content": []
-    },
-    {
-      "number": 185,
-      "content": []
-    },
-    {
       "number": 186,
+      "content": []
+    },
+    {
+      "number": 187,
+      "content": []
+    },
+    {
+      "number": 188,
       "content": [
         {
           "text": "\"",
@@ -24150,11 +24336,11 @@
       ]
     },
     {
-      "number": 187,
+      "number": 189,
       "content": []
     },
     {
-      "number": 188,
+      "number": 190,
       "content": [
         {
           "text": "import",
@@ -24223,7 +24409,7 @@
       ]
     },
     {
-      "number": 189,
+      "number": 191,
       "content": [
         {
           "text": "import",
@@ -24284,11 +24470,11 @@
       ]
     },
     {
-      "number": 190,
+      "number": 192,
       "content": []
     },
     {
-      "number": 191,
+      "number": 193,
       "content": [
         {
           "text": "export",
@@ -24321,7 +24507,7 @@
       ]
     },
     {
-      "number": 192,
+      "number": 194,
       "content": [
         {
           "text": "  ",
@@ -24350,7 +24536,7 @@
       ]
     },
     {
-      "number": 193,
+      "number": 195,
       "content": [
         {
           "text": "  ",
@@ -24379,7 +24565,7 @@
       ]
     },
     {
-      "number": 194,
+      "number": 196,
       "content": [
         {
           "text": "  ",
@@ -24408,7 +24594,7 @@
       ]
     },
     {
-      "number": 195,
+      "number": 197,
       "content": [
         {
           "text": "  ",
@@ -24437,7 +24623,7 @@
       ]
     },
     {
-      "number": 196,
+      "number": 198,
       "content": [
         {
           "text": "  ",
@@ -24466,7 +24652,7 @@
       ]
     },
     {
-      "number": 197,
+      "number": 199,
       "content": [
         {
           "text": "  ",
@@ -24499,11 +24685,11 @@
       ]
     },
     {
-      "number": 198,
+      "number": 200,
       "content": []
     },
     {
-      "number": 199,
+      "number": 201,
       "content": [
         {
           "text": "export",
@@ -24536,7 +24722,7 @@
       ]
     },
     {
-      "number": 200,
+      "number": 202,
       "content": [
         {
           "text": "  id",
@@ -24561,7 +24747,7 @@
       ]
     },
     {
-      "number": 201,
+      "number": 203,
       "content": [
         {
           "text": "  variant",
@@ -24586,7 +24772,7 @@
       ]
     },
     {
-      "number": 202,
+      "number": 204,
       "content": [
         {
           "text": "  title",
@@ -24611,7 +24797,7 @@
       ]
     },
     {
-      "number": 203,
+      "number": 205,
       "content": [
         {
           "text": "  message",
@@ -24636,7 +24822,7 @@
       ]
     },
     {
-      "number": 204,
+      "number": 206,
       "content": [
         {
           "text": "  duration",
@@ -24661,7 +24847,7 @@
       ]
     },
     {
-      "number": 205,
+      "number": 207,
       "content": [
         {
           "text": "  action",
@@ -24686,7 +24872,7 @@
       ]
     },
     {
-      "number": 206,
+      "number": 208,
       "content": [
         {
           "text": "}",
@@ -24695,11 +24881,11 @@
       ]
     },
     {
-      "number": 207,
+      "number": 209,
       "content": []
     },
     {
-      "number": 208,
+      "number": 210,
       "content": [
         {
           "text": "export",
@@ -24732,7 +24918,7 @@
       ]
     },
     {
-      "number": 209,
+      "number": 211,
       "content": [
         {
           "text": "  title",
@@ -24757,7 +24943,7 @@
       ]
     },
     {
-      "number": 210,
+      "number": 212,
       "content": [
         {
           "text": "  variant",
@@ -24782,7 +24968,7 @@
       ]
     },
     {
-      "number": 211,
+      "number": 213,
       "content": [
         {
           "text": "  message",
@@ -24807,7 +24993,7 @@
       ]
     },
     {
-      "number": 212,
+      "number": 214,
       "content": [
         {
           "text": "  ",
@@ -24828,7 +25014,7 @@
       ]
     },
     {
-      "number": 213,
+      "number": 215,
       "content": [
         {
           "text": "  duration",
@@ -24853,7 +25039,7 @@
       ]
     },
     {
-      "number": 214,
+      "number": 216,
       "content": [
         {
           "text": "  action",
@@ -24878,7 +25064,7 @@
       ]
     },
     {
-      "number": 215,
+      "number": 217,
       "content": [
         {
           "text": "  id",
@@ -24903,7 +25089,7 @@
       ]
     },
     {
-      "number": 216,
+      "number": 218,
       "content": [
         {
           "text": "}",
@@ -24912,11 +25098,11 @@
       ]
     },
     {
-      "number": 217,
+      "number": 219,
       "content": []
     },
     {
-      "number": 218,
+      "number": 220,
       "content": [
         {
           "text": "const",
@@ -24953,7 +25139,7 @@
       ]
     },
     {
-      "number": 219,
+      "number": 221,
       "content": [
         {
           "text": "const",
@@ -24990,11 +25176,11 @@
       ]
     },
     {
-      "number": 220,
+      "number": 222,
       "content": []
     },
     {
-      "number": 221,
+      "number": 223,
       "content": [
         {
           "text": "interface",
@@ -25019,7 +25205,7 @@
       ]
     },
     {
-      "number": 222,
+      "number": 224,
       "content": [
         {
           "text": "  toasts",
@@ -25048,7 +25234,7 @@
       ]
     },
     {
-      "number": 223,
+      "number": 225,
       "content": [
         {
           "text": "  dismissingIds",
@@ -25081,7 +25267,7 @@
       ]
     },
     {
-      "number": 224,
+      "number": 226,
       "content": [
         {
           "text": "}",
@@ -25090,11 +25276,11 @@
       ]
     },
     {
-      "number": 225,
+      "number": 227,
       "content": []
     },
     {
-      "number": 226,
+      "number": 228,
       "content": [
         {
           "text": "const",
@@ -25187,11 +25373,11 @@
       ]
     },
     {
-      "number": 227,
+      "number": 229,
       "content": []
     },
     {
-      "number": 228,
+      "number": 230,
       "content": [
         {
           "text": "interface",
@@ -25216,7 +25402,7 @@
       ]
     },
     {
-      "number": 229,
+      "number": 231,
       "content": [
         {
           "text": "  timeout",
@@ -25269,7 +25455,7 @@
       ]
     },
     {
-      "number": 230,
+      "number": 232,
       "content": [
         {
           "text": "  startedAt",
@@ -25294,7 +25480,7 @@
       ]
     },
     {
-      "number": 231,
+      "number": 233,
       "content": [
         {
           "text": "  remaining",
@@ -25319,7 +25505,7 @@
       ]
     },
     {
-      "number": 232,
+      "number": 234,
       "content": [
         {
           "text": "}",
@@ -25328,11 +25514,11 @@
       ]
     },
     {
-      "number": 233,
+      "number": 235,
       "content": []
     },
     {
-      "number": 234,
+      "number": 236,
       "content": [
         {
           "text": "let",
@@ -25377,7 +25563,7 @@
       ]
     },
     {
-      "number": 235,
+      "number": 237,
       "content": [
         {
           "text": "const",
@@ -25450,7 +25636,7 @@
       ]
     },
     {
-      "number": 236,
+      "number": 238,
       "content": [
         {
           "text": "const",
@@ -25523,7 +25709,7 @@
       ]
     },
     {
-      "number": 237,
+      "number": 239,
       "content": [
         {
           "text": "let",
@@ -25552,11 +25738,40 @@
       ]
     },
     {
-      "number": 238,
+      "number": 240,
+      "content": [
+        {
+          "text": "let",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " fallbackToastId ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "0",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 241,
       "content": []
     },
     {
-      "number": 239,
+      "number": 242,
       "content": [
         {
           "text": "function",
@@ -25585,7 +25800,7 @@
       ]
     },
     {
-      "number": 240,
+      "number": 243,
       "content": [
         {
           "text": "  ",
@@ -25638,7 +25853,7 @@
       ]
     },
     {
-      "number": 241,
+      "number": 244,
       "content": [
         {
           "text": "}",
@@ -25647,11 +25862,11 @@
       ]
     },
     {
-      "number": 242,
+      "number": 245,
       "content": []
     },
     {
-      "number": 243,
+      "number": 246,
       "content": [
         {
           "text": "function",
@@ -25700,7 +25915,7 @@
       ]
     },
     {
-      "number": 244,
+      "number": 247,
       "content": [
         {
           "text": "  ",
@@ -25753,7 +25968,7 @@
       ]
     },
     {
-      "number": 245,
+      "number": 248,
       "content": [
         {
           "text": "  ",
@@ -25774,7 +25989,7 @@
       ]
     },
     {
-      "number": 246,
+      "number": 249,
       "content": [
         {
           "text": "    ",
@@ -25807,7 +26022,7 @@
       ]
     },
     {
-      "number": 247,
+      "number": 250,
       "content": [
         {
           "text": "    ",
@@ -25836,7 +26051,7 @@
       ]
     },
     {
-      "number": 248,
+      "number": 251,
       "content": [
         {
           "text": "  ",
@@ -25849,7 +26064,7 @@
       ]
     },
     {
-      "number": 249,
+      "number": 252,
       "content": [
         {
           "text": "}",
@@ -25858,11 +26073,11 @@
       ]
     },
     {
-      "number": 250,
+      "number": 253,
       "content": []
     },
     {
-      "number": 251,
+      "number": 254,
       "content": [
         {
           "text": "function",
@@ -25927,7 +26142,7 @@
       ]
     },
     {
-      "number": 252,
+      "number": 255,
       "content": [
         {
           "text": "  ",
@@ -25956,7 +26171,7 @@
       ]
     },
     {
-      "number": 253,
+      "number": 256,
       "content": [
         {
           "text": "  ",
@@ -26009,7 +26224,7 @@
       ]
     },
     {
-      "number": 254,
+      "number": 257,
       "content": [
         {
           "text": "}",
@@ -26018,11 +26233,11 @@
       ]
     },
     {
-      "number": 255,
+      "number": 258,
       "content": []
     },
     {
-      "number": 256,
+      "number": 259,
       "content": [
         {
           "text": "function",
@@ -26059,7 +26274,7 @@
       ]
     },
     {
-      "number": 257,
+      "number": 260,
       "content": [
         {
           "text": "  ",
@@ -26080,7 +26295,7 @@
       ]
     },
     {
-      "number": 258,
+      "number": 261,
       "content": [
         {
           "text": "}",
@@ -26089,11 +26304,11 @@
       ]
     },
     {
-      "number": 259,
+      "number": 262,
       "content": []
     },
     {
-      "number": 260,
+      "number": 263,
       "content": [
         {
           "text": "function",
@@ -26130,7 +26345,7 @@
       ]
     },
     {
-      "number": 261,
+      "number": 264,
       "content": [
         {
           "text": "  ",
@@ -26155,7 +26370,7 @@
       ]
     },
     {
-      "number": 262,
+      "number": 265,
       "content": [
         {
           "text": "}",
@@ -26164,11 +26379,11 @@
       ]
     },
     {
-      "number": 263,
+      "number": 266,
       "content": []
     },
     {
-      "number": 264,
+      "number": 267,
       "content": [
         {
           "text": "function",
@@ -26257,7 +26472,7 @@
       ]
     },
     {
-      "number": 265,
+      "number": 268,
       "content": [
         {
           "text": "  ",
@@ -26362,7 +26577,7 @@
       ]
     },
     {
-      "number": 266,
+      "number": 269,
       "content": [
         {
           "text": "  ",
@@ -26411,7 +26626,7 @@
       ]
     },
     {
-      "number": 267,
+      "number": 270,
       "content": [
         {
           "text": "  ",
@@ -26480,7 +26695,7 @@
       ]
     },
     {
-      "number": 268,
+      "number": 271,
       "content": [
         {
           "text": "  ",
@@ -26529,7 +26744,7 @@
       ]
     },
     {
-      "number": 269,
+      "number": 272,
       "content": [
         {
           "text": "    timeout",
@@ -26614,7 +26829,7 @@
       ]
     },
     {
-      "number": 270,
+      "number": 273,
       "content": [
         {
           "text": "    startedAt",
@@ -26651,7 +26866,7 @@
       ]
     },
     {
-      "number": 271,
+      "number": 274,
       "content": [
         {
           "text": "    remaining",
@@ -26672,7 +26887,7 @@
       ]
     },
     {
-      "number": 272,
+      "number": 275,
       "content": [
         {
           "text": "  ",
@@ -26685,7 +26900,7 @@
       ]
     },
     {
-      "number": 273,
+      "number": 276,
       "content": [
         {
           "text": "  ",
@@ -26722,7 +26937,7 @@
       ]
     },
     {
-      "number": 274,
+      "number": 277,
       "content": [
         {
           "text": "}",
@@ -26731,11 +26946,11 @@
       ]
     },
     {
-      "number": 275,
+      "number": 278,
       "content": []
     },
     {
-      "number": 276,
+      "number": 279,
       "content": [
         {
           "text": "function",
@@ -26816,7 +27031,7 @@
       ]
     },
     {
-      "number": 277,
+      "number": 280,
       "content": [
         {
           "text": "  ",
@@ -26925,7 +27140,7 @@
       ]
     },
     {
-      "number": 278,
+      "number": 281,
       "content": [
         {
           "text": "  ",
@@ -27058,11 +27273,11 @@
       ]
     },
     {
-      "number": 279,
+      "number": 282,
       "content": []
     },
     {
-      "number": 280,
+      "number": 283,
       "content": [
         {
           "text": "  ",
@@ -27115,7 +27330,7 @@
       ]
     },
     {
-      "number": 281,
+      "number": 284,
       "content": [
         {
           "text": "  ",
@@ -27240,7 +27455,7 @@
       ]
     },
     {
-      "number": 282,
+      "number": 285,
       "content": [
         {
           "text": "  ",
@@ -27305,7 +27520,7 @@
       ]
     },
     {
-      "number": 283,
+      "number": 286,
       "content": [
         {
           "text": "  ",
@@ -27354,7 +27569,7 @@
       ]
     },
     {
-      "number": 284,
+      "number": 287,
       "content": [
         {
           "text": "}",
@@ -27363,11 +27578,349 @@
       ]
     },
     {
-      "number": 285,
+      "number": 288,
       "content": []
     },
     {
-      "number": 286,
+      "number": 289,
+      "content": [
+        {
+          "text": "function",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "createToastId",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "():",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "string",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 290,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "randomUUID",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "globalThis",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "crypto",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": "?.",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "randomUUID",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 291,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "typeof",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " randomUUID ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "function",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "\"",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ") ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "randomUUID",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "call",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "globalThis",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "crypto)",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 292,
+      "content": []
+    },
+    {
+      "number": 293,
+      "content": [
+        {
+          "text": "  fallbackToastId ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "+=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "1",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 294,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "`",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "toast-",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "${",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": "Date",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "now",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "()",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "toString",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "36",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ")",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": "-",
+          "color": "var(--code-tag)"
+        },
+        {
+          "text": "${",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": "fallbackToastId",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "toString",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "36",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ")",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": "`",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 295,
+      "content": [
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 296,
+      "content": []
+    },
+    {
+      "number": 297,
       "content": [
         {
           "text": "function",
@@ -27424,7 +27977,7 @@
       ]
     },
     {
-      "number": 287,
+      "number": 298,
       "content": [
         {
           "text": "  ",
@@ -27475,15 +28028,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "crypto",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ".",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "randomUUID",
+          "text": "createToastId",
           "color": "var(--code-function)"
         },
         {
@@ -27497,7 +28042,7 @@
       ]
     },
     {
-      "number": 288,
+      "number": 299,
       "content": [
         {
           "text": "  ",
@@ -27566,7 +28111,7 @@
       ]
     },
     {
-      "number": 289,
+      "number": 300,
       "content": [
         {
           "text": "  ",
@@ -27615,7 +28160,7 @@
       ]
     },
     {
-      "number": 290,
+      "number": 301,
       "content": [
         {
           "text": "    id",
@@ -27636,7 +28181,7 @@
       ]
     },
     {
-      "number": 291,
+      "number": 302,
       "content": [
         {
           "text": "    title",
@@ -27669,7 +28214,7 @@
       ]
     },
     {
-      "number": 292,
+      "number": 303,
       "content": [
         {
           "text": "    message",
@@ -27702,7 +28247,7 @@
       ]
     },
     {
-      "number": 293,
+      "number": 304,
       "content": [
         {
           "text": "    duration",
@@ -27735,7 +28280,7 @@
       ]
     },
     {
-      "number": 294,
+      "number": 305,
       "content": [
         {
           "text": "    action",
@@ -27768,7 +28313,7 @@
       ]
     },
     {
-      "number": 295,
+      "number": 306,
       "content": [
         {
           "text": "  ",
@@ -27781,11 +28326,11 @@
       ]
     },
     {
-      "number": 296,
+      "number": 307,
       "content": []
     },
     {
-      "number": 297,
+      "number": 308,
       "content": [
         {
           "text": "  ",
@@ -27806,7 +28351,7 @@
       ]
     },
     {
-      "number": 298,
+      "number": 309,
       "content": [
         {
           "text": "  ",
@@ -27871,7 +28416,7 @@
       ]
     },
     {
-      "number": 299,
+      "number": 310,
       "content": [
         {
           "text": "  ",
@@ -27900,7 +28445,7 @@
       ]
     },
     {
-      "number": 300,
+      "number": 311,
       "content": [
         {
           "text": "  ",
@@ -27973,7 +28518,7 @@
       ]
     },
     {
-      "number": 301,
+      "number": 312,
       "content": [
         {
           "text": "    ",
@@ -28022,7 +28567,7 @@
       ]
     },
     {
-      "number": 302,
+      "number": 313,
       "content": [
         {
           "text": "  ",
@@ -28035,11 +28580,11 @@
       ]
     },
     {
-      "number": 303,
+      "number": 314,
       "content": []
     },
     {
-      "number": 304,
+      "number": 315,
       "content": [
         {
           "text": "  ",
@@ -28104,7 +28649,7 @@
       ]
     },
     {
-      "number": 305,
+      "number": 316,
       "content": [
         {
           "text": "  ",
@@ -28193,7 +28738,7 @@
       ]
     },
     {
-      "number": 306,
+      "number": 317,
       "content": [
         {
           "text": "  ",
@@ -28238,7 +28783,7 @@
       ]
     },
     {
-      "number": 307,
+      "number": 318,
       "content": [
         {
           "text": "    ",
@@ -28295,7 +28840,7 @@
       ]
     },
     {
-      "number": 308,
+      "number": 319,
       "content": [
         {
           "text": "  ",
@@ -28308,11 +28853,11 @@
       ]
     },
     {
-      "number": 309,
+      "number": 320,
       "content": []
     },
     {
-      "number": 310,
+      "number": 321,
       "content": [
         {
           "text": "  state ",
@@ -28365,7 +28910,7 @@
       ]
     },
     {
-      "number": 311,
+      "number": 322,
       "content": [
         {
           "text": "  ",
@@ -28386,7 +28931,7 @@
       ]
     },
     {
-      "number": 312,
+      "number": 323,
       "content": [
         {
           "text": "  ",
@@ -28407,7 +28952,7 @@
       ]
     },
     {
-      "number": 313,
+      "number": 324,
       "content": [
         {
           "text": "}",
@@ -28416,11 +28961,11 @@
       ]
     },
     {
-      "number": 314,
+      "number": 325,
       "content": []
     },
     {
-      "number": 315,
+      "number": 326,
       "content": [
         {
           "text": "export",
@@ -28477,7 +29022,7 @@
       ]
     },
     {
-      "number": 316,
+      "number": 327,
       "content": [
         {
           "text": "  ",
@@ -28498,7 +29043,7 @@
       ]
     },
     {
-      "number": 317,
+      "number": 328,
       "content": [
         {
           "text": "    state ",
@@ -28519,7 +29064,7 @@
       ]
     },
     {
-      "number": 318,
+      "number": 329,
       "content": [
         {
           "text": "      toasts",
@@ -28552,7 +29097,7 @@
       ]
     },
     {
-      "number": 319,
+      "number": 330,
       "content": [
         {
           "text": "      dismissingIds",
@@ -28613,7 +29158,7 @@
       ]
     },
     {
-      "number": 320,
+      "number": 331,
       "content": [
         {
           "text": "    ",
@@ -28626,7 +29171,7 @@
       ]
     },
     {
-      "number": 321,
+      "number": 332,
       "content": [
         {
           "text": "  ",
@@ -28655,7 +29200,7 @@
       ]
     },
     {
-      "number": 322,
+      "number": 333,
       "content": [
         {
           "text": "    state ",
@@ -28780,7 +29325,7 @@
       ]
     },
     {
-      "number": 323,
+      "number": 334,
       "content": [
         {
           "text": "  ",
@@ -28793,7 +29338,7 @@
       ]
     },
     {
-      "number": 324,
+      "number": 335,
       "content": [
         {
           "text": "  ",
@@ -28814,7 +29359,7 @@
       ]
     },
     {
-      "number": 325,
+      "number": 336,
       "content": [
         {
           "text": "}",
@@ -28823,11 +29368,11 @@
       ]
     },
     {
-      "number": 326,
+      "number": 337,
       "content": []
     },
     {
-      "number": 327,
+      "number": 338,
       "content": [
         {
           "text": "export",
@@ -28884,7 +29429,7 @@
       ]
     },
     {
-      "number": 328,
+      "number": 339,
       "content": [
         {
           "text": "  ",
@@ -28905,7 +29450,7 @@
       ]
     },
     {
-      "number": 329,
+      "number": 340,
       "content": [
         {
           "text": "  ",
@@ -28970,7 +29515,7 @@
       ]
     },
     {
-      "number": 330,
+      "number": 341,
       "content": [
         {
           "text": "  ",
@@ -28999,7 +29544,7 @@
       ]
     },
     {
-      "number": 331,
+      "number": 342,
       "content": [
         {
           "text": "  state ",
@@ -29020,7 +29565,7 @@
       ]
     },
     {
-      "number": 332,
+      "number": 343,
       "content": [
         {
           "text": "    toasts",
@@ -29109,7 +29654,7 @@
       ]
     },
     {
-      "number": 333,
+      "number": 344,
       "content": [
         {
           "text": "    dismissingIds",
@@ -29130,7 +29675,7 @@
       ]
     },
     {
-      "number": 334,
+      "number": 345,
       "content": [
         {
           "text": "  ",
@@ -29143,7 +29688,7 @@
       ]
     },
     {
-      "number": 335,
+      "number": 346,
       "content": [
         {
           "text": "  ",
@@ -29164,7 +29709,7 @@
       ]
     },
     {
-      "number": 336,
+      "number": 347,
       "content": [
         {
           "text": "}",
@@ -29173,11 +29718,11 @@
       ]
     },
     {
-      "number": 337,
+      "number": 348,
       "content": []
     },
     {
-      "number": 338,
+      "number": 349,
       "content": [
         {
           "text": "export",
@@ -29214,7 +29759,7 @@
       ]
     },
     {
-      "number": 339,
+      "number": 350,
       "content": [
         {
           "text": "  ",
@@ -29239,7 +29784,7 @@
       ]
     },
     {
-      "number": 340,
+      "number": 351,
       "content": [
         {
           "text": "  paused ",
@@ -29264,7 +29809,7 @@
       ]
     },
     {
-      "number": 341,
+      "number": 352,
       "content": [
         {
           "text": "  ",
@@ -29321,7 +29866,7 @@
       ]
     },
     {
-      "number": 342,
+      "number": 353,
       "content": [
         {
           "text": "    ",
@@ -29354,7 +29899,7 @@
       ]
     },
     {
-      "number": 343,
+      "number": 354,
       "content": [
         {
           "text": "    ",
@@ -29471,7 +30016,7 @@
       ]
     },
     {
-      "number": 344,
+      "number": 355,
       "content": [
         {
           "text": "  ",
@@ -29484,7 +30029,7 @@
       ]
     },
     {
-      "number": 345,
+      "number": 356,
       "content": [
         {
           "text": "}",
@@ -29493,11 +30038,11 @@
       ]
     },
     {
-      "number": 346,
+      "number": 357,
       "content": []
     },
     {
-      "number": 347,
+      "number": 358,
       "content": [
         {
           "text": "export",
@@ -29534,7 +30079,7 @@
       ]
     },
     {
-      "number": 348,
+      "number": 359,
       "content": [
         {
           "text": "  ",
@@ -29567,7 +30112,7 @@
       ]
     },
     {
-      "number": 349,
+      "number": 360,
       "content": [
         {
           "text": "  paused ",
@@ -29592,7 +30137,7 @@
       ]
     },
     {
-      "number": 350,
+      "number": 361,
       "content": [
         {
           "text": "  ",
@@ -29657,7 +30202,7 @@
       ]
     },
     {
-      "number": 351,
+      "number": 362,
       "content": [
         {
           "text": "    ",
@@ -29706,7 +30251,7 @@
       ]
     },
     {
-      "number": 352,
+      "number": 363,
       "content": [
         {
           "text": "    ",
@@ -29791,7 +30336,7 @@
       ]
     },
     {
-      "number": 353,
+      "number": 364,
       "content": [
         {
           "text": "  ",
@@ -29804,7 +30349,7 @@
       ]
     },
     {
-      "number": 354,
+      "number": 365,
       "content": [
         {
           "text": "}",
@@ -29813,11 +30358,11 @@
       ]
     },
     {
-      "number": 355,
+      "number": 366,
       "content": []
     },
     {
-      "number": 356,
+      "number": 367,
       "content": [
         {
           "text": "type",
@@ -29962,11 +30507,11 @@
       ]
     },
     {
-      "number": 357,
+      "number": 368,
       "content": []
     },
     {
-      "number": 358,
+      "number": 369,
       "content": [
         {
           "text": "interface",
@@ -30031,7 +30576,7 @@
       ]
     },
     {
-      "number": 359,
+      "number": 370,
       "content": [
         {
           "text": "  ",
@@ -30124,7 +30669,7 @@
       ]
     },
     {
-      "number": 360,
+      "number": 371,
       "content": [
         {
           "text": "  ",
@@ -30189,7 +30734,7 @@
       ]
     },
     {
-      "number": 361,
+      "number": 372,
       "content": [
         {
           "text": "  ",
@@ -30226,7 +30771,7 @@
       ]
     },
     {
-      "number": 362,
+      "number": 373,
       "content": [
         {
           "text": "    promise",
@@ -30259,7 +30804,7 @@
       ]
     },
     {
-      "number": 363,
+      "number": 374,
       "content": [
         {
           "text": "    options",
@@ -30280,7 +30825,7 @@
       ]
     },
     {
-      "number": 364,
+      "number": 375,
       "content": [
         {
           "text": "      loading",
@@ -30305,7 +30850,7 @@
       ]
     },
     {
-      "number": 365,
+      "number": 376,
       "content": [
         {
           "text": "      success",
@@ -30386,7 +30931,7 @@
       ]
     },
     {
-      "number": 366,
+      "number": 377,
       "content": [
         {
           "text": "      error",
@@ -30467,7 +31012,7 @@
       ]
     },
     {
-      "number": 367,
+      "number": 378,
       "content": [
         {
           "text": "    ",
@@ -30480,7 +31025,7 @@
       ]
     },
     {
-      "number": 368,
+      "number": 379,
       "content": [
         {
           "text": "  ) ",
@@ -30513,7 +31058,7 @@
       ]
     },
     {
-      "number": 369,
+      "number": 380,
       "content": [
         {
           "text": "}",
@@ -30522,11 +31067,11 @@
       ]
     },
     {
-      "number": 370,
+      "number": 381,
       "content": []
     },
     {
-      "number": 371,
+      "number": 382,
       "content": [
         {
           "text": "function",
@@ -30583,7 +31128,7 @@
       ]
     },
     {
-      "number": 372,
+      "number": 383,
       "content": [
         {
           "text": "  ",
@@ -30684,7 +31229,7 @@
       ]
     },
     {
-      "number": 373,
+      "number": 384,
       "content": [
         {
           "text": "}",
@@ -30693,11 +31238,11 @@
       ]
     },
     {
-      "number": 374,
+      "number": 385,
       "content": []
     },
     {
-      "number": 375,
+      "number": 386,
       "content": [
         {
           "text": "function",
@@ -30726,7 +31271,7 @@
       ]
     },
     {
-      "number": 376,
+      "number": 387,
       "content": [
         {
           "text": "  promise",
@@ -30759,7 +31304,7 @@
       ]
     },
     {
-      "number": 377,
+      "number": 388,
       "content": [
         {
           "text": "  options",
@@ -30780,7 +31325,7 @@
       ]
     },
     {
-      "number": 378,
+      "number": 389,
       "content": [
         {
           "text": "    loading",
@@ -30805,7 +31350,7 @@
       ]
     },
     {
-      "number": 379,
+      "number": 390,
       "content": [
         {
           "text": "    success",
@@ -30886,7 +31431,7 @@
       ]
     },
     {
-      "number": 380,
+      "number": 391,
       "content": [
         {
           "text": "    error",
@@ -30967,7 +31512,7 @@
       ]
     },
     {
-      "number": 381,
+      "number": 392,
       "content": [
         {
           "text": "  ",
@@ -30980,7 +31525,7 @@
       ]
     },
     {
-      "number": 382,
+      "number": 393,
       "content": [
         {
           "text": "):",
@@ -31017,7 +31562,7 @@
       ]
     },
     {
-      "number": 383,
+      "number": 394,
       "content": [
         {
           "text": "  ",
@@ -31130,11 +31675,11 @@
       ]
     },
     {
-      "number": 384,
+      "number": 395,
       "content": []
     },
     {
-      "number": 385,
+      "number": 396,
       "content": [
         {
           "text": "  ",
@@ -31167,7 +31712,7 @@
       ]
     },
     {
-      "number": 386,
+      "number": 397,
       "content": [
         {
           "text": "    ",
@@ -31204,7 +31749,7 @@
       ]
     },
     {
-      "number": 387,
+      "number": 398,
       "content": [
         {
           "text": "      ",
@@ -31329,7 +31874,7 @@
       ]
     },
     {
-      "number": 388,
+      "number": 399,
       "content": [
         {
           "text": "      ",
@@ -31406,7 +31951,7 @@
       ]
     },
     {
-      "number": 389,
+      "number": 400,
       "content": [
         {
           "text": "      ",
@@ -31427,7 +31972,7 @@
       ]
     },
     {
-      "number": 390,
+      "number": 401,
       "content": [
         {
           "text": "    ",
@@ -31440,7 +31985,7 @@
       ]
     },
     {
-      "number": 391,
+      "number": 402,
       "content": [
         {
           "text": "    ",
@@ -31477,7 +32022,7 @@
       ]
     },
     {
-      "number": 392,
+      "number": 403,
       "content": [
         {
           "text": "      ",
@@ -31602,7 +32147,7 @@
       ]
     },
     {
-      "number": 393,
+      "number": 404,
       "content": [
         {
           "text": "      ",
@@ -31679,7 +32224,7 @@
       ]
     },
     {
-      "number": 394,
+      "number": 405,
       "content": [
         {
           "text": "      ",
@@ -31700,7 +32245,7 @@
       ]
     },
     {
-      "number": 395,
+      "number": 406,
       "content": [
         {
           "text": "    ",
@@ -31713,7 +32258,7 @@
       ]
     },
     {
-      "number": 396,
+      "number": 407,
       "content": [
         {
           "text": "  )",
@@ -31726,7 +32271,7 @@
       ]
     },
     {
-      "number": 397,
+      "number": 408,
       "content": [
         {
           "text": "}",
@@ -31735,11 +32280,11 @@
       ]
     },
     {
-      "number": 398,
+      "number": 409,
       "content": []
     },
     {
-      "number": 399,
+      "number": 410,
       "content": [
         {
           "text": "export",
@@ -31804,7 +32349,7 @@
       ]
     },
     {
-      "number": 400,
+      "number": 411,
       "content": [
         {
           "text": "  ",
@@ -31941,7 +32486,7 @@
       ]
     },
     {
-      "number": 401,
+      "number": 412,
       "content": [
         {
           "text": "  ",
@@ -31954,7 +32499,7 @@
       ]
     },
     {
-      "number": 402,
+      "number": 413,
       "content": [
         {
           "text": "    success",
@@ -31999,7 +32544,7 @@
       ]
     },
     {
-      "number": 403,
+      "number": 414,
       "content": [
         {
           "text": "    error",
@@ -32044,7 +32589,7 @@
       ]
     },
     {
-      "number": 404,
+      "number": 415,
       "content": [
         {
           "text": "    warning",
@@ -32089,7 +32634,7 @@
       ]
     },
     {
-      "number": 405,
+      "number": 416,
       "content": [
         {
           "text": "    info",
@@ -32134,7 +32679,7 @@
       ]
     },
     {
-      "number": 406,
+      "number": 417,
       "content": [
         {
           "text": "    loading",
@@ -32179,7 +32724,7 @@
       ]
     },
     {
-      "number": 407,
+      "number": 418,
       "content": [
         {
           "text": "    dismiss",
@@ -32192,7 +32737,7 @@
       ]
     },
     {
-      "number": 408,
+      "number": 419,
       "content": [
         {
           "text": "    promise",
@@ -32213,7 +32758,7 @@
       ]
     },
     {
-      "number": 409,
+      "number": 420,
       "content": [
         {
           "text": "  ",
@@ -32226,7 +32771,7 @@
       ]
     },
     {
-      "number": 410,
+      "number": 421,
       "content": [
         {
           "text": ")",
@@ -32239,11 +32784,11 @@
       ]
     },
     {
-      "number": 411,
+      "number": 422,
       "content": []
     },
     {
-      "number": 412,
+      "number": 423,
       "content": [
         {
           "text": "export",
@@ -32288,7 +32833,7 @@
       ]
     },
     {
-      "number": 413,
+      "number": 424,
       "content": [
         {
           "text": "  ",
@@ -32333,7 +32878,7 @@
       ]
     },
     {
-      "number": 414,
+      "number": 425,
       "content": [
         {
           "text": "}",
@@ -32342,19 +32887,15 @@
       ]
     },
     {
-      "number": 415,
+      "number": 426,
       "content": []
     },
     {
-      "number": 416,
+      "number": 427,
       "content": []
     },
     {
-      "number": 417,
-      "content": []
-    },
-    {
-      "number": 418,
+      "number": 428,
       "content": [
         {
           "text": "\"",
@@ -32375,11 +32916,11 @@
       ]
     },
     {
-      "number": 419,
+      "number": 429,
       "content": []
     },
     {
-      "number": 420,
+      "number": 430,
       "content": [
         {
           "text": "import",
@@ -32448,11 +32989,11 @@
       ]
     },
     {
-      "number": 421,
+      "number": 431,
       "content": []
     },
     {
-      "number": 422,
+      "number": 432,
       "content": [
         {
           "text": "//",
@@ -32465,7 +33006,7 @@
       ]
     },
     {
-      "number": 423,
+      "number": 433,
       "content": [
         {
           "text": "//",
@@ -32478,7 +33019,7 @@
       ]
     },
     {
-      "number": 424,
+      "number": 434,
       "content": [
         {
           "text": "const",
@@ -32515,11 +33056,11 @@
       ]
     },
     {
-      "number": 425,
+      "number": 435,
       "content": []
     },
     {
-      "number": 426,
+      "number": 436,
       "content": [
         {
           "text": "export",
@@ -32548,7 +33089,7 @@
       ]
     },
     {
-      "number": 427,
+      "number": 437,
       "content": [
         {
           "text": "  dismissing",
@@ -32573,7 +33114,7 @@
       ]
     },
     {
-      "number": 428,
+      "number": 438,
       "content": [
         {
           "text": "  id",
@@ -32598,7 +33139,7 @@
       ]
     },
     {
-      "number": 429,
+      "number": 439,
       "content": [
         {
           "text": "  ",
@@ -32663,7 +33204,7 @@
       ]
     },
     {
-      "number": 430,
+      "number": 440,
       "content": [
         {
           "text": ")",
@@ -32680,7 +33221,7 @@
       ]
     },
     {
-      "number": 431,
+      "number": 441,
       "content": [
         {
           "text": "  ",
@@ -32733,7 +33274,7 @@
       ]
     },
     {
-      "number": 432,
+      "number": 442,
       "content": [
         {
           "text": "  ",
@@ -32830,11 +33371,11 @@
       ]
     },
     {
-      "number": 433,
+      "number": 443,
       "content": []
     },
     {
-      "number": 434,
+      "number": 444,
       "content": [
         {
           "text": "  ",
@@ -32871,7 +33412,7 @@
       ]
     },
     {
-      "number": 435,
+      "number": 445,
       "content": [
         {
           "text": "    ",
@@ -32900,7 +33441,7 @@
       ]
     },
     {
-      "number": 436,
+      "number": 446,
       "content": [
         {
           "text": "      ",
@@ -32937,7 +33478,7 @@
       ]
     },
     {
-      "number": 437,
+      "number": 447,
       "content": [
         {
           "text": "      ",
@@ -32954,7 +33495,7 @@
       ]
     },
     {
-      "number": 438,
+      "number": 448,
       "content": [
         {
           "text": "    ",
@@ -32967,7 +33508,7 @@
       ]
     },
     {
-      "number": 439,
+      "number": 449,
       "content": [
         {
           "text": "    ",
@@ -33028,291 +33569,6 @@
       ]
     },
     {
-      "number": 440,
-      "content": [
-        {
-          "text": "      ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "if",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " (",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "!",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "removedRef",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ".",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "current) ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "{",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 441,
-      "content": [
-        {
-          "text": "        ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "removedRef",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ".",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "current ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "=",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "true",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ";",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 442,
-      "content": [
-        {
-          "text": "        ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "remove",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "(id)",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ";",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 443,
-      "content": [
-        {
-          "text": "      ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 444,
-      "content": [
-        {
-          "text": "    ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "},",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "DISMISS_FALLBACK_MS",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ")",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ";",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 445,
-      "content": [
-        {
-          "text": "    ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "return",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "()",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "=>",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "clearTimeout",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "(timer)",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ";",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 446,
-      "content": [
-        {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "},",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " [dismissing",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " id",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " remove])",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ";",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 447,
-      "content": []
-    },
-    {
-      "number": 448,
-      "content": [
-        {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "return",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "{",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 449,
-      "content": [
-        {
-          "text": "    ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "onAnimationEnd",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": ":",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "()",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "=>",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "{",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
       "number": 450,
       "content": [
         {
@@ -33324,15 +33580,7 @@
           "color": "var(--code-keyword)"
         },
         {
-          "text": " (dismissing ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "&&",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
+          "text": " (",
           "color": "var(--code-variable)"
         },
         {
@@ -33438,11 +33686,304 @@
         {
           "text": "},",
           "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "DISMISS_FALLBACK_MS",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ")",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
         }
       ]
     },
     {
       "number": 455,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "()",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=>",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "clearTimeout",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(timer)",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 456,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "},",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " [dismissing",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " id",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " remove])",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 457,
+      "content": []
+    },
+    {
+      "number": 458,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 459,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "onAnimationEnd",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "()",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=>",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 460,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (dismissing ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&&",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "!",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "removedRef",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "current) ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 461,
+      "content": [
+        {
+          "text": "        ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "removedRef",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "current ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "true",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 462,
+      "content": [
+        {
+          "text": "        ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "remove",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(id)",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 463,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 464,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "},",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 465,
       "content": [
         {
           "text": "  ",
@@ -33455,7 +33996,7 @@
       ]
     },
     {
-      "number": 456,
+      "number": 466,
       "content": [
         {
           "text": "}",
@@ -33464,15 +34005,15 @@
       ]
     },
     {
-      "number": 457,
+      "number": 467,
       "content": []
     },
     {
-      "number": 458,
+      "number": 468,
       "content": []
     },
     {
-      "number": 459,
+      "number": 469,
       "content": [
         {
           "text": "\"",
@@ -33493,11 +34034,11 @@
       ]
     },
     {
-      "number": 460,
+      "number": 470,
       "content": []
     },
     {
-      "number": 461,
+      "number": 471,
       "content": [
         {
           "text": "import",
@@ -33512,23 +34053,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": " useCallback",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " useEffect",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " useRef ",
+          "text": " useEffect ",
           "color": "var(--code-variable)"
         },
         {
@@ -33566,7 +34091,7 @@
       ]
     },
     {
-      "number": 462,
+      "number": 472,
       "content": [
         {
           "text": "import",
@@ -33619,7 +34144,7 @@
       ]
     },
     {
-      "number": 463,
+      "number": 473,
       "content": [
         {
           "text": "import",
@@ -33680,7 +34205,7 @@
       ]
     },
     {
-      "number": 464,
+      "number": 474,
       "content": [
         {
           "text": "import",
@@ -33749,11 +34274,11 @@
       ]
     },
     {
-      "number": 465,
+      "number": 475,
       "content": []
     },
     {
-      "number": 466,
+      "number": 476,
       "content": [
         {
           "text": "export",
@@ -33782,7 +34307,7 @@
       ]
     },
     {
-      "number": 467,
+      "number": 477,
       "content": [
         {
           "text": "  toasts",
@@ -33811,7 +34336,7 @@
       ]
     },
     {
-      "number": 468,
+      "number": 478,
       "content": [
         {
           "text": "  dismissingIds",
@@ -33844,7 +34369,7 @@
       ]
     },
     {
-      "number": 469,
+      "number": 479,
       "content": [
         {
           "text": ")",
@@ -33861,129 +34386,7 @@
       ]
     },
     {
-      "number": 470,
-      "content": [
-        {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "const",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "stateRef",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "=",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "useRef",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "(",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "{",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " toasts",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " dismissingIds ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": ")",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ";",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 471,
-      "content": [
-        {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "stateRef",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ".",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "current ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "=",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "{",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " toasts",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " dismissingIds ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "};",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 472,
-      "content": []
-    },
-    {
-      "number": 473,
+      "number": 480,
       "content": [
         {
           "text": "  ",
@@ -33999,7 +34402,7 @@
         },
         {
           "text": "handleEscape",
-          "color": "var(--code-number)"
+          "color": "var(--code-function)"
         },
         {
           "text": " ",
@@ -34011,14 +34414,6 @@
         },
         {
           "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "useCallback",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "(",
           "color": "var(--code-variable)"
         },
         {
@@ -34044,7 +34439,7 @@
       ]
     },
     {
-      "number": 474,
+      "number": 481,
       "content": [
         {
           "text": "    ",
@@ -34101,56 +34496,7 @@
       ]
     },
     {
-      "number": 475,
-      "content": [
-        {
-          "text": "    ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "const",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "current",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "=",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "stateRef",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ".",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "current",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ";",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 476,
+      "number": 482,
       "content": [
         {
           "text": "    ",
@@ -34179,14 +34525,6 @@
         {
           "text": " ",
           "color": "var(--code-variable)"
-        },
-        {
-          "text": "current",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ".",
-          "color": "var(--code-operator)"
         },
         {
           "text": "toasts",
@@ -34233,14 +34571,6 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "current",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ".",
-          "color": "var(--code-operator)"
-        },
-        {
           "text": "dismissingIds",
           "color": "var(--code-number)"
         },
@@ -34275,7 +34605,7 @@
       ]
     },
     {
-      "number": 477,
+      "number": 483,
       "content": [
         {
           "text": "    ",
@@ -34316,32 +34646,24 @@
       ]
     },
     {
-      "number": 478,
+      "number": 484,
       "content": [
         {
           "text": "  ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "},",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " [])",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ";",
+          "text": "};",
           "color": "var(--code-operator)"
         }
       ]
     },
     {
-      "number": 479,
+      "number": 485,
       "content": []
     },
     {
-      "number": 480,
+      "number": 486,
       "content": [
         {
           "text": "  ",
@@ -34438,11 +34760,11 @@
       ]
     },
     {
-      "number": 481,
+      "number": 487,
       "content": []
     },
     {
-      "number": 482,
+      "number": 488,
       "content": [
         {
           "text": "  ",
@@ -34479,7 +34801,7 @@
       ]
     },
     {
-      "number": 483,
+      "number": 489,
       "content": [
         {
           "text": "    ",
@@ -34524,7 +34846,7 @@
       ]
     },
     {
-      "number": 484,
+      "number": 490,
       "content": [
         {
           "text": "    ",
@@ -34557,7 +34879,7 @@
       ]
     },
     {
-      "number": 485,
+      "number": 491,
       "content": [
         {
           "text": "      ",
@@ -34598,7 +34920,7 @@
       ]
     },
     {
-      "number": 486,
+      "number": 492,
       "content": [
         {
           "text": "      ",
@@ -34627,7 +34949,7 @@
       ]
     },
     {
-      "number": 487,
+      "number": 493,
       "content": [
         {
           "text": "    ",
@@ -34640,7 +34962,7 @@
       ]
     },
     {
-      "number": 488,
+      "number": 494,
       "content": [
         {
           "text": "    ",
@@ -34689,7 +35011,7 @@
       ]
     },
     {
-      "number": 489,
+      "number": 495,
       "content": [
         {
           "text": "    ",
@@ -34726,7 +35048,7 @@
       ]
     },
     {
-      "number": 490,
+      "number": 496,
       "content": [
         {
           "text": "      ",
@@ -34775,7 +35097,7 @@
       ]
     },
     {
-      "number": 491,
+      "number": 497,
       "content": [
         {
           "text": "      ",
@@ -34796,7 +35118,7 @@
       ]
     },
     {
-      "number": 492,
+      "number": 498,
       "content": [
         {
           "text": "    ",
@@ -34809,7 +35131,7 @@
       ]
     },
     {
-      "number": 493,
+      "number": 499,
       "content": [
         {
           "text": "  ",
@@ -34830,7 +35152,7 @@
       ]
     },
     {
-      "number": 494,
+      "number": 500,
       "content": [
         {
           "text": "}",
@@ -34839,7 +35161,7 @@
       ]
     },
     {
-      "number": 495,
+      "number": 501,
       "content": []
     }
   ],
@@ -39052,7 +39374,7 @@
       ]
     },
     "toast-positions": {
-      "raw": "\"use client\";\n\nimport { useState } from \"react\"\nimport { toast, Toaster } from \"@/components/ui/toast\"\nimport type { ToastPosition } from \"@/components/ui/toast\"\nimport { Button } from \"@/components/ui/button\"\nimport { ToggleGroup } from \"@/components/ui/toggle-group\"\n\nexport default function ToastPositions() {\n  const [position, setPosition] = useState<string | null>(\"bottom-right\")\n  return (\n    <div className=\"flex flex-col gap-4\">\n      <ToggleGroup value={position} onChange={setPosition}>\n        <ToggleGroup.Item value=\"top-left\">Top Left</ToggleGroup.Item>\n        <ToggleGroup.Item value=\"top-center\">Top Center</ToggleGroup.Item>\n        <ToggleGroup.Item value=\"top-right\">Top Right</ToggleGroup.Item>\n        <ToggleGroup.Item value=\"bottom-left\">Bottom Left</ToggleGroup.Item>\n        <ToggleGroup.Item value=\"bottom-center\">Bottom Center</ToggleGroup.Item>\n        <ToggleGroup.Item value=\"bottom-right\">Bottom Right</ToggleGroup.Item>\n      </ToggleGroup>\n      <Button\n        variant=\"primary\"\n        size=\"sm\"\n        onClick={() =>\n          toast.info(\"Notification\", { message: \"Check the selected corner.\" })\n        }\n      >\n        Show Toast\n      </Button>\n      <Toaster position={(position ?? \"bottom-right\") as ToastPosition} />\n    </div>\n  )\n}\n",
+      "raw": "\"use client\";\n\nimport { useState } from \"react\"\nimport { toast, Toaster } from \"@/components/ui/toast\"\nimport type { ToastPosition } from \"@/components/ui/toast\"\nimport { Button } from \"@/components/ui/button\"\nimport { ToggleGroup } from \"@/components/ui/toggle-group\"\n\nexport default function ToastPositions() {\n  const [position, setPosition] = useState<string | null>(\"bottom-right\")\n  return (\n    <div className=\"flex flex-col gap-4\">\n      <ToggleGroup value={position} onValueChange={setPosition}>\n        <ToggleGroup.Item value=\"top-left\">Top Left</ToggleGroup.Item>\n        <ToggleGroup.Item value=\"top-center\">Top Center</ToggleGroup.Item>\n        <ToggleGroup.Item value=\"top-right\">Top Right</ToggleGroup.Item>\n        <ToggleGroup.Item value=\"bottom-left\">Bottom Left</ToggleGroup.Item>\n        <ToggleGroup.Item value=\"bottom-center\">Bottom Center</ToggleGroup.Item>\n        <ToggleGroup.Item value=\"bottom-right\">Bottom Right</ToggleGroup.Item>\n      </ToggleGroup>\n      <Button\n        variant=\"primary\"\n        size=\"sm\"\n        onClick={() =>\n          toast.info(\"Notification\", { message: \"Check the selected corner.\" })\n        }\n      >\n        Show Toast\n      </Button>\n      <Toaster position={(position ?? \"bottom-right\") as ToastPosition} />\n    </div>\n  )\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -39596,7 +39918,7 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "onChange",
+              "text": "onValueChange",
               "color": "var(--code-function)"
             },
             {

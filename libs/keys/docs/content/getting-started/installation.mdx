@@ -24,12 +24,12 @@ import { KeyboardProvider, useKey } from "@diffgazer/keys"
 Use `dgadd` when you want source-owned standalone hooks with no package runtime dependency.
 
 ```bash
-npx @diffgazer/add init
-npx @diffgazer/add add keys/navigation
-npx @diffgazer/add add keys/focus-trap keys/scroll-lock
+pnpm exec dgadd init
+pnpm exec dgadd add keys/navigation
+pnpm exec dgadd add keys/focus-trap keys/scroll-lock
 ```
 
-`@diffgazer/add` is also publish-gated. Before publication, install a local `@diffgazer/add` tarball into a fixture app and run `pnpm exec dgadd`.
+`@diffgazer/add` is also publish-gated. Before publication, install a local `@diffgazer/add` tarball into a fixture app and run `pnpm exec dgadd`. Use `npx @diffgazer/add ...` only after `npm view @diffgazer/add version` succeeds.
 
 The copied hooks are installed into your configured hooks directory, usually `src/hooks`.
 
@@ -38,8 +38,8 @@ The copied hooks are installed into your configured hooks directory, usually `sr
 Keyboard-enabled UI components can install required hooks automatically:
 
 ```bash
-npx @diffgazer/add add ui/menu --integration copy
-npx @diffgazer/add add ui/dialog --integration keys
+pnpm exec dgadd add ui/menu --integration copy
+pnpm exec dgadd add ui/dialog --integration keys
 ```
 
 `copy` mode writes local hook source. `keys` mode imports from the `@diffgazer/keys` package.

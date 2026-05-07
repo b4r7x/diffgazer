@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
@@ -55,9 +55,112 @@ describe("Radio", () => {
     const { container } = render(<Radio label="Option A" aria-label="Option A" />)
     expect(await axe(container)).toHaveNoViolations()
   })
+
+  it("submits a meaningful default value and resets uncontrolled state", async () => {
+    render(
+      <form data-testid="form">
+        <Radio name="choice" defaultChecked={false} label="Option A" />
+      </form>
+    )
+
+    await userEvent.click(screen.getByRole("radio"))
+    const form = screen.getByTestId("form") as HTMLFormElement
+    expect(new FormData(form).get("choice")).toBe("on")
+
+    form.reset()
+    await waitFor(() => expect(new FormData(form).has("choice")).toBe(false))
+    expect(screen.getByRole("radio")).toHaveAttribute("aria-checked", "false")
+  })
+
+  it("focuses the visible radio when native required validation fails", async () => {
+    render(
+      <form data-testid="form">
+        <Radio name="choice" required label="Option A" />
+      </form>
+    )
+
+    const form = screen.getByTestId("form") as HTMLFormElement
+    const radio = screen.getByRole("radio", { name: /option a/i })
+
+    expect(form.reportValidity()).toBe(false)
+    expect(radio).toHaveFocus()
+    await waitFor(() => expect(radio).toHaveAttribute("aria-invalid", "true"))
+  })
+
+  it("validates required unnamed radios without contributing FormData", async () => {
+    render(
+      <form data-testid="form">
+        <Radio required label="Option A" />
+      </form>
+    )
+
+    const form = screen.getByTestId("form") as HTMLFormElement
+    const radio = screen.getByRole("radio", { name: /option a/i })
+
+    expect(form.reportValidity()).toBe(false)
+    expect(radio).toHaveFocus()
+    await waitFor(() => expect(radio).toHaveAttribute("aria-invalid", "true"))
+    expect(new FormData(form).entries().next().done).toBe(true)
+
+    await userEvent.click(radio)
+    expect(form.checkValidity()).toBe(true)
+    expect(new FormData(form).entries().next().done).toBe(true)
+  })
+
+  it("keeps standalone radios with the same name mutually exclusive", async () => {
+    render(
+      <form data-testid="form">
+        <Radio name="size" value="small" label="Small" />
+        <Radio name="size" value="large" label="Large" />
+      </form>
+    )
+    const small = screen.getByRole("radio", { name: /small/i })
+    const large = screen.getByRole("radio", { name: /large/i })
+    const form = screen.getByTestId("form") as HTMLFormElement
+
+    await userEvent.click(small)
+    expect(small).toHaveAttribute("aria-checked", "true")
+    expect(large).toHaveAttribute("aria-checked", "false")
+    expect(new FormData(form).get("size")).toBe("small")
+
+    await userEvent.click(large)
+    expect(small).toHaveAttribute("aria-checked", "false")
+    expect(large).toHaveAttribute("aria-checked", "true")
+    expect(new FormData(form).get("size")).toBe("large")
+  })
+
+  it("normalizes same-name default selections to one checked standalone radio", async () => {
+    render(
+      <form data-testid="form">
+        <Radio name="size" value="small" defaultChecked label="Small" />
+        <Radio name="size" value="large" defaultChecked label="Large" />
+      </form>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole("radio", { name: /small/i })).toHaveAttribute("aria-checked", "false")
+      expect(screen.getByRole("radio", { name: /large/i })).toHaveAttribute("aria-checked", "true")
+    })
+    expect(new FormData(screen.getByTestId("form") as HTMLFormElement).get("size")).toBe("large")
+  })
 })
 
 describe("RadioGroup", () => {
+  it("supports direct namespaced items with custom label UI", async () => {
+    const onValueChange = vi.fn()
+    render(
+      <RadioGroup onValueChange={onValueChange} label="Colors">
+        <RadioGroup.Item value="red" label={<span>Red</span>} description={<span>Warm</span>} />
+        <RadioGroup.Item value="blue" label={<span>Blue</span>} />
+      </RadioGroup>
+    )
+
+    await userEvent.click(screen.getByRole("radio", { name: /blue/i }))
+
+    expect(onValueChange).toHaveBeenCalledWith("blue")
+    expect(screen.getByText("Warm")).toBeInTheDocument()
+  })
+
   it("selects a value on click", async () => {
     const onChange = vi.fn()
     render(
@@ -68,6 +171,19 @@ describe("RadioGroup", () => {
     )
     await userEvent.click(screen.getByText("Blue"))
     expect(onChange).toHaveBeenCalledWith("blue")
+  })
+
+  it("calls onValueChange as the preferred group callback", async () => {
+    const onValueChange = vi.fn()
+    render(
+      <RadioGroup onValueChange={onValueChange} label="Colors">
+        <RadioGroup.Item value="red" label="Red" />
+        <RadioGroup.Item value="blue" label="Blue" />
+      </RadioGroup>
+    )
+
+    await userEvent.click(screen.getByRole("radio", { name: /blue/i }))
+    expect(onValueChange).toHaveBeenCalledWith("blue")
   })
 
   it("does not select disabled items", async () => {
@@ -196,5 +312,81 @@ describe("RadioGroup", () => {
     onChange.mockClear()
     await userEvent.keyboard("{ArrowLeft}")
     expect(onChange).toHaveBeenCalledWith("red")
+  })
+
+  it("resets uncontrolled group value with native form reset", async () => {
+    render(
+      <form data-testid="form">
+        <RadioGroup name="color" defaultValue="red" label="Colors">
+          <RadioGroup.Item value="red" label="Red" />
+          <RadioGroup.Item value="blue" label="Blue" />
+        </RadioGroup>
+      </form>
+    )
+
+    await userEvent.click(screen.getByRole("radio", { name: /blue/i }))
+    const form = screen.getByTestId("form") as HTMLFormElement
+    expect(new FormData(form).get("color")).toBe("blue")
+
+    form.reset()
+    await waitFor(() => expect(new FormData(form).get("color")).toBe("red"))
+  })
+
+  it("marks required groups and routes native validation to a visible radio", async () => {
+    render(
+      <form data-testid="form">
+        <RadioGroup name="color" required label="Colors">
+          <RadioGroup.Item value="red" label="Red" />
+          <RadioGroup.Item value="blue" label="Blue" />
+        </RadioGroup>
+      </form>
+    )
+
+    expect(screen.getByRole("radiogroup")).toHaveAttribute("aria-required", "true")
+    for (const radio of screen.getAllByRole("radio")) {
+      expect(radio).not.toHaveAttribute("aria-required")
+    }
+    for (const input of screen.getByTestId("form").querySelectorAll("input[required]")) {
+      expect(input).toHaveAttribute("aria-hidden", "true")
+    }
+    expect(screen.getAllByRole("radio")).toHaveLength(2)
+
+    const form = screen.getByTestId("form") as HTMLFormElement
+    expect(form.reportValidity()).toBe(false)
+    expect(screen.getByRole("radio", { name: /red/i })).toHaveFocus()
+    await waitFor(() => expect(screen.getByRole("radiogroup")).toHaveAttribute("aria-invalid", "true"))
+    for (const radio of screen.getAllByRole("radio")) {
+      expect(radio).not.toHaveAttribute("aria-invalid")
+    }
+
+    await userEvent.click(screen.getByRole("radio", { name: /blue/i }))
+    expect(form.checkValidity()).toBe(true)
+    expect(screen.getByRole("radiogroup")).not.toHaveAttribute("aria-invalid")
+    expect(new FormData(form).get("color")).toBe("blue")
+  })
+
+  it("validates required unnamed groups without contributing FormData", async () => {
+    render(
+      <form data-testid="form">
+        <RadioGroup required label="Colors">
+          <RadioGroup.Item value="red" label="Red" />
+          <RadioGroup.Item value="blue" label="Blue" />
+        </RadioGroup>
+      </form>
+    )
+
+    const form = screen.getByTestId("form") as HTMLFormElement
+    expect(form.reportValidity()).toBe(false)
+    expect(screen.getByRole("radio", { name: /red/i })).toHaveFocus()
+    await waitFor(() => expect(screen.getByRole("radiogroup")).toHaveAttribute("aria-invalid", "true"))
+    for (const radio of screen.getAllByRole("radio")) {
+      expect(radio).not.toHaveAttribute("aria-invalid")
+    }
+    expect(new FormData(form).entries().next().done).toBe(true)
+
+    await userEvent.click(screen.getByRole("radio", { name: /blue/i }))
+    expect(form.checkValidity()).toBe(true)
+    expect(screen.getByRole("radiogroup")).not.toHaveAttribute("aria-invalid")
+    expect(new FormData(form).entries().next().done).toBe(true)
   })
 })

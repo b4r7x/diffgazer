@@ -51,18 +51,21 @@ export interface StepperTriggerProps
   children: ReactNode;
 }
 
-export function StepperTrigger({ children, className, ...props }: StepperTriggerProps) {
+export function StepperTrigger({ children, className, onClick, ...props }: StepperTriggerProps) {
   const { onToggle } = useStepperContext();
-  const { stepId, isExpanded, status, triggerId, contentId } = useStepperStepContext();
+  const { stepId, isExpanded, status, triggerId, contentId, hasContent } = useStepperStepContext();
 
   return (
     <button
       type="button"
       {...props}
       className={cn(stepVariants({ status }), className)}
-      onClick={() => onToggle(stepId)}
-      aria-expanded={isExpanded}
-      aria-controls={contentId}
+      onClick={(event) => {
+        onClick?.(event);
+        if (!event.defaultPrevented && hasContent) onToggle(stepId);
+      }}
+      aria-expanded={hasContent ? isExpanded : undefined}
+      aria-controls={hasContent ? contentId : undefined}
       id={triggerId}
       aria-current={status === "active" ? "step" : undefined}
     >

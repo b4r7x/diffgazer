@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
 import { Avatar } from "./index.js"
@@ -39,6 +39,22 @@ describe("Avatar", () => {
     )
     fireEvent.error(document.querySelector("img")!)
     expect(onStatusChange2).toHaveBeenCalledWith("error")
+  })
+
+  it("resets image status after src changes without render-time state updates", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const { rerender } = render(
+      <Avatar src="https://example.com/avatar.jpg" alt="User" fallback="AB" />,
+    )
+
+    fireEvent.load(document.querySelector("img")!)
+    expect(screen.queryByText("AB")).not.toBeInTheDocument()
+
+    rerender(<Avatar src="https://example.com/next.jpg" alt="User" fallback="AB" />)
+
+    await waitFor(() => expect(screen.getByText("AB")).toBeInTheDocument())
+    expect(consoleError).not.toHaveBeenCalled()
+    consoleError.mockRestore()
   })
 
   it("renders default fallback '?' when no fallback prop given", () => {

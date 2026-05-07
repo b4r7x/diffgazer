@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type Ref } from "react";
+import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState, type KeyboardEvent, type Ref } from "react";
 import { useNavigation, type NavigationRole } from "@/hooks/use-navigation";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import { composeRefs } from "@/lib/compose-refs";
@@ -18,6 +18,8 @@ export interface UseListboxOptions {
   role?: "listbox" | "menu";
   itemRole?: Extract<NavigationRole, "option" | "menuitem" | "menuitemradio">;
   typeahead?: boolean;
+  items?: Array<{ id: string; disabled?: boolean }>;
+  getItemId?: (idPrefix: string, id: string) => string;
 }
 
 export interface UseListboxReturn {
@@ -36,9 +38,19 @@ export interface UseListboxReturn {
 
 const TYPEAHEAD_RESET_MS = 500;
 
-function hasEnabledItem(container: HTMLElement | null, itemRole: string, idPrefix: string, id: string | null): id is string {
-  if (!container || !id) return false;
-  const element = container.ownerDocument.getElementById(`${idPrefix}-${id}`);
+export function getEncodedListboxItemId(idPrefix: string, id: string): string {
+  return `${idPrefix}-${encodeURIComponent(id)}`;
+}
+
+function hasEnabledItem(
+  container: HTMLElement | null,
+  itemRole: string,
+  idPrefix: string,
+  id: string | null,
+  getItemId: (idPrefix: string, id: string) => string,
+): id is string {
+  if (!container || id === null) return false;
+  const element = container.ownerDocument.getElementById(getItemId(idPrefix, id));
   return Boolean(
     element &&
       element.getAttribute("role") === itemRole &&
@@ -46,6 +58,24 @@ function hasEnabledItem(container: HTMLElement | null, itemRole: string, idPrefi
       element.getAttribute("aria-disabled") !== "true" &&
       !element.hasAttribute("data-disabled"),
   );
+}
+
+function hasEnabledMetadataItem(
+  items: Array<{ id: string; disabled?: boolean }>,
+  id: string | null,
+): id is string {
+  return id !== null && items.some((item) => item.id === id && !item.disabled);
+}
+
+function resolveActiveDescendant(
+  items: Array<{ id: string; disabled?: boolean }> | undefined,
+  highlightedId: string | null,
+  selectedId: string | null,
+): string | null {
+  if (!items) return highlightedId ?? selectedId;
+  if (hasEnabledMetadataItem(items, highlightedId)) return highlightedId;
+  if (hasEnabledMetadataItem(items, selectedId)) return selectedId;
+  return null;
 }
 
 function getAccessibleText(el: HTMLElement): string {
@@ -76,11 +106,13 @@ export function useListbox({
   role: containerRole = "listbox",
   itemRole = "option",
   typeahead = false,
+  items,
+  getItemId = getEncodedListboxItemId,
 }: UseListboxOptions): UseListboxReturn {
   const containerRef = useRef<HTMLDivElement>(null);
   const typeaheadBuffer = useRef("");
   const typeaheadTimer = useRef<number>(0);
-  const [, forceActiveDescendantCheck] = useState(0);
+  const [domActiveDescendant, setDomActiveDescendant] = useState<string | null>(null);
 
   useEffect(() => () => clearTimeout(typeaheadTimer.current), []);
 
@@ -100,7 +132,43 @@ export function useListbox({
     },
   });
 
+  const activeDescendantCandidate = resolveActiveDescendant(items, highlightedId, selectedId);
+  const activeDescendant = items ? activeDescendantCandidate : domActiveDescendant;
+
+  const syncDomActiveDescendant = useEffectEvent(() => {
+    if (items) return;
+    const next = hasEnabledItem(containerRef.current, itemRole, idPrefix, activeDescendantCandidate, getItemId)
+      ? activeDescendantCandidate
+      : null;
+    setDomActiveDescendant((current) => (current === next ? current : next));
+  });
+
+  useLayoutEffect(() => {
+    syncDomActiveDescendant();
+  }, [activeDescendantCandidate, items]);
+
+  useLayoutEffect(() => {
+    if (items) return;
+    syncDomActiveDescendant();
+    const container = containerRef.current;
+    const view = container?.ownerDocument.defaultView;
+    if (!container || !view?.MutationObserver) return;
+
+    const observer = new view.MutationObserver(syncDomActiveDescendant);
+    observer.observe(container, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["aria-disabled", "data-disabled", "data-value", "id", "role"],
+    });
+    return () => observer.disconnect();
+  }, [getItemId, idPrefix, itemRole, items]);
+
   const handleItemActivate = (next: string) => {
+    const enabled = items
+      ? hasEnabledMetadataItem(items, next)
+      : hasEnabledItem(containerRef.current, itemRole, idPrefix, next, getItemId);
+    if (!enabled) return;
     setSelectedId(next);
     setHighlightedId(next);
   };
@@ -109,7 +177,7 @@ export function useListbox({
     containerRef,
     role: itemRole,
     wrap,
-    value: highlightedId ?? undefined,
+    value: highlightedId ?? selectedId ?? undefined,
     onValueChange: setHighlightedId,
     onEnter: handleItemActivate,
     onSelect: handleItemActivate,
@@ -130,7 +198,7 @@ export function useListbox({
     if (!items) return;
     for (const item of items) {
       const label = getAccessibleText(item).trim().toLowerCase();
-      if (label.startsWith(query) && item.dataset.value) {
+      if (label.startsWith(query) && item.dataset.value !== undefined) {
         setHighlightedId(item.dataset.value);
         item.scrollIntoView?.({ block: "nearest" });
         break;
@@ -146,30 +214,12 @@ export function useListbox({
     }
   };
 
-  const activeDescendant = hasEnabledItem(containerRef.current, itemRole, idPrefix, highlightedId)
-    ? highlightedId
-    : hasEnabledItem(containerRef.current, itemRole, idPrefix, selectedId)
-      ? selectedId
-      : null;
-
-  useLayoutEffect(() => {
-    const nextActiveDescendant = hasEnabledItem(containerRef.current, itemRole, idPrefix, highlightedId)
-      ? highlightedId
-      : hasEnabledItem(containerRef.current, itemRole, idPrefix, selectedId)
-        ? selectedId
-        : null;
-
-    if (nextActiveDescendant !== activeDescendant) {
-      forceActiveDescendantCheck((current) => current + 1);
-    }
-  });
-
   const getContainerProps = (ref?: Ref<HTMLDivElement>) => ({
     ref: composeRefs(containerRef, ref),
     role: containerRole,
     tabIndex: 0 as const,
-    "aria-activedescendant": activeDescendant
-      ? `${idPrefix}-${activeDescendant}`
+    "aria-activedescendant": activeDescendant !== null
+      ? getItemId(idPrefix, activeDescendant)
       : undefined,
     onKeyDown: handleKeyDown,
   });

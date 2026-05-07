@@ -2,23 +2,23 @@ import type { ComponentDoc } from "./types"
 
 export const logoDoc: ComponentDoc = {
   description:
-    "Renders text as ASCII art using figlet fonts. Includes a standalone getFigletText utility for non-JSX usage.",
+    "Renders static text or caller-provided ASCII art without loading figlet from the default component export.",
   notes: [
     {
-      title: "Font Loading",
+      title: "ASCII Text",
       content:
-        "Fonts are parsed eagerly on first import. The bundled fonts (Big and Small) are imported statically, so no network requests are made.",
+        "Precompute ASCII art and pass it through asciiText. The package helper is available from @diffgazer/ui/components/logo/figlet when runtime generation is needed.",
     },
     {
       title: "Sizing",
       content:
-        "Figlet output can be large. Use small text sizes (text-[6px] to text-[10px]) and responsive sizing to fit it in your layout.",
+        "ASCII output can be large. Use small text sizes (text-[6px] to text-[10px]) and responsive sizing to fit it in your layout.",
     },
   ],
   usage: { example: "logo-default" },
   examples: [
     { name: "logo-default", title: "Default" },
-    { name: "logo-fonts", title: "Font Comparison" },
+    { name: "logo-fonts", title: "ASCII Text" },
     { name: "logo-styled", title: "Styled" },
   ],
   keyboard: null,

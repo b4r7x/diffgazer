@@ -24,7 +24,11 @@
     "dist",
     "registry",
     "public/r",
-    "internal-docs-manifest.json"
+    "internal-docs-manifest.json",
+    "README.md",
+    "LICENSE",
+    "SECURITY.md",
+    "SUPPORT.md"
   ],
   "bugs": {
     "url": "https://github.com/b4r7x/diffgazer/issues"
@@ -46,16 +50,16 @@
     "playground": "pnpm --filter playground dev"
   },
   "peerDependencies": {
-    "react": "^19.0.0"
+    "react": ">=19.2.0"
   },
   "devDependencies": {
     "@diffgazer/registry": "workspace:*",
     "@testing-library/react": "^16.0.0",
     "@types/node": "^25.2.3",
-    "@types/react": "^19.0.0",
+    "@types/react": "^19.2.0",
     "jsdom": "^28.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "shadcn": "^2.10.0",
     "tsx": "^4.0.0",
     "typescript": "^5.9.3",
@@ -74,9 +78,7 @@
     "zones"
   ],
   "publishConfig": {
-    "access": "public"
-  },
-  "dependencies": {
-    "zod": "^4.3.6"
+    "access": "public",
+    "provenance": true
   }
 }

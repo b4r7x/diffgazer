@@ -1,6 +1,4 @@
-"use client";
-
-import { useState, useEffect, type ComponentPropsWithRef } from "react";
+import { type ComponentPropsWithRef } from "react";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
@@ -38,9 +36,6 @@ export type EmptyStateProps = ComponentPropsWithRef<"div"> & {
 };
 
 export function EmptyState({ variant = "centered", size = "md", live = false, className, children, ...props }: EmptyStateProps) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
   return (
     <div
       data-size={size}
@@ -48,7 +43,7 @@ export function EmptyState({ variant = "centered", size = "md", live = false, cl
       className={cn(emptyStateVariants({ variant, size }), className)}
       {...props}
     >
-      {live ? (mounted ? children : null) : children}
+      {children}
     </div>
   );
 }

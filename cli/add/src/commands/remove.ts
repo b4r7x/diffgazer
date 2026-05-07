@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { relative, resolve } from "node:path";
-import { createRemoveCommand, findOrphanedNpmDeps } from "@diffgazer/registry/cli";
-import { ctx } from "../context.js";
+import { createRemoveCommand, findOrphanedNpmDeps, info } from "@diffgazer/registry/cli";
+import { ctx, type DiffgazerAddConfig } from "../context.js";
+import { resolveKeysHooksFromRegistry } from "../utils/integration.js";
 import { getInstallBaseForFilePath, getInstallDirForBase } from "../utils/registry.js";
 import {
   getNamespacedItem,
@@ -11,6 +11,7 @@ import {
   publicInstallNames,
   validateInstallNames,
 } from "../utils/namespaces.js";
+import { normalizeManifestPath, resolveInstallPath, resolveProjectPath } from "../utils/paths.js";
 
 function sha256(content: string): string {
   return `sha256-${createHash("sha256").update(content).digest("hex")}`;
@@ -18,14 +19,63 @@ function sha256(content: string): string {
 
 function ownedFileHash(cwd: string, itemName: string, absolutePath: string): string | null {
   const parsed = parseInstallName(itemName);
-  if (parsed.namespace !== "ui") return null;
 
   const config = ctx.config.loadConfig(cwd);
   if (!config.ok) return null;
 
-  const files = config.config.installedComponents?.[parsed.name]?.files ?? [];
-  const filePath = relative(cwd, absolutePath);
+  const manifest = config.config.installedComponents ?? {};
+  const record = manifest[parsed.publicName] ?? (parsed.namespace === "ui" ? manifest[parsed.name] : undefined);
+  const files = record?.files ?? [];
+  const filePath = normalizeManifestPath(cwd, absolutePath);
   return files.find((file) => file.path === filePath)?.hash ?? null;
+}
+
+function isCopyModeInstall(record: NonNullable<DiffgazerAddConfig["installedComponents"]>[string]): boolean {
+  return record.integrationMode === "copy"
+    || (record.files ?? []).some((file) => file.integrationMode === "copy");
+}
+
+function copyModeDependentsForKey(cwd: string, hookName: string): string[] {
+  const config = ctx.config.loadConfig(cwd);
+  if (!config.ok) return [];
+
+  const manifest = config.config.installedComponents ?? {};
+  const dependents: string[] = [];
+
+  for (const [installedName, record] of Object.entries(manifest)) {
+    const parsed = parseInstallName(installedName);
+    if (parsed.namespace !== "ui" || !isCopyModeInstall(record)) continue;
+
+    const registryItem = ctx.registry.getItem(parsed.name);
+    if (!registryItem) continue;
+
+    if (resolveKeysHooksFromRegistry([registryItem]).includes(hookName)) {
+      dependents.push(parsed.publicName);
+    }
+  }
+
+  return dependents;
+}
+
+const warnedBlockedHookRemovals = new Set<string>();
+
+function blocksRetainedCopyModeUi(cwd: string, itemName: string): boolean {
+  const parsed = parseInstallName(itemName);
+  if (parsed.namespace !== "keys") return false;
+
+  const dependents = copyModeDependentsForKey(cwd, parsed.name);
+  if (dependents.length === 0) return false;
+
+  const warningKey = `${cwd}:${parsed.publicName}`;
+  if (!warnedBlockedHookRemovals.has(warningKey)) {
+    warnedBlockedHookRemovals.add(warningKey);
+    info(
+      `Keeping ${parsed.publicName}; copied hook files are still required by installed copy-mode UI: `
+      + dependents.join(", "),
+    );
+  }
+
+  return true;
 }
 
 export const removeCommand = createRemoveCommand({
@@ -44,27 +94,27 @@ export const removeCommand = createRemoveCommand({
     item.files.map((file) => {
       const installBase = getInstallBaseForFilePath(file.path);
       const installDir = getInstallDirForBase(installBase, config);
-      return { absolutePath: resolve(cwd, installDir, ctx.registry.relativePath(file)) };
+      return { absolutePath: resolveInstallPath(cwd, installDir, ctx.registry.relativePath(file)) };
     }),
   canRemoveFile: ({ cwd, item, file, force }) => {
+    if (blocksRetainedCopyModeUi(cwd, item.name)) return false;
     if (force) return true;
     const expectedHash = ownedFileHash(cwd, item.name, file.absolutePath);
     if (!expectedHash) return false;
     return sha256(readFileSync(file.absolutePath, "utf-8")) === expectedHash;
   },
   resolveAllowedBaseDirs: ({ cwd, config }) => [
-    resolve(cwd, config.componentsFsPath),
-    resolve(cwd, config.hooksFsPath),
-    resolve(cwd, config.libFsPath),
+    resolveProjectPath(cwd, config.componentsFsPath),
+    resolveProjectPath(cwd, config.hooksFsPath),
+    resolveProjectPath(cwd, config.libFsPath),
   ],
   updateManifest: ({ cwd, removedNames }) => {
-    const uiRemovedNames = removedNames
+    const names = removedNames.map((name) => parseInstallName(name).publicName);
+    const legacyUiNames = removedNames
       .map(parseInstallName)
       .filter((name) => name.namespace === "ui")
       .map((name) => name.name);
-    if (uiRemovedNames.length > 0) {
-      ctx.config.updateManifest(cwd, undefined, uiRemovedNames);
-    }
+    ctx.config.updateManifest(cwd, undefined, [...names, ...legacyUiNames]);
   },
   findOrphanedDeps: ({ removedNames, cwd, config }) => {
     const checker = ctx.createChecker(cwd, config.componentsFsPath);

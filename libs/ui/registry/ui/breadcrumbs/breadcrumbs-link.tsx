@@ -2,6 +2,7 @@
 
 import type { AnchorHTMLAttributes, ReactNode, Ref } from "react"
 import { cn } from "@/lib/utils"
+import { useBreadcrumbsContext } from "./breadcrumbs-context"
 
 export type BreadcrumbsLinkRenderProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
   ref: Ref<HTMLAnchorElement>
@@ -14,9 +15,11 @@ export interface BreadcrumbsLinkProps extends Omit<AnchorHTMLAttributes<HTMLAnch
 }
 
 export function BreadcrumbsLink({ children, className, ref, ...props }: BreadcrumbsLinkProps) {
+  const { current } = useBreadcrumbsContext()
   const renderProps: BreadcrumbsLinkRenderProps = {
     ref: ref ?? null,
     className: cn("transition-colors hover:text-foreground hover:underline hover:underline-offset-2", className),
+    "aria-current": current ? "page" : undefined,
     ...props,
   }
 

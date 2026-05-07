@@ -23,7 +23,7 @@ export default function SelectAvatar() {
   const [value, setValue] = useState<string[]>([])
 
   return (
-    <Select multiple value={value} onChange={setValue} width="lg">
+    <Select multiple value={value} onValueChange={setValue} width="lg">
       <SelectTrigger>
         <SelectValue placeholder="Assign members...">
           {({ selected }) => (

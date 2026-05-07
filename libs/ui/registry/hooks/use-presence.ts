@@ -21,15 +21,14 @@ export function usePresence({
 }: UsePresenceOptions) {
   const [phase, setPhase] = useState<Phase>(open ? "open" : "hidden");
 
-  // Intentional "adjust state during render" pattern supported by React 19:
-  // synchronously sync phase with the `open` prop before commit.
-  if (open && phase !== "open") {
-    setPhase("open");
-  }
+  useEffect(() => {
+    if (open) {
+      setPhase("open");
+      return;
+    }
 
-  if (!open && phase === "open") {
-    setPhase("closing");
-  }
+    setPhase((current) => current === "open" ? "closing" : current);
+  }, [open]);
 
   const finishExit = useCallback(() => {
     if (phase === "closing") {

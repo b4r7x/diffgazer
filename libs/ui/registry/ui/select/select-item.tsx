@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, type ComponentPropsWithRef, type MouseEvent, type ReactNode } from "react";
+import { type ComponentPropsWithRef, type MouseEvent, type ReactNode } from "react";
 import { cva } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { useSelectContext } from "./select-context";
@@ -90,6 +90,7 @@ export function SelectItem({
 }: SelectItemProps) {
   const {
     value,
+    open,
     multiple,
     highlighted,
     onHighlight,
@@ -97,17 +98,13 @@ export function SelectItem({
     selectItem,
     variant,
     listboxId,
-    registerOption,
   } = useSelectContext("SelectItem");
 
   const label = textValue ?? (typeof children === "string" ? children : itemValue);
 
-  useLayoutEffect(() => {
-    return registerOption(itemValue, { label, disabled });
-  }, [disabled, itemValue, label, registerOption]);
-
   const isSelected = isValueSelected(value, itemValue);
 
+  if (!open) return null;
   if (!matchesSearch(label, searchQuery)) return null;
 
   const isHighlighted = !disabled && highlighted === itemValue;
@@ -144,7 +141,7 @@ export function SelectItem({
       )}
     >
       {showIndicatorSlot && (
-        <span className={cn(
+        <span aria-hidden="true" className={cn(
           "font-mono shrink-0 whitespace-nowrap min-w-[3ch]",
           !indicatorText && "invisible"
         )}>

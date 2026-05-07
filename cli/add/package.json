@@ -18,7 +18,8 @@
   },
   "homepage": "https://github.com/b4r7x/diffgazer/tree/main/cli/add",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "keywords": [
     "cli",
@@ -32,16 +33,15 @@
     "tailwindcss",
     "component-library"
   ],
-  "exports": {
-    ".": "./dist/index.js"
-  },
   "bin": {
     "dgadd": "./dist/index.js"
   },
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "SECURITY.md",
+    "SUPPORT.md"
   ],
   "scripts": {
     "build:registry": "pnpm run generate:bundles",

@@ -1,3 +1,5 @@
+"use client";
+
 import { Stepper as StepperRoot, type StepperProps } from "./stepper";
 import { StepperStep, type StepperStepProps } from "./stepper-step";
 import type { StepStatus, SubstepStatus } from "./stepper-context";

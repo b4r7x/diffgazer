@@ -1,11 +1,14 @@
 "use client";
 
-import { type ReactNode, type KeyboardEvent, type Ref, useId, useMemo } from "react";
-import { useListbox } from "@/hooks/use-listbox";
+import { Children, isValidElement, type ComponentPropsWithRef, type ReactNode, type KeyboardEvent, useId, useMemo, useRef } from "react";
+import { getEncodedListboxItemId, useListbox } from "@/hooks/use-listbox";
+import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
 import { NavigationListContext } from "./navigation-list-context";
+import { NavigationListItem } from "./navigation-list-item";
 
-export interface NavigationListProps {
+export interface NavigationListProps
+  extends Omit<ComponentPropsWithRef<"div">, "children" | "onKeyDown" | "onSelect"> {
   selectedId?: string | null;
   defaultSelectedId?: string | null;
   highlightedId?: string | null;
@@ -14,11 +17,29 @@ export interface NavigationListProps {
   onHighlightChange?: (id: string) => void;
   focused?: boolean;
   wrap?: boolean;
-  className?: string;
   children: ReactNode;
   onKeyDown?: (event: KeyboardEvent) => void;
-  "aria-label"?: string;
-  ref?: Ref<HTMLDivElement>;
+}
+
+interface NavigationListItemElementProps {
+  id?: string;
+  disabled?: boolean;
+  children?: ReactNode;
+}
+
+function collectNavigationItems(children: ReactNode): Array<{ id: string; disabled?: boolean }> {
+  const items: Array<{ id: string; disabled?: boolean }> = [];
+
+  Children.forEach(children, (child) => {
+    if (!isValidElement<NavigationListItemElementProps>(child)) return;
+    if (child.type === NavigationListItem && typeof child.props.id === "string") {
+      items.push({ id: child.props.id, disabled: child.props.disabled });
+      return;
+    }
+    items.push(...collectNavigationItems(child.props.children));
+  });
+
+  return items;
 }
 
 export function NavigationList({
@@ -35,8 +56,11 @@ export function NavigationList({
   onKeyDown,
   "aria-label": ariaLabel,
   ref,
+  ...rootProps
 }: NavigationListProps) {
   const idPrefix = useId();
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const items = useMemo(() => collectNavigationItems(children), [children]);
 
   const {
     selectedId,
@@ -55,6 +79,8 @@ export function NavigationList({
     idPrefix,
     onKeyDown,
     typeahead: true,
+    items,
+    getItemId: getEncodedListboxItemId,
   });
 
   const contextValue = useMemo(
@@ -63,6 +89,7 @@ export function NavigationList({
       highlightedId,
       activate: handleItemActivate,
       highlight: handleItemHighlight,
+      focusContainer: () => containerRef.current?.focus(),
       focused,
       idPrefix,
     }),
@@ -72,7 +99,8 @@ export function NavigationList({
   return (
     <NavigationListContext value={contextValue}>
       <div
-        {...getContainerProps(ref)}
+        {...rootProps}
+        {...getContainerProps(composeRefs(containerRef, ref))}
         aria-label={ariaLabel}
         aria-orientation="vertical"
         className={cn("w-full outline-none", className)}

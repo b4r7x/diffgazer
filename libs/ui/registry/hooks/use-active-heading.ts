@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 
 export type ActiveHeadingActivation = "top-line" | "viewport-center" | (number & {});
 
@@ -99,49 +99,29 @@ export function useActiveHeading({
   const [activeId, setActiveId] = useState<string | null>(ids[0] ?? null);
   const scrollingToRef = useRef<string | null>(null);
   const settleTimerRef = useRef<number>(0);
-  const optionsRef = useRef({
-    ids,
-    containerId,
-    activation,
-    topOffset,
-    bottomMargin,
-    threshold,
-    bottomLock,
-  });
-  optionsRef.current = {
-    ids,
-    containerId,
-    activation,
-    topOffset,
-    bottomMargin,
-    threshold,
-    bottomLock,
-  };
-
-  const update = useCallback((): void => {
+  const update = useEffectEvent((): void => {
     if (scrollingToRef.current !== null) return;
-    const current = optionsRef.current;
 
-    const container = getContainer(current.containerId);
-    const elements = current.ids
+    const container = getContainer(containerId);
+    const elements = ids
       .map((id) => document.getElementById(id))
       .filter((el): el is HTMLElement => el instanceof HTMLElement);
 
     if (elements.length === 0) {
-      setActiveId(current.ids[0] ?? null);
+      setActiveId(ids[0] ?? null);
       return;
     }
 
     const { top, height, scrollTop, scrollHeight } = getViewportMetrics(container);
-    const bottomMarginPx = Math.max(0, current.bottomMargin) * height;
+    const bottomMarginPx = Math.max(0, bottomMargin) * height;
 
-    if (current.bottomLock && scrollTop + height >= scrollHeight - 2 - bottomMarginPx) {
+    if (bottomLock && scrollTop + height >= scrollHeight - 2 - bottomMarginPx) {
       setActiveId(elements[elements.length - 1]?.id ?? null);
       return;
     }
 
-    const activationLine = resolveActivationLine(top, height, current.activation, current.topOffset);
-    const t = Math.max(0, Math.min(1, current.threshold));
+    const activationLine = resolveActivationLine(top, height, activation, topOffset);
+    const t = Math.max(0, Math.min(1, threshold));
     let next = findLastAbove(elements, activationLine, t) ?? elements[0]?.id ?? null;
 
     if (next && elements.length > 1) {
@@ -152,7 +132,7 @@ export function useActiveHeading({
     }
 
     setActiveId(next);
-  }, []);
+  });
 
   useEffect(() => {
     if (!enabled || ids.length === 0) {
@@ -213,7 +193,7 @@ export function useActiveHeading({
       if (frame !== 0) window.cancelAnimationFrame(frame);
       if (settleTimerRef.current !== 0) window.clearTimeout(settleTimerRef.current);
     };
-  }, [idsKey, containerId, activation, topOffset, bottomMargin, threshold, bottomLock, enabled, settleDelay, observe, update]);
+  }, [idsKey, containerId, activation, topOffset, bottomMargin, threshold, bottomLock, enabled, settleDelay, observe]);
 
   const scrollTo = useCallback((id: string) => {
     const heading = document.getElementById(id);

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode, RefObject } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { useSelectContext, type SelectOptionMetadata } from "./select-context";
 import { toSelectedArray } from "./select-utils";
@@ -26,20 +26,21 @@ export interface SelectValueProps {
 
 function MultiValue({
   selected,
-  labelsRef,
+  options,
   display,
   truncateAfter,
 }: {
   selected: string[];
-  labelsRef: RefObject<Map<string, SelectOptionMetadata>>;
+  options: ReadonlyMap<string, SelectOptionMetadata>;
   display: SelectValueDisplay;
   truncateAfter: number;
 }): ReactNode {
   if (selected.length === 1) {
-    return <span>{labelsRef.current.get(selected[0]!)?.label ?? selected[0]}</span>;
+    const firstSelected = selected[0];
+    return firstSelected === undefined ? null : <span>{options.get(firstSelected)?.label ?? firstSelected}</span>;
   }
 
-  const labels = selected.map((v) => labelsRef.current.get(v)?.label ?? v);
+  const labels = selected.map((v) => options.get(v)?.label ?? v);
 
   switch (display) {
     case "list":
@@ -69,7 +70,7 @@ export function SelectValue({
   className,
   children,
 }: SelectValueProps) {
-  const { value, multiple, labelsRef, variant } = useSelectContext("SelectValue");
+  const { value, multiple, options, variant } = useSelectContext("SelectValue");
 
   const selected = toSelectedArray(value, multiple);
 
@@ -85,12 +86,12 @@ export function SelectValue({
   }
 
   if (typeof children === "function") {
-    return <span className={className}>{children({ selected, labels: getLabelMap(labelsRef.current) })}</span>;
+    return <span className={className}>{children({ selected, labels: getLabelMap(options) })}</span>;
   }
 
   return (
     <span className={className}>
-      <MultiValue selected={selected} labelsRef={labelsRef} display={display} truncateAfter={truncateAfter} />
+      <MultiValue selected={selected} options={options} display={display} truncateAfter={truncateAfter} />
     </span>
   );
 }

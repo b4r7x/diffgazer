@@ -40,7 +40,9 @@ export function ScrollArea({
     if (e.defaultPrevented) return;
 
     const el = e.currentTarget;
-    const pageStep = el.clientHeight * 0.8;
+    const pageStepV = el.clientHeight * 0.8;
+    const pageStepH = el.clientWidth * 0.8;
+    const pageScrollsHorizontal = orientation === "horizontal";
 
     switch (e.key) {
       case "ArrowUp":
@@ -64,20 +66,32 @@ export function ScrollArea({
         e.preventDefault();
         break;
       case "PageUp":
-        el.scrollTop -= pageStep;
+        if (pageScrollsHorizontal) {
+          el.scrollLeft -= pageStepH;
+        } else if (canScrollV) {
+          el.scrollTop -= pageStepV;
+        } else {
+          break;
+        }
         e.preventDefault();
         break;
       case "PageDown":
-        el.scrollTop += pageStep;
+        if (pageScrollsHorizontal) {
+          el.scrollLeft += pageStepH;
+        } else if (canScrollV) {
+          el.scrollTop += pageStepV;
+        } else {
+          break;
+        }
         e.preventDefault();
         break;
       case "Home":
-        el.scrollTop = 0;
+        if (canScrollV) el.scrollTop = 0;
         if (canScrollH) el.scrollLeft = 0;
         e.preventDefault();
         break;
       case "End":
-        el.scrollTop = el.scrollHeight;
+        if (canScrollV) el.scrollTop = el.scrollHeight;
         if (canScrollH) el.scrollLeft = el.scrollWidth;
         e.preventDefault();
         break;

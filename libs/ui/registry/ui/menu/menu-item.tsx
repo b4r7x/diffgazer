@@ -2,6 +2,7 @@
 
 import type { ReactNode, Ref } from "react";
 import { cva } from "class-variance-authority";
+import { getEncodedListboxItemId } from "@/hooks/use-listbox";
 import { cn } from "@/lib/utils";
 import { useMenuContext } from "./menu-context";
 
@@ -83,7 +84,7 @@ function HubItemLayout({ isFocused, isSelected, value, valueClassName, children 
           {children}
         </span>
       </div>
-      {value && <div className={valueClassName}>{value}</div>}
+      {value !== undefined && value !== null && <div className={valueClassName}>{value}</div>}
     </>
   );
 }
@@ -173,6 +174,7 @@ export function MenuItem({
   const isDanger = variant === "danger";
   const isHub = menuVariant === "hub";
   const state = getItemState(disabled, isFocused, isSelected);
+  const itemId = getEncodedListboxItemId(idPrefix, id);
 
   const handleClick = () => {
     if (!disabled) activate(id);
@@ -185,7 +187,7 @@ export function MenuItem({
   return (
     <div
       ref={ref}
-      id={`${idPrefix}-${id}`}
+      id={itemId}
       role={itemRole}
       data-value={id}
       data-active={isActive || undefined}

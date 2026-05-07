@@ -6,14 +6,16 @@ description: Compare installed files with bundled registry versions.
 ## Usage
 
 ```bash
-npx @diffgazer/add diff [item...]
+pnpm exec dgadd diff [item...]
 ```
+
+Use `npx @diffgazer/add diff ...` only after `npm view @diffgazer/add version` succeeds. Before publication, install a locally packed `@diffgazer/add` tarball into the target app and run `pnpm exec dgadd`.
 
 ## Examples
 
 ```bash
-npx @diffgazer/add diff
-npx @diffgazer/add diff ui/button ui/tabs keys/navigation
+pnpm exec dgadd diff
+pnpm exec dgadd diff ui/button ui/tabs keys/navigation
 ```
 
 ## What It Does

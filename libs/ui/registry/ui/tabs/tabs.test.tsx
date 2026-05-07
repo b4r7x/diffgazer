@@ -4,6 +4,7 @@ import { axe } from "../../../testing/utils.js"
 import { describe, it, expect, vi } from "vitest"
 import { Tabs } from "./index.js"
 import { useState } from "react"
+import { renderToString } from "react-dom/server"
 
 function renderTabs(props: Record<string, unknown> = {}) {
   return render(
@@ -21,6 +22,24 @@ function renderTabs(props: Record<string, unknown> = {}) {
 }
 
 describe("Tabs", () => {
+  it("supports direct namespaced compound parts with custom trigger UI", async () => {
+    render(
+      <Tabs defaultValue="overview">
+        <Tabs.List>
+          <Tabs.Trigger value="overview"><span>Overview</span></Tabs.Trigger>
+          <Tabs.Trigger value="settings"><span>Settings</span></Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="overview">Overview panel</Tabs.Content>
+        <Tabs.Content value="settings">Settings panel</Tabs.Content>
+      </Tabs>
+    )
+
+    await userEvent.click(screen.getByRole("tab", { name: "Settings" }))
+
+    expect(screen.getByRole("tab", { name: "Settings" })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByText("Settings panel")).not.toHaveAttribute("hidden")
+  })
+
   it("selects a tab on click", async () => {
     renderTabs()
     await userEvent.click(screen.getByRole("tab", { name: "Two" }))
@@ -162,6 +181,94 @@ describe("Tabs", () => {
     expect(screen.getByText("Content one")).not.toHaveAttribute("hidden")
   })
 
+  it("keeps one enabled fallback tab selected and tabbable for invalid controlled values", () => {
+    const onValueChange = vi.fn()
+
+    render(
+      <Tabs value="missing" onValueChange={onValueChange}>
+        <Tabs.List>
+          <Tabs.Trigger value="one">One</Tabs.Trigger>
+          <Tabs.Trigger value="two">Two</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="one">Content one</Tabs.Content>
+        <Tabs.Content value="two">Content two</Tabs.Content>
+      </Tabs>
+    )
+
+    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("tabindex", "0")
+    expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "false")
+    expect(screen.getByText("Content one")).not.toHaveAttribute("hidden")
+    expect(screen.getByText("Content two")).toHaveAttribute("hidden")
+    expect(onValueChange).not.toHaveBeenCalled()
+  })
+
+  it("does not collect triggers from nested tabs when resolving parent fallback", () => {
+    render(
+      <Tabs value="missing">
+        <Tabs.Content value="parent-panel">
+          <Tabs defaultValue="nested-one">
+            <Tabs.List>
+              <Tabs.Trigger value="nested-one">Nested one</Tabs.Trigger>
+              <Tabs.Trigger value="nested-two">Nested two</Tabs.Trigger>
+            </Tabs.List>
+            <Tabs.Content value="nested-one">Nested content</Tabs.Content>
+            <Tabs.Content value="nested-two">Other nested content</Tabs.Content>
+          </Tabs>
+        </Tabs.Content>
+        <Tabs.List>
+          <Tabs.Trigger value="parent-one">Parent one</Tabs.Trigger>
+          <Tabs.Trigger value="parent-two">Parent two</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="parent-one">Parent content</Tabs.Content>
+        <Tabs.Content value="parent-two">Other parent content</Tabs.Content>
+      </Tabs>,
+    )
+
+    expect(screen.getByRole("tab", { name: "Parent one" })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("tab", { name: "Nested one", hidden: true })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByText("Parent content")).not.toHaveAttribute("hidden")
+    expect(screen.getByText("Nested content")).toBeInTheDocument()
+  })
+
+  it("skips disabled tabs when choosing an invalid controlled fallback", () => {
+    render(
+      <Tabs value="missing">
+        <Tabs.List>
+          <Tabs.Trigger value="one" disabled>One</Tabs.Trigger>
+          <Tabs.Trigger value="two">Two</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="one">Content one</Tabs.Content>
+        <Tabs.Content value="two">Content two</Tabs.Content>
+      </Tabs>
+    )
+
+    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "false")
+    expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("tabindex", "-1")
+    expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("tabindex", "0")
+    expect(screen.getByText("Content two")).not.toHaveAttribute("hidden")
+  })
+
+  it("renders one tabbable enabled tab before effects register tabs", () => {
+    const markup = renderToString(
+      <Tabs>
+        <Tabs.List>
+          <Tabs.Trigger value="one" disabled>One</Tabs.Trigger>
+          <Tabs.Trigger value="two">Two</Tabs.Trigger>
+          <Tabs.Trigger value="three">Three</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="two">Content two</Tabs.Content>
+        <Tabs.Content value="three">Content three</Tabs.Content>
+      </Tabs>,
+    )
+
+    expect(markup).toContain('aria-selected="true"')
+    expect(markup).toContain('tabindex="0"')
+    expect(markup.match(/role="tab"/g)).toHaveLength(3)
+    expect(markup.match(/role="tab"[^>]*tabindex="0"/g)).toHaveLength(1)
+  })
+
   it("moves selection when the active uncontrolled tab is removed", async () => {
     function RemovableTabs() {
       const [showFirst, setShowFirst] = useState(true)
@@ -235,5 +342,70 @@ describe("Tabs", () => {
     await userEvent.click(screen.getByRole("tab", { name: "Two" }))
     expect(onClick).toHaveBeenCalled()
     expect(screen.getByRole("tab", { name: "Two" })).toHaveAttribute("aria-selected", "true")
+  })
+
+  it("keeps value strings unchanged while encoding DOM id references", async () => {
+    const value = "release notes/v1.2?"
+    render(
+      <Tabs defaultValue={value}>
+        <Tabs.List>
+          <Tabs.Trigger value={value}>Release</Tabs.Trigger>
+          <Tabs.Trigger value="other">Other</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value={value}>Release content</Tabs.Content>
+        <Tabs.Content value="other">Other content</Tabs.Content>
+      </Tabs>
+    )
+
+    const tab = screen.getByRole("tab", { name: "Release" })
+    const panel = screen.getByRole("tabpanel", { name: "Release" })
+
+    expect(tab).toHaveAttribute("data-value", value)
+    expect(tab.id).toContain(encodeURIComponent(value))
+    expect(tab).toHaveAttribute("aria-controls", panel.id)
+    expect(panel).toHaveAttribute("aria-labelledby", tab.id)
+
+    await userEvent.click(screen.getByRole("tab", { name: "Other" }))
+    expect(screen.getByRole("tab", { name: "Other" })).toHaveAttribute("aria-selected", "true")
+  })
+
+  it("only emits aria-controls for tabs with a rendered panel", () => {
+    render(
+      <Tabs defaultValue="one">
+        <Tabs.List>
+          <Tabs.Trigger value="one">One</Tabs.Trigger>
+          <Tabs.Trigger value="missing">Missing panel</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="one">Content one</Tabs.Content>
+      </Tabs>,
+    )
+
+    const tab = screen.getByRole("tab", { name: "One" })
+    const missing = screen.getByRole("tab", { name: "Missing panel" })
+    const panelId = tab.getAttribute("aria-controls")
+
+    expect(panelId).toBeTruthy()
+    expect(document.getElementById(panelId!)).toBeInTheDocument()
+    expect(missing).not.toHaveAttribute("aria-controls")
+  })
+
+  it("omits aria-labelledby for content without a matching trigger and warns in development", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    render(
+      <Tabs defaultValue="one">
+        <Tabs.List>
+          <Tabs.Trigger value="one">One</Tabs.Trigger>
+        </Tabs.List>
+        <Tabs.Content value="one">Content one</Tabs.Content>
+        <Tabs.Content value="missing">Missing trigger content</Tabs.Content>
+      </Tabs>,
+    )
+
+    const missingPanel = screen.getByText("Missing trigger content")
+    expect(missingPanel).not.toHaveAttribute("aria-labelledby")
+    expect(warn).toHaveBeenCalledWith('Tabs.Content value "missing" has no matching Tabs.Trigger.')
+
+    warn.mockRestore()
   })
 })

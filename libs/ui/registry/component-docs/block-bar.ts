@@ -16,7 +16,7 @@ export const blockBarDoc: ComponentDoc = {
     {
       title: "Multi-Segment Mode",
       content:
-        "Pass a segments array: segments={[{ value: 60, variant: 'success' }, { value: 25, variant: 'warning' }]}. Value is derived from the segment sum unless explicitly provided.",
+        "Pass a segments array: segments={[{ value: 60, variant: 'success' }, { value: 25, variant: 'warning' }]}. Value is derived from the segment sum unless explicitly provided. When segments and children are both provided, segments win and define rendering and value.",
     },
     {
       title: "Compound Mode",

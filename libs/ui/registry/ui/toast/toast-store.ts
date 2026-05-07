@@ -50,6 +50,7 @@ let state: StoreState = INITIAL_STATE;
 const listeners = new Set<() => void>();
 const timers = new Map<string, TimerEntry>();
 let paused = false;
+let fallbackToastId = 0;
 
 function emit() {
   for (const listener of listeners) listener();
@@ -98,8 +99,16 @@ function resolveNextToasts(current: Toast[], incoming: Toast): Toast[] {
   return all.slice(-MAX_TOASTS);
 }
 
+function createToastId(): string {
+  const randomUUID = globalThis.crypto?.randomUUID;
+  if (typeof randomUUID === "function") return randomUUID.call(globalThis.crypto);
+
+  fallbackToastId += 1;
+  return `toast-${Date.now().toString(36)}-${fallbackToastId.toString(36)}`;
+}
+
 function create(options: ToastOptions): string {
-  const id = options.id ?? crypto.randomUUID();
+  const id = options.id ?? createToastId();
   const variant = options.variant ?? "info";
   const newToast: Toast = {
     id, variant,
@@ -227,4 +236,3 @@ export const toast: ToastFn = Object.assign(
 export function useToastStore(): StoreState {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
-

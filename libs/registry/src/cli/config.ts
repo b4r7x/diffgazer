@@ -5,12 +5,12 @@ import { toErrorMessage, warn } from "./logger.js";
 import { detectSourceDir } from "./detect.js";
 import { atomicWriteFile } from "./fs.js";
 
-const ALIAS_PATTERN = /^(@\/|\.\.?\/)/;
+const ALIAS_PATTERN = /^(\.\.?\/|[@~#][\w-]*\/)/;
 
-export const aliasPathSchema = z.string().regex(ALIAS_PATTERN, 'Must start with "@/" or a relative path').optional();
+export const aliasPathSchema = z.string().regex(ALIAS_PATTERN, 'Must start with an import alias such as "@/" or "~/" or a relative path').optional();
 
 function aliasToFsPath(alias: string, sourceDir?: string): string {
-  const stripped = alias.replace(/^@\//, "");
+  const stripped = alias.replace(/^[@~#][\w-]*\//, "");
   return sourceDir && sourceDir !== "." ? `${sourceDir}/${stripped}` : stripped;
 }
 

@@ -16,8 +16,8 @@ function LandingPage() {
 				<h1 className="text-4xl font-bold text-foreground">diffgazer docs hub</h1>
 
 				<p className="text-muted-foreground text-sm max-w-md mx-auto">
-					Select docs by library. Registry endpoints are hosted under the same
-					domain for shadcn compatibility.
+					Select docs by library. Generated registry endpoints are packaged for
+					shadcn compatibility and will be hosted with the docs deployment.
 				</p>
 
 				<div className="flex items-center justify-center gap-3">

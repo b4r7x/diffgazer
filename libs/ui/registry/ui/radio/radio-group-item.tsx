@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { useRadioGroupContext } from "./radio-group-context";
 import { Radio } from "./radio";
 
@@ -20,20 +20,16 @@ export function RadioGroupItem({
   className,
 }: RadioGroupItemProps) {
   const context = useRadioGroupContext();
-  const { registerItem } = context;
   const isSelected = context.value === value;
   const isDisabled = context.disabled || !!itemDisabled;
   const isHighlighted = context.highlightedValue === value;
   const hasSelection = context.value !== undefined;
   const isTabTarget = !isDisabled && (isSelected || (!hasSelection && context.firstEnabledValue === value));
 
-  useLayoutEffect(() => {
-    return registerItem(value, isDisabled);
-  }, [isDisabled, registerItem, value]);
-
   return (
     <Radio
       data-value={value}
+      value={value}
       checked={isSelected}
       isTabTarget={isTabTarget}
       onChange={() => context.onChange(value)}
@@ -45,7 +41,8 @@ export function RadioGroupItem({
       size={context.size}
       variant={context.variant}
       name={context.name}
-      required={context.required}
+      required={context.name ? context.required : undefined}
+      onNativeInvalid={context.onRequiredInvalid}
       className={className}
     />
   );

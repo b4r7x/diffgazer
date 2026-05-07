@@ -11,19 +11,20 @@ function normalizeStateOptions(
   props: AccordionProps,
 ): UseControllableStateOptions<string[]> {
   if (props.type === "multiple") {
+    const onValueChange = props.onValueChange ?? props.onChange;
     return {
       value: props.value,
       controlled: "value" in props,
       defaultValue: props.defaultValue ?? [],
-      onChange: props.onChange,
+      onChange: onValueChange,
     };
   }
-  const { onChange } = props;
+  const onValueChange = props.onValueChange ?? props.onChange;
   return {
     value: "value" in props ? (props.value === undefined ? [] : [props.value]) : undefined,
     controlled: "value" in props,
     defaultValue: props.defaultValue !== undefined ? [props.defaultValue] : [],
-    onChange: onChange ? (v: string[]) => onChange(v[0]) : undefined,
+    onChange: onValueChange ? (v: string[]) => onValueChange(v[0]) : undefined,
   };
 }
 

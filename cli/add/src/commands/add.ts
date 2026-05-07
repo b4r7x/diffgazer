@@ -1,9 +1,8 @@
-import { resolve } from "node:path";
 import { createHash } from "node:crypto";
-import { rewriteLocalImportsForKeysPackage } from "../utils/transform.js";
+import { rewriteLocalImportsForKeysPackage, rewriteRelativeJsExtensionsForCopy } from "../utils/transform.js";
 import {
   createAddCommand,
-  ensureWithinDir, getInstalledDeps, depName, normalizeVersionSpec,
+  getInstalledDeps, depName, normalizeVersionSpec,
   parseEnumOption, info,
   type FileOp,
 } from "@diffgazer/registry/cli";
@@ -28,6 +27,7 @@ import {
   splitInstallNames,
   validateInstallNames,
 } from "../utils/namespaces.js";
+import { resolveInstallPath, resolveProjectPath, toPosixPath } from "../utils/paths.js";
 
 function buildFileOp(
   file: { path: string; content: string },
@@ -35,7 +35,6 @@ function buildFileOp(
   config: ResolvedConfig,
   cwd: string,
   integrationMode: ResolvedIntegrationSelection["mode"],
-  dirs: { componentsDir: string; hooksDir: string; libDir: string },
 ): FileOp {
   const relativePath = ctx.registry.relativePath(file);
   const rawContent = integrationMode === "@diffgazer/keys"
@@ -44,14 +43,8 @@ function buildFileOp(
   const content = prepareFileContent({ ...file, content: rawContent }, item, config);
   const installBase = getInstallBaseForFilePath(file.path);
   const installDir = getInstallDirForBase(installBase, config);
-  const targetRoot = installBase === "components"
-    ? dirs.componentsDir
-    : installBase === "hooks"
-      ? dirs.hooksDir
-      : dirs.libDir;
-  const targetPath = resolve(cwd, installDir, relativePath);
-  ensureWithinDir(targetPath, targetRoot);
-  return { targetPath, content, relativePath, installDir, sourceName: item.name };
+  const targetPath = resolveInstallPath(cwd, installDir, relativePath);
+  return { targetPath, content, relativePath, installDir, sourceName: `ui/${item.name}` };
 }
 
 function buildComponentFileOps(
@@ -60,17 +53,15 @@ function buildComponentFileOps(
   config: ResolvedConfig,
   integrationMode: ResolvedIntegrationSelection["mode"],
 ): FileOp[] {
-  const componentsDir = resolve(cwd, config.componentsFsPath);
-  const hooksDir = resolve(cwd, config.hooksFsPath);
-  const libDir = resolve(cwd, config.libFsPath);
-  ensureWithinDir(componentsDir, cwd);
-  ensureWithinDir(hooksDir, cwd);
-  ensureWithinDir(libDir, cwd);
+  resolveProjectPath(cwd, config.componentsFsPath);
+  resolveProjectPath(cwd, config.hooksFsPath);
+  resolveProjectPath(cwd, config.libFsPath);
 
-  const dirs = { componentsDir, hooksDir, libDir };
   return resolved.flatMap((name) => {
     const item = ctx.items.getOrThrow(name);
-    return item.files.map((file) => buildFileOp(file, item, config, cwd, integrationMode, dirs));
+    return item.files
+      .filter((file) => !file.path.endsWith(".css"))
+      .map((file) => buildFileOp(file, item, config, cwd, integrationMode));
   });
 }
 
@@ -79,7 +70,7 @@ function buildKeysFileOps(
   cwd: string,
   config: ResolvedConfig,
 ): FileOp[] {
-  const hooksDir = resolve(cwd, config.hooksFsPath);
+  resolveProjectPath(cwd, config.hooksFsPath);
   const { files, missingHooks } = resolveKeysCopyHookFiles(neededKeysHooks);
 
   if (missingHooks.length > 0) {
@@ -89,11 +80,13 @@ function buildKeysFileOps(
     );
   }
 
-  return files.map((file) => {
-    const targetPath = resolve(cwd, config.hooksFsPath, file.relativePath);
-    ensureWithinDir(targetPath, hooksDir);
-    return { targetPath, content: file.content, relativePath: file.relativePath, installDir: config.hooksFsPath };
-  });
+  return files.map((file) => ({
+    targetPath: resolveInstallPath(cwd, config.hooksFsPath, file.relativePath),
+    content: rewriteRelativeJsExtensionsForCopy(file.content),
+    relativePath: file.relativePath,
+    installDir: config.hooksFsPath,
+    sourceName: `keys/${file.hook}`,
+  }));
 }
 
 function logIntegrationMode(mode: ResolvedIntegrationSelection["mode"]): void {
@@ -137,7 +130,7 @@ function buildOwnedFilesByItem(
     if (result === "skipped" || !op.sourceName) continue;
     const files = byItem.get(op.sourceName) ?? [];
     files.push({
-      path: `${op.installDir}/${op.relativePath}`,
+      path: toPosixPath(`${op.installDir}/${op.relativePath}`),
       hash: sha256(op.content),
       item: op.sourceName,
       registryIntegrity,
@@ -151,13 +144,11 @@ function buildOwnedFilesByItem(
 
 function updateOwnedManifestEntries(
   cwd: string,
-  resolvedNames: string[],
   writeResult: { results: Array<{ op: FileOp; result: "written" | "skipped" | "overwritten" }> },
   metadata: ManifestInstallMetadata,
 ): void {
   const filesByItem = buildOwnedFilesByItem(writeResult, metadata.integrationMode ?? "none");
-  const ownedNames = resolvedNames.filter((name) => (filesByItem.get(name)?.length ?? 0) > 0);
-  for (const name of ownedNames) {
+  for (const name of filesByItem.keys()) {
     ctx.config.updateManifest(cwd, [name], undefined, { ...metadata, files: filesByItem.get(name) ?? [] });
   }
 }
@@ -236,17 +227,11 @@ const addBaseCommand = createAddCommand<ResolvedConfig>({
         }
       },
       onApplied: ({ resolvedNames, writeResult }) => {
-        const uiResolvedNames = resolvedNames
-          .filter((name) => name.startsWith("ui/"))
-          .map((name) => name.slice("ui/".length));
-        if (uiResolvedNames.length > 0) {
-          updateOwnedManifestEntries(
-            cwd,
-            uiResolvedNames,
-            writeResult,
-            buildManifestMetadata(selection.mode, keysVersionSpec),
-          );
-        }
+        updateOwnedManifestEntries(
+          cwd,
+          writeResult,
+          buildManifestMetadata(selection.mode, keysVersionSpec),
+        );
         if (selection.hasKeyboardIntegration && selection.mode === "copy") {
           info("Keyboard hooks copied alongside components. No additional packages needed.");
           info("For package imports, re-run with --integration=keys to use @diffgazer/keys.");

@@ -8,20 +8,20 @@ description: Command reference for installing @diffgazer/keys hooks through dgad
 ## Usage
 
 ```bash
-npx @diffgazer/add add keys/<hook>
+pnpm exec dgadd add keys/<hook>
 ```
 
-`@diffgazer/add` and `@diffgazer/keys` are external publish-gated as of May 6, 2026. Use `npx` and `npm install` commands only after `npm view` returns versions, or validate with locally packed tarballs.
+`@diffgazer/add` and `@diffgazer/keys` are external publish-gated as of May 6, 2026. Before publication, install locally packed tarballs into the target app and run `pnpm exec dgadd`. Use `npx` and `npm install` commands only after `npm view` returns versions.
 
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
-| `npx @diffgazer/add init` | Initialize `diffgazer.json` |
-| `npx @diffgazer/add add keys/<hook>` | Copy a standalone hook into your project |
-| `npx @diffgazer/add list` | List available `keys/*` hooks |
-| `npx @diffgazer/add diff keys/<hook>` | Compare installed hook files |
-| `npx @diffgazer/add remove keys/<hook>` | Remove installed hook files |
+| `pnpm exec dgadd init` | Initialize `diffgazer.json` |
+| `pnpm exec dgadd add keys/<hook>` | Copy a standalone hook into your project |
+| `pnpm exec dgadd list` | List available `keys/*` hooks |
+| `pnpm exec dgadd diff keys/<hook>` | Compare installed hook files |
+| `pnpm exec dgadd remove keys/<hook>` | Remove installed hook files |
 
 For package-mode imports, install `@diffgazer/keys` directly:
 

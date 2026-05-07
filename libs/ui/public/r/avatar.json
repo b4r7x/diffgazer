@@ -13,7 +13,7 @@
   "files": [
     {
       "path": "registry/ui/avatar/index.ts",
-      "content": "import { Avatar as AvatarRoot, type AvatarProps, type AvatarStatus } from \"./avatar\";\nimport { AvatarImage, type AvatarImageProps } from \"./avatar-image\";\nimport { AvatarFallback, type AvatarFallbackProps } from \"./avatar-fallback\";\nimport { AvatarGroup, type AvatarGroupProps } from \"./avatar-group\";\nimport { AvatarIndicator, type AvatarIndicatorProps } from \"./avatar-indicator\";\n\nconst Avatar = Object.assign(AvatarRoot, {\n  Image: AvatarImage,\n  Fallback: AvatarFallback,\n  Group: AvatarGroup,\n  Indicator: AvatarIndicator,\n});\n\nexport { Avatar, type AvatarProps, type AvatarStatus };\nexport { AvatarImage, type AvatarImageProps };\nexport { AvatarFallback, type AvatarFallbackProps };\nexport { AvatarGroup, type AvatarGroupProps };\nexport { AvatarIndicator, type AvatarIndicatorProps };\n",
+      "content": "\"use client\";\n\nimport { Avatar as AvatarRoot, type AvatarProps, type AvatarStatus } from \"./avatar\";\nimport { AvatarImage, type AvatarImageProps } from \"./avatar-image\";\nimport { AvatarFallback, type AvatarFallbackProps } from \"./avatar-fallback\";\nimport { AvatarGroup, type AvatarGroupProps } from \"./avatar-group\";\nimport { AvatarIndicator, type AvatarIndicatorProps } from \"./avatar-indicator\";\n\nconst Avatar = Object.assign(AvatarRoot, {\n  Image: AvatarImage,\n  Fallback: AvatarFallback,\n  Group: AvatarGroup,\n  Indicator: AvatarIndicator,\n});\n\nexport { Avatar, type AvatarProps, type AvatarStatus };\nexport { AvatarImage, type AvatarImageProps };\nexport { AvatarFallback, type AvatarFallbackProps };\nexport { AvatarGroup, type AvatarGroupProps };\nexport { AvatarIndicator, type AvatarIndicatorProps };\n",
       "type": "registry:ui"
     },
     {
@@ -48,7 +48,7 @@
     },
     {
       "path": "registry/ui/avatar/use-image-status.ts",
-      "content": "\"use client\";\nimport { useState } from \"react\";\nimport type { AvatarStatus } from \"./avatar-context\";\n\nexport function useImageStatus(src: string | undefined) {\n  const [status, setStatus] = useState<AvatarStatus>(src ? \"loading\" : \"idle\");\n\n  const [prevSrc, setPrevSrc] = useState(src);\n  if (src !== prevSrc) {\n    setPrevSrc(src);\n    setStatus(src ? \"loading\" : \"idle\");\n  }\n\n  return {\n    status,\n    showImage: !!src && status !== \"error\",\n    onLoad: () => setStatus(\"loaded\"),\n    onError: () => setStatus(\"error\"),\n  };\n}\n",
+      "content": "\"use client\";\nimport { useEffect, useState } from \"react\";\nimport type { AvatarStatus } from \"./avatar-context\";\n\ninterface ImageStatusState {\n  src: string | undefined;\n  status: AvatarStatus;\n}\n\nexport function useImageStatus(src: string | undefined) {\n  const [state, setState] = useState<ImageStatusState>(() => ({\n    src,\n    status: src ? \"loading\" : \"idle\",\n  }));\n\n  const status = state.src === src ? state.status : (src ? \"loading\" : \"idle\");\n\n  useEffect(() => {\n    setState((current) => (\n      current.src === src\n        ? current\n        : { src, status: src ? \"loading\" : \"idle\" }\n    ));\n  }, [src]);\n\n  return {\n    status,\n    showImage: !!src && status !== \"error\",\n    onLoad: () => setState({ src, status: \"loaded\" }),\n    onError: () => setState({ src, status: \"error\" }),\n  };\n}\n",
       "type": "registry:ui"
     }
   ],

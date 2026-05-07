@@ -1,3 +1,5 @@
+"use client";
+
 import { Pager as PagerRoot, type PagerProps } from "./pager";
 import { PagerLink, type PagerLinkProps, type PagerLinkRenderProps } from "./pager-link";
 

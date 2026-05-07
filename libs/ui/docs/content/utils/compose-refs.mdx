@@ -9,8 +9,10 @@ It is used internally by `select`, `menu`, `tabs`, `radio`, `checkbox`, `navigat
 
 ## Installation
 
+Before publication, install a locally packed `@diffgazer/add` tarball into the target app so `pnpm exec dgadd` resolves the local CLI. Public `npx @diffgazer/add` usage remains future deployment work and is valid only after `npm view @diffgazer/add version` succeeds.
+
 ```bash
-npx @diffgazer/add add ui/compose-refs
+pnpm exec dgadd add ui/compose-refs
 ```
 
 **shadcn users** — install via the shadcn CLI:

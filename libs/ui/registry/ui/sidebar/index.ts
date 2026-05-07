@@ -1,3 +1,5 @@
+"use client";
+
 import { Sidebar as SidebarRoot, type SidebarProps } from "./sidebar";
 import { SidebarProvider, type SidebarProviderProps } from "./sidebar-provider";
 import { SidebarTrigger, type SidebarTriggerProps } from "./sidebar-trigger";

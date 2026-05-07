@@ -2,7 +2,6 @@
 
 import {
   useState,
-  useEffect,
   useRef,
   useMemo,
   type Ref,
@@ -28,7 +27,7 @@ interface DiffViewBaseProps {
   disableWordDiff?: boolean;
   label?: string;
   className?: string;
-  ref?: Ref<HTMLElement>;
+  ref?: Ref<HTMLDivElement>;
 }
 
 export type DiffViewProps = (
@@ -37,6 +36,46 @@ export type DiffViewProps = (
   | DiffInputParsed
 ) &
   DiffViewBaseProps;
+
+interface ActiveHunkState {
+  parsedIdentity: string;
+  value: string;
+}
+
+function getParsedDiffIdentity(parsed: ParsedDiff): string {
+  return JSON.stringify([
+    parsed.oldPath,
+    parsed.newPath,
+    parsed.hunks.map((hunk) => [
+      hunk.oldStart,
+      hunk.oldCount,
+      hunk.newStart,
+      hunk.newCount,
+      hunk.heading,
+      hunk.changes.map((change) => [
+        change.type,
+        change.content,
+        change.oldLine,
+        change.newLine,
+      ]),
+    ]),
+  ]);
+}
+
+function resolveActiveHunk(
+  activeHunkState: ActiveHunkState | null,
+  parsedIdentity: string,
+  hunkCount: number,
+): string | null {
+  if (activeHunkState?.parsedIdentity !== parsedIdentity) return null;
+
+  const activeIndex = Number(activeHunkState.value);
+  if (!Number.isInteger(activeIndex) || activeIndex < 0 || activeIndex >= hunkCount) {
+    return null;
+  }
+
+  return activeHunkState.value;
+}
 
 function FileHeader({
   oldPath,
@@ -128,17 +167,15 @@ export function DiffView(props: DiffViewProps) {
     [patch, before, after, diff],
   );
   const containerRef = useRef<HTMLElement | null>(null);
-  const [activeHunk, setActiveHunk] = useState<string | null>(null);
-
-  useEffect(() => {
-    setActiveHunk(null);
-  }, [parsed]);
+  const parsedIdentity = useMemo(() => getParsedDiffIdentity(parsed), [parsed]);
+  const [activeHunkState, setActiveHunkState] = useState<ActiveHunkState | null>(null);
+  const activeHunk = resolveActiveHunk(activeHunkState, parsedIdentity, parsed.hunks.length);
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,
     role: "button",
     value: activeHunk,
-    onValueChange: setActiveHunk,
+    onValueChange: (value) => setActiveHunkState({ parsedIdentity, value }),
     upKeys: ["k"],
     downKeys: ["j"],
     wrap: false,
@@ -147,21 +184,22 @@ export function DiffView(props: DiffViewProps) {
 
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Escape") {
-      setActiveHunk(null);
+      setActiveHunkState(null);
       return;
     }
     navKeyDown(e);
   };
 
   const activeIndex = activeHunk != null ? Number(activeHunk) : null;
+  const activeHunkData = activeIndex != null ? parsed.hunks[activeIndex] : undefined;
   const announcement =
-    activeIndex != null
-      ? `Hunk ${activeIndex + 1} of ${parsed.hunks.length}${parsed.hunks[activeIndex]?.heading ? `: ${parsed.hunks[activeIndex].heading}` : ""}`
+    activeIndex != null && activeHunkData
+      ? `Hunk ${activeIndex + 1} of ${parsed.hunks.length}${activeHunkData.heading ? `: ${activeHunkData.heading}` : ""}`
       : "";
 
   return (
     <div
-      ref={ref as Ref<never>}
+      ref={ref}
       role="region"
       aria-roledescription="diff"
       aria-label={label ?? "Diff output"}

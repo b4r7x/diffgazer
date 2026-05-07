@@ -1,12 +1,14 @@
 "use client";
 
-import { type ReactNode, useId, useMemo, useRef } from "react";
+import { Children, isValidElement, type ReactNode, useId, useMemo, useRef } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
 import {
   PopoverContext,
+  type PopoverPopupRole,
   type PopoverContextValue,
   type PopoverTriggerMode,
 } from "./popover-context";
+import { PopoverContent } from "./popover-content";
 import { usePopoverBehavior } from "./use-popover-behavior";
 
 export interface PopoverProps {
@@ -15,6 +17,7 @@ export interface PopoverProps {
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   triggerMode?: PopoverTriggerMode;
+  popupRole?: PopoverPopupRole;
   enabled?: boolean;
   delayMs?: number;
   closeDelayMs?: number;
@@ -26,6 +29,7 @@ export function PopoverRoot({
   defaultOpen = false,
   onOpenChange: onOpenChangeProp,
   triggerMode = "click",
+  popupRole: popupRoleProp,
   enabled = true,
   delayMs = 500,
   closeDelayMs: closeDelayMsProp,
@@ -48,12 +52,14 @@ export function PopoverRoot({
     delayMs,
     closeDelayMs,
   });
+  const contentPopupRole = triggerMode === "click" ? getContentPopupRole(children) : undefined;
 
   const ctx: PopoverContextValue = useMemo(() => ({
     open: openState && enabled,
     triggerRef,
     popoverId,
     triggerMode,
+    popupRole: popupRoleProp ?? contentPopupRole,
     onOpenChange: setOpenState,
     onTriggerEnter: behavior.onTriggerEnter,
     onTriggerLeave: behavior.onTriggerLeave,
@@ -61,9 +67,19 @@ export function PopoverRoot({
     onContentEnter: behavior.onContentEnter,
     onContentLeave: behavior.onContentLeave,
     enabled,
-  }), [openState, enabled, popoverId, triggerMode, setOpenState, behavior]);
+  }), [openState, enabled, popoverId, triggerMode, popupRoleProp, contentPopupRole, setOpenState, behavior]);
 
   return (
     <PopoverContext value={ctx}>{children}</PopoverContext>
   );
+}
+
+function getContentPopupRole(children: ReactNode): PopoverPopupRole | undefined {
+  for (const child of Children.toArray(children)) {
+    if (!isValidElement<{ role?: PopoverPopupRole; children?: ReactNode }>(child)) continue;
+    if (child.type === PopoverContent) return child.props.role;
+    const nestedRole = getContentPopupRole(child.props.children);
+    if (nestedRole !== undefined) return nestedRole;
+  }
+  return undefined;
 }

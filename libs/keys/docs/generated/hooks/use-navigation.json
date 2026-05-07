@@ -3,7 +3,7 @@
   "title": "useNavigation",
   "description": "Standalone keyboard navigation for role-based lists. Uses DOM queries to find navigable items. No provider needed.",
   "source": {
-    "raw": "\"use client\";\n\nimport {\n  useState,\n  useCallback,\n  useRef,\n  type RefObject,\n  type KeyboardEvent,\n} from \"react\";\nimport { resolveDirectionKeys, dispatchNavigationKey } from \"../internal/navigation-dispatch.js\";\n\nexport type NavigationRole = \"radio\" | \"checkbox\" | \"option\" | \"menuitem\" | \"button\" | \"tab\";\n\nexport interface UseNavigationOptions {\n  containerRef: RefObject<HTMLElement | null>;\n  role: NavigationRole;\n  value?: string | null;\n  onValueChange?: (value: string) => void;\n  onSelect?: (value: string, event: globalThis.KeyboardEvent) => void;\n  onEnter?: (value: string, event: globalThis.KeyboardEvent) => void;\n  onHighlightChange?: (value: string) => void;\n  wrap?: boolean;\n  enabled?: boolean;\n  preventDefault?: boolean;\n  onBoundaryReached?: (direction: \"up\" | \"down\") => void;\n  initialValue?: string | null;\n  upKeys?: string[];\n  downKeys?: string[];\n  orientation?: \"vertical\" | \"horizontal\";\n  skipDisabled?: boolean;\n  moveFocus?: boolean;\n}\n\nexport interface UseNavigationReturn {\n  highlighted: string | null;\n  isHighlighted: (value: string) => boolean;\n  highlight: (value: string) => void;\n  onKeyDown: (event: KeyboardEvent) => void;\n}\n\ninterface UseNavigationCoreReturn {\n  highlighted: string | null;\n  isHighlighted: (value: string) => boolean;\n  highlight: (value: string) => void;\n  move: (delta: 1 | -1) => void;\n  focusIndex: (index: number) => void;\n  handleSelect: (event: globalThis.KeyboardEvent) => void;\n  handleEnter: (event: globalThis.KeyboardEvent) => void;\n  getElements: () => HTMLElement[];\n}\n\nconst navigationItemDataAttributes = [\n  \"data-diffgazer-navigation-item\",\n  \"data-navigation-item\",\n] as const;\n\nfunction disabledSelector(skipDisabled: boolean): string {\n  return skipDisabled\n    ? ':not([aria-disabled=\"true\"]):not([data-disabled]):not(:disabled)'\n    : \"\";\n}\n\nfunction findElements(container: HTMLElement, selector: string): HTMLElement[] {\n  return Array.from(container.querySelectorAll<HTMLElement>(selector));\n}\n\nfunction queryFirstMatchingGroup(container: HTMLElement, selectors: string[]): HTMLElement[] {\n  for (const selector of selectors) {\n    const elements = findElements(container, selector);\n    if (elements.length > 0) return elements;\n  }\n  return [];\n}\n\nfunction buildNavigationSelectors(role: NavigationRole, skipDisabled: boolean): string[] {\n  const disabled = disabledSelector(skipDisabled);\n  const dataContractSelectors = navigationItemDataAttributes.flatMap((attribute) => [\n    `[${attribute}=\"${role}\"][data-value]${disabled}`,\n    `[${attribute}=\"true\"][data-value]${disabled}`,\n    `[${attribute}=\"\"][data-value]${disabled}`,\n    `[${attribute}][data-value]${disabled}`,\n  ]);\n\n  return [\n    dataContractSelectors.join(\",\"),\n    `[role=\"${role}\"][data-value]${disabled}`,\n    `[data-value]${disabled}`,\n    `[role=\"${role}\"]${disabled}`,\n  ];\n}\n\nfunction queryElements(\n  containerRef: RefObject<HTMLElement | null>,\n  role: NavigationRole,\n  skipDisabled: boolean,\n): HTMLElement[] {\n  if (!containerRef.current) return [];\n  return queryFirstMatchingGroup(\n    containerRef.current,\n    buildNavigationSelectors(role, skipDisabled),\n  );\n}\n\nfunction wrapIndex(index: number, length: number, wrap: boolean): number | null {\n  if (index < 0) return wrap ? length - 1 : null;\n  if (index >= length) return wrap ? 0 : null;\n  return index;\n}\n\nexport function useNavigationCore({\n  containerRef,\n  role,\n  value,\n  onValueChange,\n  onSelect,\n  onEnter,\n  onHighlightChange,\n  wrap = true,\n  onBoundaryReached,\n  initialValue = null,\n  skipDisabled = true,\n  moveFocus = false,\n}: UseNavigationOptions): UseNavigationCoreReturn {\n  const [internalValue, setInternalValue] = useState<string | null>(initialValue);\n  const isControlled = value !== undefined;\n  const highlighted = isControlled ? value ?? null : internalValue;\n\n  const setFocusedValue = useCallback((nextValue: string) => {\n    if (isControlled) {\n      onValueChange?.(nextValue);\n    } else {\n      setInternalValue(nextValue);\n      onValueChange?.(nextValue);\n    }\n    onHighlightChange?.(nextValue);\n  }, [isControlled, onValueChange, onHighlightChange]);\n\n  const getElements = useCallback(() => queryElements(containerRef, role, skipDisabled), [role, skipDisabled, containerRef]);\n\n  const getFocusedIndex = useCallback((): number => {\n    const elements = getElements();\n    if (elements.length === 0) return -1;\n    if (!highlighted) return 0;\n    const index = elements.findIndex((el) => el.dataset.value === highlighted);\n    return index >= 0 ? index : 0;\n  }, [getElements, highlighted]);\n\n  const focusIndexRef = useRef<((index: number) => void) | null>(null);\n  focusIndexRef.current = (index: number) => {\n    const elements = getElements();\n    const el = elements[index];\n    if (el?.dataset.value) {\n      el.scrollIntoView?.({ block: \"nearest\" });\n      if (moveFocus) el.focus();\n      setFocusedValue(el.dataset.value);\n    }\n  };\n\n  const focusIndex = useCallback((index: number) => {\n    focusIndexRef.current?.(index);\n  }, []);\n\n  const moveRef = useRef<((delta: 1 | -1) => void) | null>(null);\n  moveRef.current = (delta: 1 | -1) => {\n    const elements = getElements();\n    if (elements.length === 0) return;\n\n    const current = getFocusedIndex();\n    const rawNext = current + delta;\n    const next = wrapIndex(rawNext, elements.length, wrap);\n    if (next === null) {\n      onBoundaryReached?.(delta < 0 ? \"up\" : \"down\");\n      return;\n    }\n\n    focusIndexRef.current?.(next);\n  };\n\n  const move = useCallback((delta: 1 | -1) => {\n    moveRef.current?.(delta);\n  }, []);\n\n  const handleSelect = useCallback((event: globalThis.KeyboardEvent) => {\n    if (highlighted) onSelect?.(highlighted, event);\n  }, [highlighted, onSelect]);\n\n  const handleEnter = useCallback((event: globalThis.KeyboardEvent) => {\n    if (highlighted) {\n      if (onEnter) onEnter(highlighted, event);\n      else onSelect?.(highlighted, event);\n    }\n  }, [highlighted, onEnter, onSelect]);\n\n  const isHighlighted = useCallback((v: string) => highlighted === v, [highlighted]);\n  const highlight = useCallback((v: string) => setFocusedValue(v), [setFocusedValue]);\n\n  return { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements };\n}\n\nexport function useNavigation(options: UseNavigationOptions): UseNavigationReturn {\n  const {\n    enabled = true,\n    preventDefault = true,\n    orientation = \"vertical\",\n    upKeys,\n    downKeys,\n  } = options;\n\n  const { resolvedUpKeys, resolvedDownKeys } = resolveDirectionKeys(orientation, upKeys, downKeys);\n\n  const { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements } =\n    useNavigationCore(options);\n\n  const onKeyDown = useCallback((event: KeyboardEvent) => {\n    if (!enabled) return;\n\n    const key = event.key;\n    const isMoveKey = resolvedUpKeys.includes(key) || resolvedDownKeys.includes(key);\n    const isSpecialKey = key === \"Home\" || key === \"End\" || (!options.moveFocus && (key === \"Enter\" || key === \" \"));\n    if (!isMoveKey && !isSpecialKey) return;\n\n    if (preventDefault) event.preventDefault();\n\n    dispatchNavigationKey(key, {\n      resolvedUpKeys,\n      resolvedDownKeys,\n      move,\n      focusIndex,\n      handleSelect: options.moveFocus ? undefined : (e) => handleSelect(e),\n      handleEnter: options.moveFocus ? undefined : (e) => handleEnter(e),\n      total: getElements().length,\n      nativeEvent: event.nativeEvent,\n    });\n  }, [enabled, resolvedUpKeys, resolvedDownKeys, preventDefault, options.moveFocus, move, focusIndex, handleSelect, handleEnter, getElements]);\n\n  return { highlighted, isHighlighted, highlight, onKeyDown };\n}\n",
+    "raw": "\"use client\";\n\nimport {\n  useState,\n  useCallback,\n  type RefObject,\n  type KeyboardEvent,\n} from \"react\";\nimport { resolveDirectionKeys, dispatchNavigationKey } from \"./internal/navigation-dispatch.js\";\n\nexport type NavigationRole = \"radio\" | \"checkbox\" | \"option\" | \"menuitem\" | \"menuitemradio\" | \"button\" | \"tab\";\n\nexport interface UseNavigationOptions {\n  containerRef: RefObject<HTMLElement | null>;\n  role: NavigationRole;\n  value?: string | null;\n  onValueChange?: (value: string) => void;\n  onSelect?: (value: string, event: globalThis.KeyboardEvent) => void;\n  onEnter?: (value: string, event: globalThis.KeyboardEvent) => void;\n  onHighlightChange?: (value: string) => void;\n  wrap?: boolean;\n  enabled?: boolean;\n  preventDefault?: boolean;\n  onBoundaryReached?: (direction: \"up\" | \"down\") => void;\n  initialValue?: string | null;\n  upKeys?: string[];\n  downKeys?: string[];\n  orientation?: \"vertical\" | \"horizontal\";\n  skipDisabled?: boolean;\n  moveFocus?: boolean;\n}\n\nexport interface UseNavigationReturn {\n  highlighted: string | null;\n  isHighlighted: (value: string) => boolean;\n  highlight: (value: string) => void;\n  onKeyDown: (event: KeyboardEvent) => void;\n}\n\ninterface UseNavigationCoreReturn {\n  highlighted: string | null;\n  isHighlighted: (value: string) => boolean;\n  highlight: (value: string) => void;\n  move: (delta: 1 | -1) => void;\n  focusIndex: (index: number) => void;\n  handleSelect: (event: globalThis.KeyboardEvent) => void;\n  handleEnter: (event: globalThis.KeyboardEvent) => void;\n  getElements: () => HTMLElement[];\n}\n\nconst navigationItemDataAttributes = [\n  \"data-diffgazer-navigation-item\",\n  \"data-navigation-item\",\n] as const;\n\nfunction disabledSelector(skipDisabled: boolean): string {\n  return skipDisabled\n    ? ':not([aria-disabled=\"true\"]):not([data-disabled]):not(:disabled)'\n    : \"\";\n}\n\nfunction findElements(container: HTMLElement, selector: string): HTMLElement[] {\n  return Array.from(container.querySelectorAll<HTMLElement>(selector));\n}\n\nfunction queryFirstMatchingGroup(container: HTMLElement, selectors: string[]): HTMLElement[] {\n  for (const selector of selectors) {\n    const elements = findElements(container, selector);\n    if (elements.length > 0) return elements;\n  }\n  return [];\n}\n\nfunction buildNavigationSelectors(role: NavigationRole, skipDisabled: boolean): string[] {\n  const disabled = disabledSelector(skipDisabled);\n  const dataContractSelectors = navigationItemDataAttributes.flatMap((attribute) => [\n    `[${attribute}=\"${role}\"][data-value]${disabled}`,\n    `[${attribute}=\"true\"][data-value]${disabled}`,\n    `[${attribute}=\"\"][data-value]${disabled}`,\n    `[${attribute}][data-value]${disabled}`,\n  ]);\n\n  return [\n    dataContractSelectors.join(\",\"),\n    `[role=\"${role}\"][data-value]${disabled}`,\n    `[data-value]${disabled}`,\n    `[role=\"${role}\"]${disabled}`,\n  ];\n}\n\nfunction queryElements(\n  containerRef: RefObject<HTMLElement | null>,\n  role: NavigationRole,\n  skipDisabled: boolean,\n): HTMLElement[] {\n  if (!containerRef.current) return [];\n  return queryFirstMatchingGroup(\n    containerRef.current,\n    buildNavigationSelectors(role, skipDisabled),\n  );\n}\n\nfunction wrapIndex(index: number, length: number, wrap: boolean): number | null {\n  if (index < 0) return wrap ? length - 1 : null;\n  if (index >= length) return wrap ? 0 : null;\n  return index;\n}\n\nfunction containsActiveElement(el: HTMLElement): boolean {\n  const activeElement = el.ownerDocument.activeElement;\n  return activeElement instanceof HTMLElement && el.contains(activeElement);\n}\n\nexport function useNavigationCore({\n  containerRef,\n  role,\n  value,\n  onValueChange,\n  onSelect,\n  onEnter,\n  onHighlightChange,\n  wrap = true,\n  onBoundaryReached,\n  initialValue = null,\n  skipDisabled = true,\n  moveFocus = false,\n}: UseNavigationOptions): UseNavigationCoreReturn {\n  const [internalValue, setInternalValue] = useState<string | null>(initialValue);\n  const isControlled = value !== undefined;\n  const highlighted = isControlled ? value ?? null : internalValue;\n\n  const setFocusedValue = useCallback((nextValue: string) => {\n    if (!isControlled) setInternalValue(nextValue);\n    onValueChange?.(nextValue);\n    onHighlightChange?.(nextValue);\n  }, [isControlled, onValueChange, onHighlightChange]);\n\n  const getElements = useCallback(\n    () => queryElements(containerRef, role, skipDisabled),\n    [containerRef, role, skipDisabled],\n  );\n\n  const getFocusedIndex = useCallback((): number => {\n    const elements = getElements();\n    if (elements.length === 0) return -1;\n\n    if (highlighted !== null) {\n      const index = elements.findIndex((el) => el.dataset.value === highlighted);\n      if (index >= 0) return index;\n    }\n\n    return elements.findIndex(containsActiveElement);\n  }, [getElements, highlighted]);\n\n  const focusIndex = useCallback((index: number) => {\n    const elements = getElements();\n    const el = elements[index];\n    if (!el) return;\n    const nextValue = el.dataset.value;\n    if (nextValue === undefined) return;\n\n    el.scrollIntoView?.({ block: \"nearest\" });\n    if (moveFocus) el.focus();\n    setFocusedValue(nextValue);\n  }, [getElements, moveFocus, setFocusedValue]);\n\n  const move = useCallback((delta: 1 | -1) => {\n    const elements = getElements();\n    if (elements.length === 0) return;\n\n    const current = getFocusedIndex();\n    const rawNext = current + delta;\n    const next = wrapIndex(rawNext, elements.length, wrap);\n    if (next === null) {\n      onBoundaryReached?.(delta < 0 ? \"up\" : \"down\");\n      return;\n    }\n\n    focusIndex(next);\n  }, [focusIndex, getElements, getFocusedIndex, onBoundaryReached, wrap]);\n\n  const handleSelect = useCallback((event: globalThis.KeyboardEvent) => {\n    if (highlighted !== null) onSelect?.(highlighted, event);\n  }, [highlighted, onSelect]);\n\n  const handleEnter = useCallback((event: globalThis.KeyboardEvent) => {\n    if (highlighted === null) return;\n    if (onEnter) onEnter(highlighted, event);\n    else onSelect?.(highlighted, event);\n  }, [highlighted, onEnter, onSelect]);\n\n  const isHighlighted = useCallback((v: string) => highlighted === v, [highlighted]);\n  const highlight = useCallback((v: string) => setFocusedValue(v), [setFocusedValue]);\n\n  return { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements };\n}\n\nexport function useNavigation(options: UseNavigationOptions): UseNavigationReturn {\n  const {\n    enabled = true,\n    preventDefault = true,\n    orientation = \"vertical\",\n    upKeys,\n    downKeys,\n  } = options;\n\n  const { resolvedUpKeys, resolvedDownKeys } = resolveDirectionKeys(orientation, upKeys, downKeys);\n\n  const { highlighted, isHighlighted, highlight, move, focusIndex, handleSelect, handleEnter, getElements } =\n    useNavigationCore(options);\n\n  const onKeyDown = useCallback((event: KeyboardEvent) => {\n    if (!enabled) return;\n\n    const key = event.key;\n    const isMoveKey = resolvedUpKeys.includes(key) || resolvedDownKeys.includes(key);\n    const isSpecialKey = key === \"Home\" || key === \"End\" || (!options.moveFocus && (key === \"Enter\" || key === \" \"));\n    if (!isMoveKey && !isSpecialKey) return;\n\n    if (preventDefault) event.preventDefault();\n\n    dispatchNavigationKey(key, {\n      resolvedUpKeys,\n      resolvedDownKeys,\n      move,\n      focusIndex,\n      handleSelect: options.moveFocus ? undefined : (e) => handleSelect(e),\n      handleEnter: options.moveFocus ? undefined : (e) => handleEnter(e),\n      total: getElements().length,\n      nativeEvent: event.nativeEvent,\n    });\n  }, [\n    enabled,\n    resolvedUpKeys,\n    resolvedDownKeys,\n    preventDefault,\n    options.moveFocus,\n    move,\n    focusIndex,\n    handleSelect,\n    handleEnter,\n    getElements,\n  ]);\n\n  return { highlighted, isHighlighted, highlight, onKeyDown };\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -77,7 +77,15 @@
         "number": 6,
         "content": [
           {
-            "text": "  useRef",
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "type",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " RefObject",
             "color": "var(--code-variable)"
           },
           {
@@ -98,27 +106,6 @@
             "color": "var(--code-keyword)"
           },
           {
-            "text": " RefObject",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 8,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "type",
-            "color": "var(--code-keyword)"
-          },
-          {
             "text": " KeyboardEvent",
             "color": "var(--code-variable)"
           },
@@ -129,7 +116,7 @@
         ]
       },
       {
-        "number": 9,
+        "number": 8,
         "content": [
           {
             "text": "}",
@@ -166,7 +153,7 @@
         ]
       },
       {
-        "number": 10,
+        "number": 9,
         "content": [
           {
             "text": "import",
@@ -213,7 +200,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "../internal/navigation-dispatch.js",
+            "text": "./internal/navigation-dispatch.js",
             "color": "var(--code-tag)"
           },
           {
@@ -227,11 +214,11 @@
         ]
       },
       {
-        "number": 11,
+        "number": 10,
         "content": []
       },
       {
-        "number": 12,
+        "number": 11,
         "content": [
           {
             "text": "export",
@@ -366,6 +353,30 @@
             "color": "var(--code-operator)"
           },
           {
+            "text": "menuitemradio",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "|",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
             "text": "button",
             "color": "var(--code-tag)"
           },
@@ -404,11 +415,11 @@
         ]
       },
       {
-        "number": 13,
+        "number": 12,
         "content": []
       },
       {
-        "number": 14,
+        "number": 13,
         "content": [
           {
             "text": "export",
@@ -441,7 +452,7 @@
         ]
       },
       {
-        "number": 15,
+        "number": 14,
         "content": [
           {
             "text": "  containerRef",
@@ -490,7 +501,7 @@
         ]
       },
       {
-        "number": 16,
+        "number": 15,
         "content": [
           {
             "text": "  role",
@@ -515,7 +526,7 @@
         ]
       },
       {
-        "number": 17,
+        "number": 16,
         "content": [
           {
             "text": "  value",
@@ -556,7 +567,7 @@
         ]
       },
       {
-        "number": 18,
+        "number": 17,
         "content": [
           {
             "text": "  ",
@@ -621,7 +632,7 @@
         ]
       },
       {
-        "number": 19,
+        "number": 18,
         "content": [
           {
             "text": "  ",
@@ -714,7 +725,7 @@
         ]
       },
       {
-        "number": 20,
+        "number": 19,
         "content": [
           {
             "text": "  ",
@@ -807,7 +818,7 @@
         ]
       },
       {
-        "number": 21,
+        "number": 20,
         "content": [
           {
             "text": "  ",
@@ -872,7 +883,7 @@
         ]
       },
       {
-        "number": 22,
+        "number": 21,
         "content": [
           {
             "text": "  wrap",
@@ -897,7 +908,7 @@
         ]
       },
       {
-        "number": 23,
+        "number": 22,
         "content": [
           {
             "text": "  enabled",
@@ -922,7 +933,7 @@
         ]
       },
       {
-        "number": 24,
+        "number": 23,
         "content": [
           {
             "text": "  preventDefault",
@@ -947,7 +958,7 @@
         ]
       },
       {
-        "number": 25,
+        "number": 24,
         "content": [
           {
             "text": "  ",
@@ -1044,7 +1055,7 @@
         ]
       },
       {
-        "number": 26,
+        "number": 25,
         "content": [
           {
             "text": "  initialValue",
@@ -1085,7 +1096,7 @@
         ]
       },
       {
-        "number": 27,
+        "number": 26,
         "content": [
           {
             "text": "  upKeys",
@@ -1114,7 +1125,7 @@
         ]
       },
       {
-        "number": 28,
+        "number": 27,
         "content": [
           {
             "text": "  downKeys",
@@ -1143,7 +1154,7 @@
         ]
       },
       {
-        "number": 29,
+        "number": 28,
         "content": [
           {
             "text": "  orientation",
@@ -1200,7 +1211,7 @@
         ]
       },
       {
-        "number": 30,
+        "number": 29,
         "content": [
           {
             "text": "  skipDisabled",
@@ -1225,7 +1236,7 @@
         ]
       },
       {
-        "number": 31,
+        "number": 30,
         "content": [
           {
             "text": "  moveFocus",
@@ -1250,7 +1261,7 @@
         ]
       },
       {
-        "number": 32,
+        "number": 31,
         "content": [
           {
             "text": "}",
@@ -1259,11 +1270,11 @@
         ]
       },
       {
-        "number": 33,
+        "number": 32,
         "content": []
       },
       {
-        "number": 34,
+        "number": 33,
         "content": [
           {
             "text": "export",
@@ -1296,7 +1307,7 @@
         ]
       },
       {
-        "number": 35,
+        "number": 34,
         "content": [
           {
             "text": "  highlighted",
@@ -1337,7 +1348,7 @@
         ]
       },
       {
-        "number": 36,
+        "number": 35,
         "content": [
           {
             "text": "  ",
@@ -1402,7 +1413,7 @@
         ]
       },
       {
-        "number": 37,
+        "number": 36,
         "content": [
           {
             "text": "  ",
@@ -1467,7 +1478,7 @@
         ]
       },
       {
-        "number": 38,
+        "number": 37,
         "content": [
           {
             "text": "  ",
@@ -1532,7 +1543,7 @@
         ]
       },
       {
-        "number": 39,
+        "number": 38,
         "content": [
           {
             "text": "}",
@@ -1541,11 +1552,11 @@
         ]
       },
       {
-        "number": 40,
+        "number": 39,
         "content": []
       },
       {
-        "number": 41,
+        "number": 40,
         "content": [
           {
             "text": "interface",
@@ -1570,7 +1581,7 @@
         ]
       },
       {
-        "number": 42,
+        "number": 41,
         "content": [
           {
             "text": "  highlighted",
@@ -1611,7 +1622,7 @@
         ]
       },
       {
-        "number": 43,
+        "number": 42,
         "content": [
           {
             "text": "  ",
@@ -1676,7 +1687,7 @@
         ]
       },
       {
-        "number": 44,
+        "number": 43,
         "content": [
           {
             "text": "  ",
@@ -1741,7 +1752,7 @@
         ]
       },
       {
-        "number": 45,
+        "number": 44,
         "content": [
           {
             "text": "  ",
@@ -1822,7 +1833,7 @@
         ]
       },
       {
-        "number": 46,
+        "number": 45,
         "content": [
           {
             "text": "  ",
@@ -1887,7 +1898,7 @@
         ]
       },
       {
-        "number": 47,
+        "number": 46,
         "content": [
           {
             "text": "  ",
@@ -1960,7 +1971,7 @@
         ]
       },
       {
-        "number": 48,
+        "number": 47,
         "content": [
           {
             "text": "  ",
@@ -2033,7 +2044,7 @@
         ]
       },
       {
-        "number": 49,
+        "number": 48,
         "content": [
           {
             "text": "  ",
@@ -2082,7 +2093,7 @@
         ]
       },
       {
-        "number": 50,
+        "number": 49,
         "content": [
           {
             "text": "}",
@@ -2091,11 +2102,11 @@
         ]
       },
       {
-        "number": 51,
+        "number": 50,
         "content": []
       },
       {
-        "number": 52,
+        "number": 51,
         "content": [
           {
             "text": "const",
@@ -2124,7 +2135,7 @@
         ]
       },
       {
-        "number": 53,
+        "number": 52,
         "content": [
           {
             "text": "  ",
@@ -2149,7 +2160,7 @@
         ]
       },
       {
-        "number": 54,
+        "number": 53,
         "content": [
           {
             "text": "  ",
@@ -2174,7 +2185,7 @@
         ]
       },
       {
-        "number": 55,
+        "number": 54,
         "content": [
           {
             "text": "] ",
@@ -2199,11 +2210,11 @@
         ]
       },
       {
-        "number": 56,
+        "number": 55,
         "content": []
       },
       {
-        "number": 57,
+        "number": 56,
         "content": [
           {
             "text": "function",
@@ -2260,7 +2271,7 @@
         ]
       },
       {
-        "number": 58,
+        "number": 57,
         "content": [
           {
             "text": "  ",
@@ -2277,7 +2288,7 @@
         ]
       },
       {
-        "number": 59,
+        "number": 58,
         "content": [
           {
             "text": "    ",
@@ -2306,7 +2317,7 @@
         ]
       },
       {
-        "number": 60,
+        "number": 59,
         "content": [
           {
             "text": "    ",
@@ -2331,7 +2342,7 @@
         ]
       },
       {
-        "number": 61,
+        "number": 60,
         "content": [
           {
             "text": "}",
@@ -2340,11 +2351,11 @@
         ]
       },
       {
-        "number": 62,
+        "number": 61,
         "content": []
       },
       {
-        "number": 63,
+        "number": 62,
         "content": [
           {
             "text": "function",
@@ -2421,7 +2432,7 @@
         ]
       },
       {
-        "number": 64,
+        "number": 63,
         "content": [
           {
             "text": "  ",
@@ -2486,7 +2497,7 @@
         ]
       },
       {
-        "number": 65,
+        "number": 64,
         "content": [
           {
             "text": "}",
@@ -2495,11 +2506,11 @@
         ]
       },
       {
-        "number": 66,
+        "number": 65,
         "content": []
       },
       {
-        "number": 67,
+        "number": 66,
         "content": [
           {
             "text": "function",
@@ -2580,7 +2591,7 @@
         ]
       },
       {
-        "number": 68,
+        "number": 67,
         "content": [
           {
             "text": "  ",
@@ -2625,7 +2636,7 @@
         ]
       },
       {
-        "number": 69,
+        "number": 68,
         "content": [
           {
             "text": "    ",
@@ -2678,7 +2689,7 @@
         ]
       },
       {
-        "number": 70,
+        "number": 69,
         "content": [
           {
             "text": "    ",
@@ -2739,7 +2750,7 @@
         ]
       },
       {
-        "number": 71,
+        "number": 70,
         "content": [
           {
             "text": "  ",
@@ -2752,7 +2763,7 @@
         ]
       },
       {
-        "number": 72,
+        "number": 71,
         "content": [
           {
             "text": "  ",
@@ -2773,7 +2784,7 @@
         ]
       },
       {
-        "number": 73,
+        "number": 72,
         "content": [
           {
             "text": "}",
@@ -2782,11 +2793,11 @@
         ]
       },
       {
-        "number": 74,
+        "number": 73,
         "content": []
       },
       {
-        "number": 75,
+        "number": 74,
         "content": [
           {
             "text": "function",
@@ -2863,7 +2874,7 @@
         ]
       },
       {
-        "number": 76,
+        "number": 75,
         "content": [
           {
             "text": "  ",
@@ -2908,7 +2919,7 @@
         ]
       },
       {
-        "number": 77,
+        "number": 76,
         "content": [
           {
             "text": "  ",
@@ -2981,7 +2992,7 @@
         ]
       },
       {
-        "number": 78,
+        "number": 77,
         "content": [
           {
             "text": "    ",
@@ -3050,7 +3061,7 @@
         ]
       },
       {
-        "number": 79,
+        "number": 78,
         "content": [
           {
             "text": "    ",
@@ -3103,7 +3114,7 @@
         ]
       },
       {
-        "number": 80,
+        "number": 79,
         "content": [
           {
             "text": "    ",
@@ -3156,7 +3167,7 @@
         ]
       },
       {
-        "number": 81,
+        "number": 80,
         "content": [
           {
             "text": "    ",
@@ -3209,7 +3220,7 @@
         ]
       },
       {
-        "number": 82,
+        "number": 81,
         "content": [
           {
             "text": "  ])",
@@ -3222,11 +3233,11 @@
         ]
       },
       {
-        "number": 83,
+        "number": 82,
         "content": []
       },
       {
-        "number": 84,
+        "number": 83,
         "content": [
           {
             "text": "  ",
@@ -3243,7 +3254,7 @@
         ]
       },
       {
-        "number": 85,
+        "number": 84,
         "content": [
           {
             "text": "    ",
@@ -3288,7 +3299,7 @@
         ]
       },
       {
-        "number": 86,
+        "number": 85,
         "content": [
           {
             "text": "    ",
@@ -3341,7 +3352,7 @@
         ]
       },
       {
-        "number": 87,
+        "number": 86,
         "content": [
           {
             "text": "    ",
@@ -3378,7 +3389,7 @@
         ]
       },
       {
-        "number": 88,
+        "number": 87,
         "content": [
           {
             "text": "    ",
@@ -3431,7 +3442,7 @@
         ]
       },
       {
-        "number": 89,
+        "number": 88,
         "content": [
           {
             "text": "  ]",
@@ -3444,7 +3455,7 @@
         ]
       },
       {
-        "number": 90,
+        "number": 89,
         "content": [
           {
             "text": "}",
@@ -3453,11 +3464,11 @@
         ]
       },
       {
-        "number": 91,
+        "number": 90,
         "content": []
       },
       {
-        "number": 92,
+        "number": 91,
         "content": [
           {
             "text": "function",
@@ -3478,7 +3489,7 @@
         ]
       },
       {
-        "number": 93,
+        "number": 92,
         "content": [
           {
             "text": "  containerRef",
@@ -3527,7 +3538,7 @@
         ]
       },
       {
-        "number": 94,
+        "number": 93,
         "content": [
           {
             "text": "  role",
@@ -3552,7 +3563,7 @@
         ]
       },
       {
-        "number": 95,
+        "number": 94,
         "content": [
           {
             "text": "  skipDisabled",
@@ -3577,7 +3588,7 @@
         ]
       },
       {
-        "number": 96,
+        "number": 95,
         "content": [
           {
             "text": "):",
@@ -3602,7 +3613,7 @@
         ]
       },
       {
-        "number": 97,
+        "number": 96,
         "content": [
           {
             "text": "  ",
@@ -3647,7 +3658,7 @@
         ]
       },
       {
-        "number": 98,
+        "number": 97,
         "content": [
           {
             "text": "  ",
@@ -3672,7 +3683,7 @@
         ]
       },
       {
-        "number": 99,
+        "number": 98,
         "content": [
           {
             "text": "    ",
@@ -3697,7 +3708,7 @@
         ]
       },
       {
-        "number": 100,
+        "number": 99,
         "content": [
           {
             "text": "    ",
@@ -3726,7 +3737,7 @@
         ]
       },
       {
-        "number": 101,
+        "number": 100,
         "content": [
           {
             "text": "  )",
@@ -3739,7 +3750,7 @@
         ]
       },
       {
-        "number": 102,
+        "number": 101,
         "content": [
           {
             "text": "}",
@@ -3748,11 +3759,11 @@
         ]
       },
       {
-        "number": 103,
+        "number": 102,
         "content": []
       },
       {
-        "number": 104,
+        "number": 103,
         "content": [
           {
             "text": "function",
@@ -3865,7 +3876,7 @@
         ]
       },
       {
-        "number": 105,
+        "number": 104,
         "content": [
           {
             "text": "  ",
@@ -3946,7 +3957,7 @@
         ]
       },
       {
-        "number": 106,
+        "number": 105,
         "content": [
           {
             "text": "  ",
@@ -4011,7 +4022,7 @@
         ]
       },
       {
-        "number": 107,
+        "number": 106,
         "content": [
           {
             "text": "  ",
@@ -4032,7 +4043,7 @@
         ]
       },
       {
-        "number": 108,
+        "number": 107,
         "content": [
           {
             "text": "}",
@@ -4041,11 +4052,199 @@
         ]
       },
       {
-        "number": 109,
+        "number": 108,
         "content": []
       },
       {
+        "number": 109,
+        "content": [
+          {
+            "text": "function",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "containsActiveElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "el",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "HTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "):",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "boolean",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
         "number": 110,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "activeElement",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "el",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "ownerDocument",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "activeElement",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 111,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " activeElement ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "instanceof",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "HTMLElement",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "&&",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "el",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "contains",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(activeElement)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 112,
+        "content": [
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 113,
+        "content": []
+      },
+      {
+        "number": 114,
         "content": [
           {
             "text": "export",
@@ -4074,7 +4273,7 @@
         ]
       },
       {
-        "number": 111,
+        "number": 115,
         "content": [
           {
             "text": "  containerRef",
@@ -4087,7 +4286,7 @@
         ]
       },
       {
-        "number": 112,
+        "number": 116,
         "content": [
           {
             "text": "  role",
@@ -4100,7 +4299,7 @@
         ]
       },
       {
-        "number": 113,
+        "number": 117,
         "content": [
           {
             "text": "  value",
@@ -4113,7 +4312,7 @@
         ]
       },
       {
-        "number": 114,
+        "number": 118,
         "content": [
           {
             "text": "  onValueChange",
@@ -4126,7 +4325,7 @@
         ]
       },
       {
-        "number": 115,
+        "number": 119,
         "content": [
           {
             "text": "  onSelect",
@@ -4139,7 +4338,7 @@
         ]
       },
       {
-        "number": 116,
+        "number": 120,
         "content": [
           {
             "text": "  onEnter",
@@ -4152,7 +4351,7 @@
         ]
       },
       {
-        "number": 117,
+        "number": 121,
         "content": [
           {
             "text": "  onHighlightChange",
@@ -4165,7 +4364,7 @@
         ]
       },
       {
-        "number": 118,
+        "number": 122,
         "content": [
           {
             "text": "  wrap ",
@@ -4190,7 +4389,7 @@
         ]
       },
       {
-        "number": 119,
+        "number": 123,
         "content": [
           {
             "text": "  onBoundaryReached",
@@ -4203,7 +4402,7 @@
         ]
       },
       {
-        "number": 120,
+        "number": 124,
         "content": [
           {
             "text": "  initialValue ",
@@ -4228,7 +4427,7 @@
         ]
       },
       {
-        "number": 121,
+        "number": 125,
         "content": [
           {
             "text": "  skipDisabled ",
@@ -4253,7 +4452,7 @@
         ]
       },
       {
-        "number": 122,
+        "number": 126,
         "content": [
           {
             "text": "  moveFocus ",
@@ -4278,7 +4477,7 @@
         ]
       },
       {
-        "number": 123,
+        "number": 127,
         "content": [
           {
             "text": "}:",
@@ -4315,7 +4514,7 @@
         ]
       },
       {
-        "number": 124,
+        "number": 128,
         "content": [
           {
             "text": "  ",
@@ -4408,7 +4607,7 @@
         ]
       },
       {
-        "number": 125,
+        "number": 129,
         "content": [
           {
             "text": "  ",
@@ -4457,7 +4656,7 @@
         ]
       },
       {
-        "number": 126,
+        "number": 130,
         "content": [
           {
             "text": "  ",
@@ -4526,11 +4725,11 @@
         ]
       },
       {
-        "number": 127,
+        "number": 131,
         "content": []
       },
       {
-        "number": 128,
+        "number": 132,
         "content": [
           {
             "text": "  ",
@@ -4611,7 +4810,7 @@
         ]
       },
       {
-        "number": 129,
+        "number": 133,
         "content": [
           {
             "text": "    ",
@@ -4622,104 +4821,20 @@
             "color": "var(--code-keyword)"
           },
           {
-            "text": " (isControlled) ",
+            "text": " (",
             "color": "var(--code-variable)"
           },
           {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 130,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "onValueChange",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "?.",
+            "text": "!",
             "color": "var(--code-operator)"
           },
           {
-            "text": "(nextValue)",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 131,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "else",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 132,
-        "content": [
-          {
-            "text": "      ",
+            "text": "isControlled) ",
             "color": "var(--code-variable)"
           },
           {
             "text": "setInternalValue",
             "color": "var(--code-function)"
-          },
-          {
-            "text": "(nextValue)",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 133,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "onValueChange",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "?.",
-            "color": "var(--code-operator)"
           },
           {
             "text": "(nextValue)",
@@ -4739,7 +4854,19 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "}",
+            "text": "onValueChange",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "(nextValue)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
             "color": "var(--code-operator)"
           }
         ]
@@ -4848,6 +4975,15 @@
           {
             "text": "(",
             "color": "var(--code-variable)"
+          }
+        ]
+      },
+      {
+        "number": 139,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
           },
           {
             "text": "()",
@@ -4892,9 +5028,14 @@
           {
             "text": ",",
             "color": "var(--code-operator)"
-          },
+          }
+        ]
+      },
+      {
+        "number": 140,
+        "content": [
           {
-            "text": " [role",
+            "text": "    [containerRef",
             "color": "var(--code-variable)"
           },
           {
@@ -4902,7 +5043,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " skipDisabled",
+            "text": " role",
             "color": "var(--code-variable)"
           },
           {
@@ -4910,7 +5051,20 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " containerRef])",
+            "text": " skipDisabled]",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 141,
+        "content": [
+          {
+            "text": "  )",
             "color": "var(--code-variable)"
           },
           {
@@ -4920,11 +5074,11 @@
         ]
       },
       {
-        "number": 139,
+        "number": 142,
         "content": []
       },
       {
-        "number": 140,
+        "number": 143,
         "content": [
           {
             "text": "  ",
@@ -4993,7 +5147,7 @@
         ]
       },
       {
-        "number": 141,
+        "number": 144,
         "content": [
           {
             "text": "    ",
@@ -5038,7 +5192,7 @@
         ]
       },
       {
-        "number": 142,
+        "number": 145,
         "content": [
           {
             "text": "    ",
@@ -5107,7 +5261,11 @@
         ]
       },
       {
-        "number": 143,
+        "number": 146,
+        "content": []
+      },
+      {
+        "number": 147,
         "content": [
           {
             "text": "    ",
@@ -5118,40 +5276,36 @@
             "color": "var(--code-keyword)"
           },
           {
-            "text": " (",
+            "text": " (highlighted ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "!",
+            "text": "!==",
             "color": "var(--code-operator)"
-          },
-          {
-            "text": "highlighted) ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "return",
-            "color": "var(--code-keyword)"
           },
           {
             "text": " ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "0",
+            "text": "null",
             "color": "var(--code-number)"
           },
           {
-            "text": ";",
+            "text": ") ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 144,
+        "number": 148,
         "content": [
           {
-            "text": "    ",
+            "text": "      ",
             "color": "var(--code-variable)"
           },
           {
@@ -5253,18 +5407,18 @@
         ]
       },
       {
-        "number": 145,
+        "number": 149,
         "content": [
           {
-            "text": "    ",
+            "text": "      ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "return",
+            "text": "if",
             "color": "var(--code-keyword)"
           },
           {
-            "text": " index ",
+            "text": " (index ",
             "color": "var(--code-variable)"
           },
           {
@@ -5280,28 +5434,16 @@
             "color": "var(--code-number)"
           },
           {
-            "text": " ",
+            "text": ") ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "?",
-            "color": "var(--code-operator)"
+            "text": "return",
+            "color": "var(--code-keyword)"
           },
           {
-            "text": " index ",
+            "text": " index",
             "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "0",
-            "color": "var(--code-number)"
           },
           {
             "text": ";",
@@ -5310,7 +5452,61 @@
         ]
       },
       {
-        "number": 146,
+        "number": 150,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 151,
+        "content": []
+      },
+      {
+        "number": 152,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "elements",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "findIndex",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(containsActiveElement)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 153,
         "content": [
           {
             "text": "  ",
@@ -5339,509 +5535,11 @@
         ]
       },
       {
-        "number": 147,
-        "content": []
-      },
-      {
-        "number": 148,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "focusIndexRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useRef",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "<",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "index",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "number",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "void",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ") ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "|",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "null",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ">",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "null",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 149,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "focusIndexRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "index",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "number",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 150,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "elements",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "getElements",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "()",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 151,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "el",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " elements[index]",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 152,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "if",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " (",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "el",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": "?.",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "dataset",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "value) ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 153,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "el",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "scrollIntoView",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "?.",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " block",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "nearest",
-            "color": "var(--code-tag)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
         "number": 154,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "if",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " (moveFocus) ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "el",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "focus",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "()",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
+        "content": []
       },
       {
         "number": 155,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "setFocusedValue",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "el",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "dataset",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "value)",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 156,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 157,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "};",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 158,
-        "content": []
-      },
-      {
-        "number": 159,
         "content": [
           {
             "text": "  ",
@@ -5922,291 +5620,7 @@
         ]
       },
       {
-        "number": 160,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "focusIndexRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "?.",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "(index)",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 161,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "},",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " [])",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 162,
-        "content": []
-      },
-      {
-        "number": 163,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "moveRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useRef",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "<",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "delta",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "1",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "|",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " -",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "1",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "void",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ") ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "|",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "null",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ">",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "null",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 164,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "moveRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "delta",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ":",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "1",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "|",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " -",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "1",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 165,
+        "number": 156,
         "content": [
           {
             "text": "    ",
@@ -6251,7 +5665,44 @@
         ]
       },
       {
-        "number": 166,
+        "number": 157,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "el",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " elements[index]",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 158,
         "content": [
           {
             "text": "    ",
@@ -6266,7 +5717,56 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "elements",
+            "text": "!",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "el) ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 159,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "nextValue",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "el",
             "color": "var(--code-number)"
           },
           {
@@ -6274,11 +5774,36 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "length",
+            "text": "dataset",
             "color": "var(--code-number)"
           },
           {
-            "text": " ",
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "value",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 160,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (nextValue ",
             "color": "var(--code-variable)"
           },
           {
@@ -6290,7 +5815,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "0",
+            "text": "undefined",
             "color": "var(--code-number)"
           },
           {
@@ -6308,148 +5833,18 @@
         ]
       },
       {
-        "number": 167,
+        "number": 161,
         "content": []
       },
       {
-        "number": 168,
+        "number": 162,
         "content": [
           {
             "text": "    ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "getFocusedIndex",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "()",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 169,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "rawNext",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " current ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "+",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " delta",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 170,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "next",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "wrapIndex",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(rawNext",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "elements",
+            "text": "el",
             "color": "var(--code-number)"
           },
           {
@@ -6457,69 +5852,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "length",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " wrap)",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 171,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "if",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " (next ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "===",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "null",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ") ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 172,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "onBoundaryReached",
+            "text": "scrollIntoView",
             "color": "var(--code-function)"
           },
           {
@@ -6527,52 +5860,20 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "(delta ",
+            "text": "(",
             "color": "var(--code-variable)"
           },
           {
-            "text": "<",
+            "text": "{",
             "color": "var(--code-operator)"
           },
           {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "0",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "?",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "up",
-            "color": "var(--code-tag)"
-          },
-          {
-            "text": "\"",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
+            "text": " block",
             "color": "var(--code-variable)"
           },
           {
             "text": ":",
-            "color": "var(--code-operator)"
+            "color": "var(--code-keyword)"
           },
           {
             "text": " ",
@@ -6583,11 +5884,19 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "down",
+            "text": "nearest",
             "color": "var(--code-tag)"
           },
           {
             "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
             "color": "var(--code-operator)"
           },
           {
@@ -6601,48 +5910,22 @@
         ]
       },
       {
-        "number": 173,
+        "number": 163,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "return",
+            "text": "if",
             "color": "var(--code-keyword)"
           },
           {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 174,
-        "content": [
-          {
-            "text": "    ",
+            "text": " (moveFocus) ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "}",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 175,
-        "content": []
-      },
-      {
-        "number": 176,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "focusIndexRef",
+            "text": "el",
             "color": "var(--code-number)"
           },
           {
@@ -6650,15 +5933,11 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "current",
+            "text": "focus",
             "color": "var(--code-function)"
           },
           {
-            "text": "?.",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "(next)",
+            "text": "()",
             "color": "var(--code-variable)"
           },
           {
@@ -6668,24 +5947,69 @@
         ]
       },
       {
-        "number": 177,
+        "number": 164,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "setFocusedValue",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(nextValue)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 165,
         "content": [
           {
             "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "};",
+            "text": "},",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " [getElements",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " moveFocus",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " setFocusedValue])",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 178,
+        "number": 166,
         "content": []
       },
       {
-        "number": 179,
+        "number": 167,
         "content": [
           {
             "text": "  ",
@@ -6782,30 +6106,42 @@
         ]
       },
       {
-        "number": 180,
+        "number": 168,
         "content": [
           {
             "text": "    ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "moveRef",
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "elements",
             "color": "var(--code-number)"
           },
           {
-            "text": ".",
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
             "color": "var(--code-operator)"
           },
           {
-            "text": "current",
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "getElements",
             "color": "var(--code-function)"
           },
           {
-            "text": "?.",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "(delta)",
+            "text": "()",
             "color": "var(--code-variable)"
           },
           {
@@ -6815,7 +6151,412 @@
         ]
       },
       {
-        "number": 181,
+        "number": 169,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "elements",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "length",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "===",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ") ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 170,
+        "content": []
+      },
+      {
+        "number": 171,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "current",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "getFocusedIndex",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 172,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "rawNext",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " current ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "+",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " delta",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 173,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "next",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "wrapIndex",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(rawNext",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "elements",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ".",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "length",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " wrap)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 174,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (next ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "===",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ") ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 175,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "onBoundaryReached",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "(delta ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "<",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "0",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "?",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "up",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "down",
+            "color": "var(--code-tag)"
+          },
+          {
+            "text": "\"",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 176,
+        "content": [
+          {
+            "text": "      ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 177,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 178,
+        "content": []
+      },
+      {
+        "number": 179,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "focusIndex",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(next)",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 180,
         "content": [
           {
             "text": "  ",
@@ -6826,7 +6567,39 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " [])",
+            "text": " [focusIndex",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " getElements",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " getFocusedIndex",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " onBoundaryReached",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " wrap])",
             "color": "var(--code-variable)"
           },
           {
@@ -6836,11 +6609,11 @@
         ]
       },
       {
-        "number": 182,
+        "number": 181,
         "content": []
       },
       {
-        "number": 183,
+        "number": 182,
         "content": [
           {
             "text": "  ",
@@ -6929,7 +6702,7 @@
         ]
       },
       {
-        "number": 184,
+        "number": 183,
         "content": [
           {
             "text": "    ",
@@ -6940,7 +6713,23 @@
             "color": "var(--code-keyword)"
           },
           {
-            "text": " (highlighted) ",
+            "text": " (highlighted ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "!==",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ") ",
             "color": "var(--code-variable)"
           },
           {
@@ -6970,7 +6759,7 @@
         ]
       },
       {
-        "number": 185,
+        "number": 184,
         "content": [
           {
             "text": "  ",
@@ -6999,11 +6788,11 @@
         ]
       },
       {
-        "number": 186,
+        "number": 185,
         "content": []
       },
       {
-        "number": 187,
+        "number": 186,
         "content": [
           {
             "text": "  ",
@@ -7092,7 +6881,7 @@
         ]
       },
       {
-        "number": 188,
+        "number": 187,
         "content": [
           {
             "text": "    ",
@@ -7103,20 +6892,40 @@
             "color": "var(--code-keyword)"
           },
           {
-            "text": " (highlighted) ",
+            "text": " (highlighted ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "{",
+            "text": "===",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ") ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
             "color": "var(--code-operator)"
           }
         ]
       },
       {
-        "number": 189,
+        "number": 188,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -7150,10 +6959,10 @@
         ]
       },
       {
-        "number": 190,
+        "number": 189,
         "content": [
           {
-            "text": "      ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -7191,20 +7000,7 @@
         ]
       },
       {
-        "number": 191,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 192,
+        "number": 190,
         "content": [
           {
             "text": "  ",
@@ -7241,11 +7037,11 @@
         ]
       },
       {
-        "number": 193,
+        "number": 191,
         "content": []
       },
       {
-        "number": 194,
+        "number": 192,
         "content": [
           {
             "text": "  ",
@@ -7342,7 +7138,7 @@
         ]
       },
       {
-        "number": 195,
+        "number": 193,
         "content": [
           {
             "text": "  ",
@@ -7439,11 +7235,11 @@
         ]
       },
       {
-        "number": 196,
+        "number": 194,
         "content": []
       },
       {
-        "number": 197,
+        "number": 195,
         "content": [
           {
             "text": "  ",
@@ -7528,7 +7324,7 @@
         ]
       },
       {
-        "number": 198,
+        "number": 196,
         "content": [
           {
             "text": "}",
@@ -7537,11 +7333,11 @@
         ]
       },
       {
-        "number": 199,
+        "number": 197,
         "content": []
       },
       {
-        "number": 200,
+        "number": 198,
         "content": [
           {
             "text": "export",
@@ -7606,7 +7402,7 @@
         ]
       },
       {
-        "number": 201,
+        "number": 199,
         "content": [
           {
             "text": "  ",
@@ -7627,7 +7423,7 @@
         ]
       },
       {
-        "number": 202,
+        "number": 200,
         "content": [
           {
             "text": "    ",
@@ -7660,7 +7456,7 @@
         ]
       },
       {
-        "number": 203,
+        "number": 201,
         "content": [
           {
             "text": "    ",
@@ -7693,7 +7489,7 @@
         ]
       },
       {
-        "number": 204,
+        "number": 202,
         "content": [
           {
             "text": "    ",
@@ -7734,7 +7530,7 @@
         ]
       },
       {
-        "number": 205,
+        "number": 203,
         "content": [
           {
             "text": "    ",
@@ -7751,7 +7547,7 @@
         ]
       },
       {
-        "number": 206,
+        "number": 204,
         "content": [
           {
             "text": "    ",
@@ -7768,7 +7564,7 @@
         ]
       },
       {
-        "number": 207,
+        "number": 205,
         "content": [
           {
             "text": "  ",
@@ -7797,11 +7593,11 @@
         ]
       },
       {
-        "number": 208,
+        "number": 206,
         "content": []
       },
       {
-        "number": 209,
+        "number": 207,
         "content": [
           {
             "text": "  ",
@@ -7890,11 +7686,11 @@
         ]
       },
       {
-        "number": 210,
+        "number": 208,
         "content": []
       },
       {
-        "number": 211,
+        "number": 209,
         "content": [
           {
             "text": "  ",
@@ -8023,7 +7819,7 @@
         ]
       },
       {
-        "number": 212,
+        "number": 210,
         "content": [
           {
             "text": "    ",
@@ -8044,11 +7840,11 @@
         ]
       },
       {
-        "number": 213,
+        "number": 211,
         "content": []
       },
       {
-        "number": 214,
+        "number": 212,
         "content": [
           {
             "text": "  ",
@@ -8129,7 +7925,7 @@
         ]
       },
       {
-        "number": 215,
+        "number": 213,
         "content": [
           {
             "text": "    ",
@@ -8162,11 +7958,11 @@
         ]
       },
       {
-        "number": 216,
+        "number": 214,
         "content": []
       },
       {
-        "number": 217,
+        "number": 215,
         "content": [
           {
             "text": "    ",
@@ -8215,7 +8011,7 @@
         ]
       },
       {
-        "number": 218,
+        "number": 216,
         "content": [
           {
             "text": "    ",
@@ -8292,7 +8088,7 @@
         ]
       },
       {
-        "number": 219,
+        "number": 217,
         "content": [
           {
             "text": "    ",
@@ -8473,7 +8269,7 @@
         ]
       },
       {
-        "number": 220,
+        "number": 218,
         "content": [
           {
             "text": "    ",
@@ -8522,11 +8318,11 @@
         ]
       },
       {
-        "number": 221,
+        "number": 219,
         "content": []
       },
       {
-        "number": 222,
+        "number": 220,
         "content": [
           {
             "text": "    ",
@@ -8563,11 +8359,11 @@
         ]
       },
       {
-        "number": 223,
+        "number": 221,
         "content": []
       },
       {
-        "number": 224,
+        "number": 222,
         "content": [
           {
             "text": "    ",
@@ -8596,7 +8392,7 @@
         ]
       },
       {
-        "number": 225,
+        "number": 223,
         "content": [
           {
             "text": "      resolvedUpKeys",
@@ -8609,7 +8405,7 @@
         ]
       },
       {
-        "number": 226,
+        "number": 224,
         "content": [
           {
             "text": "      resolvedDownKeys",
@@ -8622,7 +8418,7 @@
         ]
       },
       {
-        "number": 227,
+        "number": 225,
         "content": [
           {
             "text": "      move",
@@ -8635,7 +8431,7 @@
         ]
       },
       {
-        "number": 228,
+        "number": 226,
         "content": [
           {
             "text": "      focusIndex",
@@ -8648,7 +8444,7 @@
         ]
       },
       {
-        "number": 229,
+        "number": 227,
         "content": [
           {
             "text": "      handleSelect",
@@ -8737,7 +8533,7 @@
         ]
       },
       {
-        "number": 230,
+        "number": 228,
         "content": [
           {
             "text": "      handleEnter",
@@ -8826,7 +8622,7 @@
         ]
       },
       {
-        "number": 231,
+        "number": 229,
         "content": [
           {
             "text": "      total",
@@ -8863,7 +8659,7 @@
         ]
       },
       {
-        "number": 232,
+        "number": 230,
         "content": [
           {
             "text": "      nativeEvent",
@@ -8896,7 +8692,7 @@
         ]
       },
       {
-        "number": 233,
+        "number": 231,
         "content": [
           {
             "text": "    ",
@@ -8917,7 +8713,7 @@
         ]
       },
       {
-        "number": 234,
+        "number": 232,
         "content": [
           {
             "text": "  ",
@@ -8928,39 +8724,68 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " [enabled",
+            "text": " [",
+            "color": "var(--code-variable)"
+          }
+        ]
+      },
+      {
+        "number": 233,
+        "content": [
+          {
+            "text": "    enabled",
             "color": "var(--code-variable)"
           },
           {
             "text": ",",
             "color": "var(--code-operator)"
-          },
+          }
+        ]
+      },
+      {
+        "number": 234,
+        "content": [
           {
-            "text": " resolvedUpKeys",
+            "text": "    resolvedUpKeys",
             "color": "var(--code-variable)"
           },
           {
             "text": ",",
             "color": "var(--code-operator)"
-          },
+          }
+        ]
+      },
+      {
+        "number": 235,
+        "content": [
           {
-            "text": " resolvedDownKeys",
+            "text": "    resolvedDownKeys",
             "color": "var(--code-variable)"
           },
           {
             "text": ",",
             "color": "var(--code-operator)"
-          },
+          }
+        ]
+      },
+      {
+        "number": 236,
+        "content": [
           {
-            "text": " preventDefault",
+            "text": "    preventDefault",
             "color": "var(--code-variable)"
           },
           {
             "text": ",",
             "color": "var(--code-operator)"
-          },
+          }
+        ]
+      },
+      {
+        "number": 237,
+        "content": [
           {
-            "text": " ",
+            "text": "    ",
             "color": "var(--code-variable)"
           },
           {
@@ -8978,41 +8803,79 @@
           {
             "text": ",",
             "color": "var(--code-operator)"
-          },
+          }
+        ]
+      },
+      {
+        "number": 238,
+        "content": [
           {
-            "text": " move",
+            "text": "    move",
             "color": "var(--code-variable)"
           },
           {
             "text": ",",
             "color": "var(--code-operator)"
-          },
+          }
+        ]
+      },
+      {
+        "number": 239,
+        "content": [
           {
-            "text": " focusIndex",
+            "text": "    focusIndex",
             "color": "var(--code-variable)"
           },
           {
             "text": ",",
             "color": "var(--code-operator)"
-          },
+          }
+        ]
+      },
+      {
+        "number": 240,
+        "content": [
           {
-            "text": " handleSelect",
+            "text": "    handleSelect",
             "color": "var(--code-variable)"
           },
           {
             "text": ",",
             "color": "var(--code-operator)"
-          },
+          }
+        ]
+      },
+      {
+        "number": 241,
+        "content": [
           {
-            "text": " handleEnter",
+            "text": "    handleEnter",
             "color": "var(--code-variable)"
           },
           {
             "text": ",",
             "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 242,
+        "content": [
+          {
+            "text": "    getElements",
+            "color": "var(--code-variable)"
           },
           {
-            "text": " getElements])",
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 243,
+        "content": [
+          {
+            "text": "  ])",
             "color": "var(--code-variable)"
           },
           {
@@ -9022,11 +8885,11 @@
         ]
       },
       {
-        "number": 235,
+        "number": 244,
         "content": []
       },
       {
-        "number": 236,
+        "number": 245,
         "content": [
           {
             "text": "  ",
@@ -9079,7 +8942,7 @@
         ]
       },
       {
-        "number": 237,
+        "number": 246,
         "content": [
           {
             "text": "}",
@@ -9088,7 +8951,7 @@
         ]
       },
       {
-        "number": 238,
+        "number": 247,
         "content": []
       }
     ]
@@ -9108,7 +8971,7 @@
       },
       {
         "name": "role",
-        "type": "\"radio\" | \"checkbox\" | \"option\" | \"menuitem\" | \"button\" | \"tab\"",
+        "type": "\"radio\" | \"checkbox\" | \"option\" | \"menuitem\" | \"menuitemradio\" | \"button\" | \"tab\"",
         "required": true,
         "description": "ARIA role used to query navigable children within the container."
       },
@@ -13237,7 +13100,7 @@
     },
     {
       "name": "role",
-      "type": "\"radio\" | \"checkbox\" | \"option\" | \"menuitem\" | \"button\" | \"tab\"",
+      "type": "\"radio\" | \"checkbox\" | \"option\" | \"menuitem\" | \"menuitemradio\" | \"button\" | \"tab\"",
       "required": true,
       "description": "ARIA role used to query navigable children within the container."
     },

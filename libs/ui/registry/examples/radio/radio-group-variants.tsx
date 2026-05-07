@@ -13,7 +13,7 @@ export default function RadioGroupVariants() {
         <div className="text-xs text-muted-foreground uppercase font-bold mb-2">Horizontal Layout</div>
         <RadioGroup
           value={size}
-          onChange={setSize}
+          onValueChange={setSize}
           orientation="horizontal"
           label="Size"
         >
@@ -26,7 +26,7 @@ export default function RadioGroupVariants() {
         <div className="text-xs text-muted-foreground uppercase font-bold mb-2">With Descriptions</div>
         <RadioGroup
           value={plan}
-          onChange={setPlan}
+          onValueChange={setPlan}
           label="Plan"
         >
           <RadioGroupItem value="free" label="Free" description="Basic features, limited usage" />

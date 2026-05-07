@@ -10,5 +10,8 @@
       "content": "export function matchesSearch(value: string, query: string): boolean {\n  return !query || value.toLowerCase().includes(query.toLowerCase());\n}\n",
       "type": "registry:lib"
     }
-  ]
+  ],
+  "meta": {
+    "client": false
+  }
 }

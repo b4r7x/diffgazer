@@ -115,7 +115,7 @@ function ButtonContent({
   return <>{inner}</>;
 }
 
-export function Button(props: ButtonProps) {
+export function Button(props: ButtonProps): ReactNode {
   const {
     className,
     variant,
@@ -157,7 +157,7 @@ export function Button(props: ButtonProps) {
       "aria-disabled": isDisabled || undefined,
       ...(isDisabled && { tabIndex: -1 as const }),
     };
-    const { ref, href, ...anchorProps } = rest as Omit<
+    const { ref, href, onClick, ...anchorProps } = rest as Omit<
       ButtonAsAnchorProps,
       keyof ButtonSharedProps | "children" | "className" | "as"
     >;
@@ -169,7 +169,10 @@ export function Button(props: ButtonProps) {
         href={href}
         {...ariaProps}
         {...anchorProps}
-        {...(isDisabled && { onClick: (e: ReactMouseEvent) => { e.preventDefault(); } })}
+        onClick={(event: ReactMouseEvent<HTMLAnchorElement>) => {
+          onClick?.(event);
+          if (isDisabled && !event.defaultPrevented) event.preventDefault();
+        }}
       >
         <ButtonContent loading={loading} bracket={!!bracket} spinnerSize={spinnerSize}>
           {children}

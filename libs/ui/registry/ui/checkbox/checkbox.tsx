@@ -1,7 +1,9 @@
 "use client";
 
-import { useId, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from "react";
+import { useEffect, useId, useRef, useState, type AriaAttributes, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from "react";
 import { useControllableState } from "@/hooks/use-controllable-state";
+import { useFormReset } from "@/hooks/use-form-reset";
+import { composeRefs } from "@/lib/compose-refs";
 import {
   selectableVariants,
   selectableContainerClass,
@@ -18,6 +20,18 @@ function resolveCheckboxState(indeterminate: boolean, checked: boolean) {
   if (indeterminate) return "indeterminate" as const;
   if (checked) return "checked" as const;
   return "unchecked" as const;
+}
+
+function resolveAriaInvalid(
+  invalid: boolean | undefined,
+  ariaInvalid: AriaAttributes["aria-invalid"],
+) {
+  if (invalid) return true;
+  if (ariaInvalid === true || ariaInvalid === "true" || ariaInvalid === "grammar" || ariaInvalid === "spelling") {
+    return ariaInvalid;
+  }
+  if (ariaInvalid === false || ariaInvalid === "false") return ariaInvalid;
+  return undefined;
 }
 
 export type CheckboxSize = SelectableSize;
@@ -41,7 +55,7 @@ export type CheckboxProps = {
   required?: boolean;
   invalid?: boolean;
   "aria-label"?: string;
-  "aria-invalid"?: boolean;
+  "aria-invalid"?: AriaAttributes["aria-invalid"];
   className?: string;
   "data-value"?: string;
   ref?: Ref<HTMLDivElement>;
@@ -77,15 +91,25 @@ export function Checkbox({
     ? undefined
     : controlledChecked === true;
 
+  const rootRef = useRef<HTMLDivElement>(null);
   const [isChecked, setIsChecked] = useControllableState<boolean>({
     value: controlledBool,
     defaultValue: defaultChecked,
     onChange,
   });
   const state = resolveCheckboxState(isIndeterminate, isChecked);
+  const [nativeInvalid, setNativeInvalid] = useState(false);
+  const resolvedAriaInvalid = resolveAriaInvalid(invalid || (nativeInvalid && required && !isChecked), ariaInvalid);
+
+  useFormReset(rootRef, defaultChecked, setIsChecked, controlledBool === undefined);
+
+  useEffect(() => {
+    if (isChecked) setNativeInvalid(false);
+  }, [isChecked]);
 
   const toggle = () => {
     if (disabled) return;
+    setNativeInvalid(false);
     setIsChecked(!isChecked);
   };
 
@@ -100,7 +124,7 @@ export function Checkbox({
 
   return (
     <>
-      {name && (
+      {(name || required) && (
         <input
           type="checkbox"
           name={name}
@@ -111,17 +135,23 @@ export function Checkbox({
           className="sr-only"
           tabIndex={-1}
           readOnly
-          aria-hidden="true"
+          aria-hidden={true}
+          aria-label={ariaLabel ?? (typeof label === "string" ? label : name)}
+          onInvalid={(event) => {
+            event.preventDefault();
+            setNativeInvalid(true);
+            rootRef.current?.focus();
+          }}
         />
       )}
       <div
-        ref={ref}
+        ref={composeRefs(rootRef, ref)}
         role="checkbox"
         data-value={dataValue}
         aria-checked={isIndeterminate ? "mixed" : isChecked}
         aria-disabled={disabled || undefined}
         aria-required={required || undefined}
-        aria-invalid={invalid || ariaInvalid || undefined}
+        aria-invalid={resolvedAriaInvalid}
         aria-label={ariaLabel}
         aria-labelledby={!ariaLabel && label ? labelId : undefined}
         aria-describedby={description ? descriptionId : undefined}

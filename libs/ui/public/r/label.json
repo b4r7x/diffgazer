@@ -11,7 +11,7 @@
   "files": [
     {
       "path": "registry/ui/label/index.ts",
-      "content": "export { Label, labelVariants, type LabelProps, type LabelColor, type LabelOrientation } from \"./label\";\n",
+      "content": "\"use client\";\n\nexport { Label, labelVariants, type LabelProps, type LabelColor, type LabelOrientation } from \"./label\";\n",
       "type": "registry:ui"
     },
     {

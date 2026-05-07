@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffectEvent, useLayoutEffect, useRef, useState, type RefObject } from "react";
 
 export interface UseOverflowItemsOptions {
   itemCount: number;
@@ -55,10 +55,12 @@ export function useOverflowItems({
 }: UseOverflowItemsOptions): UseOverflowItemsReturn {
   const ref = useRef<HTMLDivElement>(null);
   const frameRef = useRef<number | null>(null);
-  const onVisibleCountChangeRef = useRef(onVisibleCountChange);
   const [visibleCount, setVisibleCount] = useState(() => clampCount(itemCount, itemCount));
+  const lastNotifiedCountRef = useRef(visibleCount);
+  const notifyVisibleCountChange = useEffectEvent((count: number) => {
+    onVisibleCountChange?.(count);
+  });
 
-  onVisibleCountChangeRef.current = onVisibleCountChange;
   const safeItemCount = clampCount(itemCount, itemCount);
 
   const onRecalculate = useCallback(() => {
@@ -70,11 +72,7 @@ export function useOverflowItems({
 
     const children = Array.from(container.children) as HTMLElement[];
     if (safeItemCount === 0 || children.length === 0) {
-      setVisibleCount((current) => {
-        if (current === 0) return current;
-        onVisibleCountChangeRef.current?.(0);
-        return 0;
-      });
+      setVisibleCount(0);
       return;
     }
 
@@ -92,11 +90,7 @@ export function useOverflowItems({
       safeItemCount,
     );
 
-    setVisibleCount((current) => {
-      if (current === count) return current;
-      onVisibleCountChangeRef.current?.(count);
-      return count;
-    });
+    setVisibleCount(count);
   }, [safeItemCount]);
 
   const scheduleRecalculate = useCallback(() => {
@@ -144,6 +138,12 @@ export function useOverflowItems({
   useLayoutEffect(() => {
     onRecalculate();
   }, [onRecalculate]);
+
+  useLayoutEffect(() => {
+    if (visibleCount === lastNotifiedCountRef.current) return;
+    lastNotifiedCountRef.current = visibleCount;
+    notifyVisibleCountChange(visibleCount);
+  }, [visibleCount]);
 
   return {
     ref,

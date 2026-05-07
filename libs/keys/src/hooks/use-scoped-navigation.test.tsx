@@ -63,4 +63,41 @@ describe("useScopedNavigation", () => {
     act(() => fireKey("Enter"));
     expect(onEnter).toHaveBeenCalledWith("a", expect.any(KeyboardEvent));
   });
+
+  it("does not register Space or Enter activation when moveFocus is true", () => {
+    const onSelect = vi.fn();
+    const onEnter = vi.fn();
+
+    function MoveFocusList() {
+      const ref = useRef<HTMLDivElement>(null);
+      const result = useScopedNavigation({
+        containerRef: ref,
+        role: "button",
+        initialValue: "a",
+        moveFocus: true,
+        onSelect,
+        onEnter,
+      });
+
+      return (
+        <div ref={ref} data-testid="list">
+          <button type="button" data-value="a" data-testid="button-a">A</button>
+          <button type="button" data-value="b" data-testid="button-b">B</button>
+          <span data-testid="focused">{result.highlighted ?? ""}</span>
+        </div>
+      );
+    }
+
+    render(<MoveFocusList />, { wrapper });
+
+    act(() => fireKey("ArrowDown"));
+    expect(getFocused()).toBe("b");
+    expect(document.activeElement).toBe(screen.getByTestId("button-b"));
+
+    act(() => fireKey(" "));
+    act(() => fireKey("Enter"));
+
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onEnter).not.toHaveBeenCalled();
+  });
 });

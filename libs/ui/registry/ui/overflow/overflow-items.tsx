@@ -1,6 +1,7 @@
 "use client";
 
-import { Children, type ReactNode } from "react";
+import { Children, type ComponentPropsWithRef, type ReactNode } from "react";
+import { composeRefs } from "@/lib/compose-refs";
 import { cn } from "@/lib/utils";
 import { useOverflowItems } from "@/hooks/use-overflow-items";
 
@@ -14,11 +15,11 @@ export type OverflowIndicatorRender =
 
 const hiddenClass = "invisible absolute pointer-events-none";
 
-export interface OverflowItemsProps {
+export interface OverflowItemsProps
+  extends Omit<ComponentPropsWithRef<"div">, "children"> {
   children: ReactNode;
   indicator?: OverflowIndicatorRender;
   gap?: string;
-  className?: string;
 }
 
 function DefaultBadge() {
@@ -41,19 +42,21 @@ export function OverflowItems({
   indicator,
   gap = "gap-1",
   className,
+  ref,
+  ...props
 }: OverflowItemsProps) {
-  const items = Children.toArray(children);
-  const { ref, visibleCount, overflowCount } =
-    useOverflowItems({ itemCount: items.length });
+  const itemCount = Children.count(children);
+  const { ref: overflowRef, visibleCount, overflowCount } =
+    useOverflowItems({ itemCount });
 
   return (
     <div
-      ref={ref}
+      ref={composeRefs(overflowRef, ref)}
       className={cn("relative flex items-center overflow-clip", gap, className)}
+      {...props}
     >
-      {items.map((item, i) => (
-        // eslint-disable-next-line react/no-array-index-key
-        <div key={i} className={cn("shrink-0", i >= visibleCount && hiddenClass)} inert={i >= visibleCount || undefined}>
+      {Children.map(children, (item, i) => (
+        <div className={cn("shrink-0", i >= visibleCount && hiddenClass)} inert={i >= visibleCount || undefined}>
           {item}
         </div>
       ))}

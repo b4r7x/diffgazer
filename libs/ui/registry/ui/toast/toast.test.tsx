@@ -39,6 +39,21 @@ describe("Toast", () => {
     expect(screen.getByText("Hello world")).toBeInTheDocument()
   })
 
+  it("creates fallback ids when randomUUID is unavailable", () => {
+    const cryptoDescriptor = Object.getOwnPropertyDescriptor(globalThis, "crypto")
+    Object.defineProperty(globalThis, "crypto", { configurable: true, value: undefined })
+
+    try {
+      render(<Toaster />)
+      let id!: string
+      act(() => { id = toast("Fallback id") })
+      expect(id).toMatch(/^toast-/)
+      expect(screen.getByText("Fallback id")).toBeInTheDocument()
+    } finally {
+      if (cryptoDescriptor) Object.defineProperty(globalThis, "crypto", cryptoDescriptor)
+    }
+  })
+
   it("renders toast with a message body", () => {
     render(<Toaster />)
     act(() => { toast("Title", { message: "Body text" }) })

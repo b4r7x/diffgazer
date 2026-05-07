@@ -11,7 +11,7 @@
   "files": [
     {
       "path": "registry/ui/toc/index.ts",
-      "content": "import { Toc as TocRoot, type TocProps } from \"./toc\";\nimport { TocList, type TocListProps } from \"./toc-list\";\nimport { TocItem, type TocItemProps, type TocItemRenderProps, tocItemVariants } from \"./toc-item\";\n\nconst Toc = Object.assign(TocRoot, {\n  List: TocList,\n  Item: TocItem,\n});\n\nexport { Toc, type TocProps };\nexport { TocList, type TocListProps };\nexport { TocItem, type TocItemProps, type TocItemRenderProps, tocItemVariants };\n",
+      "content": "\"use client\";\n\nimport { Toc as TocRoot, type TocProps } from \"./toc\";\nimport { TocList, type TocListProps } from \"./toc-list\";\nimport { TocItem, type TocItemProps, type TocItemRenderProps, tocItemVariants } from \"./toc-item\";\n\nconst Toc = Object.assign(TocRoot, {\n  List: TocList,\n  Item: TocItem,\n});\n\nexport { Toc, type TocProps };\nexport { TocList, type TocListProps };\nexport { TocItem, type TocItemProps, type TocItemRenderProps, tocItemVariants };\n",
       "type": "registry:ui"
     },
     {
