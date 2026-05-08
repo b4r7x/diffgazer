@@ -124,6 +124,7 @@ export default defineConfig({
     mkdirSync(dist, { recursive: true });
     cpSync(resolve(stylesDir, "theme-base.css"), resolve(dist, "theme-base.css"));
     cpSync(resolve(stylesDir, "theme.css"), resolve(dist, "theme.css"));
+    cpSync(resolve(stylesDir, "sources.css"), resolve(dist, "sources.css"));
     cpSync(resolve(stylesDir, "styles.css"), resolve(dist, "styles.css"));
 
     // Append component CSS files to styles.css. Theme CSS is already imported

@@ -18,7 +18,6 @@ export default function ListboxBasicExample() {
     selectedId,
     highlightedId,
     handleItemActivate,
-    handleItemHighlight,
     getContainerProps,
   } = useListbox({
     idPrefix: "example-listbox",
@@ -42,11 +41,10 @@ export default function ListboxBasicExample() {
             role="option"
             data-value={option.id}
             aria-selected={selected}
-            onMouseEnter={() => handleItemHighlight(option.id)}
             onClick={() => handleItemActivate(option.id)}
             className={[
               "cursor-default px-3 py-2 text-sm transition-colors",
-              highlighted ? "bg-muted text-foreground" : "text-muted-foreground",
+              highlighted ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-secondary",
               selected ? "font-medium" : "font-normal",
             ].join(" ")}
           >

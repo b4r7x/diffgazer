@@ -19,7 +19,6 @@ function Listbox(
   const {
     selectedId,
     highlightedId,
-    handleItemHighlight,
     handleItemActivate,
     getContainerProps,
   } = useListbox({
@@ -39,7 +38,6 @@ function Listbox(
           data-value={item.id}
           aria-selected={selectedId === item.id}
           aria-disabled={item.disabled || undefined}
-          onMouseEnter={() => handleItemHighlight(item.id)}
           onClick={() => !item.disabled && handleItemActivate(item.id)}
         >
           {item.label}

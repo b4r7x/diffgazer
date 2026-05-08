@@ -24,7 +24,6 @@ export function CheckboxItem({ value, label, description, disabled = false, clas
       data-value={value}
       checked={ctx.value.includes(value)}
       onChange={() => ctx.toggle(value)}
-      onMouseEnter={isDisabled ? undefined : () => ctx.onHighlightChange?.(value)}
       label={label}
       description={description}
       disabled={isDisabled}

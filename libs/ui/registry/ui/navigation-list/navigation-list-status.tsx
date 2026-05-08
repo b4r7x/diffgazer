@@ -10,7 +10,7 @@ export interface NavigationListStatusProps {
 
 export function NavigationListStatus({ children, className }: NavigationListStatusProps) {
   return (
-    <span className={cn("col-start-2 row-start-1 self-center text-[10px] font-bold text-warning group-data-[active]:text-background", className)}>
+    <span className={cn("col-start-2 row-start-1 self-center text-[10px] font-bold text-warning group-data-[active]:text-primary-foreground", className)}>
       {children}
     </span>
   );

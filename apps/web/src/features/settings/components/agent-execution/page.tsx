@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { AgentExecution } from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
@@ -17,16 +17,13 @@ export function SettingsAgentExecutionPage() {
   const settingsQuery = useSettings();
   const saveSettings = useSaveSettings();
   const [modeChoice, setModeChoice] = useState<AgentExecution | null>(null);
-  const [focusedMode, setFocusedMode] = useState<AgentExecution>("sequential");
+  const [focusedMode, setFocusedMode] = useState<AgentExecution | null>(null);
   const [error, setError] = useState<string | null>(null);
   const isSaving = saveSettings.isPending;
 
   const settings = settingsQuery.data;
   const effectiveMode = modeChoice ?? settings?.agentExecution ?? "sequential";
-
-  useEffect(() => {
-    setFocusedMode(effectiveMode);
-  }, [effectiveMode]);
+  const effectiveFocusedMode = focusedMode ?? effectiveMode;
 
   useScope("settings-agent-execution");
   useKey("Escape", () => navigate({ to: "/settings" }));
@@ -86,7 +83,7 @@ export function SettingsAgentExecutionPage() {
   const executionOptions: AgentExecution[] = ["sequential", "parallel"];
 
   const moveFocus = (direction: 1 | -1) => {
-    const idx = executionOptions.indexOf(focusedMode);
+    const idx = executionOptions.indexOf(effectiveFocusedMode);
     const next = idx + direction;
     if (next < 0) return;
     if (next >= executionOptions.length) {
@@ -99,8 +96,8 @@ export function SettingsAgentExecutionPage() {
   useKey("ArrowDown", () => moveFocus(1), { enabled: navigationEnabled });
   useKey("ArrowUp", () => moveFocus(-1), { enabled: navigationEnabled });
 
-  useKey(" ", () => onExecutionChange(focusedMode), { enabled: navigationEnabled });
-  useKey("Enter", () => onExecutionChange(focusedMode), { enabled: navigationEnabled });
+  useKey(" ", () => onExecutionChange(effectiveFocusedMode), { enabled: navigationEnabled });
+  useKey("Enter", () => onExecutionChange(effectiveFocusedMode), { enabled: navigationEnabled });
 
   const guard = matchQueryState(settingsQuery, {
     loading: () => (
@@ -153,7 +150,7 @@ export function SettingsAgentExecutionPage() {
         <RadioGroup
           value={effectiveMode}
           onChange={onExecutionChange}
-          highlighted={navigationEnabled ? focusedMode : null}
+          highlighted={navigationEnabled ? effectiveFocusedMode : null}
           onHighlightChange={(v) => setFocusedMode(v as AgentExecution)}
           className="space-y-1"
         >

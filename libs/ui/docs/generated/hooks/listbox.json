@@ -9387,7 +9387,7 @@
   ],
   "exampleSource": {
     "listbox-basic": {
-      "raw": "\"use client\"\n\nimport { useMemo } from \"react\"\nimport { getEncodedListboxItemId, useListbox } from \"@/hooks/use-listbox\"\n\nconst options = [\n  { id: \"alpha\", label: \"Alpha\" },\n  { id: \"beta\", label: \"Beta\" },\n  { id: \"gamma\", label: \"Gamma\" },\n]\n\nexport default function ListboxBasicExample() {\n  const items = useMemo(\n    () => options.map((option) => ({ id: option.id })),\n    [],\n  )\n  const {\n    selectedId,\n    highlightedId,\n    handleItemActivate,\n    handleItemHighlight,\n    getContainerProps,\n  } = useListbox({\n    idPrefix: \"example-listbox\",\n    items,\n    defaultSelectedId: \"beta\",\n  })\n\n  return (\n    <div\n      {...getContainerProps()}\n      aria-label=\"Example options\"\n      className=\"flex w-64 flex-col border border-border bg-background p-1\"\n    >\n      {options.map((option) => {\n        const selected = selectedId === option.id\n        const highlighted = highlightedId === option.id\n        return (\n          <div\n            key={option.id}\n            id={getEncodedListboxItemId(\"example-listbox\", option.id)}\n            role=\"option\"\n            data-value={option.id}\n            aria-selected={selected}\n            onMouseEnter={() => handleItemHighlight(option.id)}\n            onClick={() => handleItemActivate(option.id)}\n            className={[\n              \"cursor-default px-3 py-2 text-sm transition-colors\",\n              highlighted ? \"bg-muted text-foreground\" : \"text-muted-foreground\",\n              selected ? \"font-medium\" : \"font-normal\",\n            ].join(\" \")}\n          >\n            {option.label}\n          </div>\n        )\n      })}\n    </div>\n  )\n}\n",
+      "raw": "\"use client\"\n\nimport { useMemo } from \"react\"\nimport { getEncodedListboxItemId, useListbox } from \"@/hooks/use-listbox\"\n\nconst options = [\n  { id: \"alpha\", label: \"Alpha\" },\n  { id: \"beta\", label: \"Beta\" },\n  { id: \"gamma\", label: \"Gamma\" },\n]\n\nexport default function ListboxBasicExample() {\n  const items = useMemo(\n    () => options.map((option) => ({ id: option.id })),\n    [],\n  )\n  const {\n    selectedId,\n    highlightedId,\n    handleItemActivate,\n    getContainerProps,\n  } = useListbox({\n    idPrefix: \"example-listbox\",\n    items,\n    defaultSelectedId: \"beta\",\n  })\n\n  return (\n    <div\n      {...getContainerProps()}\n      aria-label=\"Example options\"\n      className=\"flex w-64 flex-col border border-border bg-background p-1\"\n    >\n      {options.map((option) => {\n        const selected = selectedId === option.id\n        const highlighted = highlightedId === option.id\n        return (\n          <div\n            key={option.id}\n            id={getEncodedListboxItemId(\"example-listbox\", option.id)}\n            role=\"option\"\n            data-value={option.id}\n            aria-selected={selected}\n            onClick={() => handleItemActivate(option.id)}\n            className={[\n              \"cursor-default px-3 py-2 text-sm transition-colors\",\n              highlighted ? \"bg-muted text-foreground\" : \"text-muted-foreground hover:bg-secondary\",\n              selected ? \"font-medium\" : \"font-normal\",\n            ].join(\" \")}\n          >\n            {option.label}\n          </div>\n        )\n      })}\n    </div>\n  )\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -10074,23 +10074,6 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "handleItemHighlight",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 22,
-          "content": [
-            {
-              "text": "    ",
-              "color": "var(--code-variable)"
-            },
-            {
               "text": "getContainerProps",
               "color": "var(--code-number)"
             },
@@ -10101,7 +10084,7 @@
           ]
         },
         {
-          "number": 23,
+          "number": 22,
           "content": [
             {
               "text": "  ",
@@ -10138,7 +10121,7 @@
           ]
         },
         {
-          "number": 24,
+          "number": 23,
           "content": [
             {
               "text": "    idPrefix",
@@ -10171,7 +10154,7 @@
           ]
         },
         {
-          "number": 25,
+          "number": 24,
           "content": [
             {
               "text": "    items",
@@ -10184,7 +10167,7 @@
           ]
         },
         {
-          "number": 26,
+          "number": 25,
           "content": [
             {
               "text": "    defaultSelectedId",
@@ -10217,7 +10200,7 @@
           ]
         },
         {
-          "number": 27,
+          "number": 26,
           "content": [
             {
               "text": "  ",
@@ -10234,11 +10217,11 @@
           ]
         },
         {
-          "number": 28,
+          "number": 27,
           "content": []
         },
         {
-          "number": 29,
+          "number": 28,
           "content": [
             {
               "text": "  ",
@@ -10255,7 +10238,7 @@
           ]
         },
         {
-          "number": 30,
+          "number": 29,
           "content": [
             {
               "text": "    ",
@@ -10272,7 +10255,7 @@
           ]
         },
         {
-          "number": 31,
+          "number": 30,
           "content": [
             {
               "text": "      ",
@@ -10297,7 +10280,7 @@
           ]
         },
         {
-          "number": 32,
+          "number": 31,
           "content": [
             {
               "text": "      ",
@@ -10326,7 +10309,7 @@
           ]
         },
         {
-          "number": 33,
+          "number": 32,
           "content": [
             {
               "text": "      ",
@@ -10355,7 +10338,7 @@
           ]
         },
         {
-          "number": 34,
+          "number": 33,
           "content": [
             {
               "text": "    ",
@@ -10368,7 +10351,7 @@
           ]
         },
         {
-          "number": 35,
+          "number": 34,
           "content": [
             {
               "text": "      ",
@@ -10425,7 +10408,7 @@
           ]
         },
         {
-          "number": 36,
+          "number": 35,
           "content": [
             {
               "text": "        ",
@@ -10478,7 +10461,7 @@
           ]
         },
         {
-          "number": 37,
+          "number": 36,
           "content": [
             {
               "text": "        ",
@@ -10531,7 +10514,7 @@
           ]
         },
         {
-          "number": 38,
+          "number": 37,
           "content": [
             {
               "text": "        ",
@@ -10548,7 +10531,7 @@
           ]
         },
         {
-          "number": 39,
+          "number": 38,
           "content": [
             {
               "text": "          ",
@@ -10565,7 +10548,7 @@
           ]
         },
         {
-          "number": 40,
+          "number": 39,
           "content": [
             {
               "text": "            ",
@@ -10598,7 +10581,7 @@
           ]
         },
         {
-          "number": 41,
+          "number": 40,
           "content": [
             {
               "text": "            ",
@@ -10659,7 +10642,7 @@
           ]
         },
         {
-          "number": 42,
+          "number": 41,
           "content": [
             {
               "text": "            ",
@@ -10688,7 +10671,7 @@
           ]
         },
         {
-          "number": 43,
+          "number": 42,
           "content": [
             {
               "text": "            ",
@@ -10721,7 +10704,7 @@
           ]
         },
         {
-          "number": 44,
+          "number": 43,
           "content": [
             {
               "text": "            ",
@@ -10746,60 +10729,7 @@
           ]
         },
         {
-          "number": 45,
-          "content": [
-            {
-              "text": "            ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "onMouseEnter",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "={()",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "=>",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "handleItemHighlight",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "(",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "option",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": ".",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "id)",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "}",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 46,
+          "number": 44,
           "content": [
             {
               "text": "            ",
@@ -10852,7 +10782,7 @@
           ]
         },
         {
-          "number": 47,
+          "number": 45,
           "content": [
             {
               "text": "            ",
@@ -10873,7 +10803,7 @@
           ]
         },
         {
-          "number": 48,
+          "number": 46,
           "content": [
             {
               "text": "              ",
@@ -10898,7 +10828,7 @@
           ]
         },
         {
-          "number": 49,
+          "number": 47,
           "content": [
             {
               "text": "              highlighted ",
@@ -10941,7 +10871,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "text-muted-foreground",
+              "text": "text-muted-foreground hover:bg-secondary",
               "color": "var(--code-tag)"
             },
             {
@@ -10955,7 +10885,7 @@
           ]
         },
         {
-          "number": 50,
+          "number": 48,
           "content": [
             {
               "text": "              selected ",
@@ -11012,7 +10942,7 @@
           ]
         },
         {
-          "number": 51,
+          "number": 49,
           "content": [
             {
               "text": "            ]",
@@ -11053,7 +10983,7 @@
           ]
         },
         {
-          "number": 52,
+          "number": 50,
           "content": [
             {
               "text": "          ",
@@ -11066,7 +10996,7 @@
           ]
         },
         {
-          "number": 53,
+          "number": 51,
           "content": [
             {
               "text": "            ",
@@ -11095,7 +11025,7 @@
           ]
         },
         {
-          "number": 54,
+          "number": 52,
           "content": [
             {
               "text": "          ",
@@ -11116,7 +11046,7 @@
           ]
         },
         {
-          "number": 55,
+          "number": 53,
           "content": [
             {
               "text": "        )",
@@ -11125,7 +11055,7 @@
           ]
         },
         {
-          "number": 56,
+          "number": 54,
           "content": [
             {
               "text": "      ",
@@ -11146,7 +11076,7 @@
           ]
         },
         {
-          "number": 57,
+          "number": 55,
           "content": [
             {
               "text": "    ",
@@ -11167,7 +11097,7 @@
           ]
         },
         {
-          "number": 58,
+          "number": 56,
           "content": [
             {
               "text": "  )",
@@ -11176,7 +11106,7 @@
           ]
         },
         {
-          "number": 59,
+          "number": 57,
           "content": [
             {
               "text": "}",
@@ -11185,7 +11115,7 @@
           ]
         },
         {
-          "number": 60,
+          "number": 58,
           "content": []
         }
       ]

@@ -175,6 +175,22 @@ describe("Checkbox.Group", () => {
     expect(onHighlight).toHaveBeenCalled()
   })
 
+  it("does not move keyboard highlight on mouse hover", async () => {
+    const onHighlight = vi.fn()
+    render(
+      <Checkbox.Group label="Fruits" highlighted="apple" onHighlightChange={onHighlight}>
+        <Checkbox.Item value="apple" label="Apple" />
+        <Checkbox.Item value="banana" label="Banana" />
+      </Checkbox.Group>
+    )
+
+    await userEvent.hover(screen.getByRole("checkbox", { name: /banana/i }))
+
+    expect(onHighlight).not.toHaveBeenCalled()
+    expect(screen.getByRole("checkbox", { name: /apple/i })).toHaveClass("bg-secondary")
+    expect(screen.getByRole("checkbox", { name: /banana/i })).not.toHaveClass("bg-secondary")
+  })
+
   it("requires at least one checked item without making every item required", async () => {
     render(
       <form data-testid="form">

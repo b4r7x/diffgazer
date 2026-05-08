@@ -89,6 +89,7 @@ function validateUiPackageExports() {
   registryExports.add("./lib/utils");
   registryExports.add("./theme-base.css");
   registryExports.add("./theme.css");
+  registryExports.add("./sources.css");
   registryExports.add("./styles.css");
 
   const expectedExports = [...registryExports].sort();

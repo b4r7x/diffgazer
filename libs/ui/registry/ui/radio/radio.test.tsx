@@ -198,6 +198,22 @@ describe("RadioGroup", () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
+  it("does not move keyboard highlight on mouse hover", async () => {
+    const onHighlight = vi.fn()
+    render(
+      <RadioGroup label="Colors" highlighted="red" onHighlightChange={onHighlight}>
+        <RadioGroup.Item value="red" label="Red" />
+        <RadioGroup.Item value="blue" label="Blue" />
+      </RadioGroup>
+    )
+
+    await userEvent.hover(screen.getByRole("radio", { name: /blue/i }))
+
+    expect(onHighlight).not.toHaveBeenCalled()
+    expect(screen.getByRole("radio", { name: /red/i })).toHaveClass("bg-secondary")
+    expect(screen.getByRole("radio", { name: /blue/i })).not.toHaveClass("bg-secondary")
+  })
+
   it("exposes one tabbable enabled item when unselected and skips disabled items", async () => {
     render(
       <RadioGroup label="Colors">

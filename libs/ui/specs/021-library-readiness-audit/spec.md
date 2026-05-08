@@ -23,7 +23,7 @@
 - `@diffgazer/ui` registry: 62 items, including 45 `registry:ui`, 8 `registry:hook`, 8 `registry:lib`, and 1 `registry:theme`.
 - `@diffgazer/keys` registry: 3 hook items.
 - Installer package: `@diffgazer/add`; CLI binary: `dgadd`.
-- Runtime CSS story: Tailwind CSS v4 with package-mode `@source "../node_modules/@diffgazer/ui/dist"`.
+- Runtime CSS story: Tailwind CSS v4 with package-mode `@import "@diffgazer/ui/sources.css"`.
 - Source-copy CSS story: `dgadd init` copies `src/styles/theme.css` and `src/styles/styles.css`.
 - Standards baseline checked against current React 19 ref/client-boundary guidance, WAI-ARIA/APG patterns, Tailwind v4 `@source`, and shadcn registry namespace guidance.
 
@@ -67,4 +67,3 @@ See [issues/README.md](issues/README.md) for the full deduped issue list.
 3. Correct docs/product contract and release governance.
 4. Tackle high-risk component quality issues.
 5. Expand behavior-focused tests and consumer matrix coverage.
-

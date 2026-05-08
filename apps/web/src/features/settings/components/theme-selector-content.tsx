@@ -7,6 +7,7 @@ export interface ThemeSelectorContentProps {
   onChange: (value: Theme) => void;
   focusedValue?: Theme | null;
   onFocusedValueChange?: (value: Theme) => void;
+  onPreviewValueChange?: (value: Theme | null) => void;
   onSelect?: (value: Theme) => void;
   onEnter?: (value: Theme) => void;
   onFocus?: (value: Theme) => void;
@@ -27,6 +28,7 @@ export function ThemeSelectorContent({
   onChange,
   focusedValue,
   onFocusedValueChange,
+  onPreviewValueChange,
   onSelect,
   onEnter,
   onFocus,
@@ -84,12 +86,17 @@ export function ThemeSelectorContent({
         wrap={false}
       >
         {options.map((option) => (
-          <RadioGroupItem
+          <div
             key={option.value}
-            value={option.value}
-            label={option.label}
-            description={option.description}
-          />
+            onMouseEnter={() => onPreviewValueChange?.(option.value)}
+            onMouseLeave={() => onPreviewValueChange?.(null)}
+          >
+            <RadioGroupItem
+              value={option.value}
+              label={option.label}
+              description={option.description}
+            />
+          </div>
         ))}
       </RadioGroup>
     </div>

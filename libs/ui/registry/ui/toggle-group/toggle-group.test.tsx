@@ -281,6 +281,20 @@ describe("ToggleGroup", () => {
     expect(beta).not.toHaveAttribute("data-highlighted")
   })
 
+  it("keeps keyboard highlight when a different enabled item is hovered", async () => {
+    const onHighlightChange = vi.fn()
+    renderGroup({ highlighted: "a", onHighlightChange })
+
+    const alpha = screen.getByRole("radio", { name: /alpha/i })
+    const beta = screen.getByRole("radio", { name: /beta/i })
+
+    await userEvent.hover(beta)
+
+    expect(onHighlightChange).not.toHaveBeenCalled()
+    expect(alpha).toHaveAttribute("data-highlighted", "true")
+    expect(beta).not.toHaveAttribute("data-highlighted")
+  })
+
   it("moves focus with ArrowLeft", async () => {
     renderGroup({ defaultValue: "b" })
     const radios = getRadios()

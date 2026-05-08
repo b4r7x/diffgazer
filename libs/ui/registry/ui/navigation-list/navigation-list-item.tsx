@@ -12,7 +12,7 @@ import { NavigationListSubtitle } from "./navigation-list-subtitle";
 const itemVariants = cva("flex cursor-pointer group", {
   variants: {
     active: {
-      true: "bg-foreground text-background",
+      true: "bg-primary text-primary-foreground",
       false: "hover:bg-secondary border-b border-border/50",
     },
     disabled: {
@@ -88,10 +88,6 @@ export function NavigationListItem({
     if (disabled) event.preventDefault();
   };
 
-  const handleHighlight = () => {
-    if (!disabled) highlight(id);
-  };
-
   const itemContextValue = useMemo(
     () => ({ labelId, descId }),
     [labelId, descId],
@@ -112,14 +108,15 @@ export function NavigationListItem({
         aria-disabled={disabled || undefined}
         onMouseDown={handleMouseDown}
         onClick={handleClick}
-        onMouseEnter={handleHighlight}
-        onFocus={handleHighlight}
+        onFocus={() => {
+          if (!disabled) highlight(id);
+        }}
         className={cn(itemVariants({ active: isActive, disabled }), "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground", className)}
       >
         <div
           className={cn(
             "w-1 shrink-0",
-            isActive ? "bg-background/40" : "bg-transparent group-hover:bg-muted"
+            isActive ? "bg-primary-foreground/40" : "bg-transparent group-hover:bg-muted"
           )}
         />
         <div className={contentVariants({ density })}>

@@ -65,7 +65,13 @@ interface HubItemLayoutProps {
   children: ReactNode;
 }
 
-function HubItemLayout({ isFocused, isSelected, value, valueClassName, children }: HubItemLayoutProps) {
+function HubItemLayout({
+  isFocused,
+  isSelected,
+  value,
+  valueClassName,
+  children,
+}: HubItemLayoutProps) {
   const isEmphasized = isFocused || isSelected;
 
   return (
@@ -74,11 +80,9 @@ function HubItemLayout({ isFocused, isSelected, value, valueClassName, children 
         <MenuItemIndicator
           isFocused={isFocused}
           isSelected={isSelected}
-          className={isFocused
-            ? "text-background"
-            : isEmphasized
-              ? undefined
-              : "text-foreground opacity-0 group-hover:opacity-100 transition-opacity"}
+          className={
+            !isEmphasized ? "text-foreground opacity-0 group-hover:opacity-100 transition-opacity" : undefined
+          }
         />
         <span className={isEmphasized ? undefined : "font-medium group-hover:text-foreground"}>
           {children}
@@ -106,8 +110,8 @@ const menuItemBase = cva("cursor-pointer w-full transition-colors", {
     },
     state: {
       normal: "hover:bg-secondary group",
-      focused: "text-background font-bold",
-      selected: "bg-secondary font-bold group",
+      focused: "font-bold",
+      selected: "font-bold group",
       disabled: "opacity-50 cursor-not-allowed",
     },
     colorVariant: {
@@ -118,10 +122,11 @@ const menuItemBase = cva("cursor-pointer w-full transition-colors", {
   compoundVariants: [
     { state: "focused", menuVariant: "hub", class: "shadow-[inset_0_0_15px_rgba(0,0,0,0.1)]" },
     { state: "disabled", menuVariant: "default", class: "hover:bg-transparent" },
-    { colorVariant: "danger", state: "focused", class: "bg-destructive" },
-    { colorVariant: "default", state: "focused", class: "bg-foreground" },
+    { colorVariant: "danger", state: "focused", class: "bg-destructive text-destructive-foreground" },
+    { colorVariant: "default", state: "focused", class: "bg-primary text-primary-foreground" },
+    { colorVariant: "danger", state: "selected", class: "bg-destructive text-destructive-foreground" },
+    { colorVariant: "default", state: "selected", class: "bg-primary text-primary-foreground" },
     { colorVariant: "danger", state: "normal", menuVariant: "default", class: "text-destructive" },
-    { colorVariant: "danger", state: "selected", menuVariant: "default", class: "text-destructive" },
   ],
   defaultVariants: { menuVariant: "default", state: "normal", colorVariant: "default" },
 });
@@ -129,17 +134,48 @@ const menuItemBase = cva("cursor-pointer w-full transition-colors", {
 const menuItemValue = cva("font-mono text-xs", {
   variants: {
     valueVariant: {
-      default: "text-muted-foreground",
-      success: "text-success",
-      "success-badge": "text-success border border-success/30 bg-success/10 px-2 py-0.5 rounded",
-      muted: "text-muted-foreground/60",
+      default: "",
+      success: "",
+      "success-badge": "border px-2 py-0.5 rounded",
+      muted: "",
     },
     focused: {
-      true: "uppercase tracking-wide text-background/80",
+      true: "uppercase tracking-wide",
+      false: "",
+    },
+    active: {
+      true: "text-current",
       false: "",
     },
   },
-  defaultVariants: { valueVariant: "default", focused: false },
+  compoundVariants: [
+    {
+      valueVariant: "default",
+      active: false,
+      class: "text-muted-foreground",
+    },
+    {
+      valueVariant: "success",
+      active: false,
+      class: "text-success",
+    },
+    {
+      valueVariant: "success-badge",
+      active: false,
+      class: "text-success border-success/30 bg-success/10",
+    },
+    {
+      valueVariant: "muted",
+      active: false,
+      class: "text-muted-foreground/60",
+    },
+    {
+      valueVariant: "success-badge",
+      active: true,
+      class: "border-current/30 bg-current/10",
+    },
+  ],
+  defaultVariants: { valueVariant: "default", focused: false, active: false },
 });
 
 export interface MenuItemProps {
@@ -180,10 +216,6 @@ export function MenuItem({
     if (!disabled) activate(id);
   };
 
-  const handleHighlight = () => {
-    if (!disabled) highlight(id);
-  };
-
   return (
     <div
       ref={ref}
@@ -195,8 +227,9 @@ export function MenuItem({
       aria-disabled={disabled || undefined}
       data-state={isSelected ? "selected" : "unselected"}
       onClick={handleClick}
-      onMouseEnter={handleHighlight}
-      onFocus={handleHighlight}
+      onFocus={() => {
+        if (!disabled) highlight(id);
+      }}
       className={cn(menuItemBase({ menuVariant, state, colorVariant: variant }), className)}
     >
       {isHub ? (
@@ -204,7 +237,7 @@ export function MenuItem({
           isFocused={isFocused}
           isSelected={isSelected}
           value={value}
-          valueClassName={menuItemValue({ valueVariant, focused: isFocused })}
+          valueClassName={menuItemValue({ valueVariant, focused: isActive, active: isActive })}
         >
           {children}
         </HubItemLayout>

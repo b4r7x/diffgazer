@@ -24,7 +24,7 @@ Users can import components and CSS but still miss generated utility styles.
 
 Choose one package styling contract:
 
-- Document and test `@source "../node_modules/@diffgazer/ui/dist";`, or
+- Document and test `@import "@diffgazer/ui/sources.css";`, or
 - Ship compiled component CSS.
 
 ## Acceptance Criteria
@@ -36,4 +36,3 @@ Choose one package styling contract:
 
 - Vite + Tailwind v4 fixture.
 - Next App Router + Tailwind v4 fixture.
-

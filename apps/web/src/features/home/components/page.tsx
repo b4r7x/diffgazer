@@ -16,6 +16,7 @@ import { TrustPanel } from "./trust-panel";
 
 type RouteConfig = { to: string; search?: Record<string, string> };
 const MAIN_MENU_ITEMS = MENU_ITEMS.filter((item) => item.id !== "help");
+const MAIN_MENU_ITEM_IDS = new Set<string>(MAIN_MENU_ITEMS.map((item) => item.id));
 
 const MENU_ROUTES: Record<string, RouteConfig> = {
   "review-unstaged": { to: "/review" },
@@ -25,6 +26,12 @@ const MENU_ROUTES: Record<string, RouteConfig> = {
   settings: { to: "/settings" },
   help: { to: "/help" },
 };
+
+function getMainMenuHighlightedId(value: string | null): string | null {
+  if (!value) return value;
+  if (MAIN_MENU_ITEM_IDS.has(value)) return value;
+  return MAIN_MENU_ITEMS[0]?.id ?? null;
+}
 
 export function HomePage() {
   const { provider, model, trust, repoRoot, projectId } = useConfigData();
@@ -56,20 +63,11 @@ export function HomePage() {
     trustedDir: isTrusted ? trust?.repoRoot : undefined,
   };
 
-  const [selectedId, setSelectedId] = useScopedRouteState<string | null>(
-    "menuId",
-    MAIN_MENU_ITEMS[0]?.id ?? null
-  );
   const [highlightedId, setHighlightedId] = useScopedRouteState<string | null>(
     "highlightedId",
     MAIN_MENU_ITEMS[0]?.id ?? null
   );
-
-  useEffect(() => {
-    if (!selectedId) return;
-    if (MAIN_MENU_ITEMS.some((item) => item.id === selectedId)) return;
-    setSelectedId(MAIN_MENU_ITEMS[0]?.id ?? null);
-  }, [selectedId, setSelectedId]);
+  const effectiveHighlightedId = getMainMenuHighlightedId(highlightedId);
 
   const handleQuit = async () => {
     const result = await shutdown();
@@ -133,8 +131,7 @@ export function HomePage() {
         projectPath={repoRoot ?? undefined}
       />
       <HomeMenu
-        selectedId={selectedId}
-        highlightedId={highlightedId}
+        highlightedId={effectiveHighlightedId}
         onHighlightChange={setHighlightedId}
         onSelect={handleActivate}
         items={MAIN_MENU_ITEMS}

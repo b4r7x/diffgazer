@@ -120,6 +120,17 @@ describe("NavigationList", () => {
     )
   })
 
+  it("does not move keyboard highlight on mouse hover", async () => {
+    renderList({ defaultHighlightedId: "one" })
+    const listbox = screen.getByRole("listbox")
+    const oneOption = screen.getByRole("option", { name: "One" })
+    const twoOption = screen.getByRole("option", { name: "Two" })
+
+    expect(listbox).toHaveAttribute("aria-activedescendant", oneOption.id)
+    await userEvent.hover(twoOption)
+    expect(listbox).toHaveAttribute("aria-activedescendant", oneOption.id)
+  })
+
   it("fires onSelect in controlled mode without internal state change", async () => {
     const onSelect = vi.fn()
     const { rerender } = render(

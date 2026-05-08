@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
@@ -25,12 +25,6 @@ export function ProviderStep({
   );
 
   const providerIds = AVAILABLE_PROVIDERS.map((provider) => provider.id as AIProvider);
-
-  useEffect(() => {
-    if (!value && providerIds[0]) {
-      onChange(providerIds[0]);
-    }
-  }, [onChange, providerIds, value]);
 
   const handleKeyDown = (e: ReactKeyboardEvent) => {
     if (!enabled) return;

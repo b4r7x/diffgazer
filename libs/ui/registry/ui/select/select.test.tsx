@@ -304,7 +304,7 @@ describe("Select", () => {
     expect(getSelectTrigger()).toHaveAttribute("aria-expanded", "false")
   })
 
-  it("calls onHighlightChange as the preferred highlight callback", async () => {
+  it("keeps keyboard highlight when a different option is hovered", async () => {
     const onHighlightChange = vi.fn()
     render(
       <Select variant="card" defaultOpen onHighlightChange={onHighlightChange}>
@@ -318,8 +318,15 @@ describe("Select", () => {
       </Select>,
     )
 
+    await waitFor(() => expect(onHighlightChange).toHaveBeenCalledWith("apple"))
+    onHighlightChange.mockClear()
+
+    const listbox = screen.getByRole("listbox")
+    const appleOption = screen.getByRole("option", { name: /apple/i })
     await userEvent.hover(screen.getByRole("option", { name: /banana/i }))
-    expect(onHighlightChange).toHaveBeenCalledWith("banana")
+
+    expect(onHighlightChange).not.toHaveBeenCalled()
+    expect(listbox).toHaveAttribute("aria-activedescendant", appleOption.id)
   })
 
   it("respects controlled value prop", async () => {

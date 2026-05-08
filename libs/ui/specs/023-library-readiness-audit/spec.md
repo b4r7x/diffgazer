@@ -31,7 +31,7 @@ The remaining blockers are real but narrower: one React render-phase ref write i
 | CLI command | Binary command is `dgadd` from package `@diffgazer/add` |
 | Registry counts | UI registry has 63 items: 45 `registry:ui`, 9 `registry:hook`, 8 `registry:lib`, plus theme. Keys registry has 3 copyable hooks. |
 | Dependency conventions | UI peers: `react >=19.2.0`, `react-dom >=19.2.0`, `@diffgazer/keys >=0.1.0`. UI deps include `class-variance-authority`, `clsx`, `figlet`, `tailwind-merge`. UI has `sideEffects: ["**/*.css"]`. Keys has `sideEffects: false`. |
-| Tailwind/CSS story | Package mode uses Tailwind v4 `@source "../node_modules/@diffgazer/ui/dist"` plus `@import "@diffgazer/ui/styles.css"`. Copy mode uses copied `src/styles/styles.css`. One manual docs snippet still over-emphasizes `theme.css`. |
+| Tailwind/CSS story | Package mode imports Tailwind v4, `@diffgazer/ui/sources.css`, and `@diffgazer/ui/styles.css`. Copy mode uses copied `src/styles/styles.css`. One manual docs snippet still over-emphasizes `theme.css`. |
 | Public distribution | Public npm and hosted registry are publish/deploy-gated future work, not a current implementation blocker. |
 
 ## Local Verification
@@ -143,4 +143,3 @@ To call this 5/5 SOTA:
 - Make docs render a real local/publish-gated install path or no Installation section.
 - Slim the npm runtime package surface and clarify the optional `figlet` helper story.
 - Add enforced clean-consumer smoke for Next App Router server pages, shadcn namespace install, and package-manager coverage.
-

@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { Callout, CalloutIcon, CalloutTitle, CalloutContent } from "@diffgazer/ui/components/callout";
@@ -56,11 +56,9 @@ export function TrustPermissionsContent({
 
   const selectedCapabilities = value.readFiles ? ["readFiles"] : [];
   const initialFocusedCapability = getInitialFocusedCapability(value);
-
-  useEffect(() => {
-    if (isFocusableCapability(listFocused)) return;
-    setListFocused(initialFocusedCapability);
-  }, [initialFocusedCapability, listFocused]);
+  const effectiveListFocused = isFocusableCapability(listFocused)
+    ? listFocused
+    : initialFocusedCapability;
 
   const handleValueChange = (selected: string[]) => {
     onChange({
@@ -85,16 +83,16 @@ export function TrustPermissionsContent({
   const lastEnabledId = enabledIds[enabledIds.length - 1] ?? null;
 
   const handleListKeyDown = (e: ReactKeyboardEvent) => {
-    if (e.key === "ArrowDown" && listFocused === lastEnabledId && showActions) {
+    if (e.key === "ArrowDown" && effectiveListFocused === lastEnabledId && showActions) {
       e.preventDefault();
       setFocusZone("buttons");
     }
-    if (e.key === "Enter" && listFocused) {
+    if (e.key === "Enter" && effectiveListFocused) {
       e.preventDefault();
       handleValueChange(
-        selectedCapabilities.includes(listFocused)
-          ? selectedCapabilities.filter((v) => v !== listFocused)
-          : [...selectedCapabilities, listFocused],
+        selectedCapabilities.includes(effectiveListFocused)
+          ? selectedCapabilities.filter((v) => v !== effectiveListFocused)
+          : [...selectedCapabilities, effectiveListFocused],
       );
     }
   };
@@ -118,7 +116,7 @@ export function TrustPermissionsContent({
       <CheckboxGroup
         value={selectedCapabilities}
         onChange={handleValueChange}
-        highlighted={isListZone ? listFocused : null}
+        highlighted={isListZone ? effectiveListFocused : null}
         onHighlightChange={setListFocused}
         onKeyDown={handleListKeyDown}
         wrap={false}

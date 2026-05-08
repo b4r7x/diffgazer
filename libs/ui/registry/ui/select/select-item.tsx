@@ -93,7 +93,6 @@ export function SelectItem({
     open,
     multiple,
     highlighted,
-    onHighlight,
     searchQuery,
     selectItem,
     variant,
@@ -117,11 +116,6 @@ export function SelectItem({
     if (!event.defaultPrevented && !disabled) selectItem(itemValue);
   };
 
-  const handleMouseEnter = (event: MouseEvent<HTMLDivElement>) => {
-    onMouseEnter?.(event);
-    if (!event.defaultPrevented && !disabled) onHighlight(itemValue);
-  };
-
   return (
     <div
       {...props}
@@ -133,7 +127,7 @@ export function SelectItem({
       data-value={itemValue}
       data-label={label}
       onClick={handleClick}
-      onMouseEnter={handleMouseEnter}
+      onMouseEnter={onMouseEnter}
       className={cn(
         selectItemVariants({ state, variant }),
         disabled && "opacity-50 cursor-not-allowed",

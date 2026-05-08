@@ -70,11 +70,6 @@ export function ToggleGroupItem({
     }
   };
 
-  const handleMouseEnter = (event: MouseEvent<HTMLButtonElement>) => {
-    onMouseEnter?.(event);
-    if (!event.defaultPrevented && !isDisabled) context.onHighlightChange(value);
-  };
-
   const handleFocus = (event: FocusEvent<HTMLButtonElement>) => {
     onFocus?.(event);
     if (!event.defaultPrevented && !isDisabled) context.onHighlightChange(value);
@@ -97,7 +92,7 @@ export function ToggleGroupItem({
       tabIndex={isTabTarget ? 0 : -1}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
-      onMouseEnter={handleMouseEnter}
+      onMouseEnter={onMouseEnter}
       onFocus={handleFocus}
       className={cn(
         toggleItemVariants({ size: context.size }),

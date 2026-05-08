@@ -19,15 +19,23 @@ const SETTINGS_ROUTES: Record<SettingsAction, string> = {
   diagnostics: "/settings/diagnostics",
 };
 
+const SETTINGS_MENU_ITEM_IDS = new Set<string>(SETTINGS_MENU_ITEMS.map((item) => item.id));
+
+function getSettingsMenuHighlightedId(value: string | null): string | null {
+  if (!value) return value;
+  if (SETTINGS_MENU_ITEM_IDS.has(value)) return value;
+  return SETTINGS_MENU_ITEMS[0]?.id ?? null;
+}
+
 export function SettingsHubPage() {
   const navigate = useNavigate();
   const { provider, isConfigured, trust } = useConfigData();
   const { theme } = useTheme();
-  const [selectedId] = useScopedRouteState<string | null>("menuId", SETTINGS_MENU_ITEMS[0]?.id ?? null);
   const [highlightedId, setHighlightedId] = useScopedRouteState<string | null>(
     "highlightedId",
     SETTINGS_MENU_ITEMS[0]?.id ?? null
   );
+  const effectiveHighlightedId = getSettingsMenuHighlightedId(highlightedId);
   const isTrusted = Boolean(trust?.capabilities.readFiles);
   const { data: settings, error: settingsQueryError } = useSettings();
   const settingsError = settingsQueryError?.message ?? null;
@@ -93,8 +101,7 @@ export function SettingsHubPage() {
         <Panel className="bg-tui-bg shadow-2xl">
           <div className="absolute -top-3 left-4 bg-tui-bg px-2 text-xs font-bold uppercase tracking-wider text-tui-muted">SETTINGS HUB</div>
           <Menu
-            selectedId={selectedId}
-            highlightedId={highlightedId}
+            highlightedId={effectiveHighlightedId}
             onHighlightChange={setHighlightedId}
             onSelect={handleActivate}
             variant="hub"

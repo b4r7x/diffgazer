@@ -70,18 +70,8 @@ function RadioGroupWithKeyboard() {
 }
 
 function MenuWithKeyboard({ onActivate }: { onActivate: (id: string) => void }) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  const handleSelect = (id: string) => {
-    setSelectedId(id);
-    onActivate(id);
-  };
-
   return (
-    <Menu
-      selectedId={selectedId}
-      onSelect={handleSelect}
-    >
+    <Menu onSelect={onActivate}>
       <MenuItem id="alpha">Alpha</MenuItem>
       <MenuItem id="beta">Beta</MenuItem>
       <MenuItem id="gamma">Gamma</MenuItem>
@@ -131,7 +121,23 @@ describe("UI keyboard navigation integration", () => {
     fireEvent.keyDown(listbox, { key: "Enter" });
 
     expect(activated).toEqual(["alpha"]);
-    expect(screen.getByText("Alpha").closest('[role="menuitemradio"]')?.getAttribute("data-active")).toBe("true");
-    expect(screen.getByText("Alpha").closest('[role="menuitemradio"]')?.getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByText("Alpha").closest('[role="menuitem"]')?.getAttribute("data-active")).toBe("true");
+    expect(screen.getByText("Beta").closest('[role="menuitem"]')).not.toHaveAttribute("data-active");
+  });
+
+  it("keeps keyboard focus when a different Menu item is hovered", () => {
+    render(
+      <KeyboardProvider><MenuWithKeyboard onActivate={() => {}} /></KeyboardProvider>
+    );
+
+    const menu = screen.getByRole("menu");
+    const alpha = screen.getByText("Alpha").closest('[role="menuitem"]')!;
+    const beta = screen.getByText("Beta").closest('[role="menuitem"]')!;
+
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    expect(menu).toHaveAttribute("aria-activedescendant", alpha.id);
+
+    fireEvent.mouseOver(beta);
+    expect(menu).toHaveAttribute("aria-activedescendant", alpha.id);
   });
 });

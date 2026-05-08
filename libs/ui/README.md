@@ -41,11 +41,11 @@ Configure Tailwind CSS v4 from the CSS file that imports Tailwind:
 
 ```css
 @import "tailwindcss";
+@import "@diffgazer/ui/sources.css";
 @import "@diffgazer/ui/styles.css";
-@source "../node_modules/@diffgazer/ui/dist";
 ```
 
-Adjust the `@source` path so it is relative to that CSS file.
+`@diffgazer/ui/sources.css` registers the package source paths Tailwind needs to scan.
 
 ```tsx
 import { Button } from "@diffgazer/ui/components/button";
@@ -75,6 +75,7 @@ Icon primitives ship from `@diffgazer/ui`; there is no `lucide-react` peer or ru
 - `@diffgazer/ui/lib/*`
 - `@diffgazer/ui/theme-base.css`
 - `@diffgazer/ui/theme.css`
+- `@diffgazer/ui/sources.css`
 - `@diffgazer/ui/styles.css`
 
 ## Peer dependencies

@@ -74,7 +74,8 @@ export function Menu({
 }: MenuProps) {
   const idPrefix = useId();
   const localRef = useRef<HTMLDivElement>(null);
-  const itemRole = controlledSelectedId !== undefined || defaultSelectedId !== null ? "menuitemradio" : "menuitem";
+  const selectionEnabled = controlledSelectedId !== undefined || defaultSelectedId !== null;
+  const itemRole = selectionEnabled ? "menuitemradio" : "menuitem";
   const items = useMemo(() => collectMenuItems(children), [children]);
 
   const {
@@ -84,8 +85,8 @@ export function Menu({
     handleItemHighlight,
     getContainerProps,
   } = useListbox({
-    selectedId: controlledSelectedId,
-    defaultSelectedId,
+    selectedId: selectionEnabled ? controlledSelectedId : null,
+    defaultSelectedId: selectionEnabled ? defaultSelectedId : null,
     highlightedId: controlledHighlightedId,
     defaultHighlightedId,
     onSelect,

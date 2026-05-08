@@ -15,7 +15,7 @@ export function NavigationListTitle({ children, className }: NavigationListTitle
   const { labelId } = useNavigationListItemContext();
 
   return (
-    <span id={labelId} className={cn("col-start-1 row-start-1 font-bold flex items-center group-data-[active]:text-background", className)}>
+    <span id={labelId} className={cn("col-start-1 row-start-1 font-bold flex items-center group-data-[active]:text-primary-foreground", className)}>
       <span aria-hidden="true" className="mr-2 opacity-0 group-data-[active]:opacity-100">{SELECTION_INDICATOR}</span>
       {children}
     </span>

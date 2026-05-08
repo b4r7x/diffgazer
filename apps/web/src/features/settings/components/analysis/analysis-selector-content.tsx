@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { LensId } from "@diffgazer/core/schemas/review";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { CheckboxGroup, CheckboxItem } from "@diffgazer/ui/components/checkbox";
@@ -26,6 +26,11 @@ function getInitialFocusedLens(options: AnalysisOption[]): LensId | null {
   return options[0].id;
 }
 
+function getAvailableFocusedLens(value: LensId | null, optionIds: readonly LensId[]): LensId | null {
+  if (value && optionIds.includes(value)) return value;
+  return optionIds[0] ?? null;
+}
+
 export function AnalysisSelectorContent({
   options,
   value,
@@ -39,38 +44,26 @@ export function AnalysisSelectorContent({
   );
 
   const optionIds = options.map((option) => option.id);
-  const optionIdSet = new Set(optionIds);
-  const initialFocusedLens = getInitialFocusedLens(options);
-
-  useEffect(() => {
-    if (!initialFocusedLens) {
-      setFocusedLens(null);
-      return;
-    }
-
-    if (!focusedLens || !optionIdSet.has(focusedLens)) {
-      setFocusedLens(initialFocusedLens);
-    }
-  }, [focusedLens, initialFocusedLens, optionIdSet]);
+  const effectiveFocusedLens = getAvailableFocusedLens(focusedLens, optionIds);
 
   const navigationEnabled = enabled && !disabled && options.length > 0;
 
   const handleKeyDown = (e: ReactKeyboardEvent) => {
-    if (!navigationEnabled || !focusedLens) return;
+    if (!navigationEnabled || !effectiveFocusedLens) return;
 
     if (e.key === "Enter") {
       e.preventDefault();
-      if (optionIdSet.has(focusedLens)) {
-        const nextValue = value.includes(focusedLens)
-          ? value.filter((id) => id !== focusedLens)
-          : [...value, focusedLens];
+      if (optionIds.includes(effectiveFocusedLens)) {
+        const nextValue = value.includes(effectiveFocusedLens)
+          ? value.filter((id) => id !== effectiveFocusedLens)
+          : [...value, effectiveFocusedLens];
         onChange(nextValue);
       }
       return;
     }
 
     if (onBoundaryReached && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
-      const idx = optionIds.indexOf(focusedLens);
+      const idx = optionIds.indexOf(effectiveFocusedLens);
       if (e.key === "ArrowUp" && idx === 0) {
         onBoundaryReached("up");
       } else if (e.key === "ArrowDown" && idx === optionIds.length - 1) {
@@ -88,7 +81,7 @@ export function AnalysisSelectorContent({
         <CheckboxGroup
           value={value}
           onChange={onChange}
-          highlighted={navigationEnabled ? focusedLens : null}
+          highlighted={navigationEnabled ? effectiveFocusedLens : null}
           onHighlightChange={(v) => setFocusedLens(v as LensId)}
           onKeyDown={handleKeyDown}
           wrap={false}

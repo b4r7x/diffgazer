@@ -6430,7 +6430,7 @@
       ]
     },
     "registry/ui/toggle-group/toggle-group-item.tsx": {
-      "raw": "\"use client\";\n\nimport {\n  type ComponentPropsWithRef,\n  type FocusEvent,\n  type KeyboardEvent,\n  type MouseEvent,\n  type ReactNode,\n} from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { useToggleGroupContext } from \"./toggle-group-context\";\nimport { cn } from \"@/lib/utils\";\n\nconst toggleItemVariants = cva(\n  \"inline-flex items-center justify-center font-mono whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer border border-border bg-transparent text-foreground hover:bg-secondary data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:border-primary data-[active=true]:hover:bg-primary/90\",\n  {\n    variants: {\n      size: {\n        sm: \"min-h-[44px] min-w-[44px] px-2 py-0.5 text-xs\",\n        md: \"h-9 px-4 py-2 text-sm\",\n      },\n    },\n    defaultVariants: { size: \"md\" },\n  },\n);\n\nexport interface ToggleGroupItemProps\n  extends Omit<ComponentPropsWithRef<\"button\">, \"children\" | \"disabled\" | \"value\"> {\n  value: string;\n  count?: number;\n  disabled?: boolean;\n  children: ReactNode;\n}\n\nexport function ToggleGroupItem({\n  value,\n  count,\n  disabled,\n  className,\n  children,\n  ref,\n  onClick,\n  onKeyDown,\n  onMouseEnter,\n  onFocus,\n  ...props\n}: ToggleGroupItemProps) {\n  const context = useToggleGroupContext();\n  const isActive = context.value === value;\n  const isHighlighted = context.highlightedValue === value;\n  const isDisabled = context.disabled || !!disabled;\n  const hasSelection = context.value !== null;\n  const isTabTarget = !isDisabled && (isActive || (!hasSelection && context.firstEnabledValue === value));\n\n  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {\n    onClick?.(event);\n    if (!event.defaultPrevented && !isDisabled) context.onValueChange(value);\n  };\n\n  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {\n    onKeyDown?.(event);\n    if (\n      !event.defaultPrevented &&\n      context.allowDeselect &&\n      !isDisabled &&\n      (event.key === \"Enter\" || event.key === \" \")\n    ) {\n      event.preventDefault();\n      context.onValueChange(value);\n    }\n  };\n\n  const handleMouseEnter = (event: MouseEvent<HTMLButtonElement>) => {\n    onMouseEnter?.(event);\n    if (!event.defaultPrevented && !isDisabled) context.onHighlightChange(value);\n  };\n\n  const handleFocus = (event: FocusEvent<HTMLButtonElement>) => {\n    onFocus?.(event);\n    if (!event.defaultPrevented && !isDisabled) context.onHighlightChange(value);\n  };\n\n  return (\n    <button\n      {...props}\n      ref={ref}\n      type=\"button\"\n      role={context.allowDeselect ? undefined : \"radio\"}\n      data-value={value}\n      data-diffgazer-navigation-item={context.allowDeselect ? \"button\" : \"radio\"}\n      data-active={isActive || undefined}\n      data-highlighted={isHighlighted || undefined}\n      aria-checked={context.allowDeselect ? undefined : isActive}\n      aria-pressed={context.allowDeselect ? isActive : undefined}\n      aria-disabled={isDisabled || undefined}\n      disabled={isDisabled}\n      tabIndex={isTabTarget ? 0 : -1}\n      onClick={handleClick}\n      onKeyDown={handleKeyDown}\n      onMouseEnter={handleMouseEnter}\n      onFocus={handleFocus}\n      className={cn(\n        toggleItemVariants({ size: context.size }),\n        isDisabled && \"pointer-events-none opacity-50\",\n        isHighlighted && !isActive && \"bg-secondary\",\n        className,\n      )}\n    >\n      {count != null ? (\n        <>\n          [{children} {count}]\n        </>\n      ) : (\n        children\n      )}\n    </button>\n  );\n}\n",
+      "raw": "\"use client\";\n\nimport {\n  type ComponentPropsWithRef,\n  type FocusEvent,\n  type KeyboardEvent,\n  type MouseEvent,\n  type ReactNode,\n} from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { useToggleGroupContext } from \"./toggle-group-context\";\nimport { cn } from \"@/lib/utils\";\n\nconst toggleItemVariants = cva(\n  \"inline-flex items-center justify-center font-mono whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer border border-border bg-transparent text-foreground hover:bg-secondary data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:border-primary data-[active=true]:hover:bg-primary/90\",\n  {\n    variants: {\n      size: {\n        sm: \"min-h-[44px] min-w-[44px] px-2 py-0.5 text-xs\",\n        md: \"h-9 px-4 py-2 text-sm\",\n      },\n    },\n    defaultVariants: { size: \"md\" },\n  },\n);\n\nexport interface ToggleGroupItemProps\n  extends Omit<ComponentPropsWithRef<\"button\">, \"children\" | \"disabled\" | \"value\"> {\n  value: string;\n  count?: number;\n  disabled?: boolean;\n  children: ReactNode;\n}\n\nexport function ToggleGroupItem({\n  value,\n  count,\n  disabled,\n  className,\n  children,\n  ref,\n  onClick,\n  onKeyDown,\n  onMouseEnter,\n  onFocus,\n  ...props\n}: ToggleGroupItemProps) {\n  const context = useToggleGroupContext();\n  const isActive = context.value === value;\n  const isHighlighted = context.highlightedValue === value;\n  const isDisabled = context.disabled || !!disabled;\n  const hasSelection = context.value !== null;\n  const isTabTarget = !isDisabled && (isActive || (!hasSelection && context.firstEnabledValue === value));\n\n  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {\n    onClick?.(event);\n    if (!event.defaultPrevented && !isDisabled) context.onValueChange(value);\n  };\n\n  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {\n    onKeyDown?.(event);\n    if (\n      !event.defaultPrevented &&\n      context.allowDeselect &&\n      !isDisabled &&\n      (event.key === \"Enter\" || event.key === \" \")\n    ) {\n      event.preventDefault();\n      context.onValueChange(value);\n    }\n  };\n\n  const handleFocus = (event: FocusEvent<HTMLButtonElement>) => {\n    onFocus?.(event);\n    if (!event.defaultPrevented && !isDisabled) context.onHighlightChange(value);\n  };\n\n  return (\n    <button\n      {...props}\n      ref={ref}\n      type=\"button\"\n      role={context.allowDeselect ? undefined : \"radio\"}\n      data-value={value}\n      data-diffgazer-navigation-item={context.allowDeselect ? \"button\" : \"radio\"}\n      data-active={isActive || undefined}\n      data-highlighted={isHighlighted || undefined}\n      aria-checked={context.allowDeselect ? undefined : isActive}\n      aria-pressed={context.allowDeselect ? isActive : undefined}\n      aria-disabled={isDisabled || undefined}\n      disabled={isDisabled}\n      tabIndex={isTabTarget ? 0 : -1}\n      onClick={handleClick}\n      onKeyDown={handleKeyDown}\n      onMouseEnter={onMouseEnter}\n      onFocus={handleFocus}\n      className={cn(\n        toggleItemVariants({ size: context.size }),\n        isDisabled && \"pointer-events-none opacity-50\",\n        isHighlighted && !isActive && \"bg-secondary\",\n        className,\n      )}\n    >\n      {count != null ? (\n        <>\n          [{children} {count}]\n        </>\n      ) : (\n        children\n      )}\n    </button>\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -8521,7 +8521,7 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "handleMouseEnter",
+              "text": "handleFocus",
               "color": "var(--code-function)"
             },
             {
@@ -8553,7 +8553,7 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "MouseEvent",
+              "text": "FocusEvent",
               "color": "var(--code-function)"
             },
             {
@@ -8594,7 +8594,7 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "onMouseEnter",
+              "text": "onFocus",
               "color": "var(--code-function)"
             },
             {
@@ -8705,198 +8705,6 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "const",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "handleFocus",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "=",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "(",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "event",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ":",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "FocusEvent",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "<",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "HTMLButtonElement",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": ">)",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "=>",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "{",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 79,
-          "content": [
-            {
-              "text": "    ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "onFocus",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "?.",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "(event)",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ";",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 80,
-          "content": [
-            {
-              "text": "    ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "if",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " (",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "!",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "event",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": ".",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "defaultPrevented ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "&&",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "!",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "isDisabled) ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "context",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": ".",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "onHighlightChange",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "(value)",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ";",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 81,
-          "content": [
-            {
-              "text": "  ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "};",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 82,
-          "content": []
-        },
-        {
-          "number": 83,
-          "content": [
-            {
-              "text": "  ",
-              "color": "var(--code-variable)"
-            },
-            {
               "text": "return",
               "color": "var(--code-keyword)"
             },
@@ -8907,7 +8715,7 @@
           ]
         },
         {
-          "number": 84,
+          "number": 79,
           "content": [
             {
               "text": "    ",
@@ -8924,7 +8732,7 @@
           ]
         },
         {
-          "number": 85,
+          "number": 80,
           "content": [
             {
               "text": "      ",
@@ -8945,7 +8753,7 @@
           ]
         },
         {
-          "number": 86,
+          "number": 81,
           "content": [
             {
               "text": "      ",
@@ -8970,7 +8778,7 @@
           ]
         },
         {
-          "number": 87,
+          "number": 82,
           "content": [
             {
               "text": "      ",
@@ -8999,7 +8807,7 @@
           ]
         },
         {
-          "number": 88,
+          "number": 83,
           "content": [
             {
               "text": "      ",
@@ -9068,7 +8876,7 @@
           ]
         },
         {
-          "number": 89,
+          "number": 84,
           "content": [
             {
               "text": "      ",
@@ -9093,7 +8901,7 @@
           ]
         },
         {
-          "number": 90,
+          "number": 85,
           "content": [
             {
               "text": "      ",
@@ -9170,7 +8978,7 @@
           ]
         },
         {
-          "number": 91,
+          "number": 86,
           "content": [
             {
               "text": "      ",
@@ -9207,7 +9015,7 @@
           ]
         },
         {
-          "number": 92,
+          "number": 87,
           "content": [
             {
               "text": "      ",
@@ -9244,7 +9052,7 @@
           ]
         },
         {
-          "number": 93,
+          "number": 88,
           "content": [
             {
               "text": "      ",
@@ -9301,7 +9109,7 @@
           ]
         },
         {
-          "number": 94,
+          "number": 89,
           "content": [
             {
               "text": "      ",
@@ -9354,7 +9162,7 @@
           ]
         },
         {
-          "number": 95,
+          "number": 90,
           "content": [
             {
               "text": "      ",
@@ -9391,7 +9199,7 @@
           ]
         },
         {
-          "number": 96,
+          "number": 91,
           "content": [
             {
               "text": "      ",
@@ -9416,7 +9224,7 @@
           ]
         },
         {
-          "number": 97,
+          "number": 92,
           "content": [
             {
               "text": "      ",
@@ -9473,7 +9281,7 @@
           ]
         },
         {
-          "number": 98,
+          "number": 93,
           "content": [
             {
               "text": "      ",
@@ -9498,7 +9306,7 @@
           ]
         },
         {
-          "number": 99,
+          "number": 94,
           "content": [
             {
               "text": "      ",
@@ -9523,7 +9331,7 @@
           ]
         },
         {
-          "number": 100,
+          "number": 95,
           "content": [
             {
               "text": "      ",
@@ -9538,7 +9346,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "handleMouseEnter",
+              "text": "onMouseEnter",
               "color": "var(--code-variable)"
             },
             {
@@ -9548,7 +9356,7 @@
           ]
         },
         {
-          "number": 101,
+          "number": 96,
           "content": [
             {
               "text": "      ",
@@ -9573,7 +9381,7 @@
           ]
         },
         {
-          "number": 102,
+          "number": 97,
           "content": [
             {
               "text": "      ",
@@ -9598,7 +9406,7 @@
           ]
         },
         {
-          "number": 103,
+          "number": 98,
           "content": [
             {
               "text": "        ",
@@ -9655,7 +9463,7 @@
           ]
         },
         {
-          "number": 104,
+          "number": 99,
           "content": [
             {
               "text": "        isDisabled ",
@@ -9688,7 +9496,7 @@
           ]
         },
         {
-          "number": 105,
+          "number": 100,
           "content": [
             {
               "text": "        isHighlighted ",
@@ -9737,7 +9545,7 @@
           ]
         },
         {
-          "number": 106,
+          "number": 101,
           "content": [
             {
               "text": "        className",
@@ -9750,7 +9558,7 @@
           ]
         },
         {
-          "number": 107,
+          "number": 102,
           "content": [
             {
               "text": "      )",
@@ -9763,7 +9571,7 @@
           ]
         },
         {
-          "number": 108,
+          "number": 103,
           "content": [
             {
               "text": "    ",
@@ -9776,7 +9584,7 @@
           ]
         },
         {
-          "number": 109,
+          "number": 104,
           "content": [
             {
               "text": "      ",
@@ -9817,7 +9625,7 @@
           ]
         },
         {
-          "number": 110,
+          "number": 105,
           "content": [
             {
               "text": "        ",
@@ -9830,7 +9638,7 @@
           ]
         },
         {
-          "number": 111,
+          "number": 106,
           "content": [
             {
               "text": "          [",
@@ -9871,7 +9679,7 @@
           ]
         },
         {
-          "number": 112,
+          "number": 107,
           "content": [
             {
               "text": "        ",
@@ -9884,7 +9692,7 @@
           ]
         },
         {
-          "number": 113,
+          "number": 108,
           "content": [
             {
               "text": "      ) ",
@@ -9901,7 +9709,7 @@
           ]
         },
         {
-          "number": 114,
+          "number": 109,
           "content": [
             {
               "text": "        children",
@@ -9910,7 +9718,7 @@
           ]
         },
         {
-          "number": 115,
+          "number": 110,
           "content": [
             {
               "text": "      )",
@@ -9923,7 +9731,7 @@
           ]
         },
         {
-          "number": 116,
+          "number": 111,
           "content": [
             {
               "text": "    ",
@@ -9944,7 +9752,7 @@
           ]
         },
         {
-          "number": 117,
+          "number": 112,
           "content": [
             {
               "text": "  )",
@@ -9957,7 +9765,7 @@
           ]
         },
         {
-          "number": 118,
+          "number": 113,
           "content": [
             {
               "text": "}",
@@ -9966,13 +9774,13 @@
           ]
         },
         {
-          "number": 119,
+          "number": 114,
           "content": []
         }
       ]
     }
   },
-  "mergedSource": "\"use client\";\n\nimport { ToggleGroup as ToggleGroupRoot, type ToggleGroupProps } from \"./toggle-group\";\nimport { ToggleGroupItem, type ToggleGroupItemProps } from \"./toggle-group-item\";\n\nconst ToggleGroup = Object.assign(ToggleGroupRoot, {\n  Item: ToggleGroupItem,\n});\n\nexport { ToggleGroup, type ToggleGroupProps };\nexport { ToggleGroupItem, type ToggleGroupItemProps };\n\n\n\"use client\";\n\nimport { Children, isValidElement, useCallback, useMemo, useRef, type ReactNode, type Ref, type KeyboardEvent as ReactKeyboardEvent } from \"react\";\nimport { useNavigation } from \"@/hooks/use-navigation\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\nimport { useFormReset } from \"@/hooks/use-form-reset\";\nimport { composeRefs } from \"@/lib/compose-refs\";\nimport { cn } from \"@/lib/utils\";\nimport { ToggleGroupContext } from \"./toggle-group-context\";\n\nexport interface ToggleGroupProps {\n  value?: string | null;\n  defaultValue?: string | null;\n  onValueChange?: (value: string | null) => void;\n  /** @deprecated Use `onValueChange` for controlled value updates. */\n  onChange?: (value: string | null) => void;\n  allowDeselect?: boolean;\n  disabled?: boolean;\n  size?: \"sm\" | \"md\";\n  orientation?: \"horizontal\" | \"vertical\";\n  wrap?: boolean;\n  highlighted?: string | null;\n  onHighlightChange?: (value: string | null) => void;\n  onKeyDown?: (event: ReactKeyboardEvent) => void;\n  label?: string;\n  \"aria-labelledby\"?: string;\n  name?: string;\n  className?: string;\n  children: ReactNode;\n  ref?: Ref<HTMLDivElement>;\n}\n\ninterface ToggleGroupItemElementProps {\n  value?: string;\n  disabled?: boolean;\n  children?: ReactNode;\n}\n\nfunction collectToggleItems(children: ReactNode): Array<{ value: string; disabled: boolean }> {\n  const items: Array<{ value: string; disabled: boolean }> = [];\n\n  Children.forEach(children, (child) => {\n    if (!isValidElement<ToggleGroupItemElementProps>(child)) return;\n    if (typeof child.props.value === \"string\") {\n      items.push({ value: child.props.value, disabled: !!child.props.disabled });\n      return;\n    }\n    items.push(...collectToggleItems(child.props.children));\n  });\n\n  return items;\n}\n\nexport function ToggleGroup({\n  value: controlledValue,\n  defaultValue,\n  onValueChange,\n  onChange,\n  allowDeselect = false,\n  disabled = false,\n  size = \"sm\",\n  orientation = \"horizontal\",\n  wrap = true,\n  highlighted: controlledHighlighted,\n  onHighlightChange,\n  onKeyDown,\n  label,\n  \"aria-labelledby\": ariaLabelledBy,\n  name,\n  className,\n  children,\n  ref,\n}: ToggleGroupProps) {\n  const containerRef = useRef<HTMLDivElement>(null);\n  const items = useMemo(() => collectToggleItems(children), [children]);\n\n  const [value, setValue, isControlled] = useControllableState<string | null>({\n    value: controlledValue,\n    defaultValue: defaultValue ?? null,\n    onChange: onValueChange ?? onChange,\n  });\n  useFormReset(containerRef, defaultValue ?? null, setValue, !isControlled);\n\n  const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({\n    value: controlledHighlighted,\n    defaultValue: null,\n    onChange: onHighlightChange,\n  });\n\n  const handleValueChange = useCallback((newValue: string) => {\n    setValue((prev) => (prev === newValue && allowDeselect) ? null : newValue);\n  }, [allowDeselect, setValue]);\n\n  const firstEnabledValue = items.find((item) => !item.disabled)?.value ?? null;\n\n  const { onKeyDown: navKeyDown } = useNavigation({\n    containerRef,\n    role: allowDeselect ? \"button\" : \"radio\",\n    orientation,\n    wrap,\n    moveFocus: true,\n    upKeys: [\"ArrowUp\", \"ArrowLeft\"],\n    downKeys: [\"ArrowDown\", \"ArrowRight\"],\n    value: highlightedValue,\n    enabled: !disabled,\n    onValueChange: allowDeselect ? setHighlightedValue : handleValueChange,\n  });\n\n  const handleKeyDown = (e: ReactKeyboardEvent) => {\n    onKeyDown?.(e);\n    if (e.defaultPrevented) return;\n    navKeyDown(e);\n  };\n\n  const contextValue = useMemo(() => ({\n    value,\n    onValueChange: handleValueChange,\n    onHighlightChange: setHighlightedValue,\n    disabled,\n    size,\n    highlightedValue,\n    containerRef,\n    allowDeselect,\n    firstEnabledValue,\n  }), [value, handleValueChange, setHighlightedValue, disabled, size, highlightedValue, allowDeselect, firstEnabledValue]);\n\n  return (\n    <ToggleGroupContext value={contextValue}>\n      <div\n        ref={composeRefs(containerRef, ref)}\n        role={allowDeselect ? \"group\" : \"radiogroup\"}\n        aria-label={label}\n        aria-labelledby={ariaLabelledBy}\n        aria-orientation={allowDeselect ? undefined : orientation}\n        aria-disabled={disabled || undefined}\n        onKeyDown={handleKeyDown}\n        className={cn(\n          \"flex\",\n          orientation === \"vertical\" ? \"flex-col gap-1.5\" : \"gap-1.5\",\n          wrap && orientation === \"horizontal\" && \"flex-wrap\",\n          className,\n        )}\n      >\n        {name && value != null && (\n          <input type=\"hidden\" name={name} value={value} disabled={disabled} />\n        )}\n        {children}\n      </div>\n    </ToggleGroupContext>\n  );\n}\n\n\n\"use client\";\n\nimport { createContext, useContext, type RefObject } from \"react\";\n\nexport interface ToggleGroupContextValue {\n  value: string | null;\n  onValueChange: (value: string) => void;\n  onHighlightChange: (value: string | null) => void;\n  disabled: boolean;\n  size: \"sm\" | \"md\";\n  highlightedValue: string | null;\n  containerRef: RefObject<HTMLDivElement | null>;\n  allowDeselect: boolean;\n  firstEnabledValue: string | null;\n}\n\nexport const ToggleGroupContext = createContext<ToggleGroupContextValue | undefined>(undefined);\n\nexport function useToggleGroupContext() {\n  const context = useContext(ToggleGroupContext);\n  if (!context) {\n    throw new Error(\"ToggleGroup.Item must be used within ToggleGroup\");\n  }\n  return context;\n}\n\n\n\"use client\";\n\nimport {\n  type ComponentPropsWithRef,\n  type FocusEvent,\n  type KeyboardEvent,\n  type MouseEvent,\n  type ReactNode,\n} from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { useToggleGroupContext } from \"./toggle-group-context\";\nimport { cn } from \"@/lib/utils\";\n\nconst toggleItemVariants = cva(\n  \"inline-flex items-center justify-center font-mono whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer border border-border bg-transparent text-foreground hover:bg-secondary data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:border-primary data-[active=true]:hover:bg-primary/90\",\n  {\n    variants: {\n      size: {\n        sm: \"min-h-[44px] min-w-[44px] px-2 py-0.5 text-xs\",\n        md: \"h-9 px-4 py-2 text-sm\",\n      },\n    },\n    defaultVariants: { size: \"md\" },\n  },\n);\n\nexport interface ToggleGroupItemProps\n  extends Omit<ComponentPropsWithRef<\"button\">, \"children\" | \"disabled\" | \"value\"> {\n  value: string;\n  count?: number;\n  disabled?: boolean;\n  children: ReactNode;\n}\n\nexport function ToggleGroupItem({\n  value,\n  count,\n  disabled,\n  className,\n  children,\n  ref,\n  onClick,\n  onKeyDown,\n  onMouseEnter,\n  onFocus,\n  ...props\n}: ToggleGroupItemProps) {\n  const context = useToggleGroupContext();\n  const isActive = context.value === value;\n  const isHighlighted = context.highlightedValue === value;\n  const isDisabled = context.disabled || !!disabled;\n  const hasSelection = context.value !== null;\n  const isTabTarget = !isDisabled && (isActive || (!hasSelection && context.firstEnabledValue === value));\n\n  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {\n    onClick?.(event);\n    if (!event.defaultPrevented && !isDisabled) context.onValueChange(value);\n  };\n\n  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {\n    onKeyDown?.(event);\n    if (\n      !event.defaultPrevented &&\n      context.allowDeselect &&\n      !isDisabled &&\n      (event.key === \"Enter\" || event.key === \" \")\n    ) {\n      event.preventDefault();\n      context.onValueChange(value);\n    }\n  };\n\n  const handleMouseEnter = (event: MouseEvent<HTMLButtonElement>) => {\n    onMouseEnter?.(event);\n    if (!event.defaultPrevented && !isDisabled) context.onHighlightChange(value);\n  };\n\n  const handleFocus = (event: FocusEvent<HTMLButtonElement>) => {\n    onFocus?.(event);\n    if (!event.defaultPrevented && !isDisabled) context.onHighlightChange(value);\n  };\n\n  return (\n    <button\n      {...props}\n      ref={ref}\n      type=\"button\"\n      role={context.allowDeselect ? undefined : \"radio\"}\n      data-value={value}\n      data-diffgazer-navigation-item={context.allowDeselect ? \"button\" : \"radio\"}\n      data-active={isActive || undefined}\n      data-highlighted={isHighlighted || undefined}\n      aria-checked={context.allowDeselect ? undefined : isActive}\n      aria-pressed={context.allowDeselect ? isActive : undefined}\n      aria-disabled={isDisabled || undefined}\n      disabled={isDisabled}\n      tabIndex={isTabTarget ? 0 : -1}\n      onClick={handleClick}\n      onKeyDown={handleKeyDown}\n      onMouseEnter={handleMouseEnter}\n      onFocus={handleFocus}\n      className={cn(\n        toggleItemVariants({ size: context.size }),\n        isDisabled && \"pointer-events-none opacity-50\",\n        isHighlighted && !isActive && \"bg-secondary\",\n        className,\n      )}\n    >\n      {count != null ? (\n        <>\n          [{children} {count}]\n        </>\n      ) : (\n        children\n      )}\n    </button>\n  );\n}\n",
+  "mergedSource": "\"use client\";\n\nimport { ToggleGroup as ToggleGroupRoot, type ToggleGroupProps } from \"./toggle-group\";\nimport { ToggleGroupItem, type ToggleGroupItemProps } from \"./toggle-group-item\";\n\nconst ToggleGroup = Object.assign(ToggleGroupRoot, {\n  Item: ToggleGroupItem,\n});\n\nexport { ToggleGroup, type ToggleGroupProps };\nexport { ToggleGroupItem, type ToggleGroupItemProps };\n\n\n\"use client\";\n\nimport { Children, isValidElement, useCallback, useMemo, useRef, type ReactNode, type Ref, type KeyboardEvent as ReactKeyboardEvent } from \"react\";\nimport { useNavigation } from \"@/hooks/use-navigation\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\nimport { useFormReset } from \"@/hooks/use-form-reset\";\nimport { composeRefs } from \"@/lib/compose-refs\";\nimport { cn } from \"@/lib/utils\";\nimport { ToggleGroupContext } from \"./toggle-group-context\";\n\nexport interface ToggleGroupProps {\n  value?: string | null;\n  defaultValue?: string | null;\n  onValueChange?: (value: string | null) => void;\n  /** @deprecated Use `onValueChange` for controlled value updates. */\n  onChange?: (value: string | null) => void;\n  allowDeselect?: boolean;\n  disabled?: boolean;\n  size?: \"sm\" | \"md\";\n  orientation?: \"horizontal\" | \"vertical\";\n  wrap?: boolean;\n  highlighted?: string | null;\n  onHighlightChange?: (value: string | null) => void;\n  onKeyDown?: (event: ReactKeyboardEvent) => void;\n  label?: string;\n  \"aria-labelledby\"?: string;\n  name?: string;\n  className?: string;\n  children: ReactNode;\n  ref?: Ref<HTMLDivElement>;\n}\n\ninterface ToggleGroupItemElementProps {\n  value?: string;\n  disabled?: boolean;\n  children?: ReactNode;\n}\n\nfunction collectToggleItems(children: ReactNode): Array<{ value: string; disabled: boolean }> {\n  const items: Array<{ value: string; disabled: boolean }> = [];\n\n  Children.forEach(children, (child) => {\n    if (!isValidElement<ToggleGroupItemElementProps>(child)) return;\n    if (typeof child.props.value === \"string\") {\n      items.push({ value: child.props.value, disabled: !!child.props.disabled });\n      return;\n    }\n    items.push(...collectToggleItems(child.props.children));\n  });\n\n  return items;\n}\n\nexport function ToggleGroup({\n  value: controlledValue,\n  defaultValue,\n  onValueChange,\n  onChange,\n  allowDeselect = false,\n  disabled = false,\n  size = \"sm\",\n  orientation = \"horizontal\",\n  wrap = true,\n  highlighted: controlledHighlighted,\n  onHighlightChange,\n  onKeyDown,\n  label,\n  \"aria-labelledby\": ariaLabelledBy,\n  name,\n  className,\n  children,\n  ref,\n}: ToggleGroupProps) {\n  const containerRef = useRef<HTMLDivElement>(null);\n  const items = useMemo(() => collectToggleItems(children), [children]);\n\n  const [value, setValue, isControlled] = useControllableState<string | null>({\n    value: controlledValue,\n    defaultValue: defaultValue ?? null,\n    onChange: onValueChange ?? onChange,\n  });\n  useFormReset(containerRef, defaultValue ?? null, setValue, !isControlled);\n\n  const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({\n    value: controlledHighlighted,\n    defaultValue: null,\n    onChange: onHighlightChange,\n  });\n\n  const handleValueChange = useCallback((newValue: string) => {\n    setValue((prev) => (prev === newValue && allowDeselect) ? null : newValue);\n  }, [allowDeselect, setValue]);\n\n  const firstEnabledValue = items.find((item) => !item.disabled)?.value ?? null;\n\n  const { onKeyDown: navKeyDown } = useNavigation({\n    containerRef,\n    role: allowDeselect ? \"button\" : \"radio\",\n    orientation,\n    wrap,\n    moveFocus: true,\n    upKeys: [\"ArrowUp\", \"ArrowLeft\"],\n    downKeys: [\"ArrowDown\", \"ArrowRight\"],\n    value: highlightedValue,\n    enabled: !disabled,\n    onValueChange: allowDeselect ? setHighlightedValue : handleValueChange,\n  });\n\n  const handleKeyDown = (e: ReactKeyboardEvent) => {\n    onKeyDown?.(e);\n    if (e.defaultPrevented) return;\n    navKeyDown(e);\n  };\n\n  const contextValue = useMemo(() => ({\n    value,\n    onValueChange: handleValueChange,\n    onHighlightChange: setHighlightedValue,\n    disabled,\n    size,\n    highlightedValue,\n    containerRef,\n    allowDeselect,\n    firstEnabledValue,\n  }), [value, handleValueChange, setHighlightedValue, disabled, size, highlightedValue, allowDeselect, firstEnabledValue]);\n\n  return (\n    <ToggleGroupContext value={contextValue}>\n      <div\n        ref={composeRefs(containerRef, ref)}\n        role={allowDeselect ? \"group\" : \"radiogroup\"}\n        aria-label={label}\n        aria-labelledby={ariaLabelledBy}\n        aria-orientation={allowDeselect ? undefined : orientation}\n        aria-disabled={disabled || undefined}\n        onKeyDown={handleKeyDown}\n        className={cn(\n          \"flex\",\n          orientation === \"vertical\" ? \"flex-col gap-1.5\" : \"gap-1.5\",\n          wrap && orientation === \"horizontal\" && \"flex-wrap\",\n          className,\n        )}\n      >\n        {name && value != null && (\n          <input type=\"hidden\" name={name} value={value} disabled={disabled} />\n        )}\n        {children}\n      </div>\n    </ToggleGroupContext>\n  );\n}\n\n\n\"use client\";\n\nimport { createContext, useContext, type RefObject } from \"react\";\n\nexport interface ToggleGroupContextValue {\n  value: string | null;\n  onValueChange: (value: string) => void;\n  onHighlightChange: (value: string | null) => void;\n  disabled: boolean;\n  size: \"sm\" | \"md\";\n  highlightedValue: string | null;\n  containerRef: RefObject<HTMLDivElement | null>;\n  allowDeselect: boolean;\n  firstEnabledValue: string | null;\n}\n\nexport const ToggleGroupContext = createContext<ToggleGroupContextValue | undefined>(undefined);\n\nexport function useToggleGroupContext() {\n  const context = useContext(ToggleGroupContext);\n  if (!context) {\n    throw new Error(\"ToggleGroup.Item must be used within ToggleGroup\");\n  }\n  return context;\n}\n\n\n\"use client\";\n\nimport {\n  type ComponentPropsWithRef,\n  type FocusEvent,\n  type KeyboardEvent,\n  type MouseEvent,\n  type ReactNode,\n} from \"react\";\nimport { cva } from \"class-variance-authority\";\nimport { useToggleGroupContext } from \"./toggle-group-context\";\nimport { cn } from \"@/lib/utils\";\n\nconst toggleItemVariants = cva(\n  \"inline-flex items-center justify-center font-mono whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer border border-border bg-transparent text-foreground hover:bg-secondary data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:border-primary data-[active=true]:hover:bg-primary/90\",\n  {\n    variants: {\n      size: {\n        sm: \"min-h-[44px] min-w-[44px] px-2 py-0.5 text-xs\",\n        md: \"h-9 px-4 py-2 text-sm\",\n      },\n    },\n    defaultVariants: { size: \"md\" },\n  },\n);\n\nexport interface ToggleGroupItemProps\n  extends Omit<ComponentPropsWithRef<\"button\">, \"children\" | \"disabled\" | \"value\"> {\n  value: string;\n  count?: number;\n  disabled?: boolean;\n  children: ReactNode;\n}\n\nexport function ToggleGroupItem({\n  value,\n  count,\n  disabled,\n  className,\n  children,\n  ref,\n  onClick,\n  onKeyDown,\n  onMouseEnter,\n  onFocus,\n  ...props\n}: ToggleGroupItemProps) {\n  const context = useToggleGroupContext();\n  const isActive = context.value === value;\n  const isHighlighted = context.highlightedValue === value;\n  const isDisabled = context.disabled || !!disabled;\n  const hasSelection = context.value !== null;\n  const isTabTarget = !isDisabled && (isActive || (!hasSelection && context.firstEnabledValue === value));\n\n  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {\n    onClick?.(event);\n    if (!event.defaultPrevented && !isDisabled) context.onValueChange(value);\n  };\n\n  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {\n    onKeyDown?.(event);\n    if (\n      !event.defaultPrevented &&\n      context.allowDeselect &&\n      !isDisabled &&\n      (event.key === \"Enter\" || event.key === \" \")\n    ) {\n      event.preventDefault();\n      context.onValueChange(value);\n    }\n  };\n\n  const handleFocus = (event: FocusEvent<HTMLButtonElement>) => {\n    onFocus?.(event);\n    if (!event.defaultPrevented && !isDisabled) context.onHighlightChange(value);\n  };\n\n  return (\n    <button\n      {...props}\n      ref={ref}\n      type=\"button\"\n      role={context.allowDeselect ? undefined : \"radio\"}\n      data-value={value}\n      data-diffgazer-navigation-item={context.allowDeselect ? \"button\" : \"radio\"}\n      data-active={isActive || undefined}\n      data-highlighted={isHighlighted || undefined}\n      aria-checked={context.allowDeselect ? undefined : isActive}\n      aria-pressed={context.allowDeselect ? isActive : undefined}\n      aria-disabled={isDisabled || undefined}\n      disabled={isDisabled}\n      tabIndex={isTabTarget ? 0 : -1}\n      onClick={handleClick}\n      onKeyDown={handleKeyDown}\n      onMouseEnter={onMouseEnter}\n      onFocus={handleFocus}\n      className={cn(\n        toggleItemVariants({ size: context.size }),\n        isDisabled && \"pointer-events-none opacity-50\",\n        isHighlighted && !isActive && \"bg-secondary\",\n        className,\n      )}\n    >\n      {count != null ? (\n        <>\n          [{children} {count}]\n        </>\n      ) : (\n        children\n      )}\n    </button>\n  );\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
@@ -18476,7 +18284,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "handleMouseEnter",
+          "text": "handleFocus",
           "color": "var(--code-function)"
         },
         {
@@ -18508,7 +18316,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "MouseEvent",
+          "text": "FocusEvent",
           "color": "var(--code-function)"
         },
         {
@@ -18549,7 +18357,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "onMouseEnter",
+          "text": "onFocus",
           "color": "var(--code-function)"
         },
         {
@@ -18660,198 +18468,6 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "const",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "handleFocus",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "=",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "(",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "event",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ":",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "FocusEvent",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "<",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "HTMLButtonElement",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": ">)",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "=>",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "{",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 272,
-      "content": [
-        {
-          "text": "    ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "onFocus",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "?.",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "(event)",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ";",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 273,
-      "content": [
-        {
-          "text": "    ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "if",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " (",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "!",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "event",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ".",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "defaultPrevented ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "&&",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "!",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "isDisabled) ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "context",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ".",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "onHighlightChange",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "(value)",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ";",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 274,
-      "content": [
-        {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "};",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 275,
-      "content": []
-    },
-    {
-      "number": 276,
-      "content": [
-        {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
           "text": "return",
           "color": "var(--code-keyword)"
         },
@@ -18862,7 +18478,7 @@
       ]
     },
     {
-      "number": 277,
+      "number": 272,
       "content": [
         {
           "text": "    ",
@@ -18879,7 +18495,7 @@
       ]
     },
     {
-      "number": 278,
+      "number": 273,
       "content": [
         {
           "text": "      ",
@@ -18900,7 +18516,7 @@
       ]
     },
     {
-      "number": 279,
+      "number": 274,
       "content": [
         {
           "text": "      ",
@@ -18925,7 +18541,7 @@
       ]
     },
     {
-      "number": 280,
+      "number": 275,
       "content": [
         {
           "text": "      ",
@@ -18954,7 +18570,7 @@
       ]
     },
     {
-      "number": 281,
+      "number": 276,
       "content": [
         {
           "text": "      ",
@@ -19023,7 +18639,7 @@
       ]
     },
     {
-      "number": 282,
+      "number": 277,
       "content": [
         {
           "text": "      ",
@@ -19048,7 +18664,7 @@
       ]
     },
     {
-      "number": 283,
+      "number": 278,
       "content": [
         {
           "text": "      ",
@@ -19125,7 +18741,7 @@
       ]
     },
     {
-      "number": 284,
+      "number": 279,
       "content": [
         {
           "text": "      ",
@@ -19162,7 +18778,7 @@
       ]
     },
     {
-      "number": 285,
+      "number": 280,
       "content": [
         {
           "text": "      ",
@@ -19199,7 +18815,7 @@
       ]
     },
     {
-      "number": 286,
+      "number": 281,
       "content": [
         {
           "text": "      ",
@@ -19256,7 +18872,7 @@
       ]
     },
     {
-      "number": 287,
+      "number": 282,
       "content": [
         {
           "text": "      ",
@@ -19309,7 +18925,7 @@
       ]
     },
     {
-      "number": 288,
+      "number": 283,
       "content": [
         {
           "text": "      ",
@@ -19346,7 +18962,7 @@
       ]
     },
     {
-      "number": 289,
+      "number": 284,
       "content": [
         {
           "text": "      ",
@@ -19371,7 +18987,7 @@
       ]
     },
     {
-      "number": 290,
+      "number": 285,
       "content": [
         {
           "text": "      ",
@@ -19428,7 +19044,7 @@
       ]
     },
     {
-      "number": 291,
+      "number": 286,
       "content": [
         {
           "text": "      ",
@@ -19453,7 +19069,7 @@
       ]
     },
     {
-      "number": 292,
+      "number": 287,
       "content": [
         {
           "text": "      ",
@@ -19478,7 +19094,7 @@
       ]
     },
     {
-      "number": 293,
+      "number": 288,
       "content": [
         {
           "text": "      ",
@@ -19493,7 +19109,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "handleMouseEnter",
+          "text": "onMouseEnter",
           "color": "var(--code-variable)"
         },
         {
@@ -19503,7 +19119,7 @@
       ]
     },
     {
-      "number": 294,
+      "number": 289,
       "content": [
         {
           "text": "      ",
@@ -19528,7 +19144,7 @@
       ]
     },
     {
-      "number": 295,
+      "number": 290,
       "content": [
         {
           "text": "      ",
@@ -19553,7 +19169,7 @@
       ]
     },
     {
-      "number": 296,
+      "number": 291,
       "content": [
         {
           "text": "        ",
@@ -19610,7 +19226,7 @@
       ]
     },
     {
-      "number": 297,
+      "number": 292,
       "content": [
         {
           "text": "        isDisabled ",
@@ -19643,7 +19259,7 @@
       ]
     },
     {
-      "number": 298,
+      "number": 293,
       "content": [
         {
           "text": "        isHighlighted ",
@@ -19692,7 +19308,7 @@
       ]
     },
     {
-      "number": 299,
+      "number": 294,
       "content": [
         {
           "text": "        className",
@@ -19705,7 +19321,7 @@
       ]
     },
     {
-      "number": 300,
+      "number": 295,
       "content": [
         {
           "text": "      )",
@@ -19718,7 +19334,7 @@
       ]
     },
     {
-      "number": 301,
+      "number": 296,
       "content": [
         {
           "text": "    ",
@@ -19731,7 +19347,7 @@
       ]
     },
     {
-      "number": 302,
+      "number": 297,
       "content": [
         {
           "text": "      ",
@@ -19772,7 +19388,7 @@
       ]
     },
     {
-      "number": 303,
+      "number": 298,
       "content": [
         {
           "text": "        ",
@@ -19785,7 +19401,7 @@
       ]
     },
     {
-      "number": 304,
+      "number": 299,
       "content": [
         {
           "text": "          [",
@@ -19826,7 +19442,7 @@
       ]
     },
     {
-      "number": 305,
+      "number": 300,
       "content": [
         {
           "text": "        ",
@@ -19839,7 +19455,7 @@
       ]
     },
     {
-      "number": 306,
+      "number": 301,
       "content": [
         {
           "text": "      ) ",
@@ -19856,7 +19472,7 @@
       ]
     },
     {
-      "number": 307,
+      "number": 302,
       "content": [
         {
           "text": "        children",
@@ -19865,7 +19481,7 @@
       ]
     },
     {
-      "number": 308,
+      "number": 303,
       "content": [
         {
           "text": "      )",
@@ -19878,7 +19494,7 @@
       ]
     },
     {
-      "number": 309,
+      "number": 304,
       "content": [
         {
           "text": "    ",
@@ -19899,7 +19515,7 @@
       ]
     },
     {
-      "number": 310,
+      "number": 305,
       "content": [
         {
           "text": "  )",
@@ -19912,7 +19528,7 @@
       ]
     },
     {
-      "number": 311,
+      "number": 306,
       "content": [
         {
           "text": "}",
@@ -19921,7 +19537,7 @@
       ]
     },
     {
-      "number": 312,
+      "number": 307,
       "content": []
     }
   ],

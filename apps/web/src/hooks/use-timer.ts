@@ -22,18 +22,15 @@ export function useTimer({
       return;
     }
 
-    const interval = setInterval(() => {
+    const updateElapsed = () => {
       setElapsed(Date.now() - startTime.getTime() + elapsedMs);
-    }, 100);
+    };
+    updateElapsed();
+
+    const interval = setInterval(updateElapsed, 100);
 
     return () => clearInterval(interval);
   }, [running, startTime, elapsedMs]);
 
-  useEffect(() => {
-    if (!running) {
-      setElapsed(elapsedMs);
-    }
-  }, [elapsedMs, running]);
-
-  return { elapsed };
+  return { elapsed: running ? elapsed : elapsedMs };
 }

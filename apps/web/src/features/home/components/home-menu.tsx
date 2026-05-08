@@ -10,7 +10,6 @@ export interface MenuItemDefinition {
 }
 
 interface HomeMenuProps {
-  selectedId: string | null;
   highlightedId: string | null;
   onHighlightChange: (id: string) => void;
   onSelect: (id: string) => void;
@@ -34,7 +33,6 @@ function groupItems(items: MenuItemDefinition[]) {
 }
 
 export function HomeMenu({
-  selectedId,
   highlightedId,
   onHighlightChange,
   onSelect,
@@ -51,7 +49,6 @@ export function HomeMenu({
       <PanelHeader variant="subtle">Main Menu</PanelHeader>
       <div className="flex flex-col py-2">
         <Menu
-          selectedId={selectedId}
           highlightedId={highlightedId}
           onHighlightChange={onHighlightChange}
           onSelect={onSelect}

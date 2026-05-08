@@ -46,21 +46,19 @@ Use `theme.css` only when you intentionally want token variables without compone
 
 `dgadd init` copies `src/styles/theme.css` and `src/styles/styles.css`, but it does not add either import to your app CSS entrypoint.
 
-In Next App Router, import your app CSS entrypoint once from `app/layout.tsx`. Keep the Tailwind import, Diffgazer styles import, and any `@source` directives in that CSS file.
+In Next App Router, import your app CSS entrypoint once from `app/layout.tsx`. Keep the Tailwind import, Diffgazer style imports, and any app-local `@source` directives in that CSS file.
 
 ## Package Mode Source Scanning
 
-If you install `@diffgazer/ui` as a runtime npm package instead of copying source files, add a Tailwind CSS v4 `@source` directive for the package output:
+If you install `@diffgazer/ui` as a runtime npm package instead of copying source files, import the package source hints before the package styles:
 
 > Runtime npm package mode is publish-gated until `@diffgazer/ui` and `@diffgazer/keys` are available on npm. Before that, use locally packed tarballs for validation.
 
 ```css
 @import "tailwindcss";
+@import "@diffgazer/ui/sources.css";
 @import "@diffgazer/ui/styles.css";
-@source "../node_modules/@diffgazer/ui/dist";
 ```
-
-Adjust the `@source` path so it is relative to the CSS file that contains it.
 
 ## Theme Variables
 
@@ -91,7 +89,7 @@ See [Theme Overview](/ui/docs/theme/overview) for the full variable diagram.
 
 ## Yarn PnP
 
-Package mode currently documents `@source "../node_modules/@diffgazer/ui/dist"` because Tailwind CSS v4 scans a real package output directory. Yarn Plug'n'Play does not provide that `node_modules` path by default, so package mode is not claimed as PnP-compatible in this release. Use copy mode, configure a real unplugged/package path for Tailwind `@source`, or validate a project-specific PnP setup before relying on package mode.
+Package mode no longer requires consumers to hard-code a `node_modules` `@source` path. Use `@import "@diffgazer/ui/sources.css";` so package source hints travel with the published package, then validate your app's CSS tooling in a PnP workspace before relying on package mode.
 
 ## Dark Mode
 

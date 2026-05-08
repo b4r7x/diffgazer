@@ -39,7 +39,6 @@ export function ApiKeyMethodSelector({
             onMethodChange("paste");
             onFocus("paste");
           }}
-          onMouseEnter={() => onFocus("paste")}
           label="Paste Key Now"
           highlighted={focused === "paste"}
         />
@@ -89,7 +88,6 @@ export function ApiKeyMethodSelector({
             onMethodChange("env");
             onFocus("env");
           }}
-          onMouseEnter={() => onFocus("env")}
           label="Import from Env"
           highlighted={focused === "env"}
         />

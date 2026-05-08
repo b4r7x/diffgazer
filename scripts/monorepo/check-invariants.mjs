@@ -316,7 +316,7 @@ assertPackageMetadata(
   "@diffgazer/ui",
   "libs/ui",
   "libs/ui",
-  ["./components/*", "./hooks/*", "./lib/*", "./theme-base.css", "./theme.css", "./styles.css"],
+  ["./components/*", "./hooks/*", "./lib/*", "./theme-base.css", "./theme.css", "./sources.css", "./styles.css"],
   ["dist", "LICENSE", "README.md", "SECURITY.md", "SUPPORT.md"],
   ["**/*.css"],
 );

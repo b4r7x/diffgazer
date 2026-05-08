@@ -1,10 +1,10 @@
 @import "tailwindcss";
+@import "@diffgazer/ui/sources.css";
 @import "@diffgazer/ui/styles.css";
 @import "./theme-overrides.css";
 
 @source "../components";
 @source "../features";
-@source "../../../../node_modules/@diffgazer/ui/dist";
 
 html,
 body {

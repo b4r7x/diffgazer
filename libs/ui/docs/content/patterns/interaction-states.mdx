@@ -10,8 +10,8 @@ description: The three-state interaction model for TUI-style components — hove
 | State | Trigger | Visual Weight | CSS Implementation |
 |---|---|---|---|
 | **Hover** | Mouse `:hover` | Lightest | `hover:bg-secondary` (CSS pseudo-class) |
-| **Highlight** | Keyboard arrows (@diffgazer/keys) | Strongest | `bg-foreground text-background font-bold` |
-| **Selected** | Persistent choice (Enter/click) | Medium | `bg-secondary font-bold` |
+| **Highlight** | Keyboard arrows (@diffgazer/keys) | Strongest | `bg-primary text-primary-foreground font-bold` |
+| **Selected** | Persistent choice (Enter/click) | Strongest when enabled | `bg-primary text-primary-foreground font-bold` |
 
 These states are independent because in TUI applications, the keyboard cursor is fundamentally different from mouse hover. The cursor shows where keyboard actions will apply -- it is the user's active position. Hover is transient mouse feedback that disappears when the pointer moves away. Selected is the user's persistent choice that survives both hover and highlight changes.
 
@@ -32,15 +32,15 @@ The `menuItemBase` CVA maps each state to Tailwind classes:
 | CVA `state` | Classes | Purpose |
 |---|---|---|
 | `"normal"` | `hover:bg-secondary group` | Hover via CSS pseudo-class only |
-| `"focused"` | `text-background font-bold` + compound variant `bg-foreground` | Full inversion for keyboard cursor |
-| `"selected"` | `bg-secondary font-bold group` | Persistent medium-weight highlight |
+| `"focused"` | `font-bold` + compound variant `bg-primary text-primary-foreground` | Semantic active bar for keyboard cursor |
+| `"selected"` | `font-bold group` + compound variant `bg-primary text-primary-foreground` | Persistent selected item when selection is enabled |
 | `"disabled"` | `opacity-50 cursor-not-allowed` | Greyed out, no pointer interaction |
 
-The `"focused"` compound variant applies `bg-foreground` to create the classic TUI inverted-bar look -- light text on dark background (or dark on light, depending on theme).
+Danger items use `bg-destructive text-destructive-foreground` for both focused and selected states.
 
 ## Sync on Click
 
-When a user clicks a MenuItem, `handleItemActivate` in `useListbox` sets **both** `selectedId` and `highlightedId`. This ensures the keyboard cursor tracks the mouse. If the user switches to keyboard navigation after clicking, they continue from where they clicked rather than from a stale cursor position.
+When selection is enabled (`selectedId` or `defaultSelectedId`), activating a MenuItem sets **both** selection and highlight. Plain command menus do not persist selected state; activation calls `onSelect` and leaves the keyboard highlight model in charge of the active item.
 
 ## AutoFocus
 
@@ -64,7 +64,7 @@ import { Menu, MenuItem } from "@/components/ui/menu"
 
 ## Navigation Direction
 
-All menus persist their highlight state across route changes. The direction of navigation determines whether the highlight resets or restores:
+Diffgazer web persists menu highlight state across route changes as an app-level pattern. The direction of navigation determines whether the highlight resets or restores:
 
 - **Forward (parent → child)**: Parent clears the child's stored highlight before navigating. The child menu starts from its first item.
 - **Back (child → parent)**: Parent's highlight is restored automatically from the persistent store.
@@ -95,9 +95,9 @@ This gives TUI-like behavior: entering a menu always starts from the top, but re
 The interaction state model maps directly to ARIA semantics:
 
 - **Container**: `role="menu"`, `tabIndex={0}`, `aria-activedescendant` pointing to the highlighted item
-- **Items**: `role="menuitem"`, `data-value={id}`, `aria-current` for the selected item, `aria-disabled` for disabled items
-- **Focus ring**: `focus-visible` ring on the container when keyboard-focused
+- **Items**: `role="menuitem"`, `data-value={id}`, `data-active` for visual active state, `aria-disabled` for disabled items
+- **Selectable menu items**: `role="menuitemradio"` with `aria-checked` for the selected item
 - **Screen readers**: announce the active descendant as the user arrows through items -- the highlight state drives `aria-activedescendant`
 - **Follows WAI-ARIA Menu Pattern (APG)**
 
-The three-state model makes screen reader behavior clear: `aria-activedescendant` always reflects the highlighted item (keyboard cursor), while `aria-current` reflects the selected item. These are independent signals that assistive technology can convey separately.
+The three-state model makes screen reader behavior clear: `aria-activedescendant` always reflects the highlighted item (keyboard cursor), while `aria-checked` reflects selection only when the menu is explicitly selectable.

@@ -16,7 +16,7 @@ export function NavigationListSubtitle({ children, className }: NavigationListSu
     <span
       id={`${descId}-sub`}
       className={cn(
-        "text-[10px] inline-flex items-center leading-none text-muted-foreground group-data-[active]:text-background/70",
+        "text-[10px] inline-flex items-center leading-none text-muted-foreground group-data-[active]:text-primary-foreground/70",
         className
       )}
     >

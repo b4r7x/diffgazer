@@ -22,13 +22,14 @@ export function SettingsThemePage() {
   const { theme: savedTheme, resolved: systemResolved, setTheme } = useTheme();
   const [selectedTheme, setSelectedTheme] = useState<WebTheme>(savedTheme);
   const [focusedTheme, setFocusedTheme] = useState<WebTheme | null>(savedTheme);
+  const [hoveredTheme, setHoveredTheme] = useState<WebTheme | null>(null);
 
   useEffect(() => {
     setSelectedTheme(savedTheme);
     setFocusedTheme(savedTheme);
   }, [savedTheme]);
 
-  const previewTheme = focusedTheme ?? selectedTheme;
+  const previewTheme = hoveredTheme ?? focusedTheme ?? selectedTheme;
   const previewResolved = resolveTheme(previewTheme, systemResolved);
   useScope("settings-theme");
 
@@ -128,6 +129,7 @@ export function SettingsThemePage() {
               value={selectedTheme}
               focusedValue={focusedTheme}
               onFocusedValueChange={(v) => setFocusedTheme(v as WebTheme)}
+              onPreviewValueChange={(v) => setHoveredTheme(v as WebTheme | null)}
               onChange={handleChange}
               onEnter={handleEnterOnList}
               onSelect={handleChange}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { AVAILABLE_PROVIDERS, PROVIDER_ENV_VARS } from "@diffgazer/core/schemas/config";
 import { useKey } from "@diffgazer/keys";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
@@ -32,12 +32,7 @@ export function ApiKeyStep({
   const providerInfo = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
   const providerName = providerInfo?.name ?? provider;
   const envVarName = PROVIDER_ENV_VARS[provider];
-
-  useEffect(() => {
-    if (method === "env" && focused === "input") {
-      setFocused("env");
-    }
-  }, [focused, method]);
+  const effectiveFocused = method === "env" && focused === "input" ? "env" : focused;
 
   const focusInput = () => {
     setFocused("input");
@@ -45,7 +40,7 @@ export function ApiKeyStep({
   };
 
   useKey("ArrowDown", () => {
-    if (focused === "paste") {
+    if (effectiveFocused === "paste") {
       if (method === "paste") {
         focusInput();
       } else {
@@ -54,19 +49,19 @@ export function ApiKeyStep({
       return;
     }
 
-    if (focused === "input") {
+    if (effectiveFocused === "input") {
       inputRef.current?.blur();
       setFocused("env");
       return;
     }
 
-    if (focused === "env") {
+    if (effectiveFocused === "env") {
       onBoundaryReached?.("down");
     }
   }, { enabled, allowInInput: true });
 
   useKey("ArrowUp", () => {
-    if (focused === "env") {
+    if (effectiveFocused === "env") {
       if (method === "paste") {
         focusInput();
       } else {
@@ -75,28 +70,28 @@ export function ApiKeyStep({
       return;
     }
 
-    if (focused === "input") {
+    if (effectiveFocused === "input") {
       inputRef.current?.blur();
       setFocused("paste");
     }
   }, { enabled, allowInInput: true });
 
   useKey(" ", () => {
-    if (focused === "paste") {
+    if (effectiveFocused === "paste") {
       onMethodChange("paste");
-    } else if (focused === "env") {
+    } else if (effectiveFocused === "env") {
       onMethodChange("env");
     }
   }, { enabled });
 
   useKey("Enter", () => {
-    if (focused === "paste") {
+    if (effectiveFocused === "paste") {
       onMethodChange("paste");
       onCommit?.({ inputMethod: "paste", apiKey: keyValue });
-    } else if (focused === "env") {
+    } else if (effectiveFocused === "env") {
       onMethodChange("env");
       onCommit?.({ inputMethod: "env", apiKey: keyValue });
-    } else if (focused === "input") {
+    } else if (effectiveFocused === "input") {
       onCommit?.({ inputMethod: method, apiKey: keyValue });
     }
   }, { enabled });
@@ -114,7 +109,7 @@ export function ApiKeyStep({
         envVarName={envVarName}
         providerName={providerName}
         inputRef={inputRef}
-        focused={focused}
+        focused={effectiveFocused}
         onFocus={setFocused}
         onKeySubmit={() => onCommit?.({ inputMethod: method, apiKey: keyValue })}
       />

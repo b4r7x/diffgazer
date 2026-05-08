@@ -262,6 +262,7 @@ function writeUiPackageModeSmoke(projectDir) {
       "for (const exportPath of exports) {",
       "  await import(exportPath);",
       "}",
+      "require.resolve('@diffgazer/ui/sources.css');",
       "require.resolve('@diffgazer/ui/styles.css');",
       "console.log(`OK: imported ${exports.length} @diffgazer/ui exports and resolved package CSS`);",
       "",
@@ -359,6 +360,7 @@ function writeUiCommonImportSmoke(projectDir) {
       "for (const exportPath of exports) {",
       "  await import(exportPath);",
       "}",
+      "require.resolve('@diffgazer/ui/sources.css');",
       "require.resolve('@diffgazer/ui/styles.css');",
       "console.log(`OK: imported ${exports.length} common @diffgazer/ui exports`);",
       "",
@@ -406,9 +408,9 @@ function writeUiVitePackageSmoke(projectDir) {
     resolve(projectDir, "src/index.css"),
     [
       '@import "tailwindcss";',
+      '@import "@diffgazer/ui/sources.css";',
       '@import "@diffgazer/ui/styles.css";',
       '@source ".";',
-      '@source "../node_modules/@diffgazer/ui/dist";',
       "",
     ].join("\n"),
   );
@@ -470,9 +472,9 @@ function writeUiNextPackageSmoke(projectDir) {
     resolve(projectDir, "app/globals.css"),
     [
       '@import "tailwindcss";',
+      '@import "@diffgazer/ui/sources.css";',
       '@import "@diffgazer/ui/styles.css";',
       '@source ".";',
-      '@source "../node_modules/@diffgazer/ui/dist";',
       "",
     ].join("\n"),
   );

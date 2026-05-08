@@ -58,7 +58,7 @@ npx @diffgazer/add add ui/button
 npm install @diffgazer/ui @diffgazer/keys
 ```
 
-Runtime package consumers must use Tailwind CSS v4 `@source` against `@diffgazer/ui/dist` and import `@diffgazer/ui/styles.css`. `@diffgazer/keys` is a required peer of `@diffgazer/ui` in package mode. Icon primitives ship from `@diffgazer/ui`; there is no `lucide-react` peer or runtime dependency.
+Runtime package consumers must import Tailwind CSS v4, `@diffgazer/ui/sources.css`, and `@diffgazer/ui/styles.css`. `@diffgazer/keys` is a required peer of `@diffgazer/ui` in package mode. Icon primitives ship from `@diffgazer/ui`; there is no `lucide-react` peer or runtime dependency.
 
 Versioning, release gates, migration expectations, and artifact ownership are documented in [PACKAGE_GOVERNANCE.md](./PACKAGE_GOVERNANCE.md).
 

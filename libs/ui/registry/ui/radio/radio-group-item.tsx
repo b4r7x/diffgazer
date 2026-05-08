@@ -33,7 +33,6 @@ export function RadioGroupItem({
       checked={isSelected}
       isTabTarget={isTabTarget}
       onChange={() => context.onChange(value)}
-      onMouseEnter={isDisabled ? undefined : () => context.onHighlightChange(value)}
       label={label}
       description={description}
       disabled={isDisabled}

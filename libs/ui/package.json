@@ -267,6 +267,7 @@
     },
     "./theme-base.css": "./dist/theme-base.css",
     "./theme.css": "./dist/theme.css",
+    "./sources.css": "./dist/sources.css",
     "./styles.css": "./dist/styles.css"
   },
   "files": [

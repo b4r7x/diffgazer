@@ -166,7 +166,7 @@ Runtime package mode is supported for versioned imports:
 npm install @diffgazer/ui @diffgazer/keys
 ```
 
-These commands are public only after both packages are published. Runtime consumers must configure Tailwind CSS v4 `@source` for `@diffgazer/ui/dist` and import `@diffgazer/ui/styles.css`.
+These commands are public only after both packages are published. Runtime consumers must import Tailwind CSS v4, `@diffgazer/ui/sources.css`, and `@diffgazer/ui/styles.css` from their global CSS entrypoint.
 
 ### `@diffgazer/add`
 

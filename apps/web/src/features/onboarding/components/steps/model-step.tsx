@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent } from "react";
+import { useState, type KeyboardEvent } from "react";
 import { AVAILABLE_PROVIDERS, GEMINI_MODEL_INFO, GLM_MODEL_INFO } from "@diffgazer/core/schemas/config";
 import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
@@ -26,6 +26,11 @@ function getStaticModels(provider: AIProvider): ModelInfo[] {
   }
 }
 
+function getAvailableHighlight(value: string | null, ids: readonly string[]): string | null {
+  if (value && ids.includes(value)) return value;
+  return ids[0] ?? null;
+}
+
 function StaticModelList({
   provider,
   value,
@@ -38,29 +43,16 @@ function StaticModelList({
   const providerInfo = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
   const modelIds = models.map((model) => model.id);
   const [highlighted, setHighlighted] = useState<string | null>(modelIds[0] ?? null);
-
-  useEffect(() => {
-    if (!highlighted || !modelIds.includes(highlighted)) {
-      setHighlighted(modelIds[0] ?? null);
-    }
-  }, [highlighted, modelIds]);
-
-  useEffect(() => {
-    const firstModelId = modelIds[0];
-    if (!firstModelId) return;
-    if (!value || !modelIds.includes(value)) {
-      onChange(firstModelId);
-    }
-  }, [modelIds, onChange, value]);
+  const effectiveHighlighted = getAvailableHighlight(highlighted, modelIds);
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Enter" && highlighted) {
-      onChange(highlighted);
-      onCommit?.(highlighted);
+    if (e.key === "Enter" && effectiveHighlighted) {
+      onChange(effectiveHighlighted);
+      onCommit?.(effectiveHighlighted);
       return;
     }
     if (!onBoundaryReached) return;
-    const idx = modelIds.indexOf(highlighted ?? "");
+    const idx = modelIds.indexOf(effectiveHighlighted ?? "");
     if (e.key === "ArrowUp" && idx === 0) onBoundaryReached("up");
     if (e.key === "ArrowDown" && idx === modelIds.length - 1) onBoundaryReached("down");
   };
@@ -73,7 +65,7 @@ function StaticModelList({
       <RadioGroup
         value={value ?? undefined}
         onChange={onChange}
-        highlighted={enabled ? highlighted : null}
+        highlighted={enabled ? effectiveHighlighted : null}
         onHighlightChange={setHighlighted}
         onKeyDown={handleKeyDown}
         wrap={false}
@@ -118,33 +110,16 @@ function OpenRouterModelList({
   const { models, loading, error } = useOpenRouterModels(true, "openrouter");
   const modelIds = models.map((model) => model.id);
   const [highlighted, setHighlighted] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (modelIds.length === 0) {
-      setHighlighted(null);
-      return;
-    }
-    if (!highlighted || !modelIds.includes(highlighted)) {
-      setHighlighted(modelIds[0] ?? null);
-    }
-  }, [highlighted, modelIds]);
-
-  useEffect(() => {
-    const firstModelId = modelIds[0];
-    if (!firstModelId) return;
-    if (!value || !modelIds.includes(value)) {
-      onChange(firstModelId);
-    }
-  }, [modelIds, onChange, value]);
+  const effectiveHighlighted = getAvailableHighlight(highlighted, modelIds);
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Enter" && highlighted) {
-      onChange(highlighted);
-      onCommit?.(highlighted);
+    if (e.key === "Enter" && effectiveHighlighted) {
+      onChange(effectiveHighlighted);
+      onCommit?.(effectiveHighlighted);
       return;
     }
     if (!onBoundaryReached) return;
-    const idx = modelIds.indexOf(highlighted ?? "");
+    const idx = modelIds.indexOf(effectiveHighlighted ?? "");
     if (e.key === "ArrowUp" && idx === 0) onBoundaryReached("up");
     if (e.key === "ArrowDown" && idx === modelIds.length - 1) onBoundaryReached("down");
   };
@@ -174,7 +149,7 @@ function OpenRouterModelList({
         <RadioGroup
           value={value ?? undefined}
           onChange={onChange}
-          highlighted={enabled ? highlighted : null}
+          highlighted={enabled ? effectiveHighlighted : null}
           onHighlightChange={setHighlighted}
           onKeyDown={handleKeyDown}
           wrap={false}

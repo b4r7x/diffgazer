@@ -47,15 +47,13 @@ Runtime package prerequisites:
 - React `>=19.2.0`.
 - Tailwind CSS v4.
 - `@diffgazer/keys` installed as a required peer.
-- Tailwind scans package output from the CSS file that imports Tailwind:
+- Tailwind loads package source hints from the CSS file that imports Tailwind:
 
 ```css
 @import "tailwindcss";
+@import "@diffgazer/ui/sources.css";
 @import "@diffgazer/ui/styles.css";
-@source "../node_modules/@diffgazer/ui/dist";
 ```
-
-Adjust the `@source` path so it is relative to that CSS file.
 
 ## Keyboard Integration
 

@@ -13861,7 +13861,7 @@
       ]
     },
     "registry/ui/radio/radio-group-item.tsx": {
-      "raw": "\"use client\";\n\nimport { type ReactNode } from \"react\";\nimport { useRadioGroupContext } from \"./radio-group-context\";\nimport { Radio } from \"./radio\";\n\nexport interface RadioGroupItemProps {\n  value: string;\n  label: ReactNode;\n  description?: ReactNode;\n  disabled?: boolean;\n  className?: string;\n}\n\nexport function RadioGroupItem({\n  value,\n  label,\n  description,\n  disabled: itemDisabled,\n  className,\n}: RadioGroupItemProps) {\n  const context = useRadioGroupContext();\n  const isSelected = context.value === value;\n  const isDisabled = context.disabled || !!itemDisabled;\n  const isHighlighted = context.highlightedValue === value;\n  const hasSelection = context.value !== undefined;\n  const isTabTarget = !isDisabled && (isSelected || (!hasSelection && context.firstEnabledValue === value));\n\n  return (\n    <Radio\n      data-value={value}\n      value={value}\n      checked={isSelected}\n      isTabTarget={isTabTarget}\n      onChange={() => context.onChange(value)}\n      onMouseEnter={isDisabled ? undefined : () => context.onHighlightChange(value)}\n      label={label}\n      description={description}\n      disabled={isDisabled}\n      highlighted={isHighlighted}\n      size={context.size}\n      variant={context.variant}\n      name={context.name}\n      required={context.name ? context.required : undefined}\n      onNativeInvalid={context.onRequiredInvalid}\n      className={className}\n    />\n  );\n}\n",
+      "raw": "\"use client\";\n\nimport { type ReactNode } from \"react\";\nimport { useRadioGroupContext } from \"./radio-group-context\";\nimport { Radio } from \"./radio\";\n\nexport interface RadioGroupItemProps {\n  value: string;\n  label: ReactNode;\n  description?: ReactNode;\n  disabled?: boolean;\n  className?: string;\n}\n\nexport function RadioGroupItem({\n  value,\n  label,\n  description,\n  disabled: itemDisabled,\n  className,\n}: RadioGroupItemProps) {\n  const context = useRadioGroupContext();\n  const isSelected = context.value === value;\n  const isDisabled = context.disabled || !!itemDisabled;\n  const isHighlighted = context.highlightedValue === value;\n  const hasSelection = context.value !== undefined;\n  const isTabTarget = !isDisabled && (isSelected || (!hasSelection && context.firstEnabledValue === value));\n\n  return (\n    <Radio\n      data-value={value}\n      value={value}\n      checked={isSelected}\n      isTabTarget={isTabTarget}\n      onChange={() => context.onChange(value)}\n      label={label}\n      description={description}\n      disabled={isDisabled}\n      highlighted={isHighlighted}\n      size={context.size}\n      variant={context.variant}\n      name={context.name}\n      required={context.name ? context.required : undefined}\n      onNativeInvalid={context.onRequiredInvalid}\n      className={className}\n    />\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -14938,7 +14938,7 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "onMouseEnter",
+              "text": "label",
               "color": "var(--code-function)"
             },
             {
@@ -14946,63 +14946,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "isDisabled ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "?",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "undefined",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ":",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "()",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "=>",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "context",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": ".",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "onHighlightChange",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "(value)",
+              "text": "label",
               "color": "var(--code-variable)"
             },
             {
@@ -15019,7 +14963,7 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "label",
+              "text": "description",
               "color": "var(--code-function)"
             },
             {
@@ -15027,7 +14971,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "label",
+              "text": "description",
               "color": "var(--code-variable)"
             },
             {
@@ -15038,31 +14982,6 @@
         },
         {
           "number": 38,
-          "content": [
-            {
-              "text": "      ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "description",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "={",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "description",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "}",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 39,
           "content": [
             {
               "text": "      ",
@@ -15087,7 +15006,7 @@
           ]
         },
         {
-          "number": 40,
+          "number": 39,
           "content": [
             {
               "text": "      ",
@@ -15112,7 +15031,7 @@
           ]
         },
         {
-          "number": 41,
+          "number": 40,
           "content": [
             {
               "text": "      ",
@@ -15136,6 +15055,39 @@
             },
             {
               "text": "size",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 41,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "variant",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "context",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "variant",
               "color": "var(--code-variable)"
             },
             {
@@ -15152,7 +15104,7 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "variant",
+              "text": "name",
               "color": "var(--code-function)"
             },
             {
@@ -15168,7 +15120,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "variant",
+              "text": "name",
               "color": "var(--code-variable)"
             },
             {
@@ -15179,39 +15131,6 @@
         },
         {
           "number": 43,
-          "content": [
-            {
-              "text": "      ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "name",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "={",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "context",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": ".",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "name",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "}",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 44,
           "content": [
             {
               "text": "      ",
@@ -15276,7 +15195,7 @@
           ]
         },
         {
-          "number": 45,
+          "number": 44,
           "content": [
             {
               "text": "      ",
@@ -15309,7 +15228,7 @@
           ]
         },
         {
-          "number": 46,
+          "number": 45,
           "content": [
             {
               "text": "      ",
@@ -15334,7 +15253,7 @@
           ]
         },
         {
-          "number": 47,
+          "number": 46,
           "content": [
             {
               "text": "    ",
@@ -15347,7 +15266,7 @@
           ]
         },
         {
-          "number": 48,
+          "number": 47,
           "content": [
             {
               "text": "  )",
@@ -15360,7 +15279,7 @@
           ]
         },
         {
-          "number": 49,
+          "number": 48,
           "content": [
             {
               "text": "}",
@@ -15369,7 +15288,7 @@
           ]
         },
         {
-          "number": 50,
+          "number": 49,
           "content": []
         }
       ]
@@ -16435,7 +16354,7 @@
       ]
     }
   },
-  "mergedSource": "\"use client\";\n\nimport { Radio, type RadioProps } from \"./radio\";\nimport { RadioGroup as RadioGroupRoot, type RadioGroupProps } from \"./radio-group\";\nimport { RadioGroupItem, type RadioGroupItemProps } from \"./radio-group-item\";\n\nconst RadioGroup = Object.assign(RadioGroupRoot, {\n  Item: RadioGroupItem,\n});\n\nexport { Radio, type RadioProps };\nexport { RadioGroup, type RadioGroupProps };\nexport { RadioGroupItem, type RadioGroupItemProps };\n\n\n\"use client\";\n\nimport {\n  Children,\n  isValidElement,\n  useCallback,\n  useMemo,\n  useRef,\n  useState,\n  type ReactNode,\n  type Ref,\n  type KeyboardEvent as ReactKeyboardEvent,\n} from \"react\";\nimport { useNavigation } from \"@/hooks/use-navigation\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\nimport { useFormReset } from \"@/hooks/use-form-reset\";\nimport { composeRefs } from \"@/lib/compose-refs\";\nimport { cn } from \"@/lib/utils\";\nimport type { RadioSize } from \"./radio\";\nimport type { SelectableVariant } from \"@/lib/selectable-variants\";\nimport { RadioGroupContext, type RadioGroupContextValue } from \"./radio-group-context\";\n\nexport interface RadioGroupProps {\n  value?: string;\n  defaultValue?: string;\n  onValueChange?: (value: string) => void;\n  /** @deprecated Use `onValueChange` for controlled value updates. */\n  onChange?: (value: string) => void;\n  onHighlightChange?: (value: string) => void;\n  onKeyDown?: (event: ReactKeyboardEvent) => void;\n  highlighted?: string | null;\n  orientation?: \"vertical\" | \"horizontal\";\n  wrap?: boolean;\n  disabled?: boolean;\n  size?: RadioSize;\n  variant?: SelectableVariant;\n  name?: string;\n  required?: boolean;\n  label?: string;\n  labelledBy?: string;\n  \"aria-label\"?: string;\n  \"aria-labelledby\"?: string;\n  className?: string;\n  children: ReactNode;\n  ref?: Ref<HTMLDivElement>;\n}\n\ninterface RadioGroupItemElementProps {\n  value?: string;\n  disabled?: boolean;\n  children?: ReactNode;\n}\n\nfunction collectInitialItems(children: ReactNode): Array<{ value: string; disabled: boolean }> {\n  const items: Array<{ value: string; disabled: boolean }> = [];\n\n  Children.forEach(children, (child) => {\n    if (!isValidElement<RadioGroupItemElementProps>(child)) return;\n    if (typeof child.props.value === \"string\") {\n      items.push({ value: child.props.value, disabled: !!child.props.disabled });\n      return;\n    }\n    items.push(...collectInitialItems(child.props.children));\n  });\n\n  return items;\n}\n\nexport function RadioGroup(props: RadioGroupProps) {\n  const {\n    value: controlledValue,\n    defaultValue,\n    onValueChange,\n    onChange,\n    onHighlightChange,\n    onKeyDown,\n    highlighted: controlledHighlighted,\n    orientation = \"vertical\",\n    wrap = true,\n    disabled = false,\n    size = \"md\",\n    variant = \"bullet\",\n    name,\n    required,\n    label,\n    labelledBy,\n    \"aria-label\": ariaLabel,\n    \"aria-labelledby\": ariaLabelledBy,\n    className,\n    children,\n    ref,\n  } = props;\n  const containerRef = useRef<HTMLDivElement>(null);\n  const items = useMemo(() => collectInitialItems(children), [children]);\n  const [requiredInvalid, setRequiredInvalid] = useState(false);\n\n  const [value, setValue] = useControllableState<string | undefined>({\n    value: controlledValue,\n    controlled: \"value\" in props,\n    defaultValue,\n    onChange: (onValueChange ?? onChange) as ((value: string | undefined) => void) | undefined,\n  });\n  useFormReset(containerRef, defaultValue, setValue, !(\"value\" in props));\n  const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({\n    value: controlledHighlighted,\n    controlled: \"highlighted\" in props,\n    defaultValue: null,\n    onChange: onHighlightChange as ((value: string | null) => void) | undefined,\n  });\n\n  const firstEnabledValue = items.find((item) => !item.disabled)?.value ?? null;\n\n  const { onKeyDown: navKeyDown } = useNavigation({\n    containerRef,\n    role: \"radio\",\n    orientation,\n    wrap,\n    moveFocus: true,\n    upKeys: [\"ArrowUp\", \"ArrowLeft\"],\n    downKeys: [\"ArrowDown\", \"ArrowRight\"],\n    value: highlightedValue,\n    enabled: !disabled,\n    onValueChange: (next) => {\n      setHighlightedValue(next);\n      setRequiredInvalid(false);\n      setValue(next);\n    },\n  });\n\n  const handleKeyDown = (e: ReactKeyboardEvent) => {\n    onKeyDown?.(e);\n    if (!e.defaultPrevented) navKeyDown(e);\n  };\n\n  const handleValueChange = (next: string) => {\n    setRequiredInvalid(false);\n    setValue(next);\n  };\n\n  const handleRequiredInvalid = useCallback(() => {\n    setRequiredInvalid(true);\n  }, []);\n\n  const contextValue: RadioGroupContextValue = useMemo(() => ({\n    value,\n    onChange: handleValueChange,\n    onHighlightChange: setHighlightedValue,\n    disabled,\n    size,\n    variant,\n    highlightedValue,\n    name,\n    required,\n    requiredInvalid,\n    onRequiredInvalid: handleRequiredInvalid,\n    containerRef,\n    firstEnabledValue,\n  }), [value, handleValueChange, setHighlightedValue, disabled, size, variant, highlightedValue, name, required, requiredInvalid, handleRequiredInvalid, firstEnabledValue]);\n\n  return (\n    <RadioGroupContext value={contextValue}>\n      {required && !name && (\n        <input\n          type=\"checkbox\"\n          required\n          checked={value !== undefined}\n          disabled={disabled}\n          tabIndex={-1}\n          aria-hidden={true}\n          aria-label={ariaLabel ?? label}\n          readOnly\n          className=\"sr-only\"\n          onInvalid={(event) => {\n            event.preventDefault();\n            handleRequiredInvalid();\n            containerRef.current?.querySelector<HTMLElement>('[role=\"radio\"]:not([aria-disabled=\"true\"])')?.focus();\n          }}\n        />\n      )}\n      <div\n        ref={composeRefs(containerRef, ref)}\n        role=\"radiogroup\"\n        aria-label={ariaLabel ?? label}\n        aria-labelledby={ariaLabelledBy ?? labelledBy}\n        aria-orientation={orientation}\n        aria-required={required || undefined}\n        aria-invalid={requiredInvalid && value === undefined ? true : undefined}\n        aria-disabled={disabled || undefined}\n        className={cn(\n          \"flex\",\n          orientation === \"vertical\" ? \"flex-col gap-2\" : \"flex-row gap-4\",\n          className\n        )}\n        onKeyDown={handleKeyDown}\n      >\n        {children}\n      </div>\n    </RadioGroupContext>\n  );\n}\n\n\n\"use client\";\n\nimport { useCallback, useEffect, useId, useRef, useState, type AriaAttributes, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from \"react\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\nimport { useFormReset } from \"@/hooks/use-form-reset\";\nimport { composeRefs } from \"@/lib/compose-refs\";\nimport {\n  selectableVariants,\n  selectableContainerClass,\n  selectableIndicatorVariants,\n  selectableLabelVariants,\n  selectableDescriptionVariants,\n  selectableIndicators,\n  type SelectableSize,\n  type SelectableVariant,\n} from \"@/lib/selectable-variants\";\nimport { cn } from \"@/lib/utils\";\n\nexport type RadioSize = SelectableSize;\n\nconst RADIO_CHECK_EVENT = \"diffgazer:radio-check\";\n\nfunction resolveAriaInvalid(\n  invalid: boolean | undefined,\n  ariaInvalid: AriaAttributes[\"aria-invalid\"],\n) {\n  if (invalid) return true;\n  if (ariaInvalid === true || ariaInvalid === \"true\" || ariaInvalid === \"grammar\" || ariaInvalid === \"spelling\") {\n    return ariaInvalid;\n  }\n  if (ariaInvalid === false || ariaInvalid === \"false\") return ariaInvalid;\n  return undefined;\n}\n\ninterface RadioCheckEventDetail {\n  name: string;\n  form: HTMLFormElement | null;\n  source: HTMLElement;\n}\n\nfunction dispatchRadioCheck(source: HTMLElement, name: string) {\n  source.ownerDocument.dispatchEvent(new CustomEvent<RadioCheckEventDetail>(RADIO_CHECK_EVENT, {\n    detail: {\n      name,\n      form: source.closest(\"form\"),\n      source,\n    },\n  }));\n}\n\nexport interface RadioProps {\n  checked?: boolean;\n  defaultChecked?: boolean;\n  isTabTarget?: boolean;\n  onChange?: (checked: boolean) => void;\n  onMouseEnter?: () => void;\n  label?: ReactNode;\n  description?: ReactNode;\n  disabled?: boolean;\n  highlighted?: boolean;\n  size?: RadioSize;\n  name?: string;\n  value?: string;\n  required?: boolean;\n  invalid?: boolean;\n  variant?: SelectableVariant;\n  \"aria-label\"?: string;\n  \"aria-invalid\"?: AriaAttributes[\"aria-invalid\"];\n  onNativeInvalid?: () => void;\n  className?: string;\n  ref?: Ref<HTMLDivElement>;\n  \"data-value\"?: string;\n}\n\nexport function Radio({\n  checked,\n  defaultChecked = false,\n  isTabTarget = true,\n  onChange,\n  onMouseEnter,\n  label,\n  description,\n  disabled = false,\n  highlighted = false,\n  size = \"md\",\n  variant = \"bullet\",\n  name,\n  value = \"on\",\n  required,\n  invalid,\n  \"aria-label\": ariaLabel,\n  \"aria-invalid\": ariaInvalid,\n  onNativeInvalid,\n  className,\n  ref,\n  \"data-value\": dataValue,\n}: RadioProps) {\n  const generatedId = useId();\n  const labelId = `${generatedId}-label`;\n  const descriptionId = `${generatedId}-desc`;\n\n  const rootRef = useRef<HTMLDivElement>(null);\n  const [isChecked, setIsChecked, isControlled] = useControllableState<boolean>({\n    value: checked,\n    defaultValue: defaultChecked,\n    onChange,\n  });\n  const [nativeInvalid, setNativeInvalid] = useState(false);\n  const resolvedAriaInvalid = resolveAriaInvalid(invalid || (nativeInvalid && required && !isChecked), ariaInvalid);\n\n  useFormReset(rootRef, defaultChecked, setIsChecked, checked === undefined);\n\n  const notifySameNameRadios = useCallback(() => {\n    if (!name || isControlled || !rootRef.current) return;\n    dispatchRadioCheck(rootRef.current, name);\n  }, [isControlled, name]);\n\n  useEffect(() => {\n    if (!name || isControlled) return;\n\n    const ownerDocument = rootRef.current?.ownerDocument;\n    if (!ownerDocument) return;\n\n    const handleRadioCheck = (event: Event) => {\n      const { detail } = event as CustomEvent<RadioCheckEventDetail>;\n      if (\n        detail.name !== name ||\n        detail.source === rootRef.current ||\n        detail.form !== (rootRef.current?.closest(\"form\") ?? null)\n      ) {\n        return;\n      }\n\n      setIsChecked(false);\n    };\n\n    ownerDocument.addEventListener(RADIO_CHECK_EVENT, handleRadioCheck);\n    return () => ownerDocument.removeEventListener(RADIO_CHECK_EVENT, handleRadioCheck);\n  }, [isControlled, name, setIsChecked]);\n\n  useEffect(() => {\n    if (isChecked) notifySameNameRadios();\n  }, [isChecked, notifySameNameRadios]);\n\n  const toggle = () => {\n    if (disabled) return;\n    setNativeInvalid(false);\n    setIsChecked(true);\n    notifySameNameRadios();\n  };\n\n  const handleKeyDown = (e: ReactKeyboardEvent) => {\n    if (disabled) return;\n    if (e.key === \" \") {\n      e.preventDefault();\n      toggle();\n    }\n  };\n\n  return (\n    <>\n      {(name || required) && (\n        <input\n          type=\"radio\"\n          name={name}\n          value={value}\n          checked={isChecked}\n          required={required}\n          disabled={disabled}\n          className=\"sr-only\"\n          tabIndex={-1}\n          readOnly\n          aria-hidden={true}\n          aria-label={ariaLabel ?? (typeof label === \"string\" ? label : name)}\n          onInvalid={(event) => {\n            event.preventDefault();\n            onNativeInvalid?.();\n            if (!onNativeInvalid) setNativeInvalid(true);\n            const group = rootRef.current?.closest('[role=\"radiogroup\"]');\n            const owner = group?.querySelector<HTMLElement>('[role=\"radio\"]:not([aria-disabled=\"true\"])');\n            (owner ?? rootRef.current)?.focus();\n          }}\n        />\n      )}\n      <div\n        ref={composeRefs(rootRef, ref)}\n        role=\"radio\"\n        data-value={dataValue ?? value}\n        aria-checked={isChecked}\n        aria-disabled={disabled || undefined}\n        aria-invalid={resolvedAriaInvalid}\n        aria-label={ariaLabel}\n        aria-labelledby={!ariaLabel && label ? labelId : undefined}\n        aria-describedby={description ? descriptionId : undefined}\n        tabIndex={!disabled && isTabTarget ? 0 : -1}\n        onClick={toggle}\n        onKeyDown={handleKeyDown}\n        onMouseEnter={onMouseEnter}\n        className={cn(\n          selectableVariants({ highlighted, disabled }),\n          selectableContainerClass,\n          description && \"items-start\",\n          className\n        )}\n      >\n        <span\n          aria-hidden=\"true\"\n          className={selectableIndicatorVariants({\n            size,\n            checked: isChecked,\n            highlighted,\n          })}\n        >\n          {selectableIndicators[variant][isChecked ? \"checked\" : \"unchecked\"]}\n        </span>\n        {label && (\n          <div\n            className={cn(\n              \"flex flex-col min-w-0\",\n              !description && \"justify-center\"\n            )}\n          >\n            <span id={labelId} className={selectableLabelVariants({ size })}>{label}</span>\n            {description && (\n              <span id={descriptionId} className={selectableDescriptionVariants({ highlighted })}>\n                {description}\n              </span>\n            )}\n          </div>\n        )}\n      </div>\n    </>\n  );\n}\n\n\n\"use client\";\n\nimport { type ReactNode } from \"react\";\nimport { useRadioGroupContext } from \"./radio-group-context\";\nimport { Radio } from \"./radio\";\n\nexport interface RadioGroupItemProps {\n  value: string;\n  label: ReactNode;\n  description?: ReactNode;\n  disabled?: boolean;\n  className?: string;\n}\n\nexport function RadioGroupItem({\n  value,\n  label,\n  description,\n  disabled: itemDisabled,\n  className,\n}: RadioGroupItemProps) {\n  const context = useRadioGroupContext();\n  const isSelected = context.value === value;\n  const isDisabled = context.disabled || !!itemDisabled;\n  const isHighlighted = context.highlightedValue === value;\n  const hasSelection = context.value !== undefined;\n  const isTabTarget = !isDisabled && (isSelected || (!hasSelection && context.firstEnabledValue === value));\n\n  return (\n    <Radio\n      data-value={value}\n      value={value}\n      checked={isSelected}\n      isTabTarget={isTabTarget}\n      onChange={() => context.onChange(value)}\n      onMouseEnter={isDisabled ? undefined : () => context.onHighlightChange(value)}\n      label={label}\n      description={description}\n      disabled={isDisabled}\n      highlighted={isHighlighted}\n      size={context.size}\n      variant={context.variant}\n      name={context.name}\n      required={context.name ? context.required : undefined}\n      onNativeInvalid={context.onRequiredInvalid}\n      className={className}\n    />\n  );\n}\n\n\n\"use client\";\n\nimport { createContext, useContext, type RefObject } from \"react\";\nimport type { RadioSize } from \"./radio\";\nimport type { SelectableVariant } from \"@/lib/selectable-variants\";\n\nexport interface RadioGroupContextValue {\n  value?: string;\n  onChange: (value: string) => void;\n  onHighlightChange: (value: string) => void;\n  disabled: boolean;\n  size: RadioSize;\n  variant: SelectableVariant;\n  highlightedValue: string | null;\n  name?: string;\n  required?: boolean;\n  requiredInvalid: boolean;\n  onRequiredInvalid: () => void;\n  containerRef: RefObject<HTMLDivElement | null>;\n  firstEnabledValue: string | null;\n}\n\nexport const RadioGroupContext = createContext<RadioGroupContextValue | undefined>(undefined);\n\nexport function useRadioGroupContext() {\n  const context = useContext(RadioGroupContext);\n  if (!context) {\n    throw new Error(\"RadioGroupItem must be used within RadioGroup\");\n  }\n  return context;\n}\n",
+  "mergedSource": "\"use client\";\n\nimport { Radio, type RadioProps } from \"./radio\";\nimport { RadioGroup as RadioGroupRoot, type RadioGroupProps } from \"./radio-group\";\nimport { RadioGroupItem, type RadioGroupItemProps } from \"./radio-group-item\";\n\nconst RadioGroup = Object.assign(RadioGroupRoot, {\n  Item: RadioGroupItem,\n});\n\nexport { Radio, type RadioProps };\nexport { RadioGroup, type RadioGroupProps };\nexport { RadioGroupItem, type RadioGroupItemProps };\n\n\n\"use client\";\n\nimport {\n  Children,\n  isValidElement,\n  useCallback,\n  useMemo,\n  useRef,\n  useState,\n  type ReactNode,\n  type Ref,\n  type KeyboardEvent as ReactKeyboardEvent,\n} from \"react\";\nimport { useNavigation } from \"@/hooks/use-navigation\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\nimport { useFormReset } from \"@/hooks/use-form-reset\";\nimport { composeRefs } from \"@/lib/compose-refs\";\nimport { cn } from \"@/lib/utils\";\nimport type { RadioSize } from \"./radio\";\nimport type { SelectableVariant } from \"@/lib/selectable-variants\";\nimport { RadioGroupContext, type RadioGroupContextValue } from \"./radio-group-context\";\n\nexport interface RadioGroupProps {\n  value?: string;\n  defaultValue?: string;\n  onValueChange?: (value: string) => void;\n  /** @deprecated Use `onValueChange` for controlled value updates. */\n  onChange?: (value: string) => void;\n  onHighlightChange?: (value: string) => void;\n  onKeyDown?: (event: ReactKeyboardEvent) => void;\n  highlighted?: string | null;\n  orientation?: \"vertical\" | \"horizontal\";\n  wrap?: boolean;\n  disabled?: boolean;\n  size?: RadioSize;\n  variant?: SelectableVariant;\n  name?: string;\n  required?: boolean;\n  label?: string;\n  labelledBy?: string;\n  \"aria-label\"?: string;\n  \"aria-labelledby\"?: string;\n  className?: string;\n  children: ReactNode;\n  ref?: Ref<HTMLDivElement>;\n}\n\ninterface RadioGroupItemElementProps {\n  value?: string;\n  disabled?: boolean;\n  children?: ReactNode;\n}\n\nfunction collectInitialItems(children: ReactNode): Array<{ value: string; disabled: boolean }> {\n  const items: Array<{ value: string; disabled: boolean }> = [];\n\n  Children.forEach(children, (child) => {\n    if (!isValidElement<RadioGroupItemElementProps>(child)) return;\n    if (typeof child.props.value === \"string\") {\n      items.push({ value: child.props.value, disabled: !!child.props.disabled });\n      return;\n    }\n    items.push(...collectInitialItems(child.props.children));\n  });\n\n  return items;\n}\n\nexport function RadioGroup(props: RadioGroupProps) {\n  const {\n    value: controlledValue,\n    defaultValue,\n    onValueChange,\n    onChange,\n    onHighlightChange,\n    onKeyDown,\n    highlighted: controlledHighlighted,\n    orientation = \"vertical\",\n    wrap = true,\n    disabled = false,\n    size = \"md\",\n    variant = \"bullet\",\n    name,\n    required,\n    label,\n    labelledBy,\n    \"aria-label\": ariaLabel,\n    \"aria-labelledby\": ariaLabelledBy,\n    className,\n    children,\n    ref,\n  } = props;\n  const containerRef = useRef<HTMLDivElement>(null);\n  const items = useMemo(() => collectInitialItems(children), [children]);\n  const [requiredInvalid, setRequiredInvalid] = useState(false);\n\n  const [value, setValue] = useControllableState<string | undefined>({\n    value: controlledValue,\n    controlled: \"value\" in props,\n    defaultValue,\n    onChange: (onValueChange ?? onChange) as ((value: string | undefined) => void) | undefined,\n  });\n  useFormReset(containerRef, defaultValue, setValue, !(\"value\" in props));\n  const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({\n    value: controlledHighlighted,\n    controlled: \"highlighted\" in props,\n    defaultValue: null,\n    onChange: onHighlightChange as ((value: string | null) => void) | undefined,\n  });\n\n  const firstEnabledValue = items.find((item) => !item.disabled)?.value ?? null;\n\n  const { onKeyDown: navKeyDown } = useNavigation({\n    containerRef,\n    role: \"radio\",\n    orientation,\n    wrap,\n    moveFocus: true,\n    upKeys: [\"ArrowUp\", \"ArrowLeft\"],\n    downKeys: [\"ArrowDown\", \"ArrowRight\"],\n    value: highlightedValue,\n    enabled: !disabled,\n    onValueChange: (next) => {\n      setHighlightedValue(next);\n      setRequiredInvalid(false);\n      setValue(next);\n    },\n  });\n\n  const handleKeyDown = (e: ReactKeyboardEvent) => {\n    onKeyDown?.(e);\n    if (!e.defaultPrevented) navKeyDown(e);\n  };\n\n  const handleValueChange = (next: string) => {\n    setRequiredInvalid(false);\n    setValue(next);\n  };\n\n  const handleRequiredInvalid = useCallback(() => {\n    setRequiredInvalid(true);\n  }, []);\n\n  const contextValue: RadioGroupContextValue = useMemo(() => ({\n    value,\n    onChange: handleValueChange,\n    onHighlightChange: setHighlightedValue,\n    disabled,\n    size,\n    variant,\n    highlightedValue,\n    name,\n    required,\n    requiredInvalid,\n    onRequiredInvalid: handleRequiredInvalid,\n    containerRef,\n    firstEnabledValue,\n  }), [value, handleValueChange, setHighlightedValue, disabled, size, variant, highlightedValue, name, required, requiredInvalid, handleRequiredInvalid, firstEnabledValue]);\n\n  return (\n    <RadioGroupContext value={contextValue}>\n      {required && !name && (\n        <input\n          type=\"checkbox\"\n          required\n          checked={value !== undefined}\n          disabled={disabled}\n          tabIndex={-1}\n          aria-hidden={true}\n          aria-label={ariaLabel ?? label}\n          readOnly\n          className=\"sr-only\"\n          onInvalid={(event) => {\n            event.preventDefault();\n            handleRequiredInvalid();\n            containerRef.current?.querySelector<HTMLElement>('[role=\"radio\"]:not([aria-disabled=\"true\"])')?.focus();\n          }}\n        />\n      )}\n      <div\n        ref={composeRefs(containerRef, ref)}\n        role=\"radiogroup\"\n        aria-label={ariaLabel ?? label}\n        aria-labelledby={ariaLabelledBy ?? labelledBy}\n        aria-orientation={orientation}\n        aria-required={required || undefined}\n        aria-invalid={requiredInvalid && value === undefined ? true : undefined}\n        aria-disabled={disabled || undefined}\n        className={cn(\n          \"flex\",\n          orientation === \"vertical\" ? \"flex-col gap-2\" : \"flex-row gap-4\",\n          className\n        )}\n        onKeyDown={handleKeyDown}\n      >\n        {children}\n      </div>\n    </RadioGroupContext>\n  );\n}\n\n\n\"use client\";\n\nimport { useCallback, useEffect, useId, useRef, useState, type AriaAttributes, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from \"react\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\nimport { useFormReset } from \"@/hooks/use-form-reset\";\nimport { composeRefs } from \"@/lib/compose-refs\";\nimport {\n  selectableVariants,\n  selectableContainerClass,\n  selectableIndicatorVariants,\n  selectableLabelVariants,\n  selectableDescriptionVariants,\n  selectableIndicators,\n  type SelectableSize,\n  type SelectableVariant,\n} from \"@/lib/selectable-variants\";\nimport { cn } from \"@/lib/utils\";\n\nexport type RadioSize = SelectableSize;\n\nconst RADIO_CHECK_EVENT = \"diffgazer:radio-check\";\n\nfunction resolveAriaInvalid(\n  invalid: boolean | undefined,\n  ariaInvalid: AriaAttributes[\"aria-invalid\"],\n) {\n  if (invalid) return true;\n  if (ariaInvalid === true || ariaInvalid === \"true\" || ariaInvalid === \"grammar\" || ariaInvalid === \"spelling\") {\n    return ariaInvalid;\n  }\n  if (ariaInvalid === false || ariaInvalid === \"false\") return ariaInvalid;\n  return undefined;\n}\n\ninterface RadioCheckEventDetail {\n  name: string;\n  form: HTMLFormElement | null;\n  source: HTMLElement;\n}\n\nfunction dispatchRadioCheck(source: HTMLElement, name: string) {\n  source.ownerDocument.dispatchEvent(new CustomEvent<RadioCheckEventDetail>(RADIO_CHECK_EVENT, {\n    detail: {\n      name,\n      form: source.closest(\"form\"),\n      source,\n    },\n  }));\n}\n\nexport interface RadioProps {\n  checked?: boolean;\n  defaultChecked?: boolean;\n  isTabTarget?: boolean;\n  onChange?: (checked: boolean) => void;\n  onMouseEnter?: () => void;\n  label?: ReactNode;\n  description?: ReactNode;\n  disabled?: boolean;\n  highlighted?: boolean;\n  size?: RadioSize;\n  name?: string;\n  value?: string;\n  required?: boolean;\n  invalid?: boolean;\n  variant?: SelectableVariant;\n  \"aria-label\"?: string;\n  \"aria-invalid\"?: AriaAttributes[\"aria-invalid\"];\n  onNativeInvalid?: () => void;\n  className?: string;\n  ref?: Ref<HTMLDivElement>;\n  \"data-value\"?: string;\n}\n\nexport function Radio({\n  checked,\n  defaultChecked = false,\n  isTabTarget = true,\n  onChange,\n  onMouseEnter,\n  label,\n  description,\n  disabled = false,\n  highlighted = false,\n  size = \"md\",\n  variant = \"bullet\",\n  name,\n  value = \"on\",\n  required,\n  invalid,\n  \"aria-label\": ariaLabel,\n  \"aria-invalid\": ariaInvalid,\n  onNativeInvalid,\n  className,\n  ref,\n  \"data-value\": dataValue,\n}: RadioProps) {\n  const generatedId = useId();\n  const labelId = `${generatedId}-label`;\n  const descriptionId = `${generatedId}-desc`;\n\n  const rootRef = useRef<HTMLDivElement>(null);\n  const [isChecked, setIsChecked, isControlled] = useControllableState<boolean>({\n    value: checked,\n    defaultValue: defaultChecked,\n    onChange,\n  });\n  const [nativeInvalid, setNativeInvalid] = useState(false);\n  const resolvedAriaInvalid = resolveAriaInvalid(invalid || (nativeInvalid && required && !isChecked), ariaInvalid);\n\n  useFormReset(rootRef, defaultChecked, setIsChecked, checked === undefined);\n\n  const notifySameNameRadios = useCallback(() => {\n    if (!name || isControlled || !rootRef.current) return;\n    dispatchRadioCheck(rootRef.current, name);\n  }, [isControlled, name]);\n\n  useEffect(() => {\n    if (!name || isControlled) return;\n\n    const ownerDocument = rootRef.current?.ownerDocument;\n    if (!ownerDocument) return;\n\n    const handleRadioCheck = (event: Event) => {\n      const { detail } = event as CustomEvent<RadioCheckEventDetail>;\n      if (\n        detail.name !== name ||\n        detail.source === rootRef.current ||\n        detail.form !== (rootRef.current?.closest(\"form\") ?? null)\n      ) {\n        return;\n      }\n\n      setIsChecked(false);\n    };\n\n    ownerDocument.addEventListener(RADIO_CHECK_EVENT, handleRadioCheck);\n    return () => ownerDocument.removeEventListener(RADIO_CHECK_EVENT, handleRadioCheck);\n  }, [isControlled, name, setIsChecked]);\n\n  useEffect(() => {\n    if (isChecked) notifySameNameRadios();\n  }, [isChecked, notifySameNameRadios]);\n\n  const toggle = () => {\n    if (disabled) return;\n    setNativeInvalid(false);\n    setIsChecked(true);\n    notifySameNameRadios();\n  };\n\n  const handleKeyDown = (e: ReactKeyboardEvent) => {\n    if (disabled) return;\n    if (e.key === \" \") {\n      e.preventDefault();\n      toggle();\n    }\n  };\n\n  return (\n    <>\n      {(name || required) && (\n        <input\n          type=\"radio\"\n          name={name}\n          value={value}\n          checked={isChecked}\n          required={required}\n          disabled={disabled}\n          className=\"sr-only\"\n          tabIndex={-1}\n          readOnly\n          aria-hidden={true}\n          aria-label={ariaLabel ?? (typeof label === \"string\" ? label : name)}\n          onInvalid={(event) => {\n            event.preventDefault();\n            onNativeInvalid?.();\n            if (!onNativeInvalid) setNativeInvalid(true);\n            const group = rootRef.current?.closest('[role=\"radiogroup\"]');\n            const owner = group?.querySelector<HTMLElement>('[role=\"radio\"]:not([aria-disabled=\"true\"])');\n            (owner ?? rootRef.current)?.focus();\n          }}\n        />\n      )}\n      <div\n        ref={composeRefs(rootRef, ref)}\n        role=\"radio\"\n        data-value={dataValue ?? value}\n        aria-checked={isChecked}\n        aria-disabled={disabled || undefined}\n        aria-invalid={resolvedAriaInvalid}\n        aria-label={ariaLabel}\n        aria-labelledby={!ariaLabel && label ? labelId : undefined}\n        aria-describedby={description ? descriptionId : undefined}\n        tabIndex={!disabled && isTabTarget ? 0 : -1}\n        onClick={toggle}\n        onKeyDown={handleKeyDown}\n        onMouseEnter={onMouseEnter}\n        className={cn(\n          selectableVariants({ highlighted, disabled }),\n          selectableContainerClass,\n          description && \"items-start\",\n          className\n        )}\n      >\n        <span\n          aria-hidden=\"true\"\n          className={selectableIndicatorVariants({\n            size,\n            checked: isChecked,\n            highlighted,\n          })}\n        >\n          {selectableIndicators[variant][isChecked ? \"checked\" : \"unchecked\"]}\n        </span>\n        {label && (\n          <div\n            className={cn(\n              \"flex flex-col min-w-0\",\n              !description && \"justify-center\"\n            )}\n          >\n            <span id={labelId} className={selectableLabelVariants({ size })}>{label}</span>\n            {description && (\n              <span id={descriptionId} className={selectableDescriptionVariants({ highlighted })}>\n                {description}\n              </span>\n            )}\n          </div>\n        )}\n      </div>\n    </>\n  );\n}\n\n\n\"use client\";\n\nimport { type ReactNode } from \"react\";\nimport { useRadioGroupContext } from \"./radio-group-context\";\nimport { Radio } from \"./radio\";\n\nexport interface RadioGroupItemProps {\n  value: string;\n  label: ReactNode;\n  description?: ReactNode;\n  disabled?: boolean;\n  className?: string;\n}\n\nexport function RadioGroupItem({\n  value,\n  label,\n  description,\n  disabled: itemDisabled,\n  className,\n}: RadioGroupItemProps) {\n  const context = useRadioGroupContext();\n  const isSelected = context.value === value;\n  const isDisabled = context.disabled || !!itemDisabled;\n  const isHighlighted = context.highlightedValue === value;\n  const hasSelection = context.value !== undefined;\n  const isTabTarget = !isDisabled && (isSelected || (!hasSelection && context.firstEnabledValue === value));\n\n  return (\n    <Radio\n      data-value={value}\n      value={value}\n      checked={isSelected}\n      isTabTarget={isTabTarget}\n      onChange={() => context.onChange(value)}\n      label={label}\n      description={description}\n      disabled={isDisabled}\n      highlighted={isHighlighted}\n      size={context.size}\n      variant={context.variant}\n      name={context.name}\n      required={context.name ? context.required : undefined}\n      onNativeInvalid={context.onRequiredInvalid}\n      className={className}\n    />\n  );\n}\n\n\n\"use client\";\n\nimport { createContext, useContext, type RefObject } from \"react\";\nimport type { RadioSize } from \"./radio\";\nimport type { SelectableVariant } from \"@/lib/selectable-variants\";\n\nexport interface RadioGroupContextValue {\n  value?: string;\n  onChange: (value: string) => void;\n  onHighlightChange: (value: string) => void;\n  disabled: boolean;\n  size: RadioSize;\n  variant: SelectableVariant;\n  highlightedValue: string | null;\n  name?: string;\n  required?: boolean;\n  requiredInvalid: boolean;\n  onRequiredInvalid: () => void;\n  containerRef: RefObject<HTMLDivElement | null>;\n  firstEnabledValue: string | null;\n}\n\nexport const RadioGroupContext = createContext<RadioGroupContextValue | undefined>(undefined);\n\nexport function useRadioGroupContext() {\n  const context = useContext(RadioGroupContext);\n  if (!context) {\n    throw new Error(\"RadioGroupItem must be used within RadioGroup\");\n  }\n  return context;\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
@@ -31357,7 +31276,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "onMouseEnter",
+          "text": "label",
           "color": "var(--code-function)"
         },
         {
@@ -31365,63 +31284,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "isDisabled ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "?",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "undefined",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ":",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "()",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "=>",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "context",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ".",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "onHighlightChange",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "(value)",
+          "text": "label",
           "color": "var(--code-variable)"
         },
         {
@@ -31438,7 +31301,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "label",
+          "text": "description",
           "color": "var(--code-function)"
         },
         {
@@ -31446,7 +31309,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "label",
+          "text": "description",
           "color": "var(--code-variable)"
         },
         {
@@ -31457,31 +31320,6 @@
     },
     {
       "number": 491,
-      "content": [
-        {
-          "text": "      ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "description",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "={",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "description",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 492,
       "content": [
         {
           "text": "      ",
@@ -31506,7 +31344,7 @@
       ]
     },
     {
-      "number": 493,
+      "number": 492,
       "content": [
         {
           "text": "      ",
@@ -31531,7 +31369,7 @@
       ]
     },
     {
-      "number": 494,
+      "number": 493,
       "content": [
         {
           "text": "      ",
@@ -31555,6 +31393,39 @@
         },
         {
           "text": "size",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 494,
+      "content": [
+        {
+          "text": "      ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "variant",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "={",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "context",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "variant",
           "color": "var(--code-variable)"
         },
         {
@@ -31571,7 +31442,7 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "variant",
+          "text": "name",
           "color": "var(--code-function)"
         },
         {
@@ -31587,7 +31458,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "variant",
+          "text": "name",
           "color": "var(--code-variable)"
         },
         {
@@ -31598,39 +31469,6 @@
     },
     {
       "number": 496,
-      "content": [
-        {
-          "text": "      ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "name",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "={",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "context",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ".",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "name",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 497,
       "content": [
         {
           "text": "      ",
@@ -31695,7 +31533,7 @@
       ]
     },
     {
-      "number": 498,
+      "number": 497,
       "content": [
         {
           "text": "      ",
@@ -31728,7 +31566,7 @@
       ]
     },
     {
-      "number": 499,
+      "number": 498,
       "content": [
         {
           "text": "      ",
@@ -31753,7 +31591,7 @@
       ]
     },
     {
-      "number": 500,
+      "number": 499,
       "content": [
         {
           "text": "    ",
@@ -31766,7 +31604,7 @@
       ]
     },
     {
-      "number": 501,
+      "number": 500,
       "content": [
         {
           "text": "  )",
@@ -31779,7 +31617,7 @@
       ]
     },
     {
-      "number": 502,
+      "number": 501,
       "content": [
         {
           "text": "}",
@@ -31788,15 +31626,15 @@
       ]
     },
     {
+      "number": 502,
+      "content": []
+    },
+    {
       "number": 503,
       "content": []
     },
     {
       "number": 504,
-      "content": []
-    },
-    {
-      "number": 505,
       "content": [
         {
           "text": "\"",
@@ -31817,11 +31655,11 @@
       ]
     },
     {
-      "number": 506,
+      "number": 505,
       "content": []
     },
     {
-      "number": 507,
+      "number": 506,
       "content": [
         {
           "text": "import",
@@ -31898,7 +31736,7 @@
       ]
     },
     {
-      "number": 508,
+      "number": 507,
       "content": [
         {
           "text": "import",
@@ -31959,7 +31797,7 @@
       ]
     },
     {
-      "number": 509,
+      "number": 508,
       "content": [
         {
           "text": "import",
@@ -32020,11 +31858,11 @@
       ]
     },
     {
-      "number": 510,
+      "number": 509,
       "content": []
     },
     {
-      "number": 511,
+      "number": 510,
       "content": [
         {
           "text": "export",
@@ -32057,7 +31895,7 @@
       ]
     },
     {
-      "number": 512,
+      "number": 511,
       "content": [
         {
           "text": "  value",
@@ -32082,7 +31920,7 @@
       ]
     },
     {
-      "number": 513,
+      "number": 512,
       "content": [
         {
           "text": "  ",
@@ -32147,7 +31985,7 @@
       ]
     },
     {
-      "number": 514,
+      "number": 513,
       "content": [
         {
           "text": "  ",
@@ -32212,7 +32050,7 @@
       ]
     },
     {
-      "number": 515,
+      "number": 514,
       "content": [
         {
           "text": "  disabled",
@@ -32237,7 +32075,7 @@
       ]
     },
     {
-      "number": 516,
+      "number": 515,
       "content": [
         {
           "text": "  size",
@@ -32262,7 +32100,7 @@
       ]
     },
     {
-      "number": 517,
+      "number": 516,
       "content": [
         {
           "text": "  variant",
@@ -32287,7 +32125,7 @@
       ]
     },
     {
-      "number": 518,
+      "number": 517,
       "content": [
         {
           "text": "  highlightedValue",
@@ -32328,7 +32166,7 @@
       ]
     },
     {
-      "number": 519,
+      "number": 518,
       "content": [
         {
           "text": "  name",
@@ -32353,7 +32191,7 @@
       ]
     },
     {
-      "number": 520,
+      "number": 519,
       "content": [
         {
           "text": "  required",
@@ -32378,7 +32216,7 @@
       ]
     },
     {
-      "number": 521,
+      "number": 520,
       "content": [
         {
           "text": "  requiredInvalid",
@@ -32403,7 +32241,7 @@
       ]
     },
     {
-      "number": 522,
+      "number": 521,
       "content": [
         {
           "text": "  ",
@@ -32448,7 +32286,7 @@
       ]
     },
     {
-      "number": 523,
+      "number": 522,
       "content": [
         {
           "text": "  containerRef",
@@ -32497,7 +32335,7 @@
       ]
     },
     {
-      "number": 524,
+      "number": 523,
       "content": [
         {
           "text": "  firstEnabledValue",
@@ -32538,7 +32376,7 @@
       ]
     },
     {
-      "number": 525,
+      "number": 524,
       "content": [
         {
           "text": "}",
@@ -32547,11 +32385,11 @@
       ]
     },
     {
-      "number": 526,
+      "number": 525,
       "content": []
     },
     {
-      "number": 527,
+      "number": 526,
       "content": [
         {
           "text": "export",
@@ -32636,11 +32474,11 @@
       ]
     },
     {
-      "number": 528,
+      "number": 527,
       "content": []
     },
     {
-      "number": 529,
+      "number": 528,
       "content": [
         {
           "text": "export",
@@ -32677,7 +32515,7 @@
       ]
     },
     {
-      "number": 530,
+      "number": 529,
       "content": [
         {
           "text": "  ",
@@ -32722,7 +32560,7 @@
       ]
     },
     {
-      "number": 531,
+      "number": 530,
       "content": [
         {
           "text": "  ",
@@ -32751,7 +32589,7 @@
       ]
     },
     {
-      "number": 532,
+      "number": 531,
       "content": [
         {
           "text": "    ",
@@ -32804,7 +32642,7 @@
       ]
     },
     {
-      "number": 533,
+      "number": 532,
       "content": [
         {
           "text": "  ",
@@ -32817,7 +32655,7 @@
       ]
     },
     {
-      "number": 534,
+      "number": 533,
       "content": [
         {
           "text": "  ",
@@ -32838,7 +32676,7 @@
       ]
     },
     {
-      "number": 535,
+      "number": 534,
       "content": [
         {
           "text": "}",
@@ -32847,7 +32685,7 @@
       ]
     },
     {
-      "number": 536,
+      "number": 535,
       "content": []
     }
   ],

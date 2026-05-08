@@ -84,24 +84,72 @@ describe("Menu", () => {
     expect(onSelect).not.toHaveBeenCalled()
   })
 
-  it("highlights item on mouse enter (sets aria-activedescendant)", async () => {
-    renderMenu()
+  it("does not move keyboard highlight on mouse hover", async () => {
+    renderMenu({ defaultHighlightedId: "one" })
+    const menu = screen.getByRole("menu")
+    const oneItem = screen.getByText("One").closest("[role='menuitem']")!
     const twoItem = screen.getByText("Two").closest("[role='menuitem']")!
+
+    expect(menu).toHaveAttribute("aria-activedescendant", oneItem.id)
     await userEvent.hover(twoItem)
-    expect(screen.getByRole("menu")).toHaveAttribute("aria-activedescendant", twoItem.id)
+    expect(menu).toHaveAttribute("aria-activedescendant", oneItem.id)
   })
 
-  it("marks highlighted and selected items active with data-active", async () => {
+  it("marks highlighted and selected items active with data-active", () => {
     renderMenu({ defaultSelectedId: "two" })
     const oneItem = screen.getByText("One").closest("[role='menuitemradio']")!
     const twoItem = screen.getByText("Two").closest("[role='menuitemradio']")!
 
     expect(twoItem).toHaveAttribute("data-active", "true")
+    expect(twoItem).toHaveClass("bg-primary", "text-primary-foreground")
     expect(oneItem).not.toHaveAttribute("data-active")
+  })
 
-    await userEvent.hover(oneItem)
-    expect(oneItem).toHaveAttribute("data-active", "true")
+  it("does not keep selected state for plain command menus", async () => {
+    renderMenu({ defaultHighlightedId: "one" })
+    const menu = screen.getByRole("menu")
+    const oneItem = screen.getByText("One").closest("[role='menuitem']")!
+    const twoItem = screen.getByText("Two").closest("[role='menuitem']")!
+
+    menu.focus()
+    await userEvent.keyboard("{Enter}{ArrowDown}")
+
+    expect(oneItem).not.toHaveAttribute("data-active")
     expect(twoItem).toHaveAttribute("data-active", "true")
+    expect(menu).toHaveAttribute("aria-activedescendant", twoItem.id)
+  })
+
+  it("uses destructive tokens for selected danger items", () => {
+    render(
+      <Menu aria-label="Danger menu" defaultSelectedId="delete">
+        <Menu.Item id="delete" variant="danger">Delete</Menu.Item>
+      </Menu>
+    )
+
+    const item = screen.getByText("Delete").closest("[role='menuitemradio']")!
+    expect(item).toHaveClass("bg-destructive", "text-destructive-foreground")
+  })
+
+  it("uses active foreground tokens for selected hub values", () => {
+    const { rerender } = render(
+      <Menu aria-label="Hub menu" variant="hub" defaultSelectedId="provider">
+        <Menu.Item id="provider" value="ready" valueVariant="success-badge">Provider</Menu.Item>
+        <Menu.Item id="delete" variant="danger" value="armed">Delete</Menu.Item>
+      </Menu>
+    )
+
+    const providerItem = screen.getByText("Provider").closest("[role='menuitemradio']")!
+    const providerValue = screen.getByText("ready")
+    expect(providerItem).toHaveClass("bg-primary", "text-primary-foreground")
+    expect(providerValue).toHaveClass("text-current", "bg-current/10")
+
+    rerender(
+      <Menu aria-label="Hub menu" variant="hub" highlightedId="delete">
+        <Menu.Item id="provider" value="ready" valueVariant="success-badge">Provider</Menu.Item>
+        <Menu.Item id="delete" variant="danger" value="armed">Delete</Menu.Item>
+      </Menu>
+    )
+    expect(screen.getByText("armed")).toHaveClass("text-current")
   })
 
   it("selects defaultSelectedId initially", () => {

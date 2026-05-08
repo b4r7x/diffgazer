@@ -4456,7 +4456,7 @@
       ]
     },
     "registry/ui/navigation-list/navigation-list-item.tsx": {
-      "raw": "\"use client\";\n\nimport { Children, isValidElement, type MouseEvent, type ReactNode, type Ref, useMemo } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { getEncodedListboxItemId } from \"@/hooks/use-listbox\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListContext } from \"./navigation-list-context\";\nimport { NavigationListItemContext } from \"./navigation-list-item-context\";\nimport { NavigationListMeta } from \"./navigation-list-meta\";\nimport { NavigationListSubtitle } from \"./navigation-list-subtitle\";\n\nconst itemVariants = cva(\"flex cursor-pointer group\", {\n  variants: {\n    active: {\n      true: \"bg-foreground text-background\",\n      false: \"hover:bg-secondary border-b border-border/50\",\n    },\n    disabled: {\n      true: \"opacity-50 cursor-not-allowed\",\n    },\n  },\n  defaultVariants: {\n    active: false,\n    disabled: false,\n  },\n});\n\nconst contentVariants = cva(\"flex-1 grid grid-cols-[1fr_auto] auto-rows-auto gap-y-0.5\", {\n  variants: {\n    density: {\n      compact: \"p-2\",\n      default: \"p-3\",\n      comfortable: \"p-4\",\n    },\n  },\n  defaultVariants: {\n    density: \"default\",\n  },\n});\n\ntype Density = NonNullable<VariantProps<typeof contentVariants>[\"density\"]>;\n\nfunction hasDescriptionChild(children: ReactNode, childType: typeof NavigationListMeta | typeof NavigationListSubtitle): boolean {\n  return Children.toArray(children).some((child) => {\n    if (!isValidElement<{ children?: ReactNode }>(child)) return false;\n    if (child.type === childType) return true;\n    return hasDescriptionChild(child.props.children, childType);\n  });\n}\n\nexport interface NavigationListItemProps {\n  id: string;\n  density?: Density;\n  disabled?: boolean;\n  children: ReactNode;\n  className?: string;\n  ref?: Ref<HTMLDivElement>;\n}\n\nexport function NavigationListItem({\n  id,\n  disabled = false,\n  density = \"default\",\n  children,\n  className,\n  ref,\n}: NavigationListItemProps) {\n  const { selectedId, highlightedId, activate, highlight, focusContainer, focused, idPrefix } =\n    useNavigationListContext();\n  const isSelected = selectedId === id;\n  const isHighlighted = highlightedId === id;\n  const isActive = (isSelected || isHighlighted) && focused;\n  const itemId = getEncodedListboxItemId(idPrefix, id);\n  const labelId = `${itemId}-label`;\n  const descId = `${itemId}-desc`;\n  const describedBy = [\n    hasDescriptionChild(children, NavigationListMeta) ? `${descId}-meta` : null,\n    hasDescriptionChild(children, NavigationListSubtitle) ? `${descId}-sub` : null,\n  ].filter(Boolean).join(\" \") || undefined;\n\n  const handleClick = () => {\n    if (disabled) return;\n    activate(id);\n    focusContainer();\n  };\n\n  const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {\n    if (disabled) event.preventDefault();\n  };\n\n  const handleHighlight = () => {\n    if (!disabled) highlight(id);\n  };\n\n  const itemContextValue = useMemo(\n    () => ({ labelId, descId }),\n    [labelId, descId],\n  );\n\n  return (\n    <NavigationListItemContext value={itemContextValue}>\n      <div\n        ref={ref}\n        id={itemId}\n        role=\"option\"\n        aria-labelledby={labelId}\n        aria-describedby={describedBy}\n        data-value={id}\n        data-active={isActive || undefined}\n        data-state={isSelected ? \"selected\" : \"unselected\"}\n        aria-selected={isSelected}\n        aria-disabled={disabled || undefined}\n        onMouseDown={handleMouseDown}\n        onClick={handleClick}\n        onMouseEnter={handleHighlight}\n        onFocus={handleHighlight}\n        className={cn(itemVariants({ active: isActive, disabled }), \"focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground\", className)}\n      >\n        <div\n          className={cn(\n            \"w-1 shrink-0\",\n            isActive ? \"bg-background/40\" : \"bg-transparent group-hover:bg-muted\"\n          )}\n        />\n        <div className={contentVariants({ density })}>\n          {children}\n        </div>\n      </div>\n    </NavigationListItemContext>\n  );\n}\n",
+      "raw": "\"use client\";\n\nimport { Children, isValidElement, type MouseEvent, type ReactNode, type Ref, useMemo } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { getEncodedListboxItemId } from \"@/hooks/use-listbox\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListContext } from \"./navigation-list-context\";\nimport { NavigationListItemContext } from \"./navigation-list-item-context\";\nimport { NavigationListMeta } from \"./navigation-list-meta\";\nimport { NavigationListSubtitle } from \"./navigation-list-subtitle\";\n\nconst itemVariants = cva(\"flex cursor-pointer group\", {\n  variants: {\n    active: {\n      true: \"bg-primary text-primary-foreground\",\n      false: \"hover:bg-secondary border-b border-border/50\",\n    },\n    disabled: {\n      true: \"opacity-50 cursor-not-allowed\",\n    },\n  },\n  defaultVariants: {\n    active: false,\n    disabled: false,\n  },\n});\n\nconst contentVariants = cva(\"flex-1 grid grid-cols-[1fr_auto] auto-rows-auto gap-y-0.5\", {\n  variants: {\n    density: {\n      compact: \"p-2\",\n      default: \"p-3\",\n      comfortable: \"p-4\",\n    },\n  },\n  defaultVariants: {\n    density: \"default\",\n  },\n});\n\ntype Density = NonNullable<VariantProps<typeof contentVariants>[\"density\"]>;\n\nfunction hasDescriptionChild(children: ReactNode, childType: typeof NavigationListMeta | typeof NavigationListSubtitle): boolean {\n  return Children.toArray(children).some((child) => {\n    if (!isValidElement<{ children?: ReactNode }>(child)) return false;\n    if (child.type === childType) return true;\n    return hasDescriptionChild(child.props.children, childType);\n  });\n}\n\nexport interface NavigationListItemProps {\n  id: string;\n  density?: Density;\n  disabled?: boolean;\n  children: ReactNode;\n  className?: string;\n  ref?: Ref<HTMLDivElement>;\n}\n\nexport function NavigationListItem({\n  id,\n  disabled = false,\n  density = \"default\",\n  children,\n  className,\n  ref,\n}: NavigationListItemProps) {\n  const { selectedId, highlightedId, activate, highlight, focusContainer, focused, idPrefix } =\n    useNavigationListContext();\n  const isSelected = selectedId === id;\n  const isHighlighted = highlightedId === id;\n  const isActive = (isSelected || isHighlighted) && focused;\n  const itemId = getEncodedListboxItemId(idPrefix, id);\n  const labelId = `${itemId}-label`;\n  const descId = `${itemId}-desc`;\n  const describedBy = [\n    hasDescriptionChild(children, NavigationListMeta) ? `${descId}-meta` : null,\n    hasDescriptionChild(children, NavigationListSubtitle) ? `${descId}-sub` : null,\n  ].filter(Boolean).join(\" \") || undefined;\n\n  const handleClick = () => {\n    if (disabled) return;\n    activate(id);\n    focusContainer();\n  };\n\n  const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {\n    if (disabled) event.preventDefault();\n  };\n\n  const itemContextValue = useMemo(\n    () => ({ labelId, descId }),\n    [labelId, descId],\n  );\n\n  return (\n    <NavigationListItemContext value={itemContextValue}>\n      <div\n        ref={ref}\n        id={itemId}\n        role=\"option\"\n        aria-labelledby={labelId}\n        aria-describedby={describedBy}\n        data-value={id}\n        data-active={isActive || undefined}\n        data-state={isSelected ? \"selected\" : \"unselected\"}\n        aria-selected={isSelected}\n        aria-disabled={disabled || undefined}\n        onMouseDown={handleMouseDown}\n        onClick={handleClick}\n        onFocus={() => {\n          if (!disabled) highlight(id);\n        }}\n        className={cn(itemVariants({ active: isActive, disabled }), \"focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground\", className)}\n      >\n        <div\n          className={cn(\n            \"w-1 shrink-0\",\n            isActive ? \"bg-primary-foreground/40\" : \"bg-transparent group-hover:bg-muted\"\n          )}\n        />\n        <div className={contentVariants({ density })}>\n          {children}\n        </div>\n      </div>\n    </NavigationListItemContext>\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -5114,7 +5114,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "bg-foreground text-background",
+              "text": "bg-primary text-primary-foreground",
               "color": "var(--code-tag)"
             },
             {
@@ -7514,113 +7514,6 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "handleHighlight",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "=",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "()",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "=>",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "{",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 92,
-          "content": [
-            {
-              "text": "    ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "if",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " (",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "!",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "disabled) ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "highlight",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "(id)",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ";",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 93,
-          "content": [
-            {
-              "text": "  ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "};",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 94,
-          "content": []
-        },
-        {
-          "number": 95,
-          "content": [
-            {
-              "text": "  ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "const",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
               "text": "itemContextValue",
               "color": "var(--code-number)"
             },
@@ -7647,7 +7540,7 @@
           ]
         },
         {
-          "number": 96,
+          "number": 92,
           "content": [
             {
               "text": "    ",
@@ -7700,7 +7593,7 @@
           ]
         },
         {
-          "number": 97,
+          "number": 93,
           "content": [
             {
               "text": "    [labelId",
@@ -7721,7 +7614,7 @@
           ]
         },
         {
-          "number": 98,
+          "number": 94,
           "content": [
             {
               "text": "  )",
@@ -7734,11 +7627,11 @@
           ]
         },
         {
-          "number": 99,
+          "number": 95,
           "content": []
         },
         {
-          "number": 100,
+          "number": 96,
           "content": [
             {
               "text": "  ",
@@ -7755,7 +7648,7 @@
           ]
         },
         {
-          "number": 101,
+          "number": 97,
           "content": [
             {
               "text": "    ",
@@ -7792,7 +7685,7 @@
           ]
         },
         {
-          "number": 102,
+          "number": 98,
           "content": [
             {
               "text": "      ",
@@ -7809,7 +7702,7 @@
           ]
         },
         {
-          "number": 103,
+          "number": 99,
           "content": [
             {
               "text": "        ",
@@ -7834,7 +7727,7 @@
           ]
         },
         {
-          "number": 104,
+          "number": 100,
           "content": [
             {
               "text": "        ",
@@ -7859,7 +7752,7 @@
           ]
         },
         {
-          "number": 105,
+          "number": 101,
           "content": [
             {
               "text": "        ",
@@ -7888,7 +7781,7 @@
           ]
         },
         {
-          "number": 106,
+          "number": 102,
           "content": [
             {
               "text": "        ",
@@ -7913,7 +7806,7 @@
           ]
         },
         {
-          "number": 107,
+          "number": 103,
           "content": [
             {
               "text": "        ",
@@ -7938,7 +7831,7 @@
           ]
         },
         {
-          "number": 108,
+          "number": 104,
           "content": [
             {
               "text": "        ",
@@ -7963,7 +7856,7 @@
           ]
         },
         {
-          "number": 109,
+          "number": 105,
           "content": [
             {
               "text": "        ",
@@ -8000,7 +7893,7 @@
           ]
         },
         {
-          "number": 110,
+          "number": 106,
           "content": [
             {
               "text": "        ",
@@ -8069,7 +7962,7 @@
           ]
         },
         {
-          "number": 111,
+          "number": 107,
           "content": [
             {
               "text": "        ",
@@ -8094,7 +7987,7 @@
           ]
         },
         {
-          "number": 112,
+          "number": 108,
           "content": [
             {
               "text": "        ",
@@ -8131,7 +8024,7 @@
           ]
         },
         {
-          "number": 113,
+          "number": 109,
           "content": [
             {
               "text": "        ",
@@ -8156,7 +8049,7 @@
           ]
         },
         {
-          "number": 114,
+          "number": 110,
           "content": [
             {
               "text": "        ",
@@ -8181,32 +8074,7 @@
           ]
         },
         {
-          "number": 115,
-          "content": [
-            {
-              "text": "        ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "onMouseEnter",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "={",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "handleHighlight",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "}",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 116,
+          "number": 111,
           "content": [
             {
               "text": "        ",
@@ -8217,21 +8085,79 @@
               "color": "var(--code-function)"
             },
             {
-              "text": "={",
+              "text": "={()",
               "color": "var(--code-operator)"
             },
             {
-              "text": "handleHighlight",
+              "text": " ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "}",
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
               "color": "var(--code-operator)"
             }
           ]
         },
         {
-          "number": 117,
+          "number": 112,
+          "content": [
+            {
+              "text": "          ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "!",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "disabled) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "highlight",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(id)",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 113,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 114,
           "content": [
             {
               "text": "        ",
@@ -8328,7 +8254,7 @@
           ]
         },
         {
-          "number": 118,
+          "number": 115,
           "content": [
             {
               "text": "      ",
@@ -8341,7 +8267,7 @@
           ]
         },
         {
-          "number": 119,
+          "number": 116,
           "content": [
             {
               "text": "        ",
@@ -8358,7 +8284,7 @@
           ]
         },
         {
-          "number": 120,
+          "number": 117,
           "content": [
             {
               "text": "          ",
@@ -8383,7 +8309,7 @@
           ]
         },
         {
-          "number": 121,
+          "number": 118,
           "content": [
             {
               "text": "            ",
@@ -8408,7 +8334,7 @@
           ]
         },
         {
-          "number": 122,
+          "number": 119,
           "content": [
             {
               "text": "            isActive ",
@@ -8427,7 +8353,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "bg-background/40",
+              "text": "bg-primary-foreground/40",
               "color": "var(--code-tag)"
             },
             {
@@ -8461,7 +8387,7 @@
           ]
         },
         {
-          "number": 123,
+          "number": 120,
           "content": [
             {
               "text": "          )",
@@ -8474,7 +8400,7 @@
           ]
         },
         {
-          "number": 124,
+          "number": 121,
           "content": [
             {
               "text": "        ",
@@ -8487,7 +8413,7 @@
           ]
         },
         {
-          "number": 125,
+          "number": 122,
           "content": [
             {
               "text": "        ",
@@ -8544,7 +8470,7 @@
           ]
         },
         {
-          "number": 126,
+          "number": 123,
           "content": [
             {
               "text": "          ",
@@ -8565,7 +8491,7 @@
           ]
         },
         {
-          "number": 127,
+          "number": 124,
           "content": [
             {
               "text": "        ",
@@ -8586,7 +8512,7 @@
           ]
         },
         {
-          "number": 128,
+          "number": 125,
           "content": [
             {
               "text": "      ",
@@ -8607,7 +8533,7 @@
           ]
         },
         {
-          "number": 129,
+          "number": 126,
           "content": [
             {
               "text": "    ",
@@ -8628,7 +8554,7 @@
           ]
         },
         {
-          "number": 130,
+          "number": 127,
           "content": [
             {
               "text": "  )",
@@ -8641,7 +8567,7 @@
           ]
         },
         {
-          "number": 131,
+          "number": 128,
           "content": [
             {
               "text": "}",
@@ -8650,13 +8576,13 @@
           ]
         },
         {
-          "number": 132,
+          "number": 129,
           "content": []
         }
       ]
     },
     "registry/ui/navigation-list/navigation-list-title.tsx": {
-      "raw": "\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListItemContext } from \"./navigation-list-item-context\";\n\nconst SELECTION_INDICATOR = \"\\u258C\";\n\nexport interface NavigationListTitleProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListTitle({ children, className }: NavigationListTitleProps) {\n  const { labelId } = useNavigationListItemContext();\n\n  return (\n    <span id={labelId} className={cn(\"col-start-1 row-start-1 font-bold flex items-center group-data-[active]:text-background\", className)}>\n      <span aria-hidden=\"true\" className=\"mr-2 opacity-0 group-data-[active]:opacity-100\">{SELECTION_INDICATOR}</span>\n      {children}\n    </span>\n  );\n}\n",
+      "raw": "\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListItemContext } from \"./navigation-list-item-context\";\n\nconst SELECTION_INDICATOR = \"\\u258C\";\n\nexport interface NavigationListTitleProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListTitle({ children, className }: NavigationListTitleProps) {\n  const { labelId } = useNavigationListItemContext();\n\n  return (\n    <span id={labelId} className={cn(\"col-start-1 row-start-1 font-bold flex items-center group-data-[active]:text-primary-foreground\", className)}>\n      <span aria-hidden=\"true\" className=\"mr-2 opacity-0 group-data-[active]:opacity-100\">{SELECTION_INDICATOR}</span>\n      {children}\n    </span>\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -9206,7 +9132,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "col-start-1 row-start-1 font-bold flex items-center group-data-[active]:text-background",
+              "text": "col-start-1 row-start-1 font-bold flex items-center group-data-[active]:text-primary-foreground",
               "color": "var(--code-tag)"
             },
             {
@@ -9383,7 +9309,7 @@
       ]
     },
     "registry/ui/navigation-list/navigation-list-status.tsx": {
-      "raw": "\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport interface NavigationListStatusProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListStatus({ children, className }: NavigationListStatusProps) {\n  return (\n    <span className={cn(\"col-start-2 row-start-1 self-center text-[10px] font-bold text-warning group-data-[active]:text-background\", className)}>\n      {children}\n    </span>\n  );\n}\n",
+      "raw": "\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport interface NavigationListStatusProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListStatus({ children, className }: NavigationListStatusProps) {\n  return (\n    <span className={cn(\"col-start-2 row-start-1 self-center text-[10px] font-bold text-warning group-data-[active]:text-primary-foreground\", className)}>\n      {children}\n    </span>\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -9746,7 +9672,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "col-start-2 row-start-1 self-center text-[10px] font-bold text-warning group-data-[active]:text-background",
+              "text": "col-start-2 row-start-1 self-center text-[10px] font-bold text-warning group-data-[active]:text-primary-foreground",
               "color": "var(--code-tag)"
             },
             {
@@ -10594,7 +10520,7 @@
       ]
     },
     "registry/ui/navigation-list/navigation-list-badge.tsx": {
-      "raw": "\"use client\";\n\nimport { Badge, type BadgeProps } from \"../badge/badge\";\nimport { cn } from \"@/lib/utils\";\n\nexport function NavigationListBadge({\n  children,\n  variant = \"neutral\",\n  size = \"sm\",\n  className,\n  ...props\n}: BadgeProps) {\n  return (\n    <Badge\n      variant={variant}\n      size={size}\n      className={cn(\n        \"group-data-[active]:bg-background group-data-[active]:text-foreground group-data-[active]:border-foreground\",\n        className\n      )}\n      {...props}\n    >\n      {children}\n    </Badge>\n  );\n}\n",
+      "raw": "\"use client\";\n\nimport { Badge, type BadgeProps } from \"../badge/badge\";\nimport { cn } from \"@/lib/utils\";\n\nexport function NavigationListBadge({\n  children,\n  variant = \"neutral\",\n  size = \"sm\",\n  className,\n  ...props\n}: BadgeProps) {\n  return (\n    <Badge\n      variant={variant}\n      size={size}\n      className={cn(\n        \"group-data-[active]:bg-primary-foreground/15 group-data-[active]:text-primary-foreground group-data-[active]:border-primary-foreground/40\",\n        className\n      )}\n      {...props}\n    >\n      {children}\n    </Badge>\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -11035,7 +10961,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "group-data-[active]:bg-background group-data-[active]:text-foreground group-data-[active]:border-foreground",
+              "text": "group-data-[active]:bg-primary-foreground/15 group-data-[active]:text-primary-foreground group-data-[active]:border-primary-foreground/40",
               "color": "var(--code-tag)"
             },
             {
@@ -11175,7 +11101,7 @@
       ]
     },
     "registry/ui/navigation-list/navigation-list-subtitle.tsx": {
-      "raw": "\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListItemContext } from \"./navigation-list-item-context\";\n\nexport interface NavigationListSubtitleProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListSubtitle({ children, className }: NavigationListSubtitleProps) {\n  const { descId } = useNavigationListItemContext();\n\n  return (\n    <span\n      id={`${descId}-sub`}\n      className={cn(\n        \"text-[10px] inline-flex items-center leading-none text-muted-foreground group-data-[active]:text-background/70\",\n        className\n      )}\n    >\n      {children}\n    </span>\n  );\n}",
+      "raw": "\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListItemContext } from \"./navigation-list-item-context\";\n\nexport interface NavigationListSubtitleProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListSubtitle({ children, className }: NavigationListSubtitleProps) {\n  const { descId } = useNavigationListItemContext();\n\n  return (\n    <span\n      id={`${descId}-sub`}\n      className={cn(\n        \"text-[10px] inline-flex items-center leading-none text-muted-foreground group-data-[active]:text-primary-foreground/70\",\n        className\n      )}\n    >\n      {children}\n    </span>\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -11715,7 +11641,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "text-[10px] inline-flex items-center leading-none text-muted-foreground group-data-[active]:text-background/70",
+              "text": "text-[10px] inline-flex items-center leading-none text-muted-foreground group-data-[active]:text-primary-foreground/70",
               "color": "var(--code-tag)"
             },
             {
@@ -11826,11 +11752,15 @@
               "color": "var(--code-operator)"
             }
           ]
+        },
+        {
+          "number": 27,
+          "content": []
         }
       ]
     },
     "registry/ui/navigation-list/navigation-list-meta.tsx": {
-      "raw": "\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListItemContext } from \"./navigation-list-item-context\";\n\nexport interface NavigationListMetaProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListMeta({ children, className }: NavigationListMetaProps) {\n  const { descId } = useNavigationListItemContext();\n\n  return (\n    <div id={`${descId}-meta`} className={cn(\n      \"col-span-full row-start-2 flex gap-2 items-center group-data-[active]:text-background/70\",\n      className\n    )}>\n      {children}\n    </div>\n  );\n}\n",
+      "raw": "\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListItemContext } from \"./navigation-list-item-context\";\n\nexport interface NavigationListMetaProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListMeta({ children, className }: NavigationListMetaProps) {\n  const { descId } = useNavigationListItemContext();\n\n  return (\n    <div id={`${descId}-meta`} className={cn(\n      \"col-span-full row-start-2 flex gap-2 items-center group-data-[active]:text-primary-foreground/70\",\n      className\n    )}>\n      {children}\n    </div>\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -12360,7 +12290,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "col-span-full row-start-2 flex gap-2 items-center group-data-[active]:text-background/70",
+              "text": "col-span-full row-start-2 flex gap-2 items-center group-data-[active]:text-primary-foreground/70",
               "color": "var(--code-tag)"
             },
             {
@@ -12965,7 +12895,7 @@
       ]
     }
   },
-  "mergedSource": "\"use client\";\n\nimport { NavigationList as NavigationListRoot, type NavigationListProps } from \"./navigation-list\";\nimport { NavigationListItem, type NavigationListItemProps } from \"./navigation-list-item\";\nimport { NavigationListTitle, type NavigationListTitleProps } from \"./navigation-list-title\";\nimport { NavigationListStatus, type NavigationListStatusProps } from \"./navigation-list-status\";\nimport { NavigationListBadge } from \"./navigation-list-badge\";\nimport { NavigationListSubtitle, type NavigationListSubtitleProps } from \"./navigation-list-subtitle\";\nimport { NavigationListMeta, type NavigationListMetaProps } from \"./navigation-list-meta\";\n\nconst NavigationList = Object.assign(NavigationListRoot, {\n  Item: NavigationListItem,\n  Badge: NavigationListBadge,\n  Title: NavigationListTitle,\n  Status: NavigationListStatus,\n  Meta: NavigationListMeta,\n  Subtitle: NavigationListSubtitle,\n});\n\nexport { NavigationList, type NavigationListProps };\nexport { NavigationListItem, type NavigationListItemProps };\nexport { NavigationListBadge };\nexport type { BadgeProps as NavigationListBadgeProps } from \"../badge/badge\";\nexport { NavigationListTitle, type NavigationListTitleProps };\nexport { NavigationListStatus, type NavigationListStatusProps };\nexport { NavigationListMeta, type NavigationListMetaProps };\nexport { NavigationListSubtitle, type NavigationListSubtitleProps };\n\n\n\"use client\";\n\nimport { Children, isValidElement, type ComponentPropsWithRef, type ReactNode, type KeyboardEvent, useId, useMemo, useRef } from \"react\";\nimport { getEncodedListboxItemId, useListbox } from \"@/hooks/use-listbox\";\nimport { composeRefs } from \"@/lib/compose-refs\";\nimport { cn } from \"@/lib/utils\";\nimport { NavigationListContext } from \"./navigation-list-context\";\nimport { NavigationListItem } from \"./navigation-list-item\";\n\nexport interface NavigationListProps\n  extends Omit<ComponentPropsWithRef<\"div\">, \"children\" | \"onKeyDown\" | \"onSelect\"> {\n  selectedId?: string | null;\n  defaultSelectedId?: string | null;\n  highlightedId?: string | null;\n  defaultHighlightedId?: string | null;\n  onSelect?: (id: string) => void;\n  onHighlightChange?: (id: string) => void;\n  focused?: boolean;\n  wrap?: boolean;\n  children: ReactNode;\n  onKeyDown?: (event: KeyboardEvent) => void;\n}\n\ninterface NavigationListItemElementProps {\n  id?: string;\n  disabled?: boolean;\n  children?: ReactNode;\n}\n\nfunction collectNavigationItems(children: ReactNode): Array<{ id: string; disabled?: boolean }> {\n  const items: Array<{ id: string; disabled?: boolean }> = [];\n\n  Children.forEach(children, (child) => {\n    if (!isValidElement<NavigationListItemElementProps>(child)) return;\n    if (child.type === NavigationListItem && typeof child.props.id === \"string\") {\n      items.push({ id: child.props.id, disabled: child.props.disabled });\n      return;\n    }\n    items.push(...collectNavigationItems(child.props.children));\n  });\n\n  return items;\n}\n\nexport function NavigationList({\n  selectedId: controlledSelectedId,\n  defaultSelectedId = null,\n  highlightedId: controlledHighlightedId,\n  defaultHighlightedId = null,\n  onSelect,\n  onHighlightChange,\n  focused = true,\n  wrap = true,\n  className,\n  children,\n  onKeyDown,\n  \"aria-label\": ariaLabel,\n  ref,\n  ...rootProps\n}: NavigationListProps) {\n  const idPrefix = useId();\n  const containerRef = useRef<HTMLDivElement | null>(null);\n  const items = useMemo(() => collectNavigationItems(children), [children]);\n\n  const {\n    selectedId,\n    highlightedId,\n    handleItemActivate,\n    handleItemHighlight,\n    getContainerProps,\n  } = useListbox({\n    selectedId: controlledSelectedId,\n    defaultSelectedId,\n    highlightedId: controlledHighlightedId,\n    defaultHighlightedId,\n    onSelect,\n    onHighlightChange,\n    wrap,\n    idPrefix,\n    onKeyDown,\n    typeahead: true,\n    items,\n    getItemId: getEncodedListboxItemId,\n  });\n\n  const contextValue = useMemo(\n    () => ({\n      selectedId,\n      highlightedId,\n      activate: handleItemActivate,\n      highlight: handleItemHighlight,\n      focusContainer: () => containerRef.current?.focus(),\n      focused,\n      idPrefix,\n    }),\n    [selectedId, highlightedId, handleItemActivate, handleItemHighlight, focused, idPrefix],\n  );\n\n  return (\n    <NavigationListContext value={contextValue}>\n      <div\n        {...rootProps}\n        {...getContainerProps(composeRefs(containerRef, ref))}\n        aria-label={ariaLabel}\n        aria-orientation=\"vertical\"\n        className={cn(\"w-full outline-none\", className)}\n      >\n        {children}\n      </div>\n    </NavigationListContext>\n  );\n}\n\n\n\"use client\";\n\nimport { Children, isValidElement, type MouseEvent, type ReactNode, type Ref, useMemo } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { getEncodedListboxItemId } from \"@/hooks/use-listbox\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListContext } from \"./navigation-list-context\";\nimport { NavigationListItemContext } from \"./navigation-list-item-context\";\nimport { NavigationListMeta } from \"./navigation-list-meta\";\nimport { NavigationListSubtitle } from \"./navigation-list-subtitle\";\n\nconst itemVariants = cva(\"flex cursor-pointer group\", {\n  variants: {\n    active: {\n      true: \"bg-foreground text-background\",\n      false: \"hover:bg-secondary border-b border-border/50\",\n    },\n    disabled: {\n      true: \"opacity-50 cursor-not-allowed\",\n    },\n  },\n  defaultVariants: {\n    active: false,\n    disabled: false,\n  },\n});\n\nconst contentVariants = cva(\"flex-1 grid grid-cols-[1fr_auto] auto-rows-auto gap-y-0.5\", {\n  variants: {\n    density: {\n      compact: \"p-2\",\n      default: \"p-3\",\n      comfortable: \"p-4\",\n    },\n  },\n  defaultVariants: {\n    density: \"default\",\n  },\n});\n\ntype Density = NonNullable<VariantProps<typeof contentVariants>[\"density\"]>;\n\nfunction hasDescriptionChild(children: ReactNode, childType: typeof NavigationListMeta | typeof NavigationListSubtitle): boolean {\n  return Children.toArray(children).some((child) => {\n    if (!isValidElement<{ children?: ReactNode }>(child)) return false;\n    if (child.type === childType) return true;\n    return hasDescriptionChild(child.props.children, childType);\n  });\n}\n\nexport interface NavigationListItemProps {\n  id: string;\n  density?: Density;\n  disabled?: boolean;\n  children: ReactNode;\n  className?: string;\n  ref?: Ref<HTMLDivElement>;\n}\n\nexport function NavigationListItem({\n  id,\n  disabled = false,\n  density = \"default\",\n  children,\n  className,\n  ref,\n}: NavigationListItemProps) {\n  const { selectedId, highlightedId, activate, highlight, focusContainer, focused, idPrefix } =\n    useNavigationListContext();\n  const isSelected = selectedId === id;\n  const isHighlighted = highlightedId === id;\n  const isActive = (isSelected || isHighlighted) && focused;\n  const itemId = getEncodedListboxItemId(idPrefix, id);\n  const labelId = `${itemId}-label`;\n  const descId = `${itemId}-desc`;\n  const describedBy = [\n    hasDescriptionChild(children, NavigationListMeta) ? `${descId}-meta` : null,\n    hasDescriptionChild(children, NavigationListSubtitle) ? `${descId}-sub` : null,\n  ].filter(Boolean).join(\" \") || undefined;\n\n  const handleClick = () => {\n    if (disabled) return;\n    activate(id);\n    focusContainer();\n  };\n\n  const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {\n    if (disabled) event.preventDefault();\n  };\n\n  const handleHighlight = () => {\n    if (!disabled) highlight(id);\n  };\n\n  const itemContextValue = useMemo(\n    () => ({ labelId, descId }),\n    [labelId, descId],\n  );\n\n  return (\n    <NavigationListItemContext value={itemContextValue}>\n      <div\n        ref={ref}\n        id={itemId}\n        role=\"option\"\n        aria-labelledby={labelId}\n        aria-describedby={describedBy}\n        data-value={id}\n        data-active={isActive || undefined}\n        data-state={isSelected ? \"selected\" : \"unselected\"}\n        aria-selected={isSelected}\n        aria-disabled={disabled || undefined}\n        onMouseDown={handleMouseDown}\n        onClick={handleClick}\n        onMouseEnter={handleHighlight}\n        onFocus={handleHighlight}\n        className={cn(itemVariants({ active: isActive, disabled }), \"focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground\", className)}\n      >\n        <div\n          className={cn(\n            \"w-1 shrink-0\",\n            isActive ? \"bg-background/40\" : \"bg-transparent group-hover:bg-muted\"\n          )}\n        />\n        <div className={contentVariants({ density })}>\n          {children}\n        </div>\n      </div>\n    </NavigationListItemContext>\n  );\n}\n\n\n\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListItemContext } from \"./navigation-list-item-context\";\n\nconst SELECTION_INDICATOR = \"\\u258C\";\n\nexport interface NavigationListTitleProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListTitle({ children, className }: NavigationListTitleProps) {\n  const { labelId } = useNavigationListItemContext();\n\n  return (\n    <span id={labelId} className={cn(\"col-start-1 row-start-1 font-bold flex items-center group-data-[active]:text-background\", className)}>\n      <span aria-hidden=\"true\" className=\"mr-2 opacity-0 group-data-[active]:opacity-100\">{SELECTION_INDICATOR}</span>\n      {children}\n    </span>\n  );\n}\n\n\n\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport interface NavigationListStatusProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListStatus({ children, className }: NavigationListStatusProps) {\n  return (\n    <span className={cn(\"col-start-2 row-start-1 self-center text-[10px] font-bold text-warning group-data-[active]:text-background\", className)}>\n      {children}\n    </span>\n  );\n}\n\n\n\"use client\";\n\nimport { createContext, useContext } from \"react\";\n\nexport interface NavigationListContextValue {\n  selectedId: string | null;\n  highlightedId: string | null;\n  activate: (id: string) => void;\n  highlight: (id: string) => void;\n  focusContainer: () => void;\n  focused: boolean;\n  idPrefix: string;\n}\n\nexport const NavigationListContext = createContext<NavigationListContextValue | undefined>(undefined);\n\nexport function useNavigationListContext() {\n  const context = useContext(NavigationListContext);\n  if (context === undefined) {\n    throw new Error(\"NavigationListItem must be used within NavigationList\");\n  }\n  return context;\n}\n\n\n\"use client\";\n\nimport { Badge, type BadgeProps } from \"../badge/badge\";\nimport { cn } from \"@/lib/utils\";\n\nexport function NavigationListBadge({\n  children,\n  variant = \"neutral\",\n  size = \"sm\",\n  className,\n  ...props\n}: BadgeProps) {\n  return (\n    <Badge\n      variant={variant}\n      size={size}\n      className={cn(\n        \"group-data-[active]:bg-background group-data-[active]:text-foreground group-data-[active]:border-foreground\",\n        className\n      )}\n      {...props}\n    >\n      {children}\n    </Badge>\n  );\n}\n\n\n\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListItemContext } from \"./navigation-list-item-context\";\n\nexport interface NavigationListSubtitleProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListSubtitle({ children, className }: NavigationListSubtitleProps) {\n  const { descId } = useNavigationListItemContext();\n\n  return (\n    <span\n      id={`${descId}-sub`}\n      className={cn(\n        \"text-[10px] inline-flex items-center leading-none text-muted-foreground group-data-[active]:text-background/70\",\n        className\n      )}\n    >\n      {children}\n    </span>\n  );\n}\n\n\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListItemContext } from \"./navigation-list-item-context\";\n\nexport interface NavigationListMetaProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListMeta({ children, className }: NavigationListMetaProps) {\n  const { descId } = useNavigationListItemContext();\n\n  return (\n    <div id={`${descId}-meta`} className={cn(\n      \"col-span-full row-start-2 flex gap-2 items-center group-data-[active]:text-background/70\",\n      className\n    )}>\n      {children}\n    </div>\n  );\n}\n\n\n\"use client\";\n\nimport { createContext, useContext } from \"react\";\n\nexport interface NavigationListItemContextValue {\n  labelId: string;\n  descId: string;\n}\n\nexport const NavigationListItemContext = createContext<NavigationListItemContextValue | undefined>(undefined);\n\nexport function useNavigationListItemContext() {\n  const context = useContext(NavigationListItemContext);\n  if (context === undefined) {\n    throw new Error(\"NavigationList.Title/Meta must be used within NavigationList.Item\");\n  }\n  return context;\n}\n",
+  "mergedSource": "\"use client\";\n\nimport { NavigationList as NavigationListRoot, type NavigationListProps } from \"./navigation-list\";\nimport { NavigationListItem, type NavigationListItemProps } from \"./navigation-list-item\";\nimport { NavigationListTitle, type NavigationListTitleProps } from \"./navigation-list-title\";\nimport { NavigationListStatus, type NavigationListStatusProps } from \"./navigation-list-status\";\nimport { NavigationListBadge } from \"./navigation-list-badge\";\nimport { NavigationListSubtitle, type NavigationListSubtitleProps } from \"./navigation-list-subtitle\";\nimport { NavigationListMeta, type NavigationListMetaProps } from \"./navigation-list-meta\";\n\nconst NavigationList = Object.assign(NavigationListRoot, {\n  Item: NavigationListItem,\n  Badge: NavigationListBadge,\n  Title: NavigationListTitle,\n  Status: NavigationListStatus,\n  Meta: NavigationListMeta,\n  Subtitle: NavigationListSubtitle,\n});\n\nexport { NavigationList, type NavigationListProps };\nexport { NavigationListItem, type NavigationListItemProps };\nexport { NavigationListBadge };\nexport type { BadgeProps as NavigationListBadgeProps } from \"../badge/badge\";\nexport { NavigationListTitle, type NavigationListTitleProps };\nexport { NavigationListStatus, type NavigationListStatusProps };\nexport { NavigationListMeta, type NavigationListMetaProps };\nexport { NavigationListSubtitle, type NavigationListSubtitleProps };\n\n\n\"use client\";\n\nimport { Children, isValidElement, type ComponentPropsWithRef, type ReactNode, type KeyboardEvent, useId, useMemo, useRef } from \"react\";\nimport { getEncodedListboxItemId, useListbox } from \"@/hooks/use-listbox\";\nimport { composeRefs } from \"@/lib/compose-refs\";\nimport { cn } from \"@/lib/utils\";\nimport { NavigationListContext } from \"./navigation-list-context\";\nimport { NavigationListItem } from \"./navigation-list-item\";\n\nexport interface NavigationListProps\n  extends Omit<ComponentPropsWithRef<\"div\">, \"children\" | \"onKeyDown\" | \"onSelect\"> {\n  selectedId?: string | null;\n  defaultSelectedId?: string | null;\n  highlightedId?: string | null;\n  defaultHighlightedId?: string | null;\n  onSelect?: (id: string) => void;\n  onHighlightChange?: (id: string) => void;\n  focused?: boolean;\n  wrap?: boolean;\n  children: ReactNode;\n  onKeyDown?: (event: KeyboardEvent) => void;\n}\n\ninterface NavigationListItemElementProps {\n  id?: string;\n  disabled?: boolean;\n  children?: ReactNode;\n}\n\nfunction collectNavigationItems(children: ReactNode): Array<{ id: string; disabled?: boolean }> {\n  const items: Array<{ id: string; disabled?: boolean }> = [];\n\n  Children.forEach(children, (child) => {\n    if (!isValidElement<NavigationListItemElementProps>(child)) return;\n    if (child.type === NavigationListItem && typeof child.props.id === \"string\") {\n      items.push({ id: child.props.id, disabled: child.props.disabled });\n      return;\n    }\n    items.push(...collectNavigationItems(child.props.children));\n  });\n\n  return items;\n}\n\nexport function NavigationList({\n  selectedId: controlledSelectedId,\n  defaultSelectedId = null,\n  highlightedId: controlledHighlightedId,\n  defaultHighlightedId = null,\n  onSelect,\n  onHighlightChange,\n  focused = true,\n  wrap = true,\n  className,\n  children,\n  onKeyDown,\n  \"aria-label\": ariaLabel,\n  ref,\n  ...rootProps\n}: NavigationListProps) {\n  const idPrefix = useId();\n  const containerRef = useRef<HTMLDivElement | null>(null);\n  const items = useMemo(() => collectNavigationItems(children), [children]);\n\n  const {\n    selectedId,\n    highlightedId,\n    handleItemActivate,\n    handleItemHighlight,\n    getContainerProps,\n  } = useListbox({\n    selectedId: controlledSelectedId,\n    defaultSelectedId,\n    highlightedId: controlledHighlightedId,\n    defaultHighlightedId,\n    onSelect,\n    onHighlightChange,\n    wrap,\n    idPrefix,\n    onKeyDown,\n    typeahead: true,\n    items,\n    getItemId: getEncodedListboxItemId,\n  });\n\n  const contextValue = useMemo(\n    () => ({\n      selectedId,\n      highlightedId,\n      activate: handleItemActivate,\n      highlight: handleItemHighlight,\n      focusContainer: () => containerRef.current?.focus(),\n      focused,\n      idPrefix,\n    }),\n    [selectedId, highlightedId, handleItemActivate, handleItemHighlight, focused, idPrefix],\n  );\n\n  return (\n    <NavigationListContext value={contextValue}>\n      <div\n        {...rootProps}\n        {...getContainerProps(composeRefs(containerRef, ref))}\n        aria-label={ariaLabel}\n        aria-orientation=\"vertical\"\n        className={cn(\"w-full outline-none\", className)}\n      >\n        {children}\n      </div>\n    </NavigationListContext>\n  );\n}\n\n\n\"use client\";\n\nimport { Children, isValidElement, type MouseEvent, type ReactNode, type Ref, useMemo } from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { getEncodedListboxItemId } from \"@/hooks/use-listbox\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListContext } from \"./navigation-list-context\";\nimport { NavigationListItemContext } from \"./navigation-list-item-context\";\nimport { NavigationListMeta } from \"./navigation-list-meta\";\nimport { NavigationListSubtitle } from \"./navigation-list-subtitle\";\n\nconst itemVariants = cva(\"flex cursor-pointer group\", {\n  variants: {\n    active: {\n      true: \"bg-primary text-primary-foreground\",\n      false: \"hover:bg-secondary border-b border-border/50\",\n    },\n    disabled: {\n      true: \"opacity-50 cursor-not-allowed\",\n    },\n  },\n  defaultVariants: {\n    active: false,\n    disabled: false,\n  },\n});\n\nconst contentVariants = cva(\"flex-1 grid grid-cols-[1fr_auto] auto-rows-auto gap-y-0.5\", {\n  variants: {\n    density: {\n      compact: \"p-2\",\n      default: \"p-3\",\n      comfortable: \"p-4\",\n    },\n  },\n  defaultVariants: {\n    density: \"default\",\n  },\n});\n\ntype Density = NonNullable<VariantProps<typeof contentVariants>[\"density\"]>;\n\nfunction hasDescriptionChild(children: ReactNode, childType: typeof NavigationListMeta | typeof NavigationListSubtitle): boolean {\n  return Children.toArray(children).some((child) => {\n    if (!isValidElement<{ children?: ReactNode }>(child)) return false;\n    if (child.type === childType) return true;\n    return hasDescriptionChild(child.props.children, childType);\n  });\n}\n\nexport interface NavigationListItemProps {\n  id: string;\n  density?: Density;\n  disabled?: boolean;\n  children: ReactNode;\n  className?: string;\n  ref?: Ref<HTMLDivElement>;\n}\n\nexport function NavigationListItem({\n  id,\n  disabled = false,\n  density = \"default\",\n  children,\n  className,\n  ref,\n}: NavigationListItemProps) {\n  const { selectedId, highlightedId, activate, highlight, focusContainer, focused, idPrefix } =\n    useNavigationListContext();\n  const isSelected = selectedId === id;\n  const isHighlighted = highlightedId === id;\n  const isActive = (isSelected || isHighlighted) && focused;\n  const itemId = getEncodedListboxItemId(idPrefix, id);\n  const labelId = `${itemId}-label`;\n  const descId = `${itemId}-desc`;\n  const describedBy = [\n    hasDescriptionChild(children, NavigationListMeta) ? `${descId}-meta` : null,\n    hasDescriptionChild(children, NavigationListSubtitle) ? `${descId}-sub` : null,\n  ].filter(Boolean).join(\" \") || undefined;\n\n  const handleClick = () => {\n    if (disabled) return;\n    activate(id);\n    focusContainer();\n  };\n\n  const handleMouseDown = (event: MouseEvent<HTMLDivElement>) => {\n    if (disabled) event.preventDefault();\n  };\n\n  const itemContextValue = useMemo(\n    () => ({ labelId, descId }),\n    [labelId, descId],\n  );\n\n  return (\n    <NavigationListItemContext value={itemContextValue}>\n      <div\n        ref={ref}\n        id={itemId}\n        role=\"option\"\n        aria-labelledby={labelId}\n        aria-describedby={describedBy}\n        data-value={id}\n        data-active={isActive || undefined}\n        data-state={isSelected ? \"selected\" : \"unselected\"}\n        aria-selected={isSelected}\n        aria-disabled={disabled || undefined}\n        onMouseDown={handleMouseDown}\n        onClick={handleClick}\n        onFocus={() => {\n          if (!disabled) highlight(id);\n        }}\n        className={cn(itemVariants({ active: isActive, disabled }), \"focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground\", className)}\n      >\n        <div\n          className={cn(\n            \"w-1 shrink-0\",\n            isActive ? \"bg-primary-foreground/40\" : \"bg-transparent group-hover:bg-muted\"\n          )}\n        />\n        <div className={contentVariants({ density })}>\n          {children}\n        </div>\n      </div>\n    </NavigationListItemContext>\n  );\n}\n\n\n\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListItemContext } from \"./navigation-list-item-context\";\n\nconst SELECTION_INDICATOR = \"\\u258C\";\n\nexport interface NavigationListTitleProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListTitle({ children, className }: NavigationListTitleProps) {\n  const { labelId } = useNavigationListItemContext();\n\n  return (\n    <span id={labelId} className={cn(\"col-start-1 row-start-1 font-bold flex items-center group-data-[active]:text-primary-foreground\", className)}>\n      <span aria-hidden=\"true\" className=\"mr-2 opacity-0 group-data-[active]:opacity-100\">{SELECTION_INDICATOR}</span>\n      {children}\n    </span>\n  );\n}\n\n\n\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\n\nexport interface NavigationListStatusProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListStatus({ children, className }: NavigationListStatusProps) {\n  return (\n    <span className={cn(\"col-start-2 row-start-1 self-center text-[10px] font-bold text-warning group-data-[active]:text-primary-foreground\", className)}>\n      {children}\n    </span>\n  );\n}\n\n\n\"use client\";\n\nimport { createContext, useContext } from \"react\";\n\nexport interface NavigationListContextValue {\n  selectedId: string | null;\n  highlightedId: string | null;\n  activate: (id: string) => void;\n  highlight: (id: string) => void;\n  focusContainer: () => void;\n  focused: boolean;\n  idPrefix: string;\n}\n\nexport const NavigationListContext = createContext<NavigationListContextValue | undefined>(undefined);\n\nexport function useNavigationListContext() {\n  const context = useContext(NavigationListContext);\n  if (context === undefined) {\n    throw new Error(\"NavigationListItem must be used within NavigationList\");\n  }\n  return context;\n}\n\n\n\"use client\";\n\nimport { Badge, type BadgeProps } from \"../badge/badge\";\nimport { cn } from \"@/lib/utils\";\n\nexport function NavigationListBadge({\n  children,\n  variant = \"neutral\",\n  size = \"sm\",\n  className,\n  ...props\n}: BadgeProps) {\n  return (\n    <Badge\n      variant={variant}\n      size={size}\n      className={cn(\n        \"group-data-[active]:bg-primary-foreground/15 group-data-[active]:text-primary-foreground group-data-[active]:border-primary-foreground/40\",\n        className\n      )}\n      {...props}\n    >\n      {children}\n    </Badge>\n  );\n}\n\n\n\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListItemContext } from \"./navigation-list-item-context\";\n\nexport interface NavigationListSubtitleProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListSubtitle({ children, className }: NavigationListSubtitleProps) {\n  const { descId } = useNavigationListItemContext();\n\n  return (\n    <span\n      id={`${descId}-sub`}\n      className={cn(\n        \"text-[10px] inline-flex items-center leading-none text-muted-foreground group-data-[active]:text-primary-foreground/70\",\n        className\n      )}\n    >\n      {children}\n    </span>\n  );\n}\n\n\n\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useNavigationListItemContext } from \"./navigation-list-item-context\";\n\nexport interface NavigationListMetaProps {\n  children: ReactNode;\n  className?: string;\n}\n\nexport function NavigationListMeta({ children, className }: NavigationListMetaProps) {\n  const { descId } = useNavigationListItemContext();\n\n  return (\n    <div id={`${descId}-meta`} className={cn(\n      \"col-span-full row-start-2 flex gap-2 items-center group-data-[active]:text-primary-foreground/70\",\n      className\n    )}>\n      {children}\n    </div>\n  );\n}\n\n\n\"use client\";\n\nimport { createContext, useContext } from \"react\";\n\nexport interface NavigationListItemContextValue {\n  labelId: string;\n  descId: string;\n}\n\nexport const NavigationListItemContext = createContext<NavigationListItemContextValue | undefined>(undefined);\n\nexport function useNavigationListItemContext() {\n  const context = useContext(NavigationListItemContext);\n  if (context === undefined) {\n    throw new Error(\"NavigationList.Title/Meta must be used within NavigationList.Item\");\n  }\n  return context;\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
@@ -18057,7 +17987,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "bg-foreground text-background",
+          "text": "bg-primary text-primary-foreground",
           "color": "var(--code-tag)"
         },
         {
@@ -20457,113 +20387,6 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "handleHighlight",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "=",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "()",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "=>",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "{",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 235,
-      "content": [
-        {
-          "text": "    ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "if",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " (",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "!",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "disabled) ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "highlight",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "(id)",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ";",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 236,
-      "content": [
-        {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "};",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 237,
-      "content": []
-    },
-    {
-      "number": 238,
-      "content": [
-        {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "const",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
           "text": "itemContextValue",
           "color": "var(--code-number)"
         },
@@ -20590,7 +20413,7 @@
       ]
     },
     {
-      "number": 239,
+      "number": 235,
       "content": [
         {
           "text": "    ",
@@ -20643,7 +20466,7 @@
       ]
     },
     {
-      "number": 240,
+      "number": 236,
       "content": [
         {
           "text": "    [labelId",
@@ -20664,7 +20487,7 @@
       ]
     },
     {
-      "number": 241,
+      "number": 237,
       "content": [
         {
           "text": "  )",
@@ -20677,11 +20500,11 @@
       ]
     },
     {
-      "number": 242,
+      "number": 238,
       "content": []
     },
     {
-      "number": 243,
+      "number": 239,
       "content": [
         {
           "text": "  ",
@@ -20698,7 +20521,7 @@
       ]
     },
     {
-      "number": 244,
+      "number": 240,
       "content": [
         {
           "text": "    ",
@@ -20735,7 +20558,7 @@
       ]
     },
     {
-      "number": 245,
+      "number": 241,
       "content": [
         {
           "text": "      ",
@@ -20752,7 +20575,7 @@
       ]
     },
     {
-      "number": 246,
+      "number": 242,
       "content": [
         {
           "text": "        ",
@@ -20777,7 +20600,7 @@
       ]
     },
     {
-      "number": 247,
+      "number": 243,
       "content": [
         {
           "text": "        ",
@@ -20802,7 +20625,7 @@
       ]
     },
     {
-      "number": 248,
+      "number": 244,
       "content": [
         {
           "text": "        ",
@@ -20831,7 +20654,7 @@
       ]
     },
     {
-      "number": 249,
+      "number": 245,
       "content": [
         {
           "text": "        ",
@@ -20856,7 +20679,7 @@
       ]
     },
     {
-      "number": 250,
+      "number": 246,
       "content": [
         {
           "text": "        ",
@@ -20881,7 +20704,7 @@
       ]
     },
     {
-      "number": 251,
+      "number": 247,
       "content": [
         {
           "text": "        ",
@@ -20906,7 +20729,7 @@
       ]
     },
     {
-      "number": 252,
+      "number": 248,
       "content": [
         {
           "text": "        ",
@@ -20943,7 +20766,7 @@
       ]
     },
     {
-      "number": 253,
+      "number": 249,
       "content": [
         {
           "text": "        ",
@@ -21012,7 +20835,7 @@
       ]
     },
     {
-      "number": 254,
+      "number": 250,
       "content": [
         {
           "text": "        ",
@@ -21037,7 +20860,7 @@
       ]
     },
     {
-      "number": 255,
+      "number": 251,
       "content": [
         {
           "text": "        ",
@@ -21074,7 +20897,7 @@
       ]
     },
     {
-      "number": 256,
+      "number": 252,
       "content": [
         {
           "text": "        ",
@@ -21099,7 +20922,7 @@
       ]
     },
     {
-      "number": 257,
+      "number": 253,
       "content": [
         {
           "text": "        ",
@@ -21124,32 +20947,7 @@
       ]
     },
     {
-      "number": 258,
-      "content": [
-        {
-          "text": "        ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "onMouseEnter",
-          "color": "var(--code-function)"
-        },
-        {
-          "text": "={",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "handleHighlight",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "}",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 259,
+      "number": 254,
       "content": [
         {
           "text": "        ",
@@ -21160,21 +20958,79 @@
           "color": "var(--code-function)"
         },
         {
-          "text": "={",
+          "text": "={()",
           "color": "var(--code-operator)"
         },
         {
-          "text": "handleHighlight",
+          "text": " ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "}",
+          "text": "=>",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
           "color": "var(--code-operator)"
         }
       ]
     },
     {
-      "number": 260,
+      "number": 255,
+      "content": [
+        {
+          "text": "          ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "!",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "disabled) ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "highlight",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(id)",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 256,
+      "content": [
+        {
+          "text": "        ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 257,
       "content": [
         {
           "text": "        ",
@@ -21271,7 +21127,7 @@
       ]
     },
     {
-      "number": 261,
+      "number": 258,
       "content": [
         {
           "text": "      ",
@@ -21284,7 +21140,7 @@
       ]
     },
     {
-      "number": 262,
+      "number": 259,
       "content": [
         {
           "text": "        ",
@@ -21301,7 +21157,7 @@
       ]
     },
     {
-      "number": 263,
+      "number": 260,
       "content": [
         {
           "text": "          ",
@@ -21326,7 +21182,7 @@
       ]
     },
     {
-      "number": 264,
+      "number": 261,
       "content": [
         {
           "text": "            ",
@@ -21351,7 +21207,7 @@
       ]
     },
     {
-      "number": 265,
+      "number": 262,
       "content": [
         {
           "text": "            isActive ",
@@ -21370,7 +21226,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "bg-background/40",
+          "text": "bg-primary-foreground/40",
           "color": "var(--code-tag)"
         },
         {
@@ -21404,7 +21260,7 @@
       ]
     },
     {
-      "number": 266,
+      "number": 263,
       "content": [
         {
           "text": "          )",
@@ -21417,7 +21273,7 @@
       ]
     },
     {
-      "number": 267,
+      "number": 264,
       "content": [
         {
           "text": "        ",
@@ -21430,7 +21286,7 @@
       ]
     },
     {
-      "number": 268,
+      "number": 265,
       "content": [
         {
           "text": "        ",
@@ -21487,7 +21343,7 @@
       ]
     },
     {
-      "number": 269,
+      "number": 266,
       "content": [
         {
           "text": "          ",
@@ -21508,7 +21364,7 @@
       ]
     },
     {
-      "number": 270,
+      "number": 267,
       "content": [
         {
           "text": "        ",
@@ -21529,7 +21385,7 @@
       ]
     },
     {
-      "number": 271,
+      "number": 268,
       "content": [
         {
           "text": "      ",
@@ -21550,7 +21406,7 @@
       ]
     },
     {
-      "number": 272,
+      "number": 269,
       "content": [
         {
           "text": "    ",
@@ -21571,7 +21427,7 @@
       ]
     },
     {
-      "number": 273,
+      "number": 270,
       "content": [
         {
           "text": "  )",
@@ -21584,7 +21440,7 @@
       ]
     },
     {
-      "number": 274,
+      "number": 271,
       "content": [
         {
           "text": "}",
@@ -21593,15 +21449,15 @@
       ]
     },
     {
-      "number": 275,
+      "number": 272,
       "content": []
     },
     {
-      "number": 276,
+      "number": 273,
       "content": []
     },
     {
-      "number": 277,
+      "number": 274,
       "content": [
         {
           "text": "\"",
@@ -21622,11 +21478,11 @@
       ]
     },
     {
-      "number": 278,
+      "number": 275,
       "content": []
     },
     {
-      "number": 279,
+      "number": 276,
       "content": [
         {
           "text": "import",
@@ -21687,7 +21543,7 @@
       ]
     },
     {
-      "number": 280,
+      "number": 277,
       "content": [
         {
           "text": "import",
@@ -21740,7 +21596,7 @@
       ]
     },
     {
-      "number": 281,
+      "number": 278,
       "content": [
         {
           "text": "import",
@@ -21793,11 +21649,11 @@
       ]
     },
     {
-      "number": 282,
+      "number": 279,
       "content": []
     },
     {
-      "number": 283,
+      "number": 280,
       "content": [
         {
           "text": "const",
@@ -21842,11 +21698,11 @@
       ]
     },
     {
-      "number": 284,
+      "number": 281,
       "content": []
     },
     {
-      "number": 285,
+      "number": 282,
       "content": [
         {
           "text": "export",
@@ -21879,7 +21735,7 @@
       ]
     },
     {
-      "number": 286,
+      "number": 283,
       "content": [
         {
           "text": "  children",
@@ -21904,7 +21760,7 @@
       ]
     },
     {
-      "number": 287,
+      "number": 284,
       "content": [
         {
           "text": "  className",
@@ -21929,7 +21785,7 @@
       ]
     },
     {
-      "number": 288,
+      "number": 285,
       "content": [
         {
           "text": "}",
@@ -21938,11 +21794,11 @@
       ]
     },
     {
-      "number": 289,
+      "number": 286,
       "content": []
     },
     {
-      "number": 290,
+      "number": 287,
       "content": [
         {
           "text": "export",
@@ -22007,7 +21863,7 @@
       ]
     },
     {
-      "number": 291,
+      "number": 288,
       "content": [
         {
           "text": "  ",
@@ -22068,11 +21924,11 @@
       ]
     },
     {
-      "number": 292,
+      "number": 289,
       "content": []
     },
     {
-      "number": 293,
+      "number": 290,
       "content": [
         {
           "text": "  ",
@@ -22089,7 +21945,7 @@
       ]
     },
     {
-      "number": 294,
+      "number": 291,
       "content": [
         {
           "text": "    ",
@@ -22148,7 +22004,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "col-start-1 row-start-1 font-bold flex items-center group-data-[active]:text-background",
+          "text": "col-start-1 row-start-1 font-bold flex items-center group-data-[active]:text-primary-foreground",
           "color": "var(--code-tag)"
         },
         {
@@ -22170,7 +22026,7 @@
       ]
     },
     {
-      "number": 295,
+      "number": 292,
       "content": [
         {
           "text": "      ",
@@ -22255,7 +22111,7 @@
       ]
     },
     {
-      "number": 296,
+      "number": 293,
       "content": [
         {
           "text": "      ",
@@ -22276,7 +22132,7 @@
       ]
     },
     {
-      "number": 297,
+      "number": 294,
       "content": [
         {
           "text": "    ",
@@ -22297,7 +22153,7 @@
       ]
     },
     {
-      "number": 298,
+      "number": 295,
       "content": [
         {
           "text": "  )",
@@ -22310,7 +22166,7 @@
       ]
     },
     {
-      "number": 299,
+      "number": 296,
       "content": [
         {
           "text": "}",
@@ -22319,15 +22175,15 @@
       ]
     },
     {
-      "number": 300,
+      "number": 297,
       "content": []
     },
     {
-      "number": 301,
+      "number": 298,
       "content": []
     },
     {
-      "number": 302,
+      "number": 299,
       "content": [
         {
           "text": "\"",
@@ -22348,11 +22204,11 @@
       ]
     },
     {
-      "number": 303,
+      "number": 300,
       "content": []
     },
     {
-      "number": 304,
+      "number": 301,
       "content": [
         {
           "text": "import",
@@ -22413,7 +22269,7 @@
       ]
     },
     {
-      "number": 305,
+      "number": 302,
       "content": [
         {
           "text": "import",
@@ -22466,11 +22322,11 @@
       ]
     },
     {
-      "number": 306,
+      "number": 303,
       "content": []
     },
     {
-      "number": 307,
+      "number": 304,
       "content": [
         {
           "text": "export",
@@ -22503,7 +22359,7 @@
       ]
     },
     {
-      "number": 308,
+      "number": 305,
       "content": [
         {
           "text": "  children",
@@ -22528,7 +22384,7 @@
       ]
     },
     {
-      "number": 309,
+      "number": 306,
       "content": [
         {
           "text": "  className",
@@ -22553,7 +22409,7 @@
       ]
     },
     {
-      "number": 310,
+      "number": 307,
       "content": [
         {
           "text": "}",
@@ -22562,11 +22418,11 @@
       ]
     },
     {
-      "number": 311,
+      "number": 308,
       "content": []
     },
     {
-      "number": 312,
+      "number": 309,
       "content": [
         {
           "text": "export",
@@ -22631,7 +22487,7 @@
       ]
     },
     {
-      "number": 313,
+      "number": 310,
       "content": [
         {
           "text": "  ",
@@ -22648,7 +22504,7 @@
       ]
     },
     {
-      "number": 314,
+      "number": 311,
       "content": [
         {
           "text": "    ",
@@ -22687,7 +22543,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "col-start-2 row-start-1 self-center text-[10px] font-bold text-warning group-data-[active]:text-background",
+          "text": "col-start-2 row-start-1 self-center text-[10px] font-bold text-warning group-data-[active]:text-primary-foreground",
           "color": "var(--code-tag)"
         },
         {
@@ -22709,7 +22565,7 @@
       ]
     },
     {
-      "number": 315,
+      "number": 312,
       "content": [
         {
           "text": "      ",
@@ -22730,7 +22586,7 @@
       ]
     },
     {
-      "number": 316,
+      "number": 313,
       "content": [
         {
           "text": "    ",
@@ -22751,7 +22607,7 @@
       ]
     },
     {
-      "number": 317,
+      "number": 314,
       "content": [
         {
           "text": "  )",
@@ -22764,7 +22620,7 @@
       ]
     },
     {
-      "number": 318,
+      "number": 315,
       "content": [
         {
           "text": "}",
@@ -22773,15 +22629,15 @@
       ]
     },
     {
-      "number": 319,
+      "number": 316,
       "content": []
     },
     {
-      "number": 320,
+      "number": 317,
       "content": []
     },
     {
-      "number": 321,
+      "number": 318,
       "content": [
         {
           "text": "\"",
@@ -22802,11 +22658,11 @@
       ]
     },
     {
-      "number": 322,
+      "number": 319,
       "content": []
     },
     {
-      "number": 323,
+      "number": 320,
       "content": [
         {
           "text": "import",
@@ -22867,11 +22723,11 @@
       ]
     },
     {
-      "number": 324,
+      "number": 321,
       "content": []
     },
     {
-      "number": 325,
+      "number": 322,
       "content": [
         {
           "text": "export",
@@ -22904,7 +22760,7 @@
       ]
     },
     {
-      "number": 326,
+      "number": 323,
       "content": [
         {
           "text": "  selectedId",
@@ -22945,7 +22801,7 @@
       ]
     },
     {
-      "number": 327,
+      "number": 324,
       "content": [
         {
           "text": "  highlightedId",
@@ -22986,7 +22842,7 @@
       ]
     },
     {
-      "number": 328,
+      "number": 325,
       "content": [
         {
           "text": "  ",
@@ -23051,7 +22907,7 @@
       ]
     },
     {
-      "number": 329,
+      "number": 326,
       "content": [
         {
           "text": "  ",
@@ -23116,7 +22972,7 @@
       ]
     },
     {
-      "number": 330,
+      "number": 327,
       "content": [
         {
           "text": "  ",
@@ -23161,7 +23017,7 @@
       ]
     },
     {
-      "number": 331,
+      "number": 328,
       "content": [
         {
           "text": "  focused",
@@ -23186,7 +23042,7 @@
       ]
     },
     {
-      "number": 332,
+      "number": 329,
       "content": [
         {
           "text": "  idPrefix",
@@ -23211,7 +23067,7 @@
       ]
     },
     {
-      "number": 333,
+      "number": 330,
       "content": [
         {
           "text": "}",
@@ -23220,11 +23076,11 @@
       ]
     },
     {
-      "number": 334,
+      "number": 331,
       "content": []
     },
     {
-      "number": 335,
+      "number": 332,
       "content": [
         {
           "text": "export",
@@ -23309,11 +23165,11 @@
       ]
     },
     {
-      "number": 336,
+      "number": 333,
       "content": []
     },
     {
-      "number": 337,
+      "number": 334,
       "content": [
         {
           "text": "export",
@@ -23350,7 +23206,7 @@
       ]
     },
     {
-      "number": 338,
+      "number": 335,
       "content": [
         {
           "text": "  ",
@@ -23395,7 +23251,7 @@
       ]
     },
     {
-      "number": 339,
+      "number": 336,
       "content": [
         {
           "text": "  ",
@@ -23432,7 +23288,7 @@
       ]
     },
     {
-      "number": 340,
+      "number": 337,
       "content": [
         {
           "text": "    ",
@@ -23485,7 +23341,7 @@
       ]
     },
     {
-      "number": 341,
+      "number": 338,
       "content": [
         {
           "text": "  ",
@@ -23498,7 +23354,7 @@
       ]
     },
     {
-      "number": 342,
+      "number": 339,
       "content": [
         {
           "text": "  ",
@@ -23519,7 +23375,7 @@
       ]
     },
     {
-      "number": 343,
+      "number": 340,
       "content": [
         {
           "text": "}",
@@ -23528,15 +23384,15 @@
       ]
     },
     {
-      "number": 344,
+      "number": 341,
       "content": []
     },
     {
-      "number": 345,
+      "number": 342,
       "content": []
     },
     {
-      "number": 346,
+      "number": 343,
       "content": [
         {
           "text": "\"",
@@ -23557,11 +23413,11 @@
       ]
     },
     {
-      "number": 347,
+      "number": 344,
       "content": []
     },
     {
-      "number": 348,
+      "number": 345,
       "content": [
         {
           "text": "import",
@@ -23630,7 +23486,7 @@
       ]
     },
     {
-      "number": 349,
+      "number": 346,
       "content": [
         {
           "text": "import",
@@ -23683,11 +23539,11 @@
       ]
     },
     {
-      "number": 350,
+      "number": 347,
       "content": []
     },
     {
-      "number": 351,
+      "number": 348,
       "content": [
         {
           "text": "export",
@@ -23716,7 +23572,7 @@
       ]
     },
     {
-      "number": 352,
+      "number": 349,
       "content": [
         {
           "text": "  children",
@@ -23729,7 +23585,7 @@
       ]
     },
     {
-      "number": 353,
+      "number": 350,
       "content": [
         {
           "text": "  variant ",
@@ -23762,7 +23618,7 @@
       ]
     },
     {
-      "number": 354,
+      "number": 351,
       "content": [
         {
           "text": "  size ",
@@ -23795,7 +23651,7 @@
       ]
     },
     {
-      "number": 355,
+      "number": 352,
       "content": [
         {
           "text": "  className",
@@ -23808,7 +23664,7 @@
       ]
     },
     {
-      "number": 356,
+      "number": 353,
       "content": [
         {
           "text": "  ",
@@ -23825,7 +23681,7 @@
       ]
     },
     {
-      "number": 357,
+      "number": 354,
       "content": [
         {
           "text": "}:",
@@ -23854,7 +23710,7 @@
       ]
     },
     {
-      "number": 358,
+      "number": 355,
       "content": [
         {
           "text": "  ",
@@ -23871,7 +23727,7 @@
       ]
     },
     {
-      "number": 359,
+      "number": 356,
       "content": [
         {
           "text": "    ",
@@ -23888,7 +23744,7 @@
       ]
     },
     {
-      "number": 360,
+      "number": 357,
       "content": [
         {
           "text": "      ",
@@ -23913,7 +23769,7 @@
       ]
     },
     {
-      "number": 361,
+      "number": 358,
       "content": [
         {
           "text": "      ",
@@ -23938,7 +23794,7 @@
       ]
     },
     {
-      "number": 362,
+      "number": 359,
       "content": [
         {
           "text": "      ",
@@ -23963,7 +23819,7 @@
       ]
     },
     {
-      "number": 363,
+      "number": 360,
       "content": [
         {
           "text": "        ",
@@ -23974,7 +23830,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "group-data-[active]:bg-background group-data-[active]:text-foreground group-data-[active]:border-foreground",
+          "text": "group-data-[active]:bg-primary-foreground/15 group-data-[active]:text-primary-foreground group-data-[active]:border-primary-foreground/40",
           "color": "var(--code-tag)"
         },
         {
@@ -23988,7 +23844,7 @@
       ]
     },
     {
-      "number": 364,
+      "number": 361,
       "content": [
         {
           "text": "        className",
@@ -23997,7 +23853,7 @@
       ]
     },
     {
-      "number": 365,
+      "number": 362,
       "content": [
         {
           "text": "      )",
@@ -24010,7 +23866,7 @@
       ]
     },
     {
-      "number": 366,
+      "number": 363,
       "content": [
         {
           "text": "      ",
@@ -24031,7 +23887,7 @@
       ]
     },
     {
-      "number": 367,
+      "number": 364,
       "content": [
         {
           "text": "    ",
@@ -24044,7 +23900,7 @@
       ]
     },
     {
-      "number": 368,
+      "number": 365,
       "content": [
         {
           "text": "      ",
@@ -24065,7 +23921,7 @@
       ]
     },
     {
-      "number": 369,
+      "number": 366,
       "content": [
         {
           "text": "    ",
@@ -24086,7 +23942,7 @@
       ]
     },
     {
-      "number": 370,
+      "number": 367,
       "content": [
         {
           "text": "  )",
@@ -24099,7 +23955,7 @@
       ]
     },
     {
-      "number": 371,
+      "number": 368,
       "content": [
         {
           "text": "}",
@@ -24108,15 +23964,15 @@
       ]
     },
     {
-      "number": 372,
+      "number": 369,
       "content": []
     },
     {
-      "number": 373,
+      "number": 370,
       "content": []
     },
     {
-      "number": 374,
+      "number": 371,
       "content": [
         {
           "text": "\"",
@@ -24137,11 +23993,11 @@
       ]
     },
     {
-      "number": 375,
+      "number": 372,
       "content": []
     },
     {
-      "number": 376,
+      "number": 373,
       "content": [
         {
           "text": "import",
@@ -24202,7 +24058,7 @@
       ]
     },
     {
-      "number": 377,
+      "number": 374,
       "content": [
         {
           "text": "import",
@@ -24255,7 +24111,7 @@
       ]
     },
     {
-      "number": 378,
+      "number": 375,
       "content": [
         {
           "text": "import",
@@ -24308,11 +24164,11 @@
       ]
     },
     {
-      "number": 379,
+      "number": 376,
       "content": []
     },
     {
-      "number": 380,
+      "number": 377,
       "content": [
         {
           "text": "export",
@@ -24345,7 +24201,7 @@
       ]
     },
     {
-      "number": 381,
+      "number": 378,
       "content": [
         {
           "text": "  children",
@@ -24370,7 +24226,7 @@
       ]
     },
     {
-      "number": 382,
+      "number": 379,
       "content": [
         {
           "text": "  className",
@@ -24395,7 +24251,7 @@
       ]
     },
     {
-      "number": 383,
+      "number": 380,
       "content": [
         {
           "text": "}",
@@ -24404,11 +24260,11 @@
       ]
     },
     {
-      "number": 384,
+      "number": 381,
       "content": []
     },
     {
-      "number": 385,
+      "number": 382,
       "content": [
         {
           "text": "export",
@@ -24473,7 +24329,7 @@
       ]
     },
     {
-      "number": 386,
+      "number": 383,
       "content": [
         {
           "text": "  ",
@@ -24534,11 +24390,11 @@
       ]
     },
     {
-      "number": 387,
+      "number": 384,
       "content": []
     },
     {
-      "number": 388,
+      "number": 385,
       "content": [
         {
           "text": "  ",
@@ -24555,7 +24411,7 @@
       ]
     },
     {
-      "number": 389,
+      "number": 386,
       "content": [
         {
           "text": "    ",
@@ -24572,7 +24428,7 @@
       ]
     },
     {
-      "number": 390,
+      "number": 387,
       "content": [
         {
           "text": "      ",
@@ -24617,7 +24473,7 @@
       ]
     },
     {
-      "number": 391,
+      "number": 388,
       "content": [
         {
           "text": "      ",
@@ -24642,7 +24498,7 @@
       ]
     },
     {
-      "number": 392,
+      "number": 389,
       "content": [
         {
           "text": "        ",
@@ -24653,7 +24509,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "text-[10px] inline-flex items-center leading-none text-muted-foreground group-data-[active]:text-background/70",
+          "text": "text-[10px] inline-flex items-center leading-none text-muted-foreground group-data-[active]:text-primary-foreground/70",
           "color": "var(--code-tag)"
         },
         {
@@ -24667,7 +24523,7 @@
       ]
     },
     {
-      "number": 393,
+      "number": 390,
       "content": [
         {
           "text": "        className",
@@ -24676,7 +24532,7 @@
       ]
     },
     {
-      "number": 394,
+      "number": 391,
       "content": [
         {
           "text": "      )",
@@ -24689,7 +24545,7 @@
       ]
     },
     {
-      "number": 395,
+      "number": 392,
       "content": [
         {
           "text": "    ",
@@ -24702,7 +24558,7 @@
       ]
     },
     {
-      "number": 396,
+      "number": 393,
       "content": [
         {
           "text": "      ",
@@ -24723,7 +24579,7 @@
       ]
     },
     {
-      "number": 397,
+      "number": 394,
       "content": [
         {
           "text": "    ",
@@ -24744,7 +24600,7 @@
       ]
     },
     {
-      "number": 398,
+      "number": 395,
       "content": [
         {
           "text": "  )",
@@ -24757,7 +24613,7 @@
       ]
     },
     {
-      "number": 399,
+      "number": 396,
       "content": [
         {
           "text": "}",
@@ -24766,11 +24622,15 @@
       ]
     },
     {
-      "number": 400,
+      "number": 397,
       "content": []
     },
     {
-      "number": 401,
+      "number": 398,
+      "content": []
+    },
+    {
+      "number": 399,
       "content": [
         {
           "text": "\"",
@@ -24791,11 +24651,11 @@
       ]
     },
     {
-      "number": 402,
+      "number": 400,
       "content": []
     },
     {
-      "number": 403,
+      "number": 401,
       "content": [
         {
           "text": "import",
@@ -24856,7 +24716,7 @@
       ]
     },
     {
-      "number": 404,
+      "number": 402,
       "content": [
         {
           "text": "import",
@@ -24909,7 +24769,7 @@
       ]
     },
     {
-      "number": 405,
+      "number": 403,
       "content": [
         {
           "text": "import",
@@ -24962,11 +24822,11 @@
       ]
     },
     {
-      "number": 406,
+      "number": 404,
       "content": []
     },
     {
-      "number": 407,
+      "number": 405,
       "content": [
         {
           "text": "export",
@@ -24999,7 +24859,7 @@
       ]
     },
     {
-      "number": 408,
+      "number": 406,
       "content": [
         {
           "text": "  children",
@@ -25024,7 +24884,7 @@
       ]
     },
     {
-      "number": 409,
+      "number": 407,
       "content": [
         {
           "text": "  className",
@@ -25049,7 +24909,7 @@
       ]
     },
     {
-      "number": 410,
+      "number": 408,
       "content": [
         {
           "text": "}",
@@ -25058,11 +24918,11 @@
       ]
     },
     {
-      "number": 411,
+      "number": 409,
       "content": []
     },
     {
-      "number": 412,
+      "number": 410,
       "content": [
         {
           "text": "export",
@@ -25127,7 +24987,7 @@
       ]
     },
     {
-      "number": 413,
+      "number": 411,
       "content": [
         {
           "text": "  ",
@@ -25188,11 +25048,11 @@
       ]
     },
     {
-      "number": 414,
+      "number": 412,
       "content": []
     },
     {
-      "number": 415,
+      "number": 413,
       "content": [
         {
           "text": "  ",
@@ -25209,7 +25069,7 @@
       ]
     },
     {
-      "number": 416,
+      "number": 414,
       "content": [
         {
           "text": "    ",
@@ -25286,7 +25146,7 @@
       ]
     },
     {
-      "number": 417,
+      "number": 415,
       "content": [
         {
           "text": "      ",
@@ -25297,7 +25157,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "col-span-full row-start-2 flex gap-2 items-center group-data-[active]:text-background/70",
+          "text": "col-span-full row-start-2 flex gap-2 items-center group-data-[active]:text-primary-foreground/70",
           "color": "var(--code-tag)"
         },
         {
@@ -25311,7 +25171,7 @@
       ]
     },
     {
-      "number": 418,
+      "number": 416,
       "content": [
         {
           "text": "      className",
@@ -25320,7 +25180,7 @@
       ]
     },
     {
-      "number": 419,
+      "number": 417,
       "content": [
         {
           "text": "    )",
@@ -25333,7 +25193,7 @@
       ]
     },
     {
-      "number": 420,
+      "number": 418,
       "content": [
         {
           "text": "      ",
@@ -25354,7 +25214,7 @@
       ]
     },
     {
-      "number": 421,
+      "number": 419,
       "content": [
         {
           "text": "    ",
@@ -25375,7 +25235,7 @@
       ]
     },
     {
-      "number": 422,
+      "number": 420,
       "content": [
         {
           "text": "  )",
@@ -25388,7 +25248,7 @@
       ]
     },
     {
-      "number": 423,
+      "number": 421,
       "content": [
         {
           "text": "}",
@@ -25397,15 +25257,15 @@
       ]
     },
     {
+      "number": 422,
+      "content": []
+    },
+    {
+      "number": 423,
+      "content": []
+    },
+    {
       "number": 424,
-      "content": []
-    },
-    {
-      "number": 425,
-      "content": []
-    },
-    {
-      "number": 426,
       "content": [
         {
           "text": "\"",
@@ -25426,11 +25286,11 @@
       ]
     },
     {
-      "number": 427,
+      "number": 425,
       "content": []
     },
     {
-      "number": 428,
+      "number": 426,
       "content": [
         {
           "text": "import",
@@ -25491,11 +25351,11 @@
       ]
     },
     {
-      "number": 429,
+      "number": 427,
       "content": []
     },
     {
-      "number": 430,
+      "number": 428,
       "content": [
         {
           "text": "export",
@@ -25528,7 +25388,7 @@
       ]
     },
     {
-      "number": 431,
+      "number": 429,
       "content": [
         {
           "text": "  labelId",
@@ -25553,7 +25413,7 @@
       ]
     },
     {
-      "number": 432,
+      "number": 430,
       "content": [
         {
           "text": "  descId",
@@ -25578,7 +25438,7 @@
       ]
     },
     {
-      "number": 433,
+      "number": 431,
       "content": [
         {
           "text": "}",
@@ -25587,11 +25447,11 @@
       ]
     },
     {
-      "number": 434,
+      "number": 432,
       "content": []
     },
     {
-      "number": 435,
+      "number": 433,
       "content": [
         {
           "text": "export",
@@ -25676,11 +25536,11 @@
       ]
     },
     {
-      "number": 436,
+      "number": 434,
       "content": []
     },
     {
-      "number": 437,
+      "number": 435,
       "content": [
         {
           "text": "export",
@@ -25717,7 +25577,7 @@
       ]
     },
     {
-      "number": 438,
+      "number": 436,
       "content": [
         {
           "text": "  ",
@@ -25762,7 +25622,7 @@
       ]
     },
     {
-      "number": 439,
+      "number": 437,
       "content": [
         {
           "text": "  ",
@@ -25799,7 +25659,7 @@
       ]
     },
     {
-      "number": 440,
+      "number": 438,
       "content": [
         {
           "text": "    ",
@@ -25852,7 +25712,7 @@
       ]
     },
     {
-      "number": 441,
+      "number": 439,
       "content": [
         {
           "text": "  ",
@@ -25865,7 +25725,7 @@
       ]
     },
     {
-      "number": 442,
+      "number": 440,
       "content": [
         {
           "text": "  ",
@@ -25886,7 +25746,7 @@
       ]
     },
     {
-      "number": 443,
+      "number": 441,
       "content": [
         {
           "text": "}",
@@ -25895,7 +25755,7 @@
       ]
     },
     {
-      "number": 444,
+      "number": 442,
       "content": []
     }
   ],

@@ -14,7 +14,7 @@ export function NavigationListMeta({ children, className }: NavigationListMetaPr
 
   return (
     <div id={`${descId}-meta`} className={cn(
-      "col-span-full row-start-2 flex gap-2 items-center group-data-[active]:text-background/70",
+      "col-span-full row-start-2 flex gap-2 items-center group-data-[active]:text-primary-foreground/70",
       className
     )}>
       {children}
