@@ -3,7 +3,7 @@
   "title": "Form Reset",
   "description": "Resets uncontrolled custom control state when a parent native form is reset.",
   "source": {
-    "raw": "\"use client\";\n\nimport { useEffect, useEffectEvent, useLayoutEffect, useRef, type RefObject } from \"react\";\n\nexport function useFormReset<T>(\n  ref: RefObject<HTMLElement | null>,\n  resetValue: T,\n  onReset: (value: T) => void,\n  enabled = true,\n) {\n  const formRef = useRef<HTMLFormElement | null>(null);\n  const listenerRef = useRef<(() => void) | null>(null);\n  const handleReset = useEffectEvent(() => {\n    onReset(resetValue);\n  });\n  listenerRef.current ??= () => handleReset();\n\n  useLayoutEffect(() => {\n    const nextForm = enabled ? ref.current?.closest(\"form\") ?? null : null;\n    if (formRef.current === nextForm) return;\n\n    const listener = listenerRef.current;\n    if (!listener) return;\n\n    formRef.current?.removeEventListener(\"reset\", listener);\n    nextForm?.addEventListener(\"reset\", listener);\n    formRef.current = nextForm;\n  });\n\n  useEffect(() => {\n    return () => {\n      const listener = listenerRef.current;\n      if (listener) formRef.current?.removeEventListener(\"reset\", listener);\n      formRef.current = null;\n    };\n  }, []);\n}\n",
+    "raw": "\"use client\";\n\nimport { useEffectEvent, useLayoutEffect, type RefObject } from \"react\";\n\nexport function useFormReset<T>(\n  ref: RefObject<HTMLElement | null>,\n  resetValue: T,\n  onReset: (value: T) => void,\n  enabled = true,\n) {\n  const handleReset = useEffectEvent(() => {\n    onReset(resetValue);\n  });\n\n  useLayoutEffect(() => {\n    const form = enabled ? ref.current?.closest(\"form\") ?? null : null;\n    if (!form) return;\n\n    const listener = () => handleReset();\n    form.addEventListener(\"reset\", listener);\n    return () => form.removeEventListener(\"reset\", listener);\n  });\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -46,14 +46,6 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " useEffect",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
             "text": " useEffectEvent",
             "color": "var(--code-variable)"
           },
@@ -63,14 +55,6 @@
           },
           {
             "text": " useLayoutEffect",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " useRef",
             "color": "var(--code-variable)"
           },
           {
@@ -361,188 +345,6 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "formRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useRef",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "<",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "HTMLFormElement",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "|",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "null",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ">",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "null",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 12,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "listenerRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useRef",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "<",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "()",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "void",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ") ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "|",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "null",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ">",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "null",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 13,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
             "text": "handleReset",
             "color": "var(--code-number)"
           },
@@ -589,7 +391,7 @@
         ]
       },
       {
-        "number": 14,
+        "number": 12,
         "content": [
           {
             "text": "    ",
@@ -610,7 +412,7 @@
         ]
       },
       {
-        "number": 15,
+        "number": 13,
         "content": [
           {
             "text": "  ",
@@ -631,68 +433,11 @@
         ]
       },
       {
-        "number": 16,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "listenerRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "??=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "()",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "handleReset",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "()",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 17,
+        "number": 14,
         "content": []
       },
       {
-        "number": 18,
+        "number": 15,
         "content": [
           {
             "text": "  ",
@@ -729,7 +474,7 @@
         ]
       },
       {
-        "number": 19,
+        "number": 16,
         "content": [
           {
             "text": "    ",
@@ -744,7 +489,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "nextForm",
+            "text": "form",
             "color": "var(--code-number)"
           },
           {
@@ -842,105 +587,7 @@
         ]
       },
       {
-        "number": 20,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "if",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " (",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "formRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "===",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " nextForm) ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "return",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 21,
-        "content": []
-      },
-      {
-        "number": 22,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "listener",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "listenerRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 23,
+        "number": 17,
         "content": [
           {
             "text": "    ",
@@ -959,7 +606,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "listener) ",
+            "text": "form) ",
             "color": "var(--code-variable)"
           },
           {
@@ -973,58 +620,62 @@
         ]
       },
       {
-        "number": 24,
+        "number": 18,
         "content": []
       },
       {
-        "number": 25,
+        "number": 19,
         "content": [
           {
             "text": "    ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "formRef",
-            "color": "var(--code-number)"
+            "text": "const",
+            "color": "var(--code-keyword)"
           },
           {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": "?.",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "removeEventListener",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
+            "text": " ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "\"",
+            "text": "listener",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
             "color": "var(--code-operator)"
           },
           {
-            "text": "reset",
-            "color": "var(--code-tag)"
+            "text": " ",
+            "color": "var(--code-variable)"
           },
           {
-            "text": "\"",
+            "text": "()",
             "color": "var(--code-operator)"
           },
           {
-            "text": ",",
-            "color": "var(--code-operator)"
+            "text": " ",
+            "color": "var(--code-variable)"
           },
           {
-            "text": " listener)",
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "handleReset",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()",
             "color": "var(--code-variable)"
           },
           {
@@ -1034,18 +685,18 @@
         ]
       },
       {
-        "number": 26,
+        "number": 20,
         "content": [
           {
             "text": "    ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "nextForm",
+            "text": "form",
             "color": "var(--code-number)"
           },
           {
-            "text": "?.",
+            "text": ".",
             "color": "var(--code-operator)"
           },
           {
@@ -1083,102 +734,7 @@
         ]
       },
       {
-        "number": 27,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "formRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " nextForm",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 28,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "}",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": ")",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 29,
-        "content": []
-      },
-      {
-        "number": 30,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "useEffect",
-            "color": "var(--code-function)"
-          },
-          {
-            "text": "(",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "()",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=>",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 31,
+        "number": 21,
         "content": [
           {
             "text": "    ",
@@ -1209,89 +765,11 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "{",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 32,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "listener",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "listenerRef",
+            "text": "form",
             "color": "var(--code-number)"
           },
           {
             "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 33,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "if",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " (listener) ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "formRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": "?.",
             "color": "var(--code-operator)"
           },
           {
@@ -1329,68 +807,18 @@
         ]
       },
       {
-        "number": 34,
-        "content": [
-          {
-            "text": "      ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "formRef",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ".",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "current ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "null",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 35,
-        "content": [
-          {
-            "text": "    ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "};",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 36,
+        "number": 22,
         "content": [
           {
             "text": "  ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "},",
+            "text": "}",
             "color": "var(--code-operator)"
           },
           {
-            "text": " [])",
+            "text": ")",
             "color": "var(--code-variable)"
           },
           {
@@ -1400,7 +828,7 @@
         ]
       },
       {
-        "number": 37,
+        "number": 23,
         "content": [
           {
             "text": "}",
@@ -1409,7 +837,7 @@
         ]
       },
       {
-        "number": 38,
+        "number": 24,
         "content": []
       }
     ]

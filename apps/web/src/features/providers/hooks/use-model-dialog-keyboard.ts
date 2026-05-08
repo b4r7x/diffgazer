@@ -31,7 +31,7 @@ interface ModelDialogKeyboardReturn {
   footerButtonIndex: number;
   setFooterButtonIndex: (index: number) => void;
   setFocusZone: (zone: FocusZone) => void;
-  handleConfirm: () => void;
+  handleConfirm: (modelId?: string) => void;
   handleCancel: () => void;
   handleUseCustom: () => void;
   handleSearchEscape: () => void;
@@ -57,6 +57,7 @@ export function useModelDialogKeyboard({
   const [checkedModelId, setCheckedModelId] = useState<string | undefined>(currentModel);
   const [filterIndex, setFilterIndex] = useState(0);
   const [footerButtonIndex, setFooterButtonIndex] = useState(1);
+  const lastTierFilterIndex = TIER_FILTERS.length - 1;
 
   const { zone: focusZone, setZone: setFocusZone, inZone } = useFocusZone({
     initial: "list" as FocusZone,
@@ -107,11 +108,21 @@ export function useModelDialogKeyboard({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset once per dialog open, not on data changes
   }, [open]);
 
-  const handleConfirm = () => {
-    // Confirm the checked model (the one with the radio dot)
-    const modelId = checkedModelId ?? focusedModelId;
-    if (modelId) {
-      onSelect(modelId);
+  useEffect(() => {
+    if (!open || focusZone !== "list" || filteredModels.length === 0) return;
+
+    const hasFocusedModel = filteredModels.some((model) => model.id === focusedModelId);
+    if (hasFocusedModel) return;
+
+    const hasCurrentModel = filteredModels.some((model) => model.id === currentModel);
+    const targetId = hasCurrentModel ? currentModel : filteredModels[0]?.id;
+    if (targetId) focusModel(targetId);
+  }, [open, focusZone, filteredModels, focusedModelId, currentModel, focusModel]);
+
+  const handleConfirm = (explicitModelId?: string) => {
+    const nextModelId = explicitModelId ?? checkedModelId ?? focusedModelId;
+    if (nextModelId) {
+      onSelect(nextModelId);
       onOpenChange(false);
     }
   };
@@ -133,6 +144,19 @@ export function useModelDialogKeyboard({
     if (targetId) focusModel(targetId);
   };
 
+  const focusPreviousFilter = () => {
+    setFilterIndex((prev) => (prev > 0 ? prev - 1 : lastTierFilterIndex));
+  };
+
+  const focusNextFilter = () => {
+    setFilterIndex((prev) => (prev < lastTierFilterIndex ? prev + 1 : 0));
+  };
+
+  const applyFocusedFilter = () => {
+    const filter = TIER_FILTERS[filterIndex];
+    if (filter) setTierFilter(filter);
+  };
+
   // Search zone
   useKey("ArrowDown", () => {
     setFocusZone("filters");
@@ -150,10 +174,10 @@ export function useModelDialogKeyboard({
     setFocusZone("list");
     focusBoundaryModel("first");
   }, { enabled: open && inZone("filters") });
-  useKey("ArrowLeft", () => setFilterIndex((prev) => (prev > 0 ? prev - 1 : 2)), { enabled: open && inZone("filters") });
-  useKey("ArrowRight", () => setFilterIndex((prev) => (prev < 2 ? prev + 1 : 0)), { enabled: open && inZone("filters") });
-  useKey("Enter", () => setTierFilter(TIER_FILTERS[filterIndex]), { enabled: open && inZone("filters") });
-  useKey(" ", () => setTierFilter(TIER_FILTERS[filterIndex]), { enabled: open && inZone("filters") });
+  useKey("ArrowLeft", focusPreviousFilter, { enabled: open && inZone("filters") });
+  useKey("ArrowRight", focusNextFilter, { enabled: open && inZone("filters") });
+  useKey("Enter", applyFocusedFilter, { enabled: open && inZone("filters") });
+  useKey(" ", applyFocusedFilter, { enabled: open && inZone("filters") });
 
   // Footer zone — manually set zone because this handler overrides useFocusZone transition
   useKey("ArrowLeft", () => setFooterButtonIndex(0), { enabled: open && inZone("footer") });

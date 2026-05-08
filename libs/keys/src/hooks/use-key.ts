@@ -3,12 +3,13 @@
 import { useEffect, useEffectEvent } from "react";
 import type { RefObject } from "react";
 import type { HandlerOptions } from "../providers/keyboard-provider.js";
-import { useOptionalKeyboardContext } from "../context/keyboard-context.js";
+import { useOptionalKeyboardRegistryContext } from "../context/keyboard-context.js";
 import type { KeyHandler } from "../internal/normalize-key-input.js";
 import { normalizeKeyInput } from "../internal/normalize-key-input.js";
 
 export interface UseKeyOptions {
   enabled?: boolean;
+  scope?: string;
   allowInInput?: boolean;
   targetRef?: RefObject<HTMLElement | null>;
   requireFocusWithin?: boolean;
@@ -39,11 +40,12 @@ export function useKey(
 ): void {
   const { handlerMap, options } = normalizeKeyInput<UseKeyOptions>(first, second, third);
 
-  const ctx = useOptionalKeyboardContext();
+  const ctx = useOptionalKeyboardRegistryContext();
   const register = ctx?.register ?? null;
-  const activeScope = ctx?.activeScope ?? null;
+  const getActiveScope = ctx?.getActiveScope ?? null;
 
   const enabled = options?.enabled;
+  const scope = options?.scope;
   const allowInInput = options?.allowInInput;
   const targetRef = options?.targetRef;
   const requireFocusWithin = options?.requireFocusWithin;
@@ -67,11 +69,14 @@ export function useKey(
 
   useEffect(() => {
     if (enabled === false) return;
-    if (!register || !activeScope) return;
+    if (!register || !getActiveScope) return;
+
+    const registrationScope = scope ?? getActiveScope();
+    if (registrationScope === null) return;
 
     const cleanups = registrationKeys.map((key) =>
       register(
-        activeScope,
+        registrationScope,
         key,
         (event: KeyboardEvent) => dispatch(key, event),
         handlerOptions,
@@ -80,8 +85,9 @@ export function useKey(
 
     return () => cleanups.forEach((cleanup) => cleanup());
   }, [
-    activeScope,
     register,
+    getActiveScope,
+    scope,
     registrationVersion,
     enabled,
     allowInInput,

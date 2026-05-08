@@ -8,7 +8,7 @@ export type ContextStatus = "loading" | "ready" | "missing" | "error";
 export interface DiagnosticsData {
   // Server
   serverState: ServerState;
-  retryServer: () => void;
+  retryServer: () => Promise<unknown>;
 
   // Setup (from useInit)
   setupStatus: SetupStatus | null;
@@ -26,7 +26,7 @@ export interface DiagnosticsData {
   isRefreshingContext: boolean;
 
   // Raw refetch for platform-specific needs (e.g., "refresh all")
-  refetchContext: () => void;
+  refetchContext: () => Promise<unknown>;
 }
 
 interface QueryLike {
@@ -77,6 +77,6 @@ export function useDiagnosticsData(): DiagnosticsData {
     canRegenerate: contextStatus === "ready" || contextStatus === "missing",
     handleRefreshContext: () => refreshContext.mutate({ force: true }),
     isRefreshingContext: refreshContext.isPending,
-    refetchContext: () => { contextQuery.refetch(); },
+    refetchContext: () => contextQuery.refetch({ throwOnError: true }),
   };
 }

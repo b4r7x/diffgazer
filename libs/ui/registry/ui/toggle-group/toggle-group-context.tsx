@@ -11,7 +11,7 @@ export interface ToggleGroupContextValue {
   highlightedValue: string | null;
   containerRef: RefObject<HTMLDivElement | null>;
   allowDeselect: boolean;
-  firstEnabledValue: string | null;
+  tabTargetValue: string | null;
 }
 
 export const ToggleGroupContext = createContext<ToggleGroupContextValue | undefined>(undefined);

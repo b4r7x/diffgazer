@@ -1,116 +1,113 @@
-import { useReducer, useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import {
-  useSearch,
   useParams,
   useRouter,
+  useSearch,
 } from "@tanstack/react-router";
 import { ReviewContainer, ReviewLoadingMessage, type ReviewCompleteData } from "./review-container";
 import { ReviewSummaryView } from "./review-summary-view";
 import { ReviewResultsView } from "./review-results-view";
 import type { ReviewIssue } from "@diffgazer/core/schemas/review";
 import { isApiError, useReviewErrorHandler } from "../hooks";
-import { api } from "@/lib/api";
+import { useReview } from "@diffgazer/core/api/hooks";
 
 interface ReviewData {
   issues: ReviewIssue[];
   reviewId: string | null;
 }
 
-type ReviewState =
-  | { phase: "loading-saved" }
+type LiveReviewState =
   | { phase: "streaming" }
   | { phase: "summary"; reviewData: ReviewData }
   | { phase: "results"; reviewData: ReviewData };
 
-type ReviewAction =
-  | { type: "START_LOAD_SAVED" }
-  | { type: "SHOW_STREAMING" }
-  | { type: "SHOW_SUMMARY"; reviewData: ReviewData }
-  | { type: "SHOW_RESULTS"; reviewData: ReviewData };
-
-function reviewReducer(_state: ReviewState, action: ReviewAction): ReviewState {
-  switch (action.type) {
-    case "START_LOAD_SAVED":
-      return { phase: "loading-saved" };
-    case "SHOW_STREAMING":
-      return { phase: "streaming" };
-    case "SHOW_SUMMARY":
-      return { phase: "summary", reviewData: action.reviewData };
-    case "SHOW_RESULTS":
-      return { phase: "results", reviewData: action.reviewData };
-  }
-}
-
-const loadingMessageMap: Record<ReviewState["phase"], string | null> = {
-  "loading-saved": "Loading review...",
-  streaming: null,
-  summary: null,
-  results: null,
-};
+const REVIEW_ROUTE = "/review/{-$reviewId}" as const;
 
 export function ReviewPage() {
-  const params = useParams({ strict: false });
-  const search = useSearch({ strict: false });
-  const reviewMode = search.mode ?? "unstaged";
-
-  const hasReviewId = !!params.reviewId;
-  const [state, dispatch] = useReducer(
-    reviewReducer,
-    hasReviewId ? { phase: "loading-saved" as const } : { phase: "streaming" as const },
-  );
+  const params = useParams({ from: REVIEW_ROUTE });
+  const search = useSearch({ from: REVIEW_ROUTE });
+  const reviewMode = search.mode;
+  const reviewId = params.reviewId ?? null;
+  const [liveState, setLiveState] = useState<LiveReviewState | null>(null);
 
   const router = useRouter();
   const { handleApiError } = useReviewErrorHandler();
 
-  const startFreshReview = async () => {
-    await router.navigate({
-      to: "/review/{-$reviewId}",
-      params: {},
-      search: { mode: reviewMode },
-      replace: true,
-    });
-    dispatch({ type: "SHOW_STREAMING" });
-  };
-
-  const loadSavedOrFresh = async (reviewId: string) => {
-    try {
-      const { review } = await api.getReview(reviewId);
-      if (review?.result) {
-        dispatch({
-          type: "SHOW_RESULTS",
-          reviewData: { issues: review.result.issues, reviewId: review.metadata.id },
-        });
-        return;
-      }
-    } catch (error) {
-      if (!isApiError(error) || error.status !== 404) {
-        handleApiError(error);
-        return;
-      }
-    }
-    await startFreshReview();
-  };
+  const liveReviewId =
+    liveState?.phase === "summary" || liveState?.phase === "results"
+      ? liveState.reviewData.reviewId
+      : null;
+  const isLiveReviewRoute = Boolean(reviewId && liveReviewId === reviewId);
+  const isLiveReviewStreaming = liveState?.phase === "streaming";
+  const shouldLoadSavedReview = Boolean(
+    reviewId &&
+    !isLiveReviewRoute &&
+    !isLiveReviewStreaming,
+  );
+  const savedReviewQuery = useReview(shouldLoadSavedReview ? (reviewId ?? "") : "");
+  const savedReview = savedReviewQuery.data?.review;
+  const savedReviewData: ReviewData | null = savedReview?.result
+    ? { issues: savedReview.result.issues, reviewId: savedReview.metadata.id }
+    : null;
 
   const handleComplete = (data: ReviewCompleteData) => {
-    dispatch({ type: "SHOW_SUMMARY", reviewData: data });
+    setLiveState({ phase: "summary", reviewData: data });
   };
 
-  // Mount-only: loads saved review or starts fresh based on initial route params
-  const didInit = useRef(false);
   useEffect(() => {
-    if (didInit.current) return;
-    didInit.current = true;
-    if (state.phase !== "loading-saved" || !params.reviewId) return;
-    void loadSavedOrFresh(params.reviewId);
-  }, []);
+    if (!shouldLoadSavedReview || !reviewId) return;
 
-  const loadingMessage = loadingMessageMap[state.phase];
+    const startFreshReview = () => {
+      setLiveState({ phase: "streaming" });
+      void router.navigate({
+        to: "/review/{-$reviewId}",
+        params: {},
+        search: { mode: reviewMode },
+        replace: true,
+      });
+    };
 
-  if (loadingMessage) {
-    return <ReviewLoadingMessage message={loadingMessage} />;
+    if (savedReviewQuery.isSuccess && !savedReviewQuery.data.review?.result) {
+      startFreshReview();
+      return;
+    }
+
+    if (!savedReviewQuery.isError) return;
+
+    if (isApiError(savedReviewQuery.error) && savedReviewQuery.error.status === 404) {
+      startFreshReview();
+      return;
+    }
+
+    handleApiError(savedReviewQuery.error);
+  }, [
+    handleApiError,
+    reviewId,
+    savedReviewQuery.data,
+    savedReviewQuery.error,
+    savedReviewQuery.isError,
+    savedReviewQuery.isSuccess,
+    shouldLoadSavedReview,
+    reviewMode,
+    router,
+  ]);
+
+  if (shouldLoadSavedReview) {
+    if (savedReviewData) {
+      return (
+        <ReviewResultsView
+          issues={savedReviewData.issues}
+          reviewId={savedReviewData.reviewId}
+        />
+      );
+    }
+
+    return <ReviewLoadingMessage message="Loading review..." />;
   }
 
-  switch (state.phase) {
+  const currentLiveState = liveState ?? { phase: "streaming" as const };
+
+  switch (currentLiveState.phase) {
     case "streaming":
       return (
         <ReviewContainer
@@ -122,10 +119,10 @@ export function ReviewPage() {
     case "summary":
       return (
         <ReviewSummaryView
-          issues={state.reviewData.issues}
-          reviewId={state.reviewData.reviewId}
+          issues={currentLiveState.reviewData.issues}
+          reviewId={currentLiveState.reviewData.reviewId}
           onEnterReview={() =>
-            dispatch({ type: "SHOW_RESULTS", reviewData: state.reviewData })
+            setLiveState({ phase: "results", reviewData: currentLiveState.reviewData })
           }
           onBack={() => router.history.back()}
         />
@@ -134,8 +131,8 @@ export function ReviewPage() {
     case "results":
       return (
         <ReviewResultsView
-          issues={state.reviewData.issues}
-          reviewId={state.reviewData.reviewId}
+          issues={currentLiveState.reviewData.issues}
+          reviewId={currentLiveState.reviewData.reviewId}
         />
       );
   }

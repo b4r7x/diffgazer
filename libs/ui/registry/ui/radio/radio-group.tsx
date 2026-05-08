@@ -66,6 +66,14 @@ function collectInitialItems(children: ReactNode): Array<{ value: string; disabl
   return items;
 }
 
+function getEnabledItemValue(
+  items: Array<{ value: string; disabled: boolean }>,
+  value: string | null | undefined,
+): string | null {
+  if (value === null || value === undefined) return null;
+  return items.some((item) => item.value === value && !item.disabled) ? value : null;
+}
+
 export function RadioGroup(props: RadioGroupProps) {
   const {
     value: controlledValue,
@@ -108,7 +116,11 @@ export function RadioGroup(props: RadioGroupProps) {
     onChange: onHighlightChange as ((value: string | null) => void) | undefined,
   });
 
-  const firstEnabledValue = items.find((item) => !item.disabled)?.value ?? null;
+  const enabledItems = disabled ? [] : items;
+  const validHighlightedValue = getEnabledItemValue(enabledItems, highlightedValue);
+  const validSelectedValue = getEnabledItemValue(enabledItems, value);
+  const tabTargetValue =
+    validHighlightedValue ?? validSelectedValue ?? enabledItems.find((item) => !item.disabled)?.value ?? null;
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,
@@ -118,7 +130,7 @@ export function RadioGroup(props: RadioGroupProps) {
     moveFocus: true,
     upKeys: ["ArrowUp", "ArrowLeft"],
     downKeys: ["ArrowDown", "ArrowRight"],
-    value: highlightedValue,
+    value: tabTargetValue,
     enabled: !disabled,
     onValueChange: (next) => {
       setHighlightedValue(next);
@@ -148,14 +160,14 @@ export function RadioGroup(props: RadioGroupProps) {
     disabled,
     size,
     variant,
-    highlightedValue,
+    highlightedValue: validHighlightedValue,
     name,
     required,
     requiredInvalid,
     onRequiredInvalid: handleRequiredInvalid,
     containerRef,
-    firstEnabledValue,
-  }), [value, handleValueChange, setHighlightedValue, disabled, size, variant, highlightedValue, name, required, requiredInvalid, handleRequiredInvalid, firstEnabledValue]);
+    tabTargetValue,
+  }), [value, handleValueChange, setHighlightedValue, disabled, size, variant, validHighlightedValue, name, required, requiredInvalid, handleRequiredInvalid, tabTargetValue]);
 
   return (
     <RadioGroupContext value={contextValue}>

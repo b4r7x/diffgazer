@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { renderHook, cleanup, fireEvent } from "@testing-library/react";
-import { StrictMode, type ReactNode } from "react";
+import { render, renderHook, cleanup, fireEvent, act } from "@testing-library/react";
+import { StrictMode, useState, type ReactNode } from "react";
 import { KeyboardProvider } from "../providers/keyboard-provider";
 import { useKey } from "./use-key";
+import { useScope } from "./use-scope";
 import { fireKey } from "../testing/test-utils";
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -162,6 +163,79 @@ describe("useKey", () => {
       fireKey("Escape");
       expect(secondHandler).toHaveBeenCalled();
       expect(callCount).toBe(2);
+    });
+  });
+
+  describe("scope registration", () => {
+    it("keeps parent shortcuts in their original scope when a modal scope opens", () => {
+      const openShortcut = vi.fn();
+      const globalEscape = vi.fn();
+      const modalEscape = vi.fn();
+
+      function Modal({ onClose }: { onClose: () => void }) {
+        useScope("modal");
+        useKey("Escape", () => {
+          modalEscape();
+          onClose();
+        });
+        return null;
+      }
+
+      function TestApp() {
+        const [open, setOpen] = useState(false);
+        useKey("o", () => {
+          openShortcut();
+          setOpen(true);
+        });
+        useKey("Escape", globalEscape);
+        return open ? <Modal onClose={() => setOpen(false)} /> : null;
+      }
+
+      render(<TestApp />, { wrapper });
+
+      act(() => fireKey("o"));
+      expect(openShortcut).toHaveBeenCalledOnce();
+
+      act(() => fireKey("o"));
+      expect(openShortcut).toHaveBeenCalledOnce();
+
+      act(() => fireKey("Escape"));
+      expect(modalEscape).toHaveBeenCalledOnce();
+      expect(globalEscape).not.toHaveBeenCalled();
+
+      act(() => fireKey("Escape"));
+      expect(globalEscape).toHaveBeenCalledOnce();
+    });
+
+    it("keeps explicit scoped registrations across scope push and pop", () => {
+      const modalEscape = vi.fn();
+      let open = false;
+
+      function TestApp() {
+        useScope("modal", { enabled: open });
+        useKey("Escape", modalEscape, { scope: "modal" });
+        return null;
+      }
+
+      const { rerender } = render(<TestApp />, { wrapper });
+
+      act(() => fireKey("Escape"));
+      expect(modalEscape).not.toHaveBeenCalled();
+
+      open = true;
+      rerender(<TestApp />);
+      act(() => fireKey("Escape"));
+      expect(modalEscape).toHaveBeenCalledOnce();
+
+      open = false;
+      rerender(<TestApp />);
+      act(() => fireKey("Escape"));
+      expect(modalEscape).toHaveBeenCalledOnce();
+
+      open = true;
+      rerender(<TestApp />);
+      act(() => fireKey("Escape"));
+      expect(modalEscape).toHaveBeenCalledTimes(2);
     });
   });
 

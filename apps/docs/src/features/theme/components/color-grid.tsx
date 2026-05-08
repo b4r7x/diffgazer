@@ -1,5 +1,5 @@
-import { useState } from "react"
 import { SectionHeader } from "@/components/ui/section-header/section-header"
+import { useCopyFeedback } from "@/lib/use-copy-feedback"
 
 interface ColorSwatch {
   variable: string
@@ -86,12 +86,11 @@ function SwatchGroup({ title, swatches }: { title: string; swatches: ColorSwatch
 }
 
 function SwatchCard({ swatch }: { swatch: ColorSwatch }) {
-  const [copied, setCopied] = useState(false)
+  const { copied, showCopied } = useCopyFeedback()
 
   const handleClick = async () => {
     await navigator.clipboard.writeText(swatch.cssVar)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    showCopied()
   }
 
   return (

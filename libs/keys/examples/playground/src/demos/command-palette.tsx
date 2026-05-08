@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useKey, useScope, useScopedNavigation } from "@diffgazer/keys";
 import { DemoWrapper } from "../components/demo-wrapper";
+import { useTransientValue } from "./use-transient-value";
 
 const ALL_COMMANDS = [
   { id: "save", label: "Save File", icon: "\uD83D\uDCBE" },
@@ -18,7 +19,7 @@ const ALL_COMMANDS = [
 export function CommandPaletteDemo() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastMessage, showToastMessage] = useTransientValue<string | null>(null, 2000);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -29,7 +30,7 @@ export function CommandPaletteDemo() {
   const selectCommand = (value: string) => {
     const cmd = ALL_COMMANDS.find((c) => c.id === value);
     if (cmd) {
-      setToastMessage(`Executed: ${cmd.label}`);
+      showToastMessage(`Executed: ${cmd.label}`);
       setOpen(false);
       setQuery("");
     }
@@ -38,14 +39,14 @@ export function CommandPaletteDemo() {
   useKey("mod+k", () => {
     setOpen(true);
     setQuery("");
-  }, { preventDefault: true });
+  }, { preventDefault: true, scope: "global" });
 
   useScope("command-palette", { enabled: open });
 
   useKey("Escape", () => {
     setOpen(false);
     setQuery("");
-  }, { enabled: open });
+  }, { enabled: open, scope: "command-palette" });
 
   const { highlighted, isHighlighted } = useScopedNavigation({
     containerRef,
@@ -56,16 +57,10 @@ export function CommandPaletteDemo() {
   });
 
   useEffect(() => {
-    if (open) {
-      requestAnimationFrame(() => inputRef.current?.focus());
-    }
+    if (!open) return;
+    const frameId = window.requestAnimationFrame(() => inputRef.current?.focus());
+    return () => window.cancelAnimationFrame(frameId);
   }, [open]);
-
-  useEffect(() => {
-    if (!toastMessage) return;
-    const timer = setTimeout(() => setToastMessage(null), 2000);
-    return () => clearTimeout(timer);
-  }, [toastMessage]);
 
   return (
     <DemoWrapper

@@ -3,7 +3,7 @@
   "title": "useKey",
   "description": "Bind keyboard shortcuts to handlers with scoped, document-level, or element-targeted listening. Supports single key, array of keys, or key map overloads.",
   "source": {
-    "raw": "\"use client\";\n\nimport { useEffect, useEffectEvent } from \"react\";\nimport type { RefObject } from \"react\";\nimport type { HandlerOptions } from \"../providers/keyboard-provider.js\";\nimport { useOptionalKeyboardContext } from \"../context/keyboard-context.js\";\nimport type { KeyHandler } from \"../internal/normalize-key-input.js\";\nimport { normalizeKeyInput } from \"../internal/normalize-key-input.js\";\n\nexport interface UseKeyOptions {\n  enabled?: boolean;\n  allowInInput?: boolean;\n  targetRef?: RefObject<HTMLElement | null>;\n  requireFocusWithin?: boolean;\n  preventDefault?: boolean;\n}\n\nexport function useKey(\n  hotkey: string,\n  handler: KeyHandler,\n  options?: UseKeyOptions,\n): void;\n\nexport function useKey(\n  hotkeys: readonly string[],\n  handler: KeyHandler,\n  options?: UseKeyOptions,\n): void;\n\nexport function useKey(\n  handlers: Record<string, KeyHandler>,\n  options?: UseKeyOptions,\n): void;\n\nexport function useKey(\n  first: string | readonly string[] | Record<string, KeyHandler>,\n  second?: KeyHandler | UseKeyOptions,\n  third?: UseKeyOptions,\n): void {\n  const { handlerMap, options } = normalizeKeyInput<UseKeyOptions>(first, second, third);\n\n  const ctx = useOptionalKeyboardContext();\n  const register = ctx?.register ?? null;\n  const activeScope = ctx?.activeScope ?? null;\n\n  const enabled = options?.enabled;\n  const allowInInput = options?.allowInInput;\n  const targetRef = options?.targetRef;\n  const requireFocusWithin = options?.requireFocusWithin;\n  const preventDefault = options?.preventDefault;\n\n  const dispatch = useEffectEvent((key: string, event: KeyboardEvent) => {\n    handlerMap[key]?.(event);\n  });\n\n  const registrationKeys = Object.keys(handlerMap).sort();\n  const registrationVersion = registrationKeys.map((key) => `${key.length}:${key}`).join(\"|\");\n\n  const handlerOptions: HandlerOptions | undefined = options\n    ? {\n        allowInInput,\n        targetRef,\n        requireFocusWithin,\n        preventDefault,\n      }\n    : undefined;\n\n  useEffect(() => {\n    if (enabled === false) return;\n    if (!register || !activeScope) return;\n\n    const cleanups = registrationKeys.map((key) =>\n      register(\n        activeScope,\n        key,\n        (event: KeyboardEvent) => dispatch(key, event),\n        handlerOptions,\n      ),\n    );\n\n    return () => cleanups.forEach((cleanup) => cleanup());\n  }, [\n    activeScope,\n    register,\n    registrationVersion,\n    enabled,\n    allowInInput,\n    targetRef,\n    requireFocusWithin,\n    preventDefault,\n  ]);\n}\n",
+    "raw": "\"use client\";\n\nimport { useEffect, useEffectEvent } from \"react\";\nimport type { RefObject } from \"react\";\nimport type { HandlerOptions } from \"../providers/keyboard-provider.js\";\nimport { useOptionalKeyboardContext } from \"../context/keyboard-context.js\";\nimport type { KeyHandler } from \"../internal/normalize-key-input.js\";\nimport { normalizeKeyInput } from \"../internal/normalize-key-input.js\";\n\nexport interface UseKeyOptions {\n  enabled?: boolean;\n  scope?: string;\n  allowInInput?: boolean;\n  targetRef?: RefObject<HTMLElement | null>;\n  requireFocusWithin?: boolean;\n  preventDefault?: boolean;\n}\n\nexport function useKey(\n  hotkey: string,\n  handler: KeyHandler,\n  options?: UseKeyOptions,\n): void;\n\nexport function useKey(\n  hotkeys: readonly string[],\n  handler: KeyHandler,\n  options?: UseKeyOptions,\n): void;\n\nexport function useKey(\n  handlers: Record<string, KeyHandler>,\n  options?: UseKeyOptions,\n): void;\n\nexport function useKey(\n  first: string | readonly string[] | Record<string, KeyHandler>,\n  second?: KeyHandler | UseKeyOptions,\n  third?: UseKeyOptions,\n): void {\n  const { handlerMap, options } = normalizeKeyInput<UseKeyOptions>(first, second, third);\n\n  const ctx = useOptionalKeyboardContext();\n  const register = ctx?.register ?? null;\n  const getActiveScope = ctx?.getActiveScope ?? null;\n\n  const enabled = options?.enabled;\n  const scope = options?.scope;\n  const allowInInput = options?.allowInInput;\n  const targetRef = options?.targetRef;\n  const requireFocusWithin = options?.requireFocusWithin;\n  const preventDefault = options?.preventDefault;\n\n  const dispatch = useEffectEvent((key: string, event: KeyboardEvent) => {\n    handlerMap[key]?.(event);\n  });\n\n  const registrationKeys = Object.keys(handlerMap).sort();\n  const registrationVersion = registrationKeys.map((key) => `${key.length}:${key}`).join(\"|\");\n\n  const handlerOptions: HandlerOptions | undefined = options\n    ? {\n        allowInInput,\n        targetRef,\n        requireFocusWithin,\n        preventDefault,\n      }\n    : undefined;\n\n  useEffect(() => {\n    if (enabled === false) return;\n    if (!register || !getActiveScope) return;\n\n    const registrationScope = scope ?? getActiveScope();\n    if (registrationScope === null) return;\n\n    const cleanups = registrationKeys.map((key) =>\n      register(\n        registrationScope,\n        key,\n        (event: KeyboardEvent) => dispatch(key, event),\n        handlerOptions,\n      ),\n    );\n\n    return () => cleanups.forEach((cleanup) => cleanup());\n  }, [\n    register,\n    getActiveScope,\n    scope,\n    registrationVersion,\n    enabled,\n    allowInInput,\n    targetRef,\n    requireFocusWithin,\n    preventDefault,\n  ]);\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -446,6 +446,31 @@
         "number": 12,
         "content": [
           {
+            "text": "  scope",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "?:",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "string",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 13,
+        "content": [
+          {
             "text": "  allowInInput",
             "color": "var(--code-variable)"
           },
@@ -468,7 +493,7 @@
         ]
       },
       {
-        "number": 13,
+        "number": 14,
         "content": [
           {
             "text": "  targetRef",
@@ -517,7 +542,7 @@
         ]
       },
       {
-        "number": 14,
+        "number": 15,
         "content": [
           {
             "text": "  requireFocusWithin",
@@ -542,7 +567,7 @@
         ]
       },
       {
-        "number": 15,
+        "number": 16,
         "content": [
           {
             "text": "  preventDefault",
@@ -567,7 +592,7 @@
         ]
       },
       {
-        "number": 16,
+        "number": 17,
         "content": [
           {
             "text": "}",
@@ -576,11 +601,11 @@
         ]
       },
       {
-        "number": 17,
+        "number": 18,
         "content": []
       },
       {
-        "number": 18,
+        "number": 19,
         "content": [
           {
             "text": "export",
@@ -609,7 +634,7 @@
         ]
       },
       {
-        "number": 19,
+        "number": 20,
         "content": [
           {
             "text": "  hotkey",
@@ -634,7 +659,7 @@
         ]
       },
       {
-        "number": 20,
+        "number": 21,
         "content": [
           {
             "text": "  handler",
@@ -659,7 +684,7 @@
         ]
       },
       {
-        "number": 21,
+        "number": 22,
         "content": [
           {
             "text": "  options",
@@ -684,7 +709,7 @@
         ]
       },
       {
-        "number": 22,
+        "number": 23,
         "content": [
           {
             "text": "):",
@@ -705,11 +730,11 @@
         ]
       },
       {
-        "number": 23,
+        "number": 24,
         "content": []
       },
       {
-        "number": 24,
+        "number": 25,
         "content": [
           {
             "text": "export",
@@ -738,7 +763,7 @@
         ]
       },
       {
-        "number": 25,
+        "number": 26,
         "content": [
           {
             "text": "  hotkeys",
@@ -775,7 +800,7 @@
         ]
       },
       {
-        "number": 26,
+        "number": 27,
         "content": [
           {
             "text": "  handler",
@@ -800,7 +825,7 @@
         ]
       },
       {
-        "number": 27,
+        "number": 28,
         "content": [
           {
             "text": "  options",
@@ -825,7 +850,7 @@
         ]
       },
       {
-        "number": 28,
+        "number": 29,
         "content": [
           {
             "text": "):",
@@ -846,11 +871,11 @@
         ]
       },
       {
-        "number": 29,
+        "number": 30,
         "content": []
       },
       {
-        "number": 30,
+        "number": 31,
         "content": [
           {
             "text": "export",
@@ -879,7 +904,7 @@
         ]
       },
       {
-        "number": 31,
+        "number": 32,
         "content": [
           {
             "text": "  handlers",
@@ -924,7 +949,7 @@
         ]
       },
       {
-        "number": 32,
+        "number": 33,
         "content": [
           {
             "text": "  options",
@@ -949,7 +974,7 @@
         ]
       },
       {
-        "number": 33,
+        "number": 34,
         "content": [
           {
             "text": "):",
@@ -970,11 +995,11 @@
         ]
       },
       {
-        "number": 34,
+        "number": 35,
         "content": []
       },
       {
-        "number": 35,
+        "number": 36,
         "content": [
           {
             "text": "export",
@@ -1003,7 +1028,7 @@
         ]
       },
       {
-        "number": 36,
+        "number": 37,
         "content": [
           {
             "text": "  first",
@@ -1088,7 +1113,7 @@
         ]
       },
       {
-        "number": 37,
+        "number": 38,
         "content": [
           {
             "text": "  second",
@@ -1129,7 +1154,7 @@
         ]
       },
       {
-        "number": 38,
+        "number": 39,
         "content": [
           {
             "text": "  third",
@@ -1154,7 +1179,7 @@
         ]
       },
       {
-        "number": 39,
+        "number": 40,
         "content": [
           {
             "text": "):",
@@ -1179,7 +1204,7 @@
         ]
       },
       {
-        "number": 40,
+        "number": 41,
         "content": [
           {
             "text": "  ",
@@ -1280,11 +1305,11 @@
         ]
       },
       {
-        "number": 41,
+        "number": 42,
         "content": []
       },
       {
-        "number": 42,
+        "number": 43,
         "content": [
           {
             "text": "  ",
@@ -1329,7 +1354,7 @@
         ]
       },
       {
-        "number": 43,
+        "number": 44,
         "content": [
           {
             "text": "  ",
@@ -1390,7 +1415,7 @@
         ]
       },
       {
-        "number": 44,
+        "number": 45,
         "content": [
           {
             "text": "  ",
@@ -1405,7 +1430,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "activeScope",
+            "text": "getActiveScope",
             "color": "var(--code-number)"
           },
           {
@@ -1429,7 +1454,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "activeScope ",
+            "text": "getActiveScope ",
             "color": "var(--code-variable)"
           },
           {
@@ -1451,57 +1476,8 @@
         ]
       },
       {
-        "number": 45,
-        "content": []
-      },
-      {
         "number": 46,
-        "content": [
-          {
-            "text": "  ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "const",
-            "color": "var(--code-keyword)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "enabled",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "=",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " ",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": "options",
-            "color": "var(--code-number)"
-          },
-          {
-            "text": "?.",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": "enabled",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ";",
-            "color": "var(--code-operator)"
-          }
-        ]
+        "content": []
       },
       {
         "number": 47,
@@ -1519,7 +1495,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "allowInInput",
+            "text": "enabled",
             "color": "var(--code-number)"
           },
           {
@@ -1543,7 +1519,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "allowInInput",
+            "text": "enabled",
             "color": "var(--code-variable)"
           },
           {
@@ -1568,7 +1544,7 @@
             "color": "var(--code-variable)"
           },
           {
-            "text": "targetRef",
+            "text": "scope",
             "color": "var(--code-number)"
           },
           {
@@ -1592,7 +1568,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "targetRef",
+            "text": "scope",
             "color": "var(--code-variable)"
           },
           {
@@ -1617,6 +1593,104 @@
             "color": "var(--code-variable)"
           },
           {
+            "text": "allowInInput",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "options",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "allowInInput",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 50,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "targetRef",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "options",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "targetRef",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 51,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
             "text": "requireFocusWithin",
             "color": "var(--code-number)"
           },
@@ -1651,7 +1725,7 @@
         ]
       },
       {
-        "number": 50,
+        "number": 52,
         "content": [
           {
             "text": "  ",
@@ -1700,11 +1774,11 @@
         ]
       },
       {
-        "number": 51,
+        "number": 53,
         "content": []
       },
       {
-        "number": 52,
+        "number": 54,
         "content": [
           {
             "text": "  ",
@@ -1805,7 +1879,7 @@
         ]
       },
       {
-        "number": 53,
+        "number": 55,
         "content": [
           {
             "text": "    handlerMap[key]",
@@ -1826,7 +1900,7 @@
         ]
       },
       {
-        "number": 54,
+        "number": 56,
         "content": [
           {
             "text": "  ",
@@ -1847,11 +1921,11 @@
         ]
       },
       {
-        "number": 55,
+        "number": 57,
         "content": []
       },
       {
-        "number": 56,
+        "number": 58,
         "content": [
           {
             "text": "  ",
@@ -1916,7 +1990,7 @@
         ]
       },
       {
-        "number": 57,
+        "number": 59,
         "content": [
           {
             "text": "  ",
@@ -2069,11 +2143,11 @@
         ]
       },
       {
-        "number": 58,
+        "number": 60,
         "content": []
       },
       {
-        "number": 59,
+        "number": 61,
         "content": [
           {
             "text": "  ",
@@ -2134,7 +2208,7 @@
         ]
       },
       {
-        "number": 60,
+        "number": 62,
         "content": [
           {
             "text": "    ",
@@ -2155,7 +2229,7 @@
         ]
       },
       {
-        "number": 61,
+        "number": 63,
         "content": [
           {
             "text": "        allowInInput",
@@ -2168,7 +2242,7 @@
         ]
       },
       {
-        "number": 62,
+        "number": 64,
         "content": [
           {
             "text": "        targetRef",
@@ -2181,7 +2255,7 @@
         ]
       },
       {
-        "number": 63,
+        "number": 65,
         "content": [
           {
             "text": "        requireFocusWithin",
@@ -2194,7 +2268,7 @@
         ]
       },
       {
-        "number": 64,
+        "number": 66,
         "content": [
           {
             "text": "        preventDefault",
@@ -2207,7 +2281,7 @@
         ]
       },
       {
-        "number": 65,
+        "number": 67,
         "content": [
           {
             "text": "      ",
@@ -2220,7 +2294,7 @@
         ]
       },
       {
-        "number": 66,
+        "number": 68,
         "content": [
           {
             "text": "    ",
@@ -2245,11 +2319,11 @@
         ]
       },
       {
-        "number": 67,
+        "number": 69,
         "content": []
       },
       {
-        "number": 68,
+        "number": 70,
         "content": [
           {
             "text": "  ",
@@ -2286,7 +2360,7 @@
         ]
       },
       {
-        "number": 69,
+        "number": 71,
         "content": [
           {
             "text": "    ",
@@ -2327,7 +2401,7 @@
         ]
       },
       {
-        "number": 70,
+        "number": 72,
         "content": [
           {
             "text": "    ",
@@ -2362,7 +2436,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": "activeScope) ",
+            "text": "getActiveScope) ",
             "color": "var(--code-variable)"
           },
           {
@@ -2376,11 +2450,109 @@
         ]
       },
       {
-        "number": 71,
+        "number": 73,
         "content": []
       },
       {
-        "number": 72,
+        "number": 74,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "registrationScope",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " scope ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "??",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "getActiveScope",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 75,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "if",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " (registrationScope ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "===",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "null",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": ") ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "return",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 76,
+        "content": []
+      },
+      {
+        "number": 77,
         "content": [
           {
             "text": "    ",
@@ -2449,7 +2621,7 @@
         ]
       },
       {
-        "number": 73,
+        "number": 78,
         "content": [
           {
             "text": "      ",
@@ -2466,10 +2638,10 @@
         ]
       },
       {
-        "number": 74,
+        "number": 79,
         "content": [
           {
-            "text": "        activeScope",
+            "text": "        registrationScope",
             "color": "var(--code-variable)"
           },
           {
@@ -2479,7 +2651,7 @@
         ]
       },
       {
-        "number": 75,
+        "number": 80,
         "content": [
           {
             "text": "        key",
@@ -2492,7 +2664,7 @@
         ]
       },
       {
-        "number": 76,
+        "number": 81,
         "content": [
           {
             "text": "        ",
@@ -2557,7 +2729,7 @@
         ]
       },
       {
-        "number": 77,
+        "number": 82,
         "content": [
           {
             "text": "        handlerOptions",
@@ -2570,7 +2742,7 @@
         ]
       },
       {
-        "number": 78,
+        "number": 83,
         "content": [
           {
             "text": "      )",
@@ -2583,7 +2755,7 @@
         ]
       },
       {
-        "number": 79,
+        "number": 84,
         "content": [
           {
             "text": "    )",
@@ -2596,11 +2768,11 @@
         ]
       },
       {
-        "number": 80,
+        "number": 85,
         "content": []
       },
       {
-        "number": 81,
+        "number": 86,
         "content": [
           {
             "text": "    ",
@@ -2685,7 +2857,7 @@
         ]
       },
       {
-        "number": 82,
+        "number": 87,
         "content": [
           {
             "text": "  ",
@@ -2702,20 +2874,7 @@
         ]
       },
       {
-        "number": 83,
-        "content": [
-          {
-            "text": "    activeScope",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 84,
+        "number": 88,
         "content": [
           {
             "text": "    register",
@@ -2728,62 +2887,10 @@
         ]
       },
       {
-        "number": 85,
-        "content": [
-          {
-            "text": "    registrationVersion",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 86,
-        "content": [
-          {
-            "text": "    enabled",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 87,
-        "content": [
-          {
-            "text": "    allowInInput",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
-        "number": 88,
-        "content": [
-          {
-            "text": "    targetRef",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          }
-        ]
-      },
-      {
         "number": 89,
         "content": [
           {
-            "text": "    requireFocusWithin",
+            "text": "    getActiveScope",
             "color": "var(--code-variable)"
           },
           {
@@ -2796,7 +2903,7 @@
         "number": 90,
         "content": [
           {
-            "text": "    preventDefault",
+            "text": "    scope",
             "color": "var(--code-variable)"
           },
           {
@@ -2809,6 +2916,84 @@
         "number": 91,
         "content": [
           {
+            "text": "    registrationVersion",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 92,
+        "content": [
+          {
+            "text": "    enabled",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 93,
+        "content": [
+          {
+            "text": "    allowInInput",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 94,
+        "content": [
+          {
+            "text": "    targetRef",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 95,
+        "content": [
+          {
+            "text": "    requireFocusWithin",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 96,
+        "content": [
+          {
+            "text": "    preventDefault",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 97,
+        "content": [
+          {
             "text": "  ])",
             "color": "var(--code-variable)"
           },
@@ -2819,7 +3004,7 @@
         ]
       },
       {
-        "number": 92,
+        "number": 98,
         "content": [
           {
             "text": "}",
@@ -2828,7 +3013,7 @@
         ]
       },
       {
-        "number": 93,
+        "number": 99,
         "content": []
       }
     ]

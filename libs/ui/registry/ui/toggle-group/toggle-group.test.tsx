@@ -261,6 +261,34 @@ describe("ToggleGroup", () => {
     expect(screen.getByRole("radio", { name: /beta/i })).toHaveFocus()
   })
 
+  it("falls back to an enabled tab target when selected or highlighted values are invalid", async () => {
+    render(
+      <ToggleGroup label="Options" value="missing" highlighted="a">
+        <ToggleGroup.Item value="a" disabled>Alpha</ToggleGroup.Item>
+        <ToggleGroup.Item value="b">Beta</ToggleGroup.Item>
+        <ToggleGroup.Item value="c">Charlie</ToggleGroup.Item>
+      </ToggleGroup>
+    )
+
+    const radios = getRadios()
+    expect(radios.map((radio) => radio.getAttribute("tabindex"))).toEqual(["-1", "0", "-1"])
+    expect(screen.getByRole("radio", { name: /alpha/i })).not.toHaveAttribute("data-highlighted")
+
+    await userEvent.tab()
+    expect(screen.getByRole("radio", { name: /beta/i })).toHaveFocus()
+  })
+
+  it("keeps the tabbable item aligned with a valid controlled highlight", () => {
+    renderGroup({ value: "a", highlighted: "b" })
+
+    const alpha = screen.getByRole("radio", { name: /alpha/i })
+    const beta = screen.getByRole("radio", { name: /beta/i })
+    expect(alpha).toHaveAttribute("aria-checked", "true")
+    expect(alpha).toHaveAttribute("tabindex", "-1")
+    expect(beta).toHaveAttribute("tabindex", "0")
+    expect(beta).toHaveAttribute("data-highlighted", "true")
+  })
+
   it("does not focus or highlight disabled items with arrows or hover", async () => {
     render(
       <ToggleGroup label="Options" defaultValue="a">

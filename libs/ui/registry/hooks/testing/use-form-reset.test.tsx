@@ -120,6 +120,18 @@ describe("useFormReset", () => {
     expect(onReset).toHaveBeenCalledWith("updated");
   });
 
+  it("does not accumulate reset listeners across rerenders", async () => {
+    const onReset = vi.fn();
+    const { rerender } = render(<ResettableInput defaultValue="initial" onReset={onReset} />);
+
+    rerender(<ResettableInput defaultValue="updated" onReset={onReset} />);
+    rerender(<ResettableInput defaultValue="updated" onReset={onReset} />);
+    screen.getByRole("form", { name: /profile/i }).dispatchEvent(new Event("reset", { bubbles: true }));
+
+    await waitFor(() => expect(onReset).toHaveBeenCalledOnce());
+    expect(onReset).toHaveBeenCalledWith("updated");
+  });
+
   it("resubscribes when the control moves to another form", async () => {
     const onReset = vi.fn();
     const { rerender } = render(<MovableResettableInput defaultValue="initial" formName="A" onReset={onReset} />);

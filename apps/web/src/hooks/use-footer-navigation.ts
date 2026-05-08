@@ -1,6 +1,8 @@
 import { useState, type RefObject } from "react";
 import { useKey } from "@diffgazer/keys";
 
+type FooterNavigationZone = "content" | "footer";
+
 interface UseFooterNavigationOptions {
   enabled: boolean;
   buttonCount: number;
@@ -8,6 +10,8 @@ interface UseFooterNavigationOptions {
   targetRef?: RefObject<HTMLElement | null>;
   allowInInput?: boolean;
   wrap?: boolean;
+  defaultZone?: FooterNavigationZone;
+  defaultIndex?: number;
 }
 
 export function useFooterNavigation({
@@ -17,9 +21,11 @@ export function useFooterNavigation({
   targetRef,
   allowInInput = false,
   wrap = false,
+  defaultZone = "content",
+  defaultIndex = 0,
 }: UseFooterNavigationOptions) {
-  const [inFooter, setInFooter] = useState(false);
-  const [focusedIndex, setFocusedIndex] = useState(0);
+  const [inFooter, setInFooter] = useState(defaultZone === "footer");
+  const [focusedIndex, setFocusedIndex] = useState(defaultIndex);
 
   const reset = (initialIndex: number = 0) => {
     setInFooter(false);

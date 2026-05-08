@@ -23,15 +23,15 @@ export function useApiKeyForm({
   // Parent should key this component on `open` or only mount when open=true
   // to reset state, rather than relying on a useEffect to sync props to state.
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (submitMethod: InputMethod = method) => {
     if (isSubmitting) return;
-    const value = method === "paste" ? keyValue : envVarName;
-    if (!value && method === "paste") return;
+    const value = submitMethod === "paste" ? keyValue : envVarName;
+    if (!value && submitMethod === "paste") return;
 
     setIsSubmitting(true);
     setError(null);
     try {
-      await onSubmit(method, value);
+      await onSubmit(submitMethod, value);
       setKeyValue("");
       onOpenChange(false);
     } catch (err) {

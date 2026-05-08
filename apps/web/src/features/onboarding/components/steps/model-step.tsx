@@ -1,9 +1,10 @@
-import { useState, type KeyboardEvent } from "react";
+import { type KeyboardEvent } from "react";
 import { AVAILABLE_PROVIDERS, GEMINI_MODEL_INFO, GLM_MODEL_INFO } from "@diffgazer/core/schemas/config";
 import type { AIProvider, ModelInfo } from "@diffgazer/core/schemas/config";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { useOpenRouterModels } from "@/hooks/use-openrouter-models";
+import { useOptionHighlight } from "./use-option-highlight";
 
 interface ModelStepProps {
   provider: AIProvider;
@@ -26,11 +27,6 @@ function getStaticModels(provider: AIProvider): ModelInfo[] {
   }
 }
 
-function getAvailableHighlight(value: string | null, ids: readonly string[]): string | null {
-  if (value && ids.includes(value)) return value;
-  return ids[0] ?? null;
-}
-
 function StaticModelList({
   provider,
   value,
@@ -42,8 +38,14 @@ function StaticModelList({
   const models = getStaticModels(provider);
   const providerInfo = AVAILABLE_PROVIDERS.find((p) => p.id === provider);
   const modelIds = models.map((model) => model.id);
-  const [highlighted, setHighlighted] = useState<string | null>(modelIds[0] ?? null);
-  const effectiveHighlighted = getAvailableHighlight(highlighted, modelIds);
+  const { highlighted: effectiveHighlighted, setHighlighted } = useOptionHighlight(
+    value,
+    modelIds,
+  );
+  const handleChange = (nextValue: string) => {
+    setHighlighted(nextValue);
+    onChange(nextValue);
+  };
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" && effectiveHighlighted) {
@@ -64,7 +66,7 @@ function StaticModelList({
       </p>
       <RadioGroup
         value={value ?? undefined}
-        onChange={onChange}
+        onChange={handleChange}
         highlighted={enabled ? effectiveHighlighted : null}
         onHighlightChange={setHighlighted}
         onKeyDown={handleKeyDown}
@@ -109,8 +111,14 @@ function OpenRouterModelList({
 }: Omit<ModelStepProps, "provider">) {
   const { models, loading, error } = useOpenRouterModels(true, "openrouter");
   const modelIds = models.map((model) => model.id);
-  const [highlighted, setHighlighted] = useState<string | null>(null);
-  const effectiveHighlighted = getAvailableHighlight(highlighted, modelIds);
+  const { highlighted: effectiveHighlighted, setHighlighted } = useOptionHighlight(
+    value,
+    modelIds,
+  );
+  const handleChange = (nextValue: string) => {
+    setHighlighted(nextValue);
+    onChange(nextValue);
+  };
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" && effectiveHighlighted) {
@@ -148,7 +156,7 @@ function OpenRouterModelList({
       <div className="max-h-64 overflow-y-auto scrollbar-hide">
         <RadioGroup
           value={value ?? undefined}
-          onChange={onChange}
+          onChange={handleChange}
           highlighted={enabled ? effectiveHighlighted : null}
           onHighlightChange={setHighlighted}
           onKeyDown={handleKeyDown}

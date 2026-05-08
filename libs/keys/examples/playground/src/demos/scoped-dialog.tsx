@@ -1,13 +1,19 @@
 import { useState } from "react";
 import { useKey, useScope } from "@diffgazer/keys";
 import { DemoWrapper } from "../components/demo-wrapper";
+import { useTransientValue } from "./use-transient-value";
 
 export function ScopedDialogDemo() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<number | null>(null);
-  const [confirmed, setConfirmed] = useState(false);
+  const [confirmed, showConfirmed] = useTransientValue(false, 1500);
 
   useScope("dialog", { enabled: dialogOpen });
+
+  const confirmAction = () => {
+    setDialogOpen(false);
+    showConfirmed(true);
+  };
 
   // Global scope: select items 1-5
   useKey({
@@ -16,20 +22,16 @@ export function ScopedDialogDemo() {
     "3": () => setSelectedItem(3),
     "4": () => setSelectedItem(4),
     "5": () => setSelectedItem(5),
-  }, { allowInInput: false });
+  }, { allowInInput: false, scope: "global" });
 
   // Global scope: open dialog
-  useKey("o", () => setDialogOpen(true), { allowInInput: false });
+  useKey("o", () => setDialogOpen(true), { allowInInput: false, scope: "global" });
 
   // Dialog scope: confirm with Enter
-  useKey("Enter", () => {
-    setDialogOpen(false);
-    setConfirmed(true);
-    setTimeout(() => setConfirmed(false), 1500);
-  }, { enabled: dialogOpen });
+  useKey("Enter", confirmAction, { enabled: dialogOpen, scope: "dialog" });
 
   // Dialog scope: cancel with Escape
-  useKey("Escape", () => setDialogOpen(false), { enabled: dialogOpen });
+  useKey("Escape", () => setDialogOpen(false), { enabled: dialogOpen, scope: "dialog" });
 
   return (
     <DemoWrapper
@@ -89,11 +91,7 @@ export function ScopedDialogDemo() {
               </button>
               <button
                 className="demo-button"
-                onClick={() => {
-                  setDialogOpen(false);
-                  setConfirmed(true);
-                  setTimeout(() => setConfirmed(false), 1500);
-                }}
+                onClick={confirmAction}
               >
                 Confirm
               </button>

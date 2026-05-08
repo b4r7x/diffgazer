@@ -90,17 +90,19 @@ export function useFocusZone<T extends string>(
 
   useKey(
     keys(ARROW_KEYS, (e) => stableTransitions(e.key as typeof ARROW_KEYS[number])),
-    { enabled: enabled && transitions != null },
+    { enabled: enabled && transitions != null, scope },
   );
 
   useKey("Tab", () => cycleZone(1), {
     enabled: enabled && tabCycle != null,
     preventDefault: true,
+    scope,
   });
 
   useKey("shift+Tab", () => cycleZone(-1), {
     enabled: enabled && tabCycle != null,
     preventDefault: true,
+    scope,
   });
 
   useScope(scope ?? null, { enabled: enabled && !!scope });
@@ -113,6 +115,7 @@ export function useFocusZone<T extends string>(
     inZone: (...zones: T[]) => zones.includes(safeZone),
     forZone: (target: T, extra?: UseKeyOptions): UseKeyOptions => ({
       ...extra,
+      scope: extra?.scope ?? scope,
       enabled: safeZone === target && (extra?.enabled ?? true),
     }),
     zoneProps: (target: T): ZoneProps => ({

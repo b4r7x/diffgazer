@@ -72,6 +72,19 @@ export function useProvidersKeyboard({
     if (targetId) setSelectedId(targetId);
   };
 
+  const focusPreviousFilter = () => {
+    setFilterIndex((index) => Math.max(0, index - 1));
+  };
+
+  const focusNextFilter = () => {
+    setFilterIndex((index) => Math.min(PROVIDER_FILTERS.length - 1, index + 1));
+  };
+
+  const applyFocusedFilter = () => {
+    const nextFilter = PROVIDER_FILTERS[filterIndex];
+    if (nextFilter) setFilter(nextFilter);
+  };
+
   const handleButtonAction = (index: number) => {
     if (!selectedProvider) return;
     switch (index) {
@@ -108,14 +121,10 @@ export function useProvidersKeyboard({
       focusBoundaryProvider("first");
     }
   }, { enabled: !dialogOpen && inFilters });
-  useKey("ArrowLeft", () => setFilterIndex((i) => Math.max(0, i - 1)),
-    { enabled: !dialogOpen && inFilters });
-  useKey("ArrowRight", () => setFilterIndex((i) => Math.min(PROVIDER_FILTERS.length - 1, i + 1)),
-    { enabled: !dialogOpen && inFilters });
-  useKey("Enter", () => setFilter(PROVIDER_FILTERS[filterIndex]),
-    { enabled: !dialogOpen && inFilters });
-  useKey(" ", () => setFilter(PROVIDER_FILTERS[filterIndex]),
-    { enabled: !dialogOpen && inFilters });
+  useKey("ArrowLeft", focusPreviousFilter, { enabled: !dialogOpen && inFilters });
+  useKey("ArrowRight", focusNextFilter, { enabled: !dialogOpen && inFilters });
+  useKey("Enter", applyFocusedFilter, { enabled: !dialogOpen && inFilters });
+  useKey(" ", applyFocusedFilter, { enabled: !dialogOpen && inFilters });
 
   // List zone — side-effect for transition to buttons
   useKey("ArrowRight", () => {

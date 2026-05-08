@@ -1817,7 +1817,7 @@
       ]
     },
     "registry/ui/avatar/avatar.tsx": {
-      "raw": "\"use client\";\n\nimport {\n  type HTMLAttributes,\n  type ReactNode,\n  type Ref,\n  useEffect,\n  useMemo,\n  useState,\n} from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { AvatarContext, useAvatarGroupContext, type AvatarStatus } from \"./avatar-context\";\nimport { AvatarImage } from \"./avatar-image\";\nimport { AvatarFallback } from \"./avatar-fallback\";\n\nexport { type AvatarStatus };\n\nexport const avatarVariants = cva(\n  \"relative inline-flex items-center justify-center border border-foreground/40 font-mono font-medium text-foreground bg-background overflow-hidden shrink-0\",\n  {\n    variants: {\n      size: {\n        sm: \"size-6 text-[10px]\",\n        md: \"size-8 text-xs\",\n        lg: \"size-10 text-sm\",\n      },\n    },\n    defaultVariants: { size: \"md\" },\n  },\n);\n\nexport interface AvatarProps\n  extends HTMLAttributes<HTMLSpanElement>,\n    VariantProps<typeof avatarVariants> {\n  /** Image source URL. Ignored when children are provided. */\n  src?: string;\n  alt?: string;\n  /** Fallback content shown when image fails. Ignored when children are provided. */\n  fallback?: ReactNode;\n  onStatusChange?: (status: AvatarStatus) => void;\n  ref?: Ref<HTMLSpanElement>;\n  children?: ReactNode;\n}\n\nfunction AvatarRoot({\n  src,\n  alt,\n  fallback,\n  size,\n  className,\n  ref,\n  onStatusChange,\n  children,\n  ...props\n}: AvatarProps) {\n  const groupCtx = useAvatarGroupContext();\n  const resolvedSize = size ?? groupCtx?.size;\n  const [imageStatus, setImageStatus] = useState<AvatarStatus>(\"idle\");\n\n  useEffect(() => {\n    if (imageStatus === \"idle\") return;\n    onStatusChange?.(imageStatus);\n  }, [imageStatus, onStatusChange]);\n\n  const contextValue = useMemo(() => ({ imageStatus, setImageStatus }), [imageStatus]);\n\n  const label = alt ?? (typeof fallback === \"string\" ? fallback : undefined);\n\n  return (\n    <AvatarContext value={contextValue}>\n      <span\n        ref={ref}\n        role={label ? \"img\" : \"presentation\"}\n        aria-label={label || undefined}\n        className={cn(avatarVariants({ size: resolvedSize }), className)}\n        {...props}\n      >\n        {children ?? (\n          <>\n            {src && <AvatarImage src={src} />}\n            <AvatarFallback>{fallback ?? \"?\"}</AvatarFallback>\n          </>\n        )}\n      </span>\n    </AvatarContext>\n  );\n}\n\nexport { AvatarRoot as Avatar };\n",
+      "raw": "\"use client\";\n\nimport {\n  type HTMLAttributes,\n  type ReactNode,\n  type Ref,\n  useEffect,\n  useEffectEvent,\n  useMemo,\n  useState,\n} from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { AvatarContext, useAvatarGroupContext, type AvatarStatus } from \"./avatar-context\";\nimport { AvatarImage } from \"./avatar-image\";\nimport { AvatarFallback } from \"./avatar-fallback\";\n\nexport { type AvatarStatus };\n\nexport const avatarVariants = cva(\n  \"relative inline-flex items-center justify-center border border-foreground/40 font-mono font-medium text-foreground bg-background overflow-hidden shrink-0\",\n  {\n    variants: {\n      size: {\n        sm: \"size-6 text-[10px]\",\n        md: \"size-8 text-xs\",\n        lg: \"size-10 text-sm\",\n      },\n    },\n    defaultVariants: { size: \"md\" },\n  },\n);\n\nexport interface AvatarProps\n  extends HTMLAttributes<HTMLSpanElement>,\n    VariantProps<typeof avatarVariants> {\n  /** Image source URL. Ignored when children are provided. */\n  src?: string;\n  alt?: string;\n  /** Fallback content shown when image fails. Ignored when children are provided. */\n  fallback?: ReactNode;\n  onStatusChange?: (status: AvatarStatus) => void;\n  ref?: Ref<HTMLSpanElement>;\n  children?: ReactNode;\n}\n\nfunction AvatarRoot({\n  src,\n  alt,\n  fallback,\n  size,\n  className,\n  ref,\n  onStatusChange,\n  children,\n  ...props\n}: AvatarProps) {\n  const groupCtx = useAvatarGroupContext();\n  const resolvedSize = size ?? groupCtx?.size;\n  const [imageStatus, setImageStatus] = useState<AvatarStatus>(\"idle\");\n  const notifyStatusChange = useEffectEvent((status: AvatarStatus) => {\n    onStatusChange?.(status);\n  });\n\n  useEffect(() => {\n    if (imageStatus === \"idle\") return;\n    notifyStatusChange(imageStatus);\n  }, [imageStatus]);\n\n  const contextValue = useMemo(() => ({ imageStatus, setImageStatus }), [imageStatus]);\n\n  const label = alt ?? (typeof fallback === \"string\" ? fallback : undefined);\n\n  return (\n    <AvatarContext value={contextValue}>\n      <span\n        ref={ref}\n        role={label ? \"img\" : \"presentation\"}\n        aria-label={label || undefined}\n        className={cn(avatarVariants({ size: resolvedSize }), className)}\n        {...props}\n      >\n        {children ?? (\n          <>\n            {src && <AvatarImage src={src} />}\n            <AvatarFallback>{fallback ?? \"?\"}</AvatarFallback>\n          </>\n        )}\n      </span>\n    </AvatarContext>\n  );\n}\n\nexport { AvatarRoot as Avatar };\n",
       "highlighted": [
         {
           "number": 1,
@@ -1941,7 +1941,7 @@
           "number": 8,
           "content": [
             {
-              "text": "  useMemo",
+              "text": "  useEffectEvent",
               "color": "var(--code-variable)"
             },
             {
@@ -1954,7 +1954,7 @@
           "number": 9,
           "content": [
             {
-              "text": "  useState",
+              "text": "  useMemo",
               "color": "var(--code-variable)"
             },
             {
@@ -1965,6 +1965,19 @@
         },
         {
           "number": 10,
+          "content": [
+            {
+              "text": "  useState",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 11,
           "content": [
             {
               "text": "}",
@@ -2001,7 +2014,7 @@
           ]
         },
         {
-          "number": 11,
+          "number": 12,
           "content": [
             {
               "text": "import",
@@ -2070,7 +2083,7 @@
           ]
         },
         {
-          "number": 12,
+          "number": 13,
           "content": [
             {
               "text": "import",
@@ -2123,7 +2136,7 @@
           ]
         },
         {
-          "number": 13,
+          "number": 14,
           "content": [
             {
               "text": "import",
@@ -2200,7 +2213,7 @@
           ]
         },
         {
-          "number": 14,
+          "number": 15,
           "content": [
             {
               "text": "import",
@@ -2253,7 +2266,7 @@
           ]
         },
         {
-          "number": 15,
+          "number": 16,
           "content": [
             {
               "text": "import",
@@ -2306,11 +2319,11 @@
           ]
         },
         {
-          "number": 16,
+          "number": 17,
           "content": []
         },
         {
-          "number": 17,
+          "number": 18,
           "content": [
             {
               "text": "export",
@@ -2343,11 +2356,11 @@
           ]
         },
         {
-          "number": 18,
+          "number": 19,
           "content": []
         },
         {
-          "number": 19,
+          "number": 20,
           "content": [
             {
               "text": "export",
@@ -2392,7 +2405,7 @@
           ]
         },
         {
-          "number": 20,
+          "number": 21,
           "content": [
             {
               "text": "  ",
@@ -2417,7 +2430,7 @@
           ]
         },
         {
-          "number": 21,
+          "number": 22,
           "content": [
             {
               "text": "  ",
@@ -2430,7 +2443,7 @@
           ]
         },
         {
-          "number": 22,
+          "number": 23,
           "content": [
             {
               "text": "    variants",
@@ -2451,7 +2464,7 @@
           ]
         },
         {
-          "number": 23,
+          "number": 24,
           "content": [
             {
               "text": "      size",
@@ -2472,7 +2485,7 @@
           ]
         },
         {
-          "number": 24,
+          "number": 25,
           "content": [
             {
               "text": "        sm",
@@ -2505,7 +2518,7 @@
           ]
         },
         {
-          "number": 25,
+          "number": 26,
           "content": [
             {
               "text": "        md",
@@ -2538,7 +2551,7 @@
           ]
         },
         {
-          "number": 26,
+          "number": 27,
           "content": [
             {
               "text": "        lg",
@@ -2571,7 +2584,7 @@
           ]
         },
         {
-          "number": 27,
+          "number": 28,
           "content": [
             {
               "text": "      ",
@@ -2584,7 +2597,7 @@
           ]
         },
         {
-          "number": 28,
+          "number": 29,
           "content": [
             {
               "text": "    ",
@@ -2597,7 +2610,7 @@
           ]
         },
         {
-          "number": 29,
+          "number": 30,
           "content": [
             {
               "text": "    defaultVariants",
@@ -2650,7 +2663,7 @@
           ]
         },
         {
-          "number": 30,
+          "number": 31,
           "content": [
             {
               "text": "  ",
@@ -2663,7 +2676,7 @@
           ]
         },
         {
-          "number": 31,
+          "number": 32,
           "content": [
             {
               "text": ")",
@@ -2676,11 +2689,11 @@
           ]
         },
         {
-          "number": 32,
+          "number": 33,
           "content": []
         },
         {
-          "number": 33,
+          "number": 34,
           "content": [
             {
               "text": "export",
@@ -2705,7 +2718,7 @@
           ]
         },
         {
-          "number": 34,
+          "number": 35,
           "content": [
             {
               "text": "  ",
@@ -2738,7 +2751,7 @@
           ]
         },
         {
-          "number": 35,
+          "number": 36,
           "content": [
             {
               "text": "    ",
@@ -2771,7 +2784,7 @@
           ]
         },
         {
-          "number": 36,
+          "number": 37,
           "content": [
             {
               "text": "  ",
@@ -2792,7 +2805,7 @@
           ]
         },
         {
-          "number": 37,
+          "number": 38,
           "content": [
             {
               "text": "  src",
@@ -2817,7 +2830,7 @@
           ]
         },
         {
-          "number": 38,
+          "number": 39,
           "content": [
             {
               "text": "  alt",
@@ -2842,7 +2855,7 @@
           ]
         },
         {
-          "number": 39,
+          "number": 40,
           "content": [
             {
               "text": "  ",
@@ -2863,7 +2876,7 @@
           ]
         },
         {
-          "number": 40,
+          "number": 41,
           "content": [
             {
               "text": "  fallback",
@@ -2888,7 +2901,7 @@
           ]
         },
         {
-          "number": 41,
+          "number": 42,
           "content": [
             {
               "text": "  ",
@@ -2953,7 +2966,7 @@
           ]
         },
         {
-          "number": 42,
+          "number": 43,
           "content": [
             {
               "text": "  ref",
@@ -2986,7 +2999,7 @@
           ]
         },
         {
-          "number": 43,
+          "number": 44,
           "content": [
             {
               "text": "  children",
@@ -3011,7 +3024,7 @@
           ]
         },
         {
-          "number": 44,
+          "number": 45,
           "content": [
             {
               "text": "}",
@@ -3020,11 +3033,11 @@
           ]
         },
         {
-          "number": 45,
+          "number": 46,
           "content": []
         },
         {
-          "number": 46,
+          "number": 47,
           "content": [
             {
               "text": "function",
@@ -3045,7 +3058,7 @@
           ]
         },
         {
-          "number": 47,
+          "number": 48,
           "content": [
             {
               "text": "  src",
@@ -3058,7 +3071,7 @@
           ]
         },
         {
-          "number": 48,
+          "number": 49,
           "content": [
             {
               "text": "  alt",
@@ -3071,7 +3084,7 @@
           ]
         },
         {
-          "number": 49,
+          "number": 50,
           "content": [
             {
               "text": "  fallback",
@@ -3084,7 +3097,7 @@
           ]
         },
         {
-          "number": 50,
+          "number": 51,
           "content": [
             {
               "text": "  size",
@@ -3097,7 +3110,7 @@
           ]
         },
         {
-          "number": 51,
+          "number": 52,
           "content": [
             {
               "text": "  className",
@@ -3110,7 +3123,7 @@
           ]
         },
         {
-          "number": 52,
+          "number": 53,
           "content": [
             {
               "text": "  ref",
@@ -3123,7 +3136,7 @@
           ]
         },
         {
-          "number": 53,
+          "number": 54,
           "content": [
             {
               "text": "  onStatusChange",
@@ -3136,7 +3149,7 @@
           ]
         },
         {
-          "number": 54,
+          "number": 55,
           "content": [
             {
               "text": "  children",
@@ -3149,7 +3162,7 @@
           ]
         },
         {
-          "number": 55,
+          "number": 56,
           "content": [
             {
               "text": "  ",
@@ -3166,7 +3179,7 @@
           ]
         },
         {
-          "number": 56,
+          "number": 57,
           "content": [
             {
               "text": "}:",
@@ -3195,7 +3208,7 @@
           ]
         },
         {
-          "number": 57,
+          "number": 58,
           "content": [
             {
               "text": "  ",
@@ -3240,7 +3253,7 @@
           ]
         },
         {
-          "number": 58,
+          "number": 59,
           "content": [
             {
               "text": "  ",
@@ -3297,7 +3310,7 @@
           ]
         },
         {
-          "number": 59,
+          "number": 60,
           "content": [
             {
               "text": "  ",
@@ -3390,11 +3403,138 @@
           ]
         },
         {
-          "number": 60,
+          "number": 61,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "notifyStatusChange",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useEffectEvent",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "status",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "AvatarStatus",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 62,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "onStatusChange",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "?.",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "(status)",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 63,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 64,
           "content": []
         },
         {
-          "number": 61,
+          "number": 65,
           "content": [
             {
               "text": "  ",
@@ -3431,7 +3571,7 @@
           ]
         },
         {
-          "number": 62,
+          "number": 66,
           "content": [
             {
               "text": "    ",
@@ -3480,19 +3620,15 @@
           ]
         },
         {
-          "number": 63,
+          "number": 67,
           "content": [
             {
               "text": "    ",
               "color": "var(--code-variable)"
             },
             {
-              "text": "onStatusChange",
+              "text": "notifyStatusChange",
               "color": "var(--code-function)"
-            },
-            {
-              "text": "?.",
-              "color": "var(--code-operator)"
             },
             {
               "text": "(imageStatus)",
@@ -3505,7 +3641,7 @@
           ]
         },
         {
-          "number": 64,
+          "number": 68,
           "content": [
             {
               "text": "  ",
@@ -3516,15 +3652,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": " [imageStatus",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " onStatusChange])",
+              "text": " [imageStatus])",
               "color": "var(--code-variable)"
             },
             {
@@ -3534,11 +3662,11 @@
           ]
         },
         {
-          "number": 65,
+          "number": 69,
           "content": []
         },
         {
-          "number": 66,
+          "number": 70,
           "content": [
             {
               "text": "  ",
@@ -3631,11 +3759,11 @@
           ]
         },
         {
-          "number": 67,
+          "number": 71,
           "content": []
         },
         {
-          "number": 68,
+          "number": 72,
           "content": [
             {
               "text": "  ",
@@ -3736,11 +3864,11 @@
           ]
         },
         {
-          "number": 69,
+          "number": 73,
           "content": []
         },
         {
-          "number": 70,
+          "number": 74,
           "content": [
             {
               "text": "  ",
@@ -3757,7 +3885,7 @@
           ]
         },
         {
-          "number": 71,
+          "number": 75,
           "content": [
             {
               "text": "    ",
@@ -3794,7 +3922,7 @@
           ]
         },
         {
-          "number": 72,
+          "number": 76,
           "content": [
             {
               "text": "      ",
@@ -3811,7 +3939,7 @@
           ]
         },
         {
-          "number": 73,
+          "number": 77,
           "content": [
             {
               "text": "        ",
@@ -3836,7 +3964,7 @@
           ]
         },
         {
-          "number": 74,
+          "number": 78,
           "content": [
             {
               "text": "        ",
@@ -3905,7 +4033,7 @@
           ]
         },
         {
-          "number": 75,
+          "number": 79,
           "content": [
             {
               "text": "        ",
@@ -3942,7 +4070,7 @@
           ]
         },
         {
-          "number": 76,
+          "number": 80,
           "content": [
             {
               "text": "        ",
@@ -4011,7 +4139,7 @@
           ]
         },
         {
-          "number": 77,
+          "number": 81,
           "content": [
             {
               "text": "        ",
@@ -4032,7 +4160,7 @@
           ]
         },
         {
-          "number": 78,
+          "number": 82,
           "content": [
             {
               "text": "      ",
@@ -4045,7 +4173,7 @@
           ]
         },
         {
-          "number": 79,
+          "number": 83,
           "content": [
             {
               "text": "        ",
@@ -4070,7 +4198,7 @@
           ]
         },
         {
-          "number": 80,
+          "number": 84,
           "content": [
             {
               "text": "          ",
@@ -4083,7 +4211,7 @@
           ]
         },
         {
-          "number": 81,
+          "number": 85,
           "content": [
             {
               "text": "            ",
@@ -4144,7 +4272,7 @@
           ]
         },
         {
-          "number": 82,
+          "number": 86,
           "content": [
             {
               "text": "            ",
@@ -4201,7 +4329,7 @@
           ]
         },
         {
-          "number": 83,
+          "number": 87,
           "content": [
             {
               "text": "          ",
@@ -4214,7 +4342,7 @@
           ]
         },
         {
-          "number": 84,
+          "number": 88,
           "content": [
             {
               "text": "        )",
@@ -4227,7 +4355,7 @@
           ]
         },
         {
-          "number": 85,
+          "number": 89,
           "content": [
             {
               "text": "      ",
@@ -4248,7 +4376,7 @@
           ]
         },
         {
-          "number": 86,
+          "number": 90,
           "content": [
             {
               "text": "    ",
@@ -4269,7 +4397,7 @@
           ]
         },
         {
-          "number": 87,
+          "number": 91,
           "content": [
             {
               "text": "  )",
@@ -4282,7 +4410,7 @@
           ]
         },
         {
-          "number": 88,
+          "number": 92,
           "content": [
             {
               "text": "}",
@@ -4291,11 +4419,11 @@
           ]
         },
         {
-          "number": 89,
+          "number": 93,
           "content": []
         },
         {
-          "number": 90,
+          "number": 94,
           "content": [
             {
               "text": "export",
@@ -4328,13 +4456,13 @@
           ]
         },
         {
-          "number": 91,
+          "number": 95,
           "content": []
         }
       ]
     },
     "registry/ui/avatar/avatar-image.tsx": {
-      "raw": "\"use client\";\n\nimport { useEffect, type ImgHTMLAttributes, type Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useAvatarContext } from \"./avatar-context\";\nimport { useImageStatus } from \"./use-image-status\";\n\nexport interface AvatarImageProps\n  extends Omit<ImgHTMLAttributes<HTMLImageElement>, \"alt\"> {\n  alt?: string;\n  ref?: Ref<HTMLImageElement>;\n}\n\nexport function AvatarImage({\n  src,\n  alt,\n  className,\n  ref,\n  ...imgProps\n}: AvatarImageProps) {\n  const { setImageStatus } = useAvatarContext();\n  const { status, showImage, onLoad, onError } = useImageStatus(src);\n\n  useEffect(() => {\n    setImageStatus(status);\n    return () => setImageStatus(\"idle\");\n  }, [status, setImageStatus]);\n\n  if (!showImage) return null;\n\n  return (\n    <img\n      ref={ref}\n      src={src}\n      alt={alt ?? \"\"}\n      onLoad={onLoad}\n      onError={onError}\n      className={cn(\"absolute inset-0 size-full object-cover\", className)}\n      {...imgProps}\n    />\n  );\n}\n",
+      "raw": "\"use client\";\n\nimport { useEffect, type ImgHTMLAttributes, type Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useAvatarContext } from \"./avatar-context\";\nimport { useImageStatus } from \"./use-image-status\";\n\nexport interface AvatarImageProps\n  extends Omit<ImgHTMLAttributes<HTMLImageElement>, \"alt\"> {\n  alt?: string;\n  ref?: Ref<HTMLImageElement>;\n}\n\nexport function AvatarImage({\n  src,\n  alt,\n  className,\n  ref,\n  ...imgProps\n}: AvatarImageProps) {\n  const { setImageStatus } = useAvatarContext();\n  const { status, showImage, onLoad, onError } = useImageStatus(src);\n\n  useEffect(() => {\n    setImageStatus(status);\n  }, [status, setImageStatus]);\n\n  useEffect(() => {\n    return () => setImageStatus(\"idle\");\n  }, [setImageStatus]);\n\n  if (!showImage) return null;\n\n  return (\n    <img\n      ref={ref}\n      src={src}\n      alt={alt ?? \"\"}\n      onLoad={onLoad}\n      onError={onError}\n      className={cn(\"absolute inset-0 size-full object-cover\", className)}\n      {...imgProps}\n    />\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -5125,6 +5253,76 @@
           "number": 26,
           "content": [
             {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " [status",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " setImageStatus])",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 27,
+          "content": []
+        },
+        {
+          "number": 28,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useEffect",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 29,
+          "content": [
+            {
               "text": "    ",
               "color": "var(--code-variable)"
             },
@@ -5183,7 +5381,7 @@
           ]
         },
         {
-          "number": 27,
+          "number": 30,
           "content": [
             {
               "text": "  ",
@@ -5194,15 +5392,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": " [status",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": ",",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " setImageStatus])",
+              "text": " [setImageStatus])",
               "color": "var(--code-variable)"
             },
             {
@@ -5212,11 +5402,11 @@
           ]
         },
         {
-          "number": 28,
+          "number": 31,
           "content": []
         },
         {
-          "number": 29,
+          "number": 32,
           "content": [
             {
               "text": "  ",
@@ -5257,11 +5447,11 @@
           ]
         },
         {
-          "number": 30,
+          "number": 33,
           "content": []
         },
         {
-          "number": 31,
+          "number": 34,
           "content": [
             {
               "text": "  ",
@@ -5278,7 +5468,7 @@
           ]
         },
         {
-          "number": 32,
+          "number": 35,
           "content": [
             {
               "text": "    ",
@@ -5295,7 +5485,7 @@
           ]
         },
         {
-          "number": 33,
+          "number": 36,
           "content": [
             {
               "text": "      ",
@@ -5320,7 +5510,7 @@
           ]
         },
         {
-          "number": 34,
+          "number": 37,
           "content": [
             {
               "text": "      ",
@@ -5345,7 +5535,7 @@
           ]
         },
         {
-          "number": 35,
+          "number": 38,
           "content": [
             {
               "text": "      ",
@@ -5382,7 +5572,7 @@
           ]
         },
         {
-          "number": 36,
+          "number": 39,
           "content": [
             {
               "text": "      ",
@@ -5407,7 +5597,7 @@
           ]
         },
         {
-          "number": 37,
+          "number": 40,
           "content": [
             {
               "text": "      ",
@@ -5432,7 +5622,7 @@
           ]
         },
         {
-          "number": 38,
+          "number": 41,
           "content": [
             {
               "text": "      ",
@@ -5481,7 +5671,7 @@
           ]
         },
         {
-          "number": 39,
+          "number": 42,
           "content": [
             {
               "text": "      ",
@@ -5502,7 +5692,7 @@
           ]
         },
         {
-          "number": 40,
+          "number": 43,
           "content": [
             {
               "text": "    ",
@@ -5515,7 +5705,7 @@
           ]
         },
         {
-          "number": 41,
+          "number": 44,
           "content": [
             {
               "text": "  )",
@@ -5528,7 +5718,7 @@
           ]
         },
         {
-          "number": 42,
+          "number": 45,
           "content": [
             {
               "text": "}",
@@ -5537,7 +5727,7 @@
           ]
         },
         {
-          "number": 43,
+          "number": 46,
           "content": []
         }
       ]
@@ -10705,7 +10895,7 @@
       ]
     }
   },
-  "mergedSource": "\"use client\";\n\nimport { Avatar as AvatarRoot, type AvatarProps, type AvatarStatus } from \"./avatar\";\nimport { AvatarImage, type AvatarImageProps } from \"./avatar-image\";\nimport { AvatarFallback, type AvatarFallbackProps } from \"./avatar-fallback\";\nimport { AvatarGroup, type AvatarGroupProps } from \"./avatar-group\";\nimport { AvatarIndicator, type AvatarIndicatorProps } from \"./avatar-indicator\";\n\nconst Avatar = Object.assign(AvatarRoot, {\n  Image: AvatarImage,\n  Fallback: AvatarFallback,\n  Group: AvatarGroup,\n  Indicator: AvatarIndicator,\n});\n\nexport { Avatar, type AvatarProps, type AvatarStatus };\nexport { AvatarImage, type AvatarImageProps };\nexport { AvatarFallback, type AvatarFallbackProps };\nexport { AvatarGroup, type AvatarGroupProps };\nexport { AvatarIndicator, type AvatarIndicatorProps };\n\n\n\"use client\";\n\nimport { createContext, useContext } from \"react\";\n\nexport type AvatarStatus = \"idle\" | \"loading\" | \"loaded\" | \"error\";\n\nexport interface AvatarGroupContextValue {\n  size?: \"sm\" | \"md\" | \"lg\" | null;\n}\n\nexport const AvatarGroupContext = createContext<\n  AvatarGroupContextValue | undefined\n>(undefined);\n\nexport function useAvatarGroupContext() {\n  return useContext(AvatarGroupContext);\n}\n\nexport interface AvatarContextValue {\n  imageStatus: AvatarStatus;\n  setImageStatus: (status: AvatarStatus) => void;\n}\n\nexport const AvatarContext = createContext<AvatarContextValue | undefined>(\n  undefined,\n);\n\nexport function useAvatarContext() {\n  const ctx = useContext(AvatarContext);\n  if (!ctx) {\n    throw new Error(\n      \"Avatar.Image and Avatar.Fallback must be used within Avatar\",\n    );\n  }\n  return ctx;\n}\n\n\n\"use client\";\n\nimport {\n  type HTMLAttributes,\n  type ReactNode,\n  type Ref,\n  useEffect,\n  useMemo,\n  useState,\n} from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { AvatarContext, useAvatarGroupContext, type AvatarStatus } from \"./avatar-context\";\nimport { AvatarImage } from \"./avatar-image\";\nimport { AvatarFallback } from \"./avatar-fallback\";\n\nexport { type AvatarStatus };\n\nexport const avatarVariants = cva(\n  \"relative inline-flex items-center justify-center border border-foreground/40 font-mono font-medium text-foreground bg-background overflow-hidden shrink-0\",\n  {\n    variants: {\n      size: {\n        sm: \"size-6 text-[10px]\",\n        md: \"size-8 text-xs\",\n        lg: \"size-10 text-sm\",\n      },\n    },\n    defaultVariants: { size: \"md\" },\n  },\n);\n\nexport interface AvatarProps\n  extends HTMLAttributes<HTMLSpanElement>,\n    VariantProps<typeof avatarVariants> {\n  /** Image source URL. Ignored when children are provided. */\n  src?: string;\n  alt?: string;\n  /** Fallback content shown when image fails. Ignored when children are provided. */\n  fallback?: ReactNode;\n  onStatusChange?: (status: AvatarStatus) => void;\n  ref?: Ref<HTMLSpanElement>;\n  children?: ReactNode;\n}\n\nfunction AvatarRoot({\n  src,\n  alt,\n  fallback,\n  size,\n  className,\n  ref,\n  onStatusChange,\n  children,\n  ...props\n}: AvatarProps) {\n  const groupCtx = useAvatarGroupContext();\n  const resolvedSize = size ?? groupCtx?.size;\n  const [imageStatus, setImageStatus] = useState<AvatarStatus>(\"idle\");\n\n  useEffect(() => {\n    if (imageStatus === \"idle\") return;\n    onStatusChange?.(imageStatus);\n  }, [imageStatus, onStatusChange]);\n\n  const contextValue = useMemo(() => ({ imageStatus, setImageStatus }), [imageStatus]);\n\n  const label = alt ?? (typeof fallback === \"string\" ? fallback : undefined);\n\n  return (\n    <AvatarContext value={contextValue}>\n      <span\n        ref={ref}\n        role={label ? \"img\" : \"presentation\"}\n        aria-label={label || undefined}\n        className={cn(avatarVariants({ size: resolvedSize }), className)}\n        {...props}\n      >\n        {children ?? (\n          <>\n            {src && <AvatarImage src={src} />}\n            <AvatarFallback>{fallback ?? \"?\"}</AvatarFallback>\n          </>\n        )}\n      </span>\n    </AvatarContext>\n  );\n}\n\nexport { AvatarRoot as Avatar };\n\n\n\"use client\";\n\nimport { useEffect, type ImgHTMLAttributes, type Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useAvatarContext } from \"./avatar-context\";\nimport { useImageStatus } from \"./use-image-status\";\n\nexport interface AvatarImageProps\n  extends Omit<ImgHTMLAttributes<HTMLImageElement>, \"alt\"> {\n  alt?: string;\n  ref?: Ref<HTMLImageElement>;\n}\n\nexport function AvatarImage({\n  src,\n  alt,\n  className,\n  ref,\n  ...imgProps\n}: AvatarImageProps) {\n  const { setImageStatus } = useAvatarContext();\n  const { status, showImage, onLoad, onError } = useImageStatus(src);\n\n  useEffect(() => {\n    setImageStatus(status);\n    return () => setImageStatus(\"idle\");\n  }, [status, setImageStatus]);\n\n  if (!showImage) return null;\n\n  return (\n    <img\n      ref={ref}\n      src={src}\n      alt={alt ?? \"\"}\n      onLoad={onLoad}\n      onError={onError}\n      className={cn(\"absolute inset-0 size-full object-cover\", className)}\n      {...imgProps}\n    />\n  );\n}\n\n\n\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useAvatarContext } from \"./avatar-context\";\nimport { useImageStatus } from \"./use-image-status\";\n\nexport interface AvatarFallbackProps {\n  /** Cascading fallback image URL. Tried before rendering children. */\n  src?: string;\n  children?: ReactNode;\n  className?: string;\n}\n\nexport function AvatarFallback({\n  src,\n  children,\n  className,\n}: AvatarFallbackProps) {\n  const { imageStatus } = useAvatarContext();\n  const fallbackImage = useImageStatus(src);\n\n  if (imageStatus === \"loaded\") return null;\n  if (src && fallbackImage.showImage) {\n    return (\n      <img\n        src={src}\n        alt=\"\"\n        onLoad={fallbackImage.onLoad}\n        onError={fallbackImage.onError}\n        className={cn(\"absolute inset-0 size-full object-cover\", className)}\n      />\n    );\n  }\n\n  return <span className={className}>{children}</span>;\n}\n\n\n\"use client\";\n\nimport { type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { avatarVariants } from \"./avatar\";\nimport { useAvatarGroupContext } from \"./avatar-context\";\n\nexport interface AvatarIndicatorProps extends VariantProps<typeof avatarVariants> {\n  count: number;\n  className?: string;\n}\n\nexport function AvatarIndicator({ count, size, className }: AvatarIndicatorProps) {\n  const groupCtx = useAvatarGroupContext();\n  const resolvedSize = size ?? groupCtx?.size;\n  return (\n    <span\n      role=\"img\"\n      aria-label={`${count} more`}\n      className={cn(avatarVariants({ size: resolvedSize }), \"border-dashed bg-muted text-foreground\", className)}\n    >\n      <span aria-hidden=\"true\">+{count}</span>\n    </span>\n  );\n}\n\n\n\"use client\";\n\nimport { Children, useMemo, type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { AvatarGroupContext } from \"./avatar-context\";\nimport { AvatarIndicator } from \"./avatar-indicator\";\nimport { Overflow } from \"../overflow/overflow\";\n\nexport interface AvatarGroupProps {\n  max?: number;\n  /** How avatars are spaced. \"overlap\" (default) stacks them, \"gap\" adds spacing between. */\n  spacing?: \"overlap\" | \"gap\";\n  children: ReactNode;\n  size?: \"sm\" | \"md\" | \"lg\" | null;\n  className?: string;\n  \"aria-label\"?: string;\n}\n\nconst spacingClasses = {\n  overlap: \"-space-x-1.5\",\n  gap: \"gap-1\",\n} satisfies Record<string, string>;\n\nexport function AvatarGroup({ max, spacing = \"overlap\", children, size = \"md\", className, \"aria-label\": ariaLabel = \"Avatars\" }: AvatarGroupProps) {\n  const allItems = Children.toArray(children);\n  const groupContextValue = useMemo(() => ({ size }), [size]);\n\n  if (max != null) {\n    const visibleItems = allItems.slice(0, max);\n    const overflowCount = allItems.length - max;\n\n    return (\n      <AvatarGroupContext value={groupContextValue}>\n        <div role=\"group\" aria-label={ariaLabel} className={cn(\"flex w-fit items-center\", spacingClasses[spacing], className)}>\n          {visibleItems}\n          {overflowCount > 0 && <AvatarIndicator count={overflowCount} />}\n        </div>\n      </AvatarGroupContext>\n    );\n  }\n\n  return (\n    <AvatarGroupContext value={groupContextValue}>\n      <div role=\"group\" aria-label={ariaLabel}>\n        <Overflow\n          mode=\"items\"\n          gap={spacingClasses[spacing]}\n          className={className}\n          indicator={({ count }) => <AvatarIndicator count={count} />}\n        >\n          {allItems}\n        </Overflow>\n      </div>\n    </AvatarGroupContext>\n  );\n}\n\n\n\"use client\";\nimport { useEffect, useState } from \"react\";\nimport type { AvatarStatus } from \"./avatar-context\";\n\ninterface ImageStatusState {\n  src: string | undefined;\n  status: AvatarStatus;\n}\n\nexport function useImageStatus(src: string | undefined) {\n  const [state, setState] = useState<ImageStatusState>(() => ({\n    src,\n    status: src ? \"loading\" : \"idle\",\n  }));\n\n  const status = state.src === src ? state.status : (src ? \"loading\" : \"idle\");\n\n  useEffect(() => {\n    setState((current) => (\n      current.src === src\n        ? current\n        : { src, status: src ? \"loading\" : \"idle\" }\n    ));\n  }, [src]);\n\n  return {\n    status,\n    showImage: !!src && status !== \"error\",\n    onLoad: () => setState({ src, status: \"loaded\" }),\n    onError: () => setState({ src, status: \"error\" }),\n  };\n}\n",
+  "mergedSource": "\"use client\";\n\nimport { Avatar as AvatarRoot, type AvatarProps, type AvatarStatus } from \"./avatar\";\nimport { AvatarImage, type AvatarImageProps } from \"./avatar-image\";\nimport { AvatarFallback, type AvatarFallbackProps } from \"./avatar-fallback\";\nimport { AvatarGroup, type AvatarGroupProps } from \"./avatar-group\";\nimport { AvatarIndicator, type AvatarIndicatorProps } from \"./avatar-indicator\";\n\nconst Avatar = Object.assign(AvatarRoot, {\n  Image: AvatarImage,\n  Fallback: AvatarFallback,\n  Group: AvatarGroup,\n  Indicator: AvatarIndicator,\n});\n\nexport { Avatar, type AvatarProps, type AvatarStatus };\nexport { AvatarImage, type AvatarImageProps };\nexport { AvatarFallback, type AvatarFallbackProps };\nexport { AvatarGroup, type AvatarGroupProps };\nexport { AvatarIndicator, type AvatarIndicatorProps };\n\n\n\"use client\";\n\nimport { createContext, useContext } from \"react\";\n\nexport type AvatarStatus = \"idle\" | \"loading\" | \"loaded\" | \"error\";\n\nexport interface AvatarGroupContextValue {\n  size?: \"sm\" | \"md\" | \"lg\" | null;\n}\n\nexport const AvatarGroupContext = createContext<\n  AvatarGroupContextValue | undefined\n>(undefined);\n\nexport function useAvatarGroupContext() {\n  return useContext(AvatarGroupContext);\n}\n\nexport interface AvatarContextValue {\n  imageStatus: AvatarStatus;\n  setImageStatus: (status: AvatarStatus) => void;\n}\n\nexport const AvatarContext = createContext<AvatarContextValue | undefined>(\n  undefined,\n);\n\nexport function useAvatarContext() {\n  const ctx = useContext(AvatarContext);\n  if (!ctx) {\n    throw new Error(\n      \"Avatar.Image and Avatar.Fallback must be used within Avatar\",\n    );\n  }\n  return ctx;\n}\n\n\n\"use client\";\n\nimport {\n  type HTMLAttributes,\n  type ReactNode,\n  type Ref,\n  useEffect,\n  useEffectEvent,\n  useMemo,\n  useState,\n} from \"react\";\nimport { cva, type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { AvatarContext, useAvatarGroupContext, type AvatarStatus } from \"./avatar-context\";\nimport { AvatarImage } from \"./avatar-image\";\nimport { AvatarFallback } from \"./avatar-fallback\";\n\nexport { type AvatarStatus };\n\nexport const avatarVariants = cva(\n  \"relative inline-flex items-center justify-center border border-foreground/40 font-mono font-medium text-foreground bg-background overflow-hidden shrink-0\",\n  {\n    variants: {\n      size: {\n        sm: \"size-6 text-[10px]\",\n        md: \"size-8 text-xs\",\n        lg: \"size-10 text-sm\",\n      },\n    },\n    defaultVariants: { size: \"md\" },\n  },\n);\n\nexport interface AvatarProps\n  extends HTMLAttributes<HTMLSpanElement>,\n    VariantProps<typeof avatarVariants> {\n  /** Image source URL. Ignored when children are provided. */\n  src?: string;\n  alt?: string;\n  /** Fallback content shown when image fails. Ignored when children are provided. */\n  fallback?: ReactNode;\n  onStatusChange?: (status: AvatarStatus) => void;\n  ref?: Ref<HTMLSpanElement>;\n  children?: ReactNode;\n}\n\nfunction AvatarRoot({\n  src,\n  alt,\n  fallback,\n  size,\n  className,\n  ref,\n  onStatusChange,\n  children,\n  ...props\n}: AvatarProps) {\n  const groupCtx = useAvatarGroupContext();\n  const resolvedSize = size ?? groupCtx?.size;\n  const [imageStatus, setImageStatus] = useState<AvatarStatus>(\"idle\");\n  const notifyStatusChange = useEffectEvent((status: AvatarStatus) => {\n    onStatusChange?.(status);\n  });\n\n  useEffect(() => {\n    if (imageStatus === \"idle\") return;\n    notifyStatusChange(imageStatus);\n  }, [imageStatus]);\n\n  const contextValue = useMemo(() => ({ imageStatus, setImageStatus }), [imageStatus]);\n\n  const label = alt ?? (typeof fallback === \"string\" ? fallback : undefined);\n\n  return (\n    <AvatarContext value={contextValue}>\n      <span\n        ref={ref}\n        role={label ? \"img\" : \"presentation\"}\n        aria-label={label || undefined}\n        className={cn(avatarVariants({ size: resolvedSize }), className)}\n        {...props}\n      >\n        {children ?? (\n          <>\n            {src && <AvatarImage src={src} />}\n            <AvatarFallback>{fallback ?? \"?\"}</AvatarFallback>\n          </>\n        )}\n      </span>\n    </AvatarContext>\n  );\n}\n\nexport { AvatarRoot as Avatar };\n\n\n\"use client\";\n\nimport { useEffect, type ImgHTMLAttributes, type Ref } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useAvatarContext } from \"./avatar-context\";\nimport { useImageStatus } from \"./use-image-status\";\n\nexport interface AvatarImageProps\n  extends Omit<ImgHTMLAttributes<HTMLImageElement>, \"alt\"> {\n  alt?: string;\n  ref?: Ref<HTMLImageElement>;\n}\n\nexport function AvatarImage({\n  src,\n  alt,\n  className,\n  ref,\n  ...imgProps\n}: AvatarImageProps) {\n  const { setImageStatus } = useAvatarContext();\n  const { status, showImage, onLoad, onError } = useImageStatus(src);\n\n  useEffect(() => {\n    setImageStatus(status);\n  }, [status, setImageStatus]);\n\n  useEffect(() => {\n    return () => setImageStatus(\"idle\");\n  }, [setImageStatus]);\n\n  if (!showImage) return null;\n\n  return (\n    <img\n      ref={ref}\n      src={src}\n      alt={alt ?? \"\"}\n      onLoad={onLoad}\n      onError={onError}\n      className={cn(\"absolute inset-0 size-full object-cover\", className)}\n      {...imgProps}\n    />\n  );\n}\n\n\n\"use client\";\n\nimport type { ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { useAvatarContext } from \"./avatar-context\";\nimport { useImageStatus } from \"./use-image-status\";\n\nexport interface AvatarFallbackProps {\n  /** Cascading fallback image URL. Tried before rendering children. */\n  src?: string;\n  children?: ReactNode;\n  className?: string;\n}\n\nexport function AvatarFallback({\n  src,\n  children,\n  className,\n}: AvatarFallbackProps) {\n  const { imageStatus } = useAvatarContext();\n  const fallbackImage = useImageStatus(src);\n\n  if (imageStatus === \"loaded\") return null;\n  if (src && fallbackImage.showImage) {\n    return (\n      <img\n        src={src}\n        alt=\"\"\n        onLoad={fallbackImage.onLoad}\n        onError={fallbackImage.onError}\n        className={cn(\"absolute inset-0 size-full object-cover\", className)}\n      />\n    );\n  }\n\n  return <span className={className}>{children}</span>;\n}\n\n\n\"use client\";\n\nimport { type VariantProps } from \"class-variance-authority\";\nimport { cn } from \"@/lib/utils\";\nimport { avatarVariants } from \"./avatar\";\nimport { useAvatarGroupContext } from \"./avatar-context\";\n\nexport interface AvatarIndicatorProps extends VariantProps<typeof avatarVariants> {\n  count: number;\n  className?: string;\n}\n\nexport function AvatarIndicator({ count, size, className }: AvatarIndicatorProps) {\n  const groupCtx = useAvatarGroupContext();\n  const resolvedSize = size ?? groupCtx?.size;\n  return (\n    <span\n      role=\"img\"\n      aria-label={`${count} more`}\n      className={cn(avatarVariants({ size: resolvedSize }), \"border-dashed bg-muted text-foreground\", className)}\n    >\n      <span aria-hidden=\"true\">+{count}</span>\n    </span>\n  );\n}\n\n\n\"use client\";\n\nimport { Children, useMemo, type ReactNode } from \"react\";\nimport { cn } from \"@/lib/utils\";\nimport { AvatarGroupContext } from \"./avatar-context\";\nimport { AvatarIndicator } from \"./avatar-indicator\";\nimport { Overflow } from \"../overflow/overflow\";\n\nexport interface AvatarGroupProps {\n  max?: number;\n  /** How avatars are spaced. \"overlap\" (default) stacks them, \"gap\" adds spacing between. */\n  spacing?: \"overlap\" | \"gap\";\n  children: ReactNode;\n  size?: \"sm\" | \"md\" | \"lg\" | null;\n  className?: string;\n  \"aria-label\"?: string;\n}\n\nconst spacingClasses = {\n  overlap: \"-space-x-1.5\",\n  gap: \"gap-1\",\n} satisfies Record<string, string>;\n\nexport function AvatarGroup({ max, spacing = \"overlap\", children, size = \"md\", className, \"aria-label\": ariaLabel = \"Avatars\" }: AvatarGroupProps) {\n  const allItems = Children.toArray(children);\n  const groupContextValue = useMemo(() => ({ size }), [size]);\n\n  if (max != null) {\n    const visibleItems = allItems.slice(0, max);\n    const overflowCount = allItems.length - max;\n\n    return (\n      <AvatarGroupContext value={groupContextValue}>\n        <div role=\"group\" aria-label={ariaLabel} className={cn(\"flex w-fit items-center\", spacingClasses[spacing], className)}>\n          {visibleItems}\n          {overflowCount > 0 && <AvatarIndicator count={overflowCount} />}\n        </div>\n      </AvatarGroupContext>\n    );\n  }\n\n  return (\n    <AvatarGroupContext value={groupContextValue}>\n      <div role=\"group\" aria-label={ariaLabel}>\n        <Overflow\n          mode=\"items\"\n          gap={spacingClasses[spacing]}\n          className={className}\n          indicator={({ count }) => <AvatarIndicator count={count} />}\n        >\n          {allItems}\n        </Overflow>\n      </div>\n    </AvatarGroupContext>\n  );\n}\n\n\n\"use client\";\nimport { useEffect, useState } from \"react\";\nimport type { AvatarStatus } from \"./avatar-context\";\n\ninterface ImageStatusState {\n  src: string | undefined;\n  status: AvatarStatus;\n}\n\nexport function useImageStatus(src: string | undefined) {\n  const [state, setState] = useState<ImageStatusState>(() => ({\n    src,\n    status: src ? \"loading\" : \"idle\",\n  }));\n\n  const status = state.src === src ? state.status : (src ? \"loading\" : \"idle\");\n\n  useEffect(() => {\n    setState((current) => (\n      current.src === src\n        ? current\n        : { src, status: src ? \"loading\" : \"idle\" }\n    ));\n  }, [src]);\n\n  return {\n    status,\n    showImage: !!src && status !== \"error\",\n    onLoad: () => setState({ src, status: \"loaded\" }),\n    onError: () => setState({ src, status: \"error\" }),\n  };\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
@@ -12626,7 +12816,7 @@
       "number": 68,
       "content": [
         {
-          "text": "  useMemo",
+          "text": "  useEffectEvent",
           "color": "var(--code-variable)"
         },
         {
@@ -12639,7 +12829,7 @@
       "number": 69,
       "content": [
         {
-          "text": "  useState",
+          "text": "  useMemo",
           "color": "var(--code-variable)"
         },
         {
@@ -12650,6 +12840,19 @@
     },
     {
       "number": 70,
+      "content": [
+        {
+          "text": "  useState",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 71,
       "content": [
         {
           "text": "}",
@@ -12686,7 +12889,7 @@
       ]
     },
     {
-      "number": 71,
+      "number": 72,
       "content": [
         {
           "text": "import",
@@ -12755,7 +12958,7 @@
       ]
     },
     {
-      "number": 72,
+      "number": 73,
       "content": [
         {
           "text": "import",
@@ -12808,7 +13011,7 @@
       ]
     },
     {
-      "number": 73,
+      "number": 74,
       "content": [
         {
           "text": "import",
@@ -12885,7 +13088,7 @@
       ]
     },
     {
-      "number": 74,
+      "number": 75,
       "content": [
         {
           "text": "import",
@@ -12938,7 +13141,7 @@
       ]
     },
     {
-      "number": 75,
+      "number": 76,
       "content": [
         {
           "text": "import",
@@ -12991,11 +13194,11 @@
       ]
     },
     {
-      "number": 76,
+      "number": 77,
       "content": []
     },
     {
-      "number": 77,
+      "number": 78,
       "content": [
         {
           "text": "export",
@@ -13028,11 +13231,11 @@
       ]
     },
     {
-      "number": 78,
+      "number": 79,
       "content": []
     },
     {
-      "number": 79,
+      "number": 80,
       "content": [
         {
           "text": "export",
@@ -13077,7 +13280,7 @@
       ]
     },
     {
-      "number": 80,
+      "number": 81,
       "content": [
         {
           "text": "  ",
@@ -13102,7 +13305,7 @@
       ]
     },
     {
-      "number": 81,
+      "number": 82,
       "content": [
         {
           "text": "  ",
@@ -13115,7 +13318,7 @@
       ]
     },
     {
-      "number": 82,
+      "number": 83,
       "content": [
         {
           "text": "    variants",
@@ -13136,7 +13339,7 @@
       ]
     },
     {
-      "number": 83,
+      "number": 84,
       "content": [
         {
           "text": "      size",
@@ -13157,7 +13360,7 @@
       ]
     },
     {
-      "number": 84,
+      "number": 85,
       "content": [
         {
           "text": "        sm",
@@ -13190,7 +13393,7 @@
       ]
     },
     {
-      "number": 85,
+      "number": 86,
       "content": [
         {
           "text": "        md",
@@ -13223,7 +13426,7 @@
       ]
     },
     {
-      "number": 86,
+      "number": 87,
       "content": [
         {
           "text": "        lg",
@@ -13256,7 +13459,7 @@
       ]
     },
     {
-      "number": 87,
+      "number": 88,
       "content": [
         {
           "text": "      ",
@@ -13269,7 +13472,7 @@
       ]
     },
     {
-      "number": 88,
+      "number": 89,
       "content": [
         {
           "text": "    ",
@@ -13282,7 +13485,7 @@
       ]
     },
     {
-      "number": 89,
+      "number": 90,
       "content": [
         {
           "text": "    defaultVariants",
@@ -13335,7 +13538,7 @@
       ]
     },
     {
-      "number": 90,
+      "number": 91,
       "content": [
         {
           "text": "  ",
@@ -13348,7 +13551,7 @@
       ]
     },
     {
-      "number": 91,
+      "number": 92,
       "content": [
         {
           "text": ")",
@@ -13361,11 +13564,11 @@
       ]
     },
     {
-      "number": 92,
+      "number": 93,
       "content": []
     },
     {
-      "number": 93,
+      "number": 94,
       "content": [
         {
           "text": "export",
@@ -13390,7 +13593,7 @@
       ]
     },
     {
-      "number": 94,
+      "number": 95,
       "content": [
         {
           "text": "  ",
@@ -13423,7 +13626,7 @@
       ]
     },
     {
-      "number": 95,
+      "number": 96,
       "content": [
         {
           "text": "    ",
@@ -13456,7 +13659,7 @@
       ]
     },
     {
-      "number": 96,
+      "number": 97,
       "content": [
         {
           "text": "  ",
@@ -13477,7 +13680,7 @@
       ]
     },
     {
-      "number": 97,
+      "number": 98,
       "content": [
         {
           "text": "  src",
@@ -13502,7 +13705,7 @@
       ]
     },
     {
-      "number": 98,
+      "number": 99,
       "content": [
         {
           "text": "  alt",
@@ -13527,7 +13730,7 @@
       ]
     },
     {
-      "number": 99,
+      "number": 100,
       "content": [
         {
           "text": "  ",
@@ -13548,7 +13751,7 @@
       ]
     },
     {
-      "number": 100,
+      "number": 101,
       "content": [
         {
           "text": "  fallback",
@@ -13573,7 +13776,7 @@
       ]
     },
     {
-      "number": 101,
+      "number": 102,
       "content": [
         {
           "text": "  ",
@@ -13638,7 +13841,7 @@
       ]
     },
     {
-      "number": 102,
+      "number": 103,
       "content": [
         {
           "text": "  ref",
@@ -13671,7 +13874,7 @@
       ]
     },
     {
-      "number": 103,
+      "number": 104,
       "content": [
         {
           "text": "  children",
@@ -13696,7 +13899,7 @@
       ]
     },
     {
-      "number": 104,
+      "number": 105,
       "content": [
         {
           "text": "}",
@@ -13705,11 +13908,11 @@
       ]
     },
     {
-      "number": 105,
+      "number": 106,
       "content": []
     },
     {
-      "number": 106,
+      "number": 107,
       "content": [
         {
           "text": "function",
@@ -13730,7 +13933,7 @@
       ]
     },
     {
-      "number": 107,
+      "number": 108,
       "content": [
         {
           "text": "  src",
@@ -13743,7 +13946,7 @@
       ]
     },
     {
-      "number": 108,
+      "number": 109,
       "content": [
         {
           "text": "  alt",
@@ -13756,7 +13959,7 @@
       ]
     },
     {
-      "number": 109,
+      "number": 110,
       "content": [
         {
           "text": "  fallback",
@@ -13769,7 +13972,7 @@
       ]
     },
     {
-      "number": 110,
+      "number": 111,
       "content": [
         {
           "text": "  size",
@@ -13782,7 +13985,7 @@
       ]
     },
     {
-      "number": 111,
+      "number": 112,
       "content": [
         {
           "text": "  className",
@@ -13795,7 +13998,7 @@
       ]
     },
     {
-      "number": 112,
+      "number": 113,
       "content": [
         {
           "text": "  ref",
@@ -13808,7 +14011,7 @@
       ]
     },
     {
-      "number": 113,
+      "number": 114,
       "content": [
         {
           "text": "  onStatusChange",
@@ -13821,7 +14024,7 @@
       ]
     },
     {
-      "number": 114,
+      "number": 115,
       "content": [
         {
           "text": "  children",
@@ -13834,7 +14037,7 @@
       ]
     },
     {
-      "number": 115,
+      "number": 116,
       "content": [
         {
           "text": "  ",
@@ -13851,7 +14054,7 @@
       ]
     },
     {
-      "number": 116,
+      "number": 117,
       "content": [
         {
           "text": "}:",
@@ -13880,7 +14083,7 @@
       ]
     },
     {
-      "number": 117,
+      "number": 118,
       "content": [
         {
           "text": "  ",
@@ -13925,7 +14128,7 @@
       ]
     },
     {
-      "number": 118,
+      "number": 119,
       "content": [
         {
           "text": "  ",
@@ -13982,7 +14185,7 @@
       ]
     },
     {
-      "number": 119,
+      "number": 120,
       "content": [
         {
           "text": "  ",
@@ -14075,11 +14278,138 @@
       ]
     },
     {
-      "number": 120,
+      "number": 121,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "notifyStatusChange",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "useEffectEvent",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "status",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "AvatarStatus",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": ")",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=>",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 122,
+      "content": [
+        {
+          "text": "    ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "onStatusChange",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "?.",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "(status)",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 123,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": ")",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 124,
       "content": []
     },
     {
-      "number": 121,
+      "number": 125,
       "content": [
         {
           "text": "  ",
@@ -14116,7 +14446,7 @@
       ]
     },
     {
-      "number": 122,
+      "number": 126,
       "content": [
         {
           "text": "    ",
@@ -14165,19 +14495,15 @@
       ]
     },
     {
-      "number": 123,
+      "number": 127,
       "content": [
         {
           "text": "    ",
           "color": "var(--code-variable)"
         },
         {
-          "text": "onStatusChange",
+          "text": "notifyStatusChange",
           "color": "var(--code-function)"
-        },
-        {
-          "text": "?.",
-          "color": "var(--code-operator)"
         },
         {
           "text": "(imageStatus)",
@@ -14190,7 +14516,7 @@
       ]
     },
     {
-      "number": 124,
+      "number": 128,
       "content": [
         {
           "text": "  ",
@@ -14201,15 +14527,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": " [imageStatus",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " onStatusChange])",
+          "text": " [imageStatus])",
           "color": "var(--code-variable)"
         },
         {
@@ -14219,11 +14537,11 @@
       ]
     },
     {
-      "number": 125,
+      "number": 129,
       "content": []
     },
     {
-      "number": 126,
+      "number": 130,
       "content": [
         {
           "text": "  ",
@@ -14316,11 +14634,11 @@
       ]
     },
     {
-      "number": 127,
+      "number": 131,
       "content": []
     },
     {
-      "number": 128,
+      "number": 132,
       "content": [
         {
           "text": "  ",
@@ -14421,11 +14739,11 @@
       ]
     },
     {
-      "number": 129,
+      "number": 133,
       "content": []
     },
     {
-      "number": 130,
+      "number": 134,
       "content": [
         {
           "text": "  ",
@@ -14442,7 +14760,7 @@
       ]
     },
     {
-      "number": 131,
+      "number": 135,
       "content": [
         {
           "text": "    ",
@@ -14479,7 +14797,7 @@
       ]
     },
     {
-      "number": 132,
+      "number": 136,
       "content": [
         {
           "text": "      ",
@@ -14496,7 +14814,7 @@
       ]
     },
     {
-      "number": 133,
+      "number": 137,
       "content": [
         {
           "text": "        ",
@@ -14521,7 +14839,7 @@
       ]
     },
     {
-      "number": 134,
+      "number": 138,
       "content": [
         {
           "text": "        ",
@@ -14590,7 +14908,7 @@
       ]
     },
     {
-      "number": 135,
+      "number": 139,
       "content": [
         {
           "text": "        ",
@@ -14627,7 +14945,7 @@
       ]
     },
     {
-      "number": 136,
+      "number": 140,
       "content": [
         {
           "text": "        ",
@@ -14696,7 +15014,7 @@
       ]
     },
     {
-      "number": 137,
+      "number": 141,
       "content": [
         {
           "text": "        ",
@@ -14717,7 +15035,7 @@
       ]
     },
     {
-      "number": 138,
+      "number": 142,
       "content": [
         {
           "text": "      ",
@@ -14730,7 +15048,7 @@
       ]
     },
     {
-      "number": 139,
+      "number": 143,
       "content": [
         {
           "text": "        ",
@@ -14755,7 +15073,7 @@
       ]
     },
     {
-      "number": 140,
+      "number": 144,
       "content": [
         {
           "text": "          ",
@@ -14768,7 +15086,7 @@
       ]
     },
     {
-      "number": 141,
+      "number": 145,
       "content": [
         {
           "text": "            ",
@@ -14829,7 +15147,7 @@
       ]
     },
     {
-      "number": 142,
+      "number": 146,
       "content": [
         {
           "text": "            ",
@@ -14886,7 +15204,7 @@
       ]
     },
     {
-      "number": 143,
+      "number": 147,
       "content": [
         {
           "text": "          ",
@@ -14899,7 +15217,7 @@
       ]
     },
     {
-      "number": 144,
+      "number": 148,
       "content": [
         {
           "text": "        )",
@@ -14912,7 +15230,7 @@
       ]
     },
     {
-      "number": 145,
+      "number": 149,
       "content": [
         {
           "text": "      ",
@@ -14933,7 +15251,7 @@
       ]
     },
     {
-      "number": 146,
+      "number": 150,
       "content": [
         {
           "text": "    ",
@@ -14954,7 +15272,7 @@
       ]
     },
     {
-      "number": 147,
+      "number": 151,
       "content": [
         {
           "text": "  )",
@@ -14967,7 +15285,7 @@
       ]
     },
     {
-      "number": 148,
+      "number": 152,
       "content": [
         {
           "text": "}",
@@ -14976,11 +15294,11 @@
       ]
     },
     {
-      "number": 149,
+      "number": 153,
       "content": []
     },
     {
-      "number": 150,
+      "number": 154,
       "content": [
         {
           "text": "export",
@@ -15013,15 +15331,15 @@
       ]
     },
     {
-      "number": 151,
+      "number": 155,
       "content": []
     },
     {
-      "number": 152,
+      "number": 156,
       "content": []
     },
     {
-      "number": 153,
+      "number": 157,
       "content": [
         {
           "text": "\"",
@@ -15042,11 +15360,11 @@
       ]
     },
     {
-      "number": 154,
+      "number": 158,
       "content": []
     },
     {
-      "number": 155,
+      "number": 159,
       "content": [
         {
           "text": "import",
@@ -15131,7 +15449,7 @@
       ]
     },
     {
-      "number": 156,
+      "number": 160,
       "content": [
         {
           "text": "import",
@@ -15184,7 +15502,7 @@
       ]
     },
     {
-      "number": 157,
+      "number": 161,
       "content": [
         {
           "text": "import",
@@ -15237,7 +15555,7 @@
       ]
     },
     {
-      "number": 158,
+      "number": 162,
       "content": [
         {
           "text": "import",
@@ -15290,11 +15608,11 @@
       ]
     },
     {
-      "number": 159,
+      "number": 163,
       "content": []
     },
     {
-      "number": 160,
+      "number": 164,
       "content": [
         {
           "text": "export",
@@ -15319,7 +15637,7 @@
       ]
     },
     {
-      "number": 161,
+      "number": 165,
       "content": [
         {
           "text": "  ",
@@ -15388,7 +15706,7 @@
       ]
     },
     {
-      "number": 162,
+      "number": 166,
       "content": [
         {
           "text": "  alt",
@@ -15413,7 +15731,7 @@
       ]
     },
     {
-      "number": 163,
+      "number": 167,
       "content": [
         {
           "text": "  ref",
@@ -15446,7 +15764,7 @@
       ]
     },
     {
-      "number": 164,
+      "number": 168,
       "content": [
         {
           "text": "}",
@@ -15455,11 +15773,11 @@
       ]
     },
     {
-      "number": 165,
+      "number": 169,
       "content": []
     },
     {
-      "number": 166,
+      "number": 170,
       "content": [
         {
           "text": "export",
@@ -15488,7 +15806,7 @@
       ]
     },
     {
-      "number": 167,
+      "number": 171,
       "content": [
         {
           "text": "  src",
@@ -15501,7 +15819,7 @@
       ]
     },
     {
-      "number": 168,
+      "number": 172,
       "content": [
         {
           "text": "  alt",
@@ -15514,7 +15832,7 @@
       ]
     },
     {
-      "number": 169,
+      "number": 173,
       "content": [
         {
           "text": "  className",
@@ -15527,7 +15845,7 @@
       ]
     },
     {
-      "number": 170,
+      "number": 174,
       "content": [
         {
           "text": "  ref",
@@ -15540,7 +15858,7 @@
       ]
     },
     {
-      "number": 171,
+      "number": 175,
       "content": [
         {
           "text": "  ",
@@ -15557,7 +15875,7 @@
       ]
     },
     {
-      "number": 172,
+      "number": 176,
       "content": [
         {
           "text": "}:",
@@ -15586,7 +15904,7 @@
       ]
     },
     {
-      "number": 173,
+      "number": 177,
       "content": [
         {
           "text": "  ",
@@ -15647,7 +15965,7 @@
       ]
     },
     {
-      "number": 174,
+      "number": 178,
       "content": [
         {
           "text": "  ",
@@ -15744,11 +16062,11 @@
       ]
     },
     {
-      "number": 175,
+      "number": 179,
       "content": []
     },
     {
-      "number": 176,
+      "number": 180,
       "content": [
         {
           "text": "  ",
@@ -15785,7 +16103,7 @@
       ]
     },
     {
-      "number": 177,
+      "number": 181,
       "content": [
         {
           "text": "    ",
@@ -15806,7 +16124,77 @@
       ]
     },
     {
-      "number": 178,
+      "number": 182,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "},",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " [status",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " setImageStatus])",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 183,
+      "content": []
+    },
+    {
+      "number": 184,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "useEffect",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "()",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=>",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 185,
       "content": [
         {
           "text": "    ",
@@ -15867,7 +16255,7 @@
       ]
     },
     {
-      "number": 179,
+      "number": 186,
       "content": [
         {
           "text": "  ",
@@ -15878,15 +16266,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": " [status",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": ",",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " setImageStatus])",
+          "text": " [setImageStatus])",
           "color": "var(--code-variable)"
         },
         {
@@ -15896,11 +16276,11 @@
       ]
     },
     {
-      "number": 180,
+      "number": 187,
       "content": []
     },
     {
-      "number": 181,
+      "number": 188,
       "content": [
         {
           "text": "  ",
@@ -15941,11 +16321,11 @@
       ]
     },
     {
-      "number": 182,
+      "number": 189,
       "content": []
     },
     {
-      "number": 183,
+      "number": 190,
       "content": [
         {
           "text": "  ",
@@ -15962,7 +16342,7 @@
       ]
     },
     {
-      "number": 184,
+      "number": 191,
       "content": [
         {
           "text": "    ",
@@ -15979,7 +16359,7 @@
       ]
     },
     {
-      "number": 185,
+      "number": 192,
       "content": [
         {
           "text": "      ",
@@ -16004,7 +16384,7 @@
       ]
     },
     {
-      "number": 186,
+      "number": 193,
       "content": [
         {
           "text": "      ",
@@ -16029,7 +16409,7 @@
       ]
     },
     {
-      "number": 187,
+      "number": 194,
       "content": [
         {
           "text": "      ",
@@ -16066,7 +16446,7 @@
       ]
     },
     {
-      "number": 188,
+      "number": 195,
       "content": [
         {
           "text": "      ",
@@ -16091,7 +16471,7 @@
       ]
     },
     {
-      "number": 189,
+      "number": 196,
       "content": [
         {
           "text": "      ",
@@ -16116,7 +16496,7 @@
       ]
     },
     {
-      "number": 190,
+      "number": 197,
       "content": [
         {
           "text": "      ",
@@ -16165,7 +16545,7 @@
       ]
     },
     {
-      "number": 191,
+      "number": 198,
       "content": [
         {
           "text": "      ",
@@ -16186,7 +16566,7 @@
       ]
     },
     {
-      "number": 192,
+      "number": 199,
       "content": [
         {
           "text": "    ",
@@ -16199,7 +16579,7 @@
       ]
     },
     {
-      "number": 193,
+      "number": 200,
       "content": [
         {
           "text": "  )",
@@ -16212,7 +16592,7 @@
       ]
     },
     {
-      "number": 194,
+      "number": 201,
       "content": [
         {
           "text": "}",
@@ -16221,15 +16601,15 @@
       ]
     },
     {
-      "number": 195,
+      "number": 202,
       "content": []
     },
     {
-      "number": 196,
+      "number": 203,
       "content": []
     },
     {
-      "number": 197,
+      "number": 204,
       "content": [
         {
           "text": "\"",
@@ -16250,11 +16630,11 @@
       ]
     },
     {
-      "number": 198,
+      "number": 205,
       "content": []
     },
     {
-      "number": 199,
+      "number": 206,
       "content": [
         {
           "text": "import",
@@ -16315,7 +16695,7 @@
       ]
     },
     {
-      "number": 200,
+      "number": 207,
       "content": [
         {
           "text": "import",
@@ -16368,7 +16748,7 @@
       ]
     },
     {
-      "number": 201,
+      "number": 208,
       "content": [
         {
           "text": "import",
@@ -16421,7 +16801,7 @@
       ]
     },
     {
-      "number": 202,
+      "number": 209,
       "content": [
         {
           "text": "import",
@@ -16474,11 +16854,11 @@
       ]
     },
     {
-      "number": 203,
+      "number": 210,
       "content": []
     },
     {
-      "number": 204,
+      "number": 211,
       "content": [
         {
           "text": "export",
@@ -16511,7 +16891,7 @@
       ]
     },
     {
-      "number": 205,
+      "number": 212,
       "content": [
         {
           "text": "  ",
@@ -16532,7 +16912,7 @@
       ]
     },
     {
-      "number": 206,
+      "number": 213,
       "content": [
         {
           "text": "  src",
@@ -16557,7 +16937,7 @@
       ]
     },
     {
-      "number": 207,
+      "number": 214,
       "content": [
         {
           "text": "  children",
@@ -16582,7 +16962,7 @@
       ]
     },
     {
-      "number": 208,
+      "number": 215,
       "content": [
         {
           "text": "  className",
@@ -16607,7 +16987,7 @@
       ]
     },
     {
-      "number": 209,
+      "number": 216,
       "content": [
         {
           "text": "}",
@@ -16616,11 +16996,11 @@
       ]
     },
     {
-      "number": 210,
+      "number": 217,
       "content": []
     },
     {
-      "number": 211,
+      "number": 218,
       "content": [
         {
           "text": "export",
@@ -16649,7 +17029,7 @@
       ]
     },
     {
-      "number": 212,
+      "number": 219,
       "content": [
         {
           "text": "  src",
@@ -16662,7 +17042,7 @@
       ]
     },
     {
-      "number": 213,
+      "number": 220,
       "content": [
         {
           "text": "  children",
@@ -16675,7 +17055,7 @@
       ]
     },
     {
-      "number": 214,
+      "number": 221,
       "content": [
         {
           "text": "  className",
@@ -16688,7 +17068,7 @@
       ]
     },
     {
-      "number": 215,
+      "number": 222,
       "content": [
         {
           "text": "}:",
@@ -16717,7 +17097,7 @@
       ]
     },
     {
-      "number": 216,
+      "number": 223,
       "content": [
         {
           "text": "  ",
@@ -16778,7 +17158,7 @@
       ]
     },
     {
-      "number": 217,
+      "number": 224,
       "content": [
         {
           "text": "  ",
@@ -16823,11 +17203,11 @@
       ]
     },
     {
-      "number": 218,
+      "number": 225,
       "content": []
     },
     {
-      "number": 219,
+      "number": 226,
       "content": [
         {
           "text": "  ",
@@ -16884,7 +17264,7 @@
       ]
     },
     {
-      "number": 220,
+      "number": 227,
       "content": [
         {
           "text": "  ",
@@ -16925,7 +17305,7 @@
       ]
     },
     {
-      "number": 221,
+      "number": 228,
       "content": [
         {
           "text": "    ",
@@ -16942,7 +17322,7 @@
       ]
     },
     {
-      "number": 222,
+      "number": 229,
       "content": [
         {
           "text": "      ",
@@ -16959,7 +17339,7 @@
       ]
     },
     {
-      "number": 223,
+      "number": 230,
       "content": [
         {
           "text": "        ",
@@ -16984,7 +17364,7 @@
       ]
     },
     {
-      "number": 224,
+      "number": 231,
       "content": [
         {
           "text": "        ",
@@ -17005,7 +17385,7 @@
       ]
     },
     {
-      "number": 225,
+      "number": 232,
       "content": [
         {
           "text": "        ",
@@ -17038,7 +17418,7 @@
       ]
     },
     {
-      "number": 226,
+      "number": 233,
       "content": [
         {
           "text": "        ",
@@ -17071,7 +17451,7 @@
       ]
     },
     {
-      "number": 227,
+      "number": 234,
       "content": [
         {
           "text": "        ",
@@ -17120,7 +17500,7 @@
       ]
     },
     {
-      "number": 228,
+      "number": 235,
       "content": [
         {
           "text": "      ",
@@ -17133,7 +17513,7 @@
       ]
     },
     {
-      "number": 229,
+      "number": 236,
       "content": [
         {
           "text": "    )",
@@ -17146,7 +17526,7 @@
       ]
     },
     {
-      "number": 230,
+      "number": 237,
       "content": [
         {
           "text": "  ",
@@ -17159,11 +17539,11 @@
       ]
     },
     {
-      "number": 231,
+      "number": 238,
       "content": []
     },
     {
-      "number": 232,
+      "number": 239,
       "content": [
         {
           "text": "  ",
@@ -17224,7 +17604,7 @@
       ]
     },
     {
-      "number": 233,
+      "number": 240,
       "content": [
         {
           "text": "}",
@@ -17233,15 +17613,15 @@
       ]
     },
     {
-      "number": 234,
+      "number": 241,
       "content": []
     },
     {
-      "number": 235,
+      "number": 242,
       "content": []
     },
     {
-      "number": 236,
+      "number": 243,
       "content": [
         {
           "text": "\"",
@@ -17262,11 +17642,11 @@
       ]
     },
     {
-      "number": 237,
+      "number": 244,
       "content": []
     },
     {
-      "number": 238,
+      "number": 245,
       "content": [
         {
           "text": "import",
@@ -17327,7 +17707,7 @@
       ]
     },
     {
-      "number": 239,
+      "number": 246,
       "content": [
         {
           "text": "import",
@@ -17380,7 +17760,7 @@
       ]
     },
     {
-      "number": 240,
+      "number": 247,
       "content": [
         {
           "text": "import",
@@ -17433,7 +17813,7 @@
       ]
     },
     {
-      "number": 241,
+      "number": 248,
       "content": [
         {
           "text": "import",
@@ -17486,11 +17866,11 @@
       ]
     },
     {
-      "number": 242,
+      "number": 249,
       "content": []
     },
     {
-      "number": 243,
+      "number": 250,
       "content": [
         {
           "text": "export",
@@ -17551,7 +17931,7 @@
       ]
     },
     {
-      "number": 244,
+      "number": 251,
       "content": [
         {
           "text": "  count",
@@ -17576,7 +17956,7 @@
       ]
     },
     {
-      "number": 245,
+      "number": 252,
       "content": [
         {
           "text": "  className",
@@ -17601,7 +17981,7 @@
       ]
     },
     {
-      "number": 246,
+      "number": 253,
       "content": [
         {
           "text": "}",
@@ -17610,11 +17990,11 @@
       ]
     },
     {
-      "number": 247,
+      "number": 254,
       "content": []
     },
     {
-      "number": 248,
+      "number": 255,
       "content": [
         {
           "text": "export",
@@ -17687,7 +18067,7 @@
       ]
     },
     {
-      "number": 249,
+      "number": 256,
       "content": [
         {
           "text": "  ",
@@ -17732,7 +18112,7 @@
       ]
     },
     {
-      "number": 250,
+      "number": 257,
       "content": [
         {
           "text": "  ",
@@ -17789,7 +18169,7 @@
       ]
     },
     {
-      "number": 251,
+      "number": 258,
       "content": [
         {
           "text": "  ",
@@ -17806,7 +18186,7 @@
       ]
     },
     {
-      "number": 252,
+      "number": 259,
       "content": [
         {
           "text": "    ",
@@ -17823,7 +18203,7 @@
       ]
     },
     {
-      "number": 253,
+      "number": 260,
       "content": [
         {
           "text": "      ",
@@ -17852,7 +18232,7 @@
       ]
     },
     {
-      "number": 254,
+      "number": 261,
       "content": [
         {
           "text": "      ",
@@ -17897,7 +18277,7 @@
       ]
     },
     {
-      "number": 255,
+      "number": 262,
       "content": [
         {
           "text": "      ",
@@ -17986,7 +18366,7 @@
       ]
     },
     {
-      "number": 256,
+      "number": 263,
       "content": [
         {
           "text": "    ",
@@ -17999,7 +18379,7 @@
       ]
     },
     {
-      "number": 257,
+      "number": 264,
       "content": [
         {
           "text": "      ",
@@ -18068,7 +18448,7 @@
       ]
     },
     {
-      "number": 258,
+      "number": 265,
       "content": [
         {
           "text": "    ",
@@ -18089,7 +18469,7 @@
       ]
     },
     {
-      "number": 259,
+      "number": 266,
       "content": [
         {
           "text": "  )",
@@ -18102,7 +18482,7 @@
       ]
     },
     {
-      "number": 260,
+      "number": 267,
       "content": [
         {
           "text": "}",
@@ -18111,15 +18491,15 @@
       ]
     },
     {
-      "number": 261,
+      "number": 268,
       "content": []
     },
     {
-      "number": 262,
+      "number": 269,
       "content": []
     },
     {
-      "number": 263,
+      "number": 270,
       "content": [
         {
           "text": "\"",
@@ -18140,11 +18520,11 @@
       ]
     },
     {
-      "number": 264,
+      "number": 271,
       "content": []
     },
     {
-      "number": 265,
+      "number": 272,
       "content": [
         {
           "text": "import",
@@ -18221,7 +18601,7 @@
       ]
     },
     {
-      "number": 266,
+      "number": 273,
       "content": [
         {
           "text": "import",
@@ -18274,7 +18654,7 @@
       ]
     },
     {
-      "number": 267,
+      "number": 274,
       "content": [
         {
           "text": "import",
@@ -18327,7 +18707,7 @@
       ]
     },
     {
-      "number": 268,
+      "number": 275,
       "content": [
         {
           "text": "import",
@@ -18380,7 +18760,7 @@
       ]
     },
     {
-      "number": 269,
+      "number": 276,
       "content": [
         {
           "text": "import",
@@ -18433,11 +18813,11 @@
       ]
     },
     {
-      "number": 270,
+      "number": 277,
       "content": []
     },
     {
-      "number": 271,
+      "number": 278,
       "content": [
         {
           "text": "export",
@@ -18470,7 +18850,7 @@
       ]
     },
     {
-      "number": 272,
+      "number": 279,
       "content": [
         {
           "text": "  max",
@@ -18495,7 +18875,7 @@
       ]
     },
     {
-      "number": 273,
+      "number": 280,
       "content": [
         {
           "text": "  ",
@@ -18516,7 +18896,7 @@
       ]
     },
     {
-      "number": 274,
+      "number": 281,
       "content": [
         {
           "text": "  spacing",
@@ -18573,7 +18953,7 @@
       ]
     },
     {
-      "number": 275,
+      "number": 282,
       "content": [
         {
           "text": "  children",
@@ -18598,7 +18978,7 @@
       ]
     },
     {
-      "number": 276,
+      "number": 283,
       "content": [
         {
           "text": "  size",
@@ -18695,7 +19075,7 @@
       ]
     },
     {
-      "number": 277,
+      "number": 284,
       "content": [
         {
           "text": "  className",
@@ -18720,7 +19100,7 @@
       ]
     },
     {
-      "number": 278,
+      "number": 285,
       "content": [
         {
           "text": "  ",
@@ -18757,7 +19137,7 @@
       ]
     },
     {
-      "number": 279,
+      "number": 286,
       "content": [
         {
           "text": "}",
@@ -18766,11 +19146,11 @@
       ]
     },
     {
-      "number": 280,
+      "number": 287,
       "content": []
     },
     {
-      "number": 281,
+      "number": 288,
       "content": [
         {
           "text": "const",
@@ -18803,7 +19183,7 @@
       ]
     },
     {
-      "number": 282,
+      "number": 289,
       "content": [
         {
           "text": "  overlap",
@@ -18836,7 +19216,7 @@
       ]
     },
     {
-      "number": 283,
+      "number": 290,
       "content": [
         {
           "text": "  gap",
@@ -18869,7 +19249,7 @@
       ]
     },
     {
-      "number": 284,
+      "number": 291,
       "content": [
         {
           "text": "}",
@@ -18918,11 +19298,11 @@
       ]
     },
     {
-      "number": 285,
+      "number": 292,
       "content": []
     },
     {
-      "number": 286,
+      "number": 293,
       "content": [
         {
           "text": "export",
@@ -19103,7 +19483,7 @@
       ]
     },
     {
-      "number": 287,
+      "number": 294,
       "content": [
         {
           "text": "  ",
@@ -19156,7 +19536,7 @@
       ]
     },
     {
-      "number": 288,
+      "number": 295,
       "content": [
         {
           "text": "  ",
@@ -19241,11 +19621,11 @@
       ]
     },
     {
-      "number": 289,
+      "number": 296,
       "content": []
     },
     {
-      "number": 290,
+      "number": 297,
       "content": [
         {
           "text": "  ",
@@ -19282,7 +19662,7 @@
       ]
     },
     {
-      "number": 291,
+      "number": 298,
       "content": [
         {
           "text": "    ",
@@ -19347,7 +19727,7 @@
       ]
     },
     {
-      "number": 292,
+      "number": 299,
       "content": [
         {
           "text": "    ",
@@ -19408,11 +19788,11 @@
       ]
     },
     {
-      "number": 293,
+      "number": 300,
       "content": []
     },
     {
-      "number": 294,
+      "number": 301,
       "content": [
         {
           "text": "    ",
@@ -19429,7 +19809,7 @@
       ]
     },
     {
-      "number": 295,
+      "number": 302,
       "content": [
         {
           "text": "      ",
@@ -19466,7 +19846,7 @@
       ]
     },
     {
-      "number": 296,
+      "number": 303,
       "content": [
         {
           "text": "        ",
@@ -19579,7 +19959,7 @@
       ]
     },
     {
-      "number": 297,
+      "number": 304,
       "content": [
         {
           "text": "          ",
@@ -19600,7 +19980,7 @@
       ]
     },
     {
-      "number": 298,
+      "number": 305,
       "content": [
         {
           "text": "          ",
@@ -19677,7 +20057,7 @@
       ]
     },
     {
-      "number": 299,
+      "number": 306,
       "content": [
         {
           "text": "        ",
@@ -19698,7 +20078,7 @@
       ]
     },
     {
-      "number": 300,
+      "number": 307,
       "content": [
         {
           "text": "      ",
@@ -19719,7 +20099,7 @@
       ]
     },
     {
-      "number": 301,
+      "number": 308,
       "content": [
         {
           "text": "    )",
@@ -19732,7 +20112,7 @@
       ]
     },
     {
-      "number": 302,
+      "number": 309,
       "content": [
         {
           "text": "  ",
@@ -19745,11 +20125,11 @@
       ]
     },
     {
-      "number": 303,
+      "number": 310,
       "content": []
     },
     {
-      "number": 304,
+      "number": 311,
       "content": [
         {
           "text": "  ",
@@ -19766,7 +20146,7 @@
       ]
     },
     {
-      "number": 305,
+      "number": 312,
       "content": [
         {
           "text": "    ",
@@ -19803,7 +20183,7 @@
       ]
     },
     {
-      "number": 306,
+      "number": 313,
       "content": [
         {
           "text": "      ",
@@ -19864,7 +20244,7 @@
       ]
     },
     {
-      "number": 307,
+      "number": 314,
       "content": [
         {
           "text": "        ",
@@ -19881,7 +20261,7 @@
       ]
     },
     {
-      "number": 308,
+      "number": 315,
       "content": [
         {
           "text": "          ",
@@ -19910,7 +20290,7 @@
       ]
     },
     {
-      "number": 309,
+      "number": 316,
       "content": [
         {
           "text": "          ",
@@ -19935,7 +20315,7 @@
       ]
     },
     {
-      "number": 310,
+      "number": 317,
       "content": [
         {
           "text": "          ",
@@ -19960,7 +20340,7 @@
       ]
     },
     {
-      "number": 311,
+      "number": 318,
       "content": [
         {
           "text": "          ",
@@ -20033,7 +20413,7 @@
       ]
     },
     {
-      "number": 312,
+      "number": 319,
       "content": [
         {
           "text": "        ",
@@ -20046,7 +20426,7 @@
       ]
     },
     {
-      "number": 313,
+      "number": 320,
       "content": [
         {
           "text": "          ",
@@ -20067,7 +20447,7 @@
       ]
     },
     {
-      "number": 314,
+      "number": 321,
       "content": [
         {
           "text": "        ",
@@ -20088,7 +20468,7 @@
       ]
     },
     {
-      "number": 315,
+      "number": 322,
       "content": [
         {
           "text": "      ",
@@ -20109,7 +20489,7 @@
       ]
     },
     {
-      "number": 316,
+      "number": 323,
       "content": [
         {
           "text": "    ",
@@ -20130,7 +20510,7 @@
       ]
     },
     {
-      "number": 317,
+      "number": 324,
       "content": [
         {
           "text": "  )",
@@ -20143,7 +20523,7 @@
       ]
     },
     {
-      "number": 318,
+      "number": 325,
       "content": [
         {
           "text": "}",
@@ -20152,15 +20532,15 @@
       ]
     },
     {
-      "number": 319,
+      "number": 326,
       "content": []
     },
     {
-      "number": 320,
+      "number": 327,
       "content": []
     },
     {
-      "number": 321,
+      "number": 328,
       "content": [
         {
           "text": "\"",
@@ -20181,7 +20561,7 @@
       ]
     },
     {
-      "number": 322,
+      "number": 329,
       "content": [
         {
           "text": "import",
@@ -20242,7 +20622,7 @@
       ]
     },
     {
-      "number": 323,
+      "number": 330,
       "content": [
         {
           "text": "import",
@@ -20303,11 +20683,11 @@
       ]
     },
     {
-      "number": 324,
+      "number": 331,
       "content": []
     },
     {
-      "number": 325,
+      "number": 332,
       "content": [
         {
           "text": "interface",
@@ -20332,7 +20712,7 @@
       ]
     },
     {
-      "number": 326,
+      "number": 333,
       "content": [
         {
           "text": "  src",
@@ -20373,7 +20753,7 @@
       ]
     },
     {
-      "number": 327,
+      "number": 334,
       "content": [
         {
           "text": "  status",
@@ -20398,7 +20778,7 @@
       ]
     },
     {
-      "number": 328,
+      "number": 335,
       "content": [
         {
           "text": "}",
@@ -20407,11 +20787,11 @@
       ]
     },
     {
-      "number": 329,
+      "number": 336,
       "content": []
     },
     {
-      "number": 330,
+      "number": 337,
       "content": [
         {
           "text": "export",
@@ -20484,7 +20864,7 @@
       ]
     },
     {
-      "number": 331,
+      "number": 338,
       "content": [
         {
           "text": "  ",
@@ -20577,7 +20957,7 @@
       ]
     },
     {
-      "number": 332,
+      "number": 339,
       "content": [
         {
           "text": "    src",
@@ -20590,7 +20970,7 @@
       ]
     },
     {
-      "number": 333,
+      "number": 340,
       "content": [
         {
           "text": "    status",
@@ -20655,7 +21035,7 @@
       ]
     },
     {
-      "number": 334,
+      "number": 341,
       "content": [
         {
           "text": "  ",
@@ -20676,11 +21056,11 @@
       ]
     },
     {
-      "number": 335,
+      "number": 342,
       "content": []
     },
     {
-      "number": 336,
+      "number": 343,
       "content": [
         {
           "text": "  ",
@@ -20813,11 +21193,11 @@
       ]
     },
     {
-      "number": 337,
+      "number": 344,
       "content": []
     },
     {
-      "number": 338,
+      "number": 345,
       "content": [
         {
           "text": "  ",
@@ -20854,7 +21234,7 @@
       ]
     },
     {
-      "number": 339,
+      "number": 346,
       "content": [
         {
           "text": "    ",
@@ -20895,7 +21275,7 @@
       ]
     },
     {
-      "number": 340,
+      "number": 347,
       "content": [
         {
           "text": "      ",
@@ -20924,7 +21304,7 @@
       ]
     },
     {
-      "number": 341,
+      "number": 348,
       "content": [
         {
           "text": "        ",
@@ -20941,7 +21321,7 @@
       ]
     },
     {
-      "number": 342,
+      "number": 349,
       "content": [
         {
           "text": "        ",
@@ -21034,7 +21414,7 @@
       ]
     },
     {
-      "number": 343,
+      "number": 350,
       "content": [
         {
           "text": "    ))",
@@ -21047,7 +21427,7 @@
       ]
     },
     {
-      "number": 344,
+      "number": 351,
       "content": [
         {
           "text": "  ",
@@ -21068,11 +21448,11 @@
       ]
     },
     {
-      "number": 345,
+      "number": 352,
       "content": []
     },
     {
-      "number": 346,
+      "number": 353,
       "content": [
         {
           "text": "  ",
@@ -21093,7 +21473,7 @@
       ]
     },
     {
-      "number": 347,
+      "number": 354,
       "content": [
         {
           "text": "    status",
@@ -21106,7 +21486,7 @@
       ]
     },
     {
-      "number": 348,
+      "number": 355,
       "content": [
         {
           "text": "    showImage",
@@ -21163,7 +21543,7 @@
       ]
     },
     {
-      "number": 349,
+      "number": 356,
       "content": [
         {
           "text": "    ",
@@ -21260,7 +21640,7 @@
       ]
     },
     {
-      "number": 350,
+      "number": 357,
       "content": [
         {
           "text": "    ",
@@ -21357,7 +21737,7 @@
       ]
     },
     {
-      "number": 351,
+      "number": 358,
       "content": [
         {
           "text": "  ",
@@ -21370,7 +21750,7 @@
       ]
     },
     {
-      "number": 352,
+      "number": 359,
       "content": [
         {
           "text": "}",
@@ -21379,7 +21759,7 @@
       ]
     },
     {
-      "number": 353,
+      "number": 360,
       "content": []
     }
   ],

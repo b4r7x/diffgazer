@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useKeyboardContext } from "../context/keyboard-context.js";
+import { useKeyboardRegistryContext } from "../context/keyboard-context.js";
 
 interface UseScopeOptions {
   enabled?: boolean;
@@ -9,7 +9,7 @@ interface UseScopeOptions {
 
 export function useScope(name: string | null, options: UseScopeOptions = {}): void {
   const { enabled = true } = options;
-  const { pushScope } = useKeyboardContext();
+  const { pushScope } = useKeyboardRegistryContext();
 
   useEffect(() => {
     if (!enabled || name === null) return;

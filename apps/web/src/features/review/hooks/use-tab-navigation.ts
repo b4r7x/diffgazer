@@ -6,16 +6,25 @@ interface UseTabNavigationOptions {
   selectedIssue: ReviewIssue | null;
 }
 
+const DEFAULT_COMPLETED_STEPS = new Set([1]);
+const EMPTY_COMPLETED_STEPS = new Set<number>();
+
 export function useTabNavigation({ selectedIssue }: UseTabNavigationOptions) {
-  const [activeTab, setActiveTab] = useState<TabId>("details");
-  const [completedSteps, setCompletedSteps] = useState<Set<number>>(
-    new Set([1]),
-  );
+  const [requestedTab, setRequestedTab] = useState<TabId>("details");
+  const [completedStepsByIssue, setCompletedStepsByIssue] = useState<Record<string, Set<number>>>({});
   const detailsScrollRef = useRef<HTMLDivElement>(null);
 
   const availableTabs: TabId[] = selectedIssue?.suggested_patch
     ? ["details", "explain", "trace", "patch"]
     : ["details", "explain", "trace"];
+  const activeTab = availableTabs.includes(requestedTab) ? requestedTab : "details";
+  const completedSteps = selectedIssue
+    ? completedStepsByIssue[selectedIssue.id] ?? DEFAULT_COMPLETED_STEPS
+    : EMPTY_COMPLETED_STEPS;
+
+  const setActiveTab = (tab: TabId) => {
+    setRequestedTab(availableTabs.includes(tab) ? tab : "details");
+  };
 
   const moveTab = (delta: -1 | 1) => {
     const index = availableTabs.indexOf(activeTab);
@@ -33,11 +42,15 @@ export function useTabNavigation({ selectedIssue }: UseTabNavigationOptions) {
   };
 
   const handleToggleStep = (step: number) => {
-    setCompletedSteps((prev) => {
-      const next = new Set(prev);
+    if (!selectedIssue) return;
+
+    const issueId = selectedIssue.id;
+    setCompletedStepsByIssue((prev) => {
+      const current = prev[issueId] ?? DEFAULT_COMPLETED_STEPS;
+      const next = new Set(current);
       if (next.has(step)) next.delete(step);
       else next.add(step);
-      return next;
+      return { ...prev, [issueId]: next };
     });
   };
 

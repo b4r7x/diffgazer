@@ -41,6 +41,24 @@ describe("Avatar", () => {
     expect(onStatusChange2).toHaveBeenCalledWith("error")
   })
 
+  it("does not re-emit the current status when onStatusChange identity changes", () => {
+    const firstOnStatusChange = vi.fn()
+    const secondOnStatusChange = vi.fn()
+    const { rerender } = render(
+      <Avatar src="https://example.com/avatar.jpg" alt="User" fallback="AB" onStatusChange={firstOnStatusChange} />,
+    )
+
+    expect(firstOnStatusChange).toHaveBeenCalledWith("loading")
+    fireEvent.load(document.querySelector("img")!)
+    expect(firstOnStatusChange).toHaveBeenCalledWith("loaded")
+
+    rerender(
+      <Avatar src="https://example.com/avatar.jpg" alt="User" fallback="AB" onStatusChange={secondOnStatusChange} />,
+    )
+
+    expect(secondOnStatusChange).not.toHaveBeenCalled()
+  })
+
   it("resets image status after src changes without render-time state updates", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined)
     const { rerender } = render(

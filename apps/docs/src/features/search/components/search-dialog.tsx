@@ -10,7 +10,7 @@ import {
   CommandPaletteItem,
   CommandPaletteFooter,
 } from "@/components/ui/command-palette"
-import { useSearch } from "../hooks/use-search"
+import { type SearchStatus, useSearch } from "../hooks/use-search"
 import { getEnabledDocsLibraries } from "@/lib/docs-library"
 
 const LIBRARY_LABELS: Record<string, string> = Object.fromEntries(
@@ -33,10 +33,37 @@ const SECTION_LABELS: Record<string, string> = {
   general: "Docs",
 }
 
+interface SearchStatusView {
+  message: string
+  role: "status" | "alert"
+}
+
+function getSearchStatusView(
+  hasQuery: boolean,
+  status: SearchStatus,
+  error: string | null,
+): SearchStatusView | null {
+  if (!hasQuery) {
+    return { message: "Type to search docs...", role: "status" }
+  }
+  if (status === "loading") {
+    return { message: "Searching docs...", role: "status" }
+  }
+  if (status === "error") {
+    return { message: error ?? "Search failed. Try again.", role: "alert" }
+  }
+  if (status === "empty") {
+    return { message: "No results found.", role: "status" }
+  }
+  return null
+}
+
 export function SearchDialog() {
   const { open, setOpen } = useSearchOpen()
-  const { query, results, search } = useSearch()
+  const { query, results, status, error, search } = useSearch()
   const navigate = useNavigate()
+  const hasQuery = query.trim().length > 0
+  const statusView = getSearchStatusView(hasQuery, status, error)
 
   useKey({
     "mod+k": () => setOpen(true),
@@ -56,21 +83,22 @@ export function SearchDialog() {
       search={query}
       onSearchChange={search}
       onActivate={(id) => navigate({ to: id })}
+      shouldFilter={false}
     >
       <CommandPaletteContent size="md">
         <CommandPaletteInput placeholder="Search docs..." />
         <CommandPaletteList>
-          {!query && (
-            <div className="p-4 text-center text-muted-foreground text-xs font-mono">
-              Type to search docs...
+          {statusView && (
+            <div
+              role={statusView.role}
+              aria-live={statusView.role === "status" ? "polite" : undefined}
+              className="p-4 text-center text-muted-foreground text-xs font-mono"
+            >
+              {statusView.message}
             </div>
           )}
-          {query && results.length === 0 && (
-            <div className="p-4 text-center text-muted-foreground text-xs font-mono">
-              No results found.
-            </div>
-          )}
-          {query &&
+          {hasQuery &&
+            status === "success" &&
             results.map((result) => (
               <CommandPaletteItem key={result.id} id={result.url}>
                 <div className="flex flex-col gap-0.5">
@@ -109,8 +137,7 @@ export function SearchDialog() {
           </div>
           <div className="flex gap-2">
             <span className="flex items-center gap-1">
-              Triggered by{" "}
-              <span className="text-foreground">[cmd+k]</span>
+              Triggered by <span className="text-foreground">[cmd+k]</span>
             </span>
           </div>
         </CommandPaletteFooter>

@@ -49,8 +49,7 @@ export function ToggleGroupItem({
   const isActive = context.value === value;
   const isHighlighted = context.highlightedValue === value;
   const isDisabled = context.disabled || !!disabled;
-  const hasSelection = context.value !== null;
-  const isTabTarget = !isDisabled && (isActive || (!hasSelection && context.firstEnabledValue === value));
+  const isTabTarget = !isDisabled && context.tabTargetValue === value;
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     onClick?.(event);

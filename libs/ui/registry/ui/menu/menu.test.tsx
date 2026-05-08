@@ -261,6 +261,23 @@ describe("Menu", () => {
     })
   })
 
+  it("autoFocus preserves an empty string highlighted id", async () => {
+    render(
+      <Menu aria-label="Test menu" autoFocus defaultHighlightedId="">
+        <Menu.Item id="one">One</Menu.Item>
+        <Menu.Item id="">Empty id</Menu.Item>
+      </Menu>,
+    )
+
+    const menu = screen.getByRole("menu")
+    const emptyItem = screen.getByText("Empty id").closest("[role='menuitem']")!
+
+    await waitFor(() => {
+      expect(menu).toHaveFocus()
+      expect(menu).toHaveAttribute("aria-activedescendant", emptyItem.id)
+    })
+  })
+
   it("uses encoded item ids for active descendant references", () => {
     const id = "release notes/v1.2?"
     render(

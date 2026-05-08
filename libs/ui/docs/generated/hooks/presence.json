@@ -3,7 +3,7 @@
   "title": "usePresence",
   "description": "Hook for animating mount/unmount transitions with CSS animations — keeps element in DOM during exit animation, removes after completion.",
   "source": {
-    "raw": "\"use client\";\n\nimport { useCallback, useEffect, useState, type AnimationEvent, type RefObject } from \"react\";\n\ntype Phase = \"hidden\" | \"open\" | \"closing\";\n\nexport interface UsePresenceOptions {\n  open: boolean;\n  ref?: RefObject<HTMLElement | null>;\n  exitFallbackMs?: number;\n  onExitComplete?: () => void;\n}\n\nconst DEFAULT_EXIT_FALLBACK_MS = 250;\n\nexport function usePresence({\n  open,\n  ref,\n  exitFallbackMs = DEFAULT_EXIT_FALLBACK_MS,\n  onExitComplete,\n}: UsePresenceOptions) {\n  const [phase, setPhase] = useState<Phase>(open ? \"open\" : \"hidden\");\n\n  useEffect(() => {\n    if (open) {\n      setPhase(\"open\");\n      return;\n    }\n\n    setPhase((current) => current === \"open\" ? \"closing\" : current);\n  }, [open]);\n\n  const finishExit = useCallback(() => {\n    if (phase === \"closing\") {\n      setPhase(\"hidden\");\n      onExitComplete?.();\n    }\n  }, [onExitComplete, phase]);\n\n  const onAnimationEnd = useCallback((e: AnimationEvent) => {\n    if (ref && e.target !== ref.current) return;\n    finishExit();\n  }, [finishExit, ref]);\n\n  const onAnimationCancel = useCallback((e: AnimationEvent) => {\n    if (ref && e.target !== ref.current) return;\n    finishExit();\n  }, [finishExit, ref]);\n\n  useEffect(() => {\n    const element = ref?.current;\n    if (!element || phase !== \"closing\") return;\n    const handleAnimationCancel = (event: globalThis.AnimationEvent) => {\n      if (event.target !== element) return;\n      finishExit();\n    };\n    element.addEventListener(\"animationcancel\", handleAnimationCancel);\n    return () => element.removeEventListener(\"animationcancel\", handleAnimationCancel);\n  }, [finishExit, phase, ref]);\n\n  useEffect(() => {\n    if (phase !== \"closing\") return;\n    const timer = setTimeout(finishExit, exitFallbackMs);\n    return () => clearTimeout(timer);\n  }, [exitFallbackMs, finishExit, phase]);\n\n  return { present: phase !== \"hidden\", exiting: phase === \"closing\", onAnimationEnd, onAnimationCancel } as const;\n}\n",
+    "raw": "\"use client\";\n\nimport { useCallback, useEffect, useEffectEvent, useState, type AnimationEvent, type RefObject } from \"react\";\n\ntype Phase = \"hidden\" | \"open\" | \"closing\";\n\nexport interface UsePresenceOptions {\n  open: boolean;\n  ref?: RefObject<HTMLElement | null>;\n  exitFallbackMs?: number;\n  onExitComplete?: () => void;\n}\n\nconst DEFAULT_EXIT_FALLBACK_MS = 250;\n\nexport function usePresence({\n  open,\n  ref,\n  exitFallbackMs = DEFAULT_EXIT_FALLBACK_MS,\n  onExitComplete,\n}: UsePresenceOptions) {\n  const [phase, setPhase] = useState<Phase>(open ? \"open\" : \"hidden\");\n  const notifyExitComplete = useEffectEvent(() => {\n    onExitComplete?.();\n  });\n\n  useEffect(() => {\n    if (open) {\n      setPhase(\"open\");\n      return;\n    }\n\n    setPhase((current) => current === \"open\" ? \"closing\" : current);\n  }, [open]);\n\n  const finishExit = useCallback(() => {\n    if (phase === \"closing\") {\n      setPhase(\"hidden\");\n      notifyExitComplete();\n    }\n  }, [phase]);\n\n  const onAnimationEnd = useCallback((e: AnimationEvent) => {\n    if (ref && e.target !== ref.current) return;\n    finishExit();\n  }, [finishExit, ref]);\n\n  const onAnimationCancel = useCallback((e: AnimationEvent) => {\n    if (ref && e.target !== ref.current) return;\n    finishExit();\n  }, [finishExit, ref]);\n\n  useEffect(() => {\n    const element = ref?.current;\n    if (!element || phase !== \"closing\") return;\n    const handleAnimationCancel = (event: globalThis.AnimationEvent) => {\n      if (event.target !== element) return;\n      finishExit();\n    };\n    element.addEventListener(\"animationcancel\", handleAnimationCancel);\n    return () => element.removeEventListener(\"animationcancel\", handleAnimationCancel);\n  }, [finishExit, phase, ref]);\n\n  useEffect(() => {\n    if (phase !== \"closing\") return;\n    const timer = setTimeout(finishExit, exitFallbackMs);\n    return () => clearTimeout(timer);\n  }, [exitFallbackMs, finishExit, phase]);\n\n  return { present: phase !== \"hidden\", exiting: phase === \"closing\", onAnimationEnd, onAnimationCancel } as const;\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -55,6 +55,14 @@
           },
           {
             "text": " useEffect",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " useEffectEvent",
             "color": "var(--code-variable)"
           },
           {
@@ -712,10 +720,117 @@
       },
       {
         "number": 23,
-        "content": []
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "const",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "notifyExitComplete",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "useEffectEvent",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "(",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "=>",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "{",
+            "color": "var(--code-operator)"
+          }
+        ]
       },
       {
         "number": 24,
+        "content": [
+          {
+            "text": "    ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "onExitComplete",
+            "color": "var(--code-function)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "()",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 25,
+        "content": [
+          {
+            "text": "  ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "}",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": ")",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ";",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 26,
+        "content": []
+      },
+      {
+        "number": 27,
         "content": [
           {
             "text": "  ",
@@ -752,7 +867,7 @@
         ]
       },
       {
-        "number": 25,
+        "number": 28,
         "content": [
           {
             "text": "    ",
@@ -773,7 +888,7 @@
         ]
       },
       {
-        "number": 26,
+        "number": 29,
         "content": [
           {
             "text": "      ",
@@ -810,7 +925,7 @@
         ]
       },
       {
-        "number": 27,
+        "number": 30,
         "content": [
           {
             "text": "      ",
@@ -827,7 +942,7 @@
         ]
       },
       {
-        "number": 28,
+        "number": 31,
         "content": [
           {
             "text": "    ",
@@ -840,11 +955,11 @@
         ]
       },
       {
-        "number": 29,
+        "number": 32,
         "content": []
       },
       {
-        "number": 30,
+        "number": 33,
         "content": [
           {
             "text": "    ",
@@ -945,7 +1060,7 @@
         ]
       },
       {
-        "number": 31,
+        "number": 34,
         "content": [
           {
             "text": "  ",
@@ -966,11 +1081,11 @@
         ]
       },
       {
-        "number": 32,
+        "number": 35,
         "content": []
       },
       {
-        "number": 33,
+        "number": 36,
         "content": [
           {
             "text": "  ",
@@ -1031,7 +1146,7 @@
         ]
       },
       {
-        "number": 34,
+        "number": 37,
         "content": [
           {
             "text": "    ",
@@ -1076,7 +1191,7 @@
         ]
       },
       {
-        "number": 35,
+        "number": 38,
         "content": [
           {
             "text": "      ",
@@ -1113,19 +1228,15 @@
         ]
       },
       {
-        "number": 36,
+        "number": 39,
         "content": [
           {
             "text": "      ",
             "color": "var(--code-variable)"
           },
           {
-            "text": "onExitComplete",
+            "text": "notifyExitComplete",
             "color": "var(--code-function)"
-          },
-          {
-            "text": "?.",
-            "color": "var(--code-operator)"
           },
           {
             "text": "()",
@@ -1138,7 +1249,7 @@
         ]
       },
       {
-        "number": 37,
+        "number": 40,
         "content": [
           {
             "text": "    ",
@@ -1151,7 +1262,7 @@
         ]
       },
       {
-        "number": 38,
+        "number": 41,
         "content": [
           {
             "text": "  ",
@@ -1162,15 +1273,7 @@
             "color": "var(--code-operator)"
           },
           {
-            "text": " [onExitComplete",
-            "color": "var(--code-variable)"
-          },
-          {
-            "text": ",",
-            "color": "var(--code-operator)"
-          },
-          {
-            "text": " phase])",
+            "text": " [phase])",
             "color": "var(--code-variable)"
           },
           {
@@ -1180,11 +1283,11 @@
         ]
       },
       {
-        "number": 39,
+        "number": 42,
         "content": []
       },
       {
-        "number": 40,
+        "number": 43,
         "content": [
           {
             "text": "  ",
@@ -1265,7 +1368,7 @@
         ]
       },
       {
-        "number": 41,
+        "number": 44,
         "content": [
           {
             "text": "    ",
@@ -1330,7 +1433,7 @@
         ]
       },
       {
-        "number": 42,
+        "number": 45,
         "content": [
           {
             "text": "    ",
@@ -1351,7 +1454,7 @@
         ]
       },
       {
-        "number": 43,
+        "number": 46,
         "content": [
           {
             "text": "  ",
@@ -1380,11 +1483,11 @@
         ]
       },
       {
-        "number": 44,
+        "number": 47,
         "content": []
       },
       {
-        "number": 45,
+        "number": 48,
         "content": [
           {
             "text": "  ",
@@ -1465,7 +1568,7 @@
         ]
       },
       {
-        "number": 46,
+        "number": 49,
         "content": [
           {
             "text": "    ",
@@ -1530,7 +1633,7 @@
         ]
       },
       {
-        "number": 47,
+        "number": 50,
         "content": [
           {
             "text": "    ",
@@ -1551,7 +1654,7 @@
         ]
       },
       {
-        "number": 48,
+        "number": 51,
         "content": [
           {
             "text": "  ",
@@ -1580,11 +1683,11 @@
         ]
       },
       {
-        "number": 49,
+        "number": 52,
         "content": []
       },
       {
-        "number": 50,
+        "number": 53,
         "content": [
           {
             "text": "  ",
@@ -1621,7 +1724,7 @@
         ]
       },
       {
-        "number": 51,
+        "number": 54,
         "content": [
           {
             "text": "    ",
@@ -1670,7 +1773,7 @@
         ]
       },
       {
-        "number": 52,
+        "number": 55,
         "content": [
           {
             "text": "    ",
@@ -1735,7 +1838,7 @@
         ]
       },
       {
-        "number": 53,
+        "number": 56,
         "content": [
           {
             "text": "    ",
@@ -1816,7 +1919,7 @@
         ]
       },
       {
-        "number": 54,
+        "number": 57,
         "content": [
           {
             "text": "      ",
@@ -1861,7 +1964,7 @@
         ]
       },
       {
-        "number": 55,
+        "number": 58,
         "content": [
           {
             "text": "      ",
@@ -1882,7 +1985,7 @@
         ]
       },
       {
-        "number": 56,
+        "number": 59,
         "content": [
           {
             "text": "    ",
@@ -1895,7 +1998,7 @@
         ]
       },
       {
-        "number": 57,
+        "number": 60,
         "content": [
           {
             "text": "    ",
@@ -1944,7 +2047,7 @@
         ]
       },
       {
-        "number": 58,
+        "number": 61,
         "content": [
           {
             "text": "    ",
@@ -2017,7 +2120,7 @@
         ]
       },
       {
-        "number": 59,
+        "number": 62,
         "content": [
           {
             "text": "  ",
@@ -2054,11 +2157,11 @@
         ]
       },
       {
-        "number": 60,
+        "number": 63,
         "content": []
       },
       {
-        "number": 61,
+        "number": 64,
         "content": [
           {
             "text": "  ",
@@ -2095,7 +2198,7 @@
         ]
       },
       {
-        "number": 62,
+        "number": 65,
         "content": [
           {
             "text": "    ",
@@ -2144,7 +2247,7 @@
         ]
       },
       {
-        "number": 63,
+        "number": 66,
         "content": [
           {
             "text": "    ",
@@ -2197,7 +2300,7 @@
         ]
       },
       {
-        "number": 64,
+        "number": 67,
         "content": [
           {
             "text": "    ",
@@ -2242,7 +2345,7 @@
         ]
       },
       {
-        "number": 65,
+        "number": 68,
         "content": [
           {
             "text": "  ",
@@ -2279,11 +2382,11 @@
         ]
       },
       {
-        "number": 66,
+        "number": 69,
         "content": []
       },
       {
-        "number": 67,
+        "number": 70,
         "content": [
           {
             "text": "  ",
@@ -2412,7 +2515,7 @@
         ]
       },
       {
-        "number": 68,
+        "number": 71,
         "content": [
           {
             "text": "}",
@@ -2421,7 +2524,7 @@
         ]
       },
       {
-        "number": 69,
+        "number": 72,
         "content": []
       }
     ]

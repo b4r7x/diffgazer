@@ -3,7 +3,7 @@
   "title": "useFocusZone",
   "description": "Manage focus across multiple zones with arrow key and Tab transitions. Supports controlled and uncontrolled zone state.",
   "source": {
-    "raw": "\"use client\";\n\nimport { useCallback, useState } from \"react\";\nimport { useKey } from \"./use-key.js\";\nimport type { UseKeyOptions } from \"./use-key.js\";\nimport { useScope } from \"./use-scope.js\";\nimport { keys } from \"../utils/keys.js\";\n\ntype ZoneTransition<T extends string> = (params: {\n  zone: T;\n  key: \"ArrowLeft\" | \"ArrowRight\" | \"ArrowUp\" | \"ArrowDown\";\n}) => T | null;\n\ninterface UseFocusZoneOptions<T extends string> {\n  initial: T;\n  zones: readonly [T, ...T[]];\n  zone?: T;\n  onZoneChange?: (zone: T) => void;\n  onLeaveZone?: (zone: T) => void;\n  onEnterZone?: (zone: T) => void;\n  transitions?: ZoneTransition<T>;\n  tabCycle?: readonly T[];\n  scope?: string;\n  enabled?: boolean;\n}\n\nexport interface ZoneProps {\n  \"data-focused\": true | undefined;\n}\n\ninterface UseFocusZoneReturn<T extends string> {\n  zone: T;\n  setZone: (zone: T) => void;\n  inZone: (...zones: T[]) => boolean;\n  forZone: (target: T, extra?: UseKeyOptions) => UseKeyOptions;\n  zoneProps: (target: T) => ZoneProps;\n}\n\nconst ARROW_KEYS = [\n  \"ArrowLeft\",\n  \"ArrowRight\",\n  \"ArrowUp\",\n  \"ArrowDown\",\n] as const;\n\nexport function useFocusZone<T extends string>(\n  options: UseFocusZoneOptions<T>,\n): UseFocusZoneReturn<T> {\n  const { initial, zones, enabled = true } = options;\n  const {\n    zone: controlledZone,\n    onZoneChange,\n    onLeaveZone,\n    onEnterZone,\n    transitions,\n    tabCycle,\n    scope,\n  } = options;\n\n  const [internalZone, setInternalZone] = useState<T>(initial);\n\n  const currentZone: T = controlledZone ?? internalZone;\n\n  const setZoneValue = useCallback((next: T) => {\n    if (next === currentZone) return;\n    onLeaveZone?.(currentZone);\n    onEnterZone?.(next);\n    if (controlledZone === undefined) setInternalZone(next);\n    onZoneChange?.(next);\n  }, [controlledZone, currentZone, onEnterZone, onLeaveZone, onZoneChange]);\n\n  const stableTransitions = useCallback(\n    (key: \"ArrowLeft\" | \"ArrowRight\" | \"ArrowUp\" | \"ArrowDown\") => {\n      const next = transitions?.({ zone: currentZone, key });\n      if (next != null && zones.includes(next)) {\n        setZoneValue(next);\n      }\n    },\n    [currentZone, setZoneValue, transitions, zones],\n  );\n\n  const cycleZone = useCallback((delta: 1 | -1) => {\n    if (!tabCycle || tabCycle.length === 0) return;\n    const cycle = tabCycle;\n    const idx = cycle.indexOf(currentZone);\n    const next = cycle[(idx + delta + cycle.length) % cycle.length] ?? cycle[0];\n    if (!next) return;\n    setZoneValue(next);\n  }, [currentZone, setZoneValue, tabCycle]);\n\n  useKey(\n    keys(ARROW_KEYS, (e) => stableTransitions(e.key as typeof ARROW_KEYS[number])),\n    { enabled: enabled && transitions != null },\n  );\n\n  useKey(\"Tab\", () => cycleZone(1), {\n    enabled: enabled && tabCycle != null,\n    preventDefault: true,\n  });\n\n  useKey(\"shift+Tab\", () => cycleZone(-1), {\n    enabled: enabled && tabCycle != null,\n    preventDefault: true,\n  });\n\n  useScope(scope ?? null, { enabled: enabled && !!scope });\n\n  const safeZone = zones.includes(currentZone) ? currentZone : zones[0];\n\n  return {\n    zone: safeZone,\n    setZone: setZoneValue,\n    inZone: (...zones: T[]) => zones.includes(safeZone),\n    forZone: (target: T, extra?: UseKeyOptions): UseKeyOptions => ({\n      ...extra,\n      enabled: safeZone === target && (extra?.enabled ?? true),\n    }),\n    zoneProps: (target: T): ZoneProps => ({\n      \"data-focused\": safeZone === target || undefined,\n    }),\n  };\n}\n",
+    "raw": "\"use client\";\n\nimport { useCallback, useState } from \"react\";\nimport { useKey } from \"./use-key.js\";\nimport type { UseKeyOptions } from \"./use-key.js\";\nimport { useScope } from \"./use-scope.js\";\nimport { keys } from \"../utils/keys.js\";\n\ntype ZoneTransition<T extends string> = (params: {\n  zone: T;\n  key: \"ArrowLeft\" | \"ArrowRight\" | \"ArrowUp\" | \"ArrowDown\";\n}) => T | null;\n\ninterface UseFocusZoneOptions<T extends string> {\n  initial: T;\n  zones: readonly [T, ...T[]];\n  zone?: T;\n  onZoneChange?: (zone: T) => void;\n  onLeaveZone?: (zone: T) => void;\n  onEnterZone?: (zone: T) => void;\n  transitions?: ZoneTransition<T>;\n  tabCycle?: readonly T[];\n  scope?: string;\n  enabled?: boolean;\n}\n\nexport interface ZoneProps {\n  \"data-focused\": true | undefined;\n}\n\ninterface UseFocusZoneReturn<T extends string> {\n  zone: T;\n  setZone: (zone: T) => void;\n  inZone: (...zones: T[]) => boolean;\n  forZone: (target: T, extra?: UseKeyOptions) => UseKeyOptions;\n  zoneProps: (target: T) => ZoneProps;\n}\n\nconst ARROW_KEYS = [\n  \"ArrowLeft\",\n  \"ArrowRight\",\n  \"ArrowUp\",\n  \"ArrowDown\",\n] as const;\n\nexport function useFocusZone<T extends string>(\n  options: UseFocusZoneOptions<T>,\n): UseFocusZoneReturn<T> {\n  const { initial, zones, enabled = true } = options;\n  const {\n    zone: controlledZone,\n    onZoneChange,\n    onLeaveZone,\n    onEnterZone,\n    transitions,\n    tabCycle,\n    scope,\n  } = options;\n\n  const [internalZone, setInternalZone] = useState<T>(initial);\n\n  const currentZone: T = controlledZone ?? internalZone;\n\n  const setZoneValue = useCallback((next: T) => {\n    if (next === currentZone) return;\n    onLeaveZone?.(currentZone);\n    onEnterZone?.(next);\n    if (controlledZone === undefined) setInternalZone(next);\n    onZoneChange?.(next);\n  }, [controlledZone, currentZone, onEnterZone, onLeaveZone, onZoneChange]);\n\n  const stableTransitions = useCallback(\n    (key: \"ArrowLeft\" | \"ArrowRight\" | \"ArrowUp\" | \"ArrowDown\") => {\n      const next = transitions?.({ zone: currentZone, key });\n      if (next != null && zones.includes(next)) {\n        setZoneValue(next);\n      }\n    },\n    [currentZone, setZoneValue, transitions, zones],\n  );\n\n  const cycleZone = useCallback((delta: 1 | -1) => {\n    if (!tabCycle || tabCycle.length === 0) return;\n    const cycle = tabCycle;\n    const idx = cycle.indexOf(currentZone);\n    const next = cycle[(idx + delta + cycle.length) % cycle.length] ?? cycle[0];\n    if (!next) return;\n    setZoneValue(next);\n  }, [currentZone, setZoneValue, tabCycle]);\n\n  useKey(\n    keys(ARROW_KEYS, (e) => stableTransitions(e.key as typeof ARROW_KEYS[number])),\n    { enabled: enabled && transitions != null, scope },\n  );\n\n  useKey(\"Tab\", () => cycleZone(1), {\n    enabled: enabled && tabCycle != null,\n    preventDefault: true,\n    scope,\n  });\n\n  useKey(\"shift+Tab\", () => cycleZone(-1), {\n    enabled: enabled && tabCycle != null,\n    preventDefault: true,\n    scope,\n  });\n\n  useScope(scope ?? null, { enabled: enabled && !!scope });\n\n  const safeZone = zones.includes(currentZone) ? currentZone : zones[0];\n\n  return {\n    zone: safeZone,\n    setZone: setZoneValue,\n    inZone: (...zones: T[]) => zones.includes(safeZone),\n    forZone: (target: T, extra?: UseKeyOptions): UseKeyOptions => ({\n      ...extra,\n      scope: extra?.scope ?? scope,\n      enabled: safeZone === target && (extra?.enabled ?? true),\n    }),\n    zoneProps: (target: T): ZoneProps => ({\n      \"data-focused\": safeZone === target || undefined,\n    }),\n  };\n}\n",
     "highlighted": [
       {
         "number": 1,
@@ -3556,7 +3556,11 @@
             "color": "var(--code-number)"
           },
           {
-            "text": " ",
+            "text": ",",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " scope ",
             "color": "var(--code-variable)"
           },
           {
@@ -3733,6 +3737,19 @@
         "number": 99,
         "content": [
           {
+            "text": "    scope",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 100,
+        "content": [
+          {
             "text": "  ",
             "color": "var(--code-variable)"
           },
@@ -3751,11 +3768,11 @@
         ]
       },
       {
-        "number": 100,
+        "number": 101,
         "content": []
       },
       {
-        "number": 101,
+        "number": 102,
         "content": [
           {
             "text": "  ",
@@ -3840,7 +3857,7 @@
         ]
       },
       {
-        "number": 102,
+        "number": 103,
         "content": [
           {
             "text": "    enabled",
@@ -3881,7 +3898,7 @@
         ]
       },
       {
-        "number": 103,
+        "number": 104,
         "content": [
           {
             "text": "    preventDefault",
@@ -3906,7 +3923,20 @@
         ]
       },
       {
-        "number": 104,
+        "number": 105,
+        "content": [
+          {
+            "text": "    scope",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 106,
         "content": [
           {
             "text": "  ",
@@ -3927,11 +3957,11 @@
         ]
       },
       {
-        "number": 105,
+        "number": 107,
         "content": []
       },
       {
-        "number": 106,
+        "number": 108,
         "content": [
           {
             "text": "  ",
@@ -4012,11 +4042,11 @@
         ]
       },
       {
-        "number": 107,
+        "number": 109,
         "content": []
       },
       {
-        "number": 108,
+        "number": 110,
         "content": [
           {
             "text": "  ",
@@ -4093,11 +4123,11 @@
         ]
       },
       {
-        "number": 109,
+        "number": 111,
         "content": []
       },
       {
-        "number": 110,
+        "number": 112,
         "content": [
           {
             "text": "  ",
@@ -4118,7 +4148,7 @@
         ]
       },
       {
-        "number": 111,
+        "number": 113,
         "content": [
           {
             "text": "    zone",
@@ -4139,7 +4169,7 @@
         ]
       },
       {
-        "number": 112,
+        "number": 114,
         "content": [
           {
             "text": "    setZone",
@@ -4160,7 +4190,7 @@
         ]
       },
       {
-        "number": 113,
+        "number": 115,
         "content": [
           {
             "text": "    ",
@@ -4241,7 +4271,7 @@
         ]
       },
       {
-        "number": 114,
+        "number": 116,
         "content": [
           {
             "text": "    ",
@@ -4330,7 +4360,7 @@
         ]
       },
       {
-        "number": 115,
+        "number": 117,
         "content": [
           {
             "text": "      ",
@@ -4351,7 +4381,48 @@
         ]
       },
       {
-        "number": 116,
+        "number": 118,
+        "content": [
+          {
+            "text": "      scope",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ":",
+            "color": "var(--code-keyword)"
+          },
+          {
+            "text": " ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "extra",
+            "color": "var(--code-number)"
+          },
+          {
+            "text": "?.",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": "scope ",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": "??",
+            "color": "var(--code-operator)"
+          },
+          {
+            "text": " scope",
+            "color": "var(--code-variable)"
+          },
+          {
+            "text": ",",
+            "color": "var(--code-operator)"
+          }
+        ]
+      },
+      {
+        "number": 119,
         "content": [
           {
             "text": "      enabled",
@@ -4416,7 +4487,7 @@
         ]
       },
       {
-        "number": 117,
+        "number": 120,
         "content": [
           {
             "text": "    ",
@@ -4437,7 +4508,7 @@
         ]
       },
       {
-        "number": 118,
+        "number": 121,
         "content": [
           {
             "text": "    ",
@@ -4506,7 +4577,7 @@
         ]
       },
       {
-        "number": 119,
+        "number": 122,
         "content": [
           {
             "text": "      ",
@@ -4559,7 +4630,7 @@
         ]
       },
       {
-        "number": 120,
+        "number": 123,
         "content": [
           {
             "text": "    ",
@@ -4580,7 +4651,7 @@
         ]
       },
       {
-        "number": 121,
+        "number": 124,
         "content": [
           {
             "text": "  ",
@@ -4593,7 +4664,7 @@
         ]
       },
       {
-        "number": 122,
+        "number": 125,
         "content": [
           {
             "text": "}",
@@ -4602,7 +4673,7 @@
         ]
       },
       {
-        "number": 123,
+        "number": 126,
         "content": []
       }
     ]

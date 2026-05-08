@@ -68,8 +68,11 @@ export function FocusZonesDemo() {
               {z}
             </span>
             <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
-              {ZONE_SHORTCUTS[z].map((shortcut, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+              {ZONE_SHORTCUTS[z].map((shortcut) => (
+                <div
+                  key={`${shortcut.keys}:${shortcut.label}`}
+                  style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}
+                >
                   <Kbd keys={shortcut.keys} />
                   <span style={{ color: "var(--color-text-muted)" }}>{shortcut.label}</span>
                 </div>

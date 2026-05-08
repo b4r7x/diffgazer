@@ -22,7 +22,7 @@ export function useReviewHistory() {
   const removeReview = async (id: string) => {
     try {
       await deleteReviewMutation.mutateAsync(id);
-      if (selectedId === id) setSelectedId(null);
+      setSelectedId((currentId) => (currentId === id ? null : currentId));
     } catch {
       // Error captured in deleteReviewMutation.error
     }

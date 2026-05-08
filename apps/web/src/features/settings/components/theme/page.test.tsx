@@ -78,6 +78,23 @@ describe("SettingsThemePage keyboard behavior", () => {
     expect(hasClassToken(lightRadio, "bg-secondary")).toBe(true);
   });
 
+  it("keeps focused radio arrow navigation separate from selection", () => {
+    renderPage();
+
+    const autoRadio = getRadio("auto");
+    const darkRadio = getRadio("dark");
+
+    fireEvent.keyDown(autoRadio, { key: "ArrowDown" });
+
+    expect(hasClassToken(darkRadio, "bg-secondary")).toBe(true);
+    expect(autoRadio.getAttribute("aria-checked")).toBe("true");
+    expect(darkRadio.getAttribute("aria-checked")).toBe("false");
+
+    fireEvent.keyDown(darkRadio, { key: " " });
+
+    expect(darkRadio.getAttribute("aria-checked")).toBe("true");
+  });
+
   it("selects focused theme on Space without saving or exiting", () => {
     renderPage();
 

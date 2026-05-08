@@ -26,6 +26,11 @@ const STORAGE_OPTIONS: Array<{ value: SecretsStorage; label: string; description
 
 const FIRST_VALUE = STORAGE_OPTIONS[0]?.value ?? null;
 const LAST_VALUE = STORAGE_OPTIONS[STORAGE_OPTIONS.length - 1]?.value ?? null;
+const STORAGE_VALUES = STORAGE_OPTIONS.map((option) => option.value);
+
+function isStorageValue(value: string | null): value is SecretsStorage {
+  return STORAGE_VALUES.includes(value as SecretsStorage);
+}
 
 export function StorageSelectorContent({
   value,
@@ -38,18 +43,58 @@ export function StorageSelectorContent({
   const [highlighted, setHighlighted] = useState<string | null>(value);
 
   const navigationEnabled = !disabled && enabled;
+  const effectiveHighlighted = isStorageValue(highlighted)
+    ? highlighted
+    : value ?? FIRST_VALUE;
 
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Enter" && highlighted) {
-      (onEnter ?? onChange)(highlighted as SecretsStorage);
+  const handleChange = (nextValue: string) => {
+    if (!isStorageValue(nextValue)) return;
+    setHighlighted(nextValue);
+    onChange(nextValue);
+  };
+
+  const moveHighlight = (delta: -1 | 1) => {
+    if (!effectiveHighlighted) return;
+
+    const currentIndex = STORAGE_VALUES.indexOf(effectiveHighlighted);
+    const nextIndex = currentIndex + delta;
+    if (nextIndex < 0) {
+      onBoundaryReached?.("up");
       return;
     }
-    if (onBoundaryReached) {
-      if ((e.key === "ArrowUp" || e.key === "ArrowLeft") && highlighted === FIRST_VALUE) {
-        onBoundaryReached("up");
-      } else if ((e.key === "ArrowDown" || e.key === "ArrowRight") && highlighted === LAST_VALUE) {
-        onBoundaryReached("down");
+    if (nextIndex >= STORAGE_VALUES.length) {
+      onBoundaryReached?.("down");
+      return;
+    }
+    setHighlighted(STORAGE_VALUES[nextIndex]!);
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (!navigationEnabled) return;
+
+    if ((e.key === "Enter" || e.key === " ") && effectiveHighlighted) {
+      e.preventDefault();
+      (onEnter ?? onChange)(effectiveHighlighted);
+      return;
+    }
+
+    if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+      e.preventDefault();
+      if (effectiveHighlighted === FIRST_VALUE) {
+        onBoundaryReached?.("up");
+        return;
       }
+      moveHighlight(-1);
+      return;
+    }
+
+    if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+      e.preventDefault();
+      if (effectiveHighlighted === LAST_VALUE) {
+        onBoundaryReached?.("down");
+        return;
+      }
+      moveHighlight(1);
     }
   };
 
@@ -58,8 +103,8 @@ export function StorageSelectorContent({
       <div className="text-sm font-mono text-[--tui-fg]/60">Select Storage Method:</div>
       <RadioGroup
         value={value ?? undefined}
-        onChange={onChange as (value: string) => void}
-        highlighted={navigationEnabled ? highlighted : null}
+        onChange={handleChange}
+        highlighted={navigationEnabled ? effectiveHighlighted : null}
         onHighlightChange={setHighlighted}
         onKeyDown={handleKeyDown}
         wrap={false}

@@ -112,7 +112,7 @@ export function Menu({
       if (el && !el.contains(document.activeElement)) {
         el.focus({ preventScroll: true });
       }
-      if (!highlightedId && !selectedId) {
+      if (highlightedId === null && selectedId === null) {
         const firstEnabled = items.find((item) => !item.disabled);
         if (firstEnabled) handleItemHighlight(firstEnabled.id);
       }

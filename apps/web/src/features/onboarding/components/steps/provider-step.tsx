@@ -1,9 +1,10 @@
-import { useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { RadioGroup, RadioGroupItem } from "@diffgazer/ui/components/radio";
 import { Badge } from "@diffgazer/ui/components/badge";
 import { AVAILABLE_PROVIDERS } from "@diffgazer/core/schemas/config";
 import type { AIProvider } from "@diffgazer/core/schemas/config";
 import { PROVIDER_CAPABILITIES } from "@diffgazer/core/schemas/config";
+import { useOptionHighlight } from "./use-option-highlight";
 
 interface ProviderStepProps {
   value: AIProvider | null;
@@ -20,25 +21,29 @@ export function ProviderStep({
   enabled = true,
   onBoundaryReached,
 }: ProviderStepProps) {
-  const [highlighted, setHighlighted] = useState<string | null>(
-    AVAILABLE_PROVIDERS[0]?.id ?? null,
-  );
-
   const providerIds = AVAILABLE_PROVIDERS.map((provider) => provider.id as AIProvider);
+  const { highlighted: effectiveHighlighted, setHighlighted } = useOptionHighlight(
+    value,
+    providerIds,
+  );
+  const handleChange = (provider: string) => {
+    setHighlighted(provider);
+    onChange(provider as AIProvider);
+  };
 
   const handleKeyDown = (e: ReactKeyboardEvent) => {
     if (!enabled) return;
 
-    if (e.key === "Enter" && highlighted) {
+    if (e.key === "Enter" && effectiveHighlighted) {
       e.preventDefault();
-      onChange(highlighted as AIProvider);
-      onCommit?.(highlighted as AIProvider);
+      onChange(effectiveHighlighted as AIProvider);
+      onCommit?.(effectiveHighlighted as AIProvider);
       return;
     }
 
     if (onBoundaryReached && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
-      const isAtStart = highlighted === providerIds[0];
-      const isAtEnd = highlighted === providerIds[providerIds.length - 1];
+      const isAtStart = effectiveHighlighted === providerIds[0];
+      const isAtEnd = effectiveHighlighted === providerIds[providerIds.length - 1];
       if (e.key === "ArrowUp" && isAtStart) {
         e.preventDefault();
         onBoundaryReached("up");
@@ -59,8 +64,8 @@ export function ProviderStep({
       </p>
       <RadioGroup
         value={value ?? undefined}
-        onChange={onChange as (value: string) => void}
-        highlighted={enabled ? highlighted : null}
+        onChange={handleChange}
+        highlighted={enabled ? effectiveHighlighted : null}
         onHighlightChange={setHighlighted}
         onKeyDown={handleKeyDown}
         wrap={false}

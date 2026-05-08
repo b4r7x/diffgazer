@@ -7,7 +7,7 @@ interface ModelListProps {
   currentModelId?: string;
   isFocused: boolean;
   onSelect: (modelId: string) => void;
-  onConfirm: () => void;
+  onConfirm: (modelId?: string) => void;
   isLoading?: boolean;
   emptyLabel?: string;
   ref?: React.Ref<HTMLDivElement>;
@@ -54,7 +54,7 @@ export function ModelList({
           isChecked={model.id === currentModelId}
           isFocused={isFocused}
           onClick={() => onSelect(model.id)}
-          onDoubleClick={onConfirm}
+          onDoubleClick={() => onConfirm(model.id)}
         />
       ))}
     </div>

@@ -51,6 +51,14 @@ function collectToggleItems(children: ReactNode): Array<{ value: string; disable
   return items;
 }
 
+function getEnabledItemValue(
+  items: Array<{ value: string; disabled: boolean }>,
+  value: string | null | undefined,
+): string | null {
+  if (value === null || value === undefined) return null;
+  return items.some((item) => item.value === value && !item.disabled) ? value : null;
+}
+
 export function ToggleGroup({
   value: controlledValue,
   defaultValue,
@@ -91,7 +99,11 @@ export function ToggleGroup({
     setValue((prev) => (prev === newValue && allowDeselect) ? null : newValue);
   }, [allowDeselect, setValue]);
 
-  const firstEnabledValue = items.find((item) => !item.disabled)?.value ?? null;
+  const enabledItems = disabled ? [] : items;
+  const validHighlightedValue = getEnabledItemValue(enabledItems, highlightedValue);
+  const validSelectedValue = getEnabledItemValue(enabledItems, value);
+  const tabTargetValue =
+    validHighlightedValue ?? validSelectedValue ?? enabledItems.find((item) => !item.disabled)?.value ?? null;
 
   const { onKeyDown: navKeyDown } = useNavigation({
     containerRef,
@@ -101,7 +113,7 @@ export function ToggleGroup({
     moveFocus: true,
     upKeys: ["ArrowUp", "ArrowLeft"],
     downKeys: ["ArrowDown", "ArrowRight"],
-    value: highlightedValue,
+    value: tabTargetValue,
     enabled: !disabled,
     onValueChange: allowDeselect ? setHighlightedValue : handleValueChange,
   });
@@ -118,11 +130,11 @@ export function ToggleGroup({
     onHighlightChange: setHighlightedValue,
     disabled,
     size,
-    highlightedValue,
+    highlightedValue: validHighlightedValue,
     containerRef,
     allowDeselect,
-    firstEnabledValue,
-  }), [value, handleValueChange, setHighlightedValue, disabled, size, highlightedValue, allowDeselect, firstEnabledValue]);
+    tabTargetValue,
+  }), [value, handleValueChange, setHighlightedValue, disabled, size, validHighlightedValue, allowDeselect, tabTargetValue]);
 
   return (
     <ToggleGroupContext value={contextValue}>

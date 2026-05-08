@@ -38,6 +38,19 @@ describe("useApiKeyForm", () => {
     expect(result.current.canSubmit).toBe(false);
   });
 
+  it("uses an explicit submit method instead of the current render snapshot", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useApiKeyForm(defaultProps({ onSubmit }))
+    );
+
+    await act(async () => {
+      await result.current.handleSubmit("env");
+    });
+
+    expect(onSubmit).toHaveBeenCalledWith("env", "OPENAI_API_KEY");
+  });
+
   it("should prevent double submission", async () => {
     let resolveSubmit!: () => void;
     const onSubmit = vi.fn().mockImplementation(

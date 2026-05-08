@@ -1,5 +1,5 @@
-import { useState } from "react"
 import { Button } from "@/components/ui/button/button"
+import { useCopyFeedback } from "@/lib/use-copy-feedback"
 
 interface CopyButtonProps {
   text: string
@@ -9,12 +9,11 @@ interface CopyButtonProps {
 }
 
 export function CopyButton({ text, className, label, title }: CopyButtonProps) {
-  const [copied, setCopied] = useState(false)
+  const { copied, showCopied } = useCopyFeedback()
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    showCopied()
   }
 
   const buttonLabel = copied ? "[ok]" : label ? `[${label}]` : "[cp]"

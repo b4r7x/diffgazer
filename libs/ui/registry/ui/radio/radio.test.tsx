@@ -230,6 +230,39 @@ describe("RadioGroup", () => {
     expect(screen.getByRole("radio", { name: /blue/i })).toHaveFocus()
   })
 
+  it("falls back to an enabled tab target when selected or highlighted values are invalid", async () => {
+    render(
+      <RadioGroup label="Colors" value="missing" highlighted="red">
+        <RadioGroup.Item value="red" label="Red" disabled />
+        <RadioGroup.Item value="blue" label="Blue" />
+        <RadioGroup.Item value="green" label="Green" />
+      </RadioGroup>
+    )
+
+    const radios = screen.getAllByRole("radio")
+    expect(radios.map((radio) => radio.getAttribute("tabindex"))).toEqual(["-1", "0", "-1"])
+    expect(screen.getByRole("radio", { name: /red/i })).not.toHaveClass("bg-secondary")
+
+    await userEvent.tab()
+    expect(screen.getByRole("radio", { name: /blue/i })).toHaveFocus()
+  })
+
+  it("keeps the tabbable item aligned with a valid controlled highlight", () => {
+    render(
+      <RadioGroup label="Colors" value="red" highlighted="blue">
+        <RadioGroup.Item value="red" label="Red" />
+        <RadioGroup.Item value="blue" label="Blue" />
+      </RadioGroup>
+    )
+
+    const red = screen.getByRole("radio", { name: /red/i })
+    const blue = screen.getByRole("radio", { name: /blue/i })
+    expect(red).toHaveAttribute("aria-checked", "true")
+    expect(red).toHaveAttribute("tabindex", "-1")
+    expect(blue).toHaveAttribute("tabindex", "0")
+    expect(blue).toHaveClass("bg-secondary")
+  })
+
   it("respects controlled value", async () => {
     const onChange = vi.fn()
     render(

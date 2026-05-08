@@ -488,7 +488,7 @@
       ]
     },
     "registry/ui/radio/radio-group.tsx": {
-      "raw": "\"use client\";\n\nimport {\n  Children,\n  isValidElement,\n  useCallback,\n  useMemo,\n  useRef,\n  useState,\n  type ReactNode,\n  type Ref,\n  type KeyboardEvent as ReactKeyboardEvent,\n} from \"react\";\nimport { useNavigation } from \"@/hooks/use-navigation\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\nimport { useFormReset } from \"@/hooks/use-form-reset\";\nimport { composeRefs } from \"@/lib/compose-refs\";\nimport { cn } from \"@/lib/utils\";\nimport type { RadioSize } from \"./radio\";\nimport type { SelectableVariant } from \"@/lib/selectable-variants\";\nimport { RadioGroupContext, type RadioGroupContextValue } from \"./radio-group-context\";\n\nexport interface RadioGroupProps {\n  value?: string;\n  defaultValue?: string;\n  onValueChange?: (value: string) => void;\n  /** @deprecated Use `onValueChange` for controlled value updates. */\n  onChange?: (value: string) => void;\n  onHighlightChange?: (value: string) => void;\n  onKeyDown?: (event: ReactKeyboardEvent) => void;\n  highlighted?: string | null;\n  orientation?: \"vertical\" | \"horizontal\";\n  wrap?: boolean;\n  disabled?: boolean;\n  size?: RadioSize;\n  variant?: SelectableVariant;\n  name?: string;\n  required?: boolean;\n  label?: string;\n  labelledBy?: string;\n  \"aria-label\"?: string;\n  \"aria-labelledby\"?: string;\n  className?: string;\n  children: ReactNode;\n  ref?: Ref<HTMLDivElement>;\n}\n\ninterface RadioGroupItemElementProps {\n  value?: string;\n  disabled?: boolean;\n  children?: ReactNode;\n}\n\nfunction collectInitialItems(children: ReactNode): Array<{ value: string; disabled: boolean }> {\n  const items: Array<{ value: string; disabled: boolean }> = [];\n\n  Children.forEach(children, (child) => {\n    if (!isValidElement<RadioGroupItemElementProps>(child)) return;\n    if (typeof child.props.value === \"string\") {\n      items.push({ value: child.props.value, disabled: !!child.props.disabled });\n      return;\n    }\n    items.push(...collectInitialItems(child.props.children));\n  });\n\n  return items;\n}\n\nexport function RadioGroup(props: RadioGroupProps) {\n  const {\n    value: controlledValue,\n    defaultValue,\n    onValueChange,\n    onChange,\n    onHighlightChange,\n    onKeyDown,\n    highlighted: controlledHighlighted,\n    orientation = \"vertical\",\n    wrap = true,\n    disabled = false,\n    size = \"md\",\n    variant = \"bullet\",\n    name,\n    required,\n    label,\n    labelledBy,\n    \"aria-label\": ariaLabel,\n    \"aria-labelledby\": ariaLabelledBy,\n    className,\n    children,\n    ref,\n  } = props;\n  const containerRef = useRef<HTMLDivElement>(null);\n  const items = useMemo(() => collectInitialItems(children), [children]);\n  const [requiredInvalid, setRequiredInvalid] = useState(false);\n\n  const [value, setValue] = useControllableState<string | undefined>({\n    value: controlledValue,\n    controlled: \"value\" in props,\n    defaultValue,\n    onChange: (onValueChange ?? onChange) as ((value: string | undefined) => void) | undefined,\n  });\n  useFormReset(containerRef, defaultValue, setValue, !(\"value\" in props));\n  const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({\n    value: controlledHighlighted,\n    controlled: \"highlighted\" in props,\n    defaultValue: null,\n    onChange: onHighlightChange as ((value: string | null) => void) | undefined,\n  });\n\n  const firstEnabledValue = items.find((item) => !item.disabled)?.value ?? null;\n\n  const { onKeyDown: navKeyDown } = useNavigation({\n    containerRef,\n    role: \"radio\",\n    orientation,\n    wrap,\n    moveFocus: true,\n    upKeys: [\"ArrowUp\", \"ArrowLeft\"],\n    downKeys: [\"ArrowDown\", \"ArrowRight\"],\n    value: highlightedValue,\n    enabled: !disabled,\n    onValueChange: (next) => {\n      setHighlightedValue(next);\n      setRequiredInvalid(false);\n      setValue(next);\n    },\n  });\n\n  const handleKeyDown = (e: ReactKeyboardEvent) => {\n    onKeyDown?.(e);\n    if (!e.defaultPrevented) navKeyDown(e);\n  };\n\n  const handleValueChange = (next: string) => {\n    setRequiredInvalid(false);\n    setValue(next);\n  };\n\n  const handleRequiredInvalid = useCallback(() => {\n    setRequiredInvalid(true);\n  }, []);\n\n  const contextValue: RadioGroupContextValue = useMemo(() => ({\n    value,\n    onChange: handleValueChange,\n    onHighlightChange: setHighlightedValue,\n    disabled,\n    size,\n    variant,\n    highlightedValue,\n    name,\n    required,\n    requiredInvalid,\n    onRequiredInvalid: handleRequiredInvalid,\n    containerRef,\n    firstEnabledValue,\n  }), [value, handleValueChange, setHighlightedValue, disabled, size, variant, highlightedValue, name, required, requiredInvalid, handleRequiredInvalid, firstEnabledValue]);\n\n  return (\n    <RadioGroupContext value={contextValue}>\n      {required && !name && (\n        <input\n          type=\"checkbox\"\n          required\n          checked={value !== undefined}\n          disabled={disabled}\n          tabIndex={-1}\n          aria-hidden={true}\n          aria-label={ariaLabel ?? label}\n          readOnly\n          className=\"sr-only\"\n          onInvalid={(event) => {\n            event.preventDefault();\n            handleRequiredInvalid();\n            containerRef.current?.querySelector<HTMLElement>('[role=\"radio\"]:not([aria-disabled=\"true\"])')?.focus();\n          }}\n        />\n      )}\n      <div\n        ref={composeRefs(containerRef, ref)}\n        role=\"radiogroup\"\n        aria-label={ariaLabel ?? label}\n        aria-labelledby={ariaLabelledBy ?? labelledBy}\n        aria-orientation={orientation}\n        aria-required={required || undefined}\n        aria-invalid={requiredInvalid && value === undefined ? true : undefined}\n        aria-disabled={disabled || undefined}\n        className={cn(\n          \"flex\",\n          orientation === \"vertical\" ? \"flex-col gap-2\" : \"flex-row gap-4\",\n          className\n        )}\n        onKeyDown={handleKeyDown}\n      >\n        {children}\n      </div>\n    </RadioGroupContext>\n  );\n}\n",
+      "raw": "\"use client\";\n\nimport {\n  Children,\n  isValidElement,\n  useCallback,\n  useMemo,\n  useRef,\n  useState,\n  type ReactNode,\n  type Ref,\n  type KeyboardEvent as ReactKeyboardEvent,\n} from \"react\";\nimport { useNavigation } from \"@/hooks/use-navigation\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\nimport { useFormReset } from \"@/hooks/use-form-reset\";\nimport { composeRefs } from \"@/lib/compose-refs\";\nimport { cn } from \"@/lib/utils\";\nimport type { RadioSize } from \"./radio\";\nimport type { SelectableVariant } from \"@/lib/selectable-variants\";\nimport { RadioGroupContext, type RadioGroupContextValue } from \"./radio-group-context\";\n\nexport interface RadioGroupProps {\n  value?: string;\n  defaultValue?: string;\n  onValueChange?: (value: string) => void;\n  /** @deprecated Use `onValueChange` for controlled value updates. */\n  onChange?: (value: string) => void;\n  onHighlightChange?: (value: string) => void;\n  onKeyDown?: (event: ReactKeyboardEvent) => void;\n  highlighted?: string | null;\n  orientation?: \"vertical\" | \"horizontal\";\n  wrap?: boolean;\n  disabled?: boolean;\n  size?: RadioSize;\n  variant?: SelectableVariant;\n  name?: string;\n  required?: boolean;\n  label?: string;\n  labelledBy?: string;\n  \"aria-label\"?: string;\n  \"aria-labelledby\"?: string;\n  className?: string;\n  children: ReactNode;\n  ref?: Ref<HTMLDivElement>;\n}\n\ninterface RadioGroupItemElementProps {\n  value?: string;\n  disabled?: boolean;\n  children?: ReactNode;\n}\n\nfunction collectInitialItems(children: ReactNode): Array<{ value: string; disabled: boolean }> {\n  const items: Array<{ value: string; disabled: boolean }> = [];\n\n  Children.forEach(children, (child) => {\n    if (!isValidElement<RadioGroupItemElementProps>(child)) return;\n    if (typeof child.props.value === \"string\") {\n      items.push({ value: child.props.value, disabled: !!child.props.disabled });\n      return;\n    }\n    items.push(...collectInitialItems(child.props.children));\n  });\n\n  return items;\n}\n\nfunction getEnabledItemValue(\n  items: Array<{ value: string; disabled: boolean }>,\n  value: string | null | undefined,\n): string | null {\n  if (value === null || value === undefined) return null;\n  return items.some((item) => item.value === value && !item.disabled) ? value : null;\n}\n\nexport function RadioGroup(props: RadioGroupProps) {\n  const {\n    value: controlledValue,\n    defaultValue,\n    onValueChange,\n    onChange,\n    onHighlightChange,\n    onKeyDown,\n    highlighted: controlledHighlighted,\n    orientation = \"vertical\",\n    wrap = true,\n    disabled = false,\n    size = \"md\",\n    variant = \"bullet\",\n    name,\n    required,\n    label,\n    labelledBy,\n    \"aria-label\": ariaLabel,\n    \"aria-labelledby\": ariaLabelledBy,\n    className,\n    children,\n    ref,\n  } = props;\n  const containerRef = useRef<HTMLDivElement>(null);\n  const items = useMemo(() => collectInitialItems(children), [children]);\n  const [requiredInvalid, setRequiredInvalid] = useState(false);\n\n  const [value, setValue] = useControllableState<string | undefined>({\n    value: controlledValue,\n    controlled: \"value\" in props,\n    defaultValue,\n    onChange: (onValueChange ?? onChange) as ((value: string | undefined) => void) | undefined,\n  });\n  useFormReset(containerRef, defaultValue, setValue, !(\"value\" in props));\n  const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({\n    value: controlledHighlighted,\n    controlled: \"highlighted\" in props,\n    defaultValue: null,\n    onChange: onHighlightChange as ((value: string | null) => void) | undefined,\n  });\n\n  const enabledItems = disabled ? [] : items;\n  const validHighlightedValue = getEnabledItemValue(enabledItems, highlightedValue);\n  const validSelectedValue = getEnabledItemValue(enabledItems, value);\n  const tabTargetValue =\n    validHighlightedValue ?? validSelectedValue ?? enabledItems.find((item) => !item.disabled)?.value ?? null;\n\n  const { onKeyDown: navKeyDown } = useNavigation({\n    containerRef,\n    role: \"radio\",\n    orientation,\n    wrap,\n    moveFocus: true,\n    upKeys: [\"ArrowUp\", \"ArrowLeft\"],\n    downKeys: [\"ArrowDown\", \"ArrowRight\"],\n    value: tabTargetValue,\n    enabled: !disabled,\n    onValueChange: (next) => {\n      setHighlightedValue(next);\n      setRequiredInvalid(false);\n      setValue(next);\n    },\n  });\n\n  const handleKeyDown = (e: ReactKeyboardEvent) => {\n    onKeyDown?.(e);\n    if (!e.defaultPrevented) navKeyDown(e);\n  };\n\n  const handleValueChange = (next: string) => {\n    setRequiredInvalid(false);\n    setValue(next);\n  };\n\n  const handleRequiredInvalid = useCallback(() => {\n    setRequiredInvalid(true);\n  }, []);\n\n  const contextValue: RadioGroupContextValue = useMemo(() => ({\n    value,\n    onChange: handleValueChange,\n    onHighlightChange: setHighlightedValue,\n    disabled,\n    size,\n    variant,\n    highlightedValue: validHighlightedValue,\n    name,\n    required,\n    requiredInvalid,\n    onRequiredInvalid: handleRequiredInvalid,\n    containerRef,\n    tabTargetValue,\n  }), [value, handleValueChange, setHighlightedValue, disabled, size, variant, validHighlightedValue, name, required, requiredInvalid, handleRequiredInvalid, tabTargetValue]);\n\n  return (\n    <RadioGroupContext value={contextValue}>\n      {required && !name && (\n        <input\n          type=\"checkbox\"\n          required\n          checked={value !== undefined}\n          disabled={disabled}\n          tabIndex={-1}\n          aria-hidden={true}\n          aria-label={ariaLabel ?? label}\n          readOnly\n          className=\"sr-only\"\n          onInvalid={(event) => {\n            event.preventDefault();\n            handleRequiredInvalid();\n            containerRef.current?.querySelector<HTMLElement>('[role=\"radio\"]:not([aria-disabled=\"true\"])')?.focus();\n          }}\n        />\n      )}\n      <div\n        ref={composeRefs(containerRef, ref)}\n        role=\"radiogroup\"\n        aria-label={ariaLabel ?? label}\n        aria-labelledby={ariaLabelledBy ?? labelledBy}\n        aria-orientation={orientation}\n        aria-required={required || undefined}\n        aria-invalid={requiredInvalid && value === undefined ? true : undefined}\n        aria-disabled={disabled || undefined}\n        className={cn(\n          \"flex\",\n          orientation === \"vertical\" ? \"flex-col gap-2\" : \"flex-row gap-4\",\n          className\n        )}\n        onKeyDown={handleKeyDown}\n      >\n        {children}\n      </div>\n    </RadioGroupContext>\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -2791,6 +2791,405 @@
           "number": 69,
           "content": [
             {
+              "text": "function",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "getEnabledItemValue",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 70,
+          "content": [
+            {
+              "text": "  items",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "Array",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " value",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "string",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " disabled",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "boolean",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}>,",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 71,
+          "content": [
+            {
+              "text": "  value",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "string",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "undefined",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 72,
+          "content": [
+            {
+              "text": "):",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "string",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 73,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (value ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "||",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " value ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "undefined",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 74,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "items",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "some",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "item",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "item",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "value ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "===",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " value ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "&&",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "!",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "item",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "disabled) ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "?",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " value ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 75,
+          "content": [
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 76,
+          "content": []
+        },
+        {
+          "number": 77,
+          "content": [
+            {
               "text": "export",
               "color": "var(--code-keyword)"
             },
@@ -2845,7 +3244,7 @@
           ]
         },
         {
-          "number": 70,
+          "number": 78,
           "content": [
             {
               "text": "  ",
@@ -2866,7 +3265,7 @@
           ]
         },
         {
-          "number": 71,
+          "number": 79,
           "content": [
             {
               "text": "    value",
@@ -2891,7 +3290,7 @@
           ]
         },
         {
-          "number": 72,
+          "number": 80,
           "content": [
             {
               "text": "    ",
@@ -2908,7 +3307,7 @@
           ]
         },
         {
-          "number": 73,
+          "number": 81,
           "content": [
             {
               "text": "    ",
@@ -2925,7 +3324,7 @@
           ]
         },
         {
-          "number": 74,
+          "number": 82,
           "content": [
             {
               "text": "    ",
@@ -2942,7 +3341,7 @@
           ]
         },
         {
-          "number": 75,
+          "number": 83,
           "content": [
             {
               "text": "    ",
@@ -2959,7 +3358,7 @@
           ]
         },
         {
-          "number": 76,
+          "number": 84,
           "content": [
             {
               "text": "    ",
@@ -2976,7 +3375,7 @@
           ]
         },
         {
-          "number": 77,
+          "number": 85,
           "content": [
             {
               "text": "    highlighted",
@@ -3001,7 +3400,7 @@
           ]
         },
         {
-          "number": 78,
+          "number": 86,
           "content": [
             {
               "text": "    ",
@@ -3042,7 +3441,7 @@
           ]
         },
         {
-          "number": 79,
+          "number": 87,
           "content": [
             {
               "text": "    ",
@@ -3075,7 +3474,7 @@
           ]
         },
         {
-          "number": 80,
+          "number": 88,
           "content": [
             {
               "text": "    ",
@@ -3108,7 +3507,7 @@
           ]
         },
         {
-          "number": 81,
+          "number": 89,
           "content": [
             {
               "text": "    ",
@@ -3149,7 +3548,7 @@
           ]
         },
         {
-          "number": 82,
+          "number": 90,
           "content": [
             {
               "text": "    ",
@@ -3190,7 +3589,7 @@
           ]
         },
         {
-          "number": 83,
+          "number": 91,
           "content": [
             {
               "text": "    ",
@@ -3207,7 +3606,7 @@
           ]
         },
         {
-          "number": 84,
+          "number": 92,
           "content": [
             {
               "text": "    ",
@@ -3224,7 +3623,7 @@
           ]
         },
         {
-          "number": 85,
+          "number": 93,
           "content": [
             {
               "text": "    ",
@@ -3241,7 +3640,7 @@
           ]
         },
         {
-          "number": 86,
+          "number": 94,
           "content": [
             {
               "text": "    ",
@@ -3258,7 +3657,7 @@
           ]
         },
         {
-          "number": 87,
+          "number": 95,
           "content": [
             {
               "text": "    ",
@@ -3295,7 +3694,7 @@
           ]
         },
         {
-          "number": 88,
+          "number": 96,
           "content": [
             {
               "text": "    ",
@@ -3332,7 +3731,7 @@
           ]
         },
         {
-          "number": 89,
+          "number": 97,
           "content": [
             {
               "text": "    ",
@@ -3349,7 +3748,7 @@
           ]
         },
         {
-          "number": 90,
+          "number": 98,
           "content": [
             {
               "text": "    ",
@@ -3366,7 +3765,7 @@
           ]
         },
         {
-          "number": 91,
+          "number": 99,
           "content": [
             {
               "text": "    ",
@@ -3383,7 +3782,7 @@
           ]
         },
         {
-          "number": 92,
+          "number": 100,
           "content": [
             {
               "text": "  ",
@@ -3412,7 +3811,7 @@
           ]
         },
         {
-          "number": 93,
+          "number": 101,
           "content": [
             {
               "text": "  ",
@@ -3477,7 +3876,7 @@
           ]
         },
         {
-          "number": 94,
+          "number": 102,
           "content": [
             {
               "text": "  ",
@@ -3554,7 +3953,7 @@
           ]
         },
         {
-          "number": 95,
+          "number": 103,
           "content": [
             {
               "text": "  ",
@@ -3627,11 +4026,11 @@
           ]
         },
         {
-          "number": 96,
+          "number": 104,
           "content": []
         },
         {
-          "number": 97,
+          "number": 105,
           "content": [
             {
               "text": "  ",
@@ -3724,7 +4123,7 @@
           ]
         },
         {
-          "number": 98,
+          "number": 106,
           "content": [
             {
               "text": "    value",
@@ -3745,7 +4144,7 @@
           ]
         },
         {
-          "number": 99,
+          "number": 107,
           "content": [
             {
               "text": "    controlled",
@@ -3790,7 +4189,7 @@
           ]
         },
         {
-          "number": 100,
+          "number": 108,
           "content": [
             {
               "text": "    defaultValue",
@@ -3803,7 +4202,7 @@
           ]
         },
         {
-          "number": 101,
+          "number": 109,
           "content": [
             {
               "text": "    onChange",
@@ -3912,7 +4311,7 @@
           ]
         },
         {
-          "number": 102,
+          "number": 110,
           "content": [
             {
               "text": "  ",
@@ -3933,7 +4332,7 @@
           ]
         },
         {
-          "number": 103,
+          "number": 111,
           "content": [
             {
               "text": "  ",
@@ -4010,7 +4409,7 @@
           ]
         },
         {
-          "number": 104,
+          "number": 112,
           "content": [
             {
               "text": "  ",
@@ -4103,7 +4502,7 @@
           ]
         },
         {
-          "number": 105,
+          "number": 113,
           "content": [
             {
               "text": "    value",
@@ -4124,7 +4523,7 @@
           ]
         },
         {
-          "number": 106,
+          "number": 114,
           "content": [
             {
               "text": "    controlled",
@@ -4169,7 +4568,7 @@
           ]
         },
         {
-          "number": 107,
+          "number": 115,
           "content": [
             {
               "text": "    defaultValue",
@@ -4194,7 +4593,7 @@
           ]
         },
         {
-          "number": 108,
+          "number": 116,
           "content": [
             {
               "text": "    onChange",
@@ -4295,7 +4694,7 @@
           ]
         },
         {
-          "number": 109,
+          "number": 117,
           "content": [
             {
               "text": "  ",
@@ -4316,11 +4715,11 @@
           ]
         },
         {
-          "number": 110,
+          "number": 118,
           "content": []
         },
         {
-          "number": 111,
+          "number": 119,
           "content": [
             {
               "text": "  ",
@@ -4335,7 +4734,60 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "firstEnabledValue",
+              "text": "enabledItems",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " disabled ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "?",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " [] ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " items",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 120,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "validHighlightedValue",
               "color": "var(--code-number)"
             },
             {
@@ -4351,7 +4803,134 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "items",
+              "text": "getEnabledItemValue",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(enabledItems",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " highlightedValue)",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 121,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "validSelectedValue",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "getEnabledItemValue",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(enabledItems",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " value)",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ";",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 122,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "tabTargetValue",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 123,
+          "content": [
+            {
+              "text": "    validHighlightedValue ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "??",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " validSelectedValue ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "??",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "enabledItems",
               "color": "var(--code-number)"
             },
             {
@@ -4433,11 +5012,11 @@
           ]
         },
         {
-          "number": 112,
+          "number": 124,
           "content": []
         },
         {
-          "number": 113,
+          "number": 125,
           "content": [
             {
               "text": "  ",
@@ -4506,7 +5085,7 @@
           ]
         },
         {
-          "number": 114,
+          "number": 126,
           "content": [
             {
               "text": "    containerRef",
@@ -4519,7 +5098,7 @@
           ]
         },
         {
-          "number": 115,
+          "number": 127,
           "content": [
             {
               "text": "    role",
@@ -4552,7 +5131,7 @@
           ]
         },
         {
-          "number": 116,
+          "number": 128,
           "content": [
             {
               "text": "    orientation",
@@ -4565,7 +5144,7 @@
           ]
         },
         {
-          "number": 117,
+          "number": 129,
           "content": [
             {
               "text": "    wrap",
@@ -4578,7 +5157,7 @@
           ]
         },
         {
-          "number": 118,
+          "number": 130,
           "content": [
             {
               "text": "    moveFocus",
@@ -4603,7 +5182,7 @@
           ]
         },
         {
-          "number": 119,
+          "number": 131,
           "content": [
             {
               "text": "    upKeys",
@@ -4660,7 +5239,7 @@
           ]
         },
         {
-          "number": 120,
+          "number": 132,
           "content": [
             {
               "text": "    downKeys",
@@ -4717,7 +5296,7 @@
           ]
         },
         {
-          "number": 121,
+          "number": 133,
           "content": [
             {
               "text": "    value",
@@ -4728,7 +5307,7 @@
               "color": "var(--code-keyword)"
             },
             {
-              "text": " highlightedValue",
+              "text": " tabTargetValue",
               "color": "var(--code-variable)"
             },
             {
@@ -4738,7 +5317,7 @@
           ]
         },
         {
-          "number": 122,
+          "number": 134,
           "content": [
             {
               "text": "    enabled",
@@ -4767,7 +5346,7 @@
           ]
         },
         {
-          "number": 123,
+          "number": 135,
           "content": [
             {
               "text": "    ",
@@ -4816,7 +5395,7 @@
           ]
         },
         {
-          "number": 124,
+          "number": 136,
           "content": [
             {
               "text": "      ",
@@ -4837,7 +5416,7 @@
           ]
         },
         {
-          "number": 125,
+          "number": 137,
           "content": [
             {
               "text": "      ",
@@ -4866,7 +5445,7 @@
           ]
         },
         {
-          "number": 126,
+          "number": 138,
           "content": [
             {
               "text": "      ",
@@ -4887,7 +5466,7 @@
           ]
         },
         {
-          "number": 127,
+          "number": 139,
           "content": [
             {
               "text": "    ",
@@ -4900,7 +5479,7 @@
           ]
         },
         {
-          "number": 128,
+          "number": 140,
           "content": [
             {
               "text": "  ",
@@ -4921,11 +5500,11 @@
           ]
         },
         {
-          "number": 129,
+          "number": 141,
           "content": []
         },
         {
-          "number": 130,
+          "number": 142,
           "content": [
             {
               "text": "  ",
@@ -4998,7 +5577,7 @@
           ]
         },
         {
-          "number": 131,
+          "number": 143,
           "content": [
             {
               "text": "    ",
@@ -5023,7 +5602,7 @@
           ]
         },
         {
-          "number": 132,
+          "number": 144,
           "content": [
             {
               "text": "    ",
@@ -5068,7 +5647,7 @@
           ]
         },
         {
-          "number": 133,
+          "number": 145,
           "content": [
             {
               "text": "  ",
@@ -5081,11 +5660,11 @@
           ]
         },
         {
-          "number": 134,
+          "number": 146,
           "content": []
         },
         {
-          "number": 135,
+          "number": 147,
           "content": [
             {
               "text": "  ",
@@ -5158,7 +5737,7 @@
           ]
         },
         {
-          "number": 136,
+          "number": 148,
           "content": [
             {
               "text": "    ",
@@ -5187,7 +5766,7 @@
           ]
         },
         {
-          "number": 137,
+          "number": 149,
           "content": [
             {
               "text": "    ",
@@ -5208,7 +5787,7 @@
           ]
         },
         {
-          "number": 138,
+          "number": 150,
           "content": [
             {
               "text": "  ",
@@ -5221,11 +5800,11 @@
           ]
         },
         {
-          "number": 139,
+          "number": 151,
           "content": []
         },
         {
-          "number": 140,
+          "number": 152,
           "content": [
             {
               "text": "  ",
@@ -5286,7 +5865,7 @@
           ]
         },
         {
-          "number": 141,
+          "number": 153,
           "content": [
             {
               "text": "    ",
@@ -5315,7 +5894,7 @@
           ]
         },
         {
-          "number": 142,
+          "number": 154,
           "content": [
             {
               "text": "  ",
@@ -5336,11 +5915,11 @@
           ]
         },
         {
-          "number": 143,
+          "number": 155,
           "content": []
         },
         {
-          "number": 144,
+          "number": 156,
           "content": [
             {
               "text": "  ",
@@ -5413,7 +5992,7 @@
           ]
         },
         {
-          "number": 145,
+          "number": 157,
           "content": [
             {
               "text": "    value",
@@ -5426,7 +6005,7 @@
           ]
         },
         {
-          "number": 146,
+          "number": 158,
           "content": [
             {
               "text": "    onChange",
@@ -5447,7 +6026,7 @@
           ]
         },
         {
-          "number": 147,
+          "number": 159,
           "content": [
             {
               "text": "    onHighlightChange",
@@ -5468,7 +6047,7 @@
           ]
         },
         {
-          "number": 148,
+          "number": 160,
           "content": [
             {
               "text": "    disabled",
@@ -5481,7 +6060,7 @@
           ]
         },
         {
-          "number": 149,
+          "number": 161,
           "content": [
             {
               "text": "    size",
@@ -5494,7 +6073,7 @@
           ]
         },
         {
-          "number": 150,
+          "number": 162,
           "content": [
             {
               "text": "    variant",
@@ -5507,10 +6086,18 @@
           ]
         },
         {
-          "number": 151,
+          "number": 163,
           "content": [
             {
               "text": "    highlightedValue",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ":",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " validHighlightedValue",
               "color": "var(--code-variable)"
             },
             {
@@ -5520,7 +6107,7 @@
           ]
         },
         {
-          "number": 152,
+          "number": 164,
           "content": [
             {
               "text": "    name",
@@ -5533,7 +6120,7 @@
           ]
         },
         {
-          "number": 153,
+          "number": 165,
           "content": [
             {
               "text": "    required",
@@ -5546,7 +6133,7 @@
           ]
         },
         {
-          "number": 154,
+          "number": 166,
           "content": [
             {
               "text": "    requiredInvalid",
@@ -5559,7 +6146,7 @@
           ]
         },
         {
-          "number": 155,
+          "number": 167,
           "content": [
             {
               "text": "    onRequiredInvalid",
@@ -5580,7 +6167,7 @@
           ]
         },
         {
-          "number": 156,
+          "number": 168,
           "content": [
             {
               "text": "    containerRef",
@@ -5593,10 +6180,10 @@
           ]
         },
         {
-          "number": 157,
+          "number": 169,
           "content": [
             {
-              "text": "    firstEnabledValue",
+              "text": "    tabTargetValue",
               "color": "var(--code-variable)"
             },
             {
@@ -5606,7 +6193,7 @@
           ]
         },
         {
-          "number": 158,
+          "number": 170,
           "content": [
             {
               "text": "  ",
@@ -5673,7 +6260,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": " highlightedValue",
+              "text": " validHighlightedValue",
               "color": "var(--code-variable)"
             },
             {
@@ -5713,7 +6300,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": " firstEnabledValue])",
+              "text": " tabTargetValue])",
               "color": "var(--code-variable)"
             },
             {
@@ -5723,11 +6310,11 @@
           ]
         },
         {
-          "number": 159,
+          "number": 171,
           "content": []
         },
         {
-          "number": 160,
+          "number": 172,
           "content": [
             {
               "text": "  ",
@@ -5744,7 +6331,7 @@
           ]
         },
         {
-          "number": 161,
+          "number": 173,
           "content": [
             {
               "text": "    ",
@@ -5781,7 +6368,7 @@
           ]
         },
         {
-          "number": 162,
+          "number": 174,
           "content": [
             {
               "text": "      ",
@@ -5822,7 +6409,7 @@
           ]
         },
         {
-          "number": 163,
+          "number": 175,
           "content": [
             {
               "text": "        ",
@@ -5839,7 +6426,7 @@
           ]
         },
         {
-          "number": 164,
+          "number": 176,
           "content": [
             {
               "text": "          ",
@@ -5868,7 +6455,7 @@
           ]
         },
         {
-          "number": 165,
+          "number": 177,
           "content": [
             {
               "text": "          ",
@@ -5881,7 +6468,7 @@
           ]
         },
         {
-          "number": 166,
+          "number": 178,
           "content": [
             {
               "text": "          ",
@@ -5918,7 +6505,7 @@
           ]
         },
         {
-          "number": 167,
+          "number": 179,
           "content": [
             {
               "text": "          ",
@@ -5943,7 +6530,7 @@
           ]
         },
         {
-          "number": 168,
+          "number": 180,
           "content": [
             {
               "text": "          ",
@@ -5968,7 +6555,7 @@
           ]
         },
         {
-          "number": 169,
+          "number": 181,
           "content": [
             {
               "text": "          ",
@@ -5993,7 +6580,7 @@
           ]
         },
         {
-          "number": 170,
+          "number": 182,
           "content": [
             {
               "text": "          ",
@@ -6026,7 +6613,7 @@
           ]
         },
         {
-          "number": 171,
+          "number": 183,
           "content": [
             {
               "text": "          ",
@@ -6039,7 +6626,7 @@
           ]
         },
         {
-          "number": 172,
+          "number": 184,
           "content": [
             {
               "text": "          ",
@@ -6068,7 +6655,7 @@
           ]
         },
         {
-          "number": 173,
+          "number": 185,
           "content": [
             {
               "text": "          ",
@@ -6109,7 +6696,7 @@
           ]
         },
         {
-          "number": 174,
+          "number": 186,
           "content": [
             {
               "text": "            ",
@@ -6138,7 +6725,7 @@
           ]
         },
         {
-          "number": 175,
+          "number": 187,
           "content": [
             {
               "text": "            ",
@@ -6159,7 +6746,7 @@
           ]
         },
         {
-          "number": 176,
+          "number": 188,
           "content": [
             {
               "text": "            ",
@@ -6236,7 +6823,7 @@
           ]
         },
         {
-          "number": 177,
+          "number": 189,
           "content": [
             {
               "text": "          ",
@@ -6249,7 +6836,7 @@
           ]
         },
         {
-          "number": 178,
+          "number": 190,
           "content": [
             {
               "text": "        ",
@@ -6262,7 +6849,7 @@
           ]
         },
         {
-          "number": 179,
+          "number": 191,
           "content": [
             {
               "text": "      )",
@@ -6275,7 +6862,7 @@
           ]
         },
         {
-          "number": 180,
+          "number": 192,
           "content": [
             {
               "text": "      ",
@@ -6292,7 +6879,7 @@
           ]
         },
         {
-          "number": 181,
+          "number": 193,
           "content": [
             {
               "text": "        ",
@@ -6329,7 +6916,7 @@
           ]
         },
         {
-          "number": 182,
+          "number": 194,
           "content": [
             {
               "text": "        ",
@@ -6358,7 +6945,7 @@
           ]
         },
         {
-          "number": 183,
+          "number": 195,
           "content": [
             {
               "text": "        ",
@@ -6391,7 +6978,7 @@
           ]
         },
         {
-          "number": 184,
+          "number": 196,
           "content": [
             {
               "text": "        ",
@@ -6424,7 +7011,7 @@
           ]
         },
         {
-          "number": 185,
+          "number": 197,
           "content": [
             {
               "text": "        ",
@@ -6449,7 +7036,7 @@
           ]
         },
         {
-          "number": 186,
+          "number": 198,
           "content": [
             {
               "text": "        ",
@@ -6486,7 +7073,7 @@
           ]
         },
         {
-          "number": 187,
+          "number": 199,
           "content": [
             {
               "text": "        ",
@@ -6563,7 +7150,7 @@
           ]
         },
         {
-          "number": 188,
+          "number": 200,
           "content": [
             {
               "text": "        ",
@@ -6600,7 +7187,7 @@
           ]
         },
         {
-          "number": 189,
+          "number": 201,
           "content": [
             {
               "text": "        ",
@@ -6625,7 +7212,7 @@
           ]
         },
         {
-          "number": 190,
+          "number": 202,
           "content": [
             {
               "text": "          ",
@@ -6650,7 +7237,7 @@
           ]
         },
         {
-          "number": 191,
+          "number": 203,
           "content": [
             {
               "text": "          orientation ",
@@ -6731,7 +7318,7 @@
           ]
         },
         {
-          "number": 192,
+          "number": 204,
           "content": [
             {
               "text": "          className",
@@ -6740,7 +7327,7 @@
           ]
         },
         {
-          "number": 193,
+          "number": 205,
           "content": [
             {
               "text": "        )",
@@ -6753,7 +7340,7 @@
           ]
         },
         {
-          "number": 194,
+          "number": 206,
           "content": [
             {
               "text": "        ",
@@ -6778,7 +7365,7 @@
           ]
         },
         {
-          "number": 195,
+          "number": 207,
           "content": [
             {
               "text": "      ",
@@ -6791,7 +7378,7 @@
           ]
         },
         {
-          "number": 196,
+          "number": 208,
           "content": [
             {
               "text": "        ",
@@ -6812,7 +7399,7 @@
           ]
         },
         {
-          "number": 197,
+          "number": 209,
           "content": [
             {
               "text": "      ",
@@ -6833,7 +7420,7 @@
           ]
         },
         {
-          "number": 198,
+          "number": 210,
           "content": [
             {
               "text": "    ",
@@ -6854,7 +7441,7 @@
           ]
         },
         {
-          "number": 199,
+          "number": 211,
           "content": [
             {
               "text": "  )",
@@ -6867,7 +7454,7 @@
           ]
         },
         {
-          "number": 200,
+          "number": 212,
           "content": [
             {
               "text": "}",
@@ -6876,7 +7463,7 @@
           ]
         },
         {
-          "number": 201,
+          "number": 213,
           "content": []
         }
       ]
@@ -13861,7 +14448,7 @@
       ]
     },
     "registry/ui/radio/radio-group-item.tsx": {
-      "raw": "\"use client\";\n\nimport { type ReactNode } from \"react\";\nimport { useRadioGroupContext } from \"./radio-group-context\";\nimport { Radio } from \"./radio\";\n\nexport interface RadioGroupItemProps {\n  value: string;\n  label: ReactNode;\n  description?: ReactNode;\n  disabled?: boolean;\n  className?: string;\n}\n\nexport function RadioGroupItem({\n  value,\n  label,\n  description,\n  disabled: itemDisabled,\n  className,\n}: RadioGroupItemProps) {\n  const context = useRadioGroupContext();\n  const isSelected = context.value === value;\n  const isDisabled = context.disabled || !!itemDisabled;\n  const isHighlighted = context.highlightedValue === value;\n  const hasSelection = context.value !== undefined;\n  const isTabTarget = !isDisabled && (isSelected || (!hasSelection && context.firstEnabledValue === value));\n\n  return (\n    <Radio\n      data-value={value}\n      value={value}\n      checked={isSelected}\n      isTabTarget={isTabTarget}\n      onChange={() => context.onChange(value)}\n      label={label}\n      description={description}\n      disabled={isDisabled}\n      highlighted={isHighlighted}\n      size={context.size}\n      variant={context.variant}\n      name={context.name}\n      required={context.name ? context.required : undefined}\n      onNativeInvalid={context.onRequiredInvalid}\n      className={className}\n    />\n  );\n}\n",
+      "raw": "\"use client\";\n\nimport { type ReactNode } from \"react\";\nimport { useRadioGroupContext } from \"./radio-group-context\";\nimport { Radio } from \"./radio\";\n\nexport interface RadioGroupItemProps {\n  value: string;\n  label: ReactNode;\n  description?: ReactNode;\n  disabled?: boolean;\n  className?: string;\n}\n\nexport function RadioGroupItem({\n  value,\n  label,\n  description,\n  disabled: itemDisabled,\n  className,\n}: RadioGroupItemProps) {\n  const context = useRadioGroupContext();\n  const isSelected = context.value === value;\n  const isDisabled = context.disabled || !!itemDisabled;\n  const isHighlighted = context.highlightedValue === value;\n  const isTabTarget = !isDisabled && context.tabTargetValue === value;\n\n  return (\n    <Radio\n      data-value={value}\n      value={value}\n      checked={isSelected}\n      isTabTarget={isTabTarget}\n      onChange={() => context.onChange(value)}\n      label={label}\n      description={description}\n      disabled={isDisabled}\n      highlighted={isHighlighted}\n      size={context.size}\n      variant={context.variant}\n      name={context.name}\n      required={context.name ? context.required : undefined}\n      onNativeInvalid={context.onRequiredInvalid}\n      className={className}\n    />\n  );\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -14601,67 +15188,6 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "hasSelection",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "=",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "context",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": ".",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "value ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "!==",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "undefined",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": ";",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 27,
-          "content": [
-            {
-              "text": "  ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "const",
-              "color": "var(--code-keyword)"
-            },
-            {
-              "text": " ",
-              "color": "var(--code-variable)"
-            },
-            {
               "text": "isTabTarget",
               "color": "var(--code-number)"
             },
@@ -14690,30 +15216,6 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": " (isSelected ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "||",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": " (",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "!",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "hasSelection ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "&&",
-              "color": "var(--code-operator)"
-            },
-            {
               "text": " ",
               "color": "var(--code-variable)"
             },
@@ -14726,7 +15228,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "firstEnabledValue ",
+              "text": "tabTargetValue ",
               "color": "var(--code-variable)"
             },
             {
@@ -14734,7 +15236,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": " value))",
+              "text": " value",
               "color": "var(--code-variable)"
             },
             {
@@ -14744,11 +15246,11 @@
           ]
         },
         {
-          "number": 28,
+          "number": 27,
           "content": []
         },
         {
-          "number": 29,
+          "number": 28,
           "content": [
             {
               "text": "  ",
@@ -14765,7 +15267,7 @@
           ]
         },
         {
-          "number": 30,
+          "number": 29,
           "content": [
             {
               "text": "    ",
@@ -14782,7 +15284,7 @@
           ]
         },
         {
-          "number": 31,
+          "number": 30,
           "content": [
             {
               "text": "      ",
@@ -14807,7 +15309,7 @@
           ]
         },
         {
-          "number": 32,
+          "number": 31,
           "content": [
             {
               "text": "      ",
@@ -14832,7 +15334,7 @@
           ]
         },
         {
-          "number": 33,
+          "number": 32,
           "content": [
             {
               "text": "      ",
@@ -14857,7 +15359,7 @@
           ]
         },
         {
-          "number": 34,
+          "number": 33,
           "content": [
             {
               "text": "      ",
@@ -14882,7 +15384,7 @@
           ]
         },
         {
-          "number": 35,
+          "number": 34,
           "content": [
             {
               "text": "      ",
@@ -14931,7 +15433,7 @@
           ]
         },
         {
-          "number": 36,
+          "number": 35,
           "content": [
             {
               "text": "      ",
@@ -14947,6 +15449,31 @@
             },
             {
               "text": "label",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 36,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "description",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "description",
               "color": "var(--code-variable)"
             },
             {
@@ -14957,31 +15484,6 @@
         },
         {
           "number": 37,
-          "content": [
-            {
-              "text": "      ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "description",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "={",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "description",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "}",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 38,
           "content": [
             {
               "text": "      ",
@@ -15006,7 +15508,7 @@
           ]
         },
         {
-          "number": 39,
+          "number": 38,
           "content": [
             {
               "text": "      ",
@@ -15031,7 +15533,7 @@
           ]
         },
         {
-          "number": 40,
+          "number": 39,
           "content": [
             {
               "text": "      ",
@@ -15055,6 +15557,39 @@
             },
             {
               "text": "size",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 40,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "variant",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "={",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "context",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "variant",
               "color": "var(--code-variable)"
             },
             {
@@ -15071,7 +15606,7 @@
               "color": "var(--code-variable)"
             },
             {
-              "text": "variant",
+              "text": "name",
               "color": "var(--code-function)"
             },
             {
@@ -15087,7 +15622,7 @@
               "color": "var(--code-operator)"
             },
             {
-              "text": "variant",
+              "text": "name",
               "color": "var(--code-variable)"
             },
             {
@@ -15098,39 +15633,6 @@
         },
         {
           "number": 42,
-          "content": [
-            {
-              "text": "      ",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "name",
-              "color": "var(--code-function)"
-            },
-            {
-              "text": "={",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "context",
-              "color": "var(--code-number)"
-            },
-            {
-              "text": ".",
-              "color": "var(--code-operator)"
-            },
-            {
-              "text": "name",
-              "color": "var(--code-variable)"
-            },
-            {
-              "text": "}",
-              "color": "var(--code-operator)"
-            }
-          ]
-        },
-        {
-          "number": 43,
           "content": [
             {
               "text": "      ",
@@ -15195,7 +15697,7 @@
           ]
         },
         {
-          "number": 44,
+          "number": 43,
           "content": [
             {
               "text": "      ",
@@ -15228,7 +15730,7 @@
           ]
         },
         {
-          "number": 45,
+          "number": 44,
           "content": [
             {
               "text": "      ",
@@ -15253,7 +15755,7 @@
           ]
         },
         {
-          "number": 46,
+          "number": 45,
           "content": [
             {
               "text": "    ",
@@ -15266,7 +15768,7 @@
           ]
         },
         {
-          "number": 47,
+          "number": 46,
           "content": [
             {
               "text": "  )",
@@ -15279,7 +15781,7 @@
           ]
         },
         {
-          "number": 48,
+          "number": 47,
           "content": [
             {
               "text": "}",
@@ -15288,13 +15790,13 @@
           ]
         },
         {
-          "number": 49,
+          "number": 48,
           "content": []
         }
       ]
     },
     "registry/ui/radio/radio-group-context.tsx": {
-      "raw": "\"use client\";\n\nimport { createContext, useContext, type RefObject } from \"react\";\nimport type { RadioSize } from \"./radio\";\nimport type { SelectableVariant } from \"@/lib/selectable-variants\";\n\nexport interface RadioGroupContextValue {\n  value?: string;\n  onChange: (value: string) => void;\n  onHighlightChange: (value: string) => void;\n  disabled: boolean;\n  size: RadioSize;\n  variant: SelectableVariant;\n  highlightedValue: string | null;\n  name?: string;\n  required?: boolean;\n  requiredInvalid: boolean;\n  onRequiredInvalid: () => void;\n  containerRef: RefObject<HTMLDivElement | null>;\n  firstEnabledValue: string | null;\n}\n\nexport const RadioGroupContext = createContext<RadioGroupContextValue | undefined>(undefined);\n\nexport function useRadioGroupContext() {\n  const context = useContext(RadioGroupContext);\n  if (!context) {\n    throw new Error(\"RadioGroupItem must be used within RadioGroup\");\n  }\n  return context;\n}\n",
+      "raw": "\"use client\";\n\nimport { createContext, useContext, type RefObject } from \"react\";\nimport type { RadioSize } from \"./radio\";\nimport type { SelectableVariant } from \"@/lib/selectable-variants\";\n\nexport interface RadioGroupContextValue {\n  value?: string;\n  onChange: (value: string) => void;\n  onHighlightChange: (value: string) => void;\n  disabled: boolean;\n  size: RadioSize;\n  variant: SelectableVariant;\n  highlightedValue: string | null;\n  name?: string;\n  required?: boolean;\n  requiredInvalid: boolean;\n  onRequiredInvalid: () => void;\n  containerRef: RefObject<HTMLDivElement | null>;\n  tabTargetValue: string | null;\n}\n\nexport const RadioGroupContext = createContext<RadioGroupContextValue | undefined>(undefined);\n\nexport function useRadioGroupContext() {\n  const context = useContext(RadioGroupContext);\n  if (!context) {\n    throw new Error(\"RadioGroupItem must be used within RadioGroup\");\n  }\n  return context;\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -16001,7 +16503,7 @@
           "number": 20,
           "content": [
             {
-              "text": "  firstEnabledValue",
+              "text": "  tabTargetValue",
               "color": "var(--code-variable)"
             },
             {
@@ -16354,7 +16856,7 @@
       ]
     }
   },
-  "mergedSource": "\"use client\";\n\nimport { Radio, type RadioProps } from \"./radio\";\nimport { RadioGroup as RadioGroupRoot, type RadioGroupProps } from \"./radio-group\";\nimport { RadioGroupItem, type RadioGroupItemProps } from \"./radio-group-item\";\n\nconst RadioGroup = Object.assign(RadioGroupRoot, {\n  Item: RadioGroupItem,\n});\n\nexport { Radio, type RadioProps };\nexport { RadioGroup, type RadioGroupProps };\nexport { RadioGroupItem, type RadioGroupItemProps };\n\n\n\"use client\";\n\nimport {\n  Children,\n  isValidElement,\n  useCallback,\n  useMemo,\n  useRef,\n  useState,\n  type ReactNode,\n  type Ref,\n  type KeyboardEvent as ReactKeyboardEvent,\n} from \"react\";\nimport { useNavigation } from \"@/hooks/use-navigation\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\nimport { useFormReset } from \"@/hooks/use-form-reset\";\nimport { composeRefs } from \"@/lib/compose-refs\";\nimport { cn } from \"@/lib/utils\";\nimport type { RadioSize } from \"./radio\";\nimport type { SelectableVariant } from \"@/lib/selectable-variants\";\nimport { RadioGroupContext, type RadioGroupContextValue } from \"./radio-group-context\";\n\nexport interface RadioGroupProps {\n  value?: string;\n  defaultValue?: string;\n  onValueChange?: (value: string) => void;\n  /** @deprecated Use `onValueChange` for controlled value updates. */\n  onChange?: (value: string) => void;\n  onHighlightChange?: (value: string) => void;\n  onKeyDown?: (event: ReactKeyboardEvent) => void;\n  highlighted?: string | null;\n  orientation?: \"vertical\" | \"horizontal\";\n  wrap?: boolean;\n  disabled?: boolean;\n  size?: RadioSize;\n  variant?: SelectableVariant;\n  name?: string;\n  required?: boolean;\n  label?: string;\n  labelledBy?: string;\n  \"aria-label\"?: string;\n  \"aria-labelledby\"?: string;\n  className?: string;\n  children: ReactNode;\n  ref?: Ref<HTMLDivElement>;\n}\n\ninterface RadioGroupItemElementProps {\n  value?: string;\n  disabled?: boolean;\n  children?: ReactNode;\n}\n\nfunction collectInitialItems(children: ReactNode): Array<{ value: string; disabled: boolean }> {\n  const items: Array<{ value: string; disabled: boolean }> = [];\n\n  Children.forEach(children, (child) => {\n    if (!isValidElement<RadioGroupItemElementProps>(child)) return;\n    if (typeof child.props.value === \"string\") {\n      items.push({ value: child.props.value, disabled: !!child.props.disabled });\n      return;\n    }\n    items.push(...collectInitialItems(child.props.children));\n  });\n\n  return items;\n}\n\nexport function RadioGroup(props: RadioGroupProps) {\n  const {\n    value: controlledValue,\n    defaultValue,\n    onValueChange,\n    onChange,\n    onHighlightChange,\n    onKeyDown,\n    highlighted: controlledHighlighted,\n    orientation = \"vertical\",\n    wrap = true,\n    disabled = false,\n    size = \"md\",\n    variant = \"bullet\",\n    name,\n    required,\n    label,\n    labelledBy,\n    \"aria-label\": ariaLabel,\n    \"aria-labelledby\": ariaLabelledBy,\n    className,\n    children,\n    ref,\n  } = props;\n  const containerRef = useRef<HTMLDivElement>(null);\n  const items = useMemo(() => collectInitialItems(children), [children]);\n  const [requiredInvalid, setRequiredInvalid] = useState(false);\n\n  const [value, setValue] = useControllableState<string | undefined>({\n    value: controlledValue,\n    controlled: \"value\" in props,\n    defaultValue,\n    onChange: (onValueChange ?? onChange) as ((value: string | undefined) => void) | undefined,\n  });\n  useFormReset(containerRef, defaultValue, setValue, !(\"value\" in props));\n  const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({\n    value: controlledHighlighted,\n    controlled: \"highlighted\" in props,\n    defaultValue: null,\n    onChange: onHighlightChange as ((value: string | null) => void) | undefined,\n  });\n\n  const firstEnabledValue = items.find((item) => !item.disabled)?.value ?? null;\n\n  const { onKeyDown: navKeyDown } = useNavigation({\n    containerRef,\n    role: \"radio\",\n    orientation,\n    wrap,\n    moveFocus: true,\n    upKeys: [\"ArrowUp\", \"ArrowLeft\"],\n    downKeys: [\"ArrowDown\", \"ArrowRight\"],\n    value: highlightedValue,\n    enabled: !disabled,\n    onValueChange: (next) => {\n      setHighlightedValue(next);\n      setRequiredInvalid(false);\n      setValue(next);\n    },\n  });\n\n  const handleKeyDown = (e: ReactKeyboardEvent) => {\n    onKeyDown?.(e);\n    if (!e.defaultPrevented) navKeyDown(e);\n  };\n\n  const handleValueChange = (next: string) => {\n    setRequiredInvalid(false);\n    setValue(next);\n  };\n\n  const handleRequiredInvalid = useCallback(() => {\n    setRequiredInvalid(true);\n  }, []);\n\n  const contextValue: RadioGroupContextValue = useMemo(() => ({\n    value,\n    onChange: handleValueChange,\n    onHighlightChange: setHighlightedValue,\n    disabled,\n    size,\n    variant,\n    highlightedValue,\n    name,\n    required,\n    requiredInvalid,\n    onRequiredInvalid: handleRequiredInvalid,\n    containerRef,\n    firstEnabledValue,\n  }), [value, handleValueChange, setHighlightedValue, disabled, size, variant, highlightedValue, name, required, requiredInvalid, handleRequiredInvalid, firstEnabledValue]);\n\n  return (\n    <RadioGroupContext value={contextValue}>\n      {required && !name && (\n        <input\n          type=\"checkbox\"\n          required\n          checked={value !== undefined}\n          disabled={disabled}\n          tabIndex={-1}\n          aria-hidden={true}\n          aria-label={ariaLabel ?? label}\n          readOnly\n          className=\"sr-only\"\n          onInvalid={(event) => {\n            event.preventDefault();\n            handleRequiredInvalid();\n            containerRef.current?.querySelector<HTMLElement>('[role=\"radio\"]:not([aria-disabled=\"true\"])')?.focus();\n          }}\n        />\n      )}\n      <div\n        ref={composeRefs(containerRef, ref)}\n        role=\"radiogroup\"\n        aria-label={ariaLabel ?? label}\n        aria-labelledby={ariaLabelledBy ?? labelledBy}\n        aria-orientation={orientation}\n        aria-required={required || undefined}\n        aria-invalid={requiredInvalid && value === undefined ? true : undefined}\n        aria-disabled={disabled || undefined}\n        className={cn(\n          \"flex\",\n          orientation === \"vertical\" ? \"flex-col gap-2\" : \"flex-row gap-4\",\n          className\n        )}\n        onKeyDown={handleKeyDown}\n      >\n        {children}\n      </div>\n    </RadioGroupContext>\n  );\n}\n\n\n\"use client\";\n\nimport { useCallback, useEffect, useId, useRef, useState, type AriaAttributes, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from \"react\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\nimport { useFormReset } from \"@/hooks/use-form-reset\";\nimport { composeRefs } from \"@/lib/compose-refs\";\nimport {\n  selectableVariants,\n  selectableContainerClass,\n  selectableIndicatorVariants,\n  selectableLabelVariants,\n  selectableDescriptionVariants,\n  selectableIndicators,\n  type SelectableSize,\n  type SelectableVariant,\n} from \"@/lib/selectable-variants\";\nimport { cn } from \"@/lib/utils\";\n\nexport type RadioSize = SelectableSize;\n\nconst RADIO_CHECK_EVENT = \"diffgazer:radio-check\";\n\nfunction resolveAriaInvalid(\n  invalid: boolean | undefined,\n  ariaInvalid: AriaAttributes[\"aria-invalid\"],\n) {\n  if (invalid) return true;\n  if (ariaInvalid === true || ariaInvalid === \"true\" || ariaInvalid === \"grammar\" || ariaInvalid === \"spelling\") {\n    return ariaInvalid;\n  }\n  if (ariaInvalid === false || ariaInvalid === \"false\") return ariaInvalid;\n  return undefined;\n}\n\ninterface RadioCheckEventDetail {\n  name: string;\n  form: HTMLFormElement | null;\n  source: HTMLElement;\n}\n\nfunction dispatchRadioCheck(source: HTMLElement, name: string) {\n  source.ownerDocument.dispatchEvent(new CustomEvent<RadioCheckEventDetail>(RADIO_CHECK_EVENT, {\n    detail: {\n      name,\n      form: source.closest(\"form\"),\n      source,\n    },\n  }));\n}\n\nexport interface RadioProps {\n  checked?: boolean;\n  defaultChecked?: boolean;\n  isTabTarget?: boolean;\n  onChange?: (checked: boolean) => void;\n  onMouseEnter?: () => void;\n  label?: ReactNode;\n  description?: ReactNode;\n  disabled?: boolean;\n  highlighted?: boolean;\n  size?: RadioSize;\n  name?: string;\n  value?: string;\n  required?: boolean;\n  invalid?: boolean;\n  variant?: SelectableVariant;\n  \"aria-label\"?: string;\n  \"aria-invalid\"?: AriaAttributes[\"aria-invalid\"];\n  onNativeInvalid?: () => void;\n  className?: string;\n  ref?: Ref<HTMLDivElement>;\n  \"data-value\"?: string;\n}\n\nexport function Radio({\n  checked,\n  defaultChecked = false,\n  isTabTarget = true,\n  onChange,\n  onMouseEnter,\n  label,\n  description,\n  disabled = false,\n  highlighted = false,\n  size = \"md\",\n  variant = \"bullet\",\n  name,\n  value = \"on\",\n  required,\n  invalid,\n  \"aria-label\": ariaLabel,\n  \"aria-invalid\": ariaInvalid,\n  onNativeInvalid,\n  className,\n  ref,\n  \"data-value\": dataValue,\n}: RadioProps) {\n  const generatedId = useId();\n  const labelId = `${generatedId}-label`;\n  const descriptionId = `${generatedId}-desc`;\n\n  const rootRef = useRef<HTMLDivElement>(null);\n  const [isChecked, setIsChecked, isControlled] = useControllableState<boolean>({\n    value: checked,\n    defaultValue: defaultChecked,\n    onChange,\n  });\n  const [nativeInvalid, setNativeInvalid] = useState(false);\n  const resolvedAriaInvalid = resolveAriaInvalid(invalid || (nativeInvalid && required && !isChecked), ariaInvalid);\n\n  useFormReset(rootRef, defaultChecked, setIsChecked, checked === undefined);\n\n  const notifySameNameRadios = useCallback(() => {\n    if (!name || isControlled || !rootRef.current) return;\n    dispatchRadioCheck(rootRef.current, name);\n  }, [isControlled, name]);\n\n  useEffect(() => {\n    if (!name || isControlled) return;\n\n    const ownerDocument = rootRef.current?.ownerDocument;\n    if (!ownerDocument) return;\n\n    const handleRadioCheck = (event: Event) => {\n      const { detail } = event as CustomEvent<RadioCheckEventDetail>;\n      if (\n        detail.name !== name ||\n        detail.source === rootRef.current ||\n        detail.form !== (rootRef.current?.closest(\"form\") ?? null)\n      ) {\n        return;\n      }\n\n      setIsChecked(false);\n    };\n\n    ownerDocument.addEventListener(RADIO_CHECK_EVENT, handleRadioCheck);\n    return () => ownerDocument.removeEventListener(RADIO_CHECK_EVENT, handleRadioCheck);\n  }, [isControlled, name, setIsChecked]);\n\n  useEffect(() => {\n    if (isChecked) notifySameNameRadios();\n  }, [isChecked, notifySameNameRadios]);\n\n  const toggle = () => {\n    if (disabled) return;\n    setNativeInvalid(false);\n    setIsChecked(true);\n    notifySameNameRadios();\n  };\n\n  const handleKeyDown = (e: ReactKeyboardEvent) => {\n    if (disabled) return;\n    if (e.key === \" \") {\n      e.preventDefault();\n      toggle();\n    }\n  };\n\n  return (\n    <>\n      {(name || required) && (\n        <input\n          type=\"radio\"\n          name={name}\n          value={value}\n          checked={isChecked}\n          required={required}\n          disabled={disabled}\n          className=\"sr-only\"\n          tabIndex={-1}\n          readOnly\n          aria-hidden={true}\n          aria-label={ariaLabel ?? (typeof label === \"string\" ? label : name)}\n          onInvalid={(event) => {\n            event.preventDefault();\n            onNativeInvalid?.();\n            if (!onNativeInvalid) setNativeInvalid(true);\n            const group = rootRef.current?.closest('[role=\"radiogroup\"]');\n            const owner = group?.querySelector<HTMLElement>('[role=\"radio\"]:not([aria-disabled=\"true\"])');\n            (owner ?? rootRef.current)?.focus();\n          }}\n        />\n      )}\n      <div\n        ref={composeRefs(rootRef, ref)}\n        role=\"radio\"\n        data-value={dataValue ?? value}\n        aria-checked={isChecked}\n        aria-disabled={disabled || undefined}\n        aria-invalid={resolvedAriaInvalid}\n        aria-label={ariaLabel}\n        aria-labelledby={!ariaLabel && label ? labelId : undefined}\n        aria-describedby={description ? descriptionId : undefined}\n        tabIndex={!disabled && isTabTarget ? 0 : -1}\n        onClick={toggle}\n        onKeyDown={handleKeyDown}\n        onMouseEnter={onMouseEnter}\n        className={cn(\n          selectableVariants({ highlighted, disabled }),\n          selectableContainerClass,\n          description && \"items-start\",\n          className\n        )}\n      >\n        <span\n          aria-hidden=\"true\"\n          className={selectableIndicatorVariants({\n            size,\n            checked: isChecked,\n            highlighted,\n          })}\n        >\n          {selectableIndicators[variant][isChecked ? \"checked\" : \"unchecked\"]}\n        </span>\n        {label && (\n          <div\n            className={cn(\n              \"flex flex-col min-w-0\",\n              !description && \"justify-center\"\n            )}\n          >\n            <span id={labelId} className={selectableLabelVariants({ size })}>{label}</span>\n            {description && (\n              <span id={descriptionId} className={selectableDescriptionVariants({ highlighted })}>\n                {description}\n              </span>\n            )}\n          </div>\n        )}\n      </div>\n    </>\n  );\n}\n\n\n\"use client\";\n\nimport { type ReactNode } from \"react\";\nimport { useRadioGroupContext } from \"./radio-group-context\";\nimport { Radio } from \"./radio\";\n\nexport interface RadioGroupItemProps {\n  value: string;\n  label: ReactNode;\n  description?: ReactNode;\n  disabled?: boolean;\n  className?: string;\n}\n\nexport function RadioGroupItem({\n  value,\n  label,\n  description,\n  disabled: itemDisabled,\n  className,\n}: RadioGroupItemProps) {\n  const context = useRadioGroupContext();\n  const isSelected = context.value === value;\n  const isDisabled = context.disabled || !!itemDisabled;\n  const isHighlighted = context.highlightedValue === value;\n  const hasSelection = context.value !== undefined;\n  const isTabTarget = !isDisabled && (isSelected || (!hasSelection && context.firstEnabledValue === value));\n\n  return (\n    <Radio\n      data-value={value}\n      value={value}\n      checked={isSelected}\n      isTabTarget={isTabTarget}\n      onChange={() => context.onChange(value)}\n      label={label}\n      description={description}\n      disabled={isDisabled}\n      highlighted={isHighlighted}\n      size={context.size}\n      variant={context.variant}\n      name={context.name}\n      required={context.name ? context.required : undefined}\n      onNativeInvalid={context.onRequiredInvalid}\n      className={className}\n    />\n  );\n}\n\n\n\"use client\";\n\nimport { createContext, useContext, type RefObject } from \"react\";\nimport type { RadioSize } from \"./radio\";\nimport type { SelectableVariant } from \"@/lib/selectable-variants\";\n\nexport interface RadioGroupContextValue {\n  value?: string;\n  onChange: (value: string) => void;\n  onHighlightChange: (value: string) => void;\n  disabled: boolean;\n  size: RadioSize;\n  variant: SelectableVariant;\n  highlightedValue: string | null;\n  name?: string;\n  required?: boolean;\n  requiredInvalid: boolean;\n  onRequiredInvalid: () => void;\n  containerRef: RefObject<HTMLDivElement | null>;\n  firstEnabledValue: string | null;\n}\n\nexport const RadioGroupContext = createContext<RadioGroupContextValue | undefined>(undefined);\n\nexport function useRadioGroupContext() {\n  const context = useContext(RadioGroupContext);\n  if (!context) {\n    throw new Error(\"RadioGroupItem must be used within RadioGroup\");\n  }\n  return context;\n}\n",
+  "mergedSource": "\"use client\";\n\nimport { Radio, type RadioProps } from \"./radio\";\nimport { RadioGroup as RadioGroupRoot, type RadioGroupProps } from \"./radio-group\";\nimport { RadioGroupItem, type RadioGroupItemProps } from \"./radio-group-item\";\n\nconst RadioGroup = Object.assign(RadioGroupRoot, {\n  Item: RadioGroupItem,\n});\n\nexport { Radio, type RadioProps };\nexport { RadioGroup, type RadioGroupProps };\nexport { RadioGroupItem, type RadioGroupItemProps };\n\n\n\"use client\";\n\nimport {\n  Children,\n  isValidElement,\n  useCallback,\n  useMemo,\n  useRef,\n  useState,\n  type ReactNode,\n  type Ref,\n  type KeyboardEvent as ReactKeyboardEvent,\n} from \"react\";\nimport { useNavigation } from \"@/hooks/use-navigation\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\nimport { useFormReset } from \"@/hooks/use-form-reset\";\nimport { composeRefs } from \"@/lib/compose-refs\";\nimport { cn } from \"@/lib/utils\";\nimport type { RadioSize } from \"./radio\";\nimport type { SelectableVariant } from \"@/lib/selectable-variants\";\nimport { RadioGroupContext, type RadioGroupContextValue } from \"./radio-group-context\";\n\nexport interface RadioGroupProps {\n  value?: string;\n  defaultValue?: string;\n  onValueChange?: (value: string) => void;\n  /** @deprecated Use `onValueChange` for controlled value updates. */\n  onChange?: (value: string) => void;\n  onHighlightChange?: (value: string) => void;\n  onKeyDown?: (event: ReactKeyboardEvent) => void;\n  highlighted?: string | null;\n  orientation?: \"vertical\" | \"horizontal\";\n  wrap?: boolean;\n  disabled?: boolean;\n  size?: RadioSize;\n  variant?: SelectableVariant;\n  name?: string;\n  required?: boolean;\n  label?: string;\n  labelledBy?: string;\n  \"aria-label\"?: string;\n  \"aria-labelledby\"?: string;\n  className?: string;\n  children: ReactNode;\n  ref?: Ref<HTMLDivElement>;\n}\n\ninterface RadioGroupItemElementProps {\n  value?: string;\n  disabled?: boolean;\n  children?: ReactNode;\n}\n\nfunction collectInitialItems(children: ReactNode): Array<{ value: string; disabled: boolean }> {\n  const items: Array<{ value: string; disabled: boolean }> = [];\n\n  Children.forEach(children, (child) => {\n    if (!isValidElement<RadioGroupItemElementProps>(child)) return;\n    if (typeof child.props.value === \"string\") {\n      items.push({ value: child.props.value, disabled: !!child.props.disabled });\n      return;\n    }\n    items.push(...collectInitialItems(child.props.children));\n  });\n\n  return items;\n}\n\nfunction getEnabledItemValue(\n  items: Array<{ value: string; disabled: boolean }>,\n  value: string | null | undefined,\n): string | null {\n  if (value === null || value === undefined) return null;\n  return items.some((item) => item.value === value && !item.disabled) ? value : null;\n}\n\nexport function RadioGroup(props: RadioGroupProps) {\n  const {\n    value: controlledValue,\n    defaultValue,\n    onValueChange,\n    onChange,\n    onHighlightChange,\n    onKeyDown,\n    highlighted: controlledHighlighted,\n    orientation = \"vertical\",\n    wrap = true,\n    disabled = false,\n    size = \"md\",\n    variant = \"bullet\",\n    name,\n    required,\n    label,\n    labelledBy,\n    \"aria-label\": ariaLabel,\n    \"aria-labelledby\": ariaLabelledBy,\n    className,\n    children,\n    ref,\n  } = props;\n  const containerRef = useRef<HTMLDivElement>(null);\n  const items = useMemo(() => collectInitialItems(children), [children]);\n  const [requiredInvalid, setRequiredInvalid] = useState(false);\n\n  const [value, setValue] = useControllableState<string | undefined>({\n    value: controlledValue,\n    controlled: \"value\" in props,\n    defaultValue,\n    onChange: (onValueChange ?? onChange) as ((value: string | undefined) => void) | undefined,\n  });\n  useFormReset(containerRef, defaultValue, setValue, !(\"value\" in props));\n  const [highlightedValue, setHighlightedValue] = useControllableState<string | null>({\n    value: controlledHighlighted,\n    controlled: \"highlighted\" in props,\n    defaultValue: null,\n    onChange: onHighlightChange as ((value: string | null) => void) | undefined,\n  });\n\n  const enabledItems = disabled ? [] : items;\n  const validHighlightedValue = getEnabledItemValue(enabledItems, highlightedValue);\n  const validSelectedValue = getEnabledItemValue(enabledItems, value);\n  const tabTargetValue =\n    validHighlightedValue ?? validSelectedValue ?? enabledItems.find((item) => !item.disabled)?.value ?? null;\n\n  const { onKeyDown: navKeyDown } = useNavigation({\n    containerRef,\n    role: \"radio\",\n    orientation,\n    wrap,\n    moveFocus: true,\n    upKeys: [\"ArrowUp\", \"ArrowLeft\"],\n    downKeys: [\"ArrowDown\", \"ArrowRight\"],\n    value: tabTargetValue,\n    enabled: !disabled,\n    onValueChange: (next) => {\n      setHighlightedValue(next);\n      setRequiredInvalid(false);\n      setValue(next);\n    },\n  });\n\n  const handleKeyDown = (e: ReactKeyboardEvent) => {\n    onKeyDown?.(e);\n    if (!e.defaultPrevented) navKeyDown(e);\n  };\n\n  const handleValueChange = (next: string) => {\n    setRequiredInvalid(false);\n    setValue(next);\n  };\n\n  const handleRequiredInvalid = useCallback(() => {\n    setRequiredInvalid(true);\n  }, []);\n\n  const contextValue: RadioGroupContextValue = useMemo(() => ({\n    value,\n    onChange: handleValueChange,\n    onHighlightChange: setHighlightedValue,\n    disabled,\n    size,\n    variant,\n    highlightedValue: validHighlightedValue,\n    name,\n    required,\n    requiredInvalid,\n    onRequiredInvalid: handleRequiredInvalid,\n    containerRef,\n    tabTargetValue,\n  }), [value, handleValueChange, setHighlightedValue, disabled, size, variant, validHighlightedValue, name, required, requiredInvalid, handleRequiredInvalid, tabTargetValue]);\n\n  return (\n    <RadioGroupContext value={contextValue}>\n      {required && !name && (\n        <input\n          type=\"checkbox\"\n          required\n          checked={value !== undefined}\n          disabled={disabled}\n          tabIndex={-1}\n          aria-hidden={true}\n          aria-label={ariaLabel ?? label}\n          readOnly\n          className=\"sr-only\"\n          onInvalid={(event) => {\n            event.preventDefault();\n            handleRequiredInvalid();\n            containerRef.current?.querySelector<HTMLElement>('[role=\"radio\"]:not([aria-disabled=\"true\"])')?.focus();\n          }}\n        />\n      )}\n      <div\n        ref={composeRefs(containerRef, ref)}\n        role=\"radiogroup\"\n        aria-label={ariaLabel ?? label}\n        aria-labelledby={ariaLabelledBy ?? labelledBy}\n        aria-orientation={orientation}\n        aria-required={required || undefined}\n        aria-invalid={requiredInvalid && value === undefined ? true : undefined}\n        aria-disabled={disabled || undefined}\n        className={cn(\n          \"flex\",\n          orientation === \"vertical\" ? \"flex-col gap-2\" : \"flex-row gap-4\",\n          className\n        )}\n        onKeyDown={handleKeyDown}\n      >\n        {children}\n      </div>\n    </RadioGroupContext>\n  );\n}\n\n\n\"use client\";\n\nimport { useCallback, useEffect, useId, useRef, useState, type AriaAttributes, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type Ref } from \"react\";\nimport { useControllableState } from \"@/hooks/use-controllable-state\";\nimport { useFormReset } from \"@/hooks/use-form-reset\";\nimport { composeRefs } from \"@/lib/compose-refs\";\nimport {\n  selectableVariants,\n  selectableContainerClass,\n  selectableIndicatorVariants,\n  selectableLabelVariants,\n  selectableDescriptionVariants,\n  selectableIndicators,\n  type SelectableSize,\n  type SelectableVariant,\n} from \"@/lib/selectable-variants\";\nimport { cn } from \"@/lib/utils\";\n\nexport type RadioSize = SelectableSize;\n\nconst RADIO_CHECK_EVENT = \"diffgazer:radio-check\";\n\nfunction resolveAriaInvalid(\n  invalid: boolean | undefined,\n  ariaInvalid: AriaAttributes[\"aria-invalid\"],\n) {\n  if (invalid) return true;\n  if (ariaInvalid === true || ariaInvalid === \"true\" || ariaInvalid === \"grammar\" || ariaInvalid === \"spelling\") {\n    return ariaInvalid;\n  }\n  if (ariaInvalid === false || ariaInvalid === \"false\") return ariaInvalid;\n  return undefined;\n}\n\ninterface RadioCheckEventDetail {\n  name: string;\n  form: HTMLFormElement | null;\n  source: HTMLElement;\n}\n\nfunction dispatchRadioCheck(source: HTMLElement, name: string) {\n  source.ownerDocument.dispatchEvent(new CustomEvent<RadioCheckEventDetail>(RADIO_CHECK_EVENT, {\n    detail: {\n      name,\n      form: source.closest(\"form\"),\n      source,\n    },\n  }));\n}\n\nexport interface RadioProps {\n  checked?: boolean;\n  defaultChecked?: boolean;\n  isTabTarget?: boolean;\n  onChange?: (checked: boolean) => void;\n  onMouseEnter?: () => void;\n  label?: ReactNode;\n  description?: ReactNode;\n  disabled?: boolean;\n  highlighted?: boolean;\n  size?: RadioSize;\n  name?: string;\n  value?: string;\n  required?: boolean;\n  invalid?: boolean;\n  variant?: SelectableVariant;\n  \"aria-label\"?: string;\n  \"aria-invalid\"?: AriaAttributes[\"aria-invalid\"];\n  onNativeInvalid?: () => void;\n  className?: string;\n  ref?: Ref<HTMLDivElement>;\n  \"data-value\"?: string;\n}\n\nexport function Radio({\n  checked,\n  defaultChecked = false,\n  isTabTarget = true,\n  onChange,\n  onMouseEnter,\n  label,\n  description,\n  disabled = false,\n  highlighted = false,\n  size = \"md\",\n  variant = \"bullet\",\n  name,\n  value = \"on\",\n  required,\n  invalid,\n  \"aria-label\": ariaLabel,\n  \"aria-invalid\": ariaInvalid,\n  onNativeInvalid,\n  className,\n  ref,\n  \"data-value\": dataValue,\n}: RadioProps) {\n  const generatedId = useId();\n  const labelId = `${generatedId}-label`;\n  const descriptionId = `${generatedId}-desc`;\n\n  const rootRef = useRef<HTMLDivElement>(null);\n  const [isChecked, setIsChecked, isControlled] = useControllableState<boolean>({\n    value: checked,\n    defaultValue: defaultChecked,\n    onChange,\n  });\n  const [nativeInvalid, setNativeInvalid] = useState(false);\n  const resolvedAriaInvalid = resolveAriaInvalid(invalid || (nativeInvalid && required && !isChecked), ariaInvalid);\n\n  useFormReset(rootRef, defaultChecked, setIsChecked, checked === undefined);\n\n  const notifySameNameRadios = useCallback(() => {\n    if (!name || isControlled || !rootRef.current) return;\n    dispatchRadioCheck(rootRef.current, name);\n  }, [isControlled, name]);\n\n  useEffect(() => {\n    if (!name || isControlled) return;\n\n    const ownerDocument = rootRef.current?.ownerDocument;\n    if (!ownerDocument) return;\n\n    const handleRadioCheck = (event: Event) => {\n      const { detail } = event as CustomEvent<RadioCheckEventDetail>;\n      if (\n        detail.name !== name ||\n        detail.source === rootRef.current ||\n        detail.form !== (rootRef.current?.closest(\"form\") ?? null)\n      ) {\n        return;\n      }\n\n      setIsChecked(false);\n    };\n\n    ownerDocument.addEventListener(RADIO_CHECK_EVENT, handleRadioCheck);\n    return () => ownerDocument.removeEventListener(RADIO_CHECK_EVENT, handleRadioCheck);\n  }, [isControlled, name, setIsChecked]);\n\n  useEffect(() => {\n    if (isChecked) notifySameNameRadios();\n  }, [isChecked, notifySameNameRadios]);\n\n  const toggle = () => {\n    if (disabled) return;\n    setNativeInvalid(false);\n    setIsChecked(true);\n    notifySameNameRadios();\n  };\n\n  const handleKeyDown = (e: ReactKeyboardEvent) => {\n    if (disabled) return;\n    if (e.key === \" \") {\n      e.preventDefault();\n      toggle();\n    }\n  };\n\n  return (\n    <>\n      {(name || required) && (\n        <input\n          type=\"radio\"\n          name={name}\n          value={value}\n          checked={isChecked}\n          required={required}\n          disabled={disabled}\n          className=\"sr-only\"\n          tabIndex={-1}\n          readOnly\n          aria-hidden={true}\n          aria-label={ariaLabel ?? (typeof label === \"string\" ? label : name)}\n          onInvalid={(event) => {\n            event.preventDefault();\n            onNativeInvalid?.();\n            if (!onNativeInvalid) setNativeInvalid(true);\n            const group = rootRef.current?.closest('[role=\"radiogroup\"]');\n            const owner = group?.querySelector<HTMLElement>('[role=\"radio\"]:not([aria-disabled=\"true\"])');\n            (owner ?? rootRef.current)?.focus();\n          }}\n        />\n      )}\n      <div\n        ref={composeRefs(rootRef, ref)}\n        role=\"radio\"\n        data-value={dataValue ?? value}\n        aria-checked={isChecked}\n        aria-disabled={disabled || undefined}\n        aria-invalid={resolvedAriaInvalid}\n        aria-label={ariaLabel}\n        aria-labelledby={!ariaLabel && label ? labelId : undefined}\n        aria-describedby={description ? descriptionId : undefined}\n        tabIndex={!disabled && isTabTarget ? 0 : -1}\n        onClick={toggle}\n        onKeyDown={handleKeyDown}\n        onMouseEnter={onMouseEnter}\n        className={cn(\n          selectableVariants({ highlighted, disabled }),\n          selectableContainerClass,\n          description && \"items-start\",\n          className\n        )}\n      >\n        <span\n          aria-hidden=\"true\"\n          className={selectableIndicatorVariants({\n            size,\n            checked: isChecked,\n            highlighted,\n          })}\n        >\n          {selectableIndicators[variant][isChecked ? \"checked\" : \"unchecked\"]}\n        </span>\n        {label && (\n          <div\n            className={cn(\n              \"flex flex-col min-w-0\",\n              !description && \"justify-center\"\n            )}\n          >\n            <span id={labelId} className={selectableLabelVariants({ size })}>{label}</span>\n            {description && (\n              <span id={descriptionId} className={selectableDescriptionVariants({ highlighted })}>\n                {description}\n              </span>\n            )}\n          </div>\n        )}\n      </div>\n    </>\n  );\n}\n\n\n\"use client\";\n\nimport { type ReactNode } from \"react\";\nimport { useRadioGroupContext } from \"./radio-group-context\";\nimport { Radio } from \"./radio\";\n\nexport interface RadioGroupItemProps {\n  value: string;\n  label: ReactNode;\n  description?: ReactNode;\n  disabled?: boolean;\n  className?: string;\n}\n\nexport function RadioGroupItem({\n  value,\n  label,\n  description,\n  disabled: itemDisabled,\n  className,\n}: RadioGroupItemProps) {\n  const context = useRadioGroupContext();\n  const isSelected = context.value === value;\n  const isDisabled = context.disabled || !!itemDisabled;\n  const isHighlighted = context.highlightedValue === value;\n  const isTabTarget = !isDisabled && context.tabTargetValue === value;\n\n  return (\n    <Radio\n      data-value={value}\n      value={value}\n      checked={isSelected}\n      isTabTarget={isTabTarget}\n      onChange={() => context.onChange(value)}\n      label={label}\n      description={description}\n      disabled={isDisabled}\n      highlighted={isHighlighted}\n      size={context.size}\n      variant={context.variant}\n      name={context.name}\n      required={context.name ? context.required : undefined}\n      onNativeInvalid={context.onRequiredInvalid}\n      className={className}\n    />\n  );\n}\n\n\n\"use client\";\n\nimport { createContext, useContext, type RefObject } from \"react\";\nimport type { RadioSize } from \"./radio\";\nimport type { SelectableVariant } from \"@/lib/selectable-variants\";\n\nexport interface RadioGroupContextValue {\n  value?: string;\n  onChange: (value: string) => void;\n  onHighlightChange: (value: string) => void;\n  disabled: boolean;\n  size: RadioSize;\n  variant: SelectableVariant;\n  highlightedValue: string | null;\n  name?: string;\n  required?: boolean;\n  requiredInvalid: boolean;\n  onRequiredInvalid: () => void;\n  containerRef: RefObject<HTMLDivElement | null>;\n  tabTargetValue: string | null;\n}\n\nexport const RadioGroupContext = createContext<RadioGroupContextValue | undefined>(undefined);\n\nexport function useRadioGroupContext() {\n  const context = useContext(RadioGroupContext);\n  if (!context) {\n    throw new Error(\"RadioGroupItem must be used within RadioGroup\");\n  }\n  return context;\n}\n",
   "mergedSourceHighlighted": [
     {
       "number": 1,
@@ -19131,6 +19633,405 @@
       "number": 84,
       "content": [
         {
+          "text": "function",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "getEnabledItemValue",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 85,
+      "content": [
+        {
+          "text": "  items",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "Array",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "<{",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " value",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "string",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " disabled",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "boolean",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "}>,",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 86,
+      "content": [
+        {
+          "text": "  value",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "string",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "null",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "undefined",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 87,
+      "content": [
+        {
+          "text": "):",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "string",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "|",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "null",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "{",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 88,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "if",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " (value ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "null",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "||",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " value ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "undefined",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ") ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "null",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 89,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "return",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "items",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "some",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "(",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "item",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ")",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=>",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "item",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "value ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "===",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " value ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "&&",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "!",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "item",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ".",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": "disabled) ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "?",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " value ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "null",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 90,
+      "content": [
+        {
+          "text": "}",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 91,
+      "content": []
+    },
+    {
+      "number": 92,
+      "content": [
+        {
           "text": "export",
           "color": "var(--code-keyword)"
         },
@@ -19185,7 +20086,7 @@
       ]
     },
     {
-      "number": 85,
+      "number": 93,
       "content": [
         {
           "text": "  ",
@@ -19206,7 +20107,7 @@
       ]
     },
     {
-      "number": 86,
+      "number": 94,
       "content": [
         {
           "text": "    value",
@@ -19231,7 +20132,7 @@
       ]
     },
     {
-      "number": 87,
+      "number": 95,
       "content": [
         {
           "text": "    ",
@@ -19248,7 +20149,7 @@
       ]
     },
     {
-      "number": 88,
+      "number": 96,
       "content": [
         {
           "text": "    ",
@@ -19265,7 +20166,7 @@
       ]
     },
     {
-      "number": 89,
+      "number": 97,
       "content": [
         {
           "text": "    ",
@@ -19282,7 +20183,7 @@
       ]
     },
     {
-      "number": 90,
+      "number": 98,
       "content": [
         {
           "text": "    ",
@@ -19299,7 +20200,7 @@
       ]
     },
     {
-      "number": 91,
+      "number": 99,
       "content": [
         {
           "text": "    ",
@@ -19316,7 +20217,7 @@
       ]
     },
     {
-      "number": 92,
+      "number": 100,
       "content": [
         {
           "text": "    highlighted",
@@ -19341,7 +20242,7 @@
       ]
     },
     {
-      "number": 93,
+      "number": 101,
       "content": [
         {
           "text": "    ",
@@ -19382,7 +20283,7 @@
       ]
     },
     {
-      "number": 94,
+      "number": 102,
       "content": [
         {
           "text": "    ",
@@ -19415,7 +20316,7 @@
       ]
     },
     {
-      "number": 95,
+      "number": 103,
       "content": [
         {
           "text": "    ",
@@ -19448,7 +20349,7 @@
       ]
     },
     {
-      "number": 96,
+      "number": 104,
       "content": [
         {
           "text": "    ",
@@ -19489,7 +20390,7 @@
       ]
     },
     {
-      "number": 97,
+      "number": 105,
       "content": [
         {
           "text": "    ",
@@ -19530,7 +20431,7 @@
       ]
     },
     {
-      "number": 98,
+      "number": 106,
       "content": [
         {
           "text": "    ",
@@ -19547,7 +20448,7 @@
       ]
     },
     {
-      "number": 99,
+      "number": 107,
       "content": [
         {
           "text": "    ",
@@ -19564,7 +20465,7 @@
       ]
     },
     {
-      "number": 100,
+      "number": 108,
       "content": [
         {
           "text": "    ",
@@ -19581,7 +20482,7 @@
       ]
     },
     {
-      "number": 101,
+      "number": 109,
       "content": [
         {
           "text": "    ",
@@ -19598,7 +20499,7 @@
       ]
     },
     {
-      "number": 102,
+      "number": 110,
       "content": [
         {
           "text": "    ",
@@ -19635,7 +20536,7 @@
       ]
     },
     {
-      "number": 103,
+      "number": 111,
       "content": [
         {
           "text": "    ",
@@ -19672,7 +20573,7 @@
       ]
     },
     {
-      "number": 104,
+      "number": 112,
       "content": [
         {
           "text": "    ",
@@ -19689,7 +20590,7 @@
       ]
     },
     {
-      "number": 105,
+      "number": 113,
       "content": [
         {
           "text": "    ",
@@ -19706,7 +20607,7 @@
       ]
     },
     {
-      "number": 106,
+      "number": 114,
       "content": [
         {
           "text": "    ",
@@ -19723,7 +20624,7 @@
       ]
     },
     {
-      "number": 107,
+      "number": 115,
       "content": [
         {
           "text": "  ",
@@ -19752,7 +20653,7 @@
       ]
     },
     {
-      "number": 108,
+      "number": 116,
       "content": [
         {
           "text": "  ",
@@ -19817,7 +20718,7 @@
       ]
     },
     {
-      "number": 109,
+      "number": 117,
       "content": [
         {
           "text": "  ",
@@ -19894,7 +20795,7 @@
       ]
     },
     {
-      "number": 110,
+      "number": 118,
       "content": [
         {
           "text": "  ",
@@ -19967,11 +20868,11 @@
       ]
     },
     {
-      "number": 111,
+      "number": 119,
       "content": []
     },
     {
-      "number": 112,
+      "number": 120,
       "content": [
         {
           "text": "  ",
@@ -20064,7 +20965,7 @@
       ]
     },
     {
-      "number": 113,
+      "number": 121,
       "content": [
         {
           "text": "    value",
@@ -20085,7 +20986,7 @@
       ]
     },
     {
-      "number": 114,
+      "number": 122,
       "content": [
         {
           "text": "    controlled",
@@ -20130,7 +21031,7 @@
       ]
     },
     {
-      "number": 115,
+      "number": 123,
       "content": [
         {
           "text": "    defaultValue",
@@ -20143,7 +21044,7 @@
       ]
     },
     {
-      "number": 116,
+      "number": 124,
       "content": [
         {
           "text": "    onChange",
@@ -20252,7 +21153,7 @@
       ]
     },
     {
-      "number": 117,
+      "number": 125,
       "content": [
         {
           "text": "  ",
@@ -20273,7 +21174,7 @@
       ]
     },
     {
-      "number": 118,
+      "number": 126,
       "content": [
         {
           "text": "  ",
@@ -20350,7 +21251,7 @@
       ]
     },
     {
-      "number": 119,
+      "number": 127,
       "content": [
         {
           "text": "  ",
@@ -20443,7 +21344,7 @@
       ]
     },
     {
-      "number": 120,
+      "number": 128,
       "content": [
         {
           "text": "    value",
@@ -20464,7 +21365,7 @@
       ]
     },
     {
-      "number": 121,
+      "number": 129,
       "content": [
         {
           "text": "    controlled",
@@ -20509,7 +21410,7 @@
       ]
     },
     {
-      "number": 122,
+      "number": 130,
       "content": [
         {
           "text": "    defaultValue",
@@ -20534,7 +21435,7 @@
       ]
     },
     {
-      "number": 123,
+      "number": 131,
       "content": [
         {
           "text": "    onChange",
@@ -20635,7 +21536,7 @@
       ]
     },
     {
-      "number": 124,
+      "number": 132,
       "content": [
         {
           "text": "  ",
@@ -20656,11 +21557,11 @@
       ]
     },
     {
-      "number": 125,
+      "number": 133,
       "content": []
     },
     {
-      "number": 126,
+      "number": 134,
       "content": [
         {
           "text": "  ",
@@ -20675,7 +21576,60 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "firstEnabledValue",
+          "text": "enabledItems",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " disabled ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "?",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " [] ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " items",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 135,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "validHighlightedValue",
           "color": "var(--code-number)"
         },
         {
@@ -20691,7 +21645,134 @@
           "color": "var(--code-variable)"
         },
         {
-          "text": "items",
+          "text": "getEnabledItemValue",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(enabledItems",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " highlightedValue)",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 136,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "validSelectedValue",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "getEnabledItemValue",
+          "color": "var(--code-function)"
+        },
+        {
+          "text": "(enabledItems",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ",",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " value)",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ";",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 137,
+      "content": [
+        {
+          "text": "  ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "const",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "tabTargetValue",
+          "color": "var(--code-number)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "=",
+          "color": "var(--code-operator)"
+        }
+      ]
+    },
+    {
+      "number": 138,
+      "content": [
+        {
+          "text": "    validHighlightedValue ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "??",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " validSelectedValue ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "??",
+          "color": "var(--code-operator)"
+        },
+        {
+          "text": " ",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": "enabledItems",
           "color": "var(--code-number)"
         },
         {
@@ -20773,11 +21854,11 @@
       ]
     },
     {
-      "number": 127,
+      "number": 139,
       "content": []
     },
     {
-      "number": 128,
+      "number": 140,
       "content": [
         {
           "text": "  ",
@@ -20846,7 +21927,7 @@
       ]
     },
     {
-      "number": 129,
+      "number": 141,
       "content": [
         {
           "text": "    containerRef",
@@ -20859,7 +21940,7 @@
       ]
     },
     {
-      "number": 130,
+      "number": 142,
       "content": [
         {
           "text": "    role",
@@ -20892,7 +21973,7 @@
       ]
     },
     {
-      "number": 131,
+      "number": 143,
       "content": [
         {
           "text": "    orientation",
@@ -20905,7 +21986,7 @@
       ]
     },
     {
-      "number": 132,
+      "number": 144,
       "content": [
         {
           "text": "    wrap",
@@ -20918,7 +21999,7 @@
       ]
     },
     {
-      "number": 133,
+      "number": 145,
       "content": [
         {
           "text": "    moveFocus",
@@ -20943,7 +22024,7 @@
       ]
     },
     {
-      "number": 134,
+      "number": 146,
       "content": [
         {
           "text": "    upKeys",
@@ -21000,7 +22081,7 @@
       ]
     },
     {
-      "number": 135,
+      "number": 147,
       "content": [
         {
           "text": "    downKeys",
@@ -21057,7 +22138,7 @@
       ]
     },
     {
-      "number": 136,
+      "number": 148,
       "content": [
         {
           "text": "    value",
@@ -21068,7 +22149,7 @@
           "color": "var(--code-keyword)"
         },
         {
-          "text": " highlightedValue",
+          "text": " tabTargetValue",
           "color": "var(--code-variable)"
         },
         {
@@ -21078,7 +22159,7 @@
       ]
     },
     {
-      "number": 137,
+      "number": 149,
       "content": [
         {
           "text": "    enabled",
@@ -21107,7 +22188,7 @@
       ]
     },
     {
-      "number": 138,
+      "number": 150,
       "content": [
         {
           "text": "    ",
@@ -21156,7 +22237,7 @@
       ]
     },
     {
-      "number": 139,
+      "number": 151,
       "content": [
         {
           "text": "      ",
@@ -21177,7 +22258,7 @@
       ]
     },
     {
-      "number": 140,
+      "number": 152,
       "content": [
         {
           "text": "      ",
@@ -21206,7 +22287,7 @@
       ]
     },
     {
-      "number": 141,
+      "number": 153,
       "content": [
         {
           "text": "      ",
@@ -21227,7 +22308,7 @@
       ]
     },
     {
-      "number": 142,
+      "number": 154,
       "content": [
         {
           "text": "    ",
@@ -21240,7 +22321,7 @@
       ]
     },
     {
-      "number": 143,
+      "number": 155,
       "content": [
         {
           "text": "  ",
@@ -21261,11 +22342,11 @@
       ]
     },
     {
-      "number": 144,
+      "number": 156,
       "content": []
     },
     {
-      "number": 145,
+      "number": 157,
       "content": [
         {
           "text": "  ",
@@ -21338,7 +22419,7 @@
       ]
     },
     {
-      "number": 146,
+      "number": 158,
       "content": [
         {
           "text": "    ",
@@ -21363,7 +22444,7 @@
       ]
     },
     {
-      "number": 147,
+      "number": 159,
       "content": [
         {
           "text": "    ",
@@ -21408,7 +22489,7 @@
       ]
     },
     {
-      "number": 148,
+      "number": 160,
       "content": [
         {
           "text": "  ",
@@ -21421,11 +22502,11 @@
       ]
     },
     {
-      "number": 149,
+      "number": 161,
       "content": []
     },
     {
-      "number": 150,
+      "number": 162,
       "content": [
         {
           "text": "  ",
@@ -21498,7 +22579,7 @@
       ]
     },
     {
-      "number": 151,
+      "number": 163,
       "content": [
         {
           "text": "    ",
@@ -21527,7 +22608,7 @@
       ]
     },
     {
-      "number": 152,
+      "number": 164,
       "content": [
         {
           "text": "    ",
@@ -21548,7 +22629,7 @@
       ]
     },
     {
-      "number": 153,
+      "number": 165,
       "content": [
         {
           "text": "  ",
@@ -21561,11 +22642,11 @@
       ]
     },
     {
-      "number": 154,
+      "number": 166,
       "content": []
     },
     {
-      "number": 155,
+      "number": 167,
       "content": [
         {
           "text": "  ",
@@ -21626,7 +22707,7 @@
       ]
     },
     {
-      "number": 156,
+      "number": 168,
       "content": [
         {
           "text": "    ",
@@ -21655,7 +22736,7 @@
       ]
     },
     {
-      "number": 157,
+      "number": 169,
       "content": [
         {
           "text": "  ",
@@ -21676,11 +22757,11 @@
       ]
     },
     {
-      "number": 158,
+      "number": 170,
       "content": []
     },
     {
-      "number": 159,
+      "number": 171,
       "content": [
         {
           "text": "  ",
@@ -21753,7 +22834,7 @@
       ]
     },
     {
-      "number": 160,
+      "number": 172,
       "content": [
         {
           "text": "    value",
@@ -21766,7 +22847,7 @@
       ]
     },
     {
-      "number": 161,
+      "number": 173,
       "content": [
         {
           "text": "    onChange",
@@ -21787,7 +22868,7 @@
       ]
     },
     {
-      "number": 162,
+      "number": 174,
       "content": [
         {
           "text": "    onHighlightChange",
@@ -21808,7 +22889,7 @@
       ]
     },
     {
-      "number": 163,
+      "number": 175,
       "content": [
         {
           "text": "    disabled",
@@ -21821,7 +22902,7 @@
       ]
     },
     {
-      "number": 164,
+      "number": 176,
       "content": [
         {
           "text": "    size",
@@ -21834,7 +22915,7 @@
       ]
     },
     {
-      "number": 165,
+      "number": 177,
       "content": [
         {
           "text": "    variant",
@@ -21847,10 +22928,18 @@
       ]
     },
     {
-      "number": 166,
+      "number": 178,
       "content": [
         {
           "text": "    highlightedValue",
+          "color": "var(--code-variable)"
+        },
+        {
+          "text": ":",
+          "color": "var(--code-keyword)"
+        },
+        {
+          "text": " validHighlightedValue",
           "color": "var(--code-variable)"
         },
         {
@@ -21860,7 +22949,7 @@
       ]
     },
     {
-      "number": 167,
+      "number": 179,
       "content": [
         {
           "text": "    name",
@@ -21873,7 +22962,7 @@
       ]
     },
     {
-      "number": 168,
+      "number": 180,
       "content": [
         {
           "text": "    required",
@@ -21886,7 +22975,7 @@
       ]
     },
     {
-      "number": 169,
+      "number": 181,
       "content": [
         {
           "text": "    requiredInvalid",
@@ -21899,7 +22988,7 @@
       ]
     },
     {
-      "number": 170,
+      "number": 182,
       "content": [
         {
           "text": "    onRequiredInvalid",
@@ -21920,7 +23009,7 @@
       ]
     },
     {
-      "number": 171,
+      "number": 183,
       "content": [
         {
           "text": "    containerRef",
@@ -21933,10 +23022,10 @@
       ]
     },
     {
-      "number": 172,
+      "number": 184,
       "content": [
         {
-          "text": "    firstEnabledValue",
+          "text": "    tabTargetValue",
           "color": "var(--code-variable)"
         },
         {
@@ -21946,7 +23035,7 @@
       ]
     },
     {
-      "number": 173,
+      "number": 185,
       "content": [
         {
           "text": "  ",
@@ -22013,7 +23102,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": " highlightedValue",
+          "text": " validHighlightedValue",
           "color": "var(--code-variable)"
         },
         {
@@ -22053,7 +23142,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": " firstEnabledValue])",
+          "text": " tabTargetValue])",
           "color": "var(--code-variable)"
         },
         {
@@ -22063,11 +23152,11 @@
       ]
     },
     {
-      "number": 174,
+      "number": 186,
       "content": []
     },
     {
-      "number": 175,
+      "number": 187,
       "content": [
         {
           "text": "  ",
@@ -22084,7 +23173,7 @@
       ]
     },
     {
-      "number": 176,
+      "number": 188,
       "content": [
         {
           "text": "    ",
@@ -22121,7 +23210,7 @@
       ]
     },
     {
-      "number": 177,
+      "number": 189,
       "content": [
         {
           "text": "      ",
@@ -22162,7 +23251,7 @@
       ]
     },
     {
-      "number": 178,
+      "number": 190,
       "content": [
         {
           "text": "        ",
@@ -22179,7 +23268,7 @@
       ]
     },
     {
-      "number": 179,
+      "number": 191,
       "content": [
         {
           "text": "          ",
@@ -22208,7 +23297,7 @@
       ]
     },
     {
-      "number": 180,
+      "number": 192,
       "content": [
         {
           "text": "          ",
@@ -22221,7 +23310,7 @@
       ]
     },
     {
-      "number": 181,
+      "number": 193,
       "content": [
         {
           "text": "          ",
@@ -22258,7 +23347,7 @@
       ]
     },
     {
-      "number": 182,
+      "number": 194,
       "content": [
         {
           "text": "          ",
@@ -22283,7 +23372,7 @@
       ]
     },
     {
-      "number": 183,
+      "number": 195,
       "content": [
         {
           "text": "          ",
@@ -22308,7 +23397,7 @@
       ]
     },
     {
-      "number": 184,
+      "number": 196,
       "content": [
         {
           "text": "          ",
@@ -22333,7 +23422,7 @@
       ]
     },
     {
-      "number": 185,
+      "number": 197,
       "content": [
         {
           "text": "          ",
@@ -22366,7 +23455,7 @@
       ]
     },
     {
-      "number": 186,
+      "number": 198,
       "content": [
         {
           "text": "          ",
@@ -22379,7 +23468,7 @@
       ]
     },
     {
-      "number": 187,
+      "number": 199,
       "content": [
         {
           "text": "          ",
@@ -22408,7 +23497,7 @@
       ]
     },
     {
-      "number": 188,
+      "number": 200,
       "content": [
         {
           "text": "          ",
@@ -22449,7 +23538,7 @@
       ]
     },
     {
-      "number": 189,
+      "number": 201,
       "content": [
         {
           "text": "            ",
@@ -22478,7 +23567,7 @@
       ]
     },
     {
-      "number": 190,
+      "number": 202,
       "content": [
         {
           "text": "            ",
@@ -22499,7 +23588,7 @@
       ]
     },
     {
-      "number": 191,
+      "number": 203,
       "content": [
         {
           "text": "            ",
@@ -22576,7 +23665,7 @@
       ]
     },
     {
-      "number": 192,
+      "number": 204,
       "content": [
         {
           "text": "          ",
@@ -22589,7 +23678,7 @@
       ]
     },
     {
-      "number": 193,
+      "number": 205,
       "content": [
         {
           "text": "        ",
@@ -22602,7 +23691,7 @@
       ]
     },
     {
-      "number": 194,
+      "number": 206,
       "content": [
         {
           "text": "      )",
@@ -22615,7 +23704,7 @@
       ]
     },
     {
-      "number": 195,
+      "number": 207,
       "content": [
         {
           "text": "      ",
@@ -22632,7 +23721,7 @@
       ]
     },
     {
-      "number": 196,
+      "number": 208,
       "content": [
         {
           "text": "        ",
@@ -22669,7 +23758,7 @@
       ]
     },
     {
-      "number": 197,
+      "number": 209,
       "content": [
         {
           "text": "        ",
@@ -22698,7 +23787,7 @@
       ]
     },
     {
-      "number": 198,
+      "number": 210,
       "content": [
         {
           "text": "        ",
@@ -22731,7 +23820,7 @@
       ]
     },
     {
-      "number": 199,
+      "number": 211,
       "content": [
         {
           "text": "        ",
@@ -22764,7 +23853,7 @@
       ]
     },
     {
-      "number": 200,
+      "number": 212,
       "content": [
         {
           "text": "        ",
@@ -22789,7 +23878,7 @@
       ]
     },
     {
-      "number": 201,
+      "number": 213,
       "content": [
         {
           "text": "        ",
@@ -22826,7 +23915,7 @@
       ]
     },
     {
-      "number": 202,
+      "number": 214,
       "content": [
         {
           "text": "        ",
@@ -22903,7 +23992,7 @@
       ]
     },
     {
-      "number": 203,
+      "number": 215,
       "content": [
         {
           "text": "        ",
@@ -22940,7 +24029,7 @@
       ]
     },
     {
-      "number": 204,
+      "number": 216,
       "content": [
         {
           "text": "        ",
@@ -22965,7 +24054,7 @@
       ]
     },
     {
-      "number": 205,
+      "number": 217,
       "content": [
         {
           "text": "          ",
@@ -22990,7 +24079,7 @@
       ]
     },
     {
-      "number": 206,
+      "number": 218,
       "content": [
         {
           "text": "          orientation ",
@@ -23071,7 +24160,7 @@
       ]
     },
     {
-      "number": 207,
+      "number": 219,
       "content": [
         {
           "text": "          className",
@@ -23080,7 +24169,7 @@
       ]
     },
     {
-      "number": 208,
+      "number": 220,
       "content": [
         {
           "text": "        )",
@@ -23093,7 +24182,7 @@
       ]
     },
     {
-      "number": 209,
+      "number": 221,
       "content": [
         {
           "text": "        ",
@@ -23118,7 +24207,7 @@
       ]
     },
     {
-      "number": 210,
+      "number": 222,
       "content": [
         {
           "text": "      ",
@@ -23131,7 +24220,7 @@
       ]
     },
     {
-      "number": 211,
+      "number": 223,
       "content": [
         {
           "text": "        ",
@@ -23152,7 +24241,7 @@
       ]
     },
     {
-      "number": 212,
+      "number": 224,
       "content": [
         {
           "text": "      ",
@@ -23173,7 +24262,7 @@
       ]
     },
     {
-      "number": 213,
+      "number": 225,
       "content": [
         {
           "text": "    ",
@@ -23194,7 +24283,7 @@
       ]
     },
     {
-      "number": 214,
+      "number": 226,
       "content": [
         {
           "text": "  )",
@@ -23207,7 +24296,7 @@
       ]
     },
     {
-      "number": 215,
+      "number": 227,
       "content": [
         {
           "text": "}",
@@ -23216,15 +24305,15 @@
       ]
     },
     {
-      "number": 216,
+      "number": 228,
       "content": []
     },
     {
-      "number": 217,
+      "number": 229,
       "content": []
     },
     {
-      "number": 218,
+      "number": 230,
       "content": [
         {
           "text": "\"",
@@ -23245,11 +24334,11 @@
       ]
     },
     {
-      "number": 219,
+      "number": 231,
       "content": []
     },
     {
-      "number": 220,
+      "number": 232,
       "content": [
         {
           "text": "import",
@@ -23406,7 +24495,7 @@
       ]
     },
     {
-      "number": 221,
+      "number": 233,
       "content": [
         {
           "text": "import",
@@ -23459,7 +24548,7 @@
       ]
     },
     {
-      "number": 222,
+      "number": 234,
       "content": [
         {
           "text": "import",
@@ -23512,7 +24601,7 @@
       ]
     },
     {
-      "number": 223,
+      "number": 235,
       "content": [
         {
           "text": "import",
@@ -23565,7 +24654,7 @@
       ]
     },
     {
-      "number": 224,
+      "number": 236,
       "content": [
         {
           "text": "import",
@@ -23582,7 +24671,7 @@
       ]
     },
     {
-      "number": 225,
+      "number": 237,
       "content": [
         {
           "text": "  selectableVariants",
@@ -23595,7 +24684,7 @@
       ]
     },
     {
-      "number": 226,
+      "number": 238,
       "content": [
         {
           "text": "  selectableContainerClass",
@@ -23608,7 +24697,7 @@
       ]
     },
     {
-      "number": 227,
+      "number": 239,
       "content": [
         {
           "text": "  selectableIndicatorVariants",
@@ -23621,7 +24710,7 @@
       ]
     },
     {
-      "number": 228,
+      "number": 240,
       "content": [
         {
           "text": "  selectableLabelVariants",
@@ -23634,7 +24723,7 @@
       ]
     },
     {
-      "number": 229,
+      "number": 241,
       "content": [
         {
           "text": "  selectableDescriptionVariants",
@@ -23647,7 +24736,7 @@
       ]
     },
     {
-      "number": 230,
+      "number": 242,
       "content": [
         {
           "text": "  selectableIndicators",
@@ -23660,7 +24749,7 @@
       ]
     },
     {
-      "number": 231,
+      "number": 243,
       "content": [
         {
           "text": "  ",
@@ -23681,7 +24770,7 @@
       ]
     },
     {
-      "number": 232,
+      "number": 244,
       "content": [
         {
           "text": "  ",
@@ -23702,7 +24791,7 @@
       ]
     },
     {
-      "number": 233,
+      "number": 245,
       "content": [
         {
           "text": "}",
@@ -23739,7 +24828,7 @@
       ]
     },
     {
-      "number": 234,
+      "number": 246,
       "content": [
         {
           "text": "import",
@@ -23792,11 +24881,11 @@
       ]
     },
     {
-      "number": 235,
+      "number": 247,
       "content": []
     },
     {
-      "number": 236,
+      "number": 248,
       "content": [
         {
           "text": "export",
@@ -23841,11 +24930,11 @@
       ]
     },
     {
-      "number": 237,
+      "number": 249,
       "content": []
     },
     {
-      "number": 238,
+      "number": 250,
       "content": [
         {
           "text": "const",
@@ -23890,11 +24979,11 @@
       ]
     },
     {
-      "number": 239,
+      "number": 251,
       "content": []
     },
     {
-      "number": 240,
+      "number": 252,
       "content": [
         {
           "text": "function",
@@ -23915,7 +25004,7 @@
       ]
     },
     {
-      "number": 241,
+      "number": 253,
       "content": [
         {
           "text": "  invalid",
@@ -23956,7 +25045,7 @@
       ]
     },
     {
-      "number": 242,
+      "number": 254,
       "content": [
         {
           "text": "  ariaInvalid",
@@ -24001,7 +25090,7 @@
       ]
     },
     {
-      "number": 243,
+      "number": 255,
       "content": [
         {
           "text": ")",
@@ -24018,7 +25107,7 @@
       ]
     },
     {
-      "number": 244,
+      "number": 256,
       "content": [
         {
           "text": "  ",
@@ -24051,7 +25140,7 @@
       ]
     },
     {
-      "number": 245,
+      "number": 257,
       "content": [
         {
           "text": "  ",
@@ -24184,7 +25273,7 @@
       ]
     },
     {
-      "number": 246,
+      "number": 258,
       "content": [
         {
           "text": "    ",
@@ -24205,7 +25294,7 @@
       ]
     },
     {
-      "number": 247,
+      "number": 259,
       "content": [
         {
           "text": "  ",
@@ -24218,7 +25307,7 @@
       ]
     },
     {
-      "number": 248,
+      "number": 260,
       "content": [
         {
           "text": "  ",
@@ -24295,7 +25384,7 @@
       ]
     },
     {
-      "number": 249,
+      "number": 261,
       "content": [
         {
           "text": "  ",
@@ -24320,7 +25409,7 @@
       ]
     },
     {
-      "number": 250,
+      "number": 262,
       "content": [
         {
           "text": "}",
@@ -24329,11 +25418,11 @@
       ]
     },
     {
-      "number": 251,
+      "number": 263,
       "content": []
     },
     {
-      "number": 252,
+      "number": 264,
       "content": [
         {
           "text": "interface",
@@ -24358,7 +25447,7 @@
       ]
     },
     {
-      "number": 253,
+      "number": 265,
       "content": [
         {
           "text": "  name",
@@ -24383,7 +25472,7 @@
       ]
     },
     {
-      "number": 254,
+      "number": 266,
       "content": [
         {
           "text": "  form",
@@ -24424,7 +25513,7 @@
       ]
     },
     {
-      "number": 255,
+      "number": 267,
       "content": [
         {
           "text": "  source",
@@ -24449,7 +25538,7 @@
       ]
     },
     {
-      "number": 256,
+      "number": 268,
       "content": [
         {
           "text": "}",
@@ -24458,11 +25547,11 @@
       ]
     },
     {
-      "number": 257,
+      "number": 269,
       "content": []
     },
     {
-      "number": 258,
+      "number": 270,
       "content": [
         {
           "text": "function",
@@ -24531,7 +25620,7 @@
       ]
     },
     {
-      "number": 259,
+      "number": 271,
       "content": [
         {
           "text": "  ",
@@ -24608,7 +25697,7 @@
       ]
     },
     {
-      "number": 260,
+      "number": 272,
       "content": [
         {
           "text": "    detail",
@@ -24629,7 +25718,7 @@
       ]
     },
     {
-      "number": 261,
+      "number": 273,
       "content": [
         {
           "text": "      name",
@@ -24642,7 +25731,7 @@
       ]
     },
     {
-      "number": 262,
+      "number": 274,
       "content": [
         {
           "text": "      form",
@@ -24695,7 +25784,7 @@
       ]
     },
     {
-      "number": 263,
+      "number": 275,
       "content": [
         {
           "text": "      source",
@@ -24708,7 +25797,7 @@
       ]
     },
     {
-      "number": 264,
+      "number": 276,
       "content": [
         {
           "text": "    ",
@@ -24721,7 +25810,7 @@
       ]
     },
     {
-      "number": 265,
+      "number": 277,
       "content": [
         {
           "text": "  ",
@@ -24742,7 +25831,7 @@
       ]
     },
     {
-      "number": 266,
+      "number": 278,
       "content": [
         {
           "text": "}",
@@ -24751,11 +25840,11 @@
       ]
     },
     {
-      "number": 267,
+      "number": 279,
       "content": []
     },
     {
-      "number": 268,
+      "number": 280,
       "content": [
         {
           "text": "export",
@@ -24788,7 +25877,7 @@
       ]
     },
     {
-      "number": 269,
+      "number": 281,
       "content": [
         {
           "text": "  checked",
@@ -24813,7 +25902,7 @@
       ]
     },
     {
-      "number": 270,
+      "number": 282,
       "content": [
         {
           "text": "  defaultChecked",
@@ -24838,7 +25927,7 @@
       ]
     },
     {
-      "number": 271,
+      "number": 283,
       "content": [
         {
           "text": "  isTabTarget",
@@ -24863,7 +25952,7 @@
       ]
     },
     {
-      "number": 272,
+      "number": 284,
       "content": [
         {
           "text": "  ",
@@ -24928,7 +26017,7 @@
       ]
     },
     {
-      "number": 273,
+      "number": 285,
       "content": [
         {
           "text": "  ",
@@ -24973,7 +26062,7 @@
       ]
     },
     {
-      "number": 274,
+      "number": 286,
       "content": [
         {
           "text": "  label",
@@ -24998,7 +26087,7 @@
       ]
     },
     {
-      "number": 275,
+      "number": 287,
       "content": [
         {
           "text": "  description",
@@ -25023,7 +26112,7 @@
       ]
     },
     {
-      "number": 276,
+      "number": 288,
       "content": [
         {
           "text": "  disabled",
@@ -25048,7 +26137,7 @@
       ]
     },
     {
-      "number": 277,
+      "number": 289,
       "content": [
         {
           "text": "  highlighted",
@@ -25073,7 +26162,7 @@
       ]
     },
     {
-      "number": 278,
+      "number": 290,
       "content": [
         {
           "text": "  size",
@@ -25098,7 +26187,7 @@
       ]
     },
     {
-      "number": 279,
+      "number": 291,
       "content": [
         {
           "text": "  name",
@@ -25123,7 +26212,7 @@
       ]
     },
     {
-      "number": 280,
+      "number": 292,
       "content": [
         {
           "text": "  value",
@@ -25148,7 +26237,7 @@
       ]
     },
     {
-      "number": 281,
+      "number": 293,
       "content": [
         {
           "text": "  required",
@@ -25173,7 +26262,7 @@
       ]
     },
     {
-      "number": 282,
+      "number": 294,
       "content": [
         {
           "text": "  invalid",
@@ -25198,7 +26287,7 @@
       ]
     },
     {
-      "number": 283,
+      "number": 295,
       "content": [
         {
           "text": "  variant",
@@ -25223,7 +26312,7 @@
       ]
     },
     {
-      "number": 284,
+      "number": 296,
       "content": [
         {
           "text": "  ",
@@ -25260,7 +26349,7 @@
       ]
     },
     {
-      "number": 285,
+      "number": 297,
       "content": [
         {
           "text": "  ",
@@ -25317,7 +26406,7 @@
       ]
     },
     {
-      "number": 286,
+      "number": 298,
       "content": [
         {
           "text": "  ",
@@ -25362,7 +26451,7 @@
       ]
     },
     {
-      "number": 287,
+      "number": 299,
       "content": [
         {
           "text": "  className",
@@ -25387,7 +26476,7 @@
       ]
     },
     {
-      "number": 288,
+      "number": 300,
       "content": [
         {
           "text": "  ref",
@@ -25420,7 +26509,7 @@
       ]
     },
     {
-      "number": 289,
+      "number": 301,
       "content": [
         {
           "text": "  ",
@@ -25457,7 +26546,7 @@
       ]
     },
     {
-      "number": 290,
+      "number": 302,
       "content": [
         {
           "text": "}",
@@ -25466,11 +26555,11 @@
       ]
     },
     {
-      "number": 291,
+      "number": 303,
       "content": []
     },
     {
-      "number": 292,
+      "number": 304,
       "content": [
         {
           "text": "export",
@@ -25499,7 +26588,7 @@
       ]
     },
     {
-      "number": 293,
+      "number": 305,
       "content": [
         {
           "text": "  checked",
@@ -25512,7 +26601,7 @@
       ]
     },
     {
-      "number": 294,
+      "number": 306,
       "content": [
         {
           "text": "  defaultChecked ",
@@ -25537,7 +26626,7 @@
       ]
     },
     {
-      "number": 295,
+      "number": 307,
       "content": [
         {
           "text": "  isTabTarget ",
@@ -25562,7 +26651,7 @@
       ]
     },
     {
-      "number": 296,
+      "number": 308,
       "content": [
         {
           "text": "  onChange",
@@ -25575,7 +26664,7 @@
       ]
     },
     {
-      "number": 297,
+      "number": 309,
       "content": [
         {
           "text": "  onMouseEnter",
@@ -25588,7 +26677,7 @@
       ]
     },
     {
-      "number": 298,
+      "number": 310,
       "content": [
         {
           "text": "  label",
@@ -25601,7 +26690,7 @@
       ]
     },
     {
-      "number": 299,
+      "number": 311,
       "content": [
         {
           "text": "  description",
@@ -25614,7 +26703,7 @@
       ]
     },
     {
-      "number": 300,
+      "number": 312,
       "content": [
         {
           "text": "  disabled ",
@@ -25639,7 +26728,7 @@
       ]
     },
     {
-      "number": 301,
+      "number": 313,
       "content": [
         {
           "text": "  highlighted ",
@@ -25664,7 +26753,7 @@
       ]
     },
     {
-      "number": 302,
+      "number": 314,
       "content": [
         {
           "text": "  size ",
@@ -25697,7 +26786,7 @@
       ]
     },
     {
-      "number": 303,
+      "number": 315,
       "content": [
         {
           "text": "  variant ",
@@ -25730,7 +26819,7 @@
       ]
     },
     {
-      "number": 304,
+      "number": 316,
       "content": [
         {
           "text": "  name",
@@ -25743,7 +26832,7 @@
       ]
     },
     {
-      "number": 305,
+      "number": 317,
       "content": [
         {
           "text": "  value ",
@@ -25776,7 +26865,7 @@
       ]
     },
     {
-      "number": 306,
+      "number": 318,
       "content": [
         {
           "text": "  required",
@@ -25789,7 +26878,7 @@
       ]
     },
     {
-      "number": 307,
+      "number": 319,
       "content": [
         {
           "text": "  invalid",
@@ -25802,7 +26891,7 @@
       ]
     },
     {
-      "number": 308,
+      "number": 320,
       "content": [
         {
           "text": "  ",
@@ -25835,7 +26924,7 @@
       ]
     },
     {
-      "number": 309,
+      "number": 321,
       "content": [
         {
           "text": "  ",
@@ -25868,7 +26957,7 @@
       ]
     },
     {
-      "number": 310,
+      "number": 322,
       "content": [
         {
           "text": "  onNativeInvalid",
@@ -25881,7 +26970,7 @@
       ]
     },
     {
-      "number": 311,
+      "number": 323,
       "content": [
         {
           "text": "  className",
@@ -25894,7 +26983,7 @@
       ]
     },
     {
-      "number": 312,
+      "number": 324,
       "content": [
         {
           "text": "  ref",
@@ -25907,7 +26996,7 @@
       ]
     },
     {
-      "number": 313,
+      "number": 325,
       "content": [
         {
           "text": "  ",
@@ -25940,7 +27029,7 @@
       ]
     },
     {
-      "number": 314,
+      "number": 326,
       "content": [
         {
           "text": "}:",
@@ -25969,7 +27058,7 @@
       ]
     },
     {
-      "number": 315,
+      "number": 327,
       "content": [
         {
           "text": "  ",
@@ -26014,7 +27103,7 @@
       ]
     },
     {
-      "number": 316,
+      "number": 328,
       "content": [
         {
           "text": "  ",
@@ -26075,7 +27164,7 @@
       ]
     },
     {
-      "number": 317,
+      "number": 329,
       "content": [
         {
           "text": "  ",
@@ -26136,11 +27225,11 @@
       ]
     },
     {
-      "number": 318,
+      "number": 330,
       "content": []
     },
     {
-      "number": 319,
+      "number": 331,
       "content": [
         {
           "text": "  ",
@@ -26205,7 +27294,7 @@
       ]
     },
     {
-      "number": 320,
+      "number": 332,
       "content": [
         {
           "text": "  ",
@@ -26294,7 +27383,7 @@
       ]
     },
     {
-      "number": 321,
+      "number": 333,
       "content": [
         {
           "text": "    value",
@@ -26315,7 +27404,7 @@
       ]
     },
     {
-      "number": 322,
+      "number": 334,
       "content": [
         {
           "text": "    defaultValue",
@@ -26336,7 +27425,7 @@
       ]
     },
     {
-      "number": 323,
+      "number": 335,
       "content": [
         {
           "text": "    onChange",
@@ -26349,7 +27438,7 @@
       ]
     },
     {
-      "number": 324,
+      "number": 336,
       "content": [
         {
           "text": "  ",
@@ -26370,7 +27459,7 @@
       ]
     },
     {
-      "number": 325,
+      "number": 337,
       "content": [
         {
           "text": "  ",
@@ -26443,7 +27532,7 @@
       ]
     },
     {
-      "number": 326,
+      "number": 338,
       "content": [
         {
           "text": "  ",
@@ -26528,11 +27617,11 @@
       ]
     },
     {
-      "number": 327,
+      "number": 339,
       "content": []
     },
     {
-      "number": 328,
+      "number": 340,
       "content": [
         {
           "text": "  ",
@@ -26593,11 +27682,11 @@
       ]
     },
     {
-      "number": 329,
+      "number": 341,
       "content": []
     },
     {
-      "number": 330,
+      "number": 342,
       "content": [
         {
           "text": "  ",
@@ -26658,7 +27747,7 @@
       ]
     },
     {
-      "number": 331,
+      "number": 343,
       "content": [
         {
           "text": "    ",
@@ -26723,7 +27812,7 @@
       ]
     },
     {
-      "number": 332,
+      "number": 344,
       "content": [
         {
           "text": "    ",
@@ -26764,7 +27853,7 @@
       ]
     },
     {
-      "number": 333,
+      "number": 345,
       "content": [
         {
           "text": "  ",
@@ -26793,11 +27882,11 @@
       ]
     },
     {
-      "number": 334,
+      "number": 346,
       "content": []
     },
     {
-      "number": 335,
+      "number": 347,
       "content": [
         {
           "text": "  ",
@@ -26834,7 +27923,7 @@
       ]
     },
     {
-      "number": 336,
+      "number": 348,
       "content": [
         {
           "text": "    ",
@@ -26875,11 +27964,11 @@
       ]
     },
     {
-      "number": 337,
+      "number": 349,
       "content": []
     },
     {
-      "number": 338,
+      "number": 350,
       "content": [
         {
           "text": "    ",
@@ -26936,7 +28025,7 @@
       ]
     },
     {
-      "number": 339,
+      "number": 351,
       "content": [
         {
           "text": "    ",
@@ -26969,11 +28058,11 @@
       ]
     },
     {
-      "number": 340,
+      "number": 352,
       "content": []
     },
     {
-      "number": 341,
+      "number": 353,
       "content": [
         {
           "text": "    ",
@@ -27046,7 +28135,7 @@
       ]
     },
     {
-      "number": 342,
+      "number": 354,
       "content": [
         {
           "text": "      ",
@@ -27119,7 +28208,7 @@
       ]
     },
     {
-      "number": 343,
+      "number": 355,
       "content": [
         {
           "text": "      ",
@@ -27136,7 +28225,7 @@
       ]
     },
     {
-      "number": 344,
+      "number": 356,
       "content": [
         {
           "text": "        ",
@@ -27169,7 +28258,7 @@
       ]
     },
     {
-      "number": 345,
+      "number": 357,
       "content": [
         {
           "text": "        ",
@@ -27214,7 +28303,7 @@
       ]
     },
     {
-      "number": 346,
+      "number": 358,
       "content": [
         {
           "text": "        ",
@@ -27299,7 +28388,7 @@
       ]
     },
     {
-      "number": 347,
+      "number": 359,
       "content": [
         {
           "text": "      ) ",
@@ -27312,7 +28401,7 @@
       ]
     },
     {
-      "number": 348,
+      "number": 360,
       "content": [
         {
           "text": "        ",
@@ -27329,7 +28418,7 @@
       ]
     },
     {
-      "number": 349,
+      "number": 361,
       "content": [
         {
           "text": "      ",
@@ -27342,11 +28431,11 @@
       ]
     },
     {
-      "number": 350,
+      "number": 362,
       "content": []
     },
     {
-      "number": 351,
+      "number": 363,
       "content": [
         {
           "text": "      ",
@@ -27375,7 +28464,7 @@
       ]
     },
     {
-      "number": 352,
+      "number": 364,
       "content": [
         {
           "text": "    ",
@@ -27388,11 +28477,11 @@
       ]
     },
     {
-      "number": 353,
+      "number": 365,
       "content": []
     },
     {
-      "number": 354,
+      "number": 366,
       "content": [
         {
           "text": "    ",
@@ -27433,7 +28522,7 @@
       ]
     },
     {
-      "number": 355,
+      "number": 367,
       "content": [
         {
           "text": "    ",
@@ -27498,7 +28587,7 @@
       ]
     },
     {
-      "number": 356,
+      "number": 368,
       "content": [
         {
           "text": "  ",
@@ -27535,11 +28624,11 @@
       ]
     },
     {
-      "number": 357,
+      "number": 369,
       "content": []
     },
     {
-      "number": 358,
+      "number": 370,
       "content": [
         {
           "text": "  ",
@@ -27576,7 +28665,7 @@
       ]
     },
     {
-      "number": 359,
+      "number": 371,
       "content": [
         {
           "text": "    ",
@@ -27605,7 +28694,7 @@
       ]
     },
     {
-      "number": 360,
+      "number": 372,
       "content": [
         {
           "text": "  ",
@@ -27634,11 +28723,11 @@
       ]
     },
     {
-      "number": 361,
+      "number": 373,
       "content": []
     },
     {
-      "number": 362,
+      "number": 374,
       "content": [
         {
           "text": "  ",
@@ -27691,7 +28780,7 @@
       ]
     },
     {
-      "number": 363,
+      "number": 375,
       "content": [
         {
           "text": "    ",
@@ -27716,7 +28805,7 @@
       ]
     },
     {
-      "number": 364,
+      "number": 376,
       "content": [
         {
           "text": "    ",
@@ -27745,7 +28834,7 @@
       ]
     },
     {
-      "number": 365,
+      "number": 377,
       "content": [
         {
           "text": "    ",
@@ -27774,7 +28863,7 @@
       ]
     },
     {
-      "number": 366,
+      "number": 378,
       "content": [
         {
           "text": "    ",
@@ -27795,7 +28884,7 @@
       ]
     },
     {
-      "number": 367,
+      "number": 379,
       "content": [
         {
           "text": "  ",
@@ -27808,11 +28897,11 @@
       ]
     },
     {
-      "number": 368,
+      "number": 380,
       "content": []
     },
     {
-      "number": 369,
+      "number": 381,
       "content": [
         {
           "text": "  ",
@@ -27885,7 +28974,7 @@
       ]
     },
     {
-      "number": 370,
+      "number": 382,
       "content": [
         {
           "text": "    ",
@@ -27910,7 +28999,7 @@
       ]
     },
     {
-      "number": 371,
+      "number": 383,
       "content": [
         {
           "text": "    ",
@@ -27967,7 +29056,7 @@
       ]
     },
     {
-      "number": 372,
+      "number": 384,
       "content": [
         {
           "text": "      ",
@@ -27996,7 +29085,7 @@
       ]
     },
     {
-      "number": 373,
+      "number": 385,
       "content": [
         {
           "text": "      ",
@@ -28017,7 +29106,7 @@
       ]
     },
     {
-      "number": 374,
+      "number": 386,
       "content": [
         {
           "text": "    ",
@@ -28030,7 +29119,7 @@
       ]
     },
     {
-      "number": 375,
+      "number": 387,
       "content": [
         {
           "text": "  ",
@@ -28043,11 +29132,11 @@
       ]
     },
     {
-      "number": 376,
+      "number": 388,
       "content": []
     },
     {
-      "number": 377,
+      "number": 389,
       "content": [
         {
           "text": "  ",
@@ -28064,7 +29153,7 @@
       ]
     },
     {
-      "number": 378,
+      "number": 390,
       "content": [
         {
           "text": "    ",
@@ -28077,7 +29166,7 @@
       ]
     },
     {
-      "number": 379,
+      "number": 391,
       "content": [
         {
           "text": "      ",
@@ -28110,7 +29199,7 @@
       ]
     },
     {
-      "number": 380,
+      "number": 392,
       "content": [
         {
           "text": "        ",
@@ -28127,7 +29216,7 @@
       ]
     },
     {
-      "number": 381,
+      "number": 393,
       "content": [
         {
           "text": "          ",
@@ -28156,7 +29245,7 @@
       ]
     },
     {
-      "number": 382,
+      "number": 394,
       "content": [
         {
           "text": "          ",
@@ -28181,7 +29270,7 @@
       ]
     },
     {
-      "number": 383,
+      "number": 395,
       "content": [
         {
           "text": "          ",
@@ -28206,7 +29295,7 @@
       ]
     },
     {
-      "number": 384,
+      "number": 396,
       "content": [
         {
           "text": "          ",
@@ -28231,7 +29320,7 @@
       ]
     },
     {
-      "number": 385,
+      "number": 397,
       "content": [
         {
           "text": "          ",
@@ -28256,7 +29345,7 @@
       ]
     },
     {
-      "number": 386,
+      "number": 398,
       "content": [
         {
           "text": "          ",
@@ -28281,7 +29370,7 @@
       ]
     },
     {
-      "number": 387,
+      "number": 399,
       "content": [
         {
           "text": "          ",
@@ -28310,7 +29399,7 @@
       ]
     },
     {
-      "number": 388,
+      "number": 400,
       "content": [
         {
           "text": "          ",
@@ -28335,7 +29424,7 @@
       ]
     },
     {
-      "number": 389,
+      "number": 401,
       "content": [
         {
           "text": "          ",
@@ -28348,7 +29437,7 @@
       ]
     },
     {
-      "number": 390,
+      "number": 402,
       "content": [
         {
           "text": "          ",
@@ -28373,7 +29462,7 @@
       ]
     },
     {
-      "number": 391,
+      "number": 403,
       "content": [
         {
           "text": "          ",
@@ -28454,7 +29543,7 @@
       ]
     },
     {
-      "number": 392,
+      "number": 404,
       "content": [
         {
           "text": "          ",
@@ -28495,7 +29584,7 @@
       ]
     },
     {
-      "number": 393,
+      "number": 405,
       "content": [
         {
           "text": "            ",
@@ -28524,7 +29613,7 @@
       ]
     },
     {
-      "number": 394,
+      "number": 406,
       "content": [
         {
           "text": "            ",
@@ -28549,7 +29638,7 @@
       ]
     },
     {
-      "number": 395,
+      "number": 407,
       "content": [
         {
           "text": "            ",
@@ -28594,7 +29683,7 @@
       ]
     },
     {
-      "number": 396,
+      "number": 408,
       "content": [
         {
           "text": "            ",
@@ -28671,7 +29760,7 @@
       ]
     },
     {
-      "number": 397,
+      "number": 409,
       "content": [
         {
           "text": "            ",
@@ -28752,7 +29841,7 @@
       ]
     },
     {
-      "number": 398,
+      "number": 410,
       "content": [
         {
           "text": "            (owner ",
@@ -28797,7 +29886,7 @@
       ]
     },
     {
-      "number": 399,
+      "number": 411,
       "content": [
         {
           "text": "          ",
@@ -28810,7 +29899,7 @@
       ]
     },
     {
-      "number": 400,
+      "number": 412,
       "content": [
         {
           "text": "        ",
@@ -28823,7 +29912,7 @@
       ]
     },
     {
-      "number": 401,
+      "number": 413,
       "content": [
         {
           "text": "      )",
@@ -28836,7 +29925,7 @@
       ]
     },
     {
-      "number": 402,
+      "number": 414,
       "content": [
         {
           "text": "      ",
@@ -28853,7 +29942,7 @@
       ]
     },
     {
-      "number": 403,
+      "number": 415,
       "content": [
         {
           "text": "        ",
@@ -28890,7 +29979,7 @@
       ]
     },
     {
-      "number": 404,
+      "number": 416,
       "content": [
         {
           "text": "        ",
@@ -28919,7 +30008,7 @@
       ]
     },
     {
-      "number": 405,
+      "number": 417,
       "content": [
         {
           "text": "        ",
@@ -28952,7 +30041,7 @@
       ]
     },
     {
-      "number": 406,
+      "number": 418,
       "content": [
         {
           "text": "        ",
@@ -28977,7 +30066,7 @@
       ]
     },
     {
-      "number": 407,
+      "number": 419,
       "content": [
         {
           "text": "        ",
@@ -29014,7 +30103,7 @@
       ]
     },
     {
-      "number": 408,
+      "number": 420,
       "content": [
         {
           "text": "        ",
@@ -29039,7 +30128,7 @@
       ]
     },
     {
-      "number": 409,
+      "number": 421,
       "content": [
         {
           "text": "        ",
@@ -29064,7 +30153,7 @@
       ]
     },
     {
-      "number": 410,
+      "number": 422,
       "content": [
         {
           "text": "        ",
@@ -29117,7 +30206,7 @@
       ]
     },
     {
-      "number": 411,
+      "number": 423,
       "content": [
         {
           "text": "        ",
@@ -29162,7 +30251,7 @@
       ]
     },
     {
-      "number": 412,
+      "number": 424,
       "content": [
         {
           "text": "        ",
@@ -29227,7 +30316,7 @@
       ]
     },
     {
-      "number": 413,
+      "number": 425,
       "content": [
         {
           "text": "        ",
@@ -29252,7 +30341,7 @@
       ]
     },
     {
-      "number": 414,
+      "number": 426,
       "content": [
         {
           "text": "        ",
@@ -29277,7 +30366,7 @@
       ]
     },
     {
-      "number": 415,
+      "number": 427,
       "content": [
         {
           "text": "        ",
@@ -29302,7 +30391,7 @@
       ]
     },
     {
-      "number": 416,
+      "number": 428,
       "content": [
         {
           "text": "        ",
@@ -29327,7 +30416,7 @@
       ]
     },
     {
-      "number": 417,
+      "number": 429,
       "content": [
         {
           "text": "          ",
@@ -29372,7 +30461,7 @@
       ]
     },
     {
-      "number": 418,
+      "number": 430,
       "content": [
         {
           "text": "          selectableContainerClass",
@@ -29385,7 +30474,7 @@
       ]
     },
     {
-      "number": 419,
+      "number": 431,
       "content": [
         {
           "text": "          description ",
@@ -29418,7 +30507,7 @@
       ]
     },
     {
-      "number": 420,
+      "number": 432,
       "content": [
         {
           "text": "          className",
@@ -29427,7 +30516,7 @@
       ]
     },
     {
-      "number": 421,
+      "number": 433,
       "content": [
         {
           "text": "        )",
@@ -29440,7 +30529,7 @@
       ]
     },
     {
-      "number": 422,
+      "number": 434,
       "content": [
         {
           "text": "      ",
@@ -29453,7 +30542,7 @@
       ]
     },
     {
-      "number": 423,
+      "number": 435,
       "content": [
         {
           "text": "        ",
@@ -29470,7 +30559,7 @@
       ]
     },
     {
-      "number": 424,
+      "number": 436,
       "content": [
         {
           "text": "          ",
@@ -29499,7 +30588,7 @@
       ]
     },
     {
-      "number": 425,
+      "number": 437,
       "content": [
         {
           "text": "          ",
@@ -29528,7 +30617,7 @@
       ]
     },
     {
-      "number": 426,
+      "number": 438,
       "content": [
         {
           "text": "            size",
@@ -29541,7 +30630,7 @@
       ]
     },
     {
-      "number": 427,
+      "number": 439,
       "content": [
         {
           "text": "            checked",
@@ -29562,7 +30651,7 @@
       ]
     },
     {
-      "number": 428,
+      "number": 440,
       "content": [
         {
           "text": "            highlighted",
@@ -29575,7 +30664,7 @@
       ]
     },
     {
-      "number": 429,
+      "number": 441,
       "content": [
         {
           "text": "          ",
@@ -29596,7 +30685,7 @@
       ]
     },
     {
-      "number": 430,
+      "number": 442,
       "content": [
         {
           "text": "        ",
@@ -29609,7 +30698,7 @@
       ]
     },
     {
-      "number": 431,
+      "number": 443,
       "content": [
         {
           "text": "          ",
@@ -29678,7 +30767,7 @@
       ]
     },
     {
-      "number": 432,
+      "number": 444,
       "content": [
         {
           "text": "        ",
@@ -29699,7 +30788,7 @@
       ]
     },
     {
-      "number": 433,
+      "number": 445,
       "content": [
         {
           "text": "        ",
@@ -29724,7 +30813,7 @@
       ]
     },
     {
-      "number": 434,
+      "number": 446,
       "content": [
         {
           "text": "          ",
@@ -29741,7 +30830,7 @@
       ]
     },
     {
-      "number": 435,
+      "number": 447,
       "content": [
         {
           "text": "            ",
@@ -29766,7 +30855,7 @@
       ]
     },
     {
-      "number": 436,
+      "number": 448,
       "content": [
         {
           "text": "              ",
@@ -29791,7 +30880,7 @@
       ]
     },
     {
-      "number": 437,
+      "number": 449,
       "content": [
         {
           "text": "              ",
@@ -29828,7 +30917,7 @@
       ]
     },
     {
-      "number": 438,
+      "number": 450,
       "content": [
         {
           "text": "            )",
@@ -29841,7 +30930,7 @@
       ]
     },
     {
-      "number": 439,
+      "number": 451,
       "content": [
         {
           "text": "          ",
@@ -29854,7 +30943,7 @@
       ]
     },
     {
-      "number": 440,
+      "number": 452,
       "content": [
         {
           "text": "            ",
@@ -29947,7 +31036,7 @@
       ]
     },
     {
-      "number": 441,
+      "number": 453,
       "content": [
         {
           "text": "            ",
@@ -29972,7 +31061,7 @@
       ]
     },
     {
-      "number": 442,
+      "number": 454,
       "content": [
         {
           "text": "              ",
@@ -30049,7 +31138,7 @@
       ]
     },
     {
-      "number": 443,
+      "number": 455,
       "content": [
         {
           "text": "                ",
@@ -30070,7 +31159,7 @@
       ]
     },
     {
-      "number": 444,
+      "number": 456,
       "content": [
         {
           "text": "              ",
@@ -30091,7 +31180,7 @@
       ]
     },
     {
-      "number": 445,
+      "number": 457,
       "content": [
         {
           "text": "            )",
@@ -30104,7 +31193,7 @@
       ]
     },
     {
-      "number": 446,
+      "number": 458,
       "content": [
         {
           "text": "          ",
@@ -30125,7 +31214,7 @@
       ]
     },
     {
-      "number": 447,
+      "number": 459,
       "content": [
         {
           "text": "        )",
@@ -30138,7 +31227,7 @@
       ]
     },
     {
-      "number": 448,
+      "number": 460,
       "content": [
         {
           "text": "      ",
@@ -30159,7 +31248,7 @@
       ]
     },
     {
-      "number": 449,
+      "number": 461,
       "content": [
         {
           "text": "    ",
@@ -30172,7 +31261,7 @@
       ]
     },
     {
-      "number": 450,
+      "number": 462,
       "content": [
         {
           "text": "  )",
@@ -30185,7 +31274,7 @@
       ]
     },
     {
-      "number": 451,
+      "number": 463,
       "content": [
         {
           "text": "}",
@@ -30194,15 +31283,15 @@
       ]
     },
     {
-      "number": 452,
+      "number": 464,
       "content": []
     },
     {
-      "number": 453,
+      "number": 465,
       "content": []
     },
     {
-      "number": 454,
+      "number": 466,
       "content": [
         {
           "text": "\"",
@@ -30223,11 +31312,11 @@
       ]
     },
     {
-      "number": 455,
+      "number": 467,
       "content": []
     },
     {
-      "number": 456,
+      "number": 468,
       "content": [
         {
           "text": "import",
@@ -30288,7 +31377,7 @@
       ]
     },
     {
-      "number": 457,
+      "number": 469,
       "content": [
         {
           "text": "import",
@@ -30341,7 +31430,7 @@
       ]
     },
     {
-      "number": 458,
+      "number": 470,
       "content": [
         {
           "text": "import",
@@ -30394,11 +31483,11 @@
       ]
     },
     {
-      "number": 459,
+      "number": 471,
       "content": []
     },
     {
-      "number": 460,
+      "number": 472,
       "content": [
         {
           "text": "export",
@@ -30431,7 +31520,7 @@
       ]
     },
     {
-      "number": 461,
+      "number": 473,
       "content": [
         {
           "text": "  value",
@@ -30456,7 +31545,7 @@
       ]
     },
     {
-      "number": 462,
+      "number": 474,
       "content": [
         {
           "text": "  label",
@@ -30481,7 +31570,7 @@
       ]
     },
     {
-      "number": 463,
+      "number": 475,
       "content": [
         {
           "text": "  description",
@@ -30506,7 +31595,7 @@
       ]
     },
     {
-      "number": 464,
+      "number": 476,
       "content": [
         {
           "text": "  disabled",
@@ -30531,7 +31620,7 @@
       ]
     },
     {
-      "number": 465,
+      "number": 477,
       "content": [
         {
           "text": "  className",
@@ -30556,7 +31645,7 @@
       ]
     },
     {
-      "number": 466,
+      "number": 478,
       "content": [
         {
           "text": "}",
@@ -30565,11 +31654,11 @@
       ]
     },
     {
-      "number": 467,
+      "number": 479,
       "content": []
     },
     {
-      "number": 468,
+      "number": 480,
       "content": [
         {
           "text": "export",
@@ -30598,7 +31687,7 @@
       ]
     },
     {
-      "number": 469,
+      "number": 481,
       "content": [
         {
           "text": "  value",
@@ -30611,7 +31700,7 @@
       ]
     },
     {
-      "number": 470,
+      "number": 482,
       "content": [
         {
           "text": "  label",
@@ -30624,7 +31713,7 @@
       ]
     },
     {
-      "number": 471,
+      "number": 483,
       "content": [
         {
           "text": "  description",
@@ -30637,7 +31726,7 @@
       ]
     },
     {
-      "number": 472,
+      "number": 484,
       "content": [
         {
           "text": "  disabled",
@@ -30658,7 +31747,7 @@
       ]
     },
     {
-      "number": 473,
+      "number": 485,
       "content": [
         {
           "text": "  className",
@@ -30671,7 +31760,7 @@
       ]
     },
     {
-      "number": 474,
+      "number": 486,
       "content": [
         {
           "text": "}:",
@@ -30700,7 +31789,7 @@
       ]
     },
     {
-      "number": 475,
+      "number": 487,
       "content": [
         {
           "text": "  ",
@@ -30745,7 +31834,7 @@
       ]
     },
     {
-      "number": 476,
+      "number": 488,
       "content": [
         {
           "text": "  ",
@@ -30802,7 +31891,7 @@
       ]
     },
     {
-      "number": 477,
+      "number": 489,
       "content": [
         {
           "text": "  ",
@@ -30867,7 +31956,7 @@
       ]
     },
     {
-      "number": 478,
+      "number": 490,
       "content": [
         {
           "text": "  ",
@@ -30924,68 +32013,7 @@
       ]
     },
     {
-      "number": 479,
-      "content": [
-        {
-          "text": "  ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "const",
-          "color": "var(--code-keyword)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "hasSelection",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "=",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "context",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ".",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "value ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "!==",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "undefined",
-          "color": "var(--code-number)"
-        },
-        {
-          "text": ";",
-          "color": "var(--code-operator)"
-        }
-      ]
-    },
-    {
-      "number": 480,
+      "number": 491,
       "content": [
         {
           "text": "  ",
@@ -31028,30 +32056,6 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": " (isSelected ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "||",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": " (",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "!",
-          "color": "var(--code-operator)"
-        },
-        {
-          "text": "hasSelection ",
-          "color": "var(--code-variable)"
-        },
-        {
-          "text": "&&",
-          "color": "var(--code-operator)"
-        },
-        {
           "text": " ",
           "color": "var(--code-variable)"
         },
@@ -31064,7 +32068,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": "firstEnabledValue ",
+          "text": "tabTargetValue ",
           "color": "var(--code-variable)"
         },
         {
@@ -31072,7 +32076,7 @@
           "color": "var(--code-operator)"
         },
         {
-          "text": " value))",
+          "text": " value",
           "color": "var(--code-variable)"
         },
         {
@@ -31082,11 +32086,11 @@
       ]
     },
     {
-      "number": 481,
+      "number": 492,
       "content": []
     },
     {
-      "number": 482,
+      "number": 493,
       "content": [
         {
           "text": "  ",
@@ -31103,7 +32107,7 @@
       ]
     },
     {
-      "number": 483,
+      "number": 494,
       "content": [
         {
           "text": "    ",
@@ -31120,7 +32124,7 @@
       ]
     },
     {
-      "number": 484,
+      "number": 495,
       "content": [
         {
           "text": "      ",
@@ -31145,7 +32149,7 @@
       ]
     },
     {
-      "number": 485,
+      "number": 496,
       "content": [
         {
           "text": "      ",
@@ -31170,7 +32174,7 @@
       ]
     },
     {
-      "number": 486,
+      "number": 497,
       "content": [
         {
           "text": "      ",
@@ -31195,7 +32199,7 @@
       ]
     },
     {
-      "number": 487,
+      "number": 498,
       "content": [
         {
           "text": "      ",
@@ -31220,7 +32224,7 @@
       ]
     },
     {
-      "number": 488,
+      "number": 499,
       "content": [
         {
           "text": "      ",
@@ -31269,7 +32273,7 @@
       ]
     },
     {
-      "number": 489,
+      "number": 500,
       "content": [
         {
           "text": "      ",
@@ -31294,7 +32298,7 @@
       ]
     },
     {
-      "number": 490,
+      "number": 501,
       "content": [
         {
           "text": "      ",
@@ -31319,7 +32323,7 @@
       ]
     },
     {
-      "number": 491,
+      "number": 502,
       "content": [
         {
           "text": "      ",
@@ -31344,7 +32348,7 @@
       ]
     },
     {
-      "number": 492,
+      "number": 503,
       "content": [
         {
           "text": "      ",
@@ -31369,7 +32373,7 @@
       ]
     },
     {
-      "number": 493,
+      "number": 504,
       "content": [
         {
           "text": "      ",
@@ -31402,7 +32406,7 @@
       ]
     },
     {
-      "number": 494,
+      "number": 505,
       "content": [
         {
           "text": "      ",
@@ -31435,7 +32439,7 @@
       ]
     },
     {
-      "number": 495,
+      "number": 506,
       "content": [
         {
           "text": "      ",
@@ -31468,7 +32472,7 @@
       ]
     },
     {
-      "number": 496,
+      "number": 507,
       "content": [
         {
           "text": "      ",
@@ -31533,7 +32537,7 @@
       ]
     },
     {
-      "number": 497,
+      "number": 508,
       "content": [
         {
           "text": "      ",
@@ -31566,7 +32570,7 @@
       ]
     },
     {
-      "number": 498,
+      "number": 509,
       "content": [
         {
           "text": "      ",
@@ -31591,7 +32595,7 @@
       ]
     },
     {
-      "number": 499,
+      "number": 510,
       "content": [
         {
           "text": "    ",
@@ -31604,7 +32608,7 @@
       ]
     },
     {
-      "number": 500,
+      "number": 511,
       "content": [
         {
           "text": "  )",
@@ -31617,7 +32621,7 @@
       ]
     },
     {
-      "number": 501,
+      "number": 512,
       "content": [
         {
           "text": "}",
@@ -31626,15 +32630,15 @@
       ]
     },
     {
-      "number": 502,
+      "number": 513,
       "content": []
     },
     {
-      "number": 503,
+      "number": 514,
       "content": []
     },
     {
-      "number": 504,
+      "number": 515,
       "content": [
         {
           "text": "\"",
@@ -31655,11 +32659,11 @@
       ]
     },
     {
-      "number": 505,
+      "number": 516,
       "content": []
     },
     {
-      "number": 506,
+      "number": 517,
       "content": [
         {
           "text": "import",
@@ -31736,7 +32740,7 @@
       ]
     },
     {
-      "number": 507,
+      "number": 518,
       "content": [
         {
           "text": "import",
@@ -31797,7 +32801,7 @@
       ]
     },
     {
-      "number": 508,
+      "number": 519,
       "content": [
         {
           "text": "import",
@@ -31858,11 +32862,11 @@
       ]
     },
     {
-      "number": 509,
+      "number": 520,
       "content": []
     },
     {
-      "number": 510,
+      "number": 521,
       "content": [
         {
           "text": "export",
@@ -31895,7 +32899,7 @@
       ]
     },
     {
-      "number": 511,
+      "number": 522,
       "content": [
         {
           "text": "  value",
@@ -31920,7 +32924,7 @@
       ]
     },
     {
-      "number": 512,
+      "number": 523,
       "content": [
         {
           "text": "  ",
@@ -31985,7 +32989,7 @@
       ]
     },
     {
-      "number": 513,
+      "number": 524,
       "content": [
         {
           "text": "  ",
@@ -32050,7 +33054,7 @@
       ]
     },
     {
-      "number": 514,
+      "number": 525,
       "content": [
         {
           "text": "  disabled",
@@ -32075,7 +33079,7 @@
       ]
     },
     {
-      "number": 515,
+      "number": 526,
       "content": [
         {
           "text": "  size",
@@ -32100,7 +33104,7 @@
       ]
     },
     {
-      "number": 516,
+      "number": 527,
       "content": [
         {
           "text": "  variant",
@@ -32125,7 +33129,7 @@
       ]
     },
     {
-      "number": 517,
+      "number": 528,
       "content": [
         {
           "text": "  highlightedValue",
@@ -32166,7 +33170,7 @@
       ]
     },
     {
-      "number": 518,
+      "number": 529,
       "content": [
         {
           "text": "  name",
@@ -32191,7 +33195,7 @@
       ]
     },
     {
-      "number": 519,
+      "number": 530,
       "content": [
         {
           "text": "  required",
@@ -32216,7 +33220,7 @@
       ]
     },
     {
-      "number": 520,
+      "number": 531,
       "content": [
         {
           "text": "  requiredInvalid",
@@ -32241,7 +33245,7 @@
       ]
     },
     {
-      "number": 521,
+      "number": 532,
       "content": [
         {
           "text": "  ",
@@ -32286,7 +33290,7 @@
       ]
     },
     {
-      "number": 522,
+      "number": 533,
       "content": [
         {
           "text": "  containerRef",
@@ -32335,10 +33339,10 @@
       ]
     },
     {
-      "number": 523,
+      "number": 534,
       "content": [
         {
-          "text": "  firstEnabledValue",
+          "text": "  tabTargetValue",
           "color": "var(--code-variable)"
         },
         {
@@ -32376,7 +33380,7 @@
       ]
     },
     {
-      "number": 524,
+      "number": 535,
       "content": [
         {
           "text": "}",
@@ -32385,11 +33389,11 @@
       ]
     },
     {
-      "number": 525,
+      "number": 536,
       "content": []
     },
     {
-      "number": 526,
+      "number": 537,
       "content": [
         {
           "text": "export",
@@ -32474,11 +33478,11 @@
       ]
     },
     {
-      "number": 527,
+      "number": 538,
       "content": []
     },
     {
-      "number": 528,
+      "number": 539,
       "content": [
         {
           "text": "export",
@@ -32515,7 +33519,7 @@
       ]
     },
     {
-      "number": 529,
+      "number": 540,
       "content": [
         {
           "text": "  ",
@@ -32560,7 +33564,7 @@
       ]
     },
     {
-      "number": 530,
+      "number": 541,
       "content": [
         {
           "text": "  ",
@@ -32589,7 +33593,7 @@
       ]
     },
     {
-      "number": 531,
+      "number": 542,
       "content": [
         {
           "text": "    ",
@@ -32642,7 +33646,7 @@
       ]
     },
     {
-      "number": 532,
+      "number": 543,
       "content": [
         {
           "text": "  ",
@@ -32655,7 +33659,7 @@
       ]
     },
     {
-      "number": 533,
+      "number": 544,
       "content": [
         {
           "text": "  ",
@@ -32676,7 +33680,7 @@
       ]
     },
     {
-      "number": 534,
+      "number": 545,
       "content": [
         {
           "text": "}",
@@ -32685,7 +33689,7 @@
       ]
     },
     {
-      "number": 535,
+      "number": 546,
       "content": []
     }
   ],

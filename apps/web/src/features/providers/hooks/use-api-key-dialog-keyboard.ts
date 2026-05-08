@@ -11,7 +11,7 @@ interface ApiKeyDialogKeyboardOptions {
   setMethod: (method: InputMethod) => void;
   canSubmit: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
-  onSubmit: () => void;
+  onSubmit: (method?: InputMethod) => void;
   onClose: () => void;
 }
 
@@ -101,10 +101,10 @@ export function useApiKeyDialogKeyboard({
   useKey("Enter", () => {
     if (focused === "paste") {
       setMethod("paste");
-      if (canSubmit) onSubmit();
+      if (canSubmit) onSubmit("paste");
     } else if (focused === "env") {
       setMethod("env");
-      onSubmit();
+      onSubmit("env");
     }
   }, { enabled: open && inZone("radios") });
 

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, act, cleanup } from "@testing-library/react";
 import { useEffect, useRef, type ReactNode } from "react";
 import { KeyboardProvider } from "./keyboard-provider";
-import { useKeyboardContext } from "../context/keyboard-context";
+import { useKeyboardContext, useKeyboardRegistryContext } from "../context/keyboard-context";
 import { fireKey as pressKey } from "../testing/test-utils";
 
 function Wrapper({ children }: { children: ReactNode }) {
@@ -256,6 +256,76 @@ describe("KeyboardProvider", () => {
     act(() => popRefA.current());
     act(() => pressKey("b"));
     expect(handlerB).toHaveBeenCalledTimes(2);
+  });
+
+  it("should prioritize the latest handler when duplicate scope names share a hotkey", () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    const popSecondRef = { current: () => {} };
+
+    function ConsumerA() {
+      const { register, pushScope } = useKeyboardContext();
+      useEffect(() => {
+        const unregister = register("modal", "Escape", first);
+        const popScope = pushScope("modal");
+        return () => {
+          unregister();
+          popScope();
+        };
+      }, [register, pushScope]);
+      return <div>A</div>;
+    }
+
+    function ConsumerB() {
+      const { register, pushScope } = useKeyboardContext();
+      useEffect(() => {
+        const unregister = register("modal", "Escape", second);
+        const popScope = pushScope("modal");
+        popSecondRef.current = () => {
+          unregister();
+          popScope();
+        };
+        return popSecondRef.current;
+      }, [register, pushScope]);
+      return <div>B</div>;
+    }
+
+    render(<Wrapper><ConsumerA /><ConsumerB /></Wrapper>);
+
+    act(() => pressKey("Escape"));
+    expect(second).toHaveBeenCalledOnce();
+    expect(first).not.toHaveBeenCalled();
+
+    act(() => popSecondRef.current());
+    act(() => pressKey("Escape"));
+    expect(first).toHaveBeenCalledOnce();
+  });
+
+  it("should keep registry consumers stable when active scope changes", () => {
+    const registryRender = vi.fn();
+    const pushScopeRef = { current: (_scope: string) => () => {} };
+
+    function RegistryConsumer() {
+      const { pushScope } = useKeyboardRegistryContext();
+      registryRender();
+      useEffect(() => {
+        pushScopeRef.current = pushScope;
+      }, [pushScope]);
+      return <div>registry</div>;
+    }
+
+    render(<Wrapper><RegistryConsumer /></Wrapper>);
+
+    expect(registryRender).toHaveBeenCalledOnce();
+
+    let popScope = () => {};
+    act(() => {
+      popScope = pushScopeRef.current("modal");
+    });
+    expect(registryRender).toHaveBeenCalledOnce();
+
+    act(() => popScope());
+    expect(registryRender).toHaveBeenCalledOnce();
   });
 
   it("should stop receiving key events after the provider unmounts", () => {

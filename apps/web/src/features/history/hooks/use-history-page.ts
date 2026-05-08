@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { HistoryFocusZone } from "@/features/history/types";
 import type { Run } from "@/features/history/types";
@@ -18,6 +18,17 @@ function useHistoryData() {
   const error = reviewsQuery.error?.message ?? null;
   const [selectedRunId, setSelectedRunId] = useScopedRouteState("run", reviews[0]?.id ?? null);
 
+  return {
+    reviewsQuery,
+    isLoading,
+    error,
+    reviews,
+    selectedRunId,
+    setSelectedRunId,
+  };
+}
+
+function useSelectedRunData(reviews: ReviewMetadata[], selectedRunId: string | null) {
   const selectedRun = reviews.find((r) => r.id === selectedRunId) ?? null;
 
   const reviewDetailQuery = useReview(selectedRunId ?? "");
@@ -41,13 +52,7 @@ function useHistoryData() {
     : [];
 
   return {
-    reviewsQuery,
-    isLoading,
-    error,
-    reviews,
     selectedRun,
-    selectedRunId,
-    setSelectedRunId,
     severityCounts,
     sortedIssues,
     duration,
@@ -61,6 +66,11 @@ function useHistorySelection(reviews: ReviewMetadata[]) {
   const [selectedDateId, setSelectedDateId] = useScopedRouteState("date", defaultDateId);
 
   return { selectedDateId, setSelectedDateId, timelineItems };
+}
+
+export function resolveSelectedDateId(selectedDateId: string, timelineItems: Array<{ id: string }>): string {
+  if (timelineItems.some((item) => item.id === selectedDateId)) return selectedDateId;
+  return timelineItems[0]?.id ?? HISTORY_SECTION_ALL_ID;
 }
 
 function useHistorySearch() {
@@ -97,38 +107,36 @@ function useFilteredRuns(reviews: ReviewMetadata[], selectedDateId: string, sear
   return { mappedRuns };
 }
 
+export function resolveSelectedRunId(selectedRunId: string | null, mappedRuns: Run[]): string | null {
+  if (mappedRuns.some((run) => run.id === selectedRunId)) return selectedRunId;
+  return mappedRuns[0]?.id ?? null;
+}
+
+function getEmptyRunsMessage(hasReviews: boolean, hasSearchQuery: boolean, selectedDateId: string): string {
+  if (!hasReviews) return "No reviews yet";
+  if (hasSearchQuery) return "No runs match this search";
+  if (selectedDateId === HISTORY_SECTION_ALL_ID) return "No runs available";
+  return "No runs for this date";
+}
+
 export function useHistoryPage() {
   const navigate = useNavigate();
   const data = useHistoryData();
   const selection = useHistorySelection(data.reviews);
   const search = useHistorySearch();
-  const { mappedRuns } = useFilteredRuns(data.reviews, selection.selectedDateId, search.searchQuery);
+  const selectedDateId = resolveSelectedDateId(selection.selectedDateId, selection.timelineItems);
+  const { mappedRuns } = useFilteredRuns(data.reviews, selectedDateId, search.searchQuery);
+  const selectedRunId = resolveSelectedRunId(data.selectedRunId, mappedRuns);
+  const selectedRunData = useSelectedRunData(data.reviews, selectedRunId);
 
   const [focusZone, setFocusZone] = useState<HistoryFocusZone>("runs");
 
   useHistoryKeyboard({
     focusZone,
     setFocusZone,
-    selectedRunId: data.selectedRunId,
+    selectedRunId,
     searchInputRef: search.searchInputRef,
   });
-
-  useEffect(() => {
-    const hasSection = selection.timelineItems.some((item) => item.id === selection.selectedDateId);
-    if (!hasSection && selection.timelineItems.length > 0) {
-      selection.setSelectedDateId(selection.timelineItems[0]!.id);
-    }
-  }, [selection.selectedDateId, selection.setSelectedDateId, selection.timelineItems]);
-
-  useEffect(() => {
-    if (focusZone !== "runs") return;
-    if (mappedRuns.length === 0) return;
-
-    const hasSelectedRun = mappedRuns.some((run) => run.id === data.selectedRunId);
-    if (!hasSelectedRun) {
-      data.setSelectedRunId(mappedRuns[0]!.id);
-    }
-  }, [focusZone, mappedRuns, data.selectedRunId, data.setSelectedRunId]);
 
   const handleTimelineBoundary = (direction: "up" | "down") => {
     if (direction === "up") {
@@ -165,20 +173,14 @@ export function useHistoryPage() {
   };
 
   const handleIssueClick = () => {
-    if (data.selectedRunId) {
-      navigate({ to: "/review/{-$reviewId}", params: { reviewId: data.selectedRunId } });
+    if (selectedRunId) {
+      navigate({ to: "/review/{-$reviewId}", params: { reviewId: selectedRunId } });
     }
   };
 
   const hasReviews = data.reviews.length > 0;
   const hasSearchQuery = search.searchQuery.trim().length > 0;
-  const emptyRunsMessage = !hasReviews
-    ? "No reviews yet"
-    : hasSearchQuery
-      ? "No runs match this search"
-      : selection.selectedDateId === HISTORY_SECTION_ALL_ID
-        ? "No runs available"
-        : "No runs for this date";
+  const emptyRunsMessage = getEmptyRunsMessage(hasReviews, hasSearchQuery, selectedDateId);
 
   return {
     reviewsQuery: data.reviewsQuery,
@@ -190,15 +192,15 @@ export function useHistoryPage() {
     setSearchQuery: search.setSearchQuery,
     setFocusZone,
     timelineItems: selection.timelineItems,
-    selectedDateId: selection.selectedDateId,
+    selectedDateId,
     setSelectedDateId: selection.setSelectedDateId,
-    selectedRunId: data.selectedRunId,
+    selectedRunId,
     setSelectedRunId: data.setSelectedRunId,
     mappedRuns,
-    selectedRun: data.selectedRun,
-    severityCounts: data.severityCounts,
-    sortedIssues: data.sortedIssues,
-    duration: data.duration,
+    selectedRun: selectedRunData.selectedRun,
+    severityCounts: selectedRunData.severityCounts,
+    sortedIssues: selectedRunData.sortedIssues,
+    duration: selectedRunData.duration,
     hasReviews,
     emptyRunsMessage,
     handleTimelineBoundary,

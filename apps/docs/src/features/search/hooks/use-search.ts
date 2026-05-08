@@ -18,6 +18,15 @@ export interface SearchResult {
   library: string
 }
 
+export type SearchStatus = "idle" | "loading" | "success" | "empty" | "error"
+
+type SearchState =
+  | { status: "idle"; results: []; error: null }
+  | { status: "loading"; results: []; error: null }
+  | { status: "success"; results: SearchResult[]; error: null }
+  | { status: "empty"; results: []; error: null }
+  | { status: "error"; results: []; error: string }
+
 interface ServerSearchResult {
   id: string
   url: string
@@ -50,53 +59,76 @@ function parseLibraryFromUrl(url: string): DocsLibraryId | null {
   return lib && isDocsLibraryId(lib) ? lib : null
 }
 
+function toSearchResult(item: ServerSearchResult): SearchResult | null {
+  const library = parseLibraryFromUrl(item.url)
+  if (!library) return null
+
+  const routeSlugs = routeSlugsFromSourcePath(library, item.url)
+  if (!routeSlugs) return null
+
+  const url = docsPath(library, routeSlugs)
+  return {
+    id: item.id,
+    url,
+    title: stripMarkTags(
+      item.type === "page"
+        ? item.content
+        : (item.breadcrumbs[item.breadcrumbs.length - 1] ?? item.content),
+    ),
+    excerpt: item.type !== "page" ? stripMarkTags(item.content) : "",
+    section: url.match(/^\/[^/]+\/docs\/([^/]+)/)?.[1] ?? "general",
+    library,
+  }
+}
+
+const SEARCH_IDLE_STATE: SearchState = { status: "idle", results: [], error: null }
+const SEARCH_LOADING_STATE: SearchState = { status: "loading", results: [], error: null }
+const SEARCH_ERROR_MESSAGE = "Search failed. Try again."
+
+function toSearchResults(items: ServerSearchResult[]): SearchResult[] {
+  return items.flatMap((item) => {
+    const result = toSearchResult(item)
+    return result ? [result] : []
+  })
+}
+
+function toResolvedSearchState(results: SearchResult[]): SearchState {
+  return results.length > 0
+    ? { status: "success", results, error: null }
+    : { status: "empty", results: [], error: null }
+}
+
 export function useSearch() {
   const [query, setQuery] = useState("")
-  const [results, setResults] = useState<SearchResult[]>([])
+  const [searchState, setSearchState] = useState<SearchState>(SEARCH_IDLE_STATE)
   const generation = useRef(0)
 
   useEffect(() => {
-    if (!query.trim()) {
-      setResults([])
+    const trimmedQuery = query.trim()
+    const id = ++generation.current
+
+    if (!trimmedQuery) {
+      setSearchState(SEARCH_IDLE_STATE)
       return
     }
 
-    const id = ++generation.current
+    const controller = new AbortController()
+    setSearchState(SEARCH_LOADING_STATE)
 
-    doSearch({ data: query })
+    doSearch({ data: trimmedQuery, signal: controller.signal })
       .then((items) => {
-        if (id !== generation.current) return
+        if (id !== generation.current || controller.signal.aborted) return
 
-        setResults(
-          items.flatMap((item) => {
-            const library = parseLibraryFromUrl(item.url)
-            if (!library) return []
-
-            const routeSlugs = routeSlugsFromSourcePath(library, item.url)
-            if (!routeSlugs) return []
-
-            const url = docsPath(library, routeSlugs)
-            return [{
-              id: item.id,
-              url,
-              title: stripMarkTags(
-                item.type === "page"
-                  ? item.content
-                  : (item.breadcrumbs[item.breadcrumbs.length - 1] ?? item.content)
-              ),
-              excerpt: item.type !== "page" ? stripMarkTags(item.content) : "",
-              section: url.match(/^\/[^/]+\/docs\/([^/]+)/)?.[1] ?? "general",
-              library,
-            }]
-          }),
-        )
+        setSearchState(toResolvedSearchState(toSearchResults(items)))
       })
       .catch((err) => {
-        if (id !== generation.current) return
+        if (id !== generation.current || controller.signal.aborted) return
         if (import.meta.env.DEV) console.warn("Search failed:", err)
-        setResults([])
+        setSearchState({ status: "error", results: [], error: SEARCH_ERROR_MESSAGE })
       })
+
+    return () => controller.abort()
   }, [query])
 
-  return { query, results, search: setQuery }
+  return { query, ...searchState, search: setQuery }
 }

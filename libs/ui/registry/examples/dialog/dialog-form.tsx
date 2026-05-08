@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react"
+import { useState, useTransition, type MouseEvent } from "react"
 import {
   Dialog,
   DialogTrigger,
@@ -16,15 +16,44 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
+const CREATE_DELAY_MS = 1000
+
+function wait(ms: number) {
+  return new Promise<void>((resolve) => window.setTimeout(resolve, ms))
+}
+
 export default function DialogForm() {
+  const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
-  const [submitting, setSubmitting] = useState(false)
+  const [submitting, startCreate] = useTransition()
+
+  const resetForm = () => {
+    setName("")
+  }
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (submitting && !nextOpen) return
+    setOpen(nextOpen)
+    if (!nextOpen) resetForm()
+  }
+
+  const handleCreate = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    if (!name.trim() || submitting) return
+
+    startCreate(async () => {
+      await wait(CREATE_DELAY_MS)
+      setName("")
+      setOpen(false)
+    })
+  }
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger>New Project</DialogTrigger>
       <DialogContent
         size="md"
+        closeOnBackdropClick={!submitting}
         onEscapeKeyDown={(e) => {
           if (submitting) e.preventDefault()
         }}
@@ -48,11 +77,8 @@ export default function DialogForm() {
           <DialogClose bracket variant="ghost" disabled={submitting}>Cancel</DialogClose>
           <DialogAction
             disabled={!name.trim() || submitting}
-            onClick={(e) => {
-              e.preventDefault()
-              setSubmitting(true)
-              setTimeout(() => setSubmitting(false), 1000)
-            }}
+            loading={submitting}
+            onClick={handleCreate}
           >
             {submitting ? "Creating..." : "Create"}
           </DialogAction>

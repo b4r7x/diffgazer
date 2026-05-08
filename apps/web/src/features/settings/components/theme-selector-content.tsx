@@ -23,6 +23,10 @@ const THEME_OPTIONS: Array<{ value: Theme; label: string; description: string }>
   { value: 'terminal', label: 'Terminal Default', description: 'Use terminal default colors' },
 ];
 
+function isThemeOption(value: Theme | null, optionValues: Theme[]): value is Theme {
+  return optionValues.includes(value as Theme);
+}
+
 export function ThemeSelectorContent({
   value,
   onChange,
@@ -39,15 +43,35 @@ export function ThemeSelectorContent({
   const options = showTerminalOption
     ? THEME_OPTIONS
     : THEME_OPTIONS.filter(opt => opt.value !== 'terminal');
+  const optionValues = options.map((option) => option.value);
 
   const [internalHighlight, setInternalHighlight] = useState<Theme>(focusedValue ?? value);
-  const highlighted = focusedValue ?? internalHighlight;
+  const rawHighlighted = focusedValue ?? internalHighlight;
+  const highlighted = isThemeOption(rawHighlighted, optionValues)
+    ? rawHighlighted
+    : optionValues[0]!;
 
-  const handleHighlightChange = (nextValue: string) => {
+  const handleHighlightChange = (nextValue: string | null) => {
+    if (!isThemeOption(nextValue as Theme | null, optionValues)) return;
+
     const theme = nextValue as Theme;
     setInternalHighlight(theme);
     onFocusedValueChange?.(theme);
     onFocus?.(theme);
+  };
+
+  const moveHighlight = (delta: -1 | 1) => {
+    const currentIndex = optionValues.indexOf(highlighted);
+    const nextIndex = currentIndex + delta;
+    if (nextIndex < 0) {
+      onBoundaryReached?.("up");
+      return;
+    }
+    if (nextIndex >= optionValues.length) {
+      onBoundaryReached?.("down");
+      return;
+    }
+    handleHighlightChange(optionValues[nextIndex]!);
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -56,20 +80,32 @@ export function ThemeSelectorContent({
     const firstValue = options[0]?.value;
 
     if (e.key === " " && highlighted) {
+      e.preventDefault();
       onSelect?.(highlighted);
       return;
     }
     if (e.key === "Enter" && highlighted) {
+      e.preventDefault();
       if (onEnter) onEnter(highlighted);
       else onSelect?.(highlighted);
       return;
     }
-    if (e.key === "ArrowDown" && highlighted === lastValue) {
-      onBoundaryReached?.("down");
+    if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+      e.preventDefault();
+      if (highlighted === lastValue) {
+        onBoundaryReached?.("down");
+        return;
+      }
+      moveHighlight(1);
       return;
     }
-    if (e.key === "ArrowUp" && highlighted === firstValue) {
-      onBoundaryReached?.("up");
+    if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+      e.preventDefault();
+      if (highlighted === firstValue) {
+        onBoundaryReached?.("up");
+        return;
+      }
+      moveHighlight(-1);
       return;
     }
   };

@@ -7,6 +7,7 @@ import { usePageFooter } from "@/hooks/use-page-footer";
 import type { DiagnosticsData } from "@diffgazer/core/api/hooks";
 
 const BUTTON_COUNT = 2;
+const SETTINGS_DIAGNOSTICS_SCOPE = "settings-diagnostics";
 
 interface UseDiagnosticsKeyboardOptions {
   diagnostics: DiagnosticsData;
@@ -37,18 +38,30 @@ export function useDiagnosticsKeyboard({
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
-  const hasInitializedFooter = useRef(false);
+  const refreshAllInFlight = useRef(false);
 
-  useScope("settings-diagnostics");
+  useScope(SETTINGS_DIAGNOSTICS_SCOPE);
 
   const handleRefreshAll = async () => {
+    if (refreshAllInFlight.current) return;
+    if (isRefreshingContext) return;
+
+    refreshAllInFlight.current = true;
     setIsRefreshingAll(true);
     setRefreshError(null);
-    const results = await Promise.allSettled([retryServer(), refetchContext()]);
-    const failedCount = results.filter((result) => result.status === "rejected").length;
-    setLastRefreshedAt(new Date().toISOString());
-    if (failedCount > 0) setRefreshError("Refresh failed for some diagnostics sources.");
-    setIsRefreshingAll(false);
+
+    try {
+      const results = await Promise.allSettled([
+        retryServer(),
+        refetchContext(),
+      ]);
+      const failedCount = results.filter((result) => result.status === "rejected").length;
+      setLastRefreshedAt(new Date().toISOString());
+      if (failedCount > 0) setRefreshError("Refresh failed for some diagnostics sources.");
+    } finally {
+      refreshAllInFlight.current = false;
+      setIsRefreshingAll(false);
+    }
   };
 
   useEffect(() => {
@@ -64,22 +77,17 @@ export function useDiagnosticsKeyboard({
       return;
     }
 
-    if (index === 1 && canRegenerate && !isRefreshingContext) {
+    if (index === 1 && canRegenerate && !isRefreshingContext && !isRefreshingAll) {
       handleRefreshContext();
     }
   };
 
-  const { focusedIndex, inFooter, enterFooter } = useFooterNavigation({
+  const { focusedIndex, inFooter } = useFooterNavigation({
     enabled: true,
     buttonCount: BUTTON_COUNT,
     onAction: handleButtonAction,
+    defaultZone: "footer",
   });
-
-  useEffect(() => {
-    if (hasInitializedFooter.current) return;
-    hasInitializedFooter.current = true;
-    enterFooter(0);
-  }, [enterFooter]);
 
   const footerShortcuts: Shortcut[] = inFooter
     ? [
@@ -97,10 +105,10 @@ export function useDiagnosticsKeyboard({
     rightShortcuts: [{ key: "Esc", label: "Back" }],
   });
 
-  useKey("r", () => { void handleRefreshAll(); });
-  useKey("R", () => { void handleRefreshAll(); });
+  useKey("r", () => { void handleRefreshAll(); }, { scope: SETTINGS_DIAGNOSTICS_SCOPE });
+  useKey("R", () => { void handleRefreshAll(); }, { scope: SETTINGS_DIAGNOSTICS_SCOPE });
 
-  useKey("Escape", () => navigate({ to: "/settings" }));
+  useKey("Escape", () => navigate({ to: "/settings" }), { scope: SETTINGS_DIAGNOSTICS_SCOPE });
 
   return {
     focusedIndex,

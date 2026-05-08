@@ -23,8 +23,7 @@ export function RadioGroupItem({
   const isSelected = context.value === value;
   const isDisabled = context.disabled || !!itemDisabled;
   const isHighlighted = context.highlightedValue === value;
-  const hasSelection = context.value !== undefined;
-  const isTabTarget = !isDisabled && (isSelected || (!hasSelection && context.firstEnabledValue === value));
+  const isTabTarget = !isDisabled && context.tabTargetValue === value;
 
   return (
     <Radio

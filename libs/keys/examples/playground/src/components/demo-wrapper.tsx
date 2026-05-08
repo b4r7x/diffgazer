@@ -34,8 +34,8 @@ export function DemoWrapper({
       {hints.length > 0 && (
         <div className="demo-wrapper__hints">
           <div className="demo-wrapper__hints-title">What to try</div>
-          {hints.map((hint, i) => (
-            <div key={i} className="demo-wrapper__hint">
+          {hints.map((hint) => (
+            <div key={`${hint.keys}:${hint.label}`} className="demo-wrapper__hint">
               <Kbd keys={hint.keys} />
               <span>{hint.label}</span>
             </div>

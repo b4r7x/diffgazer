@@ -1,8 +1,11 @@
 import { useConfigData } from "@/app/providers/config-provider";
 import { cn } from "@diffgazer/core/cn";
-import { useDiagnosticsData } from "@diffgazer/core/api/hooks";
+import { useDiagnosticsData, type DiagnosticsData } from "@diffgazer/core/api/hooks";
 import { formatTimestampOrNA } from "@diffgazer/core/format";
+import type { SetupStatus } from "@diffgazer/core/schemas/config";
 import { useDiagnosticsKeyboard } from "../../hooks/use-diagnostics-keyboard.js";
+
+type OverallState = "loading" | "error" | "empty" | "success";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -11,6 +14,50 @@ function Row({ label, value }: { label: string; value: string }) {
       <span className="text-tui-fg break-all">{value}</span>
     </div>
   );
+}
+
+function getServerValue(serverState: DiagnosticsData["serverState"]): string {
+  if (serverState.status === "checking") return "Checking...";
+  if (serverState.status === "connected") return "Connected";
+  return `Error: ${serverState.message}`;
+}
+
+function getSetupValue(setupStatus: SetupStatus | null): string {
+  if (!setupStatus) return "Unavailable";
+  if (setupStatus.isReady) return "Ready";
+  return `Incomplete (${setupStatus.missing.join(", ") || "unknown"})`;
+}
+
+function getProviderValue(provider: string | undefined, model: string | undefined): string {
+  if (!provider) return "Unavailable";
+  if (model) return `${provider} (${model})`;
+  return provider;
+}
+
+function getContextActionLabel(
+  isRefreshing: boolean,
+  contextStatus: DiagnosticsData["contextStatus"],
+): string {
+  if (isRefreshing) return "Working...";
+  if (contextStatus === "ready") return "Regenerate Context";
+  return "Generate Context";
+}
+
+function getOverallState({
+  isRefreshingAll,
+  serverState,
+  contextStatus,
+  provider,
+}: {
+  isRefreshingAll: boolean;
+  serverState: DiagnosticsData["serverState"];
+  contextStatus: DiagnosticsData["contextStatus"];
+  provider: string | undefined;
+}): OverallState {
+  if (isRefreshingAll || serverState.status === "checking" || contextStatus === "loading") return "loading";
+  if (serverState.status === "error" && contextStatus === "error") return "error";
+  if (!provider && contextStatus === "missing") return "empty";
+  return "success";
 }
 
 export function DiagnosticsPage() {
@@ -34,22 +81,23 @@ export function DiagnosticsPage() {
     handleRefreshAll,
   } = useDiagnosticsKeyboard({ diagnostics });
 
-  const serverValue = (() => {
-    if (serverState.status === "checking") return "Checking...";
-    if (serverState.status === "connected") return "Connected";
-    return `Error: ${serverState.message}`;
-  })();
-
-  const overallState: "loading" | "error" | "empty" | "success" = (() => {
-    if (isRefreshingAll || serverState.status === "checking" || contextStatus === "loading") return "loading";
-    if (serverState.status === "error" && contextStatus === "error") return "error";
-    if (!provider && contextStatus === "missing") return "empty";
-    return "success";
-  })();
+  const serverValue = getServerValue(serverState);
+  const setupValue = getSetupValue(setupStatus);
+  const providerValue = getProviderValue(provider, model);
+  const contextActionLabel = getContextActionLabel(isRefreshing, contextStatus);
+  const serverError = serverState.status === "error" ? serverState.message : null;
+  const diagnosticsError = refreshError ?? contextError ?? serverError;
+  const isRefreshAllDisabled = isRefreshingAll || isRefreshing;
+  const isContextActionDisabled = !canRegenerate || isRefreshing || isRefreshingAll;
+  const overallState = getOverallState({ isRefreshingAll, serverState, contextStatus, provider });
 
   return (
     <div className="flex flex-1 overflow-hidden px-4 justify-center items-center">
-      <div className="w-full max-w-2xl flex flex-col border border-tui-border bg-[#161b22] shadow-lg">
+      <section
+        aria-label="system diagnostics"
+        aria-busy={isRefreshingAll || isRefreshing}
+        className="w-full max-w-2xl flex flex-col border border-tui-border bg-[#161b22] shadow-lg"
+      >
         <div className="bg-tui-selection border-b border-tui-border px-4 py-2 flex justify-between items-center">
           <span className="font-bold text-tui-fg">System Diagnostics</span>
           <span className="text-xs text-tui-muted">{overallState}</span>
@@ -70,7 +118,11 @@ export function DiagnosticsPage() {
               <span className="text-tui-muted text-xs uppercase tracking-wider mb-1">Context Snapshot</span>
               <div className="text-white flex items-center gap-2">
                 <span>[{contextStatus}]</span>
-                {contextStatus === "ready" && <span className="text-xs text-tui-yellow">{formatTimestampOrNA(contextGeneratedAt, "Unavailable")}</span>}
+                {contextStatus === "ready" && (
+                  <span className="text-xs text-tui-yellow">
+                    {formatTimestampOrNA(contextGeneratedAt, "Unavailable")}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -86,11 +138,11 @@ export function DiagnosticsPage() {
               />
               <Row
                 label="Setup"
-                value={setupStatus ? (setupStatus.isReady ? "Ready" : `Incomplete (${setupStatus.missing.join(", ") || "unknown"})`) : "Unavailable"}
+                value={setupValue}
               />
               <Row
                 label="Provider"
-                value={provider ? `${provider}${model ? ` (${model})` : ""}` : "Unavailable"}
+                value={providerValue}
               />
               <Row
                 label="Refreshed"
@@ -103,40 +155,38 @@ export function DiagnosticsPage() {
 
           <div className="flex gap-4 pt-2">
             <button
-              disabled={isRefreshingAll}
+              type="button"
+              disabled={isRefreshAllDisabled}
               className={cn(
                 "bg-tui-bg border border-tui-border hover:bg-tui-selection hover:text-white hover:border-tui-blue text-tui-fg px-3 py-1.5 text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-tui-blue",
-                focusedIndex === 0 && !isRefreshingAll && "ring-2 ring-tui-blue border-tui-blue",
-                isRefreshingAll && "opacity-50 cursor-not-allowed"
+                focusedIndex === 0 && !isRefreshAllDisabled && "ring-2 ring-tui-blue border-tui-blue",
+                isRefreshAllDisabled && "opacity-50 cursor-not-allowed"
               )}
               onClick={() => void handleRefreshAll()}
             >
               [ {isRefreshingAll ? "Refreshing..." : "Refresh Diagnostics"} ]
             </button>
             <button
-              disabled={!canRegenerate || isRefreshing}
+              type="button"
+              disabled={isContextActionDisabled}
               className={cn(
                 "bg-tui-bg border border-tui-border hover:bg-tui-selection hover:text-white hover:border-tui-green text-tui-fg px-3 py-1.5 text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-tui-green",
-                focusedIndex === 1 && canRegenerate && !isRefreshing && "ring-2 ring-tui-green border-tui-green",
-                (!canRegenerate || isRefreshing) && "opacity-50 cursor-not-allowed"
+                focusedIndex === 1 && !isContextActionDisabled && "ring-2 ring-tui-green border-tui-green",
+                isContextActionDisabled && "opacity-50 cursor-not-allowed"
               )}
               onClick={() => void handleRefreshContext()}
             >
-              [ {isRefreshing
-                ? "Working..."
-                : contextStatus === "ready"
-                  ? "Regenerate Context"
-                  : "Generate Context"} ]
+              [ {contextActionLabel} ]
             </button>
           </div>
 
-          {(refreshError || contextError || (serverState.status === "error" ? serverState.message : null)) && (
+          {diagnosticsError && (
             <p className="text-tui-red text-sm">
-              {refreshError ?? contextError ?? (serverState.status === "error" ? serverState.message : null)}
+              {diagnosticsError}
             </p>
           )}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

@@ -85,6 +85,29 @@ describe("useFocusZone", () => {
   });
 
   describe("transitions", () => {
+    it("registers scoped transition keys in the declared focus-zone scope", () => {
+      const globalHandler = vi.fn();
+      const { result } = renderHook(
+        () => {
+          useKey("ArrowRight", globalHandler, { scope: "global" });
+          return useFocusZone({
+            initial: "main",
+            zones: ["main", "sidebar"],
+            scope: "modal",
+            transitions: ({ zone, key }) => {
+              if (zone === "main" && key === "ArrowRight") return "sidebar";
+              return null;
+            },
+          });
+        },
+        { wrapper },
+      );
+
+      act(() => fireKey("ArrowRight"));
+      expect(result.current.zone).toBe("sidebar");
+      expect(globalHandler).not.toHaveBeenCalled();
+    });
+
     it("changes zone on arrow key when transition returns new zone", () => {
       const { result } = renderHook(
         () =>

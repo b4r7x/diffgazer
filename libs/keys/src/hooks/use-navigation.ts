@@ -23,8 +23,8 @@ export interface UseNavigationOptions {
   preventDefault?: boolean;
   onBoundaryReached?: (direction: "up" | "down") => void;
   initialValue?: string | null;
-  upKeys?: string[];
-  downKeys?: string[];
+  upKeys?: readonly string[];
+  downKeys?: readonly string[];
   orientation?: "vertical" | "horizontal";
   skipDisabled?: boolean;
   moveFocus?: boolean;
@@ -202,6 +202,7 @@ export function useNavigation(options: UseNavigationOptions): UseNavigationRetur
     orientation = "vertical",
     upKeys,
     downKeys,
+    moveFocus,
   } = options;
 
   const { resolvedUpKeys, resolvedDownKeys } = resolveDirectionKeys(orientation, upKeys, downKeys);
@@ -214,7 +215,7 @@ export function useNavigation(options: UseNavigationOptions): UseNavigationRetur
 
     const key = event.key;
     const isMoveKey = resolvedUpKeys.includes(key) || resolvedDownKeys.includes(key);
-    const isSpecialKey = key === "Home" || key === "End" || (!options.moveFocus && (key === "Enter" || key === " "));
+    const isSpecialKey = key === "Home" || key === "End" || (!moveFocus && (key === "Enter" || key === " "));
     if (!isMoveKey && !isSpecialKey) return;
 
     if (preventDefault) event.preventDefault();
@@ -224,8 +225,8 @@ export function useNavigation(options: UseNavigationOptions): UseNavigationRetur
       resolvedDownKeys,
       move,
       focusIndex,
-      handleSelect: options.moveFocus ? undefined : (e) => handleSelect(e),
-      handleEnter: options.moveFocus ? undefined : (e) => handleEnter(e),
+      handleSelect: moveFocus ? undefined : (e) => handleSelect(e),
+      handleEnter: moveFocus ? undefined : (e) => handleEnter(e),
       total: getElements().length,
       nativeEvent: event.nativeEvent,
     });
@@ -234,7 +235,7 @@ export function useNavigation(options: UseNavigationOptions): UseNavigationRetur
     resolvedUpKeys,
     resolvedDownKeys,
     preventDefault,
-    options.moveFocus,
+    moveFocus,
     move,
     focusIndex,
     handleSelect,

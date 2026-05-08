@@ -1,16 +1,49 @@
 "use client";
 
-import { useContext } from "react";
-import { KeyboardContext, type KeyboardContextValue } from "../providers/keyboard-provider.js";
+import { useContext, useMemo } from "react";
+import {
+  KeyboardRegistryContext,
+  KeyboardScopeContext,
+  type KeyboardContextValue,
+  type KeyboardRegistryContextValue,
+  type KeyboardScopeContextValue,
+} from "../providers/keyboard-provider.js";
 
-export function useKeyboardContext(): KeyboardContextValue {
-  const ctx = useContext(KeyboardContext);
+const KEYBOARD_PROVIDER_ERROR = "useKeyboardContext must be used within KeyboardProvider";
+
+export function useKeyboardRegistryContext(): KeyboardRegistryContextValue {
+  const ctx = useContext(KeyboardRegistryContext);
   if (ctx === undefined) {
-    throw new Error("useKeyboardContext must be used within KeyboardProvider");
+    throw new Error(KEYBOARD_PROVIDER_ERROR);
   }
   return ctx;
 }
 
+export function useKeyboardScopeContext(): KeyboardScopeContextValue {
+  const ctx = useContext(KeyboardScopeContext);
+  if (ctx === undefined) {
+    throw new Error(KEYBOARD_PROVIDER_ERROR);
+  }
+  return ctx;
+}
+
+export function useKeyboardContext(): KeyboardContextValue {
+  const registry = useKeyboardRegistryContext();
+  const scope = useKeyboardScopeContext();
+
+  return useMemo(() => ({ activeScope: scope.activeScope, ...registry }), [registry, scope]);
+}
+
 export function useOptionalKeyboardContext(): KeyboardContextValue | null {
-  return useContext(KeyboardContext) ?? null;
+  const registry = useContext(KeyboardRegistryContext);
+  const scope = useContext(KeyboardScopeContext);
+
+  return useMemo(() => {
+    if (registry === undefined || scope === undefined) return null;
+    return { activeScope: scope.activeScope, ...registry };
+  }, [registry, scope]);
+}
+
+export function useOptionalKeyboardRegistryContext(): KeyboardRegistryContextValue | null {
+  return useContext(KeyboardRegistryContext) ?? null;
 }

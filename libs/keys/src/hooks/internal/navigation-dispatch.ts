@@ -1,19 +1,24 @@
+const VERTICAL_UP_KEYS = ["ArrowUp"] as const;
+const VERTICAL_DOWN_KEYS = ["ArrowDown"] as const;
+const HORIZONTAL_UP_KEYS = ["ArrowLeft"] as const;
+const HORIZONTAL_DOWN_KEYS = ["ArrowRight"] as const;
+
 export function resolveDirectionKeys(
   orientation: "vertical" | "horizontal",
-  upKeys?: string[],
-  downKeys?: string[],
-): { resolvedUpKeys: string[]; resolvedDownKeys: string[] } {
+  upKeys?: readonly string[],
+  downKeys?: readonly string[],
+): { resolvedUpKeys: readonly string[]; resolvedDownKeys: readonly string[] } {
   return {
-    resolvedUpKeys: upKeys ?? (orientation === "vertical" ? ["ArrowUp"] : ["ArrowLeft"]),
-    resolvedDownKeys: downKeys ?? (orientation === "vertical" ? ["ArrowDown"] : ["ArrowRight"]),
+    resolvedUpKeys: upKeys ?? (orientation === "vertical" ? VERTICAL_UP_KEYS : HORIZONTAL_UP_KEYS),
+    resolvedDownKeys: downKeys ?? (orientation === "vertical" ? VERTICAL_DOWN_KEYS : HORIZONTAL_DOWN_KEYS),
   };
 }
 
 export function dispatchNavigationKey(
   key: string,
   ctx: {
-    resolvedUpKeys: string[];
-    resolvedDownKeys: string[];
+    resolvedUpKeys: readonly string[];
+    resolvedDownKeys: readonly string[];
     move: (dir: 1 | -1) => void;
     focusIndex: (index: number) => void;
     handleSelect?: (event: globalThis.KeyboardEvent) => void;

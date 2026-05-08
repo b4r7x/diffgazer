@@ -7,7 +7,7 @@ export type ServerState =
   | { status: "connected" }
   | { status: "error"; message: string };
 
-export function useServerStatus(): { state: ServerState; retry: () => void } {
+export function useServerStatus(): { state: ServerState; retry: () => Promise<unknown> } {
   const api = useApi();
   const query = useQuery(serverQueries.health(api));
 
@@ -19,9 +19,7 @@ export function useServerStatus(): { state: ServerState; retry: () => void } {
 
   return {
     state,
-    retry: () => {
-      query.refetch();
-    },
+    retry: () => query.refetch({ throwOnError: true }),
   };
 }
 

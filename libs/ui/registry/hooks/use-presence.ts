@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type AnimationEvent, type RefObject } from "react";
+import { useCallback, useEffect, useEffectEvent, useState, type AnimationEvent, type RefObject } from "react";
 
 type Phase = "hidden" | "open" | "closing";
 
@@ -20,6 +20,9 @@ export function usePresence({
   onExitComplete,
 }: UsePresenceOptions) {
   const [phase, setPhase] = useState<Phase>(open ? "open" : "hidden");
+  const notifyExitComplete = useEffectEvent(() => {
+    onExitComplete?.();
+  });
 
   useEffect(() => {
     if (open) {
@@ -33,9 +36,9 @@ export function usePresence({
   const finishExit = useCallback(() => {
     if (phase === "closing") {
       setPhase("hidden");
-      onExitComplete?.();
+      notifyExitComplete();
     }
-  }, [onExitComplete, phase]);
+  }, [phase]);
 
   const onAnimationEnd = useCallback((e: AnimationEvent) => {
     if (ref && e.target !== ref.current) return;

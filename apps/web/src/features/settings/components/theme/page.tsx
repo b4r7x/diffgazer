@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import type { WebTheme, ResolvedTheme } from "@/types/theme";
@@ -18,16 +18,33 @@ function resolveTheme(theme: WebTheme, systemResolved?: ResolvedTheme | null): R
 }
 
 export function SettingsThemePage() {
-  const navigate = useNavigate();
   const { theme: savedTheme, resolved: systemResolved, setTheme } = useTheme();
+
+  return (
+    <SettingsThemeEditor
+      key={savedTheme}
+      savedTheme={savedTheme}
+      systemResolved={systemResolved}
+      setTheme={setTheme}
+    />
+  );
+}
+
+interface SettingsThemeEditorProps {
+  savedTheme: WebTheme;
+  systemResolved?: ResolvedTheme | null;
+  setTheme: (theme: WebTheme) => void;
+}
+
+function SettingsThemeEditor({
+  savedTheme,
+  systemResolved,
+  setTheme,
+}: SettingsThemeEditorProps) {
+  const navigate = useNavigate();
   const [selectedTheme, setSelectedTheme] = useState<WebTheme>(savedTheme);
   const [focusedTheme, setFocusedTheme] = useState<WebTheme | null>(savedTheme);
   const [hoveredTheme, setHoveredTheme] = useState<WebTheme | null>(null);
-
-  useEffect(() => {
-    setSelectedTheme(savedTheme);
-    setFocusedTheme(savedTheme);
-  }, [savedTheme]);
 
   const previewTheme = hoveredTheme ?? focusedTheme ?? selectedTheme;
   const previewResolved = resolveTheme(previewTheme, systemResolved);

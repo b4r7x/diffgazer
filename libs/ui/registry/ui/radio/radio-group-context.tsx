@@ -17,7 +17,7 @@ export interface RadioGroupContextValue {
   requiredInvalid: boolean;
   onRequiredInvalid: () => void;
   containerRef: RefObject<HTMLDivElement | null>;
-  firstEnabledValue: string | null;
+  tabTargetValue: string | null;
 }
 
 export const RadioGroupContext = createContext<RadioGroupContextValue | undefined>(undefined);

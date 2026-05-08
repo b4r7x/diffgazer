@@ -44102,7 +44102,7 @@
       ]
     },
     "dialog-form": {
-      "raw": "\"use client\";\n\nimport { useState } from \"react\"\nimport {\n  Dialog,\n  DialogTrigger,\n  DialogContent,\n  DialogHeader,\n  DialogTitle,\n  DialogBody,\n  DialogFooter,\n  DialogClose,\n  DialogAction,\n  DialogKeyboardHints,\n} from \"@/components/ui/dialog\"\nimport { Input } from \"@/components/ui/input\"\nimport { Label } from \"@/components/ui/label\"\n\nexport default function DialogForm() {\n  const [name, setName] = useState(\"\")\n  const [submitting, setSubmitting] = useState(false)\n\n  return (\n    <Dialog>\n      <DialogTrigger>New Project</DialogTrigger>\n      <DialogContent\n        size=\"md\"\n        onEscapeKeyDown={(e) => {\n          if (submitting) e.preventDefault()\n        }}\n      >\n        <DialogHeader>\n          <DialogTitle>Create Project</DialogTitle>\n        </DialogHeader>\n        <DialogBody>\n          <div className=\"space-y-4\">\n            <Label label=\"Project Name\">\n              <Input\n                autoFocus\n                value={name}\n                onChange={(e) => setName(e.target.value)}\n                placeholder=\"my-project\"\n              />\n            </Label>\n          </div>\n        </DialogBody>\n        <DialogFooter>\n          <DialogClose bracket variant=\"ghost\" disabled={submitting}>Cancel</DialogClose>\n          <DialogAction\n            disabled={!name.trim() || submitting}\n            onClick={(e) => {\n              e.preventDefault()\n              setSubmitting(true)\n              setTimeout(() => setSubmitting(false), 1000)\n            }}\n          >\n            {submitting ? \"Creating...\" : \"Create\"}\n          </DialogAction>\n        </DialogFooter>\n        <DialogKeyboardHints hints={[{ key: \"Esc\", label: \"Close\" }, { key: \"Enter\", label: \"Submit\" }]} />\n      </DialogContent>\n    </Dialog>\n  )\n}\n",
+      "raw": "\"use client\";\n\nimport { useEffect, useRef, useState } from \"react\"\nimport {\n  Dialog,\n  DialogTrigger,\n  DialogContent,\n  DialogHeader,\n  DialogTitle,\n  DialogBody,\n  DialogFooter,\n  DialogClose,\n  DialogAction,\n  DialogKeyboardHints,\n} from \"@/components/ui/dialog\"\nimport { Input } from \"@/components/ui/input\"\nimport { Label } from \"@/components/ui/label\"\n\nexport default function DialogForm() {\n  const [name, setName] = useState(\"\")\n  const [submitting, setSubmitting] = useState(false)\n  const submitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)\n\n  useEffect(() => {\n    return () => {\n      if (submitTimerRef.current !== null) {\n        clearTimeout(submitTimerRef.current)\n      }\n    }\n  }, [])\n\n  return (\n    <Dialog>\n      <DialogTrigger>New Project</DialogTrigger>\n      <DialogContent\n        size=\"md\"\n        onEscapeKeyDown={(e) => {\n          if (submitting) e.preventDefault()\n        }}\n      >\n        <DialogHeader>\n          <DialogTitle>Create Project</DialogTitle>\n        </DialogHeader>\n        <DialogBody>\n          <div className=\"space-y-4\">\n            <Label label=\"Project Name\">\n              <Input\n                autoFocus\n                value={name}\n                onChange={(e) => setName(e.target.value)}\n                placeholder=\"my-project\"\n              />\n            </Label>\n          </div>\n        </DialogBody>\n        <DialogFooter>\n          <DialogClose bracket variant=\"ghost\" disabled={submitting}>Cancel</DialogClose>\n          <DialogAction\n            disabled={!name.trim() || submitting}\n            onClick={(e) => {\n              e.preventDefault()\n              if (submitTimerRef.current !== null) {\n                clearTimeout(submitTimerRef.current)\n              }\n              setSubmitting(true)\n              submitTimerRef.current = setTimeout(() => {\n                setSubmitting(false)\n                submitTimerRef.current = null\n              }, 1000)\n            }}\n          >\n            {submitting ? \"Creating...\" : \"Create\"}\n          </DialogAction>\n        </DialogFooter>\n        <DialogKeyboardHints hints={[{ key: \"Esc\", label: \"Close\" }, { key: \"Enter\", label: \"Submit\" }]} />\n      </DialogContent>\n    </Dialog>\n  )\n}\n",
       "highlighted": [
         {
           "number": 1,
@@ -44142,6 +44142,22 @@
             },
             {
               "text": "{",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " useEffect",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " useRef",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ",",
               "color": "var(--code-operator)"
             },
             {
@@ -44645,10 +44661,298 @@
         },
         {
           "number": 22,
-          "content": []
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "const",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "submitTimerRef",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useRef",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "ReturnType",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "<typeof",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " setTimeout",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "|",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ">",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ")",
+              "color": "var(--code-variable)"
+            }
+          ]
         },
         {
           "number": 23,
+          "content": []
+        },
+        {
+          "number": 24,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "useEffect",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 25,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "return",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "()",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=>",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 26,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "submitTimerRef",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "current ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "!==",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 27,
+          "content": [
+            {
+              "text": "        ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "clearTimeout",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "submitTimerRef",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "current)",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 28,
+          "content": [
+            {
+              "text": "      ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 29,
+          "content": [
+            {
+              "text": "    ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 30,
+          "content": [
+            {
+              "text": "  ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " [])",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 31,
+          "content": []
+        },
+        {
+          "number": 32,
           "content": [
             {
               "text": "  ",
@@ -44665,7 +44969,7 @@
           ]
         },
         {
-          "number": 24,
+          "number": 33,
           "content": [
             {
               "text": "    ",
@@ -44686,7 +44990,7 @@
           ]
         },
         {
-          "number": 25,
+          "number": 34,
           "content": [
             {
               "text": "      ",
@@ -44723,7 +45027,7 @@
           ]
         },
         {
-          "number": 26,
+          "number": 35,
           "content": [
             {
               "text": "      ",
@@ -44740,7 +45044,7 @@
           ]
         },
         {
-          "number": 27,
+          "number": 36,
           "content": [
             {
               "text": "        ",
@@ -44769,7 +45073,7 @@
           ]
         },
         {
-          "number": 28,
+          "number": 37,
           "content": [
             {
               "text": "        ",
@@ -44810,7 +45114,7 @@
           ]
         },
         {
-          "number": 29,
+          "number": 38,
           "content": [
             {
               "text": "          ",
@@ -44843,7 +45147,7 @@
           ]
         },
         {
-          "number": 30,
+          "number": 39,
           "content": [
             {
               "text": "        ",
@@ -44856,7 +45160,7 @@
           ]
         },
         {
-          "number": 31,
+          "number": 40,
           "content": [
             {
               "text": "      ",
@@ -44869,7 +45173,7 @@
           ]
         },
         {
-          "number": 32,
+          "number": 41,
           "content": [
             {
               "text": "        ",
@@ -44890,7 +45194,7 @@
           ]
         },
         {
-          "number": 33,
+          "number": 42,
           "content": [
             {
               "text": "          ",
@@ -44927,7 +45231,7 @@
           ]
         },
         {
-          "number": 34,
+          "number": 43,
           "content": [
             {
               "text": "        ",
@@ -44948,7 +45252,7 @@
           ]
         },
         {
-          "number": 35,
+          "number": 44,
           "content": [
             {
               "text": "        ",
@@ -44969,7 +45273,7 @@
           ]
         },
         {
-          "number": 36,
+          "number": 45,
           "content": [
             {
               "text": "          ",
@@ -45014,7 +45318,7 @@
           ]
         },
         {
-          "number": 37,
+          "number": 46,
           "content": [
             {
               "text": "            ",
@@ -45059,7 +45363,7 @@
           ]
         },
         {
-          "number": 38,
+          "number": 47,
           "content": [
             {
               "text": "              ",
@@ -45076,7 +45380,7 @@
           ]
         },
         {
-          "number": 39,
+          "number": 48,
           "content": [
             {
               "text": "                ",
@@ -45089,7 +45393,7 @@
           ]
         },
         {
-          "number": 40,
+          "number": 49,
           "content": [
             {
               "text": "                ",
@@ -45114,7 +45418,7 @@
           ]
         },
         {
-          "number": 41,
+          "number": 50,
           "content": [
             {
               "text": "                ",
@@ -45183,7 +45487,7 @@
           ]
         },
         {
-          "number": 42,
+          "number": 51,
           "content": [
             {
               "text": "                ",
@@ -45212,7 +45516,7 @@
           ]
         },
         {
-          "number": 43,
+          "number": 52,
           "content": [
             {
               "text": "              ",
@@ -45225,7 +45529,7 @@
           ]
         },
         {
-          "number": 44,
+          "number": 53,
           "content": [
             {
               "text": "            ",
@@ -45246,7 +45550,7 @@
           ]
         },
         {
-          "number": 45,
+          "number": 54,
           "content": [
             {
               "text": "          ",
@@ -45267,7 +45571,7 @@
           ]
         },
         {
-          "number": 46,
+          "number": 55,
           "content": [
             {
               "text": "        ",
@@ -45288,7 +45592,7 @@
           ]
         },
         {
-          "number": 47,
+          "number": 56,
           "content": [
             {
               "text": "        ",
@@ -45309,7 +45613,7 @@
           ]
         },
         {
-          "number": 48,
+          "number": 57,
           "content": [
             {
               "text": "          ",
@@ -45394,7 +45698,7 @@
           ]
         },
         {
-          "number": 49,
+          "number": 58,
           "content": [
             {
               "text": "          ",
@@ -45411,7 +45715,7 @@
           ]
         },
         {
-          "number": 50,
+          "number": 59,
           "content": [
             {
               "text": "            ",
@@ -45456,7 +45760,7 @@
           ]
         },
         {
-          "number": 51,
+          "number": 60,
           "content": [
             {
               "text": "            ",
@@ -45497,7 +45801,7 @@
           ]
         },
         {
-          "number": 52,
+          "number": 61,
           "content": [
             {
               "text": "              ",
@@ -45522,7 +45826,98 @@
           ]
         },
         {
-          "number": 53,
+          "number": 62,
+          "content": [
+            {
+              "text": "              ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "if",
+              "color": "var(--code-keyword)"
+            },
+            {
+              "text": " (",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "submitTimerRef",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "current ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "!==",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ") ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 63,
+          "content": [
+            {
+              "text": "                ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "clearTimeout",
+              "color": "var(--code-function)"
+            },
+            {
+              "text": "(",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "submitTimerRef",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "current)",
+              "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 64,
+          "content": [
+            {
+              "text": "              ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "}",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 65,
           "content": [
             {
               "text": "              ",
@@ -45547,10 +45942,30 @@
           ]
         },
         {
-          "number": 54,
+          "number": 66,
           "content": [
             {
               "text": "              ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "submitTimerRef",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "current ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
               "color": "var(--code-variable)"
             },
             {
@@ -45578,6 +45993,19 @@
               "color": "var(--code-variable)"
             },
             {
+              "text": "{",
+              "color": "var(--code-operator)"
+            }
+          ]
+        },
+        {
+          "number": 67,
+          "content": [
+            {
+              "text": "                ",
+              "color": "var(--code-variable)"
+            },
+            {
               "text": "setSubmitting",
               "color": "var(--code-function)"
             },
@@ -45592,9 +46020,51 @@
             {
               "text": ")",
               "color": "var(--code-variable)"
+            }
+          ]
+        },
+        {
+          "number": 68,
+          "content": [
+            {
+              "text": "                ",
+              "color": "var(--code-variable)"
             },
             {
-              "text": ",",
+              "text": "submitTimerRef",
+              "color": "var(--code-number)"
+            },
+            {
+              "text": ".",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": "current ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "=",
+              "color": "var(--code-operator)"
+            },
+            {
+              "text": " ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "null",
+              "color": "var(--code-number)"
+            }
+          ]
+        },
+        {
+          "number": 69,
+          "content": [
+            {
+              "text": "              ",
+              "color": "var(--code-variable)"
+            },
+            {
+              "text": "},",
               "color": "var(--code-operator)"
             },
             {
@@ -45612,7 +46082,7 @@
           ]
         },
         {
-          "number": 55,
+          "number": 70,
           "content": [
             {
               "text": "            ",
@@ -45625,7 +46095,7 @@
           ]
         },
         {
-          "number": 56,
+          "number": 71,
           "content": [
             {
               "text": "          ",
@@ -45638,7 +46108,7 @@
           ]
         },
         {
-          "number": 57,
+          "number": 72,
           "content": [
             {
               "text": "            ",
@@ -45703,7 +46173,7 @@
           ]
         },
         {
-          "number": 58,
+          "number": 73,
           "content": [
             {
               "text": "          ",
@@ -45724,7 +46194,7 @@
           ]
         },
         {
-          "number": 59,
+          "number": 74,
           "content": [
             {
               "text": "        ",
@@ -45745,7 +46215,7 @@
           ]
         },
         {
-          "number": 60,
+          "number": 75,
           "content": [
             {
               "text": "        ",
@@ -45926,7 +46396,7 @@
           ]
         },
         {
-          "number": 61,
+          "number": 76,
           "content": [
             {
               "text": "      ",
@@ -45947,7 +46417,7 @@
           ]
         },
         {
-          "number": 62,
+          "number": 77,
           "content": [
             {
               "text": "    ",
@@ -45968,7 +46438,7 @@
           ]
         },
         {
-          "number": 63,
+          "number": 78,
           "content": [
             {
               "text": "  )",
@@ -45977,7 +46447,7 @@
           ]
         },
         {
-          "number": 64,
+          "number": 79,
           "content": [
             {
               "text": "}",
@@ -45986,7 +46456,7 @@
           ]
         },
         {
-          "number": 65,
+          "number": 80,
           "content": []
         }
       ]

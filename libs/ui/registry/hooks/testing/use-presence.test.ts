@@ -129,6 +129,33 @@ describe("usePresence", () => {
     expect(onExitComplete).toHaveBeenCalledOnce()
   })
 
+  it("does not restart the fallback timer when onExitComplete identity changes", () => {
+    vi.useFakeTimers()
+    const firstOnExitComplete = vi.fn()
+    const secondOnExitComplete = vi.fn()
+    const { result, rerender } = renderHook(
+      ({ open, onExitComplete }) => usePresence({ open, exitFallbackMs: 50, onExitComplete }),
+      { initialProps: { open: true, onExitComplete: firstOnExitComplete } },
+    )
+
+    rerender({ open: false, onExitComplete: firstOnExitComplete })
+    act(() => {
+      vi.advanceTimersByTime(25)
+    })
+    rerender({ open: false, onExitComplete: secondOnExitComplete })
+    act(() => {
+      vi.advanceTimersByTime(24)
+    })
+    expect(result.current.present).toBe(true)
+
+    act(() => {
+      vi.advanceTimersByTime(1)
+    })
+    expect(result.current.present).toBe(false)
+    expect(firstOnExitComplete).not.toHaveBeenCalled()
+    expect(secondOnExitComplete).toHaveBeenCalledOnce()
+  })
+
   it("finishes closing on animation cancel", () => {
     const ref = createRef<HTMLElement>() as React.MutableRefObject<HTMLElement | null>
     ref.current = document.createElement("div")

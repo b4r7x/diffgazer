@@ -23,8 +23,11 @@ export function AvatarImage({
 
   useEffect(() => {
     setImageStatus(status);
-    return () => setImageStatus("idle");
   }, [status, setImageStatus]);
+
+  useEffect(() => {
+    return () => setImageStatus("idle");
+  }, [setImageStatus]);
 
   if (!showImage) return null;
 

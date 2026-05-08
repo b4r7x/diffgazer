@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useLayoutEffect, useRef, type RefObject } from "react";
+import { useEffectEvent, useLayoutEffect, type RefObject } from "react";
 
 export function useFormReset<T>(
   ref: RefObject<HTMLElement | null>,
@@ -8,30 +8,16 @@ export function useFormReset<T>(
   onReset: (value: T) => void,
   enabled = true,
 ) {
-  const formRef = useRef<HTMLFormElement | null>(null);
-  const listenerRef = useRef<(() => void) | null>(null);
   const handleReset = useEffectEvent(() => {
     onReset(resetValue);
   });
-  listenerRef.current ??= () => handleReset();
 
   useLayoutEffect(() => {
-    const nextForm = enabled ? ref.current?.closest("form") ?? null : null;
-    if (formRef.current === nextForm) return;
+    const form = enabled ? ref.current?.closest("form") ?? null : null;
+    if (!form) return;
 
-    const listener = listenerRef.current;
-    if (!listener) return;
-
-    formRef.current?.removeEventListener("reset", listener);
-    nextForm?.addEventListener("reset", listener);
-    formRef.current = nextForm;
+    const listener = () => handleReset();
+    form.addEventListener("reset", listener);
+    return () => form.removeEventListener("reset", listener);
   });
-
-  useEffect(() => {
-    return () => {
-      const listener = listenerRef.current;
-      if (listener) formRef.current?.removeEventListener("reset", listener);
-      formRef.current = null;
-    };
-  }, []);
 }

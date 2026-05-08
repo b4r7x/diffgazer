@@ -36,6 +36,23 @@ const FOOTER_HINTS = [
   { key: "f", label: "filter" },
 ];
 
+function getCompatibilityLabel({
+  total,
+  compatible,
+  hasParams,
+}: {
+  total: number;
+  compatible: number;
+  hasParams: boolean;
+}) {
+  if (total === 0) return "No models available.";
+  if (compatible < total) {
+    return `Showing ${compatible}/${total} models that support structured outputs.`;
+  }
+  if (hasParams) return "Showing models that support structured outputs.";
+  return "Compatibility unknown; showing all models.";
+}
+
 export function ModelSelectDialog({
   open,
   onOpenChange,
@@ -105,17 +122,7 @@ export function ModelSelectDialog({
     provider === OPENROUTER_PROVIDER_ID
       ? openRouter.error ?? "No models match your search"
       : "No models match your search";
-  const showCompatibilityNote =
-    provider === OPENROUTER_PROVIDER_ID &&
-    openRouter.total > 0 &&
-    openRouter.compatible < openRouter.total;
-  const compatibilityLabel = showCompatibilityNote
-    ? `Showing ${openRouter.compatible}/${openRouter.total} models that support structured outputs.`
-    : openRouter.total > 0
-      ? openRouter.hasParams
-        ? "Showing models that support structured outputs."
-        : "Compatibility unknown; showing all models."
-      : "No models available.";
+  const compatibilityLabel = getCompatibilityLabel(openRouter);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -171,7 +178,7 @@ export function ModelSelectDialog({
         <DialogFooter className="justify-between">
           <DialogFooterActions
             onCancel={handleCancel}
-            onConfirm={handleConfirm}
+            onConfirm={() => handleConfirm()}
             canConfirm={filteredModels.length > 0}
             cancelFocused={focusZone === "footer" && footerButtonIndex === 0}
             confirmFocused={focusZone === "footer" && footerButtonIndex === 1}

@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useScopedNavigation } from "@diffgazer/keys";
 import { DemoWrapper } from "../components/demo-wrapper";
+import { useTransientValue } from "./use-transient-value";
 
 const fruits = [
   "Apple",
@@ -16,7 +17,7 @@ const fruits = [
 export function ListNavigationDemo() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
-  const [activatedItem, setActivatedItem] = useState<string | null>(null);
+  const [activatedItem, showActivatedItem] = useTransientValue<string | null>(null, 1500);
 
   const toggleSelection = (value: string) => {
     setSelectedItems((prev) => {
@@ -31,8 +32,7 @@ export function ListNavigationDemo() {
   };
 
   const activateItem = (value: string) => {
-    setActivatedItem(value);
-    setTimeout(() => setActivatedItem(null), 1500);
+    showActivatedItem(value);
   };
 
   const { highlighted, isHighlighted } = useScopedNavigation({

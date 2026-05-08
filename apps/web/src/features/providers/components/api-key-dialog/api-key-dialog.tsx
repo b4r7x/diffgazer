@@ -82,7 +82,9 @@ export function ApiKeyDialog({
 
         <ApiKeyFooter
           onCancel={() => onOpenChange(false)}
-          onConfirm={form.handleSubmit}
+          onConfirm={() => {
+            void form.handleSubmit();
+          }}
           canSubmit={form.canSubmit}
           isSubmitting={form.isSubmitting}
           focused={focused}

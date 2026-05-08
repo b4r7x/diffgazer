@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
+import type { TrustCapabilities, TrustConfig } from "@diffgazer/core/schemas/config";
 import type { Shortcut } from "@diffgazer/core/schemas/ui";
 import { getErrorMessage } from "@diffgazer/core/errors";
 import { useKey } from "@diffgazer/keys";
@@ -16,15 +16,50 @@ const DEFAULT_CAPABILITIES: TrustCapabilities = {
   runCommands: false,
 };
 
+function getDraftCapabilities(trust: TrustConfig | null): TrustCapabilities {
+  return { ...(trust?.capabilities ?? DEFAULT_CAPABILITIES), runCommands: false };
+}
+
+function getTrustEditorKey(projectId: string | null, repoRoot: string | null, trust: TrustConfig | null): string {
+  if (trust) return `${trust.projectId}:${trust.trustedAt}`;
+  return `${projectId ?? "loading"}:${repoRoot ?? "loading"}:untrusted`;
+}
+
 export function TrustPermissionsPage() {
-  const navigate = useNavigate();
   const { projectId, repoRoot, trust } = useConfigData();
+  const editorKey = getTrustEditorKey(projectId, repoRoot, trust);
+
+  return (
+    <TrustPermissionsEditor
+      key={editorKey}
+      projectId={projectId}
+      repoRoot={repoRoot}
+      trust={trust}
+      initialCapabilities={getDraftCapabilities(trust)}
+    />
+  );
+}
+
+interface TrustPermissionsEditorProps {
+  projectId: string | null;
+  repoRoot: string | null;
+  trust: TrustConfig | null;
+  initialCapabilities: TrustCapabilities;
+}
+
+function TrustPermissionsEditor({
+  projectId,
+  repoRoot,
+  trust,
+  initialCapabilities,
+}: TrustPermissionsEditorProps) {
+  const navigate = useNavigate();
   const saveTrust = useSaveTrust();
   const deleteTrust = useDeleteTrust();
   const isLoading = saveTrust.isPending || deleteTrust.isPending;
 
   const [capabilities, setCapabilities] = useState<TrustCapabilities>(
-    () => ({ ...(trust?.capabilities ?? DEFAULT_CAPABILITIES), runCommands: false }),
+    () => initialCapabilities,
   );
 
   const footerShortcuts: Shortcut[] = [
