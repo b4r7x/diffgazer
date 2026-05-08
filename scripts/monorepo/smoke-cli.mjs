@@ -40,6 +40,23 @@ function run(cmd, cwd = root) {
   }).toString();
 }
 
+function runFailure(cmd, cwd = root) {
+  try {
+    const output = run(cmd, cwd);
+    throw new Error(`Expected command to fail but it succeeded: ${cmd}\n${output.slice(0, 250)}`);
+  } catch (err) {
+    if (!err || typeof err !== "object" || typeof err.status !== "number") {
+      throw err;
+    }
+
+    return `${err.stdout ?? ""}${err.stderr ?? ""}`;
+  }
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function resolveLocalDependency(packageName) {
   for (const dir of ["apps/web", "libs/ui", "libs/keys", "."]) {
     const depPath = resolve(root, dir, "node_modules", ...packageName.split("/"));
@@ -372,13 +389,30 @@ function runOptionalNextCopyFirstSmoke(dgadd) {
   }
 }
 
+const diffgazerPackage = JSON.parse(readFileSync(resolve(root, "cli/diffgazer/package.json"), "utf-8"));
+
 const commands = [
   {
     name: "diffgazer --help",
     command: "node cli/diffgazer/dist/index.js --help",
-    expect: /help|Usage|review|app/i,
+    expect: /--tui[\s\S]*beta terminal UI \(incomplete; not recommended\)/i,
     label: "product CLI help",
     optionalPath: "cli/diffgazer/dist/index.js",
+  },
+  {
+    name: "diffgazer --version",
+    command: "node cli/diffgazer/dist/index.js --version",
+    expect: new RegExp(`^${escapeRegExp(diffgazerPackage.version)}\\s*$`),
+    label: "product CLI version",
+    optionalPath: "cli/diffgazer/dist/index.js",
+  },
+  {
+    name: "diffgazer --theme without --tui",
+    command: "node cli/diffgazer/dist/index.js --theme classic",
+    expect: /--theme requires --tui\./,
+    label: "product CLI rejects TUI-only theme",
+    optionalPath: "cli/diffgazer/dist/index.js",
+    expectFailure: true,
   },
   {
     name: "dgadd --help",
@@ -406,7 +440,7 @@ for (const check of commands) {
     continue;
   }
 
-  const output = run(check.command);
+  const output = check.expectFailure ? runFailure(check.command) : run(check.command);
 
   if (!check.expect.test(output)) {
     throw new Error(`Smoke check failed for ${check.label}: expected ${check.expect}, got ${output.slice(0, 250)}`);

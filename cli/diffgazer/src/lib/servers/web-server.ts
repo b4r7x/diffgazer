@@ -1,4 +1,3 @@
-import open from "open";
 import {
   createProcessServer,
   type ServerController,
@@ -7,15 +6,16 @@ import {
 export interface WebServerConfig {
   cwd: string;
   port: number;
+  onReady?: (address: string) => void;
 }
 
 export function createWebServer(config: WebServerConfig): ServerController {
   return createProcessServer({
-    command: "npx",
-    args: ["vite", "--port", String(config.port)],
+    command: "pnpm",
+    args: ["exec", "vite", "--port", String(config.port)],
     cwd: config.cwd,
     port: config.port,
     readyPattern: "Local:",
-    onReady: (address) => void open(address),
+    onReady: config.onReady,
   });
 }

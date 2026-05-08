@@ -1,4 +1,4 @@
-import { useContext, useEffect, useEffectEvent } from "react";
+import { useContext, useEffect, useEffectEvent, useMemo } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { Box, Text, useInput } from "ink";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -12,13 +12,12 @@ import { ServerProvider } from "./providers/server-provider.js";
 import { GlobalLayout } from "../components/layout/global-layout.js";
 import { ScreenRouter } from "./router.js";
 import { Spinner } from "../components/ui/spinner.js";
-import { devServerFactories } from "./modes/dev.js";
-import { prodServerFactories } from "./modes/prod.js";
 import { useServerStatus } from "@diffgazer/core/api/hooks";
 import { useConfigGuard } from "../hooks/use-config-guard.js";
 import { useExit } from "../hooks/use-exit.js";
 import { api } from "../lib/api.js";
 import { createCliQueryClient } from "../lib/query-client.js";
+import { createServerFactories } from "../lib/servers/server-factories.js";
 
 const queryClient = createCliQueryClient();
 
@@ -112,11 +111,15 @@ function GlobalShortcuts(): null {
 interface AppProps {
   mode: CliMode;
   theme?: string;
+  openBrowser: boolean;
 }
 
-export function App({ mode, theme }: AppProps): ReactElement {
-  const serverFactories =
-    mode === "dev" ? devServerFactories : prodServerFactories;
+export function App({ mode, theme, openBrowser }: AppProps): ReactElement {
+  const serverProviderKey = `${mode}:${openBrowser ? "open" : "closed"}`;
+  const serverFactories = useMemo(
+    () => createServerFactories({ mode, openBrowser }),
+    [mode, openBrowser],
+  );
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -125,7 +128,7 @@ export function App({ mode, theme }: AppProps): ReactElement {
           <TerminalKeyboardProvider>
             <NavigationProvider>
               <FooterProvider>
-                <ServerProvider servers={serverFactories}>
+                <ServerProvider key={serverProviderKey} servers={serverFactories}>
                   <GlobalShortcuts />
                   <HealthGate>
                     <ConfigGate>

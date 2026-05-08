@@ -39,6 +39,7 @@
     "prepack": "pnpm run build",
     "dev": "tsx --tsconfig tsconfig.json src/index.tsx --dev",
     "type-check": "tsc --noEmit",
+    "test": "node --import tsx --test src/**/*.test.ts",
     "start": "node bin/diffgazer.js"
   },
   "dependencies": {

@@ -3,59 +3,63 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { render } from "ink";
-import { App } from "./app/index.js";
-import type { CliMode } from "./types/cli.js";
+import { HELP_TEXT, resolveCliAction } from "./cli-options.js";
+import { startWeb } from "./web-launcher.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const HELP_TEXT = `Usage: diffgazer [options]
-
-Product CLI for reviewing code changes with Diffgazer.
-
-Options:
-  --dev              Run in development mode
-  --theme <theme>    Start with a specific theme
-  -V, --version      Display version
-  -h, --help         Display help
-`;
-
-function isHelp(args: string[]): boolean {
-  return args.includes("--help") || args.includes("-h");
-}
-
-function isVersion(args: string[]): boolean {
-  return args.includes("--version") || args.includes("-V");
+function formatErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
 function readVersion(): string {
+  const packagePath = resolve(__dirname, "../package.json");
+
+  let metadata: unknown;
   try {
-    const pkg = JSON.parse(readFileSync(resolve(__dirname, "../package.json"), "utf-8")) as { version?: string };
-    return pkg.version ?? "0.0.0";
-  } catch {
-    return "0.0.0";
+    metadata = JSON.parse(readFileSync(packagePath, "utf-8")) as unknown;
+  } catch (err: unknown) {
+    throw new Error(`Unable to read diffgazer package metadata: ${formatErrorMessage(err)}`);
   }
+
+  if (
+    typeof metadata !== "object" ||
+    metadata === null ||
+    !("version" in metadata) ||
+    typeof metadata.version !== "string" ||
+    metadata.version.length === 0
+  ) {
+    throw new Error(`Invalid diffgazer package metadata at ${packagePath}: expected a non-empty string version.`);
+  }
+
+  return metadata.version;
 }
 
-function parseArgs(args: string[]): { mode: CliMode; theme?: string } {
-  const mode: CliMode = args.includes("--dev") ? "dev" : "prod";
-  const themeIdx = args.indexOf("--theme");
-  const theme = themeIdx !== -1 ? args[themeIdx + 1] : undefined;
-  return { mode, theme };
+async function main(): Promise<void> {
+  const action = resolveCliAction(process.argv.slice(2));
+
+  if (action.type === "help") {
+    console.log(HELP_TEXT);
+    return;
+  }
+
+  if (action.type === "version") {
+    console.log(readVersion());
+    return;
+  }
+
+  process.env.DIFFGAZER_CLI_PID ??= String(process.pid);
+
+  if (action.type === "web") {
+    startWeb({ mode: action.mode, openBrowser: action.openBrowser });
+    return;
+  }
+
+  const { startTui } = await import("./tui-entry.js");
+  startTui({ mode: action.mode, theme: action.theme });
 }
 
-const args = process.argv.slice(2);
-if (isHelp(args)) {
-  console.log(HELP_TEXT);
-  process.exit(0);
-}
-
-if (isVersion(args)) {
-  console.log(readVersion());
-  process.exit(0);
-}
-
-const { mode, theme } = parseArgs(args);
-process.env.DIFFGAZER_CLI_PID ??= String(process.pid);
-
-render(<App mode={mode} theme={theme} />, { exitOnCtrlC: false });
+void main().catch((err: unknown) => {
+  console.error(formatErrorMessage(err));
+  process.exit(1);
+});
