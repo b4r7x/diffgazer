@@ -63,14 +63,14 @@ describe("TrustPermissionsPage", () => {
   it("resets the draft when async trust data arrives", async () => {
     const { rerender } = renderPage();
 
-    expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "false");
 
     mockConfigData.trust = {
       projectId: "project-1",
       repoRoot: "/repo",
       trustedAt: "2026-02-09T12:00:00.000Z",
       trustMode: "persistent",
-      capabilities: { readFiles: false, runCommands: false },
+      capabilities: { readFiles: true, runCommands: false },
     };
 
     rerender(
@@ -79,7 +79,7 @@ describe("TrustPermissionsPage", () => {
       </KeyboardProvider>,
     );
 
-    expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "true");
   });
 
   it("does not steal focus from the action row when async trust data arrives", async () => {
@@ -130,6 +130,14 @@ describe("TrustPermissionsPage", () => {
 
   it("saves edited trust permissions and returns to settings", async () => {
     const user = userEvent.setup();
+    mockConfigData.trust = {
+      projectId: "project-1",
+      repoRoot: "/repo",
+      trustedAt: "2026-02-09T12:00:00.000Z",
+      trustMode: "persistent",
+      capabilities: { readFiles: true, runCommands: false },
+    };
+
     renderPage();
 
     const readFilesOption = screen.getByRole("checkbox", { name: /repository access/i });
@@ -170,7 +178,8 @@ describe("TrustPermissionsPage", () => {
     await waitFor(() => expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveFocus());
     await user.keyboard("{ArrowDown}{ArrowRight}{Enter}");
 
-    expect(mockDeleteTrust).toHaveBeenCalledWith("project-1");
+    await waitFor(() => expect(mockDeleteTrust).toHaveBeenCalledWith("project-1"));
+    expect(screen.getByRole("checkbox", { name: /repository access/i })).toHaveAttribute("aria-checked", "false");
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

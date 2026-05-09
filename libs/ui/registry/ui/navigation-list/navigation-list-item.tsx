@@ -83,7 +83,8 @@ export function NavigationListItem({
     useNavigationListContext();
   const isSelected = selectedId === id;
   const isHighlighted = highlightedId === id;
-  const isActive = (isSelected || isHighlighted) && focused;
+  const hasHighlight = highlightedId !== null;
+  const isActive = focused && (hasHighlight ? isHighlighted : isSelected);
   const itemId = getEncodedListboxItemId(idPrefix, id);
   const labelId = `${itemId}-label`;
   const descId = `${itemId}-desc`;

@@ -8,7 +8,7 @@ import { usePageFooter } from "@/hooks/use-page-footer";
 import { Panel, PanelHeader, PanelContent } from "@diffgazer/ui/components/panel";
 import { toast } from "@diffgazer/ui/components/toast";
 import { TrustPermissionsContent } from "@/components/shared/trust-permissions-content";
-import { normalizeTrustCapabilities } from "@/components/shared/trust-permissions-model";
+import { NO_TRUST_CAPABILITIES, normalizeTrustCapabilities } from "@/components/shared/trust-permissions-model";
 import { useConfigData } from "@/app/providers/config-provider";
 import { useSaveTrust, useDeleteTrust } from "@diffgazer/core/api/hooks";
 
@@ -112,6 +112,7 @@ function TrustPermissionsEditor({
     if (isLoading || !projectId) return;
     try {
       await deleteTrust.mutateAsync(projectId);
+      setDraft({ editorKey, capabilities: NO_TRUST_CAPABILITIES });
       toast.success("Revoked", { message: "Trust has been revoked for this directory" });
     } catch (error) {
       toast.error("Error", { message: getErrorMessage(error, "Failed to revoke trust") });

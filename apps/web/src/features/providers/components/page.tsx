@@ -109,6 +109,8 @@ export function ProvidersPage() {
           focusedFilterIndex={keyboard.focusZone === "filters" ? keyboard.filterIndex : undefined}
           onFilterHighlightChange={keyboard.setFilterIndex}
           onFilterFocus={keyboard.handleFilterFocus}
+          onFilterKeyDown={keyboard.handleFilterKeyDown}
+          getFilterButtonProps={keyboard.getFilterButtonProps}
           highlightedId={listHighlighted}
           onHighlightChange={setListHighlighted}
           onBoundaryReached={keyboard.handleListBoundary}

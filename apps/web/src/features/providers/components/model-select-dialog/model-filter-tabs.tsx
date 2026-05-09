@@ -1,3 +1,4 @@
+import type { KeyboardEvent as ReactKeyboardEvent, RefCallback } from "react";
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import { cn } from "@diffgazer/core/cn";
 import { TIER_FILTERS, type TierFilter } from "@/features/providers/constants";
@@ -8,6 +9,11 @@ interface ModelFilterTabsProps {
   focusedIndex: number;
   isFocused: boolean;
   onTabClick: (index: number) => void;
+  onKeyDown?: (event: ReactKeyboardEvent) => void;
+  getTabProps?: (index: number) => {
+    ref: RefCallback<HTMLButtonElement>;
+    onFocus: () => void;
+  };
 }
 
 export function ModelFilterTabs({
@@ -16,6 +22,8 @@ export function ModelFilterTabs({
   focusedIndex,
   isFocused,
   onTabClick,
+  onKeyDown,
+  getTabProps,
 }: ModelFilterTabsProps) {
   const handleFilterChange = (nextValue: string | null) => {
     const index = TIER_FILTERS.findIndex((filter) => filter === nextValue);
@@ -37,26 +45,36 @@ export function ModelFilterTabs({
       onChange={handleFilterChange}
       onHighlightChange={handleHighlightChange}
       highlighted={isFocused ? TIER_FILTERS[focusedIndex] ?? null : null}
+      onKeyDown={onKeyDown}
       label="Model tier filter"
       className="px-4 pb-2"
     >
-      {TIER_FILTERS.map((filter, idx) => (
-        <ToggleGroupItem
-          key={filter}
-          value={filter}
-          onClick={() => {
-            onTabClick(idx);
-          }}
-          className={cn(
-            "uppercase text-[10px] min-h-0 min-w-0 h-auto px-2 py-0.5",
-            isFocused &&
-              focusedIndex === idx &&
-              "ring-2 ring-tui-blue ring-offset-1 ring-offset-tui-bg"
-          )}
-        >
-          {filter}
-        </ToggleGroupItem>
-      ))}
+      {TIER_FILTERS.map((filter, idx) => {
+        const tabProps = getTabProps?.(idx);
+
+        return (
+          <ToggleGroupItem
+            key={filter}
+            value={filter}
+            ref={tabProps?.ref}
+            onFocus={() => {
+              tabProps?.onFocus();
+              onTabClick(idx);
+            }}
+            onClick={() => {
+              onTabClick(idx);
+            }}
+            className={cn(
+              "uppercase text-[10px] min-h-0 min-w-0 h-auto px-2 py-0.5",
+              isFocused &&
+                focusedIndex === idx &&
+                "ring-2 ring-tui-blue ring-offset-1 ring-offset-tui-bg"
+            )}
+          >
+            {filter}
+          </ToggleGroupItem>
+        );
+      })}
     </ToggleGroup>
   );
 }

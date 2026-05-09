@@ -1,17 +1,14 @@
-// Development entry point - starts the server
-import { serve } from "@hono/node-server";
 import { createApp } from "./index.js";
+import { parsePortEnv, startDevServer } from "./dev-server.js";
 
-const app = createApp();
-const port = Number(process.env.PORT) || 3000;
-
-serve(
-  {
+try {
+  const app = createApp();
+  const port = parsePortEnv(process.env.PORT);
+  startDevServer({
     fetch: app.fetch,
     port,
-    hostname: "127.0.0.1",
-  },
-  (info) => {
-    console.log(`Server running on http://localhost:${info.port}`);
-  }
-);
+  });
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exitCode = 1;
+}

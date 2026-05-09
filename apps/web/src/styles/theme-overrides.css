@@ -72,36 +72,39 @@
 
 [data-theme="light"] {
   /* Primitive token overrides */
-  --tui-bg: #ffffff;
+  --tui-bg: #f7f8f5;
   --tui-fg: #1f2328;
-  --tui-blue: #0969da;
-  --tui-violet: #8250df;
-  --tui-green: #1a7f37;
-  --tui-red: #cf222e;
-  --tui-yellow: #9a6700;
-  --tui-border: #d0d7de;
-  --tui-selection: #ddf4ff;
-  --tui-muted: #656d76;
-  --tui-input-bg: #f6f8fa;
+  --tui-dim: #5f6872;
+  --tui-blue: #0b63ce;
+  --tui-violet: #6f42c1;
+  --tui-green: #0f7a4f;
+  --tui-red: #c62828;
+  --tui-yellow: #8a5a00;
+  --tui-border: #aeb7c0;
+  --tui-highlight: #1f2328;
+  --tui-highlight-fg: #ffffff;
+  --tui-selection: #e8edf3;
+  --tui-muted: #69717a;
+  --tui-input-bg: #ffffff;
 
   /* Semantic overrides */
   --background: var(--tui-bg);
   --foreground: var(--tui-fg);
-  --primary: var(--tui-blue);
-  --primary-foreground: #ffffff;
+  --primary: var(--tui-highlight);
+  --primary-foreground: var(--tui-highlight-fg);
   --secondary: var(--tui-selection);
   --secondary-foreground: var(--tui-fg);
   --muted: var(--tui-muted);
-  --muted-foreground: var(--tui-muted);
+  --muted-foreground: var(--tui-dim);
   --border: var(--tui-border);
-  --input: #f6f8fa;
+  --input: var(--tui-input-bg);
   --destructive: var(--tui-red);
   --destructive-foreground: #ffffff;
   --accent: var(--tui-violet);
   --accent-foreground: #ffffff;
-  --card: var(--tui-selection);
+  --card: var(--tui-input-bg);
   --card-foreground: var(--tui-fg);
-  --popover: var(--tui-selection);
+  --popover: var(--tui-input-bg);
   --popover-foreground: var(--tui-fg);
   --ring: var(--tui-blue);
   --success: var(--tui-green);
@@ -115,31 +118,31 @@
   --action: var(--tui-violet);
   --action-foreground: #ffffff;
 
-  --success-subtle: #1a7f371f;
+  --success-subtle: #0f7a4f1f;
   --success-fg: var(--tui-green);
   --success-border: var(--tui-green);
   --success-strong: var(--tui-green);
   --success-strong-foreground: #ffffff;
 
-  --warning-subtle: #9a670014;
+  --warning-subtle: #8a5a0014;
   --warning-fg: var(--tui-yellow);
   --warning-border: var(--tui-yellow);
   --warning-strong: var(--tui-yellow);
   --warning-strong-foreground: #ffffff;
 
-  --error-subtle: #cf222e1a;
+  --error-subtle: #c628281a;
   --error-fg: var(--tui-red);
   --error-border: var(--tui-red);
   --error-strong: var(--tui-red);
   --error-strong-foreground: #ffffff;
 
-  --info-subtle: #0969da1a;
+  --info-subtle: #0b63ce1a;
   --info-fg: var(--tui-blue);
   --info-border: var(--tui-blue);
   --info-strong: var(--tui-blue);
   --info-strong-foreground: #ffffff;
 
-  --neutral-subtle: #656d7614;
+  --neutral-subtle: #aeb7c014;
   --neutral-border: var(--tui-border);
   --neutral-fg: var(--tui-muted);
   --neutral-strong: var(--tui-muted);

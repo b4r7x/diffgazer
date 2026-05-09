@@ -3,7 +3,9 @@ import { render, renderHook, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import { KeyboardProvider } from "@diffgazer/keys";
-import { createElement, type ReactNode } from "react";
+import { createElement, useRef, useState, type ReactNode } from "react";
+import type { TierFilter } from "@/features/providers/constants";
+import { ModelFilterTabs } from "@/features/providers/components/model-select-dialog/model-filter-tabs";
 import { useModelDialogKeyboard } from "./use-model-dialog-keyboard";
 
 function makeModel(id: string): ModelInfo {
@@ -104,6 +106,85 @@ function renderDialogSubject(models: ModelInfo[], currentModel?: string) {
   return { user, onSelect, onOpenChange };
 }
 
+function TestInteractiveModelDialogKeyboard({
+  onTierFilter,
+}: {
+  onTierFilter: (filter: TierFilter) => void;
+}) {
+  const models = [makeModel("model-a"), makeModel("model-b")];
+  const [searchQuery, setSearchQuery] = useState("");
+  const [tierFilter, setTierFilter] = useState<TierFilter>("all");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const listContainerRef = useRef<HTMLDivElement>(null);
+  const applyTierFilter = (nextFilter: TierFilter) => {
+    setTierFilter(nextFilter);
+    onTierFilter(nextFilter);
+  };
+  const keyboard = useModelDialogKeyboard({
+    open: true,
+    currentModel: undefined,
+    models,
+    filteredModels: models,
+    searchQuery,
+    setSearchQuery,
+    setTierFilter: applyTierFilter,
+    cycleTierFilter: vi.fn(),
+    resetFilters: vi.fn(),
+    searchInputRef,
+    listContainerRef,
+    onSelect: vi.fn(),
+    onOpenChange: vi.fn(),
+  });
+
+  return createElement(
+    "div",
+    null,
+    createElement("input", {
+      "aria-label": "Search models",
+      ref: searchInputRef,
+      value: searchQuery,
+      onChange: (event) => setSearchQuery((event.target as HTMLInputElement).value),
+      onFocus: () => keyboard.setFocusZone("search"),
+    }),
+    createElement(ModelFilterTabs, {
+      value: tierFilter,
+      onChange: applyTierFilter,
+      focusedIndex: keyboard.filterIndex,
+      isFocused: keyboard.focusZone === "filters",
+      onTabClick: (index) => {
+        keyboard.setFocusZone("filters");
+        keyboard.setFilterIndex(index);
+      },
+      onKeyDown: keyboard.handleFilterKeyDown,
+      getTabProps: keyboard.getFilterButtonProps,
+    }),
+    createElement(
+      "div",
+      { ref: listContainerRef, role: "radiogroup" },
+      ...models.map((model) =>
+        createElement("div", {
+          key: model.id,
+          role: "radio",
+          "data-value": model.id,
+          tabIndex: 0,
+        }, model.name),
+      ),
+    ),
+  );
+}
+
+function renderInteractiveSubject(onTierFilter = vi.fn()) {
+  const user = userEvent.setup();
+
+  render(createElement(
+    KeyboardProvider,
+    null,
+    createElement(TestInteractiveModelDialogKeyboard, { onTierFilter }),
+  ));
+
+  return { user, onTierFilter };
+}
+
 describe("useModelDialogKeyboard", () => {
   it("focuses the first available model when models load after the dialog opens", async () => {
     const { result, rerender } = renderSubject([]);
@@ -133,5 +214,32 @@ describe("useModelDialogKeyboard", () => {
 
     expect(onSelect).toHaveBeenCalledWith("visible-model");
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("focuses model search with slash without typing slash into the field", async () => {
+    const { user } = renderInteractiveSubject();
+
+    await user.keyboard("/");
+
+    const search = screen.getByRole("textbox", { name: /search models/i });
+    expect(search).toHaveFocus();
+    expect(search).toHaveValue("");
+  });
+
+  it("changes tier filters through ModelFilterTabs roving controls", async () => {
+    const onTierFilter = vi.fn();
+    const { user } = renderInteractiveSubject(onTierFilter);
+
+    await user.keyboard("/");
+    await user.keyboard("{ArrowDown}");
+
+    expect(screen.getByRole("radio", { name: "all" })).toHaveFocus();
+
+    await user.keyboard("{ArrowRight}");
+
+    const freeFilter = screen.getByRole("radio", { name: "free" });
+    expect(freeFilter).toHaveFocus();
+    expect(freeFilter).toHaveAttribute("aria-checked", "true");
+    expect(onTierFilter).toHaveBeenCalledWith("free");
   });
 });

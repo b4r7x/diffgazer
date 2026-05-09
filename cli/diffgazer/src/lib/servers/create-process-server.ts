@@ -15,6 +15,35 @@ export interface ProcessServerConfig {
   onReady?: (address: string) => void;
 }
 
+interface ProcessErrorLike {
+  killed?: boolean;
+  stderr?: unknown;
+  shortMessage?: unknown;
+  message?: unknown;
+}
+
+function isProcessErrorLike(error: unknown): error is ProcessErrorLike {
+  return error !== null && typeof error === "object";
+}
+
+export function formatProcessError(error: unknown): string {
+  if (!isProcessErrorLike(error)) return String(error);
+
+  if (typeof error.stderr === "string" && error.stderr.trim()) {
+    return error.stderr.trim();
+  }
+
+  if (typeof error.shortMessage === "string" && error.shortMessage.trim()) {
+    return error.shortMessage.trim();
+  }
+
+  if (typeof error.message === "string" && error.message.trim()) {
+    return error.message.trim();
+  }
+
+  return String(error);
+}
+
 export function createProcessServer(
   config: ProcessServerConfig,
 ): ServerController {
@@ -55,8 +84,8 @@ export function createProcessServer(
         return;
       }
 
-      if (!err.killed) {
-        console.error(err);
+      if (!isProcessErrorLike(err) || !err.killed) {
+        console.error(formatProcessError(err));
       }
     });
   }

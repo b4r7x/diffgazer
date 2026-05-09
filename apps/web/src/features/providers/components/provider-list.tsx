@@ -1,5 +1,5 @@
-import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { NavigationList, NavigationListItem, NavigationListTitle, NavigationListBadge, NavigationListSubtitle, NavigationListStatus } from '@diffgazer/ui/components/navigation-list';
+import type { KeyboardEvent as ReactKeyboardEvent, RefCallback } from 'react';
+import { NavigationList, NavigationListItem, NavigationListTitle, NavigationListBadge, NavigationListMeta, NavigationListSubtitle, NavigationListStatus } from '@diffgazer/ui/components/navigation-list';
 import { InputGroup } from '@diffgazer/ui/components/input';
 import { ToggleGroup, ToggleGroupItem } from "@diffgazer/ui/components/toggle-group";
 import { cn } from "@diffgazer/core/cn";
@@ -23,6 +23,11 @@ interface ProviderListProps {
   focusedFilterIndex?: number;
   onFilterHighlightChange?: (index: number) => void;
   onFilterFocus?: (index: number) => void;
+  onFilterKeyDown?: (event: ReactKeyboardEvent) => void;
+  getFilterButtonProps?: (index: number) => {
+    ref: RefCallback<HTMLButtonElement>;
+    onFocus: () => void;
+  };
   highlightedId?: string | null;
   onHighlightChange?: (id: string) => void;
   onBoundaryReached?: (direction: "up" | "down") => void;
@@ -44,6 +49,8 @@ export function ProviderList({
   focusedFilterIndex,
   onFilterHighlightChange,
   onFilterFocus,
+  onFilterKeyDown,
+  getFilterButtonProps,
   highlightedId,
   onHighlightChange,
   onBoundaryReached,
@@ -108,22 +115,31 @@ export function ProviderList({
             ? null
             : (PROVIDER_FILTER_LABELS[focusedFilterIndex]?.value ?? null)
         }
+        onKeyDown={onFilterKeyDown}
         className="px-3 py-2 border-b border-tui-border"
         label="Provider filter"
       >
-        {PROVIDER_FILTER_LABELS.map((f, index) => (
-          <ToggleGroupItem
-            key={f.value}
-            value={f.value}
-            onFocus={() => onFilterFocus?.(index)}
-            className={cn(
-              "min-h-0 min-w-0 px-2 py-0.5 text-[10px]",
-              focusedFilterIndex === index && 'ring-2 ring-tui-blue ring-offset-1 ring-offset-tui-bg'
-            )}
-          >
-            {f.label}
-          </ToggleGroupItem>
-        ))}
+        {PROVIDER_FILTER_LABELS.map((f, index) => {
+          const filterButtonProps = getFilterButtonProps?.(index);
+
+          return (
+            <ToggleGroupItem
+              key={f.value}
+              value={f.value}
+              ref={filterButtonProps?.ref}
+              onFocus={() => {
+                filterButtonProps?.onFocus();
+                onFilterFocus?.(index);
+              }}
+              className={cn(
+                "min-h-0 min-w-0 px-2 py-0.5 text-[10px]",
+                focusedFilterIndex === index && 'ring-2 ring-tui-blue ring-offset-1 ring-offset-tui-bg'
+              )}
+            >
+              {f.label}
+            </ToggleGroupItem>
+          );
+        })}
       </ToggleGroup>
 
       <div className="flex-1 overflow-y-auto scrollbar-hide">
@@ -160,13 +176,21 @@ export function ProviderList({
               >
                 <NavigationListTitle>{provider.name}</NavigationListTitle>
                 {statusText && <NavigationListStatus>{statusText}</NavigationListStatus>}
-                <NavigationListBadge
-                  variant={tierBadge === 'FREE' ? 'success' : 'neutral'}
-                  className="text-[9px]"
-                >
-                  {tierBadge}
-                </NavigationListBadge>
-                {subtitleText && <NavigationListSubtitle>{subtitleText}</NavigationListSubtitle>}
+                <div className="col-span-full row-start-2 flex min-w-0 items-center gap-2">
+                  <NavigationListMeta className="shrink-0">
+                    <NavigationListBadge
+                      variant={tierBadge === 'FREE' ? 'success' : 'neutral'}
+                      className="shrink-0 text-[9px]"
+                    >
+                      {tierBadge}
+                    </NavigationListBadge>
+                  </NavigationListMeta>
+                  {subtitleText && (
+                    <NavigationListSubtitle className="min-w-0 truncate">
+                      {subtitleText}
+                    </NavigationListSubtitle>
+                  )}
+                </div>
               </NavigationListItem>
             );
           })}

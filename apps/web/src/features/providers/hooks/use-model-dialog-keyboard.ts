@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef, useState, type RefCallback, type RefObject } from "react";
+import { useEffect, useEffectEvent, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefCallback, type RefObject } from "react";
 import type { ModelInfo } from "@diffgazer/core/schemas/config";
 import { useKey, useFocusZone, useScopedNavigation } from "@diffgazer/keys";
 import { TIER_FILTERS, type TierFilter } from "@/features/providers/constants";
@@ -34,7 +34,12 @@ interface ModelDialogKeyboardReturn {
     ref: RefCallback<HTMLButtonElement>;
     onFocus: () => void;
   };
+  getFilterButtonProps: (index: number) => {
+    ref: RefCallback<HTMLButtonElement>;
+    onFocus: () => void;
+  };
   setFocusZone: (zone: FocusZone) => void;
+  handleFilterKeyDown: (event: ReactKeyboardEvent) => void;
   handleConfirm: (modelId?: string) => void;
   handleCancel: () => void;
   handleUseCustom: () => void;
@@ -62,7 +67,14 @@ export function useModelDialogKeyboard({
   const [filterIndex, setFilterIndex] = useState(0);
   const [footerButtonIndex, setFooterButtonIndex] = useState(1);
   const footerButtonRefs = useRef(new Map<number, HTMLButtonElement>());
+  const filterButtonRefs = useRef(new Map<number, HTMLButtonElement>());
   const lastTierFilterIndex = TIER_FILTERS.length - 1;
+
+  const { zone: focusZone, setZone: setFocusZone, isZone } = useFocusZone({
+    initial: "list" as FocusZone,
+    zones: ["search", "filters", "list", "footer"] as const,
+    enabled: open,
+  });
 
   const focusFooterButton = (index: number) => {
     setFooterButtonIndex(index);
@@ -87,10 +99,22 @@ export function useModelDialogKeyboard({
     },
   });
 
-  const { zone: focusZone, setZone: setFocusZone, isZone } = useFocusZone({
-    initial: "list" as FocusZone,
-    zones: ["search", "filters", "list", "footer"] as const,
-    enabled: open,
+  const focusFilterButton = (index: number) => {
+    const nextIndex = ((index % TIER_FILTERS.length) + TIER_FILTERS.length) % TIER_FILTERS.length;
+    setFocusZone("filters");
+    setFilterIndex(nextIndex);
+    filterButtonRefs.current.get(nextIndex)?.focus();
+  };
+
+  const getFilterButtonProps = (index: number) => ({
+    ref: (node: HTMLButtonElement | null) => {
+      if (node) filterButtonRefs.current.set(index, node);
+      else filterButtonRefs.current.delete(index);
+    },
+    onFocus: () => {
+      setFocusZone("filters");
+      setFilterIndex(index);
+    },
   });
 
   const { highlighted: focusedModelId, highlight: focusModel } = useScopedNavigation({
@@ -190,11 +214,11 @@ export function useModelDialogKeyboard({
   };
 
   const focusPreviousFilter = () => {
-    setFilterIndex((prev) => (prev > 0 ? prev - 1 : lastTierFilterIndex));
+    focusFilterButton(filterIndex > 0 ? filterIndex - 1 : lastTierFilterIndex);
   };
 
   const focusNextFilter = () => {
-    setFilterIndex((prev) => (prev < lastTierFilterIndex ? prev + 1 : 0));
+    focusFilterButton(filterIndex < lastTierFilterIndex ? filterIndex + 1 : 0);
   };
 
   const applyFocusedFilter = () => {
@@ -203,24 +227,24 @@ export function useModelDialogKeyboard({
   };
 
   useKey("ArrowDown", () => {
-    setFocusZone("filters");
+    focusFilterButton(filterIndex);
     searchInputRef.current?.blur();
   },
-    { enabled: open && isZone("search") });
+    { enabled: open && isZone("search"), allowInInput: true, preventDefault: true });
 
   useKey("ArrowUp", () => {
     setFocusZone("search");
     searchInputRef.current?.focus();
   },
-    { enabled: open && isZone("filters") });
+    { enabled: open && isZone("filters"), preventDefault: true });
   useKey("ArrowDown", () => {
     setFocusZone("list");
     focusBoundaryModel("first");
-  }, { enabled: open && isZone("filters") });
+  }, { enabled: open && isZone("filters"), preventDefault: true });
   useKey("ArrowLeft", focusPreviousFilter, { enabled: open && isZone("filters") });
   useKey("ArrowRight", focusNextFilter, { enabled: open && isZone("filters") });
-  useKey("Enter", applyFocusedFilter, { enabled: open && isZone("filters") });
-  useKey(" ", applyFocusedFilter, { enabled: open && isZone("filters") });
+  useKey("Enter", applyFocusedFilter, { enabled: open && isZone("filters"), preventDefault: true });
+  useKey(" ", applyFocusedFilter, { enabled: open && isZone("filters"), preventDefault: true });
 
   useKey("ArrowLeft", () => focusFooterButton(0), { enabled: open && isZone("footer") });
   useKey("ArrowRight", () => focusFooterButton(1), { enabled: open && isZone("footer") });
@@ -242,7 +266,7 @@ export function useModelDialogKeyboard({
       setFocusZone("search");
       searchInputRef.current?.focus();
     }
-  }, { enabled: open });
+  }, { enabled: open, preventDefault: true });
   useKey("f", cycleTierFilter, { enabled: open && !isZone("search") });
   useKey("Escape", handleCancel, { enabled: open && !isZone("search") });
   useKey(" ", () => {
@@ -266,13 +290,28 @@ export function useModelDialogKeyboard({
 
   const handleSearchArrowDown = () => {
     searchInputRef.current?.blur();
-    setFocusZone("filters");
+    focusFilterButton(filterIndex);
   };
 
   const handleListSelect = (modelId: string) => {
     setFocusZone("list");
     focusModelElement(modelId);
     setCheckedModelId(modelId);
+  };
+
+  const handleFilterKeyDown = (event: ReactKeyboardEvent) => {
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setFocusZone("search");
+      searchInputRef.current?.focus();
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setFocusZone("list");
+      focusBoundaryModel("first");
+    }
   };
 
   return {
@@ -285,7 +324,9 @@ export function useModelDialogKeyboard({
     footerButtonIndex,
     setFooterButtonIndex,
     getFooterButtonProps,
+    getFilterButtonProps,
     setFocusZone,
+    handleFilterKeyDown,
     handleConfirm,
     handleCancel,
     handleUseCustom,

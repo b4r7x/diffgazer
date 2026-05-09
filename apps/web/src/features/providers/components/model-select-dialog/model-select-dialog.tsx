@@ -98,11 +98,13 @@ export function ModelSelectDialog({
     handleConfirm,
     handleCancel,
     handleUseCustom,
+    handleFilterKeyDown,
     handleSearchEscape,
     handleSearchArrowDown,
     handleListSelect,
     footerButtonIndex,
     getFooterButtonProps,
+    getFilterButtonProps,
   } = useModelDialogKeyboard({
     open,
     currentModel,
@@ -150,6 +152,8 @@ export function ModelSelectDialog({
             onChange={setTierFilter}
             focusedIndex={filterIndex}
             isFocused={focusZone === "filters"}
+            onKeyDown={handleFilterKeyDown}
+            getTabProps={getFilterButtonProps}
             onTabClick={(idx) => {
               setFocusZone("filters");
               setFilterIndex(idx);

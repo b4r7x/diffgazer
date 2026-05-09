@@ -106,22 +106,22 @@
 
 [data-theme="light"] {
   /* Primitive TUI Colors - Diffgazer Light Theme */
-  --tui-bg: #ffffff;
-  --tui-fg: #1a1a1a;
-  --tui-dim: #636363;
-  --tui-border: #888888;
-  --tui-highlight: #000000;
+  --tui-bg: #f7f8f5;
+  --tui-fg: #1f2328;
+  --tui-dim: #5f6872;
+  --tui-border: #aeb7c0;
+  --tui-highlight: #1f2328;
   --tui-highlight-fg: #ffffff;
   --tui-input-bg: #ffffff;
-  --tui-muted: #767676;
-  --tui-selection: #f0f0f0;
+  --tui-muted: #69717a;
+  --tui-selection: #e8edf3;
 
-  /* Accent colors - simplified for minimal theme */
-  --tui-blue: #4444cc;  /* dark for links */
-  --tui-violet: #767676;
-  --tui-green: #1a1a1a; /* black for success in minimal */
-  --tui-red: #cf222e;   /* keep for error */
-  --tui-yellow: #9a6700; /* keep for warning */
+  /* Accent colors */
+  --tui-blue: #0b63ce;
+  --tui-violet: #6f42c1;
+  --tui-green: #0f7a4f;
+  --tui-red: #c62828;
+  --tui-yellow: #8a5a00;
 
   /* Code syntax palette (shared by Fumadocs + generated snippets) */
   --code-comment: var(--tui-dim);
@@ -139,23 +139,23 @@
   /* Semantic mappings */
   --background: var(--tui-bg);
   --foreground: var(--tui-fg);
-  --primary: var(--tui-fg);
-  --primary-foreground: var(--tui-bg);
+  --primary: var(--tui-highlight);
+  --primary-foreground: var(--tui-highlight-fg);
   --secondary: var(--tui-selection);
   --secondary-foreground: var(--tui-fg);
   --muted: var(--tui-muted);
   --muted-foreground: var(--tui-dim);
   --border: var(--tui-border);
-  --input: var(--tui-selection);
+  --input: var(--tui-input-bg);
   --destructive: var(--tui-red);
   --destructive-foreground: #ffffff;
-  --accent: var(--tui-highlight);
+  --accent: var(--tui-violet);
   --accent-foreground: var(--tui-highlight-fg);
-  --card: var(--tui-selection);
+  --card: var(--tui-input-bg);
   --card-foreground: var(--tui-fg);
-  --popover: var(--tui-selection);
+  --popover: var(--tui-input-bg);
   --popover-foreground: var(--tui-fg);
-  --ring: var(--tui-fg);
+  --ring: var(--tui-blue);
   --success: var(--tui-green);
   --success-foreground: #ffffff;
   --warning: var(--tui-yellow);
@@ -165,36 +165,36 @@
   --error: var(--tui-red);
   --error-foreground: #ffffff;
 
-  --success-subtle: #1a1a1a1f;
+  --success-subtle: #0f7a4f1f;
   --success-fg: var(--tui-green);
   --success-border: var(--tui-green);
   --success-strong: var(--tui-green);
   --success-strong-foreground: #ffffff;
 
-  --warning-subtle: #9a670014;
+  --warning-subtle: #8a5a0014;
   --warning-fg: var(--tui-yellow);
   --warning-border: var(--tui-yellow);
   --warning-strong: var(--tui-yellow);
   --warning-strong-foreground: #ffffff;
 
-  --error-subtle: #cf222e1a;
+  --error-subtle: #c628281a;
   --error-fg: var(--tui-red);
   --error-border: var(--tui-red);
   --error-strong: var(--tui-red);
   --error-strong-foreground: #ffffff;
 
-  --info-subtle: #4444cc1a;
+  --info-subtle: #0b63ce1a;
   --info-fg: var(--tui-blue);
   --info-border: var(--tui-blue);
   --info-strong: var(--tui-blue);
   --info-strong-foreground: #ffffff;
 
-  --neutral-subtle: #88888814;
+  --neutral-subtle: #aeb7c014;
   --neutral-border: var(--tui-border);
   --neutral-fg: var(--tui-muted);
   --neutral-strong: var(--tui-muted);
   --neutral-strong-foreground: #ffffff;
 
-  --action: var(--tui-highlight);
-  --action-foreground: var(--tui-highlight-fg);
+  --action: var(--tui-violet);
+  --action-foreground: #ffffff;
 }

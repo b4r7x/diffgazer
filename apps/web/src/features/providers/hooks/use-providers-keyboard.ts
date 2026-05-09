@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefCallback, type RefObject } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefCallback, type RefObject } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useKey, useFocusZone } from "@diffgazer/keys";
 import { PROVIDER_FILTERS, type ProviderFilter } from "@/features/providers/constants";
@@ -11,6 +11,7 @@ type FocusZone = typeof PROVIDER_ZONES[number];
 interface ProvidersKeyboardOptions {
   selectedProvider: { id: AIProvider; hasApiKey: boolean; model?: string; name: string } | null;
   filteredProviders: Array<{ id: string }>;
+  listReady: boolean;
   filter: ProviderFilter;
   setFilter: (filter: ProviderFilter) => void;
   setSelectedId: (id: string) => void;
@@ -32,6 +33,11 @@ interface ProvidersKeyboardReturn {
     ref: RefCallback<HTMLButtonElement>;
     onFocus: () => void;
   };
+  getFilterButtonProps: (index: number) => {
+    ref: RefCallback<HTMLButtonElement>;
+    onFocus: () => void;
+  };
+  handleFilterKeyDown: (event: ReactKeyboardEvent) => void;
   handleSearchFocus: () => void;
   handleFilterFocus: (index: number) => void;
   handleListBoundary: (direction: "up" | "down") => void;
@@ -40,6 +46,7 @@ interface ProvidersKeyboardReturn {
 export function useProvidersKeyboard({
   selectedProvider,
   filteredProviders,
+  listReady,
   filter,
   setFilter,
   setSelectedId,
@@ -55,6 +62,7 @@ export function useProvidersKeyboard({
   const [filterIndex, setFilterIndex] = useState(0);
   const [buttonIndex, setButtonIndex] = useState(0);
   const buttonRefs = useRef(new Map<number, HTMLButtonElement>());
+  const filterButtonRefs = useRef(new Map<number, HTMLButtonElement>());
   const hasFocusedInitialProviderListRef = useRef(false);
 
   const { zone: internalZone, setZone, isZone } = useFocusZone({
@@ -93,12 +101,19 @@ export function useProvidersKeyboard({
     buttonRefs.current.get(index)?.focus();
   };
 
+  const focusFilterButton = (index: number) => {
+    const nextIndex = Math.max(0, Math.min(PROVIDER_FILTERS.length - 1, index));
+    setZone("filters");
+    setFilterIndex(nextIndex);
+    filterButtonRefs.current.get(nextIndex)?.focus();
+  };
+
   const focusPreviousFilter = () => {
-    setFilterIndex((index) => Math.max(0, index - 1));
+    focusFilterButton(Math.max(0, filterIndex - 1));
   };
 
   const focusNextFilter = () => {
-    setFilterIndex((index) => Math.min(PROVIDER_FILTERS.length - 1, index + 1));
+    focusFilterButton(Math.min(PROVIDER_FILTERS.length - 1, filterIndex + 1));
   };
 
   const applyFocusedFilter = () => {
@@ -130,19 +145,32 @@ export function useProvidersKeyboard({
   const inButtons = effectiveFocusZone === "buttons";
 
   useEffect(() => {
-    if (dialogOpen || hasFocusedInitialProviderListRef.current) return;
+    if (dialogOpen || !listReady || hasFocusedInitialProviderListRef.current) return;
     const listContainer = listContainerRef.current;
     if (!listContainer) return;
-    if (listContainer.ownerDocument.activeElement !== listContainer.ownerDocument.body) return;
+    const activeElement = listContainer.ownerDocument.activeElement;
+    const View = listContainer.ownerDocument.defaultView;
+    if (
+      View &&
+      activeElement instanceof View.HTMLElement &&
+      activeElement !== listContainer.ownerDocument.body &&
+      (
+        activeElement.matches("input, textarea, select") ||
+        activeElement.isContentEditable
+      )
+    ) {
+      return;
+    }
 
+    setZone("list");
     listContainer.focus();
     hasFocusedInitialProviderListRef.current = true;
-  }, [dialogOpen, listContainerRef]);
+  }, [dialogOpen, listReady, listContainerRef, setZone]);
 
   useKey("ArrowDown", () => {
-    setZone("filters");
+    focusFilterButton(PROVIDER_FILTERS.indexOf(filter));
     inputRef.current?.blur();
-  }, { enabled: !dialogOpen && inInput, allowInInput: true });
+  }, { enabled: !dialogOpen && inInput, allowInInput: true, preventDefault: true });
   useKey("Escape", () => {
     setZone("filters");
     inputRef.current?.blur();
@@ -151,18 +179,18 @@ export function useProvidersKeyboard({
   useKey("ArrowUp", () => {
     setZone("input");
     inputRef.current?.focus();
-  }, { enabled: !dialogOpen && inFilters });
+  }, { enabled: !dialogOpen && inFilters, preventDefault: true });
   useKey("ArrowDown", () => {
     if (filteredProviders.length > 0) {
       setZone("list");
       focusBoundaryProvider("first");
       focusProviderList();
     }
-  }, { enabled: !dialogOpen && inFilters });
+  }, { enabled: !dialogOpen && inFilters, preventDefault: true });
   useKey("ArrowLeft", focusPreviousFilter, { enabled: !dialogOpen && inFilters });
   useKey("ArrowRight", focusNextFilter, { enabled: !dialogOpen && inFilters });
-  useKey("Enter", applyFocusedFilter, { enabled: !dialogOpen && inFilters });
-  useKey(" ", applyFocusedFilter, { enabled: !dialogOpen && inFilters });
+  useKey("Enter", applyFocusedFilter, { enabled: !dialogOpen && inFilters, preventDefault: true });
+  useKey(" ", applyFocusedFilter, { enabled: !dialogOpen && inFilters, preventDefault: true });
 
   useKey("ArrowRight", () => {
     setZone("buttons");
@@ -193,12 +221,28 @@ export function useProvidersKeyboard({
   useKey("/", () => {
     setZone("input");
     inputRef.current?.focus();
-  }, { enabled: !dialogOpen && !inInput });
+  }, { enabled: !dialogOpen && !inInput, preventDefault: true });
 
   const handleListBoundary = (direction: "up" | "down") => {
     if (direction === "up") {
-      setZone("filters");
-      setFilterIndex(PROVIDER_FILTERS.indexOf(filter));
+      focusFilterButton(PROVIDER_FILTERS.indexOf(filter));
+    }
+  };
+
+  const handleFilterKeyDown = (event: ReactKeyboardEvent) => {
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setZone("input");
+      inputRef.current?.focus();
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      if (filteredProviders.length === 0) return;
+      setZone("list");
+      focusBoundaryProvider("first");
+      focusProviderList();
     }
   };
 
@@ -213,12 +257,25 @@ export function useProvidersKeyboard({
     },
   });
 
+  const getFilterButtonProps = (index: number) => ({
+    ref: (node: HTMLButtonElement | null) => {
+      if (node) filterButtonRefs.current.set(index, node);
+      else filterButtonRefs.current.delete(index);
+    },
+    onFocus: () => {
+      setZone("filters");
+      setFilterIndex(index);
+    },
+  });
+
   return {
     focusZone: effectiveFocusZone,
     filterIndex,
     setFilterIndex,
     buttonIndex,
     getActionButtonProps,
+    getFilterButtonProps,
+    handleFilterKeyDown,
     handleSearchFocus,
     handleFilterFocus,
     handleListBoundary,

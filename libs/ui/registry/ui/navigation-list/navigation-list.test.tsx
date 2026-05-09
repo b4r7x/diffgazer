@@ -203,6 +203,23 @@ describe("NavigationList", () => {
     expect(listbox).toHaveAttribute("aria-activedescendant", oneOption.id)
   })
 
+  it("uses a single active visual when selected and highlighted items differ", () => {
+    renderList({ selectedId: "one", highlightedId: "two", focused: true })
+
+    const selectedOption = screen.getByRole("option", { name: "One" })
+    const highlightedOption = screen.getByRole("option", { name: "Two" })
+
+    expect(selectedOption).toHaveAttribute("aria-selected", "true")
+    expect(selectedOption).not.toHaveAttribute("data-active")
+    expect(highlightedOption).toHaveAttribute("data-active", "true")
+  })
+
+  it("uses selected item as active visual when no highlight is set", () => {
+    renderList({ selectedId: "one", highlightedId: null, focused: true })
+
+    expect(screen.getByRole("option", { name: "One" })).toHaveAttribute("data-active", "true")
+  })
+
   it("fires onSelect in controlled mode without internal state change", async () => {
     const onSelect = vi.fn()
     const { rerender } = render(

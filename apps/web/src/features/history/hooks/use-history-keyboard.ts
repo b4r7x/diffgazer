@@ -82,7 +82,7 @@ export function useHistoryKeyboard({
   useKey("/", () => {
     setFocusZone("search");
     searchInputRef.current?.focus();
-  }, { enabled: focusZone !== "search" });
+  }, { enabled: focusZone !== "search", preventDefault: true });
 
   const navigateToSelectedRun = () => {
     if (activeRunId) {

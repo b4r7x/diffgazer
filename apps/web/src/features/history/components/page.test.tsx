@@ -130,4 +130,18 @@ describe("HistoryPage keyboard navigation", () => {
       params: { reviewId: "22222222-2222-4222-8222-222222222222" },
     });
   });
+
+  it("focuses search with slash without typing slash into the field", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const runsList = await screen.findByRole("listbox", { name: /review runs/i });
+    await waitFor(() => expect(runsList).toHaveFocus());
+
+    await user.keyboard("/");
+
+    const search = screen.getByPlaceholderText(/search runs by id/i);
+    expect(search).toHaveFocus();
+    expect(search).toHaveValue("");
+  });
 });

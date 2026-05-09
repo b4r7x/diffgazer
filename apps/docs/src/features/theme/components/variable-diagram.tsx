@@ -7,17 +7,18 @@ interface VariableMapping {
 }
 
 const VARIABLE_MAP: VariableMapping[] = [
-  { primitive: { name: "--tui-bg", darkValue: "#0a0a0a", lightValue: "#ffffff" }, semantics: ["--background"] },
-  { primitive: { name: "--tui-fg", darkValue: "#e5e5e5", lightValue: "#1a1a1a" }, semantics: ["--foreground", "--primary", "--ring"] },
-  { primitive: { name: "--tui-blue", darkValue: "#ccccff", lightValue: "#4444cc" }, semantics: ["--info"] },
-  { primitive: { name: "--tui-green", darkValue: "#e5e5e5", lightValue: "#1a1a1a" }, semantics: ["--success"] },
-  { primitive: { name: "--tui-red", darkValue: "#ff7b72", lightValue: "#cf222e" }, semantics: ["--destructive", "--error"] },
-  { primitive: { name: "--tui-yellow", darkValue: "#d29922", lightValue: "#9a6700" }, semantics: ["--warning"] },
-  { primitive: { name: "--tui-violet", darkValue: "#787878", lightValue: "#767676" }, semantics: [] },
-  { primitive: { name: "--tui-border", darkValue: "#606060", lightValue: "#888888" }, semantics: ["--border"] },
-  { primitive: { name: "--tui-muted", darkValue: "#787878", lightValue: "#767676" }, semantics: ["--muted"] },
-  { primitive: { name: "--tui-highlight", darkValue: "#ffffff", lightValue: "#000000" }, semantics: ["--accent", "--action"] },
-  { primitive: { name: "--tui-selection", darkValue: "#333333", lightValue: "#f0f0f0" }, semantics: ["--secondary", "--card", "--popover", "--input"] },
+  { primitive: { name: "--tui-bg", darkValue: "#0a0a0a", lightValue: "#f7f8f5" }, semantics: ["--background"] },
+  { primitive: { name: "--tui-fg", darkValue: "#e5e5e5", lightValue: "#1f2328" }, semantics: ["--foreground"] },
+  { primitive: { name: "--tui-blue", darkValue: "#ccccff", lightValue: "#0b63ce" }, semantics: ["--info", "--ring"] },
+  { primitive: { name: "--tui-green", darkValue: "#e5e5e5", lightValue: "#0f7a4f" }, semantics: ["--success"] },
+  { primitive: { name: "--tui-red", darkValue: "#ff7b72", lightValue: "#c62828" }, semantics: ["--destructive", "--error"] },
+  { primitive: { name: "--tui-yellow", darkValue: "#d29922", lightValue: "#8a5a00" }, semantics: ["--warning"] },
+  { primitive: { name: "--tui-violet", darkValue: "#787878", lightValue: "#6f42c1" }, semantics: ["--accent", "--action"] },
+  { primitive: { name: "--tui-border", darkValue: "#606060", lightValue: "#aeb7c0" }, semantics: ["--border"] },
+  { primitive: { name: "--tui-muted", darkValue: "#787878", lightValue: "#69717a" }, semantics: ["--muted"] },
+  { primitive: { name: "--tui-highlight", darkValue: "#ffffff", lightValue: "#1f2328" }, semantics: ["--primary"] },
+  { primitive: { name: "--tui-selection", darkValue: "#333333", lightValue: "#e8edf3" }, semantics: ["--secondary"] },
+  { primitive: { name: "--tui-input-bg", darkValue: "#0a0a0a", lightValue: "#ffffff" }, semantics: ["--card", "--popover", "--input"] },
 ]
 
 interface VariableDiagramProps {

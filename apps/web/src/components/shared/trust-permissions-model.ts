@@ -2,8 +2,8 @@ import type { TrustCapabilities } from "@diffgazer/core/schemas/config";
 
 export type TrustCapabilityId = keyof TrustCapabilities;
 
-export const DEFAULT_TRUST_CAPABILITIES: TrustCapabilities = {
-  readFiles: true,
+export const NO_TRUST_CAPABILITIES: TrustCapabilities = {
+  readFiles: false,
   runCommands: false,
 };
 
@@ -28,7 +28,7 @@ export const TRUST_CAPABILITY_OPTIONS = [
 }>;
 
 export function normalizeTrustCapabilities(value: TrustCapabilities | null | undefined): TrustCapabilities {
-  return { ...DEFAULT_TRUST_CAPABILITIES, ...(value ?? {}), runCommands: false };
+  return { ...NO_TRUST_CAPABILITIES, ...(value ?? {}), runCommands: false };
 }
 
 export function toSelectedCapabilityIds(value: TrustCapabilities): TrustCapabilityId[] {
